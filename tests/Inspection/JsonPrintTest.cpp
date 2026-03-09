@@ -87,6 +87,58 @@ TEST_F(JsonPrintInspectorTest, store_string) {
   EXPECT_EQ("\"foobar\"", stream.str());
 }
 
+TEST_F(JsonPrintInspectorTest, store_string_with_special_chars) {
+  std::string x = "hello \"world\"\nfoo\\bar";
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(R"("hello \"world\"\nfoo\\bar")", stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_with_control_chars) {
+  std::string x = std::string("tab\there\bnull\0end", 18);
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(R"("tab\there\bnull\u0000end")", stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_with_unicode) {
+  std::string x = "héllo wörld \xc3\xa9";
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ("\"héllo wörld \xc3\xa9\"", stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_with_emoji) {
+  std::string x = "hello \xf0\x9f\x98\x80 world";
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ("\"hello \xf0\x9f\x98\x80 world\"", stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_rejects_invalid_utf8) {
+  std::string x = "bad\x80sequence";
+  auto result = inspector.apply(x);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Invalid UTF-8 string", result.error());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_rejects_truncated_utf8) {
+  std::string x = "truncated\xc3";
+  auto result = inspector.apply(x);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Invalid UTF-8 string", result.error());
+}
+
+TEST_F(JsonPrintInspectorTest, store_string_escapes_all_control_chars) {
+  std::string x;
+  x += '\x01';
+  x += '\x1f';
+  x += '\x7f';
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(R"("\u0001\u001f\u007f")", stream.str());
+}
+
 TEST_F(JsonPrintInspectorTest, store_object) {
   Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
   auto result = inspector.apply(f);
@@ -190,6 +242,25 @@ TEST_F(JsonPrintInspectorTest, store_field_after_map_has_comma) {
   "after": "end"
 })";
   EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_map_escapes_keys) {
+  std::map<std::string, int> m{{"a\"b\\c", 1}, {"normal", 2}};
+  auto result = inspector.apply(m);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({
+  "a\"b\\c": 1,
+  "normal": 2
+})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(JsonPrintInspectorTest, store_map_rejects_invalid_utf8_key) {
+  std::map<std::string, int> m{{"bad\x80key", 1}};
+  auto result = inspector.apply(m);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Invalid UTF-8 string", result.error());
 }
 
 TEST_F(JsonPrintInspectorTest, store_set) {
