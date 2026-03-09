@@ -1,9 +1,11 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
-
 * COR-255: Fixed vector index not being properly trained on follower shards when
   replicationFactor is increased. The follower now trains and populates
-  the vector index from local documents after initial sync.
+  the vector index from local documents after initial sync. Added per-vector-index
+  metrics on DB servers: `arangodb_vector_index_training_state`,
+  `arangodb_vector_index_training_duration_seconds`, and
+  `arangodb_vector_index_ingesting_duration_seconds`.
 
 * COR-286: Fixed a crash when executing AQL queries with `usePlanCache: true` on
   cluster-one-shard databases containing graph traversals. When a cached
