@@ -114,7 +114,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   StoredValues const& storedValues() const override;
 
-  void setTrainingState(VectorIndexTrainingState state) noexcept;
+  bool setTrainingState(VectorIndexTrainingState expected,
+                        VectorIndexTrainingState desired) noexcept;
 
   /// @brief Join the build thread from another thread (e.g. before dropping the
   /// index). Must not be called from the build thread itself (avoids self-join

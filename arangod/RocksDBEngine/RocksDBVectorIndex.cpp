@@ -137,7 +137,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
 
-    setTrainingState(VectorIndexTrainingState::kReady);
+    setTrainingState(VectorIndexTrainingState::kUntrained,
+                     VectorIndexTrainingState::kReady);
   }
 
   if (auto dc = info.get("documentCount"); !dc.isNone()) {
@@ -365,11 +366,9 @@ void RocksDBVectorIndex::tryBuilding() {
   if (_documentCount < _trainingThreshold) {
     return;
   }
-  VectorIndexTrainingState expected{VectorIndexTrainingState::kUntrained};
-  if (!_trainingState.compare_exchange_strong(
-          expected, VectorIndexTrainingState::kTraining,
-          std::memory_order_acq_rel, std::memory_order_acquire)) {
-    return;  // another thread already started training, or state changed
+  if (!setTrainingState(VectorIndexTrainingState::kUntrained,
+                        VectorIndexTrainingState::kTraining)) {
+    return;
   }
 
   LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
@@ -390,7 +389,8 @@ void RocksDBVectorIndex::tryBuilding() {
         this->resetTrainingState();
         return;
       }
-      this->setTrainingState(VectorIndexTrainingState::kReady);
+      this->setTrainingState(VectorIndexTrainingState::kIngesting,
+                             VectorIndexTrainingState::kReady);
     } catch (std::exception const& ex) {
       LOG_TOPIC("e164c", ERR, Logger::ENGINES)
           << "[index=" << indexId
@@ -404,37 +404,43 @@ void RocksDBVectorIndex::tryBuilding() {
   });
 }
 
-void RocksDBVectorIndex::setTrainingState(
-    VectorIndexTrainingState state) noexcept {
-  auto const oldState = _trainingState.exchange(state);
+bool RocksDBVectorIndex::setTrainingState(
+    VectorIndexTrainingState expected,
+    VectorIndexTrainingState desired) noexcept {
+  if (!_trainingState.compare_exchange_strong(expected, desired,
+                                              std::memory_order_acq_rel,
+                                              std::memory_order_acquire)) {
+    return false;
+  }
 
   if (_metricState != nullptr) {
     auto const now = std::chrono::steady_clock::now();
 
-    if (oldState == VectorIndexTrainingState::kTraining &&
-        state != VectorIndexTrainingState::kTraining) {
+    if (expected == VectorIndexTrainingState::kTraining) {
       auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
       _metricTrainingDuration->store(elapsed.count(),
                                      std::memory_order_relaxed);
-    } else if (oldState == VectorIndexTrainingState::kIngesting &&
-               state != VectorIndexTrainingState::kIngesting) {
+    } else if (expected == VectorIndexTrainingState::kIngesting) {
       auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
       _metricIngestingDuration->store(elapsed.count(),
                                       std::memory_order_relaxed);
     }
 
-    if (state == VectorIndexTrainingState::kTraining ||
-        state == VectorIndexTrainingState::kIngesting) {
+    if (desired == VectorIndexTrainingState::kTraining ||
+        desired == VectorIndexTrainingState::kIngesting) {
       _stateEnteredAt = now;
     }
 
-    _metricState->store(static_cast<uint64_t>(state),
+    _metricState->store(static_cast<uint64_t>(desired),
                         std::memory_order_relaxed);
   }
+
+  return true;
 }
 
 void RocksDBVectorIndex::resetTrainingState() noexcept {
-  setTrainingState(VectorIndexTrainingState::kUntrained);
+  auto const current = _trainingState.load(std::memory_order_acquire);
+  setTrainingState(current, VectorIndexTrainingState::kUntrained);
   _trainedData.reset();
 }
 
