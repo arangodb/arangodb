@@ -350,7 +350,7 @@ Result VectorIndexBuildManager::build() {
     LOG_TOPIC("e165b", INFO, Logger::ENGINES)
         << "[shard=" << _index.collection().name()
         << ", index=" << _index.id().id() << "] "
-        << "Deferred training and ingestion completed.";
+        << "Ingestion completed.";
   }
 
   return res;

@@ -409,16 +409,16 @@ void RocksDBVectorIndex::setTrainingState(
   auto const oldState = _trainingState.exchange(state);
 
   if (_metricState != nullptr) {
-    auto now = std::chrono::steady_clock::now();
+    auto const now = std::chrono::steady_clock::now();
 
     if (oldState == VectorIndexTrainingState::kTraining &&
         state != VectorIndexTrainingState::kTraining) {
-      auto elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
+      auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
       _metricTrainingDuration->store(elapsed.count(),
                                      std::memory_order_relaxed);
     } else if (oldState == VectorIndexTrainingState::kIngesting &&
                state != VectorIndexTrainingState::kIngesting) {
-      auto elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
+      auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
       _metricIngestingDuration->store(elapsed.count(),
                                       std::memory_order_relaxed);
     }
