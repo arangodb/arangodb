@@ -26,6 +26,8 @@
 
 #include "ActionDescription.h"
 
+#include "Activities/GenericActivity.h"
+#include "Activities/GuardedActivity.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Cluster/Utils/ShardID.h"
@@ -41,6 +43,20 @@ namespace arangodb {
 class MaintenanceFeature;
 
 namespace maintenance {
+
+namespace activity {
+
+struct ActionActivity
+    : activities::GuardedActivity<ActionActivity,
+                                  maintenance::ActionDescription> {
+  ActionActivity(activities::ActivityId id, activities::ActivityHandle parent,
+                 activities::ActivityType type,
+                 maintenance::ActionDescription data)
+      : GuardedActivity<ActionActivity, maintenance::ActionDescription>(
+            std::move(id), std::move(parent), std::move(type),
+            std::move(data)) {}
+};
+}  // namespace activity
 
 class Action;
 
@@ -247,6 +263,7 @@ class ActionBase {
   std::atomic<double> _progress;
 
   int _priority;
+  activity::ActionActivity::HandleType _activity;
 
  private:
   mutable std::mutex resLock;
