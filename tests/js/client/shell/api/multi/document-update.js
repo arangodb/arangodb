@@ -62,7 +62,7 @@ function error_handlingSuite () {
     },
 
     test_returns_an_error_if_document_identifier_is_corrupted: function() {
-      let cmd = "/_api/document/123456";
+      let cmd = "/_api/document/corrupted";
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
 
@@ -76,7 +76,7 @@ function error_handlingSuite () {
     },
 
     test_returns_an_error_if_document_identifier_is_corrupted_with_empty_cid: function() {
-      let cmd = "/_api/document//123456";
+      let cmd = "/_api/document//dummy";
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
 
@@ -90,7 +90,7 @@ function error_handlingSuite () {
     },
 
     test_returns_an_error_if_collection_identifier_is_unknown: function() {
-      let cmd = "/_api/document/123456/234567";
+      let cmd = "/_api/document/unknown/234567";
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
 

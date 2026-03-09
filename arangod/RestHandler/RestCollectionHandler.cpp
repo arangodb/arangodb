@@ -141,8 +141,7 @@ async<void> RestCollectionHandler::handleCommandGet() {
 
   std::string const& name = suffixes[0];
 
-  // check if collection name is a numeric collection id
-  // and generate an error if so
+  // if name is a numeric collection id, generate an error
   if (rejectNumericCollectionId(name)) {
     co_return;
   }
@@ -428,8 +427,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
 
   std::string const& name = suffixes[0];
 
-  // check if collection name is a numeric collection id
-  // and generate an error if so
+  // if name is a numeric collection id, generate an error
   if (rejectNumericCollectionId(name)) {
     co_return;
   }
@@ -682,8 +680,7 @@ async<void> RestCollectionHandler::handleCommandDelete() {
 
   std::string const& name = suffixes[0];
 
-  // check if collection name is a numeric collection id
-  // and generate an error if so
+  // if name is a numeric collection id, generate an error
   if (rejectNumericCollectionId(name)) {
     co_return;
   }
