@@ -61,6 +61,9 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/DocumentExpressionContext.h"
+#include "Cluster/ServerState.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/write_batch.h>
@@ -68,6 +71,14 @@
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
 #include "faiss/utils/Heap.h"
+
+DECLARE_GAUGE(arangodb_vector_index_training_state, uint64_t,
+              "Current training state of a vector index "
+              "(0=untrained, 1=training, 2=ingesting, 3=ready)");
+DECLARE_GAUGE(arangodb_vector_index_training_duration_seconds, double,
+              "Wall-clock seconds spent in the last training phase");
+DECLARE_GAUGE(arangodb_vector_index_ingesting_duration_seconds, double,
+              "Wall-clock seconds spent in the last ingesting phase");
 
 namespace arangodb {
 
@@ -136,6 +147,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   // 39 is the minumum number of documents to train the vector index, but that
   // does not mean it cannot be achieved with less documents.
   _trainingThreshold = std::max<std::int64_t>(_definition.nLists * 39, 1000);
+
+  registerMetrics();
 }
 
 void RocksDBVectorIndex::joinBuildThread() noexcept {
@@ -152,9 +165,57 @@ void RocksDBVectorIndex::joinBuildThread() noexcept {
 }
 
 RocksDBVectorIndex::~RocksDBVectorIndex() {
-  // Join from this thread only if we are not the build thread (otherwise
-  // ~jthread() would run in the build thread and effectively self-join).
+  deregisterMetrics();
   joinBuildThread();
+}
+
+namespace {
+
+template<typename T>
+T makeVectorMetric(RocksDBVectorIndex const& idx) {
+  T metric;
+  metric.addLabel("db", idx.collection().vocbase().name());
+  metric.addLabel("collection", idx.collection().name());
+  if (ServerState::instance()->isDBServer()) {
+    metric.addLabel("shard", idx.collection().name());
+  }
+  metric.addLabel("index", idx.name());
+  metric.addLabel("index_id", std::to_string(idx.id().id()));
+  return metric;
+}
+
+}  // namespace
+
+void RocksDBVectorIndex::registerMetrics() {
+  auto& mf =
+      _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
+  _metricState =
+      &mf.add(makeVectorMetric<arangodb_vector_index_training_state>(*this));
+  _metricTrainingDuration = &mf.add(
+      makeVectorMetric<arangodb_vector_index_training_duration_seconds>(*this));
+  _metricIngestingDuration = &mf.add(
+      makeVectorMetric<arangodb_vector_index_ingesting_duration_seconds>(
+          *this));
+
+  _metricState->store(
+      static_cast<uint64_t>(_trainingState.load(std::memory_order_relaxed)),
+      std::memory_order_relaxed);
+}
+
+void RocksDBVectorIndex::deregisterMetrics() {
+  if (_metricState == nullptr) {
+    return;
+  }
+  auto& mf =
+      _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
+  mf.remove(makeVectorMetric<arangodb_vector_index_training_state>(*this));
+  mf.remove(
+      makeVectorMetric<arangodb_vector_index_training_duration_seconds>(*this));
+  mf.remove(makeVectorMetric<arangodb_vector_index_ingesting_duration_seconds>(
+      *this));
+  _metricState = nullptr;
+  _metricTrainingDuration = nullptr;
+  _metricIngestingDuration = nullptr;
 }
 
 /// @brief Test if this index matches the definition
@@ -345,7 +406,31 @@ void RocksDBVectorIndex::tryBuilding() {
 
 void RocksDBVectorIndex::setTrainingState(
     VectorIndexTrainingState state) noexcept {
-  _trainingState.store(state);
+  auto const oldState = _trainingState.exchange(state);
+
+  if (_metricState != nullptr) {
+    auto now = std::chrono::steady_clock::now();
+
+    if (oldState == VectorIndexTrainingState::kTraining &&
+        state != VectorIndexTrainingState::kTraining) {
+      auto elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
+      _metricTrainingDuration->store(elapsed.count(),
+                                     std::memory_order_relaxed);
+    } else if (oldState == VectorIndexTrainingState::kIngesting &&
+               state != VectorIndexTrainingState::kIngesting) {
+      auto elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
+      _metricIngestingDuration->store(elapsed.count(),
+                                      std::memory_order_relaxed);
+    }
+
+    if (state == VectorIndexTrainingState::kTraining ||
+        state == VectorIndexTrainingState::kIngesting) {
+      _stateEnteredAt = now;
+    }
+
+    _metricState->store(static_cast<uint64_t>(state),
+                        std::memory_order_relaxed);
+  }
 }
 
 void RocksDBVectorIndex::resetTrainingState() noexcept {

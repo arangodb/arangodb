@@ -192,10 +192,10 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
   input.reserve(_definition.dimension);
   std::int64_t counter{0};
 
-  LOG_TOPIC("b161b", INFO, Logger::STATISTICS)
+  LOG_TOPIC("b161b", INFO, Logger::ENGINES)
       << "[shard=" << _shardName << ", index=" << _indexId << "] "
-      << "Loading " << maxVectors << " vectors of dimension "
-      << _definition.dimension << " for training.";
+      << "Loading vectors of dimension " << _definition.dimension
+      << " for training.";
 
   while (counter < maxVectors && it.Valid()) {
     TRI_ASSERT(it.key().compare(upper) < 0);
@@ -249,14 +249,14 @@ TrainingResult VectorIndexTrainer::train(rocksdb::Iterator& it,
   auto numVectors =
       static_cast<std::int64_t>(trainingData.size() / _definition.dimension);
 
-  LOG_TOPIC("a162b", INFO, Logger::STATISTICS)
+  LOG_TOPIC("a162b", INFO, Logger::ENGINES)
       << "[shard=" << _shardName << ", index=" << _indexId << "] "
       << "Loaded " << numVectors << " vectors. Start training process on "
       << _definition.nLists << " centroids.";
 
   faissIndex->train(numVectors, trainingData.data());
 
-  LOG_TOPIC("a160b", INFO, Logger::STATISTICS)
+  LOG_TOPIC("a160b", INFO, Logger::ENGINES)
       << "[shard=" << _shardName << ", index=" << _indexId << "] "
       << "Finished training.";
 

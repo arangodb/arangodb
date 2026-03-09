@@ -1,0 +1,22 @@
+name: arangodb_vector_index_training_state
+introducedIn: "3.12.9"
+help: |
+  Current training state of a vector index
+  (0=untrained, 1=training, 2=ingesting, 3=ready).
+unit: number
+type: gauge
+category: VectorIndex
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Numeric encoding of the current training lifecycle state of
+  a vector index. The value is one of:
+  0 (untrained) - the index has not yet accumulated enough documents
+  to begin training;
+  1 (training) - the FAISS index is being trained on sampled data;
+  2 (ingesting) - training is complete and existing documents are
+  being ingested into the trained index;
+  3 (ready) - the index is fully trained and serving approximate
+  nearest-neighbor queries.
