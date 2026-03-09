@@ -38,14 +38,28 @@ const isCluster = require("internal").isCluster();
 
 const dbName = "vectorTrainingLifecycleDB";
 const collName = "coll";
+const dimension = 100;
 
-function VectorIndexRemainsUntrainedSuite() {
+function generateDocs(gen, count) {
+    let docs = [];
+    for (let i = 0; i < count; ++i) {
+        docs.push({vector: Array.from({length: dimension}, () => gen())});
+    }
+    return docs;
+}
+
+function waitForState(collection, state, timeoutSec) {
+    if (isCluster) {
+        return waitForAllVectorIndexesTrainingStateOnDBServers(
+            db, collection, state, timeoutSec);
+    }
+    return waitForVectorIndexState(collection, "vec_l2", state, timeoutSec);
+}
+
+function VectorIndexTrainingLifecycleSuite() {
     let collection;
-    const dimension = 100;
     const seed = randomInteger();
-    // nLists=1 gives threshold = max(1*39, 1000) = 1000
-    // Insert fewer than threshold so training never triggers.
-    const insertCount = 500;
+    const insertCountFactor = isCluster ? 3 : 1;
 
     return {
         setUp: function () {
@@ -76,92 +90,36 @@ function VectorIndexRemainsUntrainedSuite() {
 
         testStaysUntrainedBelowThreshold: function () {
             let gen = randomNumberGeneratorFloat(seed);
-            let docs = [];
-            for (let i = 0; i < insertCount; ++i) {
-                docs.push({vector: Array.from({length: dimension}, () => gen())});
-            }
-            collection.insert(docs);
+            collection.insert(generateDocs(gen, 500));
+            assertEqual(500, collection.count());
 
-            assertEqual(insertCount, collection.count());
-
-            const trainingState = "untrained";
-            const waitTimeoutSec = 5;
-            if (isCluster) {
-                assertTrue(
-                    waitForAllVectorIndexesTrainingStateOnDBServers(db, collection, trainingState, waitTimeoutSec),
-                    "Index should remain untrained with only " + insertCount + " docs (threshold ~1000)"
-                );
-            } else {
-                const trained = waitForVectorIndexState(collection, "vec_l2", trainingState, waitTimeoutSec);
-                assertTrue(trained,
-                    "Index should remain untrained with only " + insertCount + " docs (threshold ~1000)");
-            }
-        },
-    };
-}
-
-function VectorIndexDeferredTrainingSuite() {
-    let collection;
-    const dimension = 100;
-    const seed = randomInteger();
-    // nLists=1 gives threshold = max(1*39, 1000) = 1000
-    // Insert well above threshold so training triggers.
-    const insertCountFactor = isCluster ? 3 : 1;
-    const insertCount = 1500 * insertCountFactor;
-
-    return {
-        setUp: function () {
-            print("Using seed: " + seed);
-            db._useDatabase("_system");
-            db._createDatabase(dbName);
-            db._useDatabase(dbName);
-            collection = db._create(collName, {numberOfShards: 3});
-
-            collection.ensureIndex({
-                name: "vec_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {metric: "l2", dimension, nLists: 1},
-            });
-        },
-
-        tearDown: function () {
-            db._useDatabase("_system");
-            db._dropDatabase(dbName);
+            assertTrue(
+                waitForState(collection, "untrained", 5),
+                "Index should remain untrained with only 500 docs (threshold ~1000)"
+            );
         },
 
         testTrainingTriggeredAfterThreshold: function () {
-            const idxBefore = collection.indexes().find(i => i.name === "vec_l2");
-            assertFalse(idxBefore.isTrained, "Index should start untrained");
+            assertFalse(
+                collection.indexes().find(i => i.name === "vec_l2").isTrained,
+                "Index should start untrained"
+            );
 
             let gen = randomNumberGeneratorFloat(seed);
-            let docs = [];
-            for (let i = 0; i < insertCount; ++i) {
-                docs.push({vector: Array.from({length: dimension}, () => gen())});
-            }
-            collection.insert(docs);
-
+            const insertCount = 1500 * insertCountFactor;
+            collection.insert(generateDocs(gen, insertCount));
             assertEqual(insertCount, collection.count());
 
-            const trainingState = "ready";
-            const waitTimeoutSec = 60;
-            if (isCluster) {
-                assertTrue(
-                    waitForAllVectorIndexesTrainingStateOnDBServers(db, collection, trainingState, waitTimeoutSec),
-                    "Index should become trained after inserting " + insertCount +
-                    " docs (threshold ~1000), waited up to 60s"
-                );
-            } else {
-                const trained = waitForVectorIndexState(collection, "vec_l2", trainingState, waitTimeoutSec);
-                assertTrue(trained,
-                    "Index should become trained after inserting " + insertCount +
-                    " docs (threshold ~1000), waited up to 60s");
-            }
+            assertTrue(
+                waitForState(collection, "ready", 60),
+                "Index should become trained after " + insertCount +
+                " docs (threshold ~1000)"
+            );
         },
 
         testSearchWorksAfterDeferredTraining: function () {
             let gen = randomNumberGeneratorFloat(seed);
+            const insertCount = 1500 * insertCountFactor;
             let docs = [];
             let queryPoint;
             for (let i = 0; i < insertCount; ++i) {
@@ -173,17 +131,10 @@ function VectorIndexDeferredTrainingSuite() {
             }
             collection.insert(docs);
 
-            const trainingState = "ready";
-            const waitTimeoutSec = 60;
-            if (isCluster) {
-                assertTrue(
-                    waitForAllVectorIndexesTrainingStateOnDBServers(db, collection, trainingState, waitTimeoutSec),
-                    "Index should become trained within 60s"
-                );
-            } else {
-                const trained = waitForVectorIndexState(collection, "vec_l2", trainingState, waitTimeoutSec);
-                assertTrue(trained, "Index should become trained within 60s");
-            }
+            assertTrue(
+                waitForState(collection, "ready", 60),
+                "Index should become trained within 60s"
+            );
 
             const results = db._query(
                 "FOR d IN " + collection.name() +
@@ -193,72 +144,74 @@ function VectorIndexDeferredTrainingSuite() {
 
             assertEqual(5, results.length, "Should return 5 nearest neighbors");
         },
-    };
-}
-
-function VectorIndexBatchInsertTrainingSuite() {
-    let collection;
-    const dimension = 100;
-    const seed = randomInteger();
-    const batchSize = 200;
-    const totalDocsFactor = isCluster ? 3 : 1;
-    const numBatches = Math.ceil((1500 * totalDocsFactor) / 200); // 4500 cluster / 1500 single
-
-    return {
-        setUp: function () {
-            print("Using seed: " + seed);
-            db._useDatabase("_system");
-            db._createDatabase(dbName);
-            db._useDatabase(dbName);
-            collection = db._create(collName, {numberOfShards: 3});
-
-            collection.ensureIndex({
-                name: "vec_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {metric: "l2", dimension, nLists: 1},
-            });
-        },
-
-        tearDown: function () {
-            db._useDatabase("_system");
-            db._dropDatabase(dbName);
-        },
 
         testTrainingTriggeredByIncrementalBatches: function () {
             let gen = randomNumberGeneratorFloat(seed);
+            const batchSize = 200;
+            const numBatches = Math.ceil((1500 * insertCountFactor) / batchSize);
 
             for (let batch = 0; batch < numBatches; ++batch) {
-                let docs = [];
-                for (let i = 0; i < batchSize; ++i) {
-                    docs.push({vector: Array.from({length: dimension}, () => gen())});
-                }
-                collection.insert(docs);
+                collection.insert(generateDocs(gen, batchSize));
             }
 
             assertEqual(batchSize * numBatches, collection.count());
 
-            const trainingState = "ready";
-            const waitTimeoutSec = 60;
-            if (isCluster) {
-                assertTrue(
-                    waitForAllVectorIndexesTrainingStateOnDBServers(db, collection, trainingState, waitTimeoutSec),
-                    "Index should become trained after " + (batchSize * numBatches) +
-                    " docs inserted in " + numBatches + " batches"
-                );
-            } else {
-                const trained = waitForVectorIndexState(collection, "vec_l2", trainingState, waitTimeoutSec);
-                assertTrue(trained,
-                    "Index should become trained after " + (batchSize * numBatches) +
-                    " docs inserted in " + numBatches + " batches");
+            assertTrue(
+                waitForState(collection, "ready", 60),
+                "Index should become trained after " + (batchSize * numBatches) +
+                " docs inserted in " + numBatches + " batches"
+            );
+        },
+
+        testTruncatePreventsSpuriousTraining: function () {
+            let gen = randomNumberGeneratorFloat(seed);
+
+            collection.insert(generateDocs(gen, 900));
+            assertEqual(900, collection.count());
+
+            collection.truncate();
+            assertEqual(0, collection.count());
+
+            collection.insert(generateDocs(gen, 100));
+            assertEqual(100, collection.count());
+
+            assertTrue(
+                waitForState(collection, "untrained", 5),
+                "Index should remain untrained after truncate + 100 docs " +
+                "(total seen 1000 but only 100 exist)"
+            );
+        },
+
+        testRangeDeleteTruncateResetsTrainingState: function () {
+            let gen = randomNumberGeneratorFloat(seed);
+            const largeCount = 33000;
+            const batchSize = 1000;
+
+            for (let i = 0; i < largeCount; i += batchSize) {
+                const count = Math.min(batchSize, largeCount - i);
+                collection.insert(generateDocs(gen, count));
             }
+            assertEqual(largeCount, collection.count());
+
+            assertTrue(
+                waitForState(collection, "ready", 120),
+                "Index should become trained after " + largeCount + " docs"
+            );
+
+            collection.truncate();
+            assertEqual(0, collection.count());
+
+            collection.insert(generateDocs(gen, 100));
+            assertEqual(100, collection.count());
+
+            assertTrue(
+                waitForState(collection, "untrained", 5),
+                "Index should be untrained after range-delete truncate + 100 docs"
+            );
         },
     };
 }
 
-jsunity.run(VectorIndexRemainsUntrainedSuite);
-jsunity.run(VectorIndexDeferredTrainingSuite);
-jsunity.run(VectorIndexBatchInsertTrainingSuite);
+jsunity.run(VectorIndexTrainingLifecycleSuite);
 
 return jsunity.done();

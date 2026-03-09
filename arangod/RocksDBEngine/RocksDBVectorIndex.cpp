@@ -161,7 +161,6 @@ void RocksDBVectorIndex::joinBuildThread() noexcept {
   if (std::this_thread::get_id() == _buildThread.get_id()) {
     return;
   }
-  _buildThread.request_stop();
   _buildThread.join();
 }
 
@@ -442,6 +441,16 @@ void RocksDBVectorIndex::resetTrainingState() noexcept {
   auto const current = _trainingState.load(std::memory_order_acquire);
   setTrainingState(current, VectorIndexTrainingState::kUntrained);
   _trainedData.reset();
+}
+
+void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
+                                        TRI_voc_tick_t tick,
+                                        transaction::Methods* trx) {
+  joinBuildThread();
+  resetTrainingState();
+  _faissIndex.reset();
+  _documentCount.store(0, std::memory_order_relaxed);
+  RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 
 /// @brief inserts a document into the index
