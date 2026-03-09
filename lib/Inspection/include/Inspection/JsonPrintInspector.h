@@ -114,6 +114,12 @@ struct JsonPrintInspector
     return value(s.stringView());
   }
 
+  // _firstField tracks whether the next beginField() is the first in the
+  // current object, suppressing the leading comma. beginObject() sets it to
+  // true; beginField() clears it after the first field. endObject() resets it
+  // to false so that, at the enclosing level, subsequent fields correctly emit
+  // a comma (beginField() already cleared it before the nested value).
+
   [[nodiscard]] Status::Success beginObject() {
     _stream << '{';
     incrementIndentationLevel();
@@ -124,6 +130,7 @@ struct JsonPrintInspector
   [[nodiscard]] Status::Success endObject() {
     decrementIndentationLevel();
     _stream << _linebreak << _indentation << '}';
+    _firstField = false;
     return {};
   }
 

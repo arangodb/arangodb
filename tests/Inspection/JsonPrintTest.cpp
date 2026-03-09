@@ -33,6 +33,19 @@
 namespace {
 using namespace arangodb;
 
+struct FieldAfterMap {
+  int before;
+  std::map<std::string, int> m;
+  std::string after;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, FieldAfterMap& x) {
+    return f.object(x).fields(f.field("before", x.before),
+                              f.field("m", x.m),
+                              f.field("after", x.after));
+  }
+};
+
 struct JsonPrintInspectorTest : public ::testing::Test {
   std::ostringstream stream;
   inspection::JsonPrintInspector<> inspector{
@@ -158,6 +171,23 @@ TEST_F(JsonPrintInspectorTest, store_map) {
   "unordered": {
     "4": 4
   }
+})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+// Regression: beginObject() for a nested map clobbered _firstField, causing
+// the comma before the next field at the enclosing level to be omitted.
+TEST_F(JsonPrintInspectorTest, store_field_after_map_has_comma) {
+  FieldAfterMap x{.before = 1, .m = {{"a", 2}}, .after = "end"};
+  auto result = inspector.apply(x);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({
+  "before": 1,
+  "m": {
+    "a": 2
+  },
+  "after": "end"
 })";
   EXPECT_EQ(expected, stream.str());
 }
