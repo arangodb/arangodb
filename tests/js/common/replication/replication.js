@@ -1,6 +1,6 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertTrue, assertMatch, assertNotEqual
-  assertUndefined, assertFalse, fail, REPLICATION_LOGGER_LAST */
+  assertUndefined, assertFalse, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -65,9 +65,7 @@ function ReplicationLoggerSuite () {
               name === '_queues' ||
               name === '_sessions');
     };
-
-    var entries = REPLICATION_LOGGER_LAST(tick, "9999999999999999999");
-
+    var entries = replication.logger.lastLogTick(tick, "9999999999999999999");
     if (Array.isArray(type)) {
       entries.forEach(function(e) {
         if ((e.type === 2300 || e.type === 2302) && e.cname && exclude(e.cname)) {
@@ -414,6 +412,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerSystemCollection : function () {
+      db._useDatabase('_system');
       db._drop("_unittests", true);
 
       var tick = getLastLogTick();
@@ -437,6 +436,7 @@ function ReplicationLoggerSuite () {
 
         tick = getLastLogTick();
       } finally {
+        db._useDatabase('_system');
         db._drop("_unittests", true);
       }
     },
