@@ -178,9 +178,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
       std::string const& cname, AccessMode::Type mode,
       OperationOptions const& opOptions,
       transaction::OperationOrigin operationOrigin,
-      transaction::Options&& trxOpts = transaction::Options(),
-      CollectionResolutionMode resolutionMode =
-          CollectionResolutionMode::NameOrId) const;
+      transaction::Options&& trxOpts = transaction::Options()) const;
 
   // create proper transaction context, including the proper IDs
   futures::Future<std::shared_ptr<transaction::Context>>

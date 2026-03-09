@@ -118,12 +118,6 @@ inline constexpr char TRI_INDEX_HANDLE_SEPARATOR_CHR = '/';
 /// @brief index handle separator as string
 inline constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
-enum class CollectionResolutionMode {
-  NameOrId,  // current behavior: treat numeric-looking string as collection id
-  NameOnly  // do not interpret numeric string as id; resolve by name (and UUID)
-            // only
-};
-
 /// @brief database
 struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
@@ -212,8 +206,7 @@ struct TRI_vocbase_t {
 
   template<typename As>
   As& engine() const noexcept
-    requires(std::derived_from<As, arangodb::StorageEngine>)
-  {
+      requires(std::derived_from<As, arangodb::StorageEngine>) {
     return static_cast<As&>(_engine);
   }
 
@@ -379,9 +372,7 @@ struct TRI_vocbase_t {
 
   /// @brief looks up a collection by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
-      std::string_view nameOrId,
-      CollectionResolutionMode mode =
-          CollectionResolutionMode::NameOrId) const noexcept;
+      std::string_view nameOrId) const noexcept;
 
   /// @brief looks up a collection by uuid
   std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(
@@ -393,9 +384,7 @@ struct TRI_vocbase_t {
 
   /// @brief looks up a data-source by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(
-      std::string_view nameOrId,
-      CollectionResolutionMode mode =
-          CollectionResolutionMode::NameOrId) const noexcept;
+      std::string_view nameOrId) const noexcept;
 
   /// @brief looks up a replicated log by identifier
   std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant>

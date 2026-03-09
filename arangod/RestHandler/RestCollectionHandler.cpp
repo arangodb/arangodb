@@ -163,8 +163,7 @@ async<void> RestCollectionHandler::handleCommandGet() {
   _builder.clear();
 
   std::shared_ptr<LogicalCollection> coll;
-  auto res = methods::Collections::lookup(_vocbase, name, coll,
-                                          CollectionResolutionMode::NameOnly);
+  auto res = methods::Collections::lookup(_vocbase, name, coll);
   if (res.fail()) {
     generateError(res);
     co_return;
@@ -434,8 +433,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
   _builder.clear();
 
   std::shared_ptr<LogicalCollection> coll;
-  Result res = methods::Collections::lookup(_vocbase, name, coll,
-                                            CollectionResolutionMode::NameOnly);
+  Result res = methods::Collections::lookup(_vocbase, name, coll);
 
   if (res.fail()) {
     generateError(res);
@@ -674,8 +672,7 @@ async<void> RestCollectionHandler::handleCommandDelete() {
   _builder.clear();
 
   std::shared_ptr<LogicalCollection> coll;
-  Result res = methods::Collections::lookup(_vocbase, name, coll,
-                                            CollectionResolutionMode::NameOnly);
+  Result res = methods::Collections::lookup(_vocbase, name, coll);
   if (res.fail()) {
     events::DropCollection(_vocbase.name(), name, res.errorNumber());
     generateError(res);
@@ -708,8 +705,7 @@ async<void> RestCollectionHandler::collectionRepresentation(
     std::string const& name, bool showProperties, FiguresType showFigures,
     CountType showCount) {
   std::shared_ptr<LogicalCollection> coll;
-  Result r = methods::Collections::lookup(_vocbase, name, coll,
-                                          CollectionResolutionMode::NameOnly);
+  Result r = methods::Collections::lookup(_vocbase, name, coll);
   if (r.fail()) {
     THROW_ARANGO_EXCEPTION(r);
   }

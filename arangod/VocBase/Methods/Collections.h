@@ -101,8 +101,7 @@ struct Collections {
   static Result lookup(              // find collection
       TRI_vocbase_t const& vocbase,  // vocbase to search
       std::string const& name,       // collection name
-      std::shared_ptr<LogicalCollection>& ret,
-      CollectionResolutionMode mode = CollectionResolutionMode::NameOrId);
+      std::shared_ptr<LogicalCollection>& ret);
 
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
