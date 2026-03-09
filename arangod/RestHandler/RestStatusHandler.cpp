@@ -66,6 +66,10 @@ RestStatusHandler::RestStatusHandler(
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 

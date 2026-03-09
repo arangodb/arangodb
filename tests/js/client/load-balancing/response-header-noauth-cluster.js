@@ -120,11 +120,12 @@ function ResponseHeadersSuite () {
     },
 
     testForwardingPost: function() {
-      let url = '/_api/version';
+      let url = '/_api/cursor';
+      const body = { query: 'RETURN 1' };
       const headers = {
         "X-Arango-Async": "store"
       };
-      let result = sendRequest('POST', url, headers, null, true);
+      let result = sendRequest('POST', url, headers, body, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
@@ -138,22 +139,30 @@ function ResponseHeadersSuite () {
       while (++tries < 30) {
         result = sendRequest('PUT', url, {}, {}, false);
 
-        if (result.status === 200) {
+        // cursor API returns 201 since it is async
+        if (result.status === 201) {
           // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(1.0, false);
       }
-      assertEqual(result.status, 200);
+      assertEqual(result.status, 201);
       assertNotUndefined(result.headers["x-arango-async-id"]);
     },
 
     testForwardingPut: function() {
-      let url = '/_api/version';
-      const headers = {
-        "X-Arango-Async": "store"
-      };
-      let result = sendRequest('PUT', url, headers, null, true);
+      const createUrl = '/_api/transaction/begin';
+      const createBody = { collections: {} };
+
+      let create = sendRequest('POST', createUrl, {}, createBody, true);
+      assertFalse(create === undefined || create === {});
+      assertEqual(create.status, 201);
+
+      const transactionId = create.body.result.id;
+      let url = `/_api/transaction/${transactionId}`;
+      const headers = { "X-Arango-Async": "store" };
+
+      let result = sendRequest('PUT', url, headers, {}, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
@@ -178,11 +187,12 @@ function ResponseHeadersSuite () {
     },
     
     testForwardingNoConnectionHeader: function() {
-      let url = '/_api/version';
+      let url = '/_api/cursor';
+      const body = { query: 'RETURN 1' };
       const headers = {
         "X-Arango-Async": "store",
       };
-      let result = sendRequest('POST', url, headers, null, true);
+      let result = sendRequest('POST', url, headers, body, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
@@ -199,24 +209,26 @@ function ResponseHeadersSuite () {
       while (++tries < 30) {
         result = sendRequest('PUT', url, {}, {}, false);
 
-        if (result.status === 200) {
+        // cursor API returns 201 since it is async
+        if (result.status === 201) {
           // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(0.5, false);
       }
-      assertEqual(result.status, 200);
+      assertEqual(result.status, 201);
       assertNotUndefined(result.headers["x-arango-async-id"]);
       assertEqual("Keep-Alive", result.headers["connection"]);
     },
     
     testForwardingConnectionHeaderClose: function() {
-      let url = '/_api/version';
+      let url = '/_api/cursor';
+      const body = { query: 'RETURN 1' };
       const headers = {
         "X-Arango-Async": "store",
         "Connection": "Close"
       };
-      let result = sendRequest('POST', url, headers, null, true);
+      let result = sendRequest('POST', url, headers, body, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
@@ -233,13 +245,14 @@ function ResponseHeadersSuite () {
       while (++tries < 30) {
         result = sendRequest('PUT', url, {"Connection": "Close"}, {}, false);
 
-        if (result.status === 200) {
+        // cursor API returns 201 since it is async
+        if (result.status === 201) {
           // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(0.5, false);
       }
-      assertEqual(result.status, 200);
+      assertEqual(result.status, 201);
       assertNotUndefined(result.headers["x-arango-async-id"]);
       assertEqual("Close", result.headers["connection"]);
     },

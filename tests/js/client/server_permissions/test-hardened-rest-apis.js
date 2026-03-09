@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
+/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango, internal */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -47,6 +47,7 @@ if (runSetup === true) {
 }
 
 var jsunity = require('jsunity');
+const { assertEndpointGetOnly } = require('@arangodb/test-helper');
 
 function testSuite() {
   let endpoint = arango.getEndpoint();
@@ -70,6 +71,12 @@ function testSuite() {
       let result = arango.GET("/_api/version");
       assertFalse(result.hasOwnProperty("version"));
       assertTrue(result.hasOwnProperty("license"));
+    },
+
+    testVersionOnlyAcceptsGet : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      let url = "/_api/version";  
+      assertEndpointGetOnly(url);
     },
 
     testCanAccessEngineRw : function() {
@@ -115,6 +122,12 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("serverInfo"));
       assertFalse(result.hasOwnProperty("server"));
       assertFalse(result.hasOwnProperty("pid"));
+    },
+
+    testAdminStatusOnlyAcceptsGet : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      let url = "/_admin/status";
+      assertEndpointGetOnly(url);
     },
 
     testCanAccessAdminMetricsRw : function() {
@@ -239,6 +252,11 @@ function testSuite() {
       }
     },
 
+    testAdminTimeOnlyAcceptsGet : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      let url = "/_admin/time";
+      assertEndpointGetOnly(url);
+    },
   };
 }
 jsunity.run(testSuite);
