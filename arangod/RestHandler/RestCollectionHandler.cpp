@@ -140,6 +140,13 @@ async<void> RestCollectionHandler::handleCommandGet() {
   }
 
   std::string const& name = suffixes[0];
+
+  // check if collection name is a numeric collection id
+  // and generate an error if so
+  if (rejectNumericCollectionId(name)) {
+    co_return;
+  }
+
   // /_api/collection/<name>
   if (suffixes.size() == 1) {
     try {
@@ -420,6 +427,13 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
 
   std::string const& name = suffixes[0];
+
+  // check if collection name is a numeric collection id
+  // and generate an error if so
+  if (rejectNumericCollectionId(name)) {
+    co_return;
+  }
+
   std::string const& sub = suffixes[1];
 
   if (sub != "responsibleShard" && !body.isObject()) {
@@ -667,6 +681,13 @@ async<void> RestCollectionHandler::handleCommandDelete() {
   }
 
   std::string const& name = suffixes[0];
+
+  // check if collection name is a numeric collection id
+  // and generate an error if so
+  if (rejectNumericCollectionId(name)) {
+    co_return;
+  }
+
   bool allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();

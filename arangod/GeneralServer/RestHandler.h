@@ -174,6 +174,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // checks if the HTTP method is allowed and generates an error if not
   bool isAllowedHttpMethod(std::initializer_list<rest::RequestType> allowed);
+  
+  // checks if collection name is a numeric collection id
+  // and generates an error if so
+  bool rejectNumericCollectionId(std::string_view cname);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,
@@ -235,9 +239,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // RestHandler::wakeupHandler() does that, and can be called e.g. by the
   // SharedQueryState's wakeup handler (for AQL-related code).
   template<typename F>
-  requires requires(F f) {
-    { f() } -> std::same_as<RestStatus>;
-  }
+    requires requires(F f) {
+      { f() } -> std::same_as<RestStatus>;
+    }
   [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<void> {
     co_await arangodb::waitingFunToCoro(_suspensionCounter,
                                         [&]() -> std::optional<std::monostate> {
@@ -251,9 +255,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
 
   template<typename F, typename T = std::invoke_result_t<F>::value_type>
-  requires requires(F f) {
-    { f() } -> std::same_as<std::optional<T>>;
-  }
+    requires requires(F f) {
+      { f() } -> std::same_as<std::optional<T>>;
+    }
   [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<T> {
     co_return co_await arangodb::waitingFunToCoro(_suspensionCounter,
                                                   std::forward<F>(fun));

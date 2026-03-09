@@ -177,6 +177,12 @@ async<void> RestDocumentHandler::insertDocument() {
     co_return;
   }
 
+  // check if collection name is a numeric collection id
+  // and generate an error if so
+  if (rejectNumericCollectionId(cname)) {
+    co_return;
+  }
+
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
@@ -333,6 +339,12 @@ async<void> RestDocumentHandler::readSingleDocument(bool generateBody) {
   // split the document reference
   std::string const& collection = suffixes[0];
 
+  // check if collection name is a numeric collection id
+  // and generate an error if so
+  if (rejectNumericCollectionId(collection)) {
+    co_return;
+  }
+
   std::string const& key = suffixes[1];
 
   // check for an etag
@@ -471,6 +483,12 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
         " /_api/document/<collection> or"
         " /_api/document/<collection>/<key>");
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+    co_return;
+  }
+
+  // check if collection name is a numeric collection id
+  // and generate an error if so
+  if (rejectNumericCollectionId(suffixes[0])) {
     co_return;
   }
 
@@ -661,6 +679,12 @@ async<void> RestDocumentHandler::removeDocument() {
 
   // split the document reference
   std::string const& cname = suffixes[0];
+
+  // check if collection name is a numeric collection id
+  // and generate an error if so
+  if (rejectNumericCollectionId(cname)) {
+    co_return;
+  }
 
   std::string key;
   if (suffixes.size() == 2) {
