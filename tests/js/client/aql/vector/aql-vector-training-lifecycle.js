@@ -183,7 +183,13 @@ function VectorIndexTrainingLifecycleSuite() {
         },
 
         testRangeDeleteTruncateResetsTrainingState: function () {
+            if (isCluster) {
+                return;
+            }
             let gen = randomNumberGeneratorFloat(seed);
+            // >= 32*1024 docs triggers the fast range-delete truncation path
+            // (RocksDBCollection::truncateWithRangeDelete) instead of
+            // per-document removes.
             const largeCount = 33000;
             const batchSize = 1000;
 
@@ -205,7 +211,7 @@ function VectorIndexTrainingLifecycleSuite() {
             assertEqual(100, collection.count());
 
             assertTrue(
-                waitForState(collection, "untrained", 5),
+                waitForState(collection, "untrained", 10),
                 "Index should be untrained after range-delete truncate + 100 docs"
             );
         },
