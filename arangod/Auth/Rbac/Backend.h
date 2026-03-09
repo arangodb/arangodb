@@ -70,10 +70,26 @@ struct Backend {
   //      additional functions?).
 
   // public API, asynchronous versions
+
+  // Batched APIs
   auto evaluateTokenMany(JwtToken const&, RequestItems const&)
       -> futures::Future<ResultT<EvaluateResponseMany>>;
   auto evaluateMany(PlainUser const&, RequestItems const&)
       -> futures::Future<ResultT<EvaluateResponseMany>>;
+
+  // Single-item APIs
+
+  // Note that for simplicity, the single-item APIs aren't explicitly
+  // implemented, but instead fall back to using the batched APIs with a single
+  // item.
+  // For that reason, there are no tests for these methods in
+  // RbacBackendTest.cpp, nor in RbacIntegrationTest.cpp: They wouldn't do the
+  // expected API calls to the single-APIs, but call the batch-APIs instead.
+  // Additionally, they aren't used by the ServiceImpl.
+  // TODO We might want to make a decision whether to delete them, or implement
+  //      and test them properly; keeping unused and untested code isn't a good
+  //      idea, even if it means we don't implement the full API surface of the
+  //      authorization service.
   auto evaluateToken(JwtToken const& jwtToken, RequestItem const& item)
       -> futures::Future<ResultT<EvaluateResponse>>;
   auto evaluate(PlainUser const& user, RequestItem const& item)
