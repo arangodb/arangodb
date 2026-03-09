@@ -76,28 +76,22 @@ Result readDocumentVectorData(
     if (value.isNone()) {
       return {TRI_ERROR_BAD_PARAMETER,
               std::format("vector field not present in document {}",
-                          transaction::helpers::extractKeyFromDocument(doc)
-                              .copyString()
-                              .c_str())};
+                          transaction::helpers::extractKeyFromDocument(doc))};
     }
 
     if (!value.isArray()) {
       return {TRI_ERROR_TYPE_ERROR,
               std::format("array expected for vector attribute for document {}",
-                          transaction::helpers::extractKeyFromDocument(doc)
-                              .copyString()
-                              .c_str())};
+                          transaction::helpers::extractKeyFromDocument(doc))};
     }
 
     if (value.length() != dimension) {
       return {TRI_ERROR_TYPE_ERROR,
-              std::format(
-                  "provided vector is not of matching dimension for document "
-                  "{}, index dimension: {}, document dimension: {}",
-                  transaction::helpers::extractKeyFromDocument(doc)
-                      .copyString()
-                      .c_str(),
-                  dimension, value.length())};
+              std::format("provided vector is not of matching dimension for "
+                          "document {}, index dimension: {}, document "
+                          "dimension: {}",
+                          transaction::helpers::extractKeyFromDocument(doc),
+                          dimension, value.length())};
     }
 
     // We don't make assumptions here if output contains one or more vectors
@@ -107,9 +101,7 @@ Result readDocumentVectorData(
             TRI_ERROR_TYPE_ERROR,
             std::format("vector contains data not representable as double for "
                         "document {}",
-                        transaction::helpers::extractKeyFromDocument(doc)
-                            .copyString()
-                            .c_str())};
+                        transaction::helpers::extractKeyFromDocument(doc))};
       }
       output.push_back(d.getNumericValue<double>());
     }
@@ -215,8 +207,12 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
         it.Next();
         continue;
       }
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
-                                     "invalid index type definition");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          res.errorNumber(),
+          std::format(
+              "failed to read document vector data, "
+              "embeddings are in a wrong format and index is not sparse: {}",
+              res.errorMessage()));
     }
 
     trainingData.insert(trainingData.end(), input.begin(), input.end());
