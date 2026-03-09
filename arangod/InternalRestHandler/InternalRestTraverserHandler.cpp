@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -394,6 +395,7 @@ void InternalRestTraverserHandler::queryEngine() {
         eng->smartSearchUnified(body, result);
       } else {
         // TODO: Take deprecation path!
+        ADB_PROD_CRASH() << "deprecated smart search";
         eng->smartSearch(body, result);
       }
     } catch (arangodb::basics::Exception const& ex) {
