@@ -242,7 +242,7 @@ async<void> RestDocumentHandler::insertDocument() {
   auto trx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"inserting document(s)"},
-      std::move(trxOpts), CollectionResolutionMode::NameOnly);
+      std::move(trxOpts));
 
   addTransactionHints(*trx, cname, isMultiple,
                       opOptions.isOverwriteModeUpdateReplace());
@@ -382,8 +382,7 @@ async<void> RestDocumentHandler::readSingleDocument(bool generateBody) {
   // find collection given by name or identifier
   auto trx = co_await createTransaction(
       collection, AccessMode::Type::READ, options,
-      transaction::OperationOriginREST{"fetching document"}, {},
-      CollectionResolutionMode::NameOnly);
+      transaction::OperationOriginREST{"fetching document"});
 
   trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -579,7 +578,7 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
   auto trx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"modifying document(s)"},
-      std::move(trxOpts), CollectionResolutionMode::NameOnly);
+      std::move(trxOpts));
 
   addTransactionHints(*trx, cname, isArrayCase, false);
 
@@ -738,7 +737,7 @@ async<void> RestDocumentHandler::removeDocument() {
   auto trx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"removing document(s)"},
-      std::move(trxOpts), CollectionResolutionMode::NameOnly);
+      std::move(trxOpts));
 
   addTransactionHints(*trx, cname, isMultiple, false);
 
@@ -827,8 +826,7 @@ async<void> RestDocumentHandler::readManyDocuments() {
 
   auto trx = co_await createTransaction(
       cname, AccessMode::Type::READ, opOptions,
-      transaction::OperationOriginREST{"fetching documents"}, {},
-      CollectionResolutionMode::NameOnly);
+      transaction::OperationOriginREST{"fetching documents"});
 
   // ...........................................................................
   // inside read transaction

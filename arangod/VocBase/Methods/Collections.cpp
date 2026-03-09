@@ -503,17 +503,12 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
 /*static*/ Result methods::Collections::lookup(  // find collection
     TRI_vocbase_t const& vocbase,                // vocbase to search
     std::string const& name,                     // collection name
-    std::shared_ptr<LogicalCollection>& ret, CollectionResolutionMode mode) {
+    std::shared_ptr<LogicalCollection>& ret) {
   if (name.empty()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    if (mode == CollectionResolutionMode::NameOnly &&
-        (name[0] >= '0' && name[0] <= '9')) {
-      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                    "collection not found");
-    }
     try {
       if (!vocbase.server().hasFeature<ClusterFeature>()) {
         return arangodb::Result(  // result
@@ -552,7 +547,7 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  auto coll = vocbase.lookupCollection(name, mode);
+  auto coll = vocbase.lookupCollection(name);
 
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
