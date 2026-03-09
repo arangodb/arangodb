@@ -177,8 +177,7 @@ async<void> RestDocumentHandler::insertDocument() {
     co_return;
   }
 
-  // check if collection name is a numeric collection id
-  // and generate an error if so
+  // if name is a numeric collection id, generate a 400 error
   if (rejectNumericCollectionId(cname)) {
     co_return;
   }
@@ -317,11 +316,16 @@ async<void> RestDocumentHandler::readDocument() {
 
   switch (len) {
     case 0:
-    case 1:
+    case 1: {
+      const std::string& cname = _request->suffixes()[0];
+      if (!cname.empty() && rejectNumericCollectionId(cname)) {
+        co_return;
+      }
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "expecting GET /_api/document/<collection>/<key>");
       co_return;
+    }
     case 2:
       co_return co_await readSingleDocument(true);
 
@@ -339,8 +343,7 @@ async<void> RestDocumentHandler::readSingleDocument(bool generateBody) {
   // split the document reference
   std::string const& collection = suffixes[0];
 
-  // check if collection name is a numeric collection id
-  // and generate an error if so
+  // if name is a numeric collection id, generate a 400 error
   if (rejectNumericCollectionId(collection)) {
     co_return;
   }
@@ -486,8 +489,7 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
     co_return;
   }
 
-  // check if collection name is a numeric collection id
-  // and generate an error if so
+  // if name is a numeric collection id, generate a 400 error
   if (rejectNumericCollectionId(suffixes[0])) {
     co_return;
   }
@@ -680,8 +682,7 @@ async<void> RestDocumentHandler::removeDocument() {
   // split the document reference
   std::string const& cname = suffixes[0];
 
-  // check if collection name is a numeric collection id
-  // and generate an error if so
+  // if name is a numeric collection id, generate a 400 error
   if (rejectNumericCollectionId(cname)) {
     co_return;
   }
