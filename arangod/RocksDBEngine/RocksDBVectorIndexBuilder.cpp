@@ -192,10 +192,10 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
   input.reserve(_definition.dimension);
   std::int64_t counter{0};
 
-  LOG_TOPIC("b161b", INFO, Logger::ENGINES)
-      << "[shard=" << _shardName << ", index=" << _indexId << "] "
-      << "Loading vectors of dimension " << _definition.dimension
-      << " for training.";
+  LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
+      "[shard={}, index={}] Trying to load <{}> vectors of "
+      "dimension {} for training.",
+      _shardName, _indexId, maxVectors, _definition.dimension);
 
   while (counter < maxVectors && it.Valid()) {
     TRI_ASSERT(it.key().compare(upper) < 0);

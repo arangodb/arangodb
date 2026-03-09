@@ -165,8 +165,8 @@ void RocksDBVectorIndex::joinBuildThread() noexcept {
 }
 
 RocksDBVectorIndex::~RocksDBVectorIndex() {
-  deregisterMetrics();
   joinBuildThread();
+  deregisterMetrics();
 }
 
 namespace {
