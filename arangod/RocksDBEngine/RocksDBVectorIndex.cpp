@@ -83,16 +83,16 @@ static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
   LOG_TOPIC((lid), level, topic)            \
       << "[shard=" << _collection.name() << ", index=" << _iid.id() << "] "
 
-std::string_view buildStateToString(
-    VectorIndexBuildState const state) noexcept {
+std::string_view trainingStateToString(
+    VectorIndexTrainingState const state) noexcept {
   switch (state) {
-    case VectorIndexBuildState::kUninitialized:
-      return "uninitialized";
-    case VectorIndexBuildState::kTraining:
+    case VectorIndexTrainingState::kUntrained:
+      return "untrained";
+    case VectorIndexTrainingState::kTraining:
       return "training";
-    case VectorIndexBuildState::kBuilding:
-      return "building";
-    case VectorIndexBuildState::kReady:
+    case VectorIndexTrainingState::kIngesting:
+      return "ingesting";
+    case VectorIndexTrainingState::kReady:
       return "ready";
   }
 }
@@ -126,7 +126,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
 
-    setBuildState(VectorIndexBuildState::kReady);
+    setTrainingState(VectorIndexTrainingState::kReady);
   }
 
   if (auto dc = info.get("documentCount"); !dc.isNone()) {
@@ -202,7 +202,8 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.close();
   }
 
-  builder.add("buildState", VPackValue(buildStateToString(_buildState)));
+  builder.add("trainingState",
+              VPackValue(trainingStateToString(_trainingState)));
 
   if (Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
@@ -236,7 +237,7 @@ RocksDBVectorIndex::readBatch(
     faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
   }
 
-  if (_buildState != VectorIndexBuildState::kReady) {
+  if (_trainingState != VectorIndexTrainingState::kReady) {
     return bruteForceSearch(inputs, topK, trx, filterExpression, inputRow,
                             &queryContext, &filterVarsToRegs, documentVariable);
   }
@@ -303,10 +304,10 @@ void RocksDBVectorIndex::tryBuilding() {
   if (_documentCount < _trainingThreshold) {
     return;
   }
-  VectorIndexBuildState expected{VectorIndexBuildState::kUninitialized};
-  if (!_buildState.compare_exchange_strong(
-          expected, VectorIndexBuildState::kTraining, std::memory_order_acq_rel,
-          std::memory_order_acquire)) {
+  VectorIndexTrainingState expected{VectorIndexTrainingState::kUntrained};
+  if (!_trainingState.compare_exchange_strong(
+          expected, VectorIndexTrainingState::kTraining,
+          std::memory_order_acq_rel, std::memory_order_acquire)) {
     return;  // another thread already started training, or state changed
   }
 
@@ -328,7 +329,7 @@ void RocksDBVectorIndex::tryBuilding() {
         this->resetTrainingState();
         return;
       }
-      this->setBuildState(VectorIndexBuildState::kReady);
+      this->setTrainingState(VectorIndexTrainingState::kReady);
     } catch (std::exception const& ex) {
       LOG_TOPIC("e164c", ERR, Logger::ENGINES)
           << "[index=" << indexId
@@ -342,12 +343,13 @@ void RocksDBVectorIndex::tryBuilding() {
   });
 }
 
-void RocksDBVectorIndex::setBuildState(VectorIndexBuildState state) noexcept {
-  _buildState.store(state);
+void RocksDBVectorIndex::setTrainingState(
+    VectorIndexTrainingState state) noexcept {
+  _trainingState.store(state);
 }
 
 void RocksDBVectorIndex::resetTrainingState() noexcept {
-  setBuildState(VectorIndexBuildState::kUninitialized);
+  setTrainingState(VectorIndexTrainingState::kUntrained);
   _trainedData.reset();
 }
 
@@ -369,12 +371,11 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     return res;
   }
   // During initial fill or deferred training trigger, only count and maybe
-  // start building; do not write. During kBuilding we're in fillIndexBackground
-  // and must perform the actual insert.
-  if (const auto buildState = _buildState.load();
-      buildState == VectorIndexBuildState::kUninitialized ||
-      buildState == VectorIndexBuildState::kTraining) {
-    // For non-sparse index, validate that the document has the vector field
+  // start training; do not write. During kIngesting we're in
+  // fillIndexBackground and must perform the actual insert.
+  if (const auto state = _trainingState.load();
+      state == VectorIndexTrainingState::kUntrained ||
+      state == VectorIndexTrainingState::kTraining) {
     // even when we are not writing yet; otherwise fail early.
     _documentCount.fetch_add(1);
     tryBuilding();
@@ -427,10 +428,9 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  if (auto const buildState = _buildState.load();
-      buildState == VectorIndexBuildState::kUninitialized ||
-      buildState == VectorIndexBuildState::kTraining) {
-    // Nothing stored in the vector index yet, nothing to remove
+  if (auto const state = _trainingState.load();
+      state == VectorIndexTrainingState::kUntrained ||
+      state == VectorIndexTrainingState::kTraining) {
     _documentCount.fetch_sub(1, std::memory_order_relaxed);
     return {};
   }

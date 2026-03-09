@@ -52,10 +52,10 @@ namespace arangodb {
 
 using VectorIndexLabelId = faiss::idx_t;
 
-enum class VectorIndexBuildState : std::uint8_t {
-  kUninitialized,
+enum class VectorIndexTrainingState : std::uint8_t {
+  kUntrained,
   kTraining,
-  kBuilding,
+  kIngesting,
   kReady
 };
 
@@ -112,7 +112,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   StoredValues const& storedValues() const override;
 
-  void setBuildState(VectorIndexBuildState state) noexcept;
+  void setTrainingState(VectorIndexTrainingState state) noexcept;
 
   /// @brief Join the build thread from another thread (e.g. before dropping the
   /// index). Must not be called from the build thread itself (avoids self-join
@@ -156,8 +156,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::atomic<std::int64_t> _documentCount{0};
   std::int64_t _trainingThreshold{0};
-  std::atomic<VectorIndexBuildState> _buildState{
-      VectorIndexBuildState::kUninitialized};
+  std::atomic<VectorIndexTrainingState> _trainingState{
+      VectorIndexTrainingState::kUntrained};
   std::jthread _buildThread;
 };
 

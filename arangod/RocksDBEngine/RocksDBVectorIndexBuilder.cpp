@@ -330,7 +330,7 @@ Result VectorIndexBuildManager::build() {
       << "Training complete. Ingesting vectors via RocksDBBuilderIndex.";
 
   _index.applyTrainingResult(std::move(result));
-  _index.setBuildState(VectorIndexBuildState::kBuilding);
+  _index.setTrainingState(VectorIndexTrainingState::kIngesting);
 
   auto builder = std::make_shared<RocksDBBuilderIndex>(_index);
 
