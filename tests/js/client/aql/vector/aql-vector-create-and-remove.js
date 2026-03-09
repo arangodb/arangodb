@@ -99,7 +99,7 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
 
-            const expectedState = expectedTrained ? "ready" : "uninitialized";
+            const expectedState = expectedTrained ? "ready" : "untrained";
             assertTrue(
                 waitForIndexBuild(collection, expectedState, expectedTrained ? 120 : 5),
                 "Expected index to become " + expectedState + " with " + insertedDocsCount + " docs"
@@ -519,7 +519,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
 
-            const expectedState = expectedTrained ? "ready" : "uninitialized";
+            const expectedState = expectedTrained ? "ready" : "untrained";
             assertTrue(
                 waitForIndexBuild(collection, expectedState, expectedTrained ? 120 : 5),
                 "Expected index to become " + expectedState + " with " + insertedDocsCount + " docs"

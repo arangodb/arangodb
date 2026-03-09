@@ -106,7 +106,7 @@ function VectorIndexHintsSuite(expectedTrained) {
         collection.insert(docs.slice(start, end));
       }
 
-      const state = expectedTrained ? "ready" : "uninitialized";
+      const state = expectedTrained ? "ready" : "untrained";
       const indexTimeoutSec = expectedTrained ? (isCluster ? 120 : 60) : 5;
 
       const indexes = [

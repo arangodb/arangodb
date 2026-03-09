@@ -105,10 +105,10 @@ function VectorIndexL2TestSuite(expectedTrained) {
                 }),
             });
 
-            const buildState = expectedTrained ? "ready" : "uninitialized";
+            const trainingState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, buildState, expectedTrained ? 10 : 5),
-                "Expected index to become " + buildState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection, trainingState, expectedTrained ? 10 : 5),
+                "Expected index to become " + trainingState + " with " + numberOfDocs + " docs"
             );
         },
 
@@ -582,10 +582,10 @@ function VectorIndexCosineTestSuite(expectedTrained) {
                 }),
             });
 
-            const buildState = expectedTrained ? "ready" : "uninitialized";
+            const trainingState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, buildState, expectedTrained ? 60 : 5),
-                "Expected index to become " + buildState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection, trainingState, expectedTrained ? 60 : 5),
+                "Expected index to become " + trainingState + " with " + numberOfDocs + " docs"
             );
         },
 
@@ -769,10 +769,10 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
                 }),
             });
 
-            const buildState = expectedTrained ? "ready" : "uninitialized";
+            const trainingState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, buildState, expectedTrained ? 60 : 5),
-                "Expected index to become " + buildState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection, trainingState, expectedTrained ? 60 : 5),
+                "Expected index to become " + trainingState + " with " + numberOfDocs + " docs"
             );
         },
 

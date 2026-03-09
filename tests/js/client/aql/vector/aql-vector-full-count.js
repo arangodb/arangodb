@@ -95,7 +95,7 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
                 }),
             });
 
-            const expectedState = expectedTrained ? "ready" : "uninitialized";
+            const expectedState = expectedTrained ? "ready" : "untrained";
             assertTrue(
                 waitForIndexBuild(collection, expectedState, expectedTrained ? 60 : 5),
                 "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
