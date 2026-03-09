@@ -114,20 +114,24 @@ Result readDocumentVectorData(
   }
 }
 
-TrainingResult VectorIndexTrainer::restoreFromTrainedData(
+TrainedData serializeIndex(faiss::IndexIVF const& index) {
+  faiss::VectorIOWriter writer;
+  faiss::write_index(&index, &writer);
+  TrainedData td;
+  td.codeData = std::move(writer.data);
+  return td;
+}
+
+std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::restoreFromTrainedData(
     TrainedData const& data) {
   faiss::VectorIOReader reader;
   // TODO prevent this copy, but instead implement own IOReader, reading
   // directly from the training data.
   reader.data = data.codeData;
-  auto faissIndex = std::unique_ptr<faiss::IndexIVF>{
+  auto faissIndex = std::shared_ptr<faiss::IndexIVF>{
       dynamic_cast<faiss::IndexIVF*>(faiss::read_index(&reader))};
   ADB_PROD_ASSERT(faissIndex != nullptr);
-
-  TrainingResult result;
-  result.faissIndex = std::move(faissIndex);
-  // trainedData is not set — caller already has it.
-  return result;
+  return faissIndex;
 }
 
 VectorIndexTrainer::VectorIndexTrainer(
@@ -237,12 +241,10 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
   return trainingData;
 }
 
-TrainingResult VectorIndexTrainer::train(rocksdb::Iterator& it,
-                                         rocksdb::Slice upper) const {
-  // Create the FAISS index with the resolved nLists.
+std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::train(
+    rocksdb::Iterator& it, rocksdb::Slice upper) const {
   auto faissIndex = createFaissIndex();
 
-  // Collect training vectors and train the FAISS index.
   std::int64_t trainingDataSize =
       faissIndex->cp.max_points_per_centroid * _definition.nLists;
   auto const trainingData = collectTrainingDataset(it, upper, trainingDataSize);
@@ -265,14 +267,7 @@ TrainingResult VectorIndexTrainer::train(rocksdb::Iterator& it,
   // to recompute from the (no-longer-available) original document count.
   faissIndex->nprobe = _definition.defaultNProbe;
 
-  // Serialize the trained FAISS index
-  faiss::VectorIOWriter writer;
-  faiss::write_index(faissIndex.get(), &writer);
-
-  TrainingResult result;
-  result.faissIndex = std::move(faissIndex);
-  result.trainedData.codeData = std::move(writer.data);
-  return result;
+  return faissIndex;
 }
 
 VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
@@ -298,7 +293,7 @@ Result VectorIndexBuildManager::build() {
                              _index.fields(), _index.collection().name(),
                              _index.id().id());
 
-  TrainingResult result;
+  std::shared_ptr<faiss::IndexIVF> faissIndex;
   constexpr int kMaxRetries = 10;
   for (int retry = 0; retry < kMaxRetries; ++retry) {
     if (_index.collection().deleted()) {
@@ -307,7 +302,7 @@ Result VectorIndexBuildManager::build() {
     std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
     trainIt->Seek(_bounds.start());
     try {
-      result = trainer.train(*trainIt, upper);
+      faissIndex = trainer.train(*trainIt, upper);
       break;
     } catch (basics::Exception const& ex) {
       bool noDocsForTraining =
@@ -329,7 +324,7 @@ Result VectorIndexBuildManager::build() {
       << ", index=" << _index.id().id() << "] "
       << "Training complete. Ingesting vectors via RocksDBBuilderIndex.";
 
-  _index.applyTrainingResult(std::move(result));
+  _index.applyTrainingResult(std::move(faissIndex));
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
                           VectorIndexTrainingState::kIngesting);
 

@@ -124,13 +124,10 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
   if (auto data = info.get("trainedData"); !data.isNone()) {
-    velocypack::deserialize(data, _trainedData.emplace());
-  }
-
-  if (_trainedData) {
-    auto result =
-        vector::VectorIndexTrainer::restoreFromTrainedData(*_trainedData);
-    _faissIndex = std::move(result.faissIndex);
+    TrainedData trainedData;
+    velocypack::deserialize(data, trainedData);
+    _faissIndex =
+        vector::VectorIndexTrainer::restoreFromTrainedData(trainedData);
 
     _faissIndex->replace_invlists(
         new vector::RocksDBInvertedLists(this, &coll, _definition.nLists,
@@ -271,10 +268,11 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.add("documentCount", VPackValue(_documentCount.load()));
   }
 
-  if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals) &&
+  if (_faissIndex && Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
+    auto td = vector::serializeIndex(*_faissIndex);
     builder.add(VPackValue("trainedData"));
-    velocypack::serialize(builder, *_trainedData);
+    velocypack::serialize(builder, td);
   }
 }
 
@@ -350,9 +348,9 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
                                         output);
 }
 
-void RocksDBVectorIndex::applyTrainingResult(vector::TrainingResult result) {
-  _faissIndex = std::move(result.faissIndex);
-  _trainedData.emplace(std::move(result.trainedData));
+void RocksDBVectorIndex::applyTrainingResult(
+    std::shared_ptr<faiss::IndexIVF> faissIndex) {
+  _faissIndex = std::move(faissIndex);
 
   _faissIndex->replace_invlists(
       new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
@@ -439,7 +437,6 @@ bool RocksDBVectorIndex::setTrainingState(
 void RocksDBVectorIndex::resetTrainingState() noexcept {
   auto const current = _trainingState.load(std::memory_order_acquire);
   setTrainingState(current, VectorIndexTrainingState::kUntrained);
-  _trainedData.reset();
 }
 
 void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,

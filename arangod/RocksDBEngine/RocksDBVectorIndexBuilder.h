@@ -51,12 +51,8 @@ class RocksDBEngine;
 
 namespace arangodb::vector {
 
-/// Result of the training or restoration process.
-struct TrainingResult {
-  std::shared_ptr<faiss::IndexIVF> faissIndex;
-  /// Serialized FAISS index data.
-  TrainedData trainedData;
-};
+/// Serialize a trained FAISS index into a TrainedData blob.
+TrainedData serializeIndex(faiss::IndexIVF const& index);
 
 /// Read vector data from a document given the field path and expected
 /// dimension. Shared utility used by both training and index operations.
@@ -76,9 +72,8 @@ class VectorIndexTrainer {
       std::string_view shardName, std::uint64_t indexId);
 
   /// Restore a FAISS IndexIVF from previously serialized trained data.
-  /// Returns the index along with resolved nLists and defaultNProbe values.
-  /// trainedData in the result is default-constructed (caller already has it).
-  static TrainingResult restoreFromTrainedData(TrainedData const& data);
+  static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
+      TrainedData const& data);
 
   /// Create a fresh (untrained) FAISS IndexIVF from the definition.
   /// If the definition has a factory string, uses faiss::index_factory.
@@ -92,7 +87,8 @@ class VectorIndexTrainer {
   ///  3. Load training vectors from the iterator
   ///  4. Train the FAISS index
   ///  5. Serialize the trained index data
-  TrainingResult train(rocksdb::Iterator& it, rocksdb::Slice upper) const;
+  std::shared_ptr<faiss::IndexIVF> train(rocksdb::Iterator& it,
+                                         rocksdb::Slice upper) const;
 
  private:
   /// Collect training vectors from the iterator.
