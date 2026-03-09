@@ -50,52 +50,52 @@ static factories_t factories = factories_t{
 
     {CREATE_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new CreateCollection(f, a));
+       return std::make_unique<CreateCollection>(f, a);
      }},
 
     {CREATE_DATABASE,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new CreateDatabase(f, a));
+       return std::make_unique<CreateDatabase>(f, a);
      }},
 
     {DROP_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new DropCollection(f, a));
+       return std::make_unique<DropCollection>(f, a);
      }},
 
     {DROP_DATABASE,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new DropDatabase(f, a));
+       return std::make_unique<DropDatabase>(f, a);
      }},
 
     {DROP_INDEX,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new DropIndex(f, a));
+       return std::make_unique<DropIndex>(f, a);
      }},
 
     {ENSURE_INDEX,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new EnsureIndex(f, a));
+       return std::make_unique<EnsureIndex>(f, a);
      }},
 
     {RESIGN_SHARD_LEADERSHIP,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new ResignShardLeadership(f, a));
+       return std::make_unique<ResignShardLeadership>(f, a);
      }},
 
     {SYNCHRONIZE_SHARD,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new SynchronizeShard(f, a));
+       return std::make_unique<SynchronizeShard>(f, a);
      }},
 
     {UPDATE_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new UpdateCollection(f, a));
+       return std::make_unique<UpdateCollection>(f, a);
      }},
 
     {TAKEOVER_SHARD_LEADERSHIP,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new TakeoverShardLeadership(f, a));
+       return std::make_unique<TakeoverShardLeadership>(f, a);
      }},
 
     {UPDATE_REPLICATED_LOG,
