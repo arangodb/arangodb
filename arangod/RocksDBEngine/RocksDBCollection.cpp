@@ -391,8 +391,11 @@ void RocksDBCollection::freeMemory() noexcept {
       // Join vector index build thread before dropping the index so the
       // destructor does not run in the build thread (self-join would
       // deadlock and cause std::terminate).
-      // TODO(jbajic): Add a way to gracefully remove the indexes
-      if (idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+      // Guard with !inProgress() to skip RocksDBBuilderIndex wrappers --
+      // their type() also returns TRI_IDX_TYPE_VECTOR_INDEX but the object
+      // is not a RocksDBVectorIndex.
+      if (idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX &&
+          !idx->inProgress()) {
         static_cast<RocksDBVectorIndex*>(idx.get())->joinBuildThread();
       }
 

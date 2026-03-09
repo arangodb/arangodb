@@ -142,7 +142,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   }
 
   if (auto dc = info.get("documentCount"); !dc.isNone()) {
-    _documentCount.store(dc.getInt(), std::memory_order_relaxed);
+    _documentCount.store(dc.getInt());
   }
   // Below 1000 documents training is not worth the effort nor having a index
   // 39 is the minumum number of documents to train the vector index, but that
@@ -268,8 +268,7 @@ void RocksDBVectorIndex::toVelocyPack(
 
   if (Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
-    builder.add("documentCount",
-                VPackValue(_documentCount.load(std::memory_order_relaxed)));
+    builder.add("documentCount", VPackValue(_documentCount.load()));
   }
 
   if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals) &&
@@ -449,7 +448,7 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
   joinBuildThread();
   resetTrainingState();
   _faissIndex.reset();
-  _documentCount.store(0, std::memory_order_relaxed);
+  _documentCount.store(0);
   RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 
@@ -531,7 +530,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   if (auto const state = _trainingState.load();
       state == VectorIndexTrainingState::kUntrained ||
       state == VectorIndexTrainingState::kTraining) {
-    _documentCount.fetch_sub(1, std::memory_order_relaxed);
+    _documentCount.fetch_sub(1);
     return {};
   }
 
