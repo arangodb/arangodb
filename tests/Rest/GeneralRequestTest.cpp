@@ -89,10 +89,10 @@ TEST_F(ApiVersionDetectionTest, RegularPath) {
 
 TEST_F(ApiVersionDetectionTest, UnsupportedVersionNotStripped) {
   HttpRequest request(ci, 1);
-  auto r = callDetect(request, "/_arango/v1/_api/version");
+  auto r = callDetect(request, "/_arango/v0/_api/version");
   EXPECT_TRUE(r.ok);
   EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
-  EXPECT_EQ("/_arango/v1/_api/version", r.remaining);
+  EXPECT_EQ("/_arango/v0/_api/version", r.remaining);
 }
 
 // Test: Experimental API version
@@ -107,9 +107,9 @@ TEST_F(ApiVersionDetectionTest, ExperimentalApiVersion) {
 // Test: Path ending exactly at version number
 TEST_F(ApiVersionDetectionTest, PathEndingAtVersion) {
   HttpRequest request(ci, 1);
-  auto r = callDetect(request, "/_arango/v0");
+  auto r = callDetect(request, "/_arango/v1");
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(0u, r.apiVersion);
+  EXPECT_EQ(1u, r.apiVersion);
   EXPECT_EQ("", r.remaining);
 }
 
@@ -177,11 +177,11 @@ TEST_F(ApiVersionDetectionTest, InvalidExperimentalTypo) {
 }
 
 // Test: Edge case - v0 is valid
-TEST_F(ApiVersionDetectionTest, ValidApiVersionV0) {
+TEST_F(ApiVersionDetectionTest, ValidApiVersionV1) {
   HttpRequest request(ci, 1);
-  auto r = callDetect(request, "/_arango/v0/path");
+  auto r = callDetect(request, "/_arango/v1/path");
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(0u, r.apiVersion);
+  EXPECT_EQ(1u, r.apiVersion);
   EXPECT_EQ("/path", r.remaining);
 }
 
@@ -206,10 +206,10 @@ TEST_F(ApiVersionDetectionTest, InvalidExperimentalNotFollowedBySlash) {
 // Test: Unsupported version with multiple slashes - not stripped
 TEST_F(ApiVersionDetectionTest, UnsupportedVersionWithMultipleSlashes) {
   HttpRequest request(ci, 1);
-  auto r = callDetect(request, "/_arango/v1///path");
+  auto r = callDetect(request, "/_arango/v0///path");
   EXPECT_TRUE(r.ok);
   EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
-  EXPECT_EQ("/_arango/v1///path", r.remaining);
+  EXPECT_EQ("/_arango/v0///path", r.remaining);
 }
 
 // Test: Root path
