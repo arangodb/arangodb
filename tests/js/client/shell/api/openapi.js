@@ -89,7 +89,7 @@ function openapi_endpointsSuite() {
     },
 
     test_openapi_v1_and_experimental_differ: function () {
-      let docV0 = arango.GET_RAW("/_arango/v0/openapi.json");
+      let docV0 = arango.GET_RAW("/_arango/v1/openapi.json");
       let docExp = arango.GET_RAW("/_arango/experimental/openapi.json");
 
       assertEqual(docV0.code, 200);

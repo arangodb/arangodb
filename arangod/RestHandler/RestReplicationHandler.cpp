@@ -3047,6 +3047,22 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief return the first tick available in a logfile
+/// @route GET logger-last
+/// @caller js/client/modules/@arangodb/replication.js
+/// @response VPackObject with minTick of LogfileManager->lastLogger()
+//////////////////////////////////////////////////////////////////////////////
+void RestReplicationHandler::handleCommandLoggerLast() {
+  VPackBuilder builder;
+  auto tickStart = _request->parsedValue("tickStart", uint64_t(0));
+  auto tickEnd = _request->parsedValue("tickEnd", uint64_t(0xbadbadbadbadULL));
+
+  Result res = server().getFeature<EngineSelectorFeature>().engine().lastLogger(
+      _vocbase, tickStart, tickEnd, builder);
+  generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief return the available logfile range
 /// @route GET logger-tick-ranges
 /// @caller js/client/modules/@arangodb/replication.js
@@ -3236,7 +3252,7 @@ void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
 ///           * ranges, VPackArray of VPackArray of revisions
 ///           * resume, optional, if response is chunked; revision resume
 ///                     point to specify on subsequent requests
-//////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////// ///////////////////////////////
 
 void RestReplicationHandler::handleCommandRevisionRanges() {
   RevisionOperationContext ctx;

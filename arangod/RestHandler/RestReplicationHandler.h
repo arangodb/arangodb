@@ -260,6 +260,15 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandLoggerFirstTick();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the first tick available in a logfile
+  /// @route GET logger-first-tick
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackObject with minTick of LogfileManager->ranges()
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandLoggerLast();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the available logfile range
   /// @route GET logger-tick-ranges
   /// @caller js/client/modules/@arangodb/replication.js
