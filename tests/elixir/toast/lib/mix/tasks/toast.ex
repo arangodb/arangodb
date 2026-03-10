@@ -145,7 +145,7 @@ defmodule Mix.Tasks.Toast do
     global_opts = build_global_opts(config, ex_unit_opts)
     result = ToastTest.Runner.run_suites(suite_data, global_opts)
 
-    abort_reason = ToastTest.Runner.aborted?()
+    abort_reason = ToastTest.Abort.reason()
     has_sanitizer_errors = Toast.Diagnostics.Summary.has_sanitizer_errors?(result.suites)
 
     run_results = %{

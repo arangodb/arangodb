@@ -249,7 +249,7 @@ defmodule ToastTest.CLIFormatter do
   defp print_session_summary(state) do
     c = state.counters
     elapsed = elapsed_ms(state.suite_start_time)
-    abort_reason = ToastTest.Runner.aborted?()
+    abort_reason = ToastTest.Abort.reason()
     is_failure = c.failed > 0 || c.invalid > 0 || abort_reason != nil
 
     status_text = if is_failure, do: "FAILED", else: "PASSED"
@@ -264,7 +264,7 @@ defmodule ToastTest.CLIFormatter do
 
     # Abort reason
     if abort_reason do
-      abort_msg = format_abort_reason(abort_reason)
+      abort_msg = ToastTest.Abort.display_reason(abort_reason)
       IO.puts("#{timestamp()} #{colorize("[   ABORTED ]", :red, state)} #{abort_msg}")
     end
 
@@ -362,7 +362,7 @@ defmodule ToastTest.CLIFormatter do
   end
 
   defp abort_skipped?(%ExUnit.Test{state: {:skipped, msg}}) when is_binary(msg) do
-    String.starts_with?(msg, ToastTest.Runner.abort_prefix())
+    String.starts_with?(msg, ToastTest.Abort.prefix())
   end
 
   defp abort_skipped?(_test), do: false
@@ -453,8 +453,4 @@ defmodule ToastTest.CLIFormatter do
   defp colorize(text, color, true) when is_binary(color) do
     IO.iodata_to_binary([color, text, IO.ANSI.reset()])
   end
-
-  defp format_abort_reason({_type, msg}), do: msg
-  defp format_abort_reason(msg) when is_binary(msg), do: msg
-  defp format_abort_reason(other), do: inspect(other)
 end

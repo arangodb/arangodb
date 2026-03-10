@@ -201,7 +201,7 @@ defmodule Toast.Deployment do
   def server_by_cluster_id(%__MODULE__{}, _cluster_internal_id), do: {:error, :not_cluster}
 
   @doc "Get the deployment error if crashed. Returns nil if healthy."
-  @spec deployment_error(t()) :: term()
+  @spec deployment_error(t()) :: Controller.deployment_error()
   def deployment_error(%__MODULE__{} = d) do
     case controller_call(d, :get_info, nil) do
       nil -> nil

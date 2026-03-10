@@ -14,6 +14,6 @@ defmodule ToastTest.CrashMonitor do
       ]
       |> Toast.Utils.compact_join(" ")
 
-    ToastTest.Runner.abort!({:crash, message})
+    ToastTest.Abort.abort!({:crash, message})
   end
 end

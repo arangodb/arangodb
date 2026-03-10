@@ -3,6 +3,15 @@ defmodule ToastTest.ResultCollector do
 
   use GenServer
 
+  @type test_data :: %{
+          suite: String.t() | nil,
+          started_at: DateTime.t(),
+          finished_at: DateTime.t() | nil,
+          times_us: map() | nil,
+          modules: %{module() => ToastTest.SuiteResult.module_result()},
+          failures: [ExUnit.Test.t()]
+        }
+
   defstruct [
     :suite_started_at,
     :finished_at,
@@ -16,7 +25,7 @@ defmodule ToastTest.ResultCollector do
 
   # --- Client API ---
 
-  @spec get_data(pid()) :: map() | nil
+  @spec get_data(pid()) :: test_data()
   def get_data(pid), do: GenServer.call(pid, :get_data)
 
   # --- GenServer callbacks ---

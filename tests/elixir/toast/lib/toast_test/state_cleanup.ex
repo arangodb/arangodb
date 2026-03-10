@@ -16,7 +16,7 @@ defmodule ToastTest.StateCleanup do
   end
 
   defp reset_abort_table do
-    ToastTest.Runner.clear_abort!()
+    ToastTest.Abort.clear!()
   end
 
   defp reset_after_suite_callbacks do

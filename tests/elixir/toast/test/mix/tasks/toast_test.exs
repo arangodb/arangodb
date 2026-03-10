@@ -491,15 +491,12 @@ defmodule Mix.Tasks.ToastTest do
       assert Enum.sort(diag.core_dumps) == ["/cores/core.1", "/cores/core.2"]
     end
 
-    test "no suite_result produces empty lists for all file fields" do
+    test "no suite_result produces empty core_dumps" do
       suites = [%{suite_module: MyApp.Test}]
       [diag] = Summary.build_suite_diagnostics(suites)
 
-      assert diag.log_files == []
-      assert diag.sanitizer_files == []
       assert diag.core_dumps == []
-      assert diag.crash_reports == []
-      assert diag.agency_dumps == []
+      assert Map.keys(diag) |> Enum.sort() == [:core_dumps, :name]
     end
 
     test "crash without coredump_path is skipped" do

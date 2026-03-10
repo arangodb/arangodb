@@ -11,6 +11,11 @@ defmodule Toast.Deployment.Controller do
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
 
+  @type deployment_error ::
+          {:server_crashed, String.t(), Toast.Process.CrashInfo.t()}
+          | {:server_unhealthy, String.t()}
+          | nil
+
   # --- Behaviour callbacks for mode-specific logic ---
 
   @callback init_mode_state() :: map()
@@ -48,7 +53,7 @@ defmodule Toast.Deployment.Controller do
     @type t :: %__MODULE__{
             config: Toast.Config.t(),
             id: String.t() | nil,
-            error: term(),
+            error: Toast.Deployment.Controller.deployment_error(),
             on_crash: (term(), term() -> term()) | nil,
             on_event: (term() -> term()) | nil,
             mode: module() | nil,

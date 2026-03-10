@@ -1,11 +1,11 @@
 defmodule ToastTest.CrashMonitorTest do
   use ExUnit.Case, async: false
 
-  alias ToastTest.{CrashMonitor, Runner}
+  alias ToastTest.{Abort, CrashMonitor}
 
   setup do
-    Runner.clear_abort!()
-    on_exit(fn -> Runner.clear_abort!() end)
+    Abort.clear!()
+    on_exit(fn -> Abort.clear!() end)
     :ok
   end
 
@@ -25,7 +25,7 @@ defmodule ToastTest.CrashMonitorTest do
       %Toast.Process.CrashInfo{signal: 11, exit_status: 139, timestamp: DateTime.utc_now()}
     )
 
-    assert {:crash, msg} = Runner.aborted?()
+    assert {:crash, msg} = Abort.reason()
     assert msg =~ "Server crashed"
     assert msg =~ "signal: 11"
     assert msg =~ "exit_status=139"
@@ -37,7 +37,7 @@ defmodule ToastTest.CrashMonitorTest do
       %Toast.Process.CrashInfo{exit_status: 1, signal: nil, timestamp: DateTime.utc_now()}
     )
 
-    assert {:crash, msg} = Runner.aborted?()
+    assert {:crash, msg} = Abort.reason()
     assert msg =~ "Server crashed"
     assert msg =~ "exit_status=1"
     refute msg =~ "signal"
@@ -49,7 +49,7 @@ defmodule ToastTest.CrashMonitorTest do
       %Toast.Process.CrashInfo{exit_status: 134, signal: 6, timestamp: DateTime.utc_now()}
     )
 
-    assert {:crash, msg} = Runner.aborted?()
+    assert {:crash, msg} = Abort.reason()
     assert msg =~ "Server crashed"
   end
 

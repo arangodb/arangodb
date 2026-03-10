@@ -35,10 +35,6 @@ defmodule Toast.Diagnostics.Summary do
 
       %{
         name: suite[:suite_module] |> inspect(),
-        log_files: [],
-        sanitizer_files: [],
-        crash_reports: [],
-        agency_dumps: [],
         core_dumps: extract_core_dumps(issues)
       }
     end)

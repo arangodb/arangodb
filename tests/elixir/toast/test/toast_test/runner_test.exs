@@ -1,13 +1,13 @@
 defmodule ToastTest.RunnerTest do
   use ExUnit.Case, async: false
 
-  alias ToastTest.Runner
+  alias ToastTest.{Abort, Runner}
 
   setup do
-    Runner.clear_abort!()
+    Abort.clear!()
 
     on_exit(fn ->
-      Runner.clear_abort!()
+      Abort.clear!()
     end)
 
     :ok
@@ -15,22 +15,22 @@ defmodule ToastTest.RunnerTest do
 
   describe "abort mechanism" do
     test "abort!/1 sets abort reason" do
-      assert Runner.aborted?() == nil
-      Runner.abort!("test crash")
-      assert Runner.aborted?() == "test crash"
+      assert Abort.reason() == nil
+      Abort.abort!("test crash")
+      assert Abort.reason() == "test crash"
     end
 
-    test "clear_abort!/0 resets abort state" do
-      Runner.abort!("test crash")
-      assert Runner.aborted?() != nil
-      Runner.clear_abort!()
-      assert Runner.aborted?() == nil
+    test "clear!/0 resets abort state" do
+      Abort.abort!("test crash")
+      assert Abort.reason() != nil
+      Abort.clear!()
+      assert Abort.reason() == nil
     end
 
     test "only first abort wins" do
-      Runner.abort!("first")
-      Runner.abort!("second")
-      assert Runner.aborted?() == "first"
+      Abort.abort!("first")
+      Abort.abort!("second")
+      assert Abort.reason() == "first"
     end
   end
 
@@ -172,12 +172,12 @@ defmodule ToastTest.RunnerTest do
     # This tests the mechanism that ensures one suite's abort does not leak.
 
     test "abort state is cleared between suites" do
-      Runner.abort!("suite 1 crashed")
-      assert Runner.aborted?() == "suite 1 crashed"
+      Abort.abort!("suite 1 crashed")
+      assert Abort.reason() == "suite 1 crashed"
 
       ToastTest.StateCleanup.reset()
 
-      assert Runner.aborted?() == nil
+      assert Abort.reason() == nil
     end
   end
 

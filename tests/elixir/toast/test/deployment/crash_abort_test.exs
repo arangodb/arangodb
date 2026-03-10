@@ -219,22 +219,22 @@ defmodule Toast.Deployment.CrashAbortTest do
     end
   end
 
-  describe "ToastTest.Runner.abort!" do
+  describe "ToastTest.Abort" do
     setup do
-      ToastTest.Runner.clear_abort!()
-      on_exit(fn -> ToastTest.Runner.clear_abort!() end)
+      ToastTest.Abort.clear!()
+      on_exit(fn -> ToastTest.Abort.clear!() end)
     end
 
     test "sets abort state" do
-      assert ToastTest.Runner.aborted?() == nil
-      ToastTest.Runner.abort!("Server crashed: test-srv")
-      assert ToastTest.Runner.aborted?() == "Server crashed: test-srv"
+      assert ToastTest.Abort.reason() == nil
+      ToastTest.Abort.abort!("Server crashed: test-srv")
+      assert ToastTest.Abort.reason() == "Server crashed: test-srv"
     end
 
-    test "clear_abort! resets state" do
-      ToastTest.Runner.abort!("reason")
-      ToastTest.Runner.clear_abort!()
-      assert ToastTest.Runner.aborted?() == nil
+    test "clear! resets state" do
+      ToastTest.Abort.abort!("reason")
+      ToastTest.Abort.clear!()
+      assert ToastTest.Abort.reason() == nil
     end
   end
 

@@ -26,7 +26,7 @@ defmodule ToastTest.Attribution.TimeWindows do
   @doc """
   Build time windows from ResultCollector test data.
   """
-  @spec build(map()) :: windows()
+  @spec build(ToastTest.ResultCollector.test_data()) :: windows()
   def build(test_data) do
     %{
       suite: %{started_at: test_data.started_at, finished_at: test_data.finished_at},

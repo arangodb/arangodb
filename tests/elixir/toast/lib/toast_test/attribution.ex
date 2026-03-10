@@ -12,7 +12,12 @@ defmodule ToastTest.Attribution do
   @crash_log_window_before_s 10
   @crash_log_window_after_s 5
 
-  @spec run(map(), ToastTest.ArtifactCollector.t(), term(), keyword()) ::
+  @spec run(
+          ToastTest.ResultCollector.test_data(),
+          ToastTest.ArtifactCollector.t(),
+          Toast.Deployment.Controller.deployment_error(),
+          keyword()
+        ) ::
           [ToastTest.SuiteResult.issue()]
   def run(test_data, artifacts, error, opts \\ []) do
     windows = TimeWindows.build(test_data)
