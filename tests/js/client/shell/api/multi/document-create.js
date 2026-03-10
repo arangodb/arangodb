@@ -84,13 +84,13 @@ function error_handlingSuite () {
         let cmd = `/_api/document/${cn}`;
         let body = "{ 1 : 2 }";
         let doc = arango.POST_RAW(cmd, body);
-
+        
         assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
         assertTrue(doc.parsedBody['error']);
         assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
         assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
         assertEqual(doc.headers['content-type'], contentType);
-
+        
         assertEqual(db[cn].count(), 0);
       } finally {
         db._drop(cn);
@@ -267,7 +267,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
       arango.DELETE_RAW(location);
-
+      
       assertEqual(db[cn].count(), 0);
     },
 
@@ -630,7 +630,7 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 409);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
-
+      
       arango.DELETE_RAW(`/_api/document/${cn}/${key}`);
     }
   };
@@ -652,7 +652,7 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
 
     test_creating_a_new_document__waitForsync_EQ_False: function() {
       let cmd = `/_api/document/${cn}`;
-      let body = { "Hallo": "World" };
+      let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body, {});
 
       assertEqual(doc.code, 202);
@@ -875,7 +875,7 @@ function known_collection_nameSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
     setUp: function() {
-      db._create(cn, { waitForSync: true });
+      db._create(cn, { waitForSync: true});
     },
 
     tearDown: function() {
