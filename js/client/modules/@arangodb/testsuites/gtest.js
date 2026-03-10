@@ -145,8 +145,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   
   let iresearch_filter = ['gtest_filter=IResearch*'];
   testFns['gtest_iresearch'] = x => gtestRunner('arangodbtests', 'gtest-iresearch', x, iresearch_filter);
-  let no_iresearch_filter = ['gtest_filter=-IResearch*:*_LongRunning*'];
+  let no_iresearch_filter = ['gtest_filter=-IResearch*:*_LongRunning*:RbacIntegrationTest*'];
   testFns['gtest_arangodb'] = x => gtestRunner('arangodbtests', 'gtest-arangodb', x, no_iresearch_filter);
+  let rbac_integration_filter = ['gtest_filter=RbacIntegrationTest.*'];
+  testFns['gtest_rbac_integration'] = x => gtestRunner('arangodbtests', 'gtest-rbac-integration', x, rbac_integration_filter);
 
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -240,9 +240,7 @@
       size: small
     job: run-linux-tests-with-smocker
     suites:
-      - gtest_arangodb
-    args:
-      testCase: RbacIntegrationTest
+      - gtest_rbac_integration
     requires:
       coverage: false
 - rta_makedata:
