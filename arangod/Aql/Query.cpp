@@ -22,9 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Query.h"
+#include <velocypack/SharedSlice.h>
 #include <unordered_map>
 
-#include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallList.h"
 #include "Aql/AqlCallStack.h"
@@ -39,6 +41,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
 #include "Aql/ProfileLevel.h"
+#include "Aql/QueryActivity.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryInfoLoggerFeature.h"
@@ -146,9 +149,19 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _registeredQueryInTrx(false),
       _allowDirtyReads(false),
       _queryKilled(false),
-      _activity(activities::make<activities::GenericActivity>(
-          "AQLQuery",
-          activities::GenericActivityData{{"query", queryString.string()}})) {
+      _activity(activities::make<aql::query::activity::AQLQueryActivity>(
+          query::activity::AQLQueryActivityData{
+              .queryString = _queryString.string(),
+              .startTime = _startTime,
+              .bindParameters =
+                  std::invoke([&bindParameters]()
+                                  -> std::optional<velocypack::SharedSlice> {
+                    if (bindParameters == nullptr) {
+                      return std::nullopt;
+                    } else {
+                      return bindParameters->sharedSlice();
+                    }
+                  })})) {
   if (!_transactionContext) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "failed to create query transaction context");
