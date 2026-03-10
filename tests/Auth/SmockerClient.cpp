@@ -104,43 +104,50 @@ namespace arangodb::test {
 
 SmockerClient::SmockerClient(std::string containerName, std::string mockUrl,
                              std::string adminUrl)
-    : containerName_(std::move(containerName)),
-      mockUrl_(std::move(mockUrl)),
-      adminUrl_(std::move(adminUrl)) {}
+    : _containerName(std::move(containerName)),
+      _mockUrl(std::move(mockUrl)),
+      _adminUrl(std::move(adminUrl)) {}
 
 void SmockerClient::start() {
   // Remove any leftover container (ignore errors).
-  runDocker({"rm", "-f", containerName_});
+  runDocker({"rm", "-f", _containerName});
 
   auto status =
       runDocker({"run", "-d", "-p", "8080:8080", "-p", "8081:8081", "--name",
-                 containerName_, "ghcr.io/smocker-dev/smocker"});
-  ASSERT_EQ(status._status, TRI_EXT_TERMINATED)
-      << "docker run failed: " << status._errorMessage;
-  ASSERT_EQ(status._exitStatus, 0) << "docker run exited with non-zero status";
+                 _containerName, "ghcr.io/smocker-dev/smocker"});
+  if (status._status != TRI_EXT_TERMINATED) {
+    _startError = "docker run failed: " + status._errorMessage;
+    return;
+  }
+  if (status._exitStatus != 0) {
+    _startError = "docker run exited with status " +
+                  std::to_string(status._exitStatus);
+    return;
+  }
 
   auto config = network::ConnectionPool::Config();
   config.metrics =
       network::ConnectionPool::Metrics::createStub("SmockerClient admin");
-  adminPool_ = std::make_unique<network::ConnectionPool>(config);
+  _adminPool = std::make_unique<network::ConnectionPool>(config);
 
-  for (auto start = std::chrono::steady_clock::now();
-       std::chrono::steady_clock::now() - start < std::chrono::seconds(120);
+  for (auto t0 = std::chrono::steady_clock::now();
+       std::chrono::steady_clock::now() - t0 < std::chrono::seconds(120);
        std::this_thread::sleep_for(std::chrono::milliseconds(10))) {
     try {
       auto res = sendToAdmin(fuerte::RestVerb::Get, "/version");
       if (res && res->statusCode() == fuerte::StatusOK) {
+        _startError.reset();
         return;
       }
     } catch (...) {
     }
   }
-  FAIL() << "Smocker did not become ready within 120 seconds";
+  _startError = "Smocker did not become ready within 120 seconds";
 }
 
 void SmockerClient::stop() {
-  adminPool_.reset();
-  runDocker({"rm", "-f", containerName_});
+  _adminPool.reset();
+  runDocker({"rm", "-f", _containerName});
 }
 
 void SmockerClient::resetMocks() {
@@ -197,7 +204,7 @@ auto SmockerClient::sendToAdmin(fuerte::RestVerb verb, std::string const& path,
                                 std::string const& body)
     -> std::unique_ptr<fuerte::Response> {
   bool isFromPool = false;
-  auto conn = adminPool_->leaseConnection(adminUrl_, isFromPool);
+  auto conn = _adminPool->leaseConnection(_adminUrl, isFromPool);
   auto req = fuerte::createRequest(verb, path);
   if (!body.empty()) {
     req->header.contentType(fuerte::ContentType::Json);

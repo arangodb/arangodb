@@ -116,6 +116,10 @@ struct RbacIntegrationTest : ::testing::Test {
   }
 
   void SetUp() override {
+    // Note that a failure / an exception on SetUpTestSuite() will cause all
+    // tests to be *skipped*; so we need to check for errors and fail here
+    // instead.
+    ASSERT_TRUE(!_smocker->startError()) << *_smocker->startError();
     _smocker->resetMocks();
 
     auto config = network::ConnectionPool::Config();
@@ -214,7 +218,7 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_HttpServerError) {
 }
 
 TEST_F(RbacIntegrationTest, ServiceMaySync_MalformedResponse) {
-  _smocker->addMock(kEvaluateTokenManyPath, 200, "not valid json {{{");
+  _smocker->addMock(kEvaluateTokenManyPath, 200, "invalid json {{{");
   auto service = makeService();
 
   auto result =

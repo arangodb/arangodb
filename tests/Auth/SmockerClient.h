@@ -29,6 +29,7 @@
 #include <fuerte/types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -53,17 +54,19 @@ class SmockerClient {
                std::string const& responseBody);
   auto getHistory() -> std::vector<SmockerHistoryEntry>;
 
-  auto mockUrl() const -> std::string const& { return mockUrl_; }
+  auto startError() const -> std::optional<std::string> const& { return _startError; }
+  auto mockUrl() const -> std::string const& { return _mockUrl; }
 
  private:
   auto sendToAdmin(fuerte::RestVerb verb, std::string const& path,
                    std::string const& body = {})
       -> std::unique_ptr<fuerte::Response>;
 
-  std::string containerName_;
-  std::string mockUrl_;
-  std::string adminUrl_;
-  std::unique_ptr<network::ConnectionPool> adminPool_;
+  std::string _containerName;
+  std::string _mockUrl;
+  std::string _adminUrl;
+  std::unique_ptr<network::ConnectionPool> _adminPool;
+  std::optional<std::string> _startError = "start() was not called";
 };
 
 }  // namespace arangodb::test
