@@ -467,7 +467,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   coords->addMember(loop);
   polygon->addMember(ast->createNodeObjectElement("coordinates", coords));
 
-  fargs = ast->createNodeArray(2);
+  AstNode* fargs = ast->createNodeArray(2);
   fargs->addMember(polygon);
 
   // GEO_CONTAINS, needs GeoJson [Lon, Lat] ordering
