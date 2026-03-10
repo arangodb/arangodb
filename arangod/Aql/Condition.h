@@ -111,13 +111,17 @@ class Condition {
   ~Condition();
 
   /// @brief: note: index may be a nullptr
-  static void collectOverlappingMembers(ExecutionPlan const* plan,
-                                        Variable const* variable,
-                                        AstNode const* andNode,
-                                        AstNode const* otherAndNode,
-                                        containers::HashSet<size_t>& toRemove,
-                                        Index const* index,
-                                        bool isFromTraverser);
+  /// There are different rules for processing certain types of nodes
+  /// when we're dealing with traversals. Previously, a null index ptr
+  /// was used to imply a traversal. Now we've made it explicit with the
+  /// the introduction of the isFromTraverser arg.
+  static void collectOverlappingMembers(
+      ExecutionPlan const* plan, Variable const* variable,
+      AstNode const* andNode, AstNode const* otherAndNode,
+      containers::HashSet<size_t>& toRemove, Index const* index,
+      bool isFromTraverser,  //  indicates whether the function is called from
+                             //  traversals
+      bool isPathCondition);
 
   /// @brief return the condition root
   AstNode* root() const noexcept;
@@ -246,7 +250,7 @@ class Condition {
 
   /// @brief checks if the current condition covers the other
   static bool canRemove(ExecutionPlan const*, ConditionPart const&,
-                        AstNode const*, bool isFromTraverser);
+                        AstNode const*, bool allowArrayExpansion);
 
   /// @brief deduplicate IN condition values (and sort them).
   /// will return either the unmodified original node or a copy.
