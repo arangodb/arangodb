@@ -121,8 +121,8 @@ void SmockerClient::start() {
       return;
     }
     if (status._exitStatus != 0) {
-      _startError = "docker run exited with status " +
-                    std::to_string(status._exitStatus);
+      _startError =
+          "docker run exited with status " + std::to_string(status._exitStatus);
       return;
     }
   }
@@ -188,8 +188,7 @@ auto SmockerClient::getHistory() -> std::vector<SmockerHistoryEntry> {
     return {};
   }
 
-  auto builder =
-      velocypack::Parser::fromJson(res->payloadAsStringView());
+  auto builder = velocypack::Parser::fromJson(res->payloadAsStringView());
   auto slice = builder->slice();
 
   std::vector<SmockerHistoryEntry> entries;

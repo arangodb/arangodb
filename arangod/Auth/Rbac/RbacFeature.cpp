@@ -79,8 +79,6 @@ RbacFeature* RbacFeature::instance() noexcept {
   return INSTANCE.load(std::memory_order_acquire);
 }
 
-rbac::Service* RbacFeature::service() const noexcept {
-  return _service.get();
-}
+rbac::Service* RbacFeature::service() const noexcept { return _service.get(); }
 
 }  // namespace arangodb

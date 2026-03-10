@@ -54,7 +54,9 @@ class SmockerClient {
                std::string const& responseBody);
   auto getHistory() -> std::vector<SmockerHistoryEntry>;
 
-  auto startError() const -> std::optional<std::string> const& { return _startError; }
+  auto startError() const -> std::optional<std::string> const& {
+    return _startError;
+  }
   auto mockUrl() const -> std::string const& { return _mockUrl; }
 
  private:

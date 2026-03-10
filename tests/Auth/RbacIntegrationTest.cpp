@@ -81,15 +81,14 @@ auto buildAllowResponse(std::size_t numItems) -> std::string {
                      items);
 }
 
-auto buildDenyResponse(std::size_t numItems)
-    -> std::string {
+auto buildDenyResponse(std::size_t numItems) -> std::string {
   std::string items;
   for (std::size_t i = 0; i < numItems; ++i) {
     if (i > 0) items += ",";
     items += R"({"effect":"Deny","message":"access denied"})";
   }
-  return std::format(R"({{"effect":"Deny","message":"access denied","items":[{}]}})",
-                     items);
+  return std::format(
+      R"({{"effect":"Deny","message":"access denied","items":[{}]}})", items);
 }
 
 auto buildMixedResponse(std::initializer_list<std::string_view> effects)
