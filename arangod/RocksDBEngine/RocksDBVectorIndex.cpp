@@ -186,11 +186,11 @@ T makeVectorMetric(RocksDBVectorIndex const& idx) {
 void RocksDBVectorIndex::registerMetrics() {
   auto& mf =
       _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
-  _metricState =
-      &mf.add(makeVectorMetric<arangodb_vector_index_training_state>(*this));
-  _metricTrainingDuration = &mf.add(
+  _metricState = &mf.ensureMetric(
+      makeVectorMetric<arangodb_vector_index_training_state>(*this));
+  _metricTrainingDuration = &mf.ensureMetric(
       makeVectorMetric<arangodb_vector_index_training_duration_seconds>(*this));
-  _metricIngestingDuration = &mf.add(
+  _metricIngestingDuration = &mf.ensureMetric(
       makeVectorMetric<arangodb_vector_index_ingesting_duration_seconds>(
           *this));
 
