@@ -24,13 +24,22 @@
 #pragma once
 
 #include "Network/ConnectionPool.h"
+#include "velocypack/String.h"
 
 #include <fuerte/types.h>
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace arangodb::test {
+
+struct SmockerHistoryEntry {
+  std::string method;
+  std::string path;
+  velocypack::String body;
+  // TODO add headers, and assert content-type and accept
+};
 
 class SmockerClient {
  public:
@@ -42,6 +51,7 @@ class SmockerClient {
   void resetMocks();
   void addMock(std::string const& path, int status,
                std::string const& responseBody);
+  auto getHistory() -> std::vector<SmockerHistoryEntry>;
 
   auto mockUrl() const -> std::string const& { return mockUrl_; }
 

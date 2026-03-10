@@ -26,10 +26,14 @@
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Inspection/JsonPrintInspector.h"
+#include "Logger/LogMacros.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <gtest/gtest.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/String.h>
 
 #include <chrono>
 #include <map>
@@ -148,15 +152,13 @@ void SmockerClient::resetMocks() {
 
 void SmockerClient::addMock(std::string const& path, int status,
                             std::string const& responseBody) {
-  // TODO JsonPrintInspector doesn't escape string contents — fix that.
-  auto escapedBody = basics::StringUtils::escapeUnicode(responseBody, false);
   auto mocks = std::vector<SmockerMockDef>{{
       .request = {.method = "POST", .path = path},
       .response =
           {
               .status = status,
               .headers = {{"Content-Type", {"application/json"}}},
-              .body = std::move(escapedBody),
+              .body = responseBody,
           },
   }};
   auto mockJson = toJson(mocks);
@@ -164,6 +166,31 @@ void SmockerClient::addMock(std::string const& path, int status,
   ASSERT_TRUE(res);
   ASSERT_EQ(res->statusCode(), fuerte::StatusOK)
       << "Failed to add smocker mock: " << res->payloadAsString();
+}
+
+auto SmockerClient::getHistory() -> std::vector<SmockerHistoryEntry> {
+  auto res = sendToAdmin(fuerte::RestVerb::Get, "/history");
+  EXPECT_TRUE(res);
+  EXPECT_EQ(res->statusCode(), fuerte::StatusOK)
+      << "Failed to get smocker history";
+  if (!res || res->statusCode() != fuerte::StatusOK) {
+    return {};
+  }
+
+  auto builder =
+      velocypack::Parser::fromJson(res->payloadAsStringView());
+  auto slice = builder->slice();
+
+  std::vector<SmockerHistoryEntry> entries;
+  for (auto const& entry : velocypack::ArrayIterator(slice)) {
+    auto req = entry.get("request");
+    entries.push_back({
+        .method = req.get("method").copyString(),
+        .path = req.get("path").copyString(),
+        .body = velocypack::String{req.get("body")},
+    });
+  }
+  return entries;
 }
 
 auto SmockerClient::sendToAdmin(fuerte::RestVerb verb, std::string const& path,

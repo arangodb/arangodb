@@ -28,6 +28,8 @@
 #include "Basics/voc-errors.h"
 #include "Inspection/JsonPrintInspector.h"
 #include "Inspection/VPackLoadInspector.h"
+#include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
@@ -59,21 +61,16 @@ BackendImpl::BackendImpl(network::Sender sendRequest,
 namespace {
 
 template<typename T>
-auto buildJsonBody(T& value) -> ResultT<std::string> {
-  std::ostringstream stream;
-  // TODO The JsonPrintInspector does not (yet) escape strings!
-  //      This needs to be resolved before merging, either by implementing
-  //      escaping in the JsonPrintInspector, or by serializing into VelocyPack
-  //      first, and then converting the VelocyPack to JSON.
-  inspection::JsonPrintInspector<> inspector{
-      stream, inspection::JsonPrintFormat::kMinimal};
-  auto res = inspector.apply(value);
-  if (!res.ok()) {
-    // TODO Choose an appropriate error code, and possibly extend the message
-    //      to clarify.
-    return Result{TRI_ERROR_INTERNAL, res.error()};
-  }
-  return std::move(stream).str();
+auto buildJsonBody(T& value) -> std::string {
+  // Note: I've used the JsonPrintInspector first, to avoid the intermediate
+  // step into a VPack. It had some bugs, which I fixed, but just now I can't
+  // risk to spend more time on this, or to introduce a bug.
+  // Let's change this later, when we have a little time to review the
+  // JsonPrintInspector.
+  auto builder = velocypack::Builder{};
+  // Purposefully don't catch exceptions: errors here are either OOM or bugs.
+  velocypack::serialize(builder, value);
+  return builder.toJson();
 }
 
 auto parseEvaluateResponseMany(std::string_view jsonBody)
@@ -86,6 +83,9 @@ auto parseEvaluateResponseMany(std::string_view jsonBody)
   try {
     builder = velocypack::Parser::fromJson(jsonBody);
   } catch (velocypack::Exception const& e) {
+    LOG_TOPIC("90d0a", ERR, Logger::AUTHORIZATION)
+        << "Failed to parse RBAC response. Error: `" << e.what()
+        << "` Response body: " << jsonBody;
     return Result{
         // TODO Choose an appropriate error code, and possibly extend the
         //      message to clarify.
@@ -132,14 +132,10 @@ auto BackendImpl::evaluateTokenManyImpl(JwtToken const& token,
   };
 
   auto bodyResult = buildJsonBody(requestBody);
-  if (!bodyResult.ok()) {
-    co_return bodyResult.result();
-  }
 
-  auto response =
-      co_await sendRequest(fuerte::RestVerb::Post,
-                           "/_integration/authorization/v1/evaluate-token-many",
-                           bodyResult.get(), api);
+  auto response = co_await sendRequest(
+      fuerte::RestVerb::Post,
+      "/_integration/authorization/v1/evaluate-token-many", bodyResult, api);
 
   if (auto result = response.combinedResult(); result.fail()) {
     co_return result;
@@ -160,13 +156,10 @@ auto BackendImpl::evaluateManyImpl(PlainUser const& user,
   };
 
   auto bodyResult = buildJsonBody(requestBody);
-  if (!bodyResult.ok()) {
-    co_return bodyResult.result();
-  }
 
   auto response = co_await sendRequest(
       fuerte::RestVerb::Post, "/_integration/authorization/v1/evaluate-many",
-      bodyResult.get(), api);
+      bodyResult, api);
 
   if (auto result = response.combinedResult(); result.fail()) {
     co_return result;
@@ -180,9 +173,8 @@ auto BackendImpl::sendRequest(arangodb::fuerte::RestVerb verb, std::string path,
                               std::string_view payload,
                               transaction::MethodsApi api)
     -> futures::Future<network::Response> {
-  // TODO It's currently necessary to copy the data once, because the inspector
-  //      can only write into an stream, but the network Methods only take a
-  //      velocypack::Buffer as payload.
+  // TODO It's currently necessary to copy the data once again to convert
+  //      between data types.
   auto fut =
       _sendRequest(_authorizationEndpoint, verb, std::move(path),
                    jsonToPayload(payload), makeJsonRequestOptions(api), {});

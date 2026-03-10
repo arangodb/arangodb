@@ -31,12 +31,27 @@
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 #include <fuerte/types.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Parser.h>
 
 #include <format>
 
 using namespace arangodb;
 
 namespace {
+
+auto normalizeJsonOption = []() {
+  auto options = velocypack::Options{};
+  options.prettyPrint = true;
+  return options;
+}();
+auto normalizeJson(std::string_view json) -> std::string {
+  auto builder = velocypack::Parser::fromJson(json);
+  return velocypack::Dumper::toString(builder->slice(), &normalizeJsonOption);
+}
+auto normalizeJson(velocypack::Slice slice) -> std::string {
+  return velocypack::Dumper::toString(slice, &normalizeJsonOption);
+}
 
 constexpr auto kContainerName = "rbac-integration-smocker";
 constexpr auto kSmockerMockUrl = "http://localhost:8080";
@@ -45,27 +60,25 @@ constexpr auto kSmockerAdminUrl = "http://localhost:8081";
 constexpr auto kEvaluateTokenManyPath =
     "/_integration/authorization/v1/evaluate-token-many";
 
-auto buildAllowResponse(std::size_t numItems, std::string_view message = "")
-    -> std::string {
+auto buildAllowResponse(std::size_t numItems) -> std::string {
   std::string items;
   for (std::size_t i = 0; i < numItems; ++i) {
     if (i > 0) items += ",";
     items += R"({"effect":"Allow","message":""})";
   }
-  return std::format(R"({{"effect":"Allow","message":"{}","items":[{}]}})",
-                     message, items);
+  return std::format(R"({{"effect":"Allow","message":"","items":[{}]}})",
+                     items);
 }
 
-auto buildDenyResponse(std::size_t numItems,
-                       std::string_view message = "access denied")
+auto buildDenyResponse(std::size_t numItems)
     -> std::string {
   std::string items;
   for (std::size_t i = 0; i < numItems; ++i) {
     if (i > 0) items += ",";
-    items += std::format(R"({{"effect":"Deny","message":"{}"}})", message);
+    items += R"({"effect":"Deny","message":"access denied"})";
   }
-  return std::format(R"({{"effect":"Deny","message":"{}","items":[{}]}})",
-                     message, items);
+  return std::format(R"({{"effect":"Deny","message":"access denied","items":[{}]}})",
+                     items);
 }
 
 auto buildMixedResponse(std::initializer_list<std::string_view> effects)
@@ -160,6 +173,19 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_Allow) {
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_TRUE(result.get());
+
+  auto history = _smocker->getHistory();
+  ASSERT_EQ(history.size(), 1u);
+  EXPECT_EQ(history[0].method, "POST");
+  EXPECT_EQ(history[0].path, kEvaluateTokenManyPath);
+  EXPECT_EQ(normalizeJson(history[0].body), normalizeJson(R"({
+    "token": "test.jwt.token",
+    "items": [{
+      "action": "db:ReadDatabase",
+      "resource": "db:database:mydb",
+      "context": {"parameters": {"attribute": {"values": []}}}
+    }]
+  })"));
 }
 
 TEST_F(RbacIntegrationTest, ServiceMaySync_Deny) {
@@ -220,6 +246,22 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_AllAllow) {
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_TRUE(result.get());
+
+  auto history = _smocker->getHistory();
+  ASSERT_EQ(history.size(), 1u);
+  EXPECT_EQ(history[0].method, "POST");
+  EXPECT_EQ(history[0].path, kEvaluateTokenManyPath);
+  EXPECT_EQ(normalizeJson(history[0].body), normalizeJson(R"({
+    "token": "test.jwt.token",
+    "items": [
+      {"action": "db:ReadDatabase", "resource": "db:database:db1",
+       "context": {"parameters": {"attribute": {"values": []}}}},
+      {"action": "db:WriteDatabase", "resource": "db:database:db2",
+       "context": {"parameters": {"attribute": {"values": []}}}},
+      {"action": "db:ReadDatabase", "resource": "db:database:db3",
+       "context": {"parameters": {"attribute": {"values": []}}}}
+    ]
+  })"));
 }
 
 TEST_F(RbacIntegrationTest, ServiceMayAllSync_AllDeny) {
