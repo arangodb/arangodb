@@ -45,7 +45,7 @@ struct SmockerHistoryEntry {
 class SmockerClient {
  public:
   SmockerClient(std::string containerName, std::string mockUrl,
-                std::string adminUrl);
+                std::string adminUrl, bool manageDocker = true);
 
   void start();
   void stop();
@@ -65,6 +65,7 @@ class SmockerClient {
   std::string _containerName;
   std::string _mockUrl;
   std::string _adminUrl;
+  bool _manageDocker;
   std::unique_ptr<network::ConnectionPool> _adminPool;
   std::optional<std::string> _startError = "start() was not called";
 };

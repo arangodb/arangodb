@@ -103,26 +103,28 @@ auto runDocker(std::vector<std::string> const& args) -> ExternalProcessStatus {
 namespace arangodb::test {
 
 SmockerClient::SmockerClient(std::string containerName, std::string mockUrl,
-                             std::string adminUrl)
+                             std::string adminUrl, bool manageDocker)
     : _containerName(std::move(containerName)),
       _mockUrl(std::move(mockUrl)),
-      _adminUrl(std::move(adminUrl)) {}
+      _adminUrl(std::move(adminUrl)),
+      _manageDocker(manageDocker) {}
 
 void SmockerClient::start() {
-  // Remove any leftover container (ignore errors).
-  runDocker({"rm", "-f", _containerName});
+  if (_manageDocker) {
+    runDocker({"rm", "-f", _containerName});
 
-  auto status =
-      runDocker({"run", "-d", "-p", "8080:8080", "-p", "8081:8081", "--name",
-                 _containerName, "ghcr.io/smocker-dev/smocker"});
-  if (status._status != TRI_EXT_TERMINATED) {
-    _startError = "docker run failed: " + status._errorMessage;
-    return;
-  }
-  if (status._exitStatus != 0) {
-    _startError = "docker run exited with status " +
-                  std::to_string(status._exitStatus);
-    return;
+    auto status =
+        runDocker({"run", "-d", "-p", "8080:8080", "-p", "8081:8081", "--name",
+                   _containerName, "ghcr.io/smocker-dev/smocker"});
+    if (status._status != TRI_EXT_TERMINATED) {
+      _startError = "docker run failed: " + status._errorMessage;
+      return;
+    }
+    if (status._exitStatus != 0) {
+      _startError = "docker run exited with status " +
+                    std::to_string(status._exitStatus);
+      return;
+    }
   }
 
   auto config = network::ConnectionPool::Config();
@@ -147,7 +149,9 @@ void SmockerClient::start() {
 
 void SmockerClient::stop() {
   _adminPool.reset();
-  runDocker({"rm", "-f", _containerName});
+  if (_manageDocker) {
+    runDocker({"rm", "-f", _containerName});
+  }
 }
 
 void SmockerClient::resetMocks() {

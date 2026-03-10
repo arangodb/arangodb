@@ -234,6 +234,17 @@
       type: single
     requires:
       coverage: false
+- gtest_rbac_integration:
+    options:
+      type: single
+      size: small
+    job: run-linux-tests-with-smocker
+    suites:
+      - gtest_arangodb
+    args:
+      testCase: RbacIntegrationTest
+    requires:
+      coverage: false
 - rta_makedata:
     options:
       type: mixed

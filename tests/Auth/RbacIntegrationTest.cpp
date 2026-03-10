@@ -34,6 +34,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Parser.h>
 
+#include <cstdlib>
 #include <format>
 
 using namespace arangodb;
@@ -54,8 +55,18 @@ auto normalizeJson(velocypack::Slice slice) -> std::string {
 }
 
 constexpr auto kContainerName = "rbac-integration-smocker";
-constexpr auto kSmockerMockUrl = "http://localhost:8080";
-constexpr auto kSmockerAdminUrl = "http://localhost:8081";
+
+struct SmockerConfig {
+  std::string host;
+  bool manageDocker;
+};
+
+auto getSmockerConfig() -> SmockerConfig {
+  if (auto const* env = std::getenv("SMOCKER_HOST")) {
+    return {env, false};
+  }
+  return {"localhost", true};
+}
 
 constexpr auto kEvaluateTokenManyPath =
     "/_integration/authorization/v1/evaluate-token-many";
@@ -101,10 +112,14 @@ auto buildMixedResponse(std::initializer_list<std::string_view> effects)
 
 struct RbacIntegrationTest : ::testing::Test {
   static inline std::unique_ptr<test::SmockerClient> _smocker;
+  static inline std::string _smockerMockUrl;
 
   static void SetUpTestSuite() {
+    auto [host, manageDocker] = getSmockerConfig();
+    _smockerMockUrl = "http://" + host + ":8080";
+    auto adminUrl = "http://" + host + ":8081";
     _smocker = std::make_unique<test::SmockerClient>(
-        kContainerName, kSmockerMockUrl, kSmockerAdminUrl);
+        kContainerName, _smockerMockUrl, adminUrl, manageDocker);
     _smocker->start();
   }
 
@@ -119,7 +134,12 @@ struct RbacIntegrationTest : ::testing::Test {
     // Note that a failure / an exception on SetUpTestSuite() will cause all
     // tests to be *skipped*; so we need to check for errors and fail here
     // instead.
-    ASSERT_TRUE(!_smocker->startError()) << *_smocker->startError();
+    ASSERT_TRUE(!_smocker->startError())
+        << *_smocker->startError() << "\n\n"
+        << "To run these tests, either:\n"
+        << "  - Install Docker and ensure it is accessible, or\n"
+        << "  - Set SMOCKER_HOST to point to a running Smocker instance.\n"
+        << "To skip, use: --gtest_filter=-RbacIntegrationTest.*";
     _smocker->resetMocks();
 
     auto config = network::ConnectionPool::Config();
@@ -149,7 +169,7 @@ struct RbacIntegrationTest : ::testing::Test {
 
   auto makeBackend() -> std::unique_ptr<rbac::BackendImpl> {
     return std::make_unique<rbac::BackendImpl>(makeSender(*_pool),
-                                               kSmockerMockUrl);
+                                               _smockerMockUrl);
   }
 
   auto makeService() -> std::unique_ptr<rbac::ServiceImpl> {

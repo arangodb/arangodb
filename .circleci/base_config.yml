@@ -647,6 +647,27 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
 
+  run-linux-tests-with-smocker:
+    parameters:
+      <<: *shared-test-job-parameters
+    docker:
+      - image: << parameters.docker_image >>
+      - image: ghcr.io/smocker-dev/smocker
+        name: smocker
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    environment:
+      SMOCKER_HOST: smocker
+    steps:
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
+          extraArgs: << parameters.extraArgs >>
+
   run-driver-tests:
     parameters:
       <<: *shared-test-job-parameters
