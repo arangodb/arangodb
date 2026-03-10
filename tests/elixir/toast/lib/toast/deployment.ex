@@ -91,37 +91,9 @@ defmodule Toast.Deployment do
     end
   end
 
-  @spec stop(t(), keyword()) :: :ok | {:error, term()}
+  @spec stop(t(), keyword()) :: {:ok, map()} | {:error, term(), map()}
   def stop(%__MODULE__{controller: pid} = deployment, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
-
-    with :ok <- Controller.shutdown(pid, timeout) do
-      DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
-      :ok
-    end
-  end
-
-  @doc """
-  Stop the deployment and return collected diagnostics.
-
-  Uses a multi-step protocol:
-    1. Agency dump (cluster only, pre-shutdown while agents are alive)
-    2. Shutdown all server processes
-    3. Collect base diagnostics (logs, sanitizer errors) from controller
-    4. Coredump analysis (post-shutdown, separate timeout)
-    5. Merge all diagnostics
-
-  Returns `{:ok, diagnostics}` on success or `{:error, reason, partial_diagnostics}`
-  on shutdown failure (partial diagnostics are still collected when possible).
-  """
-  @spec stop_and_collect(t(), keyword()) ::
-          {:ok, Toast.Diagnostics.Result.t()} | {:error, term(), Toast.Diagnostics.Result.t()}
-  def stop_and_collect(%__MODULE__{controller: pid} = deployment, opts \\ []) do
-    timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
-
-    Logger.debug("Stopping deployment #{deployment.id} and collecting diagnostics")
-
-    agency_dump = capture_pre_shutdown_data(pid, deployment)
 
     shutdown_result =
       try do
@@ -130,18 +102,30 @@ defmodule Toast.Deployment do
         :exit, _ -> {:error, :controller_dead}
       end
 
-    case shutdown_result do
-      :ok ->
-        diagnostics = collect_post_shutdown(pid, deployment, opts, agency_dump)
-        terminate_controller(pid)
-        Logger.debug("Deployment #{deployment.id} stopped, diagnostics collected")
-        {:ok, diagnostics}
+    stop_info = get_stop_info(pid)
+    terminate_controller(pid)
 
-      {:error, reason} ->
-        Logger.warning("Shutdown failed for #{deployment.id}: #{inspect(reason)}")
-        partial = collect_post_shutdown(pid, deployment, opts, agency_dump)
-        terminate_controller(pid)
-        {:error, reason, partial}
+    case shutdown_result do
+      :ok -> {:ok, stop_info}
+      {:error, reason} -> {:error, reason, stop_info}
+    end
+  end
+
+  @spec dump_agency(t(), keyword()) :: :ok | {:error, term()}
+  def dump_agency(deployment, opts \\ [])
+
+  def dump_agency(%__MODULE__{mode: :single_server}, _opts) do
+    {:error, :not_cluster}
+  end
+
+  def dump_agency(%__MODULE__{mode: :cluster, controller: pid}, opts) do
+    timeout = Keyword.get(opts, :timeout, 60_000)
+
+    try do
+      Controller.dump_agency(pid, timeout)
+      :ok
+    catch
+      :exit, _ -> {:error, :controller_dead}
     end
   end
 
@@ -216,12 +200,12 @@ defmodule Toast.Deployment do
 
   def server_by_cluster_id(%__MODULE__{}, _cluster_internal_id), do: {:error, :not_cluster}
 
-  @doc "Get crash details if the deployment has failed. Returns :no_crash if healthy."
-  @spec crash_info(t()) :: {:ok, map()} | :no_crash
-  def crash_info(%__MODULE__{} = d) do
+  @doc "Get the deployment error if crashed. Returns nil if healthy."
+  @spec deployment_error(t()) :: term()
+  def deployment_error(%__MODULE__{} = d) do
     case controller_call(d, :get_info, nil) do
-      nil -> :no_crash
-      info -> extract_crash_info(info.error, info.servers)
+      nil -> nil
+      info -> info.error
     end
   end
 
@@ -242,7 +226,7 @@ defmodule Toast.Deployment do
         {:error, format_degraded_message(deployment, prev_test)}
 
       :failed ->
-        {:error, format_crash_message(crash_info(deployment))}
+        {:error, format_crash_message(deployment_error(deployment))}
 
       other ->
         {:error, "Deployment not ready (status: #{other})"}
@@ -308,98 +292,13 @@ defmodule Toast.Deployment do
     :exit, _ -> {:error, :controller_not_available}
   end
 
-  defp capture_pre_shutdown_data(pid, deployment) do
-    if deployment.mode == :cluster and deployment.config.dump_agency_on_error do
-      # 10s per request, 3 requests per agent, plus 5s base buffer
-      agency_timeout = deployment.config.cluster_agents * 3 * 10_000 + 5_000
-
-      try do
-        Controller.dump_agency(pid, agency_timeout)
-      catch
-        :exit, _ -> nil
-      end
+  defp get_stop_info(pid) do
+    try do
+      info = Controller.get_info(pid)
+      %{servers: info[:servers] || %{}, error: info[:error]}
+    catch
+      :exit, _ -> %{servers: %{}, error: nil}
     end
-  end
-
-  defp collect_post_shutdown(pid, deployment, opts, agency_dump) do
-    info =
-      try do
-        Controller.get_info(pid)
-      catch
-        :exit, _ -> nil
-      end
-
-    base_diagnostics = if info, do: info[:diagnostics]
-    servers = if info, do: info[:servers], else: %{}
-
-    coredump_reports = collect_coredumps(servers, deployment, opts)
-
-    merge_diagnostics(base_diagnostics, agency_dump, coredump_reports)
-  end
-
-  defp collect_coredumps(servers, deployment, opts) do
-    debugger = resolve_debugger(deployment, opts)
-
-    case debugger do
-      :none ->
-        []
-
-      {:ok, debugger_module} ->
-        coredump_timeout =
-          Keyword.get(opts, :coredump_timeout, deployment.config.coredump_timeout)
-
-        pid_history = Keyword.get(opts, :pid_history, %{})
-        server_infos = server_info_for_coredumps(servers, pid_history)
-
-        Toast.Diagnostics.Coredump.collect(
-          servers: server_infos,
-          debugger: debugger_module,
-          timeout: coredump_timeout
-        )
-    end
-  end
-
-  defp resolve_debugger(deployment, opts) do
-    configured = Keyword.get(opts, :debugger, deployment.config.debugger)
-
-    case configured do
-      :gdb -> {:ok, Toast.Diagnostics.Coredump.GDB}
-      :lldb -> {:ok, Toast.Diagnostics.Coredump.LLDB}
-      :none -> :none
-      :auto -> Toast.Diagnostics.Coredump.detect_debugger()
-      nil -> Toast.Diagnostics.Coredump.detect_debugger()
-      module when is_atom(module) -> {:ok, module}
-    end
-  end
-
-  defp server_info_for_coredumps(servers, pid_history) when is_map(servers) do
-    servers
-    |> Map.values()
-    |> Enum.map(fn server ->
-      binary_path =
-        if server.launch_spec, do: server.launch_spec.executable, else: nil
-
-      historical_pids = Map.get(pid_history, server.id, [])
-      all_pids = merge_pids(server.pid, historical_pids)
-
-      %{
-        id: server.id,
-        os_pid: server.pid,
-        os_pids: all_pids,
-        server_dir: server.server_dir,
-        binary_path: binary_path
-      }
-    end)
-    |> Enum.filter(fn info -> info.binary_path && info.os_pids != [] end)
-  end
-
-  defp server_info_for_coredumps(_, _pid_history), do: []
-
-  defp merge_pids(current_pid, historical_pids) do
-    pids = if current_pid, do: [current_pid], else: []
-
-    (pids ++ historical_pids)
-    |> Enum.uniq()
   end
 
   defp terminate_controller(pid) do
@@ -410,58 +309,30 @@ defmodule Toast.Deployment do
     end
   end
 
-  defp merge_diagnostics(base, agency_dump, coredump_reports) do
-    %Toast.Diagnostics.Result{
-      servers: base || %{},
-      agency_dump: agency_dump,
-      coredump_reports: coredump_reports
-    }
-  end
-
-  defp extract_crash_info({:server_crashed, server_id, crash_info}, servers) do
-    server = if servers, do: servers[server_id]
-    log_file = if server, do: server.log_file
-    log_report = Toast.Diagnostics.LogAnalyzer.parse(log_file)
-
-    {:ok,
-     %{
-       server_id: server_id,
-       server_crash_info: crash_info,
-       log_report: log_report,
-       log_file: log_file
-     }}
-  end
-
-  defp extract_crash_info(_error, _servers), do: :no_crash
-
-  defp format_crash_message(:no_crash) do
+  defp format_crash_message(nil) do
     "Deployment failed (no crash details available)"
   end
 
-  defp format_crash_message({:ok, details}) do
-    alias Toast.Diagnostics.LogAnalyzer
-
+  defp format_crash_message({:server_crashed, server_id, crash_info}) do
     [
       "Server crashed",
-      if(details.server_id, do: "(#{details.server_id})"),
-      if(details.server_crash_info, do: format_crash_exit(details.server_crash_info)),
-      format_crash_log_summary(details.log_report, LogAnalyzer)
+      "(#{server_id})",
+      if(crash_info, do: format_crash_exit(crash_info))
     ]
     |> compact_join(" ")
+  end
+
+  defp format_crash_message({:server_unhealthy, server_id}) do
+    "Server became unresponsive (#{server_id})"
+  end
+
+  defp format_crash_message(_error) do
+    "Deployment failed (unknown error)"
   end
 
   defp format_crash_exit(ci) do
     signal_part = if ci.signal, do: " signal=#{ci.signal}", else: ""
     "exit_status=#{ci.exit_status}#{signal_part}"
-  end
-
-  defp format_crash_log_summary(nil, _), do: nil
-
-  defp format_crash_log_summary(log_report, parser) do
-    case parser.format_summary(log_report) do
-      "No crash detected" -> nil
-      summary -> "- #{summary}"
-    end
   end
 
   defp controller_call_control(deployment, op, target, opts \\ []) do

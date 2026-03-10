@@ -8,7 +8,7 @@ defmodule Toast.DiagnosticsTestHelpers do
   def at(seconds), do: DateTime.add(@base_time, seconds, :second)
 
   def make_test(opts \\ []) do
-    %ToastTest.TestResult{
+    %{
       module: Keyword.get(opts, :module, SmokeTest.VersionTest),
       name: Keyword.get(opts, :name, "test server version"),
       outcome: :passed,

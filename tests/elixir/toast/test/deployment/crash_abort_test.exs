@@ -54,15 +54,15 @@ defmodule Toast.Deployment.CrashAbortTest do
       assert Toast.Deployment.status(deployment) == :stopped
     end
 
-    test "Deployment.crash_info/1 returns :no_crash for healthy controller" do
+    test "Deployment.deployment_error/1 returns nil for healthy controller" do
       {:ok, pid} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
 
       deployment = make_deployment(pid, id: "test-healthy")
-      assert Toast.Deployment.crash_info(deployment) == :no_crash
+      assert Toast.Deployment.deployment_error(deployment) == nil
     end
 
-    test "Deployment.crash_info/1 returns crash details" do
+    test "Deployment.deployment_error/1 returns crash details" do
       {:ok, pid} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
 
@@ -76,10 +76,9 @@ defmodule Toast.Deployment.CrashAbortTest do
       :sys.get_state(pid)
 
       deployment = make_deployment(pid, id: "test-crash-info")
-      assert {:ok, details} = Toast.Deployment.crash_info(deployment)
-      assert details.server_id == "test-server"
-      assert details.server_crash_info == crash_info
-      assert details.log_report == nil
+
+      assert {:server_crashed, "test-server", ^crash_info} =
+               Toast.Deployment.deployment_error(deployment)
     end
   end
 
@@ -144,7 +143,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       assert Toast.Deployment.status(deployment) == :failed
     end
 
-    test "Deployment.crash_info/1 returns cluster crash details with server_id" do
+    test "Deployment.deployment_error/1 returns cluster crash details with server_id" do
       {:ok, pid} =
         Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
@@ -159,17 +158,16 @@ defmodule Toast.Deployment.CrashAbortTest do
       send(pid, {:server_crashed, "agent-1", crash_info})
       :sys.get_state(pid)
 
-      assert {:ok, details} = Toast.Deployment.crash_info(deployment)
-      assert details.server_id == "agent-1"
-      assert details.server_crash_info == crash_info
+      assert {:server_crashed, "agent-1", ^crash_info} =
+               Toast.Deployment.deployment_error(deployment)
     end
 
-    test "Deployment.crash_info/1 returns :no_crash for healthy cluster controller" do
+    test "Deployment.deployment_error/1 returns nil for healthy cluster controller" do
       {:ok, pid} =
         Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
       deployment = make_deployment(pid, id: "test-cluster-healthy", mode: :cluster)
-      assert Toast.Deployment.crash_info(deployment) == :no_crash
+      assert Toast.Deployment.deployment_error(deployment) == nil
     end
   end
 

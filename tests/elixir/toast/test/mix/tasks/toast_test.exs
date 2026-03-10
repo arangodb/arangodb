@@ -375,77 +375,59 @@ defmodule Mix.Tasks.ToastTest do
       refute Summary.has_sanitizer_errors?([])
     end
 
-    test "returns false for suite with nil diagnostics" do
-      suites = [%{diagnostics: nil}]
-
-      refute Summary.has_sanitizer_errors?(suites)
+    test "returns false for suite without suite_result" do
+      refute Summary.has_sanitizer_errors?([%{suite_module: MyApp.Test}])
     end
 
-    test "returns false for suite with empty diagnostics map" do
-      suites = [%{diagnostics: %{}}]
+    test "returns false when no sanitizer issues" do
+      suite_result = %ToastTest.SuiteResult{
+        suite: "smoke",
+        started_at: ~U[2026-01-01 00:00:00Z],
+        finished_at: ~U[2026-01-01 00:01:00Z],
+        times_us: %{async: 0, load: 0, run: 60_000_000},
+        issues: [%{type: :test_failure, scope: :suite, confidence: nil, detail: %{}}]
+      }
 
-      refute Summary.has_sanitizer_errors?(suites)
+      refute Summary.has_sanitizer_errors?([%{suite_result: suite_result}])
     end
 
-    test "returns false when diagnostics has no sanitizer_errors key" do
-      suites = [%{diagnostics: %{"s1" => %{server: %{log_file: "/log"}}}}]
+    test "returns true when sanitizer issues exist" do
+      suite_result = %ToastTest.SuiteResult{
+        suite: "smoke",
+        started_at: ~U[2026-01-01 00:00:00Z],
+        finished_at: ~U[2026-01-01 00:01:00Z],
+        times_us: %{async: 0, load: 0, run: 60_000_000},
+        issues: [
+          %{type: :sanitizer_report, scope: :suite, confidence: nil, detail: %{server: "s1"}}
+        ]
+      }
 
-      refute Summary.has_sanitizer_errors?(suites)
+      assert Summary.has_sanitizer_errors?([%{suite_result: suite_result}])
     end
 
-    test "returns false when sanitizer_errors is empty list" do
-      suites = [%{diagnostics: %{"s1" => %{sanitizer_errors: []}}}]
+    test "returns true if any suite has sanitizer errors" do
+      clean = %ToastTest.SuiteResult{
+        suite: "clean",
+        started_at: ~U[2026-01-01 00:00:00Z],
+        finished_at: ~U[2026-01-01 00:01:00Z],
+        times_us: %{async: 0, load: 0, run: 60_000_000},
+        issues: []
+      }
 
-      refute Summary.has_sanitizer_errors?(suites)
-    end
+      dirty = %ToastTest.SuiteResult{
+        suite: "dirty",
+        started_at: ~U[2026-01-01 00:00:00Z],
+        finished_at: ~U[2026-01-01 00:01:00Z],
+        times_us: %{async: 0, load: 0, run: 60_000_000},
+        issues: [
+          %{type: :sanitizer_report, scope: :suite, confidence: nil, detail: %{server: "s1"}}
+        ]
+      }
 
-    test "returns true for single-server sanitizer errors" do
-      suites = [
-        %{diagnostics: %{"s1" => %{sanitizer_errors: [%{file_path: "/tmp/san.log"}]}}}
-      ]
-
-      assert Summary.has_sanitizer_errors?(suites)
-    end
-
-    test "returns true for cluster-level sanitizer errors in nested diagnostics" do
-      suites = [
-        %{
-          diagnostics: %{
-            "dbserver1" => %{sanitizer_errors: [%{file_path: "/tmp/san.log"}]},
-            "dbserver2" => %{sanitizer_errors: []}
-          }
-        }
-      ]
-
-      assert Summary.has_sanitizer_errors?(suites)
-    end
-
-    test "returns false when all cluster servers have empty sanitizer errors" do
-      suites = [
-        %{
-          diagnostics: %{
-            "dbserver1" => %{sanitizer_errors: []},
-            "dbserver2" => %{sanitizer_errors: []}
-          }
-        }
-      ]
-
-      refute Summary.has_sanitizer_errors?(suites)
-    end
-
-    test "returns true if any suite has errors among multiple suites" do
-      suites = [
-        %{diagnostics: %{"s1" => %{sanitizer_errors: []}}},
-        %{diagnostics: %{"s2" => %{sanitizer_errors: [%{file_path: "/err"}]}}}
-      ]
-
-      assert Summary.has_sanitizer_errors?(suites)
-    end
-
-    test "handles suite maps accessed via keyword-style :diagnostics" do
-      suites = [[diagnostics: %{"s1" => %{sanitizer_errors: [%{file_path: "/err"}]}}]]
-
-      assert Summary.has_sanitizer_errors?(suites)
+      assert Summary.has_sanitizer_errors?([
+               %{suite_result: clean},
+               %{suite_result: dirty}
+             ])
     end
   end
 
@@ -455,108 +437,62 @@ defmodule Mix.Tasks.ToastTest do
     end
 
     test "extracts name from suite_module" do
-      suites = [[suite_module: MyApp.Smoke, diagnostics: nil]]
+      suites = [%{suite_module: MyApp.Smoke}]
       [diag] = Summary.build_suite_diagnostics(suites)
 
       assert diag.name == "MyApp.Smoke"
     end
 
-    test "extracts single-server log files" do
-      suites = [
-        [
-          suite_module: MyApp.Test,
-          diagnostics: %{"s1" => %{server: %{log_file: "/tmp/arangod.log"}}}
-        ]
-      ]
-
-      [diag] = Summary.build_suite_diagnostics(suites)
-      assert diag.log_files == ["/tmp/arangod.log"]
-    end
-
-    test "extracts cluster log files from nested server diagnostics" do
-      suites = [
-        [
-          suite_module: MyApp.Test,
-          diagnostics: %{
-            "db1" => %{server: %{log_file: "/tmp/db1.log"}},
-            "db2" => %{server: %{log_file: "/tmp/db2.log"}}
+    test "extracts core dump paths from crash issues" do
+      suite_result = %ToastTest.SuiteResult{
+        suite: "smoke",
+        started_at: ~U[2026-01-01 00:00:00Z],
+        finished_at: ~U[2026-01-01 00:01:00Z],
+        times_us: %{async: 0, load: 0, run: 60_000_000},
+        issues: [
+          %{
+            type: :crash,
+            scope: :suite,
+            confidence: nil,
+            detail: %{server: "s1", coredump_path: "/cores/core.1234"}
           }
         ]
-      ]
+      }
 
-      [diag] = Summary.build_suite_diagnostics(suites)
-      assert Enum.sort(diag.log_files) == ["/tmp/db1.log", "/tmp/db2.log"]
-    end
-
-    test "extracts sanitizer file paths" do
-      suites = [
-        [
-          suite_module: MyApp.Test,
-          diagnostics: %{
-            "s1" => %{
-              sanitizer_errors: [
-                %{file_path: "/tmp/tsan.log"},
-                %{file_path: "/tmp/asan.log"}
-              ]
-            }
-          }
-        ]
-      ]
-
-      [diag] = Summary.build_suite_diagnostics(suites)
-      assert Enum.sort(diag.sanitizer_files) == ["/tmp/asan.log", "/tmp/tsan.log"]
-    end
-
-    test "extracts cluster sanitizer file paths" do
-      suites = [
-        [
-          suite_module: MyApp.Test,
-          diagnostics: %{
-            "srv1" => %{sanitizer_errors: [%{file_path: "/tmp/s1.log"}]},
-            "srv2" => %{sanitizer_errors: [%{file_path: "/tmp/s2.log"}]}
-          }
-        ]
-      ]
-
-      [diag] = Summary.build_suite_diagnostics(suites)
-      assert Enum.sort(diag.sanitizer_files) == ["/tmp/s1.log", "/tmp/s2.log"]
-    end
-
-    test "extracts core dump paths" do
-      suites = [
-        [
-          suite_module: MyApp.Test,
-          diagnostics: %Toast.Diagnostics.Result{
-            servers: %{"s1" => %{}},
-            coredump_reports: [%{core_path: "/cores/core.1234"}]
-          }
-        ]
-      ]
-
+      suites = [%{suite_module: MyApp.Test, suite_result: suite_result}]
       [diag] = Summary.build_suite_diagnostics(suites)
       assert diag.core_dumps == ["/cores/core.1234"]
     end
 
     test "extracts multiple core dump paths" do
-      suites = [
-        [
-          suite_module: MyApp.Test,
-          diagnostics: %Toast.Diagnostics.Result{
-            servers: %{"srv1" => %{}, "srv2" => %{}},
-            coredump_reports: [
-              %{core_path: "/cores/core.1"},
-              %{core_path: "/cores/core.2"}
-            ]
+      suite_result = %ToastTest.SuiteResult{
+        suite: "smoke",
+        started_at: ~U[2026-01-01 00:00:00Z],
+        finished_at: ~U[2026-01-01 00:01:00Z],
+        times_us: %{async: 0, load: 0, run: 60_000_000},
+        issues: [
+          %{
+            type: :crash,
+            scope: :suite,
+            confidence: nil,
+            detail: %{server: "s1", coredump_path: "/cores/core.1"}
+          },
+          %{
+            type: :crash,
+            scope: :suite,
+            confidence: nil,
+            detail: %{server: "s2", coredump_path: "/cores/core.2"}
           }
         ]
-      ]
+      }
 
+      suites = [%{suite_module: MyApp.Test, suite_result: suite_result}]
       [diag] = Summary.build_suite_diagnostics(suites)
       assert Enum.sort(diag.core_dumps) == ["/cores/core.1", "/cores/core.2"]
     end
 
-    test "nil diagnostics produces empty lists for all file fields" do
-      suites = [[suite_module: MyApp.Test, diagnostics: nil]]
+    test "no suite_result produces empty lists for all file fields" do
+      suites = [%{suite_module: MyApp.Test}]
       [diag] = Summary.build_suite_diagnostics(suites)
 
       assert diag.log_files == []
@@ -566,23 +502,20 @@ defmodule Mix.Tasks.ToastTest do
       assert diag.agency_dumps == []
     end
 
-    test "filters out nil file_path values from sanitizer errors" do
-      suites = [
-        [
-          suite_module: MyApp.Test,
-          diagnostics: %{
-            "s1" => %{
-              sanitizer_errors: [
-                %{file_path: "/tmp/ok.log"},
-                %{file_path: nil}
-              ]
-            }
-          }
+    test "crash without coredump_path is skipped" do
+      suite_result = %ToastTest.SuiteResult{
+        suite: "smoke",
+        started_at: ~U[2026-01-01 00:00:00Z],
+        finished_at: ~U[2026-01-01 00:01:00Z],
+        times_us: %{async: 0, load: 0, run: 60_000_000},
+        issues: [
+          %{type: :crash, scope: :suite, confidence: nil, detail: %{server: "s1"}}
         ]
-      ]
+      }
 
+      suites = [%{suite_module: MyApp.Test, suite_result: suite_result}]
       [diag] = Summary.build_suite_diagnostics(suites)
-      assert diag.sanitizer_files == ["/tmp/ok.log"]
+      assert diag.core_dumps == []
     end
   end
 

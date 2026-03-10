@@ -297,8 +297,7 @@ defmodule ToastTest.CLIFormatter do
   @doc """
   Print a failure summary for the given list of failed `%ExUnit.Test{}` structs.
 
-  Called by SuiteAnalysis to position the failure summary within the
-  severity-ordered diagnostics output.
+  Called by the runner to print failure details in the post-execution summary.
   """
   @spec print_failure_summary([ExUnit.Test.t()]) :: :ok
   def print_failure_summary([]), do: :ok

@@ -145,7 +145,6 @@ defmodule Toast.Deployment.Controller.Cluster do
       primary_endpoint: coordinator_endpoint,
       servers: state.servers,
       error: state.error,
-      diagnostics: state.diagnostics,
       agency_dump: state.mode_state.agency_dump
     }
   end
@@ -405,20 +404,8 @@ defmodule Toast.Deployment.Controller.Cluster do
     Logger.debug("#{state.id}: stopping agents")
     stop_servers(state.mode_state.agents, state, Helpers.remaining_ms(deadline))
 
-    diagnostics = Helpers.collect_diagnostics(state, &crashed_server_error(state.error, &1))
-    Logger.debug("#{state.id}: diagnostics collected")
-    Helpers.finalize_shutdown(state, diagnostics)
+    %{state | status: :stopped, servers: Helpers.clear_server_pids(state.servers)}
   end
-
-  defp crashed_server_error({:server_crashed, crashed_id, crash_info}, server_id)
-       when server_id == crashed_id,
-       do: {:server_crashed, crash_info}
-
-  defp crashed_server_error({:server_unhealthy, crashed_id}, server_id)
-       when server_id == crashed_id,
-       do: {:server_crashed, nil}
-
-  defp crashed_server_error(_error, _server_id), do: nil
 
   defp stop_servers(server_ids, state, timeout) do
     on_event = state.on_event

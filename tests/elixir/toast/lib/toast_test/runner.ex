@@ -13,7 +13,7 @@ defmodule ToastTest.Runner do
 
   defmodule Config do
     @moduledoc false
-    @enforce_keys [:manager, :stats_pid, :result_formatter_pid, :suite_run]
+    @enforce_keys [:manager, :stats_pid, :result_collector_pid, :suite_run]
     defstruct [
       :capture_log,
       :exclude,
@@ -21,7 +21,7 @@ defmodule ToastTest.Runner do
       :manager,
       :max_failures,
       :only_test_ids,
-      :result_formatter_pid,
+      :result_collector_pid,
       :stats_pid,
       :suite_deadline,
       :suite_run,
@@ -38,7 +38,7 @@ defmodule ToastTest.Runner do
             manager: {pid(), pid()},
             max_failures: non_neg_integer() | :infinity | nil,
             only_test_ids: MapSet.t() | nil,
-            result_formatter_pid: pid(),
+            result_collector_pid: pid(),
             stats_pid: pid(),
             suite_deadline: integer() | nil,
             suite_run: ToastTest.SuiteRun.t(),
@@ -101,16 +101,21 @@ defmodule ToastTest.Runner do
         suite_entry, {results, acc} ->
           {suite_module, test_modules, suite_opts} = normalize_suite_entry(suite_entry)
 
-          suite_result =
-            run_suite(suite_module, test_modules, global_opts, suite_opts, global_deadline)
+          if aborted?() do
+            Logger.info("Skipping suite #{inspect(suite_module)} (aborted)")
+            {results, acc}
+          else
+            suite_result =
+              run_suite(suite_module, test_modules, global_opts, suite_opts, global_deadline)
 
-          result = %{
-            suite_module: suite_module,
-            stats: suite_result.stats,
-            diagnostics: suite_result.diagnostics
-          }
+            result = %{
+              suite_module: suite_module,
+              stats: suite_result.stats,
+              suite_result: suite_result.suite_result
+            }
 
-          {[result | results], merge_stats(acc, suite_result.stats)}
+            {[result | results], merge_stats(acc, suite_result.stats)}
+          end
       end)
 
     %{
@@ -193,12 +198,14 @@ defmodule ToastTest.Runner do
     toast_config = Toast.Config.load(deployment_opts)
     callback_opts = Keyword.take(deployment_opts, [:on_crash, :on_event])
 
+    suite_name = derive_suite_name(suite_module)
+
     case Toast.Deployment.start(mode, toast_config, callback_opts) do
       {:ok, deployment} ->
         suite_run = %{suite_run | deployment: deployment}
         ToastTest.DeploymentRegistry.put(suite_module, deployment)
 
-        {stats, results} =
+        {stats, test_data} =
           case run_suite_setup(suite_module, deployment) do
             {:ok, extra_context} ->
               ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
@@ -207,36 +214,44 @@ defmodule ToastTest.Runner do
               result
 
             {:error, reason} ->
-              mark_all_errored_stats(test_modules, reason, global_opts)
+              mark_all_errored_stats(test_modules, reason, global_opts, suite_name)
           end
 
-        diagnostics = collect_diagnostics(deployment)
+        {servers, error} = stop_deployment(deployment)
+        pid_history = ToastTest.ProcessHistory.pids_by_server()
+        artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history)
 
-        ToastTest.SuiteAnalysis.finalize(
-          suite_module,
-          results,
-          diagnostics,
-          toast_config.result_dir
-        )
+        issues =
+          ToastTest.Attribution.run(test_data, artifacts, error, skip_coredump_analysis: false)
+
+        suite_result = ToastTest.SuiteResult.build(test_data, issues)
+        ToastTest.SuiteResult.write_all(suite_result, toast_config.result_dir)
+        print_post_exec_summary(suite_result)
 
         cleanup_between_suites()
-        %{stats: stats, diagnostics: diagnostics}
+        %{stats: stats, suite_result: suite_result}
 
       {:error, reason} ->
         Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
-        {stats, results} = mark_all_errored_stats(test_modules, reason, global_opts)
-        ToastTest.SuiteAnalysis.finalize(suite_module, results, nil, toast_config.result_dir)
+        abort!({:deploy_failed, "Deployment failed: #{inspect(reason)}"})
+
+        {stats, test_data} =
+          mark_all_skipped_stats(test_modules, reason, global_opts, suite_name)
+
+        suite_result = ToastTest.SuiteResult.build(test_data, [])
+
         cleanup_between_suites()
-        %{stats: stats, diagnostics: nil}
+        %{stats: stats, suite_result: suite_result}
     end
   end
 
   defp run_suite_tests(suite_run, test_modules, global_opts, suite_opts) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
-    {manager, stats_pid, result_formatter_pid} = start_event_pipeline(opts)
+    suite_name = derive_suite_name(suite_run.suite_module)
+    {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
 
     config =
-      build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_formatter_pid)
+      build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_collector_pid)
 
     # Expose manager to SIGQUIT signal handler (reads via Process.info/2)
     Process.put(:toast_manager, manager)
@@ -251,7 +266,7 @@ defmodule ToastTest.Runner do
     collect_suite_stats(config, start_time)
   end
 
-  defp start_event_pipeline(opts) do
+  defp start_event_pipeline(opts, suite_name) do
     {:ok, manager} = Compat.start_event_manager()
     {:ok, stats_pid} = Compat.add_runner_stats(manager, opts)
 
@@ -260,17 +275,22 @@ defmodule ToastTest.Runner do
       |> Keyword.get(:formatters, [])
       |> List.delete(ExUnit.CLIFormatter)
       |> ensure_in_list(ToastTest.CLIFormatter, :front)
-      |> ensure_in_list(ToastTest.ResultFormatter, :back)
+      |> ensure_in_list(ToastTest.ResultCollector, :back)
 
-    result_formatter_pid =
+    result_collector_pid =
       for formatter <- formatters do
-        {:ok, pid} = Compat.add_formatter(manager, formatter, opts)
+        formatter_opts =
+          if formatter == ToastTest.ResultCollector,
+            do: Keyword.put(opts, :suite, suite_name),
+            else: opts
+
+        {:ok, pid} = Compat.add_formatter(manager, formatter, formatter_opts)
         {formatter, pid}
       end
       |> Map.new()
-      |> Map.fetch!(ToastTest.ResultFormatter)
+      |> Map.fetch!(ToastTest.ResultCollector)
 
-    {manager, stats_pid, result_formatter_pid}
+    {manager, stats_pid, result_collector_pid}
   end
 
   defp ensure_in_list(list, item, :front) do
@@ -281,7 +301,7 @@ defmodule ToastTest.Runner do
     if item in list, do: list, else: list ++ [item]
   end
 
-  defp build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_formatter_pid) do
+  defp build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_collector_pid) do
     only_test_ids =
       case Keyword.fetch(suite_opts, :only_test_ids) do
         {:ok, ids} -> ids
@@ -295,7 +315,7 @@ defmodule ToastTest.Runner do
       manager: manager,
       max_failures: opts[:max_failures],
       only_test_ids: only_test_ids,
-      result_formatter_pid: result_formatter_pid,
+      result_collector_pid: result_collector_pid,
       stats_pid: stats_pid,
       suite_deadline: suite_run.suite_deadline,
       suite_run: suite_run,
@@ -318,13 +338,13 @@ defmodule ToastTest.Runner do
     Compat.suite_finished(config.manager, times_us)
 
     stats = Compat.stats(config.stats_pid)
-    results = ToastTest.ResultFormatter.get_results(config.result_formatter_pid)
+    test_data = ToastTest.ResultCollector.get_data(config.result_collector_pid)
     Compat.stop(config.manager)
 
     after_suite_callbacks = Application.fetch_env!(:ex_unit, :after_suite)
     Enum.each(after_suite_callbacks, fn callback -> callback.(stats) end)
 
-    {stats, results}
+    {stats, test_data}
   end
 
   defp run_suite_modules(config, test_modules) do
@@ -442,9 +462,41 @@ defmodule ToastTest.Runner do
     }
   end
 
-  defp mark_all_errored_stats(test_modules, reason, global_opts) do
+  defp mark_all_skipped_stats(test_modules, reason, global_opts, suite_name) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
-    {manager, stats_pid, result_formatter_pid} = start_event_pipeline(opts)
+    {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
+    Compat.suite_started(manager, opts)
+
+    skip_reason = @abort_prefix <> "Deployment failed: #{inspect(reason)}"
+
+    for module <- test_modules do
+      test_module = Compat.get_test_metadata(module)
+      Compat.module_started(manager, test_module)
+
+      skipped_tests =
+        for test <- test_module.tests do
+          %{test | state: {:skipped, skip_reason}}
+        end
+
+      for test <- skipped_tests do
+        Compat.test_started(manager, test)
+        Compat.test_finished(manager, test)
+      end
+
+      Compat.module_finished(manager, %{test_module | tests: skipped_tests})
+    end
+
+    times_us = %{async: nil, load: nil, run: 0}
+    Compat.suite_finished(manager, times_us)
+    stats = Compat.stats(stats_pid)
+    test_data = ToastTest.ResultCollector.get_data(result_collector_pid)
+    Compat.stop(manager)
+    {stats, test_data}
+  end
+
+  defp mark_all_errored_stats(test_modules, reason, global_opts, suite_name) do
+    opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
+    {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
     Compat.suite_started(manager, opts)
 
     for module <- test_modules do
@@ -454,9 +506,9 @@ defmodule ToastTest.Runner do
     times_us = %{async: nil, load: nil, run: 0}
     Compat.suite_finished(manager, times_us)
     stats = Compat.stats(stats_pid)
-    results = ToastTest.ResultFormatter.get_results(result_formatter_pid)
+    test_data = ToastTest.ResultCollector.get_data(result_collector_pid)
     Compat.stop(manager)
-    {stats, results}
+    {stats, test_data}
   end
 
   defp emit_errored_module(manager, module, reason) do
@@ -478,14 +530,29 @@ defmodule ToastTest.Runner do
     Compat.module_finished(manager, test_module)
   end
 
-  defp collect_diagnostics(deployment) do
-    pid_history = ToastTest.ProcessHistory.pids_by_server()
-    opts = [pid_history: pid_history]
-
-    case Toast.Deployment.stop_and_collect(deployment, opts) do
-      {:ok, diagnostics} -> diagnostics
-      {:error, _reason, partial} -> partial
+  defp stop_deployment(deployment) do
+    case Toast.Deployment.stop(deployment) do
+      {:ok, info} -> {info.servers, info.error}
+      {:error, _reason, info} -> {info.servers, info.error}
     end
+  end
+
+  defp print_post_exec_summary(suite_result) do
+    test_failures = Enum.filter(suite_result.issues, &(&1.type == :test_failure))
+    exunit_tests = Enum.map(test_failures, & &1.detail.test)
+    if exunit_tests != [], do: ToastTest.CLIFormatter.print_failure_summary(exunit_tests)
+
+    for %{type: :crash, detail: detail} <- suite_result.issues do
+      IO.puts([IO.ANSI.red(), "Server crashed: #{detail.server}", IO.ANSI.reset()])
+    end
+
+    for %{type: :sanitizer_report, detail: detail} <- suite_result.issues do
+      IO.puts([IO.ANSI.yellow(), "Sanitizer report: #{detail.server}", IO.ANSI.reset()])
+    end
+  end
+
+  defp derive_suite_name(suite_module) do
+    suite_module |> Module.split() |> hd() |> Macro.underscore()
   end
 
   defp cleanup_between_suites do

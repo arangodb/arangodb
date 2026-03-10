@@ -31,7 +31,7 @@ defmodule Toast.Deployment.IntegrationTest do
 
       assert cursor_body["result"] == [1]
 
-      assert :ok = Toast.Deployment.stop(deployment)
+      assert {:ok, _stop_info} = Toast.Deployment.stop(deployment)
     end
 
     test "server process is gone after stop" do
@@ -41,7 +41,7 @@ defmodule Toast.Deployment.IntegrationTest do
       info = Controller.get_info(server_pid)
       assert info.status == :ready
 
-      assert :ok = Toast.Deployment.stop(deployment)
+      assert {:ok, _stop_info} = Toast.Deployment.stop(deployment)
 
       refute Process.alive?(deployment.controller)
     end
@@ -53,7 +53,7 @@ defmodule Toast.Deployment.IntegrationTest do
       assert {:ok, %{status: 200}} =
                Req.get(deployment.endpoint <> "/_api/version", retry: false)
 
-      assert :ok = Toast.Deployment.stop(deployment)
+      assert {:ok, _stop_info} = Toast.Deployment.stop(deployment)
     end
   end
 
@@ -80,7 +80,7 @@ defmodule Toast.Deployment.IntegrationTest do
 
       assert cursor_body["result"] == [1]
 
-      assert :ok = Toast.Deployment.stop(deployment)
+      assert {:ok, _stop_info} = Toast.Deployment.stop(deployment)
     end
 
     @tag timeout: 300_000
@@ -89,7 +89,7 @@ defmodule Toast.Deployment.IntegrationTest do
 
       assert Controller.get_status(deployment.controller) == :ready
 
-      assert :ok = Toast.Deployment.stop(deployment)
+      assert {:ok, _stop_info} = Toast.Deployment.stop(deployment)
 
       refute Process.alive?(deployment.controller)
     end

@@ -104,7 +104,6 @@ defmodule Toast.Deployment.Controller.SingleServer do
       status: state.status,
       servers: state.servers,
       error: state.error,
-      diagnostics: state.diagnostics,
       primary_endpoint: primary_endpoint
     }
   end
@@ -170,20 +169,8 @@ defmodule Toast.Deployment.Controller.SingleServer do
       )
     end
 
-    diagnostics =
-      case Map.values(state.servers) do
-        [%{server_dir: nil}] -> nil
-        _ -> Helpers.collect_diagnostics(state, fn _server_id -> normalize_error(state.error) end)
-      end
-
-    Logger.debug("#{state.id}: diagnostics collected")
-    Helpers.finalize_shutdown(state, diagnostics)
+    %{state | status: :stopped, servers: Helpers.clear_server_pids(state.servers)}
   end
-
-  defp normalize_error({:server_crashed, _server_id, crash_info}),
-    do: {:server_crashed, crash_info}
-
-  defp normalize_error(other), do: other
 
   defp rollback(state, reason) do
     Logger.debug("Rolling back #{state.id} due to: #{inspect(reason)}")

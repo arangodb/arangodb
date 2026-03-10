@@ -6,7 +6,7 @@ defmodule ToastTest.Interactive do
 
   @on_exit_timeout 30_000
 
-  @spec run(module() | String.t(), keyword()) :: [ToastTest.TestResult.t()]
+  @spec run(module() | String.t(), keyword()) :: [map()]
   def run(module_or_path, opts \\ [])
 
   def run(path, opts) when is_binary(path) do
@@ -62,7 +62,7 @@ defmodule ToastTest.Interactive do
 
           failed =
             Enum.map(tests, fn test ->
-              %ToastTest.TestResult{
+              %{
                 module: module,
                 name: test.name,
                 outcome: :failed,
@@ -75,7 +75,7 @@ defmodule ToastTest.Interactive do
         {:DOWN, ^module_ref, :process, ^module_pid, error} ->
           failed =
             Enum.map(tests, fn test ->
-              %ToastTest.TestResult{
+              %{
                 module: module,
                 name: test.name,
                 outcome: :failed,
@@ -130,14 +130,14 @@ defmodule ToastTest.Interactive do
       receive do
         {^test_pid, :test_finished, :passed} ->
           Process.demonitor(test_ref, [:flush])
-          %ToastTest.TestResult{module: module, name: test.name, outcome: :passed}
+          %{module: module, name: test.name, outcome: :passed, failure: nil}
 
         {^test_pid, :test_finished, {:failed, error}} ->
           Process.demonitor(test_ref, [:flush])
-          %ToastTest.TestResult{module: module, name: test.name, outcome: :failed, failure: error}
+          %{module: module, name: test.name, outcome: :failed, failure: error}
 
         {:DOWN, ^test_ref, :process, ^test_pid, error} ->
-          %ToastTest.TestResult{
+          %{
             module: module,
             name: test.name,
             outcome: :failed,

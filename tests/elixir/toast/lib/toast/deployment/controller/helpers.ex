@@ -85,28 +85,6 @@ defmodule Toast.Deployment.Controller.Helpers do
     ]
   end
 
-  @spec collect_diagnostics(
-          Toast.Deployment.Controller.State.t(),
-          (String.t() -> term())
-        ) :: map()
-  def collect_diagnostics(state, error_for_server_fn) do
-    Map.new(state.servers, fn {server_id, server} ->
-      {server_id,
-       Toast.Diagnostics.build_server_diagnostics(server, error_for_server_fn.(server_id))}
-    end)
-  end
-
-  @spec finalize_shutdown(Toast.Deployment.Controller.State.t(), term()) ::
-          Toast.Deployment.Controller.State.t()
-  def finalize_shutdown(state, diagnostics) do
-    %{
-      state
-      | status: :stopped,
-        servers: clear_server_pids(state.servers),
-        diagnostics: diagnostics
-    }
-  end
-
   @spec clear_server_pids(map()) :: map()
   def clear_server_pids(servers) do
     Map.new(servers, fn {id, server} -> {id, %{server | server_pid: nil, health_monitor: nil}} end)
