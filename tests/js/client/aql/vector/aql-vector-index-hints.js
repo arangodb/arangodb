@@ -69,9 +69,6 @@ function VectorIndexHintsSuite(expectedTrained) {
 
   return {
     setUpAll: function () {
-      if (isCluster) {
-        print("Coordinator endpoint: " + internal.arango.getEndpoint());
-      }
       db._useDatabase("_system");
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -118,9 +115,7 @@ function VectorIndexHintsSuite(expectedTrained) {
       ];
 
       for (const idx of indexes) {
-        print("Creating index: " + JSON.stringify(idx));
         collection.ensureIndex({type: "vector", ...idx});
-        print("Index created: " + JSON.stringify(idx));
         // In cluster, wait for each index build to complete before creating
         // the next one to avoid lock contention between build threads.
         if (isCluster) {
