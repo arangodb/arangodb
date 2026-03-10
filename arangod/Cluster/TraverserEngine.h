@@ -157,9 +157,6 @@ class BaseTraverserEngine : public BaseEngine {
   Result nextEdgeBatch(size_t cursorId, size_t batchId, VPackBuilder& builder);
   void addAndClearStatistics(VPackBuilder& builder);
 
-  virtual void smartSearch(arangodb::velocypack::Slice,
-                           arangodb::velocypack::Builder&) = 0;
-
   virtual void smartSearchUnified(arangodb::velocypack::Slice,
                                   arangodb::velocypack::Builder&) = 0;
 
@@ -228,9 +225,6 @@ class TraverserEngine : public BaseTraverserEngine {
                   arangodb::velocypack::Slice info);
 
   ~TraverserEngine();
-
-  void smartSearch(arangodb::velocypack::Slice,
-                   arangodb::velocypack::Builder&) override;
 
   void smartSearchUnified(arangodb::velocypack::Slice,
                           arangodb::velocypack::Builder&) override;
