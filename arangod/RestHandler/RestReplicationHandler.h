@@ -75,6 +75,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const LoggerState;
   static std::string const LoggerTickRanges;
   static std::string const LoggerFirstTick;
+  static std::string const LoggerLast;
   static std::string const LoggerFollow;
   static std::string const Batch;
   static std::string const Inventory;
@@ -259,6 +260,15 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerFirstTick();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the first tick available in a logfile
+  /// @route GET logger-first-tick
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackObject with minTick of LogfileManager->ranges()
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandLoggerLast();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the available logfile range
