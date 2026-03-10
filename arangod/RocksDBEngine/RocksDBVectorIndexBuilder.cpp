@@ -283,12 +283,10 @@ Result VectorIndexBuildManager::build(RocksDBBuilderIndex::Locker& locker) {
 
 Result VectorIndexBuildManager::build() {
   RocksDBBuilderIndex::Locker locker(_rcoll);
-  LOG_DEVEL << ADB_HERE << "Acquiring collection lock for vector index build";
   if (!std::move(locker.lock()).waitAndGet()) {
     return Result{TRI_ERROR_LOCK_TIMEOUT,
                   "failed to acquire collection lock for vector index build"};
   }
-  LOG_DEVEL << ADB_HERE << "Acquired collection lock for vector index build";
 
   return buildImpl(locker, /*foreground=*/false);
 }
@@ -297,6 +295,11 @@ Result VectorIndexBuildManager::buildImpl(RocksDBBuilderIndex::Locker& locker,
                                           bool foreground) {
   if (_index.collection().deleted()) {
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+
+  if (foreground) {
+    _index.setTrainingState(VectorIndexTrainingState::kUntrained,
+                            VectorIndexTrainingState::kTraining);
   }
 
   rocksdb::Slice upper(_bounds.end());
@@ -343,7 +346,8 @@ Result VectorIndexBuildManager::buildImpl(RocksDBBuilderIndex::Locker& locker,
          "path: "
       << std::boolalpha << foreground;
 
-  _index.applyTrainingResult(std::move(faissIndex));
+  auto trainedData = serializeIndex(*faissIndex);
+  _index.applyTrainingResult(std::move(faissIndex), std::move(trainedData));
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
                           VectorIndexTrainingState::kIngesting);
 

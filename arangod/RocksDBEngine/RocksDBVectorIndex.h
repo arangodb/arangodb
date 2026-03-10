@@ -107,7 +107,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::int64_t trainingThreshold() const noexcept { return _trainingThreshold; }
 
-  void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex);
+  void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
+                           TrainedData trainedData);
 
   Result ingestVectors(rocksdb::DB* rootDB,
                        std::unique_ptr<rocksdb::Iterator> documentIterator);
@@ -166,6 +167,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
+  TrainedData _trainedData;
   StoredValues const _storedValues;
 
   std::atomic<std::int64_t> _documentCount{0};

@@ -368,12 +368,9 @@ static Result fillIndex(
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
   if constexpr (foreground) {
-    LOG_DEVEL << ADB_HERE << "Filling index foreground";
     if (ridx.type() == arangodb::Index::TRI_IDX_TYPE_VECTOR_INDEX) {
-      LOG_DEVEL << ADB_HERE << "Vector index found";
       auto& vecIdx = dynamic_cast<RocksDBVectorIndex&>(ridx);
       if (vecIdx.faissIndex() != nullptr) {
-        LOG_DEVEL << ADB_HERE << "Faiss index found, ingesting vectors";
         it->Seek(bounds.start());
         return vecIdx.ingestVectors(rootDB, std::move(it));
       }

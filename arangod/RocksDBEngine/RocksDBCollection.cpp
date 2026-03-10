@@ -623,12 +623,13 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
           vecIdx.trainingThreshold()) {
         vector::VectorIndexBuildManager mgr(vecIdx);
         res = mgr.build(locker);
-        if (res.ok()) {
-          vecIdx.setDocumentCount(
-              static_cast<std::int64_t>(_meta.numberDocuments()));
-          vecIdx.setTrainingState(VectorIndexTrainingState::kIngesting,
-                                  VectorIndexTrainingState::kReady);
+        if (res.fail()) {
+          co_return res;
         }
+        vecIdx.setDocumentCount(
+            static_cast<std::int64_t>(_meta.numberDocuments()));
+        vecIdx.setTrainingState(VectorIndexTrainingState::kIngesting,
+                                VectorIndexTrainingState::kReady);
         vectorFastPath = true;
       }
     }

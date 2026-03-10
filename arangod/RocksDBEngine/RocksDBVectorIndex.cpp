@@ -124,10 +124,9 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
   if (auto data = info.get("trainedData"); !data.isNone()) {
-    TrainedData trainedData;
-    velocypack::deserialize(data, trainedData);
+    velocypack::deserialize(data, _trainedData);
     _faissIndex =
-        vector::VectorIndexTrainer::restoreFromTrainedData(trainedData);
+        vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
 
     _faissIndex->replace_invlists(
         new vector::RocksDBInvertedLists(this, &coll, _definition.nLists,
@@ -271,9 +270,8 @@ void RocksDBVectorIndex::toVelocyPack(
   if (_trainingState.load() == VectorIndexTrainingState::kReady &&
       Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
-    auto td = vector::serializeIndex(*_faissIndex);
     builder.add(VPackValue("trainedData"));
-    velocypack::serialize(builder, td);
+    velocypack::serialize(builder, _trainedData);
   }
 }
 
@@ -350,8 +348,9 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
 }
 
 void RocksDBVectorIndex::applyTrainingResult(
-    std::shared_ptr<faiss::IndexIVF> faissIndex) {
+    std::shared_ptr<faiss::IndexIVF> faissIndex, TrainedData trainedData) {
   _faissIndex = std::move(faissIndex);
+  _trainedData = std::move(trainedData);
 
   _faissIndex->replace_invlists(
       new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
@@ -407,6 +406,10 @@ bool RocksDBVectorIndex::setTrainingState(
   if (!_trainingState.compare_exchange_strong(expected, desired,
                                               std::memory_order_acq_rel,
                                               std::memory_order_acquire)) {
+    TRI_ASSERT(false) << "Failed to set training state from "
+                      << trainingStateToString(expected) << " to "
+                      << trainingStateToString(desired) << " current state: "
+                      << trainingStateToString(_trainingState.load());
     return false;
   }
 
@@ -446,6 +449,7 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
   joinBuildThread();
   resetTrainingState();
   _faissIndex.reset();
+  _trainedData = {};
   _documentCount.store(0);
   RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
@@ -668,9 +672,6 @@ RocksDBVectorIndex::bruteForceSearch(
 
 Result RocksDBVectorIndex::ingestVectors(
     rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> documentIterator) {
-  LOG_TOPIC("e164e", INFO, Logger::ENGINES)
-      << "[index=" << id().id()
-      << "] Ingesting vectors into index on fast path";
   auto const dim = _definition.dimension;
   auto const& fields = _fields;
   auto const hasStored = hasStoredValues();
@@ -905,8 +906,9 @@ Result RocksDBVectorIndex::ingestVectors(
   };
 
   LOG_VECTOR_INDEX("71c45", INFO, Logger::FIXME)
-      << "Ingesting vectors into index. Threads: num-readers=" << numReaders
-      << " num-encoders=" << numEncoders << " numWriters=" << numWriters;
+      << "Ingesting vectors into index on a fast path. Threads: num-readers="
+      << numReaders << " num-encoders=" << numEncoders
+      << " numWriters=" << numWriters;
 
   startNThreads(readDocuments, numReaders);
   startNThreads(encodeVectors, numEncoders);
