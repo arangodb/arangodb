@@ -112,7 +112,7 @@ function all_collectionsSuite () {
 function error_handlingSuite () {
   return {
     test_returns_an_error_if_collection_identifier_is_unknown: function() {
-      let cmd = api + "/123456";
+      let cmd = api + "/unknown";
       let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 404);
@@ -295,6 +295,74 @@ function schema_validationSuite () {
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
     }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////;
+// numeric collection id rejection;
+////////////////////////////////////////////////////////////////////////////////;
+function numeric_collection_id_rejectionSuite () {
+  let cn = "UnitTestsCollectionBasics";
+  let cid;
+  return {
+    setUp: function() {
+      db._drop(cn);
+      cid = db._create(cn);
+    },
+    
+    tearDown: function() {
+      db._drop(cn);
+    },
+
+    test_get_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id;
+      let doc = arango.GET_RAW(cmd);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
+
+    test_get_count_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id + "/count";
+      let doc = arango.GET_RAW(cmd);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
+    
+    test_put_truncate_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id + "/truncate";
+      let doc = arango.PUT_RAW(cmd, "");
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
+
+    test_put_properties_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id + "/properties";
+      let doc = arango.PUT_RAW(cmd, "");
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
+
+    test_delete_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id;
+      let doc = arango.DELETE_RAW(cmd);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
   };
 }
 

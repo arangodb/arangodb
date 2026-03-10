@@ -328,7 +328,6 @@ function ClusterCollectionSuite () {
       var cn = "example", id = "1234567890";
 
       db._drop(cn);
-      db._drop(id);
       try {
         var c1 = db._create(cn, {id: id});
 

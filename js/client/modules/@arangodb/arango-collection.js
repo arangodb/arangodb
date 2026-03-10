@@ -513,7 +513,7 @@ ArangoCollection.prototype.rename = function (name) {
   delete this._database[this._name];
   this._database[name] = this;
   this._status = null;
-  this._name = null;
+  this._name = name;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -521,7 +521,8 @@ ArangoCollection.prototype.rename = function (name) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.refresh = function () {
-  let requestResult = this._database._connection.GET(this._database._collectionurl(this._id));
+  const url = (this._name !== null) ? this._name : this._id;
+  let requestResult = this._database._connection.GET(this._database._collectionurl(url));
   arangosh.checkRequestResult(requestResult);
 
   this._name = requestResult.name;
