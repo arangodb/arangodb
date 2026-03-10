@@ -204,7 +204,8 @@ function replicationStatic (options) {
     localOptions,
     'leader_static',
     {
-      'server.authentication': 'true'
+      'server.authentication': 'true',
+      'vector-index': 'true',
     }, true).run(testCases);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return ret;
