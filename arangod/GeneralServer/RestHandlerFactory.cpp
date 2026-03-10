@@ -135,9 +135,15 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     l = prefix->size() + 1;
   }
 
-  // we must have found a handler - at least the catch-all handler must be
-  // present
-  TRI_ASSERT(it != constructors.end());
+  // we did not find a route
+  // this may only happen for API versions > 0 since API version 0 always has a
+  // catch-all handler registered at "/" to forward to Foxx.
+  // For all other versions we return null to indicate that we have not found a
+  // handler, which will lead to a 404 response.
+  if (it == constructors.end()) {
+    TRI_ASSERT(apiVersion > 0);
+    return nullptr;
+  }
 
   size_t n = path.find('/', l);
 
@@ -169,6 +175,13 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
   TRI_ASSERT(!_sealed);
 
   for (uint32_t apiVersion : apiVersions) {
+    if (!ApiVersion::isApiVersionSupported(apiVersion) &&
+        apiVersion != ApiVersion::experimentalApiVersion) {
+      // version 1 has been removed from the list of supported versions, but we
+      // did not change the version list in the handler factory, so we need to
+      // ignore attempts to register handlers for version 1
+      continue;
+    }
     TRI_ASSERT(apiVersion < _constructors.size());
     auto& constructors = _constructors[apiVersion];
     if (!constructors.try_emplace(path, func, data).second) {
@@ -193,6 +206,13 @@ void RestHandlerFactory::addPrefixHandler(
   addHandler(path, func, apiVersions, data);
 
   for (uint32_t apiVersion : apiVersions) {
+    if (!ApiVersion::isApiVersionSupported(apiVersion) &&
+        apiVersion != ApiVersion::experimentalApiVersion) {
+      // version 1 has been removed from the list of supported versions, but we
+      // did not change the version list in the handler factory, so we need to
+      // ignore attempts to register handlers for version 1
+      continue;
+    }
     TRI_ASSERT(apiVersion < _prefixes.size());
     _prefixes[apiVersion].emplace_back(path);
   }

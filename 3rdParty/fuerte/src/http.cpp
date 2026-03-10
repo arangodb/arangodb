@@ -133,13 +133,8 @@ void urlDecode(std::string& out, std::string_view str) {
 void appendPath(Request const& req, std::string& target) {
   // Prepend /_arango/vX or /_arango/experimental if an API version was set
   if (req.header.apiVersion.has_value()) {
-    uint32_t v = req.header.apiVersion.value();
-    if (v == fuerte::ApiVersion::experimentalApiVersion) {
-      target.append("/_arango/experimental", 21);
-    } else {
-      target.append("/_arango/v", 10);
-      target.append(std::to_string(v));
-    }
+    target.append("/_arango/");
+    target.append(req.header.apiVersion.value());
   }
 
   // construct request path ("/_db/<name>/" prefix)
