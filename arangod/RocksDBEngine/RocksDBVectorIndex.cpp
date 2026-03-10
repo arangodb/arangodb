@@ -668,6 +668,9 @@ RocksDBVectorIndex::bruteForceSearch(
 
 Result RocksDBVectorIndex::ingestVectors(
     rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> documentIterator) {
+  LOG_TOPIC("e164e", INFO, Logger::ENGINES)
+      << "[index=" << id().id()
+      << "] Ingesting vectors into index on fast path";
   auto const dim = _definition.dimension;
   auto const& fields = _fields;
   auto const hasStored = hasStoredValues();

@@ -26,6 +26,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Indexes/VectorIndexDefinition.h"
+#include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 
@@ -114,9 +115,12 @@ class VectorIndexBuildManager {
  public:
   explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
 
+  Result build(RocksDBBuilderIndex::Locker& locker);
   Result build();
 
  private:
+  Result buildImpl(RocksDBBuilderIndex::Locker& locker, bool foreground);
+
   RocksDBVectorIndex& _index;
   RocksDBEngine& _engine;
   rocksdb::DB* _rootDB;

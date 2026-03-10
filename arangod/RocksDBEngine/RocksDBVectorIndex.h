@@ -105,6 +105,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _faissIndex;
   }
 
+  std::int64_t trainingThreshold() const noexcept { return _trainingThreshold; }
+
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex);
 
   Result ingestVectors(rocksdb::DB* rootDB,
@@ -127,6 +129,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::int64_t documentCount() const noexcept {
     return _documentCount.load(std::memory_order_relaxed);
+  }
+
+  void setDocumentCount(std::int64_t count) noexcept {
+    _documentCount.store(count, std::memory_order_relaxed);
   }
 
  protected:

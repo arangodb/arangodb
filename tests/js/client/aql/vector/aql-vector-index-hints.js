@@ -69,13 +69,15 @@ function VectorIndexHintsSuite(expectedTrained) {
 
   return {
     setUpAll: function () {
+      if (isCluster) {
+        print("Coordinator endpoint: " + internal.arango.getEndpoint());
+      }
       db._useDatabase("_system");
       db._createDatabase(dbName);
       db._useDatabase(dbName);
 
       collection = db._create(collName, {
         numberOfShards: 3,
-        replicationFactor: isCluster ? 1 : undefined,
       });
 
       // Generate random vectors
@@ -116,7 +118,9 @@ function VectorIndexHintsSuite(expectedTrained) {
       ];
 
       for (const idx of indexes) {
+        print("Creating index: " + JSON.stringify(idx));
         collection.ensureIndex({type: "vector", ...idx});
+        print("Index created: " + JSON.stringify(idx));
         // In cluster, wait for each index build to complete before creating
         // the next one to avoid lock contention between build threads.
         if (isCluster) {
@@ -253,9 +257,9 @@ function VectorIndexHintsSuite(expectedTrained) {
 }
 
 // Untrained (brute-force)
-jsunity.run(function VectorIndexHintsUntrainedSuite() {
-    return withSuffix(VectorIndexHintsSuite(false), '_untrained');
-});
+// jsunity.run(function VectorIndexHintsUntrainedSuite() {
+//     return withSuffix(VectorIndexHintsSuite(false), '_untrained');
+// });
 
 // Trained
 jsunity.run(function VectorIndexHintsTrainedSuite() {

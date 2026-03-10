@@ -67,6 +67,7 @@
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "RocksDBEngine/RocksDBReplicationIterator.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSavePoint.h"
@@ -611,17 +612,39 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // Step 4. fill index
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
-    if (inBackground) {
-      // allow concurrent inserts into index
-      {
-        RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-        _indexes.emplace(buildIdx);
-      }
 
-      RocksDBFilePurgePreventer walKeeper(&engine);
-      res = co_await buildIdx->fillIndexBackground(locker, std::move(progress));
-    } else {
-      res = buildIdx->fillIndexForeground(std::move(progress));
+    // This distincint is only specific for vector, if we can speed up the index
+    // creation by using the vector fast path, we do it.
+    bool vectorFastPath = false;
+    if (!inBackground && !newIdx->sparse() &&
+        newIdx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+      auto& vecIdx = static_cast<RocksDBVectorIndex&>(*newIdx);
+      if (static_cast<std::int64_t>(_meta.numberDocuments()) >=
+          vecIdx.trainingThreshold()) {
+        vector::VectorIndexBuildManager mgr(vecIdx);
+        res = mgr.build(locker);
+        if (res.ok()) {
+          vecIdx.setDocumentCount(
+              static_cast<std::int64_t>(_meta.numberDocuments()));
+          vecIdx.setTrainingState(VectorIndexTrainingState::kIngesting,
+                                  VectorIndexTrainingState::kReady);
+        }
+        vectorFastPath = true;
+      }
+    }
+    if (!vectorFastPath) {
+      if (inBackground) {
+        {
+          RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+          _indexes.emplace(buildIdx);
+        }
+
+        RocksDBFilePurgePreventer walKeeper(&engine);
+        res =
+            co_await buildIdx->fillIndexBackground(locker, std::move(progress));
+      } else {
+        res = buildIdx->fillIndexForeground(std::move(progress));
+      }
     }
     if (res.fail()) {
       co_return res;

@@ -197,7 +197,7 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
   std::int64_t counter{0};
 
   LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
-      "[shard={}, index={}] Trying to load <{}> vectors of "
+      "[shard={}, index={}] Trying to load {} vectors of "
       "dimension {} for training.",
       _shardName, _indexId, maxVectors, _definition.dimension);
 
@@ -277,7 +277,24 @@ VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
+Result VectorIndexBuildManager::build(RocksDBBuilderIndex::Locker& locker) {
+  return buildImpl(locker, /*foreground=*/true);
+}
+
 Result VectorIndexBuildManager::build() {
+  RocksDBBuilderIndex::Locker locker(_rcoll);
+  LOG_DEVEL << ADB_HERE << "Acquiring collection lock for vector index build";
+  if (!std::move(locker.lock()).waitAndGet()) {
+    return Result{TRI_ERROR_LOCK_TIMEOUT,
+                  "failed to acquire collection lock for vector index build"};
+  }
+  LOG_DEVEL << ADB_HERE << "Acquired collection lock for vector index build";
+
+  return buildImpl(locker, /*foreground=*/false);
+}
+
+Result VectorIndexBuildManager::buildImpl(RocksDBBuilderIndex::Locker& locker,
+                                          bool foreground) {
   if (_index.collection().deleted()) {
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
@@ -322,7 +339,9 @@ Result VectorIndexBuildManager::build() {
   LOG_TOPIC("e163b", INFO, Logger::ENGINES)
       << "[shard=" << _index.collection().name()
       << ", index=" << _index.id().id() << "] "
-      << "Training complete. Ingesting vectors via RocksDBBuilderIndex.";
+      << "Training complete. Ingesting vectors via RocksDBBuilderIndex. Fast "
+         "path: "
+      << std::boolalpha << foreground;
 
   _index.applyTrainingResult(std::move(faissIndex));
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
@@ -330,12 +349,12 @@ Result VectorIndexBuildManager::build() {
 
   auto builder = std::make_shared<RocksDBBuilderIndex>(_index);
 
-  RocksDBBuilderIndex::Locker locker(_rcoll);
-  if (!std::move(locker.lock()).waitAndGet()) {
-    return Result{TRI_ERROR_LOCK_TIMEOUT,
-                  "failed to acquire collection lock for vector index build"};
+  Result res;
+  if (foreground) {
+    res = builder->fillIndexForeground();
+  } else {
+    res = builder->fillIndexBackground(locker).waitAndGet();
   }
-  auto const res = builder->fillIndexBackground(locker).waitAndGet();
 
   if (res.fail()) {
     LOG_TOPIC("e166b", ERR, Logger::ENGINES)
