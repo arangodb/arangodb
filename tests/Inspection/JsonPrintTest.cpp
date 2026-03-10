@@ -94,7 +94,8 @@ TEST_F(JsonPrintInspectorTest, store_string_with_special_chars) {
 }
 
 TEST_F(JsonPrintInspectorTest, store_string_with_control_chars) {
-  std::string x = std::string("tab\there\bnull\0end", 18);
+  using namespace std::string_literals;
+  auto x = "tab\there\bnull\0end"s;
   auto result = inspector.apply(x);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ(R"("tab\there\bnull\u0000end")", stream.str());
