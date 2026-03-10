@@ -474,6 +474,7 @@ std::string const RestReplicationHandler::LoggerState = "logger-state";
 std::string const RestReplicationHandler::LoggerTickRanges =
     "logger-tick-ranges";
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
+std::string const RestReplicationHandler::LoggerLast = "logger-last";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
@@ -540,6 +541,14 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_return;
       }
       handleCommandLoggerFirstTick();
+    } else if (command == LoggerLast) {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      if (isCoordinatorError()) {
+        co_return;
+      }
+      handleCommandLoggerLast();
     } else if (command == Batch) {
       // access batch context in context manager
       // example call: curl -XPOST --dump - --data '{}'

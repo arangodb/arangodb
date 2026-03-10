@@ -75,6 +75,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const LoggerState;
   static std::string const LoggerTickRanges;
   static std::string const LoggerFirstTick;
+  static std::string const LoggerLast;
   static std::string const Batch;
   static std::string const Inventory;
   static std::string const Keys;
