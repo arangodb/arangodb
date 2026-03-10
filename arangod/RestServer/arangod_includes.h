@@ -52,6 +52,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryInfoLoggerFeature.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 #include "SystemMonitor/Activities/Feature.h"
 #include "Basics/ArangoGlobalContext.h"
