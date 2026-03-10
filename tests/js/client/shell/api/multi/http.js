@@ -55,13 +55,14 @@ function assertCspHeaders(doc, customContentType = contentType) {
 
 function head_requestsSuite () {
   return {
-    test_checks_whether_HEAD_returns_a_body_on_2xx: function() {
+    test_checks_HEAD_to_version_returns_405: function() {
       let cmd = "/_api/version";
       let doc = arango.HEAD_RAW(cmd);
 
-      assertEqual(doc.code, 200);
+      // /_api/version is GET-only; HEAD must return 405
+      assertEqual(doc.code, 405);
+      assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
       assertEqual(doc.parsedBody, undefined);
-      assertCspHeaders(doc);
     },
 
     test_checks_whether_HEAD_returns_a_body_on_3xx: function() {
@@ -451,22 +452,25 @@ function API_versioningSuite () {
       assertCspHeaders(doc);
     },
 
-    test_checks_version_endpoint_with_v1_prefix_POST: function() {
+    test_checks_version_endpoint_with_v1_prefix_rejects_POST_with_405: function() {
       let cmd = "/_arango/v1/_api/version";
       let doc = arango.POST_RAW(cmd, {});
 
-      // POST should also work with versioned prefix
-      assertEqual(doc.code, 200);
+      // /_api/version is GET-only; POST must return 405
+      assertEqual(doc.code, 405);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
       assertCspHeaders(doc);
     },
 
-    test_checks_version_endpoint_with_v1_prefix_HEAD: function() {
+    test_checks_version_endpoint_with_v1_prefix_rejects_HEAD_with_405: function() {
       let cmd = "/_arango/v1/_api/version";
       let doc = arango.HEAD_RAW(cmd);
 
-      // HEAD should also work with versioned prefix
-      assertEqual(doc.code, 200);
-      assertCspHeaders(doc);
+      // /_api/version is GET-only; HEAD must return 405
+      assertEqual(doc.code, 405);
+      assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
+      assertEqual(doc.parsedBody, undefined);
     },
 
     test_checks_version_endpoint_reports_requested_api_version_v1: function() {

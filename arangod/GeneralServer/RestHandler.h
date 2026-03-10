@@ -172,6 +172,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
+  // checks if the HTTP method is allowed and generates an error if not
+  bool isAllowedHttpMethod(std::initializer_list<rest::RequestType> allowed);
+
   enum class HandlerState : uint8_t {
     PREPARE = 0,
     EXECUTE,
