@@ -406,10 +406,10 @@ bool RocksDBVectorIndex::setTrainingState(
   if (!_trainingState.compare_exchange_strong(expected, desired,
                                               std::memory_order_acq_rel,
                                               std::memory_order_acquire)) {
-    TRI_ASSERT(false) << "Failed to set training state from "
-                      << trainingStateToString(expected) << " to "
-                      << trainingStateToString(desired) << " current state: "
-                      << trainingStateToString(_trainingState.load());
+    LOG_TOPIC("e167b", WARN, Logger::ENGINES)
+        << "Training state CAS failed: expected "
+        << trainingStateToString(desired) << ", actual "
+        << trainingStateToString(expected);
     return false;
   }
 
