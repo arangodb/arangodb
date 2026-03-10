@@ -437,7 +437,8 @@ function API_versioningSuite () {
 
       // Should error because version number is missing
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -447,7 +448,8 @@ function API_versioningSuite () {
 
       // Should error because version number is not numeric
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -496,7 +498,8 @@ function API_versioningSuite () {
 
       // Unsupported API version should return 404
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -506,7 +509,8 @@ function API_versioningSuite () {
 
       // Another unsupported API version should return 404
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -516,7 +520,8 @@ function API_versioningSuite () {
 
       // Unsupported API version should return 404 on any endpoint
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -526,7 +531,8 @@ function API_versioningSuite () {
 
       // Unsupported API version should return 404 on any endpoint
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
   };
