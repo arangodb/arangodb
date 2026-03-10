@@ -3065,9 +3065,8 @@ void RestReplicationHandler::handleCommandLoggerLast() {
   auto tickStart = _request->parsedValue("tickStart", uint64_t(0));
   auto tickEnd = _request->parsedValue("tickEnd", uint64_t(0xbadbadbadbadULL));
 
-  Result res =
-      server().getFeature<EngineSelectorFeature>().engine().lastLogger(
-        _vocbase, tickStart, tickEnd, builder);
+  Result res = server().getFeature<EngineSelectorFeature>().engine().lastLogger(
+      _vocbase, tickStart, tickEnd, builder);
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 

@@ -1524,7 +1524,7 @@ function ReplicationLoggerSuite () {
         let tc = trx.collection(cn2);
         // we're using a wrong collection here
         try {
-          print(tc.save({ "test" : 2, "_key": "abc" }));
+          tc.save({ "test" : 2, "_key": "abc" });
           fail();
         } catch (err) {
           let res = trx.abort();
@@ -1839,8 +1839,8 @@ function ReplicationLoggerSuite () {
       } else {
         let trx = db._createTransaction({collections:{write: [cn]}});
         let tc = trx.collection(cn);
-        for (var i = 0; i < 100; ++i) {
-          tc.remove("test" + i);
+        for (var j = 0; j < 100; ++j) {
+          tc.remove("test" + j);
         }
         let res = trx.commit();
         assertEqual(res.status, "committed", res);
