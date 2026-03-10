@@ -3,7 +3,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   require Logger
 
-  alias Toast.Process.ServerProcess
+  alias Toast.Process.{CrashEvent, ServerProcess}
   alias Toast.Deployment.{Health, ServerInstance}
 
   @intentional_exit_signals [nil, 15]
@@ -115,7 +115,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
     notify_event(
       on_crash_ctx.on_event,
-      {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+      {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info, expected: true}}
     )
 
     case entry.waiter do
@@ -137,7 +137,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
     notify_event(
       on_crash_ctx.on_event,
-      {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+      {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
     )
 
     :unexpected_crash
@@ -165,7 +165,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
       notify_event(
         on_crash_ctx.on_event,
-        {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+        {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
       )
 
       :crash_during_intentional_stop
@@ -178,7 +178,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
     notify_event(
       on_crash_ctx.on_event,
-      {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+      {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
     )
 
     :unexpected_crash

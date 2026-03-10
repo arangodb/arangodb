@@ -56,7 +56,14 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       info = crash_info()
 
       ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx(on_event: on_event))
-      assert_receive {:event, {:server_crashed, "s1", nil, ^info, _timestamp}}
+
+      assert_receive {:event,
+                      {:server_crashed,
+                       %Toast.Process.CrashEvent{
+                         server_id: "s1",
+                         crash_info: ^info,
+                         expected: true
+                       }}}
     end
 
     test "does not fire on_crash for expected crashes" do
@@ -99,7 +106,14 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       }
 
       ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx(on_event: on_event))
-      assert_receive {:event, {:server_crashed, "s1", nil, ^info, _timestamp}}
+
+      assert_receive {:event,
+                      {:server_crashed,
+                       %Toast.Process.CrashEvent{
+                         server_id: "s1",
+                         crash_info: ^info,
+                         expected: true
+                       }}}
     end
   end
 
@@ -131,7 +145,14 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       info = crash_info()
 
       ServerLifecycle.handle_crash("s1", info, %{}, nil, on_crash_ctx(on_event: on_event))
-      assert_receive {:event, {:server_crashed, "s1", nil, ^info, _}}
+
+      assert_receive {:event,
+                      {:server_crashed,
+                       %Toast.Process.CrashEvent{
+                         server_id: "s1",
+                         crash_info: ^info,
+                         expected: false
+                       }}}
     end
   end
 
@@ -226,7 +247,14 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       )
 
       assert_receive {:crash, ^info}
-      assert_receive {:event, {:server_crashed, "s1", nil, ^info, _}}
+
+      assert_receive {:event,
+                      {:server_crashed,
+                       %Toast.Process.CrashEvent{
+                         server_id: "s1",
+                         crash_info: ^info,
+                         expected: false
+                       }}}
     end
   end
 

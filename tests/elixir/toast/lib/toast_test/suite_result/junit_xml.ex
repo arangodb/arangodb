@@ -102,35 +102,46 @@ defmodule ToastTest.SuiteResult.JUnitXML do
   defp render_system_err(issues) do
     crash_parts =
       for %{type: :crash, detail: detail} <- issues do
+        coredump_lines =
+          for %{path: path} = core <- detail[:coredumps] || [] do
+            if core[:signal],
+              do: "Coredump: #{path}, Signal: #{core.signal}",
+              else: "Coredump: #{path}"
+          end
+
+        coredump_path_lines =
+          for path <- detail[:coredump_paths] || [] do
+            "Coredump: #{path}"
+          end
+
         [
-          if(detail[:signal], do: "Signal: #{detail.signal}"),
-          if(detail[:server], do: "Server: #{detail.server}"),
-          if(detail[:logs], do: "Logs: #{detail.logs}"),
-          if(detail[:coredump_path], do: "Coredump: #{detail.coredump_path}")
+          labeled("Server", detail[:server]),
+          coredump_lines,
+          coredump_path_lines,
+          labeled("Logs", detail[:logs])
         ]
-        |> Enum.reject(&is_nil/1)
-        |> Enum.join("\n")
+        |> List.flatten()
+        |> Toast.Utils.compact_join("\n")
       end
 
     sanitizer_parts =
       for %{type: :sanitizer_report, detail: detail} <- issues do
-        [
-          if(detail[:server], do: "Server: #{detail.server}"),
-          if(detail[:report], do: detail.report)
-        ]
-        |> Enum.reject(&is_nil/1)
-        |> Enum.join("\n")
+        [labeled("Server", detail[:server]), detail[:report]]
+        |> Toast.Utils.compact_join("\n")
       end
 
-    all_parts = crash_parts ++ sanitizer_parts
-
-    if all_parts == [] do
-      ""
-    else
-      content = Enum.join(all_parts, "\n\n")
-
-      ~s(<system-err><![CDATA[#{String.replace(content, "]]>", "]]]]><![CDATA[>")}]]></system-err>)
+    case crash_parts ++ sanitizer_parts do
+      [] -> ""
+      parts -> wrap_cdata("system-err", Enum.join(parts, "\n\n"))
     end
+  end
+
+  defp labeled(_label, nil), do: nil
+  defp labeled(label, value), do: "#{label}: #{value}"
+
+  defp wrap_cdata(tag, content) do
+    escaped = String.replace(content, "]]>", "]]]]><![CDATA[>")
+    ~s(<#{tag}><![CDATA[#{escaped}]]></#{tag}>)
   end
 
   defp format_duration(us) do

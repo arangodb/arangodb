@@ -44,9 +44,15 @@ defmodule Toast.Diagnostics.Summary do
     issues
     |> Enum.filter(&(&1.type == :crash))
     |> Enum.flat_map(fn issue ->
-      case issue.detail[:coredump_path] do
-        path when is_binary(path) -> [path]
-        _ -> []
+      case issue.detail do
+        %{coredumps: coredumps} when is_list(coredumps) ->
+          for %{path: path} when is_binary(path) <- coredumps, do: path
+
+        %{coredump_paths: paths} when is_list(paths) ->
+          Enum.filter(paths, &is_binary/1)
+
+        _ ->
+          []
       end
     end)
   end

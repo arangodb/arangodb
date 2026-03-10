@@ -215,7 +215,9 @@ defmodule Toast.Deployment.CrashAbortTest do
 
       send(pid, {:server_crashed, "test-server", crash_info})
 
-      assert_receive {:event, {:server_crashed, "test-server", _, _, _}}, 1_000
+      assert_receive {:event,
+                      {:server_crashed, %Toast.Process.CrashEvent{server_id: "test-server"}}},
+                     1_000
     end
   end
 

@@ -15,15 +15,15 @@ defmodule ToastTest.Attribution do
   @spec run(
           ToastTest.ResultCollector.test_data(),
           ToastTest.ArtifactCollector.t(),
-          Toast.Deployment.Controller.deployment_error(),
+          [Toast.Process.CrashEvent.t()],
           keyword()
         ) ::
           [ToastTest.SuiteResult.issue()]
-  def run(test_data, artifacts, error, opts \\ []) do
+  def run(test_data, artifacts, crash_events, opts \\ []) do
     windows = TimeWindows.build(test_data)
 
     test_failure_issues(test_data.failures) ++
-      crash_issues(error, artifacts, windows, opts) ++
+      crash_issues(crash_events, artifacts, windows, opts) ++
       sanitizer_issues(artifacts, windows)
   end
 
@@ -42,49 +42,43 @@ defmodule ToastTest.Attribution do
 
   # --- Crashes ---
 
-  defp crash_issues(nil, _artifacts, _windows, _opts), do: []
+  defp crash_issues(crash_events, artifacts, windows, opts) do
+    Enum.flat_map(crash_events, fn %Toast.Process.CrashEvent{} = event ->
+      {scope, confidence} = TimeWindows.attribute(event.crash_info.timestamp, windows)
+      server_artifacts = Map.get(artifacts, event.server_id)
 
-  defp crash_issues({:server_crashed, server_id, crash_info}, artifacts, windows, opts) do
-    {scope, confidence} = TimeWindows.attribute(crash_info.timestamp, windows)
-    server_artifacts = Map.get(artifacts, server_id)
+      detail =
+        %{server: event.server_id}
+        |> enrich_coredumps(server_artifacts, opts)
+        |> enrich_logs(server_artifacts, event.crash_info.timestamp)
 
-    detail =
-      %{server: server_id}
-      |> enrich_coredump(server_artifacts, opts)
-      |> enrich_logs(server_artifacts, crash_info.timestamp)
-
-    [%{type: :crash, scope: scope, confidence: confidence, detail: detail}]
+      [%{type: :crash, scope: scope, confidence: confidence, detail: detail}]
+    end)
   end
-
-  defp crash_issues({:server_unhealthy, server_id}, _artifacts, _windows, _opts) do
-    [%{type: :crash, scope: :suite, confidence: nil, detail: %{server: server_id}}]
-  end
-
-  defp crash_issues(_other, _artifacts, _windows, _opts), do: []
 
   # --- Coredump enrichment ---
 
-  defp enrich_coredump(detail, nil, _opts), do: detail
-  defp enrich_coredump(detail, %{coredump_paths: []}, _opts), do: detail
+  defp enrich_coredumps(detail, nil, _opts), do: detail
+  defp enrich_coredumps(detail, %{coredump_paths: []}, _opts), do: detail
 
-  defp enrich_coredump(detail, server_artifacts, opts) do
+  defp enrich_coredumps(detail, server_artifacts, opts) do
     if Keyword.get(opts, :skip_coredump_analysis, false) do
-      detail
+      Map.put(detail, :coredump_paths, server_artifacts.coredump_paths)
     else
-      core_path = hd(server_artifacts.coredump_paths)
       analyzer_opts = build_analyzer_opts(opts)
 
-      case Enrichment.Coredump.analyze(core_path, server_artifacts.server, analyzer_opts) do
-        {:ok, result} ->
-          Map.merge(detail, %{
-            signal: result.signal,
-            threads: result.threads,
-            coredump_path: core_path
-          })
+      coredumps =
+        Enum.flat_map(server_artifacts.coredump_paths, fn core_path ->
+          case Enrichment.Coredump.analyze(core_path, server_artifacts.server, analyzer_opts) do
+            {:ok, result} ->
+              [%{path: core_path, signal: result.signal, threads: result.threads}]
 
-        {:error, _} ->
-          detail
-      end
+            {:error, _} ->
+              [%{path: core_path, signal: nil, threads: []}]
+          end
+        end)
+
+      Map.put(detail, :coredumps, coredumps)
     end
   end
 

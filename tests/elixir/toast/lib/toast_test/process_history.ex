@@ -38,6 +38,14 @@ defmodule ToastTest.ProcessHistory do
     :exit, _ -> %{}
   end
 
+  @doc "Return all unexpected crash events in chronological order."
+  @spec unexpected_crashes() :: [Toast.Process.CrashEvent.t()]
+  def unexpected_crashes do
+    GenServer.call(__MODULE__, :unexpected_crashes)
+  catch
+    :exit, _ -> []
+  end
+
   @impl true
   def init(_) do
     {:ok, %{events: []}}
@@ -56,6 +64,15 @@ defmodule ToastTest.ProcessHistory do
   @impl true
   def handle_call(:events, _from, state) do
     {:reply, Enum.reverse(state.events), state}
+  end
+
+  @impl true
+  def handle_call(:unexpected_crashes, _from, state) do
+    crashes =
+      for {:server_crashed, %Toast.Process.CrashEvent{expected: false} = event} <- state.events,
+          do: event
+
+    {:reply, Enum.reverse(crashes), state}
   end
 
   @impl true

@@ -8,6 +8,7 @@ defmodule Toast.Deployment.Controller do
   alias Toast.Config
   alias Toast.Deployment.{ServerInstance, ServerLifecycle}
   alias Toast.Deployment.Controller.Helpers
+  alias Toast.Process.CrashEvent
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
 
@@ -328,7 +329,7 @@ defmodule Toast.Deployment.Controller do
 
     ServerLifecycle.notify_event(
       state.on_event,
-      {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+      {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
     )
 
     {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}

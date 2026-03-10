@@ -509,10 +509,14 @@ defmodule ToastTest.Runner do
   end
 
   defp post_execution(deployment, test_data, toast_config) do
-    {servers, error} = stop_deployment(deployment)
+    {servers, _error} = stop_deployment(deployment)
     pid_history = ToastTest.ProcessHistory.pids_by_server()
+    crash_events = ToastTest.ProcessHistory.unexpected_crashes()
     artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history)
-    issues = ToastTest.Attribution.run(test_data, artifacts, error, skip_coredump_analysis: false)
+
+    issues =
+      ToastTest.Attribution.run(test_data, artifacts, crash_events, skip_coredump_analysis: false)
+
     suite_result = ToastTest.SuiteResult.build(test_data, issues)
     ToastTest.SuiteResult.write_all(suite_result, toast_config.result_dir)
     print_post_exec_summary(suite_result)
