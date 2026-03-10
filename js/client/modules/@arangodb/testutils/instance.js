@@ -792,6 +792,12 @@ class instance {
     httpOptions.method = 'POST';
     httpOptions.returnBodyOnError = true;
     while (true) {
+      this.exitStatus = this.status(false);
+      if (this.exitStatus.status === 'RUNNING') {
+        this.exitStatus = null;
+      } else {
+        throw new Error('server exited during startup! bailing out!');
+      }
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
@@ -1220,6 +1226,10 @@ class instance {
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
   readImportantLogLines () {
+    if (!fs.exists(fs.join(this.logFile))) {
+      print(`{RED}{Date()} unable to find ${this.logFile} of ${this.name}!${RESET}`);
+      return [];
+    }
     let fnLines = [];
     const buf = fs.readBuffer(fs.join(this.logFile));
     let lineStart = 0;
