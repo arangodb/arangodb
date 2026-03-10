@@ -229,7 +229,6 @@ function CollectionSuite () {
       var cn = "example", id = "1234567890";
 
       db._drop(cn);
-      db._drop(id);
       var c1 = db._create(cn, { id: id });
 
       assertTypeOf("string", c1._id);
@@ -351,7 +350,7 @@ function CollectionSuite () {
       assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
       assertTypeOf("number", c1.type());
 
-      var c2 = db._collection(c1._id);
+      var c2 = db._collection(c1.name());
 
       assertEqual(c1._id, c2._id);
       assertEqual(c1.name(), c2.name());

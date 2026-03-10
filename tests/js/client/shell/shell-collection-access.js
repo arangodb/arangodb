@@ -44,16 +44,13 @@ function CollectionSuite () {
       c = null;
     },
 
-    testAccessByIdForExistingCollection : function () {
+    testTryAccessByIdForExistingCollection : function () {
       var id = c._id;
       assertMatch(/^\d+$/, id);
-
-      var accessed = db._collection(id);
-      assertEqual(cn, accessed.name());
-      assertEqual(id, accessed._id);
+      assertNull(db._collection(id));
     },
     
-    testAccessByIdForNonExistingCollection : function () {
+    testTryAccessByIdForNonExistingCollection : function () {
       assertNull(db._collection("666666666666666666666"));
     }
 

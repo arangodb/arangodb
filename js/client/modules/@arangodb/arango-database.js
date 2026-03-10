@@ -347,20 +347,21 @@ ArangoDatabase.prototype._collections = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return a single collection, identified by its id or name
+// / @brief return a single collection, identified by its name; id is not allowed
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._collection = function (id) {
-  if (typeof id !== 'number' &&
-      this.hasOwnProperty(id) && this[id] && this[id] instanceof ArangoCollection) {
-    return this[id];
+ArangoDatabase.prototype._collection = function (cname) {
+  if (typeof cname !== 'number' &&
+      this.hasOwnProperty(cname) && this[cname] && this[cname] instanceof ArangoCollection) {
+    return this[cname];
   }
-  let requestResult = this._connection.GET(this._collectionurl(id));
+  let requestResult = this._connection.GET(this._collectionurl(cname));
 
   // return null in case of not found
   if (requestResult !== null
       && requestResult.error === true
-      && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+      && (requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code || 
+          requestResult.errorNum === internal.errors.ERROR_HTTP_BAD_PARAMETER.code)) {
     return null;
   }
 
