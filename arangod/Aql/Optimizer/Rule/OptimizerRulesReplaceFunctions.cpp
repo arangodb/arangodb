@@ -80,21 +80,21 @@ struct NearOrWithinParams {
     ast::FunctionCallNode fcall(node);
     AstNode* arr = fcall.getArguments();
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-    if (arr->getMemberUnchecked(0)->isStringValue()) {
-      collection = arr->getMemberUnchecked(0)->getString();
+    if (arr->getMember(0)->isStringValue()) {
+      collection = arr->getMember(0)->getString();
       // otherwise the "" collection will not be found
     }
-    latitude = arr->getMemberUnchecked(1);
-    longitude = arr->getMemberUnchecked(2);
+    latitude = arr->getMember(1);
+    longitude = arr->getMember(2);
     if (arr->numMembers() > 4) {
-      distanceName = arr->getMemberUnchecked(4);
+      distanceName = arr->getMember(4);
     }
 
     if (arr->numMembers() > 3) {
       if (isNear) {
-        limit = arr->getMemberUnchecked(3);
+        limit = arr->getMember(3);
       } else {
-        radius = arr->getMemberUnchecked(3);
+        radius = arr->getMember(3);
       }
     }
   }
@@ -111,14 +111,14 @@ struct FulltextParams {
     ast::FunctionCallNode fcall(node);
     AstNode* arr = fcall.getArguments();
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-    if (arr->getMemberUnchecked(0)->isStringValue()) {
-      collection = arr->getMemberUnchecked(0)->getString();
+    if (arr->getMember(0)->isStringValue()) {
+      collection = arr->getMember(0)->getString();
     }
-    if (arr->getMemberUnchecked(1)->isStringValue()) {
-      attribute = arr->getMemberUnchecked(1)->getString();
+    if (arr->getMember(1)->isStringValue()) {
+      attribute = arr->getMember(1)->getString();
     }
     if (arr->numMembers() > 3) {
-      limit = arr->getMemberUnchecked(3);
+      limit = arr->getMember(3);
     }
   }
 };
@@ -410,11 +410,11 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
         5, 5);
   }
 
-  AstNode const* coll = fargs->getMemberUnchecked(0);
-  AstNode const* lat1 = fargs->getMemberUnchecked(1);
-  AstNode const* lng1 = fargs->getMemberUnchecked(2);
-  AstNode const* lat2 = fargs->getMemberUnchecked(3);
-  AstNode const* lng2 = fargs->getMemberUnchecked(4);
+  AstNode const* coll = fargs->getMember(0);
+  AstNode const* lat1 = fargs->getMember(1);
+  AstNode const* lng1 = fargs->getMember(2);
+  AstNode const* lat2 = fargs->getMember(3);
+  AstNode const* lng2 = fargs->getMember(4);
 
   if (!::isValueTypeCollection(coll)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -671,7 +671,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
         if (args->numMembers() >= 3) {
           caseInsensitive =
               true;  // we have 3 arguments, set case-sensitive to false now
-          auto caseArg = args->getMemberUnchecked(2);
+          auto caseArg = args->getMember(2);
           if (caseArg->isConstant()) {
             // ok, we can figure out at compile time if the parameter is true or
             // false
@@ -679,11 +679,11 @@ void arangodb::aql::replaceLikeWithRangeRule(
           }
         }
 
-        auto patternArg = args->getMemberUnchecked(1);
+        auto patternArg = args->getMember(1);
 
         if (!caseInsensitive && patternArg->isStringValue() &&
-            args->getMemberUnchecked(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          AstNode const* sub = args->getMemberUnchecked(0);
+            args->getMember(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          AstNode const* sub = args->getMember(0);
           while (sub != nullptr && sub->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
             ast::AttributeAccessNode attrAccess(sub);
             sub = attrAccess.getObject();
@@ -744,8 +744,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
                 ast->createNodeValueString(p, unescapedPattern.size());
 
             return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
-                                                 args->getMemberUnchecked(0),
-                                                 pattern);
+                                                 args->getMember(0), pattern);
           }
 
           if (!unescapedPattern.empty()) {
@@ -758,8 +757,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
             AstNode* pattern =
                 ast->createNodeValueString(p, unescapedPattern.size());
             AstNode* lhs = ast->createNodeBinaryOperator(
-                NODE_TYPE_OPERATOR_BINARY_GE, args->getMemberUnchecked(0),
-                pattern);
+                NODE_TYPE_OPERATOR_BINARY_GE, args->getMember(0), pattern);
 
             // add a new end character \uFFFF that is expected to sort "higher"
             // than anything else (note: \xef\xbf\xbf is equivalent to \uFFFF).
@@ -769,8 +767,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
                                                 unescapedPattern.size());
             pattern = ast->createNodeValueString(p, unescapedPattern.size());
             AstNode* rhs = ast->createNodeBinaryOperator(
-                NODE_TYPE_OPERATOR_BINARY_LT, args->getMemberUnchecked(0),
-                pattern);
+                NODE_TYPE_OPERATOR_BINARY_LT, args->getMember(0), pattern);
 
             AstNode* op = ast->createNodeBinaryOperator(
                 NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);

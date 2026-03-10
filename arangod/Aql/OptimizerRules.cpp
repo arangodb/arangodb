@@ -610,8 +610,7 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
     }  // falls through
     case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_AND:
     case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND: {
-      for (size_t i = 0; i < root->numMembers(); ++i) {
-        auto member = root->getMemberUnchecked(i);
+      for (auto* member : root->getMemberList()) {
         if (member != nullptr &&
             member->type ==
                 arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -777,7 +776,7 @@ std::optional<arangodb::ShardID> getSingleShardId(
       // go through the input object attribute by attribute
       // and look for our shard keys
       for (size_t i = 0; i < n->numMembers(); ++i) {
-        auto sub = n->getMemberUnchecked(i);
+        auto sub = n->getMember(i);
 
         if (sub->type != arangodb::aql::AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
           continue;
@@ -1236,7 +1235,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
         auto args = fcall.getArguments();
 
         if (args->numMembers() > 0) {
-          testNode = args->getMemberUnchecked(0);
+          testNode = args->getMember(0);
         }
       }
 
@@ -5526,7 +5525,7 @@ class RemoveToEnumCollFinder final
             bool doOptimize = true;
 
             for (size_t i = 0; i < n->numMembers(); ++i) {
-              auto sub = n->getMemberUnchecked(i);
+              auto sub = n->getMember(i);
 
               if (sub->type != NODE_TYPE_OBJECT_ELEMENT) {
                 continue;
@@ -7851,8 +7850,8 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         if (func->name == "FIRST" || func->name == "LENGTH" ||
             func->name == "COUNT") {
           if (args->numMembers() > 0 &&
-              args->getMemberUnchecked(0)->type == NODE_TYPE_REFERENCE) {
-            ast::ReferenceNode ref(args->getMemberUnchecked(0));
+              args->getMember(0)->type == NODE_TYPE_REFERENCE) {
+            ast::ReferenceNode ref(args->getMember(0));
             Variable const* v = ref.getVariable();
             auto setter = plan->getVarSetBy(v->id);
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
@@ -8249,8 +8248,8 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
         auto args = fcall.getArguments();
         if (func->name == "LENGTH" || func->name == "COUNT") {
           if (args->numMembers() > 0 &&
-              args->getMemberUnchecked(0)->type == NODE_TYPE_REFERENCE) {
-            ast::ReferenceNode ref(args->getMemberUnchecked(0));
+              args->getMember(0)->type == NODE_TYPE_REFERENCE) {
+            ast::ReferenceNode ref(args->getMember(0));
             Variable const* v = ref.getVariable();
             auto setter = plan->getVarSetBy(v->id);
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
