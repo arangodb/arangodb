@@ -88,13 +88,72 @@ void RequestHeader::acceptType(std::string const& type) {
 }
 
 /// @brief analyze path and split into components
-/// strips /_db/<name> prefix, sets db name and fills parameters
+/// strips /_arango/vX (or /_arango/experimental) prefix, then /_db/<name>
+/// prefix; sets apiVersion, database, path, and fills parameters
 void RequestHeader::parseArangoPath(std::string_view p) {
   this->path = extractPathParameters(p, this->parameters);
+  this->apiVersion = std::nullopt;
+
+  // Detect and strip /_arango/vX or /_arango/experimental prefix.
+  // This must come before /_db/<name>.
+  {
+    constexpr std::string_view arangoPrefix = "/_arango/";
+    constexpr std::string_view experimentalSuffix = "experimental";
+    if (this->path.size() >= arangoPrefix.size() &&
+        std::string_view(this->path).substr(0, arangoPrefix.size()) ==
+            arangoPrefix) {
+      std::string_view remainder =
+          std::string_view(this->path).substr(arangoPrefix.size());
+      bool recognized = false;
+      if (remainder.starts_with(experimentalSuffix)) {
+        size_t suffixEnd = experimentalSuffix.size();
+        if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
+          this->apiVersion = experimentalSuffix;
+          this->path = suffixEnd < remainder.size()
+                           ? std::string(remainder.substr(suffixEnd))
+                           : "/";
+          recognized = true;
+        }
+      } else if (!remainder.empty() && remainder[0] == 'v') {
+        std::string_view afterV = remainder.substr(1);
+        size_t numEnd = 0;
+        while (numEnd < afterV.size() &&
+               (afterV[numEnd] >= '0' && afterV[numEnd] <= '9')) {
+          ++numEnd;
+        }
+        if (numEnd > 0 && (numEnd == afterV.size() || afterV[numEnd] == '/')) {
+          // parse version number (reject leading zeros except bare "0")
+          if (!(afterV[0] == '0' && numEnd > 1)) {
+            uint32_t version = 0;
+            bool overflow = false;
+            for (size_t i = 0; i < numEnd; ++i) {
+              uint32_t d = afterV[i] - '0';
+              if (version > (UINT32_MAX - d) / 10) {
+                overflow = true;
+                break;
+              }
+              version = version * 10 + d;
+            }
+            if (!overflow) {
+              this->apiVersion = "v" + std::to_string(version);
+              this->path = numEnd < afterV.size()
+                               ? std::string(afterV.substr(numEnd))
+                               : "/";
+              recognized = true;
+            }
+          }
+        }
+      }
+      if (!recognized) {
+        // /_arango/ present but not a valid prefix — leave path unchanged,
+        // apiVersion stays nullopt
+      }
+    }
+  }
 
   // extract database prefix /_db/<name>/
   const char* q = this->path.c_str();
-  if (this->path.size() >= 4 && q[0] == '/' && q[1] == '_' && q[2] == 'd' &&
+  if (this->path.size() >= 5 && q[0] == '/' && q[1] == '_' && q[2] == 'd' &&
       q[3] == 'b' && q[4] == '/') {
     // request contains database name
     q += 5;

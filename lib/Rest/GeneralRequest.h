@@ -61,11 +61,6 @@ class GeneralRequest {
 
   virtual ~GeneralRequest() = default;
 
-  // Default API version (configurable)
-  // If you change this, you must also update the unit test in
-  // tests/Rest/GeneralRequestTest.cpp !
-  static constexpr uint32_t defaultApiVersion = 0;
-
   // translate an RequestType enum value into an "HTTP method string"
   static std::string_view translateMethod(RequestType);
 
@@ -93,6 +88,14 @@ class GeneralRequest {
   // @brief User sending this request
   std::string const& user() const { return _user; }
   void setUser(std::string user);
+
+  /// @brief Roles from JWT token (if authenticated via JWT)
+  std::vector<std::string> const& roles() const { return _roles; }
+  void setRoles(std::vector<std::string> roles);
+
+  /// @brief JWT token string (if authenticated via JWT)
+  std::string const& jwtToken() const { return _jwtToken; }
+  void setJwtToken(std::string token);
 
   /// @brief the request context depends on the application
   std::shared_ptr<RequestContext> requestContext() const {
@@ -212,10 +215,12 @@ class GeneralRequest {
   /// @brief get the requested API version
   uint32_t requestedApiVersion() const noexcept { return _requestedApiVersion; }
 
-  /// @brief detect and strip /_arango/vX or /_arango/experimental prefix from
-  /// the request path
-  /// @return Result::OK if successful, error if /_arango prefix is invalid
-  Result detectAndStripApiVersion();
+  /// @brief detect and strip /_arango/vX or /_arango/experimental prefix.
+  /// @param start  reference to current position pointer; advanced past the
+  ///               prefix on success
+  /// @param end    one-past-the-end pointer of the URL buffer
+  /// @throws ArangoException if /_arango prefix is present but invalid
+  void detectAndStripApiVersion(char const*& start, char const* end);
 
  protected:
   static RequestType findRequestType(char const*, size_t const);
@@ -236,6 +241,8 @@ class GeneralRequest {
 
   std::string _databaseName;
   std::string _user;
+  std::vector<std::string> _roles;
+  std::string _jwtToken;
 
   std::string _fullUrl;
   std::string _requestPath;

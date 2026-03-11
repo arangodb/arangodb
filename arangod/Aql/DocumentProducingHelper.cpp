@@ -218,6 +218,8 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
       _projectionsForRegisters(_projections),  // do a full copy first
+      _activeProjections(&_projections),
+      _activeProjectionsForRegisters(&_projectionsForRegisters),
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
@@ -278,6 +280,8 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
       _projectionsForRegisters(_projections),  // do a full copy first
+      _activeProjections(&_projections),
+      _activeProjectionsForRegisters(&_projectionsForRegisters),
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
@@ -358,7 +362,7 @@ void DocumentProducingFunctionContext::setOutputRow(
 
 aql::Projections const& DocumentProducingFunctionContext::getProjections()
     const noexcept {
-  return _projections;
+  return *_activeProjections;
 }
 
 aql::Projections const& DocumentProducingFunctionContext::getFilterProjections()
@@ -368,7 +372,7 @@ aql::Projections const& DocumentProducingFunctionContext::getFilterProjections()
 
 aql::Projections const&
 DocumentProducingFunctionContext::getProjectionsForRegisters() const noexcept {
-  return _projectionsForRegisters;
+  return *_activeProjectionsForRegisters;
 }
 
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr()
@@ -399,6 +403,13 @@ bool DocumentProducingFunctionContext::getAllowCoveringIndexOptimization()
 void DocumentProducingFunctionContext::setAllowCoveringIndexOptimization(
     bool allowCoveringIndexOptimization) noexcept {
   _allowCoveringIndexOptimization = allowCoveringIndexOptimization;
+}
+
+void DocumentProducingFunctionContext::setActiveProjections(
+    aql::Projections const* proj,
+    aql::Projections const* projForRegs) noexcept {
+  _activeProjections = proj;
+  _activeProjectionsForRegisters = projForRegs;
 }
 
 void DocumentProducingFunctionContext::incrScanned() noexcept { ++_numScanned; }

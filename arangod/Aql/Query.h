@@ -39,7 +39,8 @@
 #include "Futures/Unit.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/Identifiers/TransactionId.h"
-#include "Activities/activity.h"
+#include "Activities/RegistryGlobalVariable.h"
+#include "Activities/GenericActivity.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -230,10 +231,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void prepareFromVelocyPackWithoutInstantiate(velocypack::Slice querySlice,
                                                velocypack::Slice collections,
                                                velocypack::Slice views,
-                                               velocypack::Slice variables,
-                                               velocypack::Slice snippets);
+                                               velocypack::Slice variables);
 
-  async<void> instantiatePlan(velocypack::Slice snippets);
+  async<void> instantiatePlan(velocypack::Slice querySlice);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
@@ -549,7 +549,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   std::atomic<bool> _isExecuting{false};
 
-  activities::Activity _activity;
+  activities::GenericActivity::HandleType _activity;
 };
 
 }  // namespace aql

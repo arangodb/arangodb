@@ -781,13 +781,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice variables = queryBuilder.slice().get("variables");
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
-  auto const snippets = queryBuilder.slice().get("nodes");
-  auto const querySlice = velocypack::Slice::emptyObjectSlice();
   auto const viewsSlice = velocypack::Slice::noneSlice();
   query->prepareFromVelocyPackWithoutInstantiate(
-      querySlice, collections, viewsSlice, variables, snippets);
+      velocypack::Slice::emptyObjectSlice(), collections, viewsSlice,
+      variables);
   [&]() -> futures::Future<futures::Unit> {
-    co_return co_await query->instantiatePlan(snippets);
+    co_return co_await query->instantiatePlan(queryBuilder.slice());
   }()
                .waitAndGet();
 
@@ -1592,7 +1591,8 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   VPackBuilder builder;
-  arangodb::RestVersionHandler::getVersion(v8g->server(), true, true, builder);
+  arangodb::RestVersionHandler::getVersion(v8g->server(), true, true, builder,
+                                           ApiVersion::defaultApiVersion);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END

@@ -264,6 +264,9 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
+  // Store the full JWT token in the entry
+  newEntry._jwtToken = jwt;
+
   {
     std::lock_guard<std::mutex> guard(_jwtCacheMutex);
     _jwtCache.put(jwt, newEntry);
@@ -395,6 +398,24 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
         return auth::TokenCache::Entry::Unauthenticated();
       }
       authResult._allowedPaths.push_back(path.copyString());
+    }
+  }
+
+  // Extract roles from JWT token if present
+  VPackSlice const rolesSlice = bodySlice.get("roles");
+  if (!rolesSlice.isNone() && !rolesSlice.isNull()) {
+    if (!rolesSlice.isArray()) {
+      LOG_TOPIC("89899", TRACE, arangodb::Logger::AUTHENTICATION)
+          << "roles must be an array";
+      return auth::TokenCache::Entry::Unauthenticated();
+    }
+    for (auto const& role : VPackArrayIterator(rolesSlice)) {
+      if (!role.isString()) {
+        LOG_TOPIC("89892", TRACE, arangodb::Logger::AUTHENTICATION)
+            << "roles may only contain strings";
+        return auth::TokenCache::Entry::Unauthenticated();
+      }
+      authResult._roles.push_back(role.copyString());
     }
   }
 

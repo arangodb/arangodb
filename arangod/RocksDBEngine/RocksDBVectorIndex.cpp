@@ -26,6 +26,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <functional>
 #include <cstring>
 #include <faiss/index_factory.h>
@@ -327,6 +328,9 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
+    if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
+      return {};
+    }
     return res;
   }
 
