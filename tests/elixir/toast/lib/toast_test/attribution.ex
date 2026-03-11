@@ -43,7 +43,7 @@ defmodule ToastTest.Attribution do
   # --- Crashes ---
 
   defp crash_issues(crash_events, artifacts, windows, opts) do
-    Enum.flat_map(crash_events, fn %Toast.Process.CrashEvent{} = event ->
+    Enum.map(crash_events, fn %Toast.Process.CrashEvent{} = event ->
       {scope, confidence} = TimeWindows.attribute(event.crash_info.timestamp, windows)
       server_artifacts = Map.get(artifacts, event.server_id)
 
@@ -52,7 +52,7 @@ defmodule ToastTest.Attribution do
         |> enrich_coredumps(server_artifacts, opts)
         |> enrich_logs(server_artifacts, event.crash_info.timestamp)
 
-      [%{type: :crash, scope: scope, confidence: confidence, detail: detail}]
+      %{type: :crash, scope: scope, confidence: confidence, detail: detail}
     end)
   end
 
@@ -93,42 +93,32 @@ defmodule ToastTest.Attribution do
 
   defp enrich_logs(detail, nil, _timestamp), do: detail
 
-  defp enrich_logs(detail, server_artifacts, timestamp) do
-    log_file = server_artifacts.server.log_file
+  defp enrich_logs(detail, %{server: %{log_file: nil}}, _timestamp), do: detail
 
-    if log_file do
-      start_dt = DateTime.add(timestamp, -@crash_log_window_before_s, :second)
-      end_dt = DateTime.add(timestamp, @crash_log_window_after_s, :second)
-      logs = Enrichment.Logs.extract_window(log_file, start_dt, end_dt)
+  defp enrich_logs(detail, %{server: %{log_file: log_file}}, timestamp) do
+    start_dt = DateTime.add(timestamp, -@crash_log_window_before_s, :second)
+    end_dt = DateTime.add(timestamp, @crash_log_window_after_s, :second)
 
-      if logs != "", do: Map.put(detail, :logs, logs), else: detail
-    else
-      detail
+    case Enrichment.Logs.extract_window(log_file, start_dt, end_dt) do
+      "" -> detail
+      logs -> Map.put(detail, :logs, logs)
     end
   end
 
   # --- Sanitizer reports ---
 
   defp sanitizer_issues(artifacts, windows) do
-    Enum.flat_map(artifacts, fn {server_id, server_artifacts} ->
-      Enum.flat_map(server_artifacts.sanitizer_files, fn san_file ->
-        case Enrichment.Sanitizer.read(san_file) do
-          {:ok, result} ->
-            {scope, confidence} = TimeWindows.attribute(result.timestamp, windows)
+    for {server_id, server_artifacts} <- artifacts,
+        san_file <- server_artifacts.sanitizer_files,
+        {:ok, result} <- [Enrichment.Sanitizer.read(san_file)] do
+      {scope, confidence} = TimeWindows.attribute(result.timestamp, windows)
 
-            [
-              %{
-                type: :sanitizer_report,
-                scope: scope,
-                confidence: confidence,
-                detail: %{server: server_id, report: result.content}
-              }
-            ]
-
-          {:error, _} ->
-            []
-        end
-      end)
-    end)
+      %{
+        type: :sanitizer_report,
+        scope: scope,
+        confidence: confidence,
+        detail: %{server: server_id, report: result.content}
+      }
+    end
   end
 end

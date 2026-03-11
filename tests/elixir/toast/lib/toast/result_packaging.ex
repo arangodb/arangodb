@@ -39,15 +39,11 @@ defmodule Toast.ResultPackaging do
 
   @doc "Determine if zstd is available for compression."
   @spec zstd_available?() :: boolean()
-  def zstd_available? do
-    System.find_executable("zstd") != nil
-  end
+  def zstd_available?, do: System.find_executable("zstd") != nil
 
   @doc "Determine if gzip is available for compression."
   @spec gzip_available?() :: boolean()
-  def gzip_available? do
-    System.find_executable("gzip") != nil
-  end
+  def gzip_available?, do: System.find_executable("gzip") != nil
 
   @doc "Compress a file with zstd, falling back to gzip. Returns error if no tool available."
   @spec compress_file(Path.t(), Path.t()) :: {:ok, Path.t()} | {:error, term()}
@@ -83,28 +79,24 @@ defmodule Toast.ResultPackaging do
   # --- Tier 2: Compressed archive ---
 
   defp package_tier2(opts, result_dir) do
-    suite_diagnostics = Keyword.get(opts, :suite_diagnostics, [])
-    files = collect_tier2_files(suite_diagnostics)
+    case opts |> Keyword.get(:suite_diagnostics, []) |> collect_tier2_files() do
+      [] ->
+        :ok
 
-    if files != [] do
-      archive_path = Path.join(result_dir, "toast-logs.tar.gz")
-      create_tar_gz(archive_path, files)
+      files ->
+        archive_path = Path.join(result_dir, "toast-logs.tar.gz")
+        create_tar_gz(archive_path, files)
     end
-
-    :ok
   end
 
   defp collect_tier2_files(suite_diagnostics) do
     Enum.flat_map(suite_diagnostics, fn diag ->
       suite_name = Map.get(diag, :name, "unknown")
-      log_files = Map.get(diag, :log_files, [])
-      sanitizer_files = Map.get(diag, :sanitizer_files, [])
-      crash_reports = Map.get(diag, :crash_reports, [])
-      agency_dumps = Map.get(diag, :agency_dumps, [])
 
-      (log_files ++ sanitizer_files ++ crash_reports ++ agency_dumps)
+      [:log_files, :sanitizer_files, :crash_reports, :agency_dumps]
+      |> Enum.flat_map(&Map.get(diag, &1, []))
       |> Enum.filter(&File.exists?/1)
-      |> Enum.map(fn path -> {suite_name, path} end)
+      |> Enum.map(&{suite_name, &1})
     end)
   end
 
@@ -127,12 +119,10 @@ defmodule Toast.ResultPackaging do
   # --- Tier 3: Individually compressed ---
 
   defp package_tier3(opts, result_dir) do
-    suite_diagnostics = Keyword.get(opts, :suite_diagnostics, [])
-
     core_dumps =
-      Enum.flat_map(suite_diagnostics, fn diag ->
-        Map.get(diag, :core_dumps, [])
-      end)
+      opts
+      |> Keyword.get(:suite_diagnostics, [])
+      |> Enum.flat_map(&Map.get(&1, :core_dumps, []))
       |> Enum.filter(&File.exists?/1)
 
     Enum.each(core_dumps, fn core_path ->
@@ -173,13 +163,9 @@ defmodule Toast.ResultPackaging do
   # Flattens "work_dir/dbserver-0/log" → "dbserver-0.log"
   # and "work_dir/dbserver-0/tsan.log" → "dbserver-0.tsan.log"
   defp flatten_artifact_name(path) do
-    basename = Path.basename(path)
     server_id = path |> Path.dirname() |> Path.basename()
-
-    case basename do
-      "log" -> "#{server_id}.log"
-      _ -> "#{server_id}.#{basename}"
-    end
+    basename = Path.basename(path)
+    "#{server_id}.#{basename}"
   end
 
   # --- Compression helpers ---

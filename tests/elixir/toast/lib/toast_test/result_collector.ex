@@ -136,11 +136,11 @@ defmodule ToastTest.ResultCollector do
   # --- Private helpers ---
 
   defp build_modules(modules_map, module_timestamps) do
-    # Collect all modules from both sources
-    all_modules = Map.keys(modules_map) ++ Map.keys(module_timestamps)
-    all_modules = Enum.uniq(all_modules)
-
-    Map.new(all_modules, fn mod ->
+    modules_map
+    |> Map.keys()
+    |> Enum.concat(Map.keys(module_timestamps))
+    |> Enum.uniq()
+    |> Map.new(fn mod ->
       tests = modules_map |> Map.get(mod, []) |> Enum.reverse()
       ts = Map.get(module_timestamps, mod)
 

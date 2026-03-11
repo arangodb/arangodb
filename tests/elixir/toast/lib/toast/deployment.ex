@@ -7,8 +7,6 @@ defmodule Toast.Deployment do
   alias Toast.Config
   alias Toast.Deployment.{Controller, ServerInstance}
 
-  import Toast.Utils, only: [compact_join: 2]
-
   @type mode :: :single_server | :cluster
 
   @typedoc """
@@ -314,20 +312,11 @@ defmodule Toast.Deployment do
   end
 
   defp format_crash_message({:server_crashed, server_id, crash_info}) do
-    [
-      "Server crashed",
-      "(#{server_id})",
-      if(crash_info, do: format_crash_exit(crash_info))
-    ]
-    |> compact_join(" ")
+    "Server crashed (#{server_id}) #{format_crash_exit(crash_info)}"
   end
 
   defp format_crash_message({:server_unhealthy, server_id}) do
     "Server became unresponsive (#{server_id})"
-  end
-
-  defp format_crash_message(_error) do
-    "Deployment failed (unknown error)"
   end
 
   defp format_crash_exit(ci) do

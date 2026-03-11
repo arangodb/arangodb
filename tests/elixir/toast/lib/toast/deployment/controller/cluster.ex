@@ -88,10 +88,7 @@ defmodule Toast.Deployment.Controller.Cluster do
   end
 
   def resolve_target(state, role: role) when is_atom(role) do
-    ids =
-      state.servers
-      |> Enum.filter(fn {_id, server} -> server.role == role end)
-      |> Enum.map(fn {id, _server} -> id end)
+    ids = for {id, %{role: ^role}} <- state.servers, do: id
 
     if ids == [],
       do: {:error, {:no_servers_for_role, role}},
@@ -100,9 +97,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   def resolve_target(state, role: role, index: index) when is_atom(role) and is_integer(index) do
     ids =
-      state.servers
-      |> Enum.filter(fn {_id, server} -> server.role == role end)
-      |> Enum.map(fn {id, _server} -> id end)
+      for({id, %{role: ^role}} <- state.servers, do: id)
       |> Enum.sort()
 
     case Enum.at(ids, index) do
@@ -159,27 +154,22 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   def handle_call_extra({:cluster_id, toast_id}, _from, state) do
     result =
-      case Map.get(state.mode_state.cluster_id_mapping, toast_id) do
-        nil -> {:error, :not_found}
-        cluster_id -> {:ok, cluster_id}
-      end
+      with :error <- Map.fetch(state.mode_state.cluster_id_mapping, toast_id),
+           do: {:error, :not_found}
 
     {:reply, result, state}
   end
 
   def handle_call_extra({:server_by_cluster_id, cluster_internal_id}, _from, state) do
     result =
-      case Enum.find(state.mode_state.cluster_id_mapping, fn {_toast_id, cid} ->
-             cid == cluster_internal_id
-           end) do
-        {toast_id, _} ->
-          case Map.get(state.servers, toast_id) do
-            nil -> {:error, :not_found}
-            server -> {:ok, server}
-          end
-
-        nil ->
-          {:error, :not_found}
+      with {toast_id, _} <-
+             Enum.find(state.mode_state.cluster_id_mapping, fn {_id, cid} ->
+               cid == cluster_internal_id
+             end),
+           %ServerInstance{} = server <- Map.get(state.servers, toast_id) do
+        {:ok, server}
+      else
+        _ -> {:error, :not_found}
       end
 
     {:reply, result, state}
@@ -475,13 +465,12 @@ defmodule Toast.Deployment.Controller.Cluster do
   # --- Helpers ---
 
   defp get_living_agents(state) do
-    state.mode_state.agents
-    |> Enum.map(fn id -> state.servers[id] end)
-    |> Enum.filter(fn server ->
-      # operational_state is nil before first state assignment during startup
-      server && server.operational_state in [:running, nil]
-    end)
-    |> Enum.map(fn server -> %{id: server.id, endpoint: server.endpoint} end)
+    for id <- state.mode_state.agents,
+        server = state.servers[id],
+        server != nil,
+        server.operational_state in [:running, nil] do
+      %{id: server.id, endpoint: server.endpoint}
+    end
   end
 
   defp put_in_mode_state(state, key, value) do

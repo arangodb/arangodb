@@ -250,8 +250,8 @@ defmodule ToastTest.Runner do
       |> ensure_in_list(ToastTest.CLIFormatter, :front)
       |> ensure_in_list(ToastTest.ResultCollector, :back)
 
-    result_collector_pid =
-      for formatter <- formatters do
+    formatter_pids =
+      Map.new(formatters, fn formatter ->
         formatter_opts =
           if formatter == ToastTest.ResultCollector,
             do: Keyword.put(opts, :suite, suite_name),
@@ -259,9 +259,11 @@ defmodule ToastTest.Runner do
 
         {:ok, pid} = Compat.add_formatter(manager, formatter, formatter_opts)
         {formatter, pid}
-      end
-      |> Map.new()
-      |> Map.fetch!(ToastTest.ResultCollector)
+      end)
+
+    result_collector_pid =
+      Map.get(formatter_pids, ToastTest.ResultCollector) ||
+        raise "ResultCollector formatter failed to start"
 
     {manager, stats_pid, result_collector_pid}
   end
@@ -315,7 +317,7 @@ defmodule ToastTest.Runner do
     Compat.stop(config.manager)
 
     after_suite_callbacks = Application.fetch_env!(:ex_unit, :after_suite)
-    Enum.each(after_suite_callbacks, fn callback -> callback.(stats) end)
+    Enum.each(after_suite_callbacks, & &1.(stats))
 
     {stats, test_data}
   end
@@ -345,14 +347,9 @@ defmodule ToastTest.Runner do
 
   defp validate_no_async!(test_modules) do
     async_modules =
-      Enum.filter(test_modules, fn mod ->
-        case Compat.get_test_metadata(mod) do
-          %{tags: %{async: true}} -> true
-          _ -> false
-        end
-      end)
+      Enum.filter(test_modules, &match?(%{tags: %{async: true}}, Compat.get_test_metadata(&1)))
 
-    if async_modules != [] do
+    unless async_modules == [] do
       names = Enum.map_join(async_modules, ", ", &inspect/1)
       raise "Toast does not support async test modules. Found: #{names}"
     end
@@ -379,8 +376,6 @@ defmodule ToastTest.Runner do
   @infra_keys [
     :build_dir,
     :work_dir,
-    :startup_timeout,
-    :shutdown_timeout,
     :sanitizer_override,
     :show_server_logs,
     :keep_work_dir
@@ -401,6 +396,10 @@ defmodule ToastTest.Runner do
     suite_topology = Keyword.take(suite_config, @topology_keys)
 
     # Precedence (highest to lowest): suite topology > global CLI opts > suite server args > base
+    #
+    # Suite topology (cluster shape) is part of the test contract — the test requires a specific
+    # topology to be meaningful, so it must win. Infrastructure opts (build_dir, work_dir, etc.)
+    # are deployment environment settings where CLI should override suite defaults.
     base
     |> Keyword.merge(suite_args)
     |> Keyword.merge(Keyword.take(global_opts, @infra_keys ++ @topology_keys))
@@ -509,7 +508,8 @@ defmodule ToastTest.Runner do
   end
 
   defp post_execution(deployment, test_data, toast_config) do
-    {servers, _error} = stop_deployment(deployment)
+    {servers, error} = stop_deployment(deployment)
+    if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
     pid_history = ToastTest.ProcessHistory.pids_by_server()
     crash_events = ToastTest.ProcessHistory.unexpected_crashes()
     artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history)
@@ -545,7 +545,7 @@ defmodule ToastTest.Runner do
   end
 
   defp derive_suite_name(suite_module) do
-    suite_module |> Module.split() |> hd() |> Macro.underscore()
+    suite_module |> Module.split() |> Enum.map(&Macro.underscore/1) |> Enum.join("_")
   end
 
   defp cleanup_between_suites do
@@ -682,10 +682,10 @@ defmodule ToastTest.Runner do
   defp match_test_name?(nil, _test), do: true
 
   defp match_test_name?(pattern, test) do
-    test_name = Atom.to_string(test.name)
-    downcased_name = String.downcase(test_name)
-    downcased_pattern = String.downcase(pattern)
-    String.contains?(downcased_name, downcased_pattern)
+    test.name
+    |> Atom.to_string()
+    |> String.downcase()
+    |> String.contains?(String.downcase(pattern))
   end
 
   ## Module test execution
@@ -698,8 +698,10 @@ defmodule ToastTest.Runner do
     Process.put(@current_key, test_module)
     %ExUnit.TestModule{name: module, tags: tags, parameters: params} = test_module
 
-    async? = Map.get(tags, :async, false)
-    context = tags |> Map.merge(params) |> Map.merge(%{module: module, async: async?})
+    context =
+      tags
+      |> Map.merge(params)
+      |> Map.merge(%{module: module, async: Map.get(tags, :async, false)})
 
     config
     |> run_setup_all(test_module, context, fn context ->
@@ -758,11 +760,7 @@ defmodule ToastTest.Runner do
   defp run_tests_loop(config, [test | rest] = remaining, params, context, acc) do
     check_suite_deadline!(config)
 
-    prev_test =
-      case acc do
-        [prev | _] -> prev
-        [] -> nil
-      end
+    prev_test = List.first(acc)
 
     if ToastTest.Abort.reason() do
       {acc, remaining}
@@ -984,19 +982,22 @@ defmodule ToastTest.Runner do
   end
 
   defp get_timeout(config, tags) do
-    base = if config.trace, do: :infinity, else: Map.get(tags, :timeout, config.timeout)
-
-    base =
-      if base != :infinity and Map.has_key?(tags, :timeout),
-        do: base * config.timeout_factor,
-        else: base
-
-    clamp_to_deadline(config.suite_deadline, base)
+    config
+    |> compute_base_timeout(tags)
+    |> apply_timeout_factor(config.timeout_factor, Map.has_key?(tags, :timeout))
+    |> clamp_to_deadline(config.suite_deadline)
   end
 
-  defp clamp_to_deadline(nil, timeout), do: timeout
+  defp compute_base_timeout(%{trace: true}, _tags), do: :infinity
+  defp compute_base_timeout(config, tags), do: Map.get(tags, :timeout, config.timeout)
 
-  defp clamp_to_deadline(deadline, timeout) do
+  defp apply_timeout_factor(:infinity, _factor, _has_tag), do: :infinity
+  defp apply_timeout_factor(timeout, factor, true), do: timeout * factor
+  defp apply_timeout_factor(timeout, _factor, false), do: timeout
+
+  defp clamp_to_deadline(timeout, nil), do: timeout
+
+  defp clamp_to_deadline(timeout, deadline) do
     remaining = max(deadline - System.monotonic_time(:millisecond), 1)
     if timeout == :infinity, do: remaining, else: min(timeout, remaining)
   end

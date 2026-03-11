@@ -105,11 +105,11 @@ defmodule Toast.Process.HealthMonitor do
 
   @impl true
   def handle_cast(:suspend, state) do
-    if state.timer_ref, do: Process.cancel_timer(state.timer_ref)
+    cancel_timer(state.timer_ref)
     {:noreply, %{state | status: :suspended, timer_ref: nil}}
   end
 
-  def handle_cast(:resume, %{status: :suspended} = state) do
+  def handle_cast(:resume, %{status: status} = state) when status in [:suspended, :unhealthy] do
     {:noreply, schedule_check(%{state | status: :healthy, consecutive_failures: 0})}
   end
 
@@ -123,4 +123,7 @@ defmodule Toast.Process.HealthMonitor do
     ref = Process.send_after(self(), :check, state.interval)
     %{state | timer_ref: ref}
   end
+
+  defp cancel_timer(nil), do: :ok
+  defp cancel_timer(ref), do: Process.cancel_timer(ref)
 end

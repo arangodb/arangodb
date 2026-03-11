@@ -8,7 +8,7 @@ defmodule ToastTest.SuiteResult.JSON do
     data = %{
       "suite" => result.suite,
       "started_at" => DateTime.to_iso8601(result.started_at),
-      "finished_at" => DateTime.to_iso8601(result.finished_at),
+      "finished_at" => if(result.finished_at, do: DateTime.to_iso8601(result.finished_at)),
       "duration_us" => result.times_us.run,
       "summary" => build_summary(tests),
       "tests" => Enum.map(tests, &encode_test/1)
@@ -40,8 +40,10 @@ defmodule ToastTest.SuiteResult.JSON do
     }
   end
 
+  defp json_encoder(nil, _encoder, _opts), do: "null"
+
   defp json_encoder(value, encoder, opts) when is_atom(value) and not is_boolean(value) do
-    if is_nil(value), do: "null", else: value |> Atom.to_string() |> encoder.(encoder, opts)
+    value |> Atom.to_string() |> encoder.(encoder, opts)
   end
 
   defp json_encoder(value, encoder, opts), do: :json.format_value(value, encoder, opts)

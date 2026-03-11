@@ -58,13 +58,8 @@ defmodule Toast.Process.ServerProcess do
   """
   @spec start_link(start_opts()) :: GenServer.on_start()
   def start_link(opts) do
-    {name, init_opts} = Keyword.pop(opts, :name)
-
-    if name do
-      GenServer.start_link(__MODULE__, init_opts, name: name)
-    else
-      GenServer.start_link(__MODULE__, init_opts)
-    end
+    {gen_opts, init_opts} = Keyword.split(opts, [:name])
+    GenServer.start_link(__MODULE__, init_opts, gen_opts)
   end
 
   @doc """
@@ -178,11 +173,8 @@ defmodule Toast.Process.ServerProcess do
     {:noreply, new_state}
   end
 
-  def handle_call({:stop, _timeout}, _from, %{status: :stopped} = state) do
-    {:reply, :ok, state}
-  end
-
-  def handle_call({:stop, _timeout}, _from, %{status: :crashed} = state) do
+  def handle_call({:stop, _timeout}, _from, %{status: status} = state)
+      when status in [:stopped, :crashed, :killed] do
     {:reply, :ok, state}
   end
 
@@ -195,11 +187,6 @@ defmodule Toast.Process.ServerProcess do
     :exec.kill(state.os_pid, @sigcont)
     new_state = do_stop(%{state | status: :running}, timeout, from)
     {:noreply, new_state}
-  end
-
-  # Killed process is already dead — just return :ok
-  def handle_call({:stop, _timeout}, _from, %{status: :killed} = state) do
-    {:reply, :ok, state}
   end
 
   def handle_call(:kill, _from, %{status: status} = state)
@@ -282,7 +269,7 @@ defmodule Toast.Process.ServerProcess do
   end
 
   def handle_info({:stderr, os_pid, data}, %{os_pid: os_pid, output_handler: handler} = state)
-      when handler != nil do
+      when is_function(handler) do
     handler.(state.id, data)
     {:noreply, state}
   end

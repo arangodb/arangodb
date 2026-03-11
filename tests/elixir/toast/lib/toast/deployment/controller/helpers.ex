@@ -6,18 +6,13 @@ defmodule Toast.Deployment.Controller.Helpers do
   @spec fetch_server(Toast.Deployment.Controller.State.t(), String.t()) ::
           {:ok, ServerInstance.t()} | {:error, :not_found}
   def fetch_server(state, server_id) do
-    case Map.get(state.servers, server_id) do
-      nil -> {:error, :not_found}
-      server -> {:ok, server}
-    end
+    with :error <- Map.fetch(state.servers, server_id), do: {:error, :not_found}
   end
 
   @spec update_server(Toast.Deployment.Controller.State.t(), String.t(), keyword()) ::
           Toast.Deployment.Controller.State.t()
   def update_server(state, server_id, updates) do
-    server = state.servers[server_id]
-    updated = struct!(server, updates)
-    %{state | servers: Map.put(state.servers, server_id, updated)}
+    %{state | servers: Map.update!(state.servers, server_id, &struct!(&1, updates))}
   end
 
   @spec start_single_health_monitor(String.t(), String.t()) :: {:ok, pid()} | {:error, term()}

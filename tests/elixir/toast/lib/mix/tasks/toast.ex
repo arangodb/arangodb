@@ -179,10 +179,9 @@ defmodule Mix.Tasks.Toast do
     {test_files, line_filters} =
       Mix.Tasks.Toast.Helpers.apply_file_filters(test_files, file_filters, suite_dir)
 
-    if test_files == [] do
-      []
-    else
-      build_suite_entry(suite_module, suite_dir, test_files, line_filters, test_filter)
+    case test_files do
+      [] -> []
+      _ -> build_suite_entry(suite_module, suite_dir, test_files, line_filters, test_filter)
     end
   end
 
@@ -231,38 +230,31 @@ defmodule Mix.Tasks.Toast do
   ## Suite discovery helpers
 
   defp discover_and_compile_suites(suites_dir, suite_requests) do
-    suite_files = Path.wildcard(Path.join([suites_dir, "*", "suite.ex"]))
-
     suite_files =
-      case suite_requests do
-        :all ->
-          suite_files
+      [suites_dir, "*", "suite.ex"]
+      |> Path.join()
+      |> Path.wildcard()
+      |> filter_by_request(suite_requests)
 
-        names ->
-          Enum.filter(suite_files, fn path ->
-            dir_name = path |> Path.dirname() |> Path.basename()
-            dir_name in names
-          end)
-      end
+    Enum.flat_map(suite_files, &compile_single_suite/1)
+  end
 
-    Enum.flat_map(suite_files, fn suite_file ->
-      compile_single_suite(suite_file)
+  defp filter_by_request(suite_files, :all), do: suite_files
+
+  defp filter_by_request(suite_files, names) do
+    Enum.filter(suite_files, fn path ->
+      path |> Path.dirname() |> Path.basename() |> Kernel.in(names)
     end)
   end
 
   defp compile_single_suite(suite_file) do
     case Kernel.ParallelCompiler.compile([suite_file], return_diagnostics: true) do
       {:ok, modules, _} ->
-        suite_modules =
-          Enum.filter(modules, fn mod ->
-            behaviours = mod.__info__(:attributes)[:behaviour] || []
-            ToastTest.Suite in behaviours
-          end)
-
-        Enum.map(suite_modules, fn mod ->
+        for mod <- modules,
+            ToastTest.Suite in (mod.__info__(:attributes)[:behaviour] || []) do
           source = mod.__info__(:compile)[:source] |> to_string()
           {mod, Path.dirname(source)}
-        end)
+        end
 
       {:error, errors, _} ->
         Logger.error("Failed to compile suite #{suite_file}: #{inspect(errors)}")
@@ -285,9 +277,8 @@ defmodule Mix.Tasks.Toast do
         all_exs = Path.wildcard(Path.join(suite_dir, "*.exs"))
 
         orphans =
-          Enum.filter(all_exs, fn path ->
-            basename = Path.basename(path)
-            not String.starts_with?(basename, "test_")
+          Enum.reject(all_exs, fn path ->
+            path |> Path.basename() |> String.starts_with?("test_")
           end)
 
         {modules, orphans}

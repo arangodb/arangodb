@@ -54,18 +54,18 @@ defmodule Toast.Client do
   def post(client, path, body \\ nil, opts \\ [])
 
   @spec post(t(), String.t(), term(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
-  def post(%__MODULE__{} = client, path, body, opts) do
-    opts = if body != nil, do: [{:json, body} | opts], else: opts
-    request(client, :post, path, opts)
-  end
+  def post(%__MODULE__{} = client, path, nil, opts), do: request(client, :post, path, opts)
+
+  def post(%__MODULE__{} = client, path, body, opts),
+    do: request(client, :post, path, [{:json, body} | opts])
 
   def put(client, path, body \\ nil, opts \\ [])
 
   @spec put(t(), String.t(), term(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
-  def put(%__MODULE__{} = client, path, body, opts) do
-    opts = if body != nil, do: [{:json, body} | opts], else: opts
-    request(client, :put, path, opts)
-  end
+  def put(%__MODULE__{} = client, path, nil, opts), do: request(client, :put, path, opts)
+
+  def put(%__MODULE__{} = client, path, body, opts),
+    do: request(client, :put, path, [{:json, body} | opts])
 
   @spec delete(t(), String.t(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
   def delete(%__MODULE__{} = client, path, opts \\ []) do
@@ -75,7 +75,7 @@ defmodule Toast.Client do
   defp request(%__MODULE__{} = client, method, path, opts) do
     url = build_url(client, path)
     opts = [{:url, url} | apply_auth(client, opts)]
-    Req.request(client.req, [method: method] ++ opts)
+    Req.request(client.req, [{:method, method} | opts])
   end
 
   defp build_url(%__MODULE__{} = client, path) do
@@ -104,7 +104,9 @@ defmodule Toast.Client do
     if status in expected, do: {:ok, body}, else: {:error, %{status: status, body: body}}
   end
 
-  def unwrap({:ok, resp}, _expected), do: {:error, %{status: resp.status, body: resp.body}}
+  def unwrap({:ok, %{status: status, body: body}}, _expected),
+    do: {:error, %{status: status, body: body}}
+
   def unwrap({:error, _} = err, _expected), do: err
 
   @spec unwrap_ok(
@@ -122,20 +124,19 @@ defmodule Toast.Client do
   end
 
   def unwrap_ok({:ok, resp}, _expected), do: {:error, %{status: resp.status, body: resp.body}}
+
   def unwrap_ok({:error, _} = err, _expected), do: err
 
   defp apply_auth(%__MODULE__{auth: nil}, opts), do: opts
+  defp apply_auth(%__MODULE__{auth: auth}, opts), do: prepend_header(opts, auth_header(auth))
 
-  defp apply_auth(%__MODULE__{auth: auth}, opts) do
-    header =
-      case auth do
-        {:basic, user, password} ->
-          {"authorization", "Basic " <> Base.encode64("#{user}:#{password}")}
+  defp auth_header({:basic, user, password}),
+    do: {"authorization", "Basic " <> Base.encode64("#{user}:#{password}")}
 
-        {:jwt, token} ->
-          {"authorization", "Bearer #{token}"}
-      end
+  defp auth_header({:jwt, token}),
+    do: {"authorization", "Bearer #{token}"}
 
+  defp prepend_header(opts, header) do
     existing = Keyword.get(opts, :headers, [])
     Keyword.put(opts, :headers, [header | existing])
   end

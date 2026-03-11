@@ -65,25 +65,16 @@ defmodule Toast.Deployment.ServerLifecycle do
   @spec relaunch_and_wait(ServerInstance.t(), keyword()) :: :ok | {:error, term()}
   def relaunch_and_wait(%ServerInstance{} = server, opts) do
     factor = Keyword.get(opts, :timeout_factor, 1)
+    process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
 
-    case ServerProcess.relaunch(server.server_pid, opts) do
-      :ok ->
-        process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
-
-        case Health.wait_until_ready(server.endpoint,
-               timeout: @base_relaunch_timeout * factor,
-               process_check_fn: process_check_fn
-             ) do
-          :ok ->
-            resume_health_monitor(server)
-            :ok
-
-          {:error, _} = err ->
-            err
-        end
-
-      {:error, _} = err ->
-        err
+    with :ok <- ServerProcess.relaunch(server.server_pid, opts),
+         :ok <-
+           Health.wait_until_ready(server.endpoint,
+             timeout: @base_relaunch_timeout * factor,
+             process_check_fn: process_check_fn
+           ) do
+      resume_health_monitor(server)
+      :ok
     end
   end
 
@@ -131,25 +122,12 @@ defmodule Toast.Deployment.ServerLifecycle do
     end
   end
 
-  defp handle_unexpected_crash(server_id, crash_info, nil, on_crash_ctx) do
-    Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-    notify_crash(on_crash_ctx.on_crash, server_id, crash_info)
-
-    notify_event(
-      on_crash_ctx.on_event,
-      {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
-    )
-
-    :unexpected_crash
-  end
-
   defp handle_unexpected_crash(
          server_id,
          crash_info,
-         %ServerInstance{} = server,
+         %ServerInstance{expecting_exit: true},
          on_crash_ctx
-       )
-       when server.expecting_exit do
+       ) do
     if crash_info.signal in @intentional_exit_signals do
       Logger.debug(
         "Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})"
@@ -161,42 +139,40 @@ defmodule Toast.Deployment.ServerLifecycle do
         "Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}"
       )
 
-      notify_crash(on_crash_ctx.on_crash, server_id, crash_info)
-
-      notify_event(
-        on_crash_ctx.on_event,
-        {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
-      )
-
+      notify_crash_and_event(on_crash_ctx, server_id, crash_info)
       :crash_during_intentional_stop
     end
   end
 
-  defp handle_unexpected_crash(server_id, crash_info, %ServerInstance{} = _server, on_crash_ctx) do
+  defp handle_unexpected_crash(server_id, crash_info, _server, on_crash_ctx) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
+    notify_crash_and_event(on_crash_ctx, server_id, crash_info)
+    :unexpected_crash
+  end
+
+  defp notify_crash_and_event(on_crash_ctx, server_id, crash_info) do
     notify_crash(on_crash_ctx.on_crash, server_id, crash_info)
 
     notify_event(
       on_crash_ctx.on_event,
       {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
     )
-
-    :unexpected_crash
   end
 
   # --- Expect / verify crash protocol ---
 
   @spec expect_crash(String.t(), timeout(), map(), ServerInstance.t()) ::
           {:ok, map()} | {:error, :already_expected}
+  def expect_crash(server_id, _timeout, expected_crashes, %ServerInstance{})
+      when is_map_key(expected_crashes, server_id) do
+    {:error, :already_expected}
+  end
+
   def expect_crash(server_id, timeout, expected_crashes, %ServerInstance{} = server) do
-    if Map.has_key?(expected_crashes, server_id) do
-      {:error, :already_expected}
-    else
-      suspend_health_monitor(server)
-      timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, timeout)
-      entry = %{timer: timer, crash_info: nil, waiter: nil}
-      {:ok, Map.put(expected_crashes, server_id, entry)}
-    end
+    suspend_health_monitor(server)
+    timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, timeout)
+    entry = %{timer: timer, crash_info: nil, waiter: nil}
+    {:ok, Map.put(expected_crashes, server_id, entry)}
   end
 
   @spec verify_crash(String.t(), timeout(), map(), GenServer.from()) ::
@@ -313,8 +289,7 @@ defmodule Toast.Deployment.ServerLifecycle do
   @spec print_server_output(String.t(), String.t()) :: :ok
   def print_server_output(server_id, data) do
     data
-    |> String.split("\n")
-    |> Enum.reject(&(&1 == ""))
+    |> String.split("\n", trim: true)
     |> Enum.each(&IO.puts("  #{server_id} | #{&1}"))
   end
 end

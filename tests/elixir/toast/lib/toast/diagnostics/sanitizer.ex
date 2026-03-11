@@ -79,14 +79,16 @@ defmodule Toast.Diagnostics.Sanitizer do
   @spec build_env(MapSet.t(String.t()), String.t(), String.t(), String.t() | nil) ::
           [{String.t(), String.t()}]
   def build_env(active, log_dir, repo_root, explicit \\ nil) do
-    if MapSet.size(active) == 0 do
+    if Enum.empty?(active) do
       []
     else
       Enum.map(active, fn san_var ->
-        options = build_base_options(san_var, explicit)
-        options = merge_env_options(san_var, options)
-        options = add_log_path(san_var, options, log_dir)
-        options = add_suppressions(san_var, options, repo_root)
+        options =
+          build_base_options(san_var, explicit)
+          |> merge_env_options(san_var)
+          |> add_log_path(san_var, log_dir)
+          |> add_suppressions(san_var, repo_root)
+
         {san_var, format_options(options)}
       end)
     end
@@ -108,7 +110,7 @@ defmodule Toast.Diagnostics.Sanitizer do
 
   defp build_base_options(_san_var, nil), do: %{}
 
-  defp merge_env_options(san_var, base) do
+  defp merge_env_options(base, san_var) do
     case System.get_env(san_var) do
       nil -> base
       existing -> parse_sanitizer_options(existing, base)
@@ -126,7 +128,7 @@ defmodule Toast.Diagnostics.Sanitizer do
     end)
   end
 
-  defp add_log_path(san_var, options, log_dir) do
+  defp add_log_path(options, san_var, log_dir) do
     log_name = if san_var in @tsan_vars, do: "tsan.log", else: "alubsan.log"
     log_path = Path.join(log_dir, log_name)
 
@@ -135,7 +137,7 @@ defmodule Toast.Diagnostics.Sanitizer do
     |> Map.put("log_exe_name", "true")
   end
 
-  defp add_suppressions(san_var, options, repo_root) do
+  defp add_suppressions(options, san_var, repo_root) do
     # Extract sanitizer name: "ASAN_OPTIONS" -> "asan"
     san_name = san_var |> String.split("_") |> hd() |> String.downcase()
     suppressions_file = Path.join(repo_root, "#{san_name}_arangodb_suppressions.txt")

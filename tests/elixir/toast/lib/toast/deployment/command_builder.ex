@@ -39,7 +39,7 @@ defmodule Toast.Deployment.CommandBuilder do
 
   defp flatten_custom_args(args) do
     args
-    |> Enum.sort_by(fn {key, _} -> key end)
+    |> Enum.sort_by(&elem(&1, 0))
     |> Enum.flat_map(&expand_arg/1)
   end
 

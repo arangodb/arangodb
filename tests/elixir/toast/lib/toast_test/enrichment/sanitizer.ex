@@ -13,8 +13,8 @@ defmodule ToastTest.Enrichment.Sanitizer do
   """
   @spec read(Path.t()) :: {:ok, result()} | {:error, term()}
   def read(path) do
-    with {:ok, content} <- File.read(path),
-         {:ok, stat} <- File.stat(path, time: :posix) do
+    with {:ok, stat} <- File.stat(path, time: :posix),
+         {:ok, content} <- File.read(path) do
       {:ok,
        %{
          content: content,

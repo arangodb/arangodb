@@ -186,15 +186,8 @@ defmodule ToastTest.CLIFormatter do
   end
 
   defp print_test_result(%ExUnit.Test{state: {:skipped, _}} = test, state) do
-    if abort_skipped?(test) do
-      # Abort-skipped tests in a running module: show individually since [ RUN ] was printed.
-      # Abort-skipped tests in a fully-skipped module: suppress (module_finished handles it).
-      if state.module_header_printed do
-        name = display_name(test)
-        IO.puts("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}")
-      end
-    else
-      # Regular @tag :skip
+    # Abort-skipped tests in a fully-skipped module: suppress (module_finished handles it).
+    unless abort_skipped?(test) and not state.module_header_printed do
       name = display_name(test)
       IO.puts("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}")
     end
@@ -250,10 +243,10 @@ defmodule ToastTest.CLIFormatter do
     c = state.counters
     elapsed = elapsed_ms(state.suite_start_time)
     abort_reason = ToastTest.Abort.reason()
-    is_failure = c.failed > 0 || c.invalid > 0 || abort_reason != nil
+    failure? = c.failed > 0 || c.invalid > 0 || abort_reason != nil
 
-    status_text = if is_failure, do: "FAILED", else: "PASSED"
-    status_color = if is_failure, do: :red, else: :green
+    status_text = if failure?, do: "FAILED", else: "PASSED"
+    status_color = if failure?, do: :red, else: :green
 
     # Status line
     status_bracket = String.pad_leading(status_text, 10)
@@ -269,7 +262,7 @@ defmodule ToastTest.CLIFormatter do
     end
 
     # Detail line
-    detail = build_detail_parts(c, state) |> Enum.join(", ")
+    detail = c |> build_detail_parts(state) |> Enum.join(", ")
 
     IO.puts(
       "#{timestamp()} #{colorize("[============]", :cyan, state)} " <>
@@ -295,9 +288,10 @@ defmodule ToastTest.CLIFormatter do
   end
 
   @doc """
-  Print a failure summary for the given list of failed `%ExUnit.Test{}` structs.
+  Print a failure summary for the given list of `%ExUnit.Test{}` structs.
 
-  Called by the runner to print failure details in the post-execution summary.
+  All tests must have `state: {:failed, _}` — the function pattern-matches on
+  this and will raise on tests with any other state.
   """
   @spec print_failure_summary([ExUnit.Test.t()]) :: :ok
   def print_failure_summary([]), do: :ok
@@ -381,19 +375,12 @@ defmodule ToastTest.CLIFormatter do
     |> String.replace_prefix("test ", "")
   end
 
-  defp module_file(%ExUnit.TestModule{} = mod) do
-    case mod.state do
-      {:failed, %{tags: %{file: file}}} ->
-        file
+  defp module_file(%ExUnit.TestModule{state: {:failed, %{tags: %{file: file}}}}), do: file
 
-      _ ->
-        if function_exported?(mod.name, :__ex_unit__, 0) do
-          info = mod.name.__ex_unit__()
-          Map.get(info, :file, inspect(mod.name))
-        else
-          inspect(mod.name)
-        end
-    end
+  defp module_file(%ExUnit.TestModule{name: name}) do
+    if function_exported?(name, :__ex_unit__, 0),
+      do: name.__ex_unit__() |> Map.get(:file, inspect(name)),
+      else: inspect(name)
   end
 
   defp timestamp do

@@ -101,11 +101,8 @@ defmodule ToastTest.Attribution.TimeWindows do
 
   defp match_module(timestamp, modules) do
     Enum.find_value(modules, :miss, fn {mod, window} ->
-      cond do
-        in_setup?(timestamp, window) -> {{:module, mod}, nil}
-        in_teardown?(timestamp, window) -> {{:module, mod}, nil}
-        true -> nil
-      end
+      if in_setup?(timestamp, window) or in_teardown?(timestamp, window),
+        do: {{:module, mod}, nil}
     end)
   end
 
@@ -139,12 +136,12 @@ defmodule ToastTest.Attribution.TimeWindows do
   end
 
   defp build_test_windows(modules) do
-    Enum.flat_map(modules, fn {mod, data} ->
-      Enum.map(data.tests, fn test ->
-        {{mod, test.name}, %{started_at: test.started_at, finished_at: test.finished_at}}
-      end)
-    end)
-    |> Map.new()
+    for {mod, data} <- modules,
+        test <- data.tests,
+        test.started_at != nil and test.finished_at != nil,
+        into: %{} do
+      {{mod, test.name}, %{started_at: test.started_at, finished_at: test.finished_at}}
+    end
   end
 
   defp in_window?(timestamp, window_start, window_end) do

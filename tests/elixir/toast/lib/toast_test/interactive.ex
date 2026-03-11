@@ -59,49 +59,25 @@ defmodule ToastTest.Interactive do
 
         {^module_pid, :setup_all, {:error, error}} ->
           TestLifecycle.exit_setup_all(module_pid, module_ref)
-
-          failed =
-            Enum.map(tests, fn test ->
-              %{
-                module: module,
-                name: test.name,
-                outcome: :failed,
-                failure: error
-              }
-            end)
-
-          {failed, error}
+          {mark_all_failed(tests, module, error), error}
 
         {:DOWN, ^module_ref, :process, ^module_pid, error} ->
-          failed =
-            Enum.map(tests, fn test ->
-              %{
-                module: module,
-                name: test.name,
-                outcome: :failed,
-                failure: {:EXIT, error, []}
-              }
-            end)
-
-          {failed, {:EXIT, error, []}}
+          failure = {:EXIT, error, []}
+          {mark_all_failed(tests, module, failure), failure}
       end
 
     on_exit_error = run_on_exit(module_pid)
 
-    results =
-      if on_exit_error && is_nil(setup_all_error) do
-        IO.puts("Warning: setup_all on_exit handler failed: #{inspect(on_exit_error)}")
-        results
-      else
-        results
-      end
+    if on_exit_error && is_nil(setup_all_error) do
+      IO.puts("Warning: setup_all on_exit handler failed: #{inspect(on_exit_error)}")
+    end
 
     print_summary(results)
     results
   end
 
   defp run_tests(module, tests, context) do
-    Enum.map(tests, fn test -> run_single_test(module, test, context) end)
+    Enum.map(tests, &run_single_test(module, &1, context))
   end
 
   defp run_single_test(module, test, setup_all_context) do
@@ -160,8 +136,12 @@ defmodule ToastTest.Interactive do
   defp run_on_exit(pid) do
     case TestLifecycle.run_on_exit(pid, @on_exit_timeout) do
       :ok -> nil
-      {kind, reason, stack} -> {kind, reason, stack}
+      error -> error
     end
+  end
+
+  defp mark_all_failed(tests, module, failure) do
+    Enum.map(tests, &%{module: module, name: &1.name, outcome: :failed, failure: failure})
   end
 
   defp print_summary(results) do

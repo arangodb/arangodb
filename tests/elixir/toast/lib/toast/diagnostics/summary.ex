@@ -8,14 +8,12 @@ defmodule Toast.Diagnostics.Summary do
   """
   @spec has_sanitizer_errors?([map()]) :: boolean()
   def has_sanitizer_errors?(suites) do
-    Enum.any?(suites, fn suite ->
-      case suite do
-        %{suite_result: %ToastTest.SuiteResult{issues: issues}} ->
-          Enum.any?(issues, &(&1.type == :sanitizer_report))
+    Enum.any?(suites, fn
+      %{suite_result: %ToastTest.SuiteResult{issues: issues}} ->
+        Enum.any?(issues, &(&1.type == :sanitizer_report))
 
-        _ ->
-          false
-      end
+      _ ->
+        false
     end)
   end
 
@@ -26,17 +24,18 @@ defmodule Toast.Diagnostics.Summary do
   """
   @spec build_suite_diagnostics([map()]) :: [map()]
   def build_suite_diagnostics(suites) do
-    Enum.map(suites, fn suite ->
-      issues =
-        case suite do
-          %{suite_result: %ToastTest.SuiteResult{issues: issues}} -> issues
-          _ -> []
-        end
+    Enum.map(suites, fn
+      %{suite_result: %ToastTest.SuiteResult{issues: issues}} = suite ->
+        %{
+          name: inspect(suite[:suite_module]),
+          core_dumps: extract_core_dumps(issues)
+        }
 
-      %{
-        name: suite[:suite_module] |> inspect(),
-        core_dumps: extract_core_dumps(issues)
-      }
+      suite ->
+        %{
+          name: inspect(suite[:suite_module]),
+          core_dumps: []
+        }
     end)
   end
 

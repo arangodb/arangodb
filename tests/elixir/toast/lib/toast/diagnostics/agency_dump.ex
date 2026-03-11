@@ -38,11 +38,13 @@ defmodule Toast.Diagnostics.AgencyDump do
     timeout = Keyword.get(opts, :timeout, 10_000)
     client_opts = Keyword.get(opts, :client_opts, [])
 
-    if agents == [] do
-      Logger.warning("AgencyDump: no agents available, skipping dump")
-      nil
-    else
-      try_agents(agents, timeout, client_opts)
+    case agents do
+      [] ->
+        Logger.warning("AgencyDump: no agents available, skipping dump")
+        nil
+
+      _ ->
+        try_agents(agents, timeout, client_opts)
     end
   end
 

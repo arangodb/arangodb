@@ -59,10 +59,10 @@ defmodule Toast.LogFormatter do
   defp format_msg({format, args}), do: :io_lib.format(format, args)
 
   defp format_timestamp(%{time: usec}) when is_integer(usec) do
-    # microseconds since epoch
-    {date, {h, m, s}} = :calendar.system_time_to_universal_time(usec, :microsecond)
+    {{year, month, day}, {h, m, s}} =
+      :calendar.system_time_to_universal_time(usec, :microsecond)
+
     ms = div(rem(usec, 1_000_000), 1_000)
-    {year, month, day} = date
 
     :io_lib.format("~4..0B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B.~3..0B", [
       year,

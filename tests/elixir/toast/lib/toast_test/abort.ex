@@ -34,13 +34,12 @@ defmodule ToastTest.Abort do
   @doc "Clears the abort state (re-creates the ETS table)."
   @spec clear!() :: :ok
   def clear! do
-    try do
-      :ets.delete(@table)
-    catch
-      :error, :badarg -> :ok
+    if :ets.whereis(@table) == :undefined do
+      :ets.new(@table, [:named_table, :set, :public])
+    else
+      :ets.delete_all_objects(@table)
     end
 
-    :ets.new(@table, [:named_table, :set, :public])
     :ok
   end
 
@@ -57,11 +56,7 @@ defmodule ToastTest.Abort do
 
   @doc "Extracts a human-readable message from an abort reason."
   @spec display_reason(term()) :: String.t()
-  def display_reason(reason) do
-    case reason do
-      {_type, msg} -> msg
-      msg when is_binary(msg) -> msg
-      other -> inspect(other)
-    end
-  end
+  def display_reason({_type, msg}), do: msg
+  def display_reason(msg) when is_binary(msg), do: msg
+  def display_reason(other), do: inspect(other)
 end

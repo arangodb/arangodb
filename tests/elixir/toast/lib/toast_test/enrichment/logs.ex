@@ -50,12 +50,9 @@ defmodule ToastTest.Enrichment.Logs do
             end
 
           :error ->
-            # Non-timestamped lines: include if we're already inside the window
-            if acc != [] do
-              collect_lines(device, start_dt, end_dt, [line | acc])
-            else
-              collect_lines(device, start_dt, end_dt, acc)
-            end
+            # Non-timestamped lines: include only if we're already inside the window
+            acc = if acc != [], do: [line | acc], else: acc
+            collect_lines(device, start_dt, end_dt, acc)
         end
     end
   end

@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Toast.Helpers do
         end
       end)
 
-    {Enum.uniq(Enum.reverse(suite_names)), file_filters}
+    {suite_names |> Enum.reverse() |> Enum.uniq(), file_filters}
   end
 
   @doc """
@@ -105,15 +105,17 @@ defmodule Mix.Tasks.Toast.Helpers do
   """
   @spec discover_suite_files(String.t()) :: {[String.t()], [String.t()]}
   def discover_suite_files(suite_dir) do
-    all_files = Path.wildcard(Path.join(suite_dir, "*"))
+    all_files = suite_dir |> Path.join("*") |> Path.wildcard()
 
     helpers =
-      all_files
-      |> Enum.filter(&(String.ends_with?(&1, ".ex") and Path.basename(&1) != "suite.ex"))
+      Enum.filter(all_files, fn path ->
+        String.ends_with?(path, ".ex") and Path.basename(path) != "suite.ex"
+      end)
 
     test_files =
-      Enum.filter(all_files, fn f ->
-        String.ends_with?(f, ".exs") and String.starts_with?(Path.basename(f), "test_")
+      Enum.filter(all_files, fn path ->
+        String.ends_with?(path, ".exs") and
+          path |> Path.basename() |> String.starts_with?("test_")
       end)
 
     {helpers, test_files}
@@ -196,11 +198,13 @@ defmodule Mix.Tasks.Toast.Helpers do
     end
   end
 
-  defp line_matches?(test, line_filters) do
-    file_basename = test.tags[:file] && Path.basename(test.tags[:file])
+  defp line_matches?(%{tags: %{file: nil}}, _line_filters), do: false
+
+  defp line_matches?(%{tags: tags}, line_filters) do
+    file_basename = Path.basename(tags[:file])
 
     Enum.any?(line_filters, fn {filter_file, filter_line} ->
-      file_basename == filter_file and test.tags[:line] == filter_line
+      file_basename == filter_file and tags[:line] == filter_line
     end)
   end
 

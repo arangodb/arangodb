@@ -91,13 +91,11 @@ defmodule Toast.Deployment.Controller.SingleServer do
 
   @impl true
   def build_info(state) do
-    server =
+    primary_endpoint =
       case Map.values(state.servers) do
-        [s] -> s
+        [server] -> server.endpoint
         _ -> nil
       end
-
-    primary_endpoint = if server, do: server.endpoint
 
     %{
       id: state.id,

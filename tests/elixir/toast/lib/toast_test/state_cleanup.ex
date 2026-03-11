@@ -24,8 +24,8 @@ defmodule ToastTest.StateCleanup do
   end
 
   defp reset_process_history do
-    if Process.whereis(ToastTest.ProcessHistory) do
-      ToastTest.ProcessHistory.clear()
-    end
+    ToastTest.ProcessHistory.clear()
+  catch
+    :exit, _ -> :ok
   end
 end

@@ -5,11 +5,8 @@ defmodule ToastTest.DeploymentRegistry do
 
   @spec init() :: :ok
   def init do
-    if :ets.whereis(@table) != :undefined do
-      :ets.delete(@table)
-    end
-
-    init_table()
+    ensure_init()
+    :ets.delete_all_objects(@table)
     :ok
   end
 

@@ -45,17 +45,13 @@ defmodule Toast.Diagnostics.Coredump.Debugger do
   @doc false
   @spec filter_threads([thread()], integer() | nil) :: [thread()]
   def filter_threads(threads, crash_thread) do
-    Enum.map(threads, fn thread ->
-      if thread.id == crash_thread do
+    Enum.map(threads, fn
+      %{id: ^crash_thread} = thread ->
         thread
-      else
-        %{thread | frames: reject_internal_frames(thread.frames)}
-      end
-    end)
-  end
 
-  defp reject_internal_frames(frames) do
-    Enum.reject(frames, &internal_frame?/1)
+      thread ->
+        %{thread | frames: Enum.reject(thread.frames, &internal_frame?/1)}
+    end)
   end
 
   defp internal_frame?(%{function: func}) do

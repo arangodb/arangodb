@@ -49,10 +49,9 @@ defmodule Toast.Diagnostics.Coredump do
 
     timeout = Keyword.get(opts, :timeout, @default_timeout_ms)
 
-    if debugger == nil do
-      {:error, :no_debugger}
-    else
-      run_debugger(debugger, core_path, binary_path, timeout)
+    case debugger do
+      nil -> {:error, :no_debugger}
+      mod -> run_debugger(mod, core_path, binary_path, timeout)
     end
   end
 
@@ -91,7 +90,7 @@ defmodule Toast.Diagnostics.Coredump do
 
   defp resolve_os_pids(opts) do
     case Keyword.get(opts, :os_pids) do
-      pids when is_list(pids) and pids != [] ->
+      [_ | _] = pids ->
         pids
 
       _ ->
@@ -105,25 +104,25 @@ defmodule Toast.Diagnostics.Coredump do
   defp collect_for_server(server, remaining_ms, debugger) do
     discover_opts =
       case Map.get(server, :os_pids) do
-        pids when is_list(pids) and pids != [] ->
+        [_ | _] = pids ->
           [server_dir: server.server_dir, os_pids: pids]
 
         _ ->
           [server_dir: server.server_dir, os_pid: server.os_pid]
       end
 
-    cores = discover(discover_opts)
+    case discover(discover_opts) do
+      [] ->
+        []
 
-    if cores == [] do
-      []
-    else
-      Logger.info("Found #{length(cores)} core file(s) for #{server.id}")
-      per_core_timeout = max(1_000, div(remaining_ms, length(cores)))
+      cores ->
+        Logger.info("Found #{length(cores)} core file(s) for #{server.id}")
+        per_core_timeout = max(1_000, div(remaining_ms, length(cores)))
 
-      analyze_opts =
-        [timeout: per_core_timeout] ++ if(debugger, do: [debugger: debugger], else: [])
+        analyze_opts =
+          [timeout: per_core_timeout] ++ if(debugger, do: [debugger: debugger], else: [])
 
-      Enum.flat_map(cores, &analyze_core(&1, server.binary_path, analyze_opts))
+        Enum.flat_map(cores, &analyze_core(&1, server.binary_path, analyze_opts))
     end
   end
 
@@ -144,13 +143,14 @@ defmodule Toast.Diagnostics.Coredump do
 
     case cmd_with_timeout(executable, args, timeout) do
       {:ok, output, 0} ->
-        build_report(debugger, core_path, binary_path, output)
+        result = debugger.parse_output(output)
+        build_report(debugger, core_path, binary_path, result)
 
       {:ok, output, exit_code} ->
         result = debugger.parse_output(output)
 
         if result.threads != [] do
-          build_report_from_parsed(debugger, core_path, binary_path, result)
+          build_report(debugger, core_path, binary_path, result)
         else
           {:error, {:debugger_failed, exit_code, output}}
         end
@@ -165,12 +165,7 @@ defmodule Toast.Diagnostics.Coredump do
     end
   end
 
-  defp build_report(debugger, core_path, binary_path, output) do
-    result = debugger.parse_output(output)
-    build_report_from_parsed(debugger, core_path, binary_path, result)
-  end
-
-  defp build_report_from_parsed(debugger, core_path, binary_path, result) do
+  defp build_report(debugger, core_path, binary_path, result) do
     {:ok,
      %Report{
        core_path: core_path,
@@ -184,25 +179,25 @@ defmodule Toast.Diagnostics.Coredump do
   end
 
   defp cmd_with_timeout(executable, args, timeout) do
-    exec_path = System.find_executable(executable)
+    case System.find_executable(executable) do
+      nil ->
+        {:error, :executable_not_found}
 
-    if exec_path == nil do
-      {:error, :executable_not_found}
-    else
-      port =
-        Port.open(
-          {:spawn_executable, exec_path},
-          [:binary, :exit_status, :stderr_to_stdout, args: args]
-        )
+      exec_path ->
+        port =
+          Port.open(
+            {:spawn_executable, exec_path},
+            [:binary, :exit_status, :stderr_to_stdout, args: args]
+          )
 
-      os_pid =
-        case Port.info(port, :os_pid) do
-          {:os_pid, pid} -> pid
-          nil -> nil
-        end
+        os_pid =
+          case Port.info(port, :os_pid) do
+            {:os_pid, pid} -> pid
+            nil -> nil
+          end
 
-      deadline = System.monotonic_time(:millisecond) + timeout
-      collect_port_output(port, os_pid, [], deadline)
+        deadline = System.monotonic_time(:millisecond) + timeout
+        collect_port_output(port, os_pid, [], deadline)
     end
   rescue
     e -> {:error, e}

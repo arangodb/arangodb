@@ -148,6 +148,8 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     :erlang.float_to_binary(us / 1_000_000, decimals: 3)
   end
 
+  defp xml_escape(nil), do: ""
+
   defp xml_escape(text) when is_binary(text) do
     text
     |> String.replace("&", "&amp;")
@@ -156,6 +158,4 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     |> String.replace("\"", "&quot;")
     |> String.replace("'", "&apos;")
   end
-
-  defp xml_escape(nil), do: ""
 end

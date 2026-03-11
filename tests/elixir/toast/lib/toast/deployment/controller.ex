@@ -70,12 +70,8 @@ defmodule Toast.Deployment.Controller do
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     {name, init_opts} = Keyword.pop(opts, :name)
-
-    if name do
-      GenServer.start_link(__MODULE__, init_opts, name: name)
-    else
-      GenServer.start_link(__MODULE__, init_opts)
-    end
+    server_opts = if name, do: [name: name], else: []
+    GenServer.start_link(__MODULE__, init_opts, server_opts)
   end
 
   @spec deploy(GenServer.server(), timeout()) :: :ok | {:error, term()}
@@ -157,18 +153,13 @@ defmodule Toast.Deployment.Controller do
   end
 
   def handle_call({:shutdown, timeout}, _from, %{status: status} = state)
-      when status in [:ready, :degraded] do
+      when status in [:ready, :degraded, :failed] do
     new_state = state.mode.shutdown(state, timeout)
     {:reply, :ok, new_state}
   end
 
   def handle_call({:shutdown, _timeout}, _from, %{status: :stopped} = state) do
     {:reply, :ok, state}
-  end
-
-  def handle_call({:shutdown, timeout}, _from, %{status: :failed} = state) do
-    new_state = state.mode.shutdown(state, timeout)
-    {:reply, :ok, new_state}
   end
 
   def handle_call({:shutdown, _timeout}, _from, state) do
@@ -319,6 +310,9 @@ defmodule Toast.Deployment.Controller do
     Logger.error("Server #{server_id} is unresponsive, killing process")
     Helpers.stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
 
+    state =
+      Helpers.update_server(state, server_id, operational_state: :killed, expecting_exit: true)
+
     crash_info = %Toast.Process.CrashInfo{
       exit_status: nil,
       signal: nil,
@@ -461,30 +455,22 @@ defmodule Toast.Deployment.Controller do
   defp relaunch_server(server_id, acc, server, opts) do
     opts = Keyword.put_new(opts, :timeout_factor, acc.config.timeout_factor)
 
-    case ServerLifecycle.relaunch_and_wait(server, opts) do
-      :ok ->
-        acc =
-          Helpers.update_server(acc, server_id,
-            operational_state: :running,
-            expecting_exit: false
-          )
+    with :ok <- ServerLifecycle.relaunch_and_wait(server, opts) do
+      acc =
+        Helpers.update_server(acc, server_id,
+          operational_state: :running,
+          expecting_exit: false
+        )
 
-        {:ok, acc}
-
-      {:error, _} = err ->
-        err
+      {:ok, acc}
     end
   end
 
   defp do_expect_crash(server_id, acc, timeout) do
-    with {:ok, server} <- Helpers.fetch_server(acc, server_id) do
-      case ServerLifecycle.expect_crash(server_id, timeout, acc.expected_crashes, server) do
-        {:ok, expected_crashes} ->
-          {:ok, %{acc | expected_crashes: expected_crashes}}
-
-        {:error, _} = err ->
-          err
-      end
+    with {:ok, server} <- Helpers.fetch_server(acc, server_id),
+         {:ok, expected_crashes} <-
+           ServerLifecycle.expect_crash(server_id, timeout, acc.expected_crashes, server) do
+      {:ok, %{acc | expected_crashes: expected_crashes}}
     end
   end
 
@@ -498,7 +484,8 @@ defmodule Toast.Deployment.Controller do
   end
 
   defp apply_to_each(server_ids, state, fun) do
-    Enum.reduce_while(server_ids, {:ok, state}, fn server_id, {:ok, acc} ->
+    server_ids
+    |> Enum.reduce_while({:ok, state}, fn server_id, {:ok, acc} ->
       case fun.(server_id, acc) do
         {:ok, new_acc} -> {:cont, {:ok, new_acc}}
         {:error, _} = err -> {:halt, err}

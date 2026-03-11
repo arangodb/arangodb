@@ -19,7 +19,7 @@ defmodule Toast.Config do
           test_timeout: pos_integer(),
           startup_timeout: pos_integer(),
           shutdown_timeout: pos_integer(),
-          timeout_factor: pos_integer(),
+          timeout_factor: number(),
           cluster_agents: pos_integer(),
           cluster_dbservers: pos_integer(),
           cluster_coordinators: pos_integer(),
@@ -102,7 +102,7 @@ defmodule Toast.Config do
        build_timeout_config(opts, local, factor) ++
        build_cluster_config(opts, local) ++
        build_deployment_config(opts, local, sanitizer_override, active_sanitizers))
-    |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+    |> Enum.reject(&match?({_, nil}, &1))
     |> then(&struct(__MODULE__, &1))
   end
 
@@ -264,17 +264,18 @@ defmodule Toast.Config do
 
   # Precedence: keyword opts > env vars > default (no local config tier)
   defp opt_or(opts, key, env_fallback) do
-    if Keyword.has_key?(opts, key),
-      do: Keyword.fetch!(opts, key),
-      else: env_fallback
+    case Keyword.fetch(opts, key) do
+      {:ok, val} -> val
+      :error -> env_fallback
+    end
   end
 
   # Precedence: keyword opts > env vars > .toast.local.exs > nil
   defp opt_or(opts, key, env_fallback, local_fallback) do
-    cond do
-      Keyword.has_key?(opts, key) -> Keyword.fetch!(opts, key)
-      not is_nil(env_fallback) -> env_fallback
-      true -> local_fallback
+    case Keyword.fetch(opts, key) do
+      {:ok, val} -> val
+      :error when not is_nil(env_fallback) -> env_fallback
+      :error -> local_fallback
     end
   end
 
@@ -327,7 +328,7 @@ defmodule Toast.Config do
 
   defp read_timeout_factor(active_sanitizers) do
     case env("TOAST_TIMEOUT_FACTOR") do
-      nil -> if MapSet.size(active_sanitizers) > 0, do: 3, else: 1
+      nil -> if Enum.any?(active_sanitizers), do: 3, else: 1
       val -> read_pos_int_value("TOAST_TIMEOUT_FACTOR", val)
     end
   end

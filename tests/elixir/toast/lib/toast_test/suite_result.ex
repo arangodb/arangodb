@@ -3,8 +3,12 @@ defmodule ToastTest.SuiteResult do
           version: pos_integer(),
           suite: String.t(),
           started_at: DateTime.t(),
-          finished_at: DateTime.t(),
-          times_us: %{async: non_neg_integer(), load: non_neg_integer(), run: non_neg_integer()},
+          finished_at: DateTime.t() | nil,
+          times_us: %{
+            async: non_neg_integer() | nil,
+            load: non_neg_integer() | nil,
+            run: non_neg_integer()
+          },
           modules: %{module() => module_result()},
           issues: [issue()],
           events: %{atom() => [map()]}
@@ -22,8 +26,8 @@ defmodule ToastTest.SuiteResult do
           name: atom(),
           outcome: :passed | :failed | :skipped | :excluded | :invalid,
           duration_us: non_neg_integer(),
-          started_at: DateTime.t(),
-          finished_at: DateTime.t(),
+          started_at: DateTime.t() | nil,
+          finished_at: DateTime.t() | nil,
           tags: map()
         }
 
@@ -54,7 +58,7 @@ defmodule ToastTest.SuiteResult do
       suite: test_data.suite,
       started_at: test_data.started_at,
       finished_at: test_data.finished_at,
-      times_us: test_data.times_us,
+      times_us: test_data.times_us || %{async: nil, load: nil, run: 0},
       modules: test_data.modules,
       issues: issues,
       events: events

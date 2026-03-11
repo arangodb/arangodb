@@ -105,7 +105,7 @@ defmodule Toast.Deployment.Health do
         length(leader_ids) != length(configs) ->
           {:not_ready, :missing_leader_id}
 
-        !has_last_acked ->
+        not has_last_acked ->
           {:not_ready, :no_last_acked}
 
         MapSet.size(MapSet.new(leader_ids)) != 1 ->
@@ -118,7 +118,7 @@ defmodule Toast.Deployment.Health do
   end
 
   defp poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, first_attempt) do
-    if process_check_fn && !process_check_fn.() do
+    if process_check_fn && not process_check_fn.() do
       Logger.debug("#{endpoint}: OS process is no longer running")
       {:error, :process_died}
     else
