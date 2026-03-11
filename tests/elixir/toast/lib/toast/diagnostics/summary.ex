@@ -49,10 +49,6 @@ defmodule Toast.Diagnostics.Summary do
     for %{path: path} when is_binary(path) <- coredumps, do: path
   end
 
-  defp core_dump_paths_from_detail(%{coredump_paths: paths}) when is_list(paths) do
-    Enum.filter(paths, &is_binary/1)
-  end
-
   defp core_dump_paths_from_detail(_), do: []
 
   defp extract_core_dumps(_), do: []

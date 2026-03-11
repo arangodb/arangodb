@@ -121,19 +121,19 @@ defmodule ToastTest.SuiteResult.JUnitXML do
 
   defp render_crash_detail(detail) do
     coredump_lines = Enum.map(detail[:coredumps] || [], &format_coredump/1)
-    coredump_path_lines = Enum.map(detail[:coredump_paths] || [], &"Coredump: #{&1}")
 
     [
       labeled("Server", detail[:server]),
       coredump_lines,
-      coredump_path_lines,
       labeled("Logs", detail[:logs])
     ]
     |> List.flatten()
     |> Toast.Utils.compact_join("\n")
   end
 
-  defp format_coredump(%{path: path, signal: signal}), do: "Coredump: #{path}, Signal: #{signal}"
+  defp format_coredump(%{path: path, signal: signal}) when is_binary(signal),
+    do: "Coredump: #{path}, Signal: #{signal}"
+
   defp format_coredump(%{path: path}), do: "Coredump: #{path}"
 
   defp labeled(_label, nil), do: nil

@@ -511,7 +511,7 @@ defmodule ToastTest.Runner do
     artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history)
 
     issues =
-      ToastTest.Attribution.run(test_data, artifacts, crash_events, skip_coredump_analysis: false)
+      ToastTest.Attribution.run(test_data, artifacts, crash_events)
 
     suite_result = ToastTest.SuiteResult.build(test_data, issues)
     ToastTest.SuiteResult.write_all(suite_result, toast_config.result_dir)

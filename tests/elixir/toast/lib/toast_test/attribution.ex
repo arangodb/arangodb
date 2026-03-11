@@ -62,18 +62,14 @@ defmodule ToastTest.Attribution do
   defp enrich_coredumps(detail, %{coredump_paths: []}, _opts), do: detail
 
   defp enrich_coredumps(detail, server_artifacts, opts) do
-    if Keyword.get(opts, :skip_coredump_analysis, false) do
-      Map.put(detail, :coredump_paths, server_artifacts.coredump_paths)
-    else
-      analyzer_opts = build_analyzer_opts(opts)
+    analyzer_opts = build_analyzer_opts(opts)
 
-      coredumps =
-        Enum.flat_map(server_artifacts.coredump_paths, fn core_path ->
-          analyze_coredump(core_path, server_artifacts.server, analyzer_opts)
-        end)
+    coredumps =
+      Enum.flat_map(server_artifacts.coredump_paths, fn core_path ->
+        analyze_coredump(core_path, server_artifacts.server, analyzer_opts)
+      end)
 
-      Map.put(detail, :coredumps, coredumps)
-    end
+    Map.put(detail, :coredumps, coredumps)
   end
 
   defp analyze_coredump(core_path, server, analyzer_opts) do

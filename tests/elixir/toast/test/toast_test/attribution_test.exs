@@ -130,13 +130,7 @@ defmodule ToastTest.AttributionTest do
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      issues =
-        Attribution.run(
-          build_test_data(),
-          empty_artifacts(),
-          crash_events,
-          skip_coredump_analysis: true
-        )
+      issues = Attribution.run(build_test_data(), empty_artifacts(), crash_events)
 
       assert [issue] = issues
       assert issue.type == :crash
@@ -154,13 +148,7 @@ defmodule ToastTest.AttributionTest do
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      issues =
-        Attribution.run(
-          build_test_data(),
-          empty_artifacts(),
-          crash_events,
-          skip_coredump_analysis: true
-        )
+      issues = Attribution.run(build_test_data(), empty_artifacts(), crash_events)
 
       assert [issue] = issues
       assert issue.scope == :suite
@@ -242,6 +230,115 @@ defmodule ToastTest.AttributionTest do
       assert issue.type == :crash
       assert issue.detail.server == "single1"
       assert [%{path: "/tmp/core.1234", signal: nil, threads: []}] = issue.detail.coredumps
+    end
+
+    test "crash enriched with multiple coredumps" do
+      crash_info = %CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: ~U[2026-03-09 10:00:30Z]
+      }
+
+      server = build_server("single1")
+
+      artifacts = %{
+        "single1" => %{
+          server: server,
+          coredump_paths: ["/tmp/core.1", "/tmp/core.2"],
+          sanitizer_files: []
+        }
+      }
+
+      fake_analyzer = fn core_path, _bin, _opts ->
+        {:ok,
+         %Toast.Diagnostics.Coredump.Report{
+           core_path: core_path,
+           binary_path: "/usr/bin/arangod",
+           debugger: :gdb,
+           signal: "SIGSEGV",
+           faulting_address: nil,
+           crash_thread: 1,
+           threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
+         }}
+      end
+
+      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+
+      issues =
+        Attribution.run(
+          build_test_data(),
+          artifacts,
+          crash_events,
+          coredump_analyzer: fake_analyzer
+        )
+
+      assert [issue] = issues
+      assert issue.type == :crash
+      assert length(issue.detail.coredumps) == 2
+
+      paths = Enum.map(issue.detail.coredumps, & &1.path) |> Enum.sort()
+      assert paths == ["/tmp/core.1", "/tmp/core.2"]
+      assert Enum.all?(issue.detail.coredumps, &(&1.signal == "SIGSEGV"))
+      assert Enum.all?(issue.detail.coredumps, &(length(&1.threads) == 1))
+    end
+
+    test "crash with mixed coredump analysis results" do
+      crash_info = %CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: ~U[2026-03-09 10:00:30Z]
+      }
+
+      server = build_server("single1")
+
+      artifacts = %{
+        "single1" => %{
+          server: server,
+          coredump_paths: ["/tmp/core.good", "/tmp/core.bad"],
+          sanitizer_files: []
+        }
+      }
+
+      fake_analyzer = fn core_path, _bin, _opts ->
+        if core_path == "/tmp/core.good" do
+          {:ok,
+           %Toast.Diagnostics.Coredump.Report{
+             core_path: core_path,
+             binary_path: "/usr/bin/arangod",
+             debugger: :gdb,
+             signal: "SIGSEGV",
+             faulting_address: nil,
+             crash_thread: 1,
+             threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
+           }}
+        else
+          {:error, :no_debugger}
+        end
+      end
+
+      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+
+      issues =
+        Attribution.run(
+          build_test_data(),
+          artifacts,
+          crash_events,
+          coredump_analyzer: fake_analyzer
+        )
+
+      assert [issue] = issues
+      assert issue.type == :crash
+      assert length(issue.detail.coredumps) == 2
+
+      by_path = Map.new(issue.detail.coredumps, &{&1.path, &1})
+
+      good = by_path["/tmp/core.good"]
+      assert good.signal == "SIGSEGV"
+      assert length(good.threads) == 1
+
+      bad = by_path["/tmp/core.bad"]
+      assert bad.signal == nil
+      assert bad.threads == []
     end
   end
 
@@ -337,7 +434,7 @@ defmodule ToastTest.AttributionTest do
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
       issues =
-        Attribution.run(test_data, artifacts, crash_events, skip_coredump_analysis: true)
+        Attribution.run(test_data, artifacts, crash_events)
 
       types = Enum.map(issues, & &1.type)
       assert :test_failure in types
