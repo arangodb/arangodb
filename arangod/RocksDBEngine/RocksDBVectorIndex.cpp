@@ -407,7 +407,7 @@ bool RocksDBVectorIndex::setTrainingState(
                                               std::memory_order_acq_rel,
                                               std::memory_order_acquire)) {
     LOG_TOPIC("e167b", WARN, Logger::ENGINES)
-        << "Training state CAS failed: expected "
+        << "Training state CAS failed: desired "
         << trainingStateToString(desired) << ", actual "
         << trainingStateToString(expected);
     return false;
@@ -439,8 +439,7 @@ bool RocksDBVectorIndex::setTrainingState(
 }
 
 void RocksDBVectorIndex::resetTrainingState() noexcept {
-  auto const current = _trainingState.load(std::memory_order_acquire);
-  setTrainingState(current, VectorIndexTrainingState::kUntrained);
+  _trainingState.store(VectorIndexTrainingState::kUntrained);
 }
 
 void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
@@ -834,7 +833,7 @@ Result RocksDBVectorIndex::ingestVectors(
         encoded->codes = std::move(flat_codes);
         encoded->storedValues = std::move(item->storedValues);
 
-        LOG_VECTOR_INDEX("e167b", INFO, Logger::ENGINES)
+        LOG_VECTOR_INDEX("e167m", INFO, Logger::ENGINES)
             << "ENCODE encoded " << encoded->docIds.size()
             << " vectors, code size: " << code_size;
         bool pushBlocked = false;
