@@ -26,7 +26,7 @@
   fields in views and inverted indexes.
 
 
-3.12.8 (XXXX-XX-XX)
+3.12.8 (2026-03-05)
 -------------------
 
 * COR-77: Pick correct replica during smart graph traversal when reading from
