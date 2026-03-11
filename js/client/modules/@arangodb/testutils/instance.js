@@ -1227,7 +1227,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
   readImportantLogLines () {
     if (!fs.exists(fs.join(this.logFile))) {
-      print(`{RED}{Date()} unable to find ${this.logFile} of ${this.name}!${RESET}`);
+      print(`${RED}${Date()} unable to find ${this.logFile} of ${this.name}!${RESET}`);
       return [];
     }
     let fnLines = [];
