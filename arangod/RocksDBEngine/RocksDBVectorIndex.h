@@ -153,6 +153,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   /// stale training state is not accidentally persisted.
   void resetTrainingState() noexcept;
 
+  void updateTrainingMetrics(VectorIndexTrainingState previous,
+                             VectorIndexTrainingState next) noexcept;
+
   void registerMetrics();
   void deregisterMetrics();
 

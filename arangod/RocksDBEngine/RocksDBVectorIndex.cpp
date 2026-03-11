@@ -413,33 +413,39 @@ bool RocksDBVectorIndex::setTrainingState(
     return false;
   }
 
-  if (_metricState != nullptr) {
-    auto const now = std::chrono::steady_clock::now();
-
-    if (expected == VectorIndexTrainingState::kTraining) {
-      auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
-      _metricTrainingDuration->store(elapsed.count(),
-                                     std::memory_order_relaxed);
-    } else if (expected == VectorIndexTrainingState::kIngesting) {
-      auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
-      _metricIngestingDuration->store(elapsed.count(),
-                                      std::memory_order_relaxed);
-    }
-
-    if (desired == VectorIndexTrainingState::kTraining ||
-        desired == VectorIndexTrainingState::kIngesting) {
-      _stateEnteredAt = now;
-    }
-
-    _metricState->store(static_cast<uint64_t>(desired),
-                        std::memory_order_relaxed);
-  }
+  updateTrainingMetrics(expected, desired);
 
   return true;
 }
 
 void RocksDBVectorIndex::resetTrainingState() noexcept {
-  _trainingState.store(VectorIndexTrainingState::kUntrained);
+  auto const previous = _trainingState.exchange(
+      VectorIndexTrainingState::kUntrained, std::memory_order_acq_rel);
+  updateTrainingMetrics(previous, VectorIndexTrainingState::kUntrained);
+}
+
+void RocksDBVectorIndex::updateTrainingMetrics(
+    VectorIndexTrainingState previous, VectorIndexTrainingState next) noexcept {
+  if (_metricState == nullptr) {
+    return;
+  }
+
+  auto const now = std::chrono::steady_clock::now();
+
+  if (previous == VectorIndexTrainingState::kTraining) {
+    auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
+    _metricTrainingDuration->store(elapsed.count(), std::memory_order_relaxed);
+  } else if (previous == VectorIndexTrainingState::kIngesting) {
+    auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
+    _metricIngestingDuration->store(elapsed.count(), std::memory_order_relaxed);
+  }
+
+  if (next == VectorIndexTrainingState::kTraining ||
+      next == VectorIndexTrainingState::kIngesting) {
+    _stateEnteredAt = now;
+  }
+
+  _metricState->store(static_cast<uint64_t>(next), std::memory_order_relaxed);
 }
 
 void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
