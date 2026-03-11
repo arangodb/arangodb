@@ -583,7 +583,17 @@ function getServerData(arango) {
 
           const version = arango.GET('_api/version?details=true'); // version api
           const log = arango.GET('_admin/log'); // log api
-          const statistics = arango.GET('_admin/statistics'); // statistics api
+
+          const statistics = {
+            time: require('internal').time(),
+            enabled: true,
+            system: require('internal').processStatistics(),
+            server: require('internal').serverStatistics(),
+            client: {},
+            clientUser: {},
+            http: {}
+          };
+          
           var agencyConfig;
           var agencyState;
           if (server.startsWith("AGNT")) {

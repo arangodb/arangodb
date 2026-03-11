@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertMatch, assertTrue, assertFalse, arango */
+/* global fail, assertEqual, assertMatch, assertTrue, assertFalse, arango, internal */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,7 +27,7 @@
 const jsunity = require('jsunity');
 const request = require('@arangodb/request');
 const isCluster = require("internal").isCluster();
-const { getEndpointsByType } = require('@arangodb/test-helper');
+const { getEndpointsByType, assertEndpointGetOnly } = require('@arangodb/test-helper');
 
 function supportInfoApiSuite() {
   'use strict';
@@ -124,6 +124,11 @@ function supportInfoApiSuite() {
         assertTrue(res.json.host.role === "PRIMARY");
         validateHost(res.json.host);
       });
+    },
+
+    testSupportInfoOnlyAcceptsGet : function() {
+      let url = "/_admin/support-info";
+      assertEndpointGetOnly(url);
     },
   };
 }

@@ -1028,15 +1028,18 @@ class instanceManager {
     let ret = {};
     let opts = Object.assign(pu.makeAuthorizationHeaders(this.options, this.addArgs),
                              { method: 'GET' });
+    const metricName = 'arangodb_server_statistics_server_uptime_total';
     this.arangods.forEach(arangod => {
-      let reply = download(arangod.url + '/_admin/statistics', '', opts);
+      let reply = download(arangod.url + '/_admin/metrics', '', opts);
       if (reply.hasOwnProperty('error') || reply.code !== 200) {
-        throw new Error("unable to get statistics reply: " + JSON.stringify(reply));
+        throw new Error("unable to get metrics reply: " + JSON.stringify(reply));
       }
-
-      let statisticsReply = JSON.parse(reply.body);
-
-      ret [ arangod.name ] = statisticsReply.server.uptime;
+      const text = typeof reply.body === 'string' ? reply.body : String(reply.body);
+      const uptime = internal.parsePrometheusMetric(text, metricName); // from internal.js
+      if (uptime === undefined) {
+        throw new Error("metric " + metricName + " not found in metrics response from " + arangod.name);
+      }
+      ret[arangod.name] = uptime;
     });
     return ret;
   }
@@ -1149,7 +1152,7 @@ class instanceManager {
         }
         let url = arangod.url;
         url += '/_api/version';
-        httpOptions.method = 'POST';
+        httpOptions.method = 'GET';
         const reply = download(url, '', httpOptions);
         if (!this.options.noStartStopLogs) {
           print(`Server reply to ${url}: ${JSON.stringify(reply)}`);
