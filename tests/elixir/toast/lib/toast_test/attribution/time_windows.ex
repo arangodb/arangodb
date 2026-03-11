@@ -145,8 +145,8 @@ defmodule ToastTest.Attribution.TimeWindows do
   end
 
   defp in_window?(timestamp, window_start, window_end) do
-    DateTime.compare(timestamp, window_start) in [:eq, :gt] and
-      DateTime.compare(timestamp, window_end) in [:eq, :lt]
+    DateTime.compare(timestamp, window_start) != :lt and
+      DateTime.compare(timestamp, window_end) != :gt
   end
 
   defp after_window_within_tolerance?(timestamp, window_end, tolerance_s) do

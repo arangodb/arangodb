@@ -21,7 +21,7 @@ defmodule Toast.Application do
 
   def reconfigure_file_logger(result_dir) do
     File.mkdir_p!(result_dir)
-    log_file = Path.join(result_dir, "toast.log") |> String.to_charlist()
+    log_file = result_dir |> Path.join("toast.log") |> String.to_charlist()
     :logger.update_handler_config(:toast_file, :config, %{file: log_file})
   catch
     kind, reason ->

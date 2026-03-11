@@ -28,8 +28,6 @@ defmodule Toast.Diagnostics.Coredump.Debugger do
   @doc "Parse debugger output into a structured result."
   @callback parse_output(output :: String.t()) :: result()
 
-  # --- Shared thread/frame utilities ---
-
   @internal_frames ~w(__libc_start_main __libc_start_call_main _start clone start_thread)
   @internal_prefixes ["__libc_", "__GI_"]
 

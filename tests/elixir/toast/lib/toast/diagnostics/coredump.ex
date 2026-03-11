@@ -86,8 +86,6 @@ defmodule Toast.Diagnostics.Coredump do
     end)
   end
 
-  # --- Private ---
-
   defp resolve_os_pids(opts) do
     case Keyword.get(opts, :os_pids) do
       [_ | _] = pids ->

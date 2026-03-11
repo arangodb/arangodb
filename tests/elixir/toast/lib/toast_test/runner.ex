@@ -201,7 +201,7 @@ defmodule ToastTest.Runner do
 
     suite_result = post_execution(deployment, test_data, toast_config)
 
-    cleanup_between_suites()
+    ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}
   end
 
@@ -214,7 +214,7 @@ defmodule ToastTest.Runner do
 
     suite_result = ToastTest.SuiteResult.build(test_data, [])
 
-    cleanup_between_suites()
+    ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}
   end
 
@@ -277,11 +277,7 @@ defmodule ToastTest.Runner do
   end
 
   defp build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_collector_pid) do
-    only_test_ids =
-      case Keyword.fetch(suite_opts, :only_test_ids) do
-        {:ok, ids} -> ids
-        :error -> opts[:only_test_ids]
-      end
+    only_test_ids = Keyword.get(suite_opts, :only_test_ids, opts[:only_test_ids])
 
     %Config{
       capture_log: opts[:capture_log],
@@ -349,7 +345,7 @@ defmodule ToastTest.Runner do
     async_modules =
       Enum.filter(test_modules, &match?(%{tags: %{async: true}}, Compat.get_test_metadata(&1)))
 
-    unless async_modules == [] do
+    if async_modules != [] do
       names = Enum.map_join(async_modules, ", ", &inspect/1)
       raise "Toast does not support async test modules. Found: #{names}"
     end
@@ -531,8 +527,9 @@ defmodule ToastTest.Runner do
   end
 
   defp print_post_exec_summary(suite_result) do
-    test_failures = Enum.filter(suite_result.issues, &(&1.type == :test_failure))
-    exunit_tests = Enum.map(test_failures, & &1.detail.test)
+    exunit_tests =
+      for %{type: :test_failure, detail: detail} <- suite_result.issues, do: detail.test
+
     if exunit_tests != [], do: ToastTest.CLIFormatter.print_failure_summary(exunit_tests)
 
     for %{type: :crash, detail: detail} <- suite_result.issues do
@@ -548,14 +545,10 @@ defmodule ToastTest.Runner do
     suite_module |> Module.split() |> Enum.map(&Macro.underscore/1) |> Enum.join("_")
   end
 
-  defp cleanup_between_suites do
-    ToastTest.StateCleanup.reset()
-  end
-
   defp start_process_history do
     case ToastTest.ProcessHistory.start_link(name: ToastTest.ProcessHistory) do
-      {:ok, _pid} -> :ok
-      {:error, {:already_started, _pid}} -> :ok
+      {:ok, _} -> :ok
+      {:error, {:already_started, _}} -> :ok
     end
   end
 
@@ -862,15 +855,10 @@ defmodule ToastTest.Runner do
     end
   end
 
-  defp maybe_capture_log(true, test, fun) do
-    maybe_capture_log([], test, fun)
-  end
+  defp maybe_capture_log(false, _test, fun), do: fun
+  defp maybe_capture_log(true, test, fun), do: maybe_capture_log([], test, fun)
 
-  defp maybe_capture_log(false, _test, fun) do
-    fun
-  end
-
-  defp maybe_capture_log(capture_log_opts, test, fun) do
+  defp maybe_capture_log(capture_log_opts, test, fun) when is_list(capture_log_opts) do
     fn ->
       try do
         ExUnit.CaptureLog.with_log(capture_log_opts, fun)

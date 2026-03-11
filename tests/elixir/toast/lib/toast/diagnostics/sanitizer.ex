@@ -44,12 +44,9 @@ defmodule Toast.Diagnostics.Sanitizer do
     end)
   end
 
-  def detect(other),
-    do:
-      raise(
-        ArgumentError,
-        "invalid sanitizer: #{inspect(other)}, expected \"tsan\" or \"alubsan\""
-      )
+  def detect(other) do
+    raise ArgumentError, "invalid sanitizer: #{inspect(other)}, expected \"tsan\" or \"alubsan\""
+  end
 
   @doc """
   Infer sanitizer type from the build directory path.
@@ -84,7 +81,8 @@ defmodule Toast.Diagnostics.Sanitizer do
     else
       Enum.map(active, fn san_var ->
         options =
-          build_base_options(san_var, explicit)
+          san_var
+          |> build_base_options(explicit)
           |> merge_env_options(san_var)
           |> add_log_path(san_var, log_dir)
           |> add_suppressions(san_var, repo_root)
@@ -102,13 +100,11 @@ defmodule Toast.Diagnostics.Sanitizer do
     alubsan_errors ++ tsan_errors
   end
 
-  # --- Private ---
+  defp build_base_options(_san_var, nil), do: %{}
 
-  defp build_base_options(san_var, explicit) when is_binary(explicit) do
+  defp build_base_options(san_var, _explicit) do
     Map.get(@default_options, san_var, %{})
   end
-
-  defp build_base_options(_san_var, nil), do: %{}
 
   defp merge_env_options(base, san_var) do
     case System.get_env(san_var) do
@@ -138,7 +134,6 @@ defmodule Toast.Diagnostics.Sanitizer do
   end
 
   defp add_suppressions(options, san_var, repo_root) do
-    # Extract sanitizer name: "ASAN_OPTIONS" -> "asan"
     san_name = san_var |> String.split("_") |> hd() |> String.downcase()
     suppressions_file = Path.join(repo_root, "#{san_name}_arangodb_suppressions.txt")
 

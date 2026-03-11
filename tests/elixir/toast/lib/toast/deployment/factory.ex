@@ -161,7 +161,8 @@ defmodule Toast.Deployment.Factory do
   defp build_cluster_server(config, server_id, executable, repo_root, role, port, custom_args) do
     with {:ok, paths} <- Filesystem.create_server_dirs(config.work_dir, server_id) do
       merged_args =
-        build_server_args(config)
+        config
+        |> build_server_args()
         |> Map.merge(role_config_args(config, role))
         |> Map.merge(custom_args)
 

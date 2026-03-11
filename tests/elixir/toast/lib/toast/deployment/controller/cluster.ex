@@ -65,16 +65,15 @@ defmodule Toast.Deployment.Controller.Cluster do
   @impl true
   def derive_status(servers) do
     server_list = Map.values(servers)
-    states = Enum.map(server_list, & &1.operational_state)
 
     cond do
       Enum.any?(server_list, &ServerInstance.unexpected_crash?/1) ->
         :failed
 
-      Enum.all?(states, &(&1 == :running)) ->
+      Enum.all?(server_list, &(&1.operational_state == :running)) ->
         :ready
 
-      Enum.any?(states, &(&1 in [:stopped, :killed, :paused, :crashed])) ->
+      Enum.any?(server_list, &(&1.operational_state in [:stopped, :killed, :paused, :crashed])) ->
         :degraded
 
       true ->

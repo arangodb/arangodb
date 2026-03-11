@@ -238,18 +238,18 @@ defmodule Toast.Deployment.Controller do
   end
 
   def handle_call(msg, from, state) do
-    if function_exported?(state.mode, :handle_call_extra, 3) do
-      case state.mode.handle_call_extra(msg, from, state) do
-        :not_handled ->
-          Logger.debug("Unhandled call: #{inspect(msg)}")
-          {:reply, {:error, :not_handled}, state}
+    result =
+      if function_exported?(state.mode, :handle_call_extra, 3),
+        do: state.mode.handle_call_extra(msg, from, state),
+        else: :not_handled
 
-        result ->
-          result
-      end
-    else
-      Logger.debug("Unhandled call: #{inspect(msg)}")
-      {:reply, {:error, :not_handled}, state}
+    case result do
+      :not_handled ->
+        Logger.debug("Unhandled call: #{inspect(msg)}")
+        {:reply, {:error, :not_handled}, state}
+
+      reply ->
+        reply
     end
   end
 

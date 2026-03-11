@@ -196,16 +196,10 @@ defmodule Toast.Deployment.ServerLifecycle do
   @spec handle_expect_crash_timeout(String.t(), map(), ServerInstance.t() | nil) :: map()
   def handle_expect_crash_timeout(server_id, expected_crashes, server) do
     case Map.get(expected_crashes, server_id) do
-      %{crash_info: nil, waiter: nil} ->
+      %{crash_info: nil} = entry ->
         Logger.warning("Expected crash for #{server_id} timed out")
-        if server, do: resume_health_monitor(server)
-        Map.delete(expected_crashes, server_id)
-
-      %{crash_info: nil, waiter: {from, verify_timer}} ->
-        Logger.warning("Expected crash for #{server_id} timed out")
-        Process.cancel_timer(verify_timer)
-        GenServer.reply(from, {:error, :timeout})
-        if server, do: resume_health_monitor(server)
+        notify_waiter_timeout(entry)
+        resume_health_monitor(server)
         Map.delete(expected_crashes, server_id)
 
       _ ->
@@ -213,12 +207,19 @@ defmodule Toast.Deployment.ServerLifecycle do
     end
   end
 
+  defp notify_waiter_timeout(%{waiter: {from, verify_timer}}) do
+    Process.cancel_timer(verify_timer)
+    GenServer.reply(from, {:error, :timeout})
+  end
+
+  defp notify_waiter_timeout(_), do: :ok
+
   @spec handle_verify_crash_timeout(String.t(), map(), ServerInstance.t() | nil) :: map()
   def handle_verify_crash_timeout(server_id, expected_crashes, server) do
     case Map.get(expected_crashes, server_id) do
       %{waiter: {from, _}} ->
         GenServer.reply(from, {:error, :timeout})
-        if server, do: resume_health_monitor(server)
+        resume_health_monitor(server)
         Map.delete(expected_crashes, server_id)
 
       _ ->
@@ -251,7 +252,8 @@ defmodule Toast.Deployment.ServerLifecycle do
   def suspend_health_monitor(%{health_monitor: pid}),
     do: Toast.Process.HealthMonitor.suspend(pid)
 
-  @spec resume_health_monitor(ServerInstance.t()) :: :ok
+  @spec resume_health_monitor(ServerInstance.t() | nil) :: :ok
+  def resume_health_monitor(nil), do: :ok
   def resume_health_monitor(%{health_monitor: nil}), do: :ok
 
   def resume_health_monitor(%{health_monitor: pid}),

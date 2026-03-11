@@ -187,7 +187,7 @@ defmodule ToastTest.CLIFormatter do
 
   defp print_test_result(%ExUnit.Test{state: {:skipped, _}} = test, state) do
     # Abort-skipped tests in a fully-skipped module: suppress (module_finished handles it).
-    unless abort_skipped?(test) and not state.module_header_printed do
+    if state.module_header_printed or not abort_skipped?(test) do
       name = display_name(test)
       IO.puts("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}")
     end
@@ -379,17 +379,14 @@ defmodule ToastTest.CLIFormatter do
 
   defp module_file(%ExUnit.TestModule{name: name}) do
     if function_exported?(name, :__ex_unit__, 0),
-      do: name.__ex_unit__() |> Map.get(:file, inspect(name)),
+      do: Map.get(name.__ex_unit__(), :file, inspect(name)),
       else: inspect(name)
   end
 
   defp timestamp do
     DateTime.utc_now()
+    |> DateTime.truncate(:millisecond)
     |> DateTime.to_iso8601(:extended)
-    |> String.replace(~r/\.\d{1,6}Z$/, fn match ->
-      # Truncate to milliseconds
-      String.slice(match, 0, 4) <> "Z"
-    end)
   end
 
   defp elapsed_ms(nil), do: 0

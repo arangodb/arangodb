@@ -45,7 +45,7 @@ defmodule ToastTest.Interactive do
     results
   end
 
-  defp run_with_lifecycle(%{name: module} = _test_module, tests) do
+  defp run_with_lifecycle(%{name: module}, tests) do
     context = %{module: module, async: false}
 
     {module_pid, module_ref} = TestLifecycle.spawn_setup_all(module, context)

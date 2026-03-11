@@ -156,11 +156,9 @@ defmodule Toast.Deployment.Controller.SingleServer do
     Logger.debug("Cleaning up #{state.id}")
     Helpers.stop_all_health_monitors(state)
 
-    for {server_id, _server} <- state.servers do
-      Helpers.stop_server_process(state, server_id, timeout)
-    end
-
     for {server_id, server} <- state.servers do
+      Helpers.stop_server_process(state, server_id, timeout)
+
       ServerLifecycle.notify_event(
         state.on_event,
         {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()}

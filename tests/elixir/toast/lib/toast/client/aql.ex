@@ -8,7 +8,7 @@ defmodule Toast.Client.AQL do
     body = %{"query" => query, "bindVars" => bind_vars}
 
     case client |> Client.post("/_api/cursor", body) |> Client.unwrap(201) do
-      {:ok, body} -> collect_cursor_results(client, body)
+      {:ok, body} -> collect_cursor_pages(client, body, [body["result"]])
       {:error, _} = err -> err
     end
   end
@@ -19,10 +19,6 @@ defmodule Toast.Client.AQL do
       {:ok, results} -> results
       {:error, reason} -> raise "AQL query failed: #{inspect(reason)}"
     end
-  end
-
-  defp collect_cursor_results(client, body) do
-    collect_cursor_pages(client, body, [body["result"]])
   end
 
   defp collect_cursor_pages(client, %{"hasMore" => true, "id" => cursor_id}, acc) do

@@ -325,13 +325,13 @@ defmodule Toast.Deployment do
   end
 
   defp controller_call_control(deployment, op, target, opts \\ []) do
-    case opts do
-      [] -> apply(Controller, op, [deployment.controller, target])
-      opts -> apply(Controller, op, [deployment.controller, target, opts])
-    end
+    apply(Controller, op, [deployment.controller, target | opts_args(opts)])
   catch
     :exit, _ -> {:error, :controller_not_available}
   end
+
+  defp opts_args([]), do: []
+  defp opts_args(opts), do: [opts]
 
   defp format_degraded_message(deployment, prev_test) do
     downed =
