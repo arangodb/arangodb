@@ -69,10 +69,8 @@ defmodule ToastTest.SuiteResultTest do
         confidence: :low,
         detail: %{
           server: "srv-1",
-          signal: "SIGABRT",
-          threads: [],
-          logs: "some log output",
-          coredump_path: "/tmp/core.1234"
+          coredumps: [%{path: "/tmp/core.1234", signal: "SIGABRT", threads: []}],
+          logs: "some log output"
         }
       }
     ]

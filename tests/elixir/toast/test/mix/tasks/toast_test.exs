@@ -454,7 +454,10 @@ defmodule Mix.Tasks.ToastTest do
             type: :crash,
             scope: :suite,
             confidence: nil,
-            detail: %{server: "s1", coredump_path: "/cores/core.1234"}
+            detail: %{
+              server: "s1",
+              coredumps: [%{path: "/cores/core.1234", signal: nil, threads: []}]
+            }
           }
         ]
       }
@@ -475,13 +478,19 @@ defmodule Mix.Tasks.ToastTest do
             type: :crash,
             scope: :suite,
             confidence: nil,
-            detail: %{server: "s1", coredump_path: "/cores/core.1"}
+            detail: %{
+              server: "s1",
+              coredumps: [%{path: "/cores/core.1", signal: nil, threads: []}]
+            }
           },
           %{
             type: :crash,
             scope: :suite,
             confidence: nil,
-            detail: %{server: "s2", coredump_path: "/cores/core.2"}
+            detail: %{
+              server: "s2",
+              coredumps: [%{path: "/cores/core.2", signal: nil, threads: []}]
+            }
           }
         ]
       }
