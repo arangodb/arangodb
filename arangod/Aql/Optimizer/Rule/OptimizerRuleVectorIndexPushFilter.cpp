@@ -23,6 +23,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstHelper.h"
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
@@ -33,6 +34,7 @@
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleVectorIndexHelpers.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/QueryContext.h"
@@ -171,27 +173,46 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
     enumerateNearVectorNode->setFilterExpression(filterExpression.get());
     modified = true;
 
-    // This part is additional optimization to see if we can use storedFields of
-    // this vector index
-    auto const& storedValues = enumerateNearVectorNode->index()->storedValues();
-    if (storedValues.empty()) {
-      LOG_RULE << "Could not use storedValues:"
-               << " storedValues size: " << storedValues.size();
+    // Try to find a vector index whose storedValues cover the filter
+    // expression. We consider all compatible vector indexes on the collection,
+    // not just the currently assigned one -- a different index with the right
+    // storedValues can avoid a full document materialization.
+    auto const& currentIndex = enumerateNearVectorNode->index();
+    bool ascending = enumerateNearVectorNode->isAscending();
+    auto const& allIndexes = enumerateNearVectorNode->collection()->indexes();
+
+    std::shared_ptr<Index> bestIndex = nullptr;
+    for (auto const& candidate : allIndexes) {
+      if (!isCompatibleVectorIndex(candidate, currentIndex, ascending)) {
+        continue;
+      }
+      auto const& storedValues = candidate->storedValues();
+      if (storedValues.empty()) {
+        LOG_RULE << "Index " << candidate->name()
+                 << " has no storedValues, skipping";
+        continue;
+      }
+      if (!areAllAttributesCovered(plan, filterExpression,
+                                   enumerateNearVectorNode, storedValues)) {
+        LOG_RULE << "Index " << candidate->name()
+                 << " storedValues don't cover filter";
+        continue;
+      }
+      bestIndex = candidate;
+      break;
+    }
+
+    if (!bestIndex) {
+      LOG_RULE << "No vector index with storedValues covering the filter";
       continue;
     }
 
-    // Check if all filter attributes are covered by stored values
-    bool isCoveredByStoredValues = areAllAttributesCovered(
-        plan, filterExpression, enumerateNearVectorNode, storedValues);
-
-    if (!isCoveredByStoredValues) {
-      LOG_RULE << "filterExpression not covered by storedValues";
-      continue;
+    LOG_RULE << ADB_HERE << "Using storedValues from index "
+             << bestIndex->name();
+    if (bestIndex != currentIndex) {
+      enumerateNearVectorNode->setIndex(bestIndex);
     }
-
-    LOG_RULE << ADB_HERE << "Using storedValues in optimization";
-    enumerateNearVectorNode->setIsCoveredByStoredValues(
-        isCoveredByStoredValues);
+    enumerateNearVectorNode->setIsCoveredByStoredValues(true);
   }
 
   opt->addPlan(std::move(plan), rule, modified);

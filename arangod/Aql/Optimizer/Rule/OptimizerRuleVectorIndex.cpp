@@ -35,6 +35,7 @@
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleVectorIndexHelpers.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
@@ -57,33 +58,6 @@ namespace arangodb::aql {
 
 using EN = arangodb::aql::ExecutionNode;
 
-bool checkFunctionNameMatchesIndexMetric(
-    std::string_view const functionName,
-    UserVectorIndexDefinition const& definition) {
-  switch (definition.metric) {
-    case SimilarityMetric::kL2: {
-      return functionName == "APPROX_NEAR_L2";
-    }
-    case SimilarityMetric::kCosine: {
-      return functionName == "APPROX_NEAR_COSINE";
-    }
-    case SimilarityMetric::kInnerProduct: {
-      return functionName == "APPROX_NEAR_INNER_PRODUCT";
-    }
-  }
-}
-
-// Vector index can only have a single covered attribute
-bool checkIfIndexedFieldIsSameAsSearched(
-    auto const& vectorIndex,
-    std::vector<basics::AttributeName>& attributeName) {
-  // vector index can be only on single field
-  TRI_ASSERT(vectorIndex->fields().size() == 1);
-  auto const& indexedVectorField = vectorIndex->fields()[0];
-
-  return attributeName == indexedVectorField;
-}
-
 bool checkApproxNearVariableInput(auto const& vectorIndex,
                                   auto const* approxFunctionParam,
                                   auto* outVariable) {
@@ -94,13 +68,11 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
                                                          false)) {
     return false;
   }
-  // check if APPROX_NEAR function parameter is on indexed field
-  if (!checkIfIndexedFieldIsSameAsSearched(vectorIndex,
-                                           attributeAccessResult.second)) {
+  if (!isIndexedFieldSameAsSearched(vectorIndex,
+                                    attributeAccessResult.second)) {
     return false;
   }
 
-  // check if APPROX function parameter is the same one as being outputted by
   return outVariable == attributeAccessResult.first;
 }
 
@@ -139,31 +111,9 @@ getApproxNearExpressionAndSortElement(auto const* sortNode,
 
 bool checkApproxNearAscending(std::shared_ptr<Index> const& vectorIndex,
                               bool ascending) {
-  // Check if the SORT node has a correct order:
-  // L2: ASC
-  // Cosine: DESC
-  // InnerProduct: DESC
-  switch (vectorIndex->getVectorIndexDefinition().metric) {
-    // L2 metric can only be in ascending order
-    case SimilarityMetric::kL2:
-      if (!ascending) {
-        return false;
-      }
-      break;
-    // Cosine similarity can only be in descending order
-    case SimilarityMetric::kCosine:
-      if (ascending) {
-        return false;
-      }
-      break;
-    case SimilarityMetric::kInnerProduct:
-      if (ascending) {
-        return false;
-      }
-      break;
+  if (!checkAscendingMatchesMetric(vectorIndex, ascending)) {
+    return false;
   }
-
-  LOG_RULE << ADB_HERE << " has passed";
   return true;
 }
 
