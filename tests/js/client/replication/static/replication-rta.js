@@ -87,14 +87,9 @@ function rtaMakeCheckDataSuite() {
     },
     testRTAMakeData: function() {
       let rtaSkiplist = "";
-      if (IM.options.skipServerJS) {
-        // TODO: QA-703
-        rtaSkiplist = ",801,550,900,960";
-      }
+      let moreargv = ['--testFoxx', false]; // the follower doesn't spawn foxxes.
       const fs = require('fs');
       let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
-      let moreargv = ['--skip',
-                      '070_,071,107_'+rtaSkiplist]; // the follower doesn't spawn foxxes.
       
       const ct = require('@arangodb/testutils/client-tools');
       let count = 0;

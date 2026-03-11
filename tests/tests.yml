@@ -42,7 +42,6 @@
       buckets: 2
     args:
       extraArgs:log.level: replication=trace
-      extraArgs:experimental-vector-index: true
 # TODO - we could actually use 4 buckets instead of 2,
 # but ATM this causes issues with other tests on Jenkins
 # For CircleCI we have a special case in the generate_config
