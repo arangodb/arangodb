@@ -86,11 +86,9 @@ defmodule Mix.Tasks.Toast.Helpers do
       end
 
     config_list =
-      if opts[:no_agency_dump] do
-        Keyword.put(config_list, :dump_agency_on_error, false)
-      else
-        config_list
-      end
+      if opts[:no_agency_dump],
+        do: Keyword.put(config_list, :dump_agency_on_error, false),
+        else: config_list
 
     cond do
       opts[:cluster] -> Keyword.put(config_list, :deployment_mode, :cluster)

@@ -34,12 +34,11 @@ defmodule ToastTest.Abort do
   @doc "Clears the abort state (re-creates the ETS table)."
   @spec clear!() :: :ok
   def clear! do
-    if :ets.whereis(@table) == :undefined do
-      :ets.new(@table, [:named_table, :set, :public])
-    else
-      :ets.delete_all_objects(@table)
-    end
-
+    :ets.delete(@table)
+  catch
+    :error, :badarg -> :ok
+  after
+    :ets.new(@table, [:named_table, :set, :public])
     :ok
   end
 

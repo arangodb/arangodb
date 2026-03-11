@@ -58,8 +58,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   def shutdown(state, timeout) do
     Logger.debug("Shutting down cluster #{state.id}")
-    state = %{state | status: :stopping}
-    do_shutdown(state, timeout)
+    do_shutdown(%{state | status: :stopping}, timeout)
   end
 
   @impl true
@@ -87,11 +86,10 @@ defmodule Toast.Deployment.Controller.Cluster do
   end
 
   def resolve_target(state, role: role) when is_atom(role) do
-    ids = for {id, %{role: ^role}} <- state.servers, do: id
-
-    if ids == [],
-      do: {:error, {:no_servers_for_role, role}},
-      else: {:ok, ids}
+    case for({id, %{role: ^role}} <- state.servers, do: id) do
+      [] -> {:error, {:no_servers_for_role, role}}
+      ids -> {:ok, ids}
+    end
   end
 
   def resolve_target(state, role: role, index: index) when is_atom(role) and is_integer(index) do
@@ -153,8 +151,10 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   def handle_call_extra({:cluster_id, toast_id}, _from, state) do
     result =
-      with :error <- Map.fetch(state.mode_state.cluster_id_mapping, toast_id),
-           do: {:error, :not_found}
+      case Map.fetch(state.mode_state.cluster_id_mapping, toast_id) do
+        {:ok, _} = ok -> ok
+        :error -> {:error, :not_found}
+      end
 
     {:reply, result, state}
   end
@@ -192,7 +192,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
     %{
       state
-      | servers: Map.merge(servers, Map.merge(db_servers, coord_servers)),
+      | servers: servers |> Map.merge(db_servers) |> Map.merge(coord_servers),
         mode_state: mode_state
     }
   end

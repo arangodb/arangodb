@@ -108,7 +108,7 @@ defmodule Toast.Deployment.Health do
         not has_last_acked ->
           {:not_ready, :no_last_acked}
 
-        MapSet.size(MapSet.new(leader_ids)) != 1 ->
+        length(Enum.uniq(leader_ids)) != 1 ->
           {:not_ready, :leader_disagreement}
 
         true ->

@@ -4,7 +4,7 @@ defmodule ToastTest.ArtifactCollectorTest do
   alias Toast.Deployment.ServerInstance
   alias ToastTest.ArtifactCollector
 
-  defp make_server(id, opts \\ []) do
+  defp make_server(id, opts) do
     %ServerInstance{
       id: id,
       role: Keyword.get(opts, :role, :single),

@@ -17,9 +17,11 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
   def parse_output(output) do
     lines = String.split(output, "\n")
 
+    init_acc = %{threads: [], current: nil, signal: nil, crash_thread: nil}
+
     %{threads: threads, signal: signal, crash_thread: crash_thread} =
-      Enum.reduce(lines, %{threads: [], current: nil, signal: nil, crash_thread: nil}, fn line,
-                                                                                          acc ->
+      lines
+      |> Enum.reduce(init_acc, fn line, acc ->
         acc
         |> maybe_parse_thread_header(line)
         |> maybe_parse_frame(line)
@@ -70,20 +72,19 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
     end
   end
 
+  @frame_with_location ~r/frame\s+#\d+:\s+0x[0-9a-fA-F]+\s+\S+`(.+?)\s+at\s+(.+):(\d+)/
+  @frame_without_location ~r/frame\s+#\d+:\s+0x[0-9a-fA-F]+\s+\S+`(.+)/
+
   defp parse_frame_line(line) do
-    # Pattern: frame #N: 0x<addr> <module>`<function> at <file>:<line>
-    # Pattern: frame #N: 0x<addr> <module>`<function>
-    cond do
-      match = Regex.run(~r/frame\s+#\d+:\s+0x[0-9a-fA-F]+\s+\S+`(.+?)\s+at\s+(.+):(\d+)/, line) ->
-        [_, func, file, line_num] = match
+    case Regex.run(@frame_with_location, line) do
+      [_, func, file, line_num] ->
         %{function: clean_function(func), file: file, line: String.to_integer(line_num)}
 
-      match = Regex.run(~r/frame\s+#\d+:\s+0x[0-9a-fA-F]+\s+\S+`(.+)/, line) ->
-        [_, func] = match
-        %{function: clean_function(func), file: nil, line: nil}
-
-      true ->
-        nil
+      nil ->
+        case Regex.run(@frame_without_location, line) do
+          [_, func] -> %{function: clean_function(func), file: nil, line: nil}
+          nil -> nil
+        end
     end
   end
 

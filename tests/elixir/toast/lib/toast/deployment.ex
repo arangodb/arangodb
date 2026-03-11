@@ -46,20 +46,14 @@ defmodule Toast.Deployment do
   def start_cluster(%Config{} = config), do: start(:cluster, config)
   def start_cluster(opts) when is_list(opts), do: start(:cluster, Config.load(opts))
 
-  @doc "Start a deployment with the given mode."
-  @spec start(mode(), Config.t()) :: {:ok, t()} | {:error, term()}
-  def start(mode, %Config{} = config) when mode in [:single_server, :cluster] do
-    do_start(mode, config, [])
-  end
-
   @doc """
-  Start a deployment with a pre-loaded config and additional options.
+  Start a deployment with the given mode.
 
   The `opts` keyword list can include non-config keys like `:on_crash`,
   `:on_event`, and `:id` that are forwarded to the controller.
   """
   @spec start(mode(), Config.t(), keyword()) :: {:ok, t()} | {:error, term()}
-  def start(mode, %Config{} = config, opts) when mode in [:single_server, :cluster] do
+  def start(mode, %Config{} = config, opts \\ []) when mode in [:single_server, :cluster] do
     do_start(mode, config, opts)
   end
 

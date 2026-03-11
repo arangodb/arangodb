@@ -53,20 +53,16 @@ defmodule Toast.Deployment.Controller.Helpers do
   @spec stop_server_process(Toast.Deployment.Controller.State.t(), String.t(), timeout()) :: :ok
   def stop_server_process(state, server_id, timeout) do
     case state.servers[server_id] do
-      %{server_pid: nil} ->
+      %{server_pid: pid} when pid != nil ->
+        ServerProcess.stop(pid, timeout)
+        DynamicSupervisor.terminate_child(ProcessSupervisor, pid)
         :ok
 
-      %{server_pid: pid} ->
-        try do
-          ServerProcess.stop(pid, timeout)
-          DynamicSupervisor.terminate_child(ProcessSupervisor, pid)
-        catch
-          :exit, _ -> :ok
-        end
-
-      nil ->
+      _ ->
         :ok
     end
+  catch
+    :exit, _ -> :ok
   end
 
   @spec spec_to_server_opts(map()) :: keyword()

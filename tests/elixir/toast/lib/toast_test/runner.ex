@@ -154,8 +154,6 @@ defmodule ToastTest.Runner do
     toast_config = Toast.Config.load(deployment_opts)
     callback_opts = Keyword.take(deployment_opts, [:on_crash, :on_event])
 
-    suite_name = derive_suite_name(suite_module)
-
     case Toast.Deployment.start(mode, toast_config, callback_opts) do
       {:ok, deployment} ->
         run_suite_with_deployment(
@@ -165,12 +163,11 @@ defmodule ToastTest.Runner do
           test_modules,
           global_opts,
           suite_opts,
-          suite_name,
           toast_config
         )
 
       {:error, reason} ->
-        handle_deployment_failure(suite_module, test_modules, reason, global_opts, suite_name)
+        handle_deployment_failure(suite_module, test_modules, reason, global_opts)
     end
   end
 
@@ -181,7 +178,6 @@ defmodule ToastTest.Runner do
          test_modules,
          global_opts,
          suite_opts,
-         suite_name,
          toast_config
        ) do
     suite_run = %{suite_run | deployment: deployment}
@@ -196,7 +192,7 @@ defmodule ToastTest.Runner do
           result
 
         {:error, reason} ->
-          mark_all_errored_stats(test_modules, reason, global_opts, suite_name)
+          mark_all_errored_stats(test_modules, reason, global_opts, suite_module)
       end
 
     suite_result = post_execution(deployment, test_data, toast_config)
@@ -205,12 +201,12 @@ defmodule ToastTest.Runner do
     %{stats: stats, suite_result: suite_result}
   end
 
-  defp handle_deployment_failure(suite_module, test_modules, reason, global_opts, suite_name) do
+  defp handle_deployment_failure(suite_module, test_modules, reason, global_opts) do
     Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
     ToastTest.Abort.abort!({:deploy_failed, "Deployment failed: #{inspect(reason)}"})
 
     {stats, test_data} =
-      mark_all_skipped_stats(test_modules, reason, global_opts, suite_name)
+      mark_all_skipped_stats(test_modules, reason, global_opts, suite_module)
 
     suite_result = ToastTest.SuiteResult.build(test_data, [])
 
@@ -435,8 +431,9 @@ defmodule ToastTest.Runner do
     }
   end
 
-  defp mark_all_skipped_stats(test_modules, reason, global_opts, suite_name) do
+  defp mark_all_skipped_stats(test_modules, reason, global_opts, suite_module) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
+    suite_name = derive_suite_name(suite_module)
     {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
     Compat.suite_started(manager, opts)
 
@@ -467,8 +464,9 @@ defmodule ToastTest.Runner do
     {stats, test_data}
   end
 
-  defp mark_all_errored_stats(test_modules, reason, global_opts, suite_name) do
+  defp mark_all_errored_stats(test_modules, reason, global_opts, suite_module) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
+    suite_name = derive_suite_name(suite_module)
     {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
     Compat.suite_started(manager, opts)
 
@@ -510,9 +508,7 @@ defmodule ToastTest.Runner do
     crash_events = ToastTest.ProcessHistory.unexpected_crashes()
     artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history)
 
-    issues =
-      ToastTest.Attribution.run(test_data, artifacts, crash_events)
-
+    issues = ToastTest.Attribution.run(test_data, artifacts, crash_events)
     suite_result = ToastTest.SuiteResult.build(test_data, issues)
     ToastTest.SuiteResult.write_all(suite_result, toast_config.result_dir)
     print_post_exec_summary(suite_result)
@@ -571,10 +567,7 @@ defmodule ToastTest.Runner do
 
   defp normalize_opts(opts) do
     {include, exclude} = ExUnit.Filters.normalize(opts[:include], opts[:exclude])
-
-    opts
-    |> Keyword.put(:exclude, exclude)
-    |> Keyword.put(:include, include)
+    Keyword.merge(opts, include: include, exclude: exclude)
   end
 
   ## Running modules

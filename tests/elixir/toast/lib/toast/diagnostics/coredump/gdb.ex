@@ -17,17 +17,16 @@ defmodule Toast.Diagnostics.Coredump.GDB do
   def parse_output(output) do
     lines = String.split(output, "\n")
 
+    init_acc = %{threads: [], current: nil, signal: nil, faulting_address: nil, crash_thread: nil}
+
     %{threads: threads, signal: signal, faulting_address: addr, crash_thread: crash_thread} =
-      Enum.reduce(
-        lines,
-        %{threads: [], current: nil, signal: nil, faulting_address: nil, crash_thread: nil},
-        fn line, acc ->
-          acc
-          |> maybe_parse_signal(line)
-          |> maybe_parse_thread_header(line)
-          |> maybe_parse_frame(line)
-        end
-      )
+      lines
+      |> Enum.reduce(init_acc, fn line, acc ->
+        acc
+        |> maybe_parse_signal(line)
+        |> maybe_parse_thread_header(line)
+        |> maybe_parse_frame(line)
+      end)
       |> Debugger.flush_current_thread()
 
     threads = Debugger.filter_threads(threads, crash_thread)
@@ -92,25 +91,19 @@ defmodule Toast.Diagnostics.Coredump.GDB do
     end
   end
 
+  @frame_with_location ~r/^#\d+\s+(?:0x[0-9a-fA-F]+\s+in\s+)?(.+?)\s+\(.*?\)\s+at\s+(.+):(\d+)/
+  @frame_without_location ~r/^#\d+\s+(?:0x[0-9a-fA-F]+\s+in\s+)?(.+?)\s+\(/
+
   defp parse_frame_line(line) do
-    # Pattern: #N  0x<addr> in <function> (<args>) at <file>:<line>
-    # Pattern: #N  0x<addr> in <function> ()
-    # Pattern: #N  <function> (<args>) at <file>:<line>
-    cond do
-      match =
-          Regex.run(
-            ~r/^#\d+\s+(?:0x[0-9a-fA-F]+\s+in\s+)?(.+?)\s+\(.*?\)\s+at\s+(.+):(\d+)/,
-            line
-          ) ->
-        [_, func, file, line_num] = match
+    case Regex.run(@frame_with_location, line) do
+      [_, func, file, line_num] ->
         %{function: String.trim(func), file: file, line: String.to_integer(line_num)}
 
-      match = Regex.run(~r/^#\d+\s+(?:0x[0-9a-fA-F]+\s+in\s+)?(.+?)\s+\(/, line) ->
-        [_, func] = match
-        %{function: String.trim(func), file: nil, line: nil}
-
-      true ->
-        nil
+      nil ->
+        case Regex.run(@frame_without_location, line) do
+          [_, func] -> %{function: String.trim(func), file: nil, line: nil}
+          nil -> nil
+        end
     end
   end
 

@@ -3,6 +3,8 @@ defmodule ToastTest.ResultCollector do
 
   use GenServer
 
+  import Toast.Utils, only: [compact: 1]
+
   @type test_data :: %{
           suite: String.t() | nil,
           started_at: DateTime.t(),
@@ -54,9 +56,7 @@ defmodule ToastTest.ResultCollector do
 
   def handle_cast({:module_finished, %ExUnit.TestModule{name: module}}, state) do
     timestamps =
-      Map.update!(state.module_timestamps, module, fn ts ->
-        %{ts | finished_at: DateTime.utc_now()}
-      end)
+      Map.update!(state.module_timestamps, module, &%{&1 | finished_at: DateTime.utc_now()})
 
     {:noreply, %{state | module_timestamps: timestamps}}
   end
@@ -136,37 +136,24 @@ defmodule ToastTest.ResultCollector do
   # --- Private helpers ---
 
   defp build_modules(modules_map, module_timestamps) do
-    modules_map
-    |> Map.keys()
-    |> Enum.concat(Map.keys(module_timestamps))
-    |> Enum.uniq()
+    (Map.keys(modules_map) ++ Map.keys(module_timestamps))
     |> Map.new(fn mod ->
       tests = modules_map |> Map.get(mod, []) |> Enum.reverse()
-      ts = Map.get(module_timestamps, mod)
-
-      {started_at, finished_at} =
-        if ts do
-          {ts.started_at, ts.finished_at}
-        else
-          # Fallback to test timestamps
-          started = tests |> Enum.map(& &1.started_at) |> Enum.reject(&is_nil/1) |> min_dt()
-          finished = tests |> Enum.map(& &1.finished_at) |> Enum.reject(&is_nil/1) |> max_dt()
-          {started, finished}
-        end
-
-      {setup_finished_at, teardown_started_at} =
-        if ts, do: {ts.setup_finished_at, ts.teardown_started_at}, else: {nil, nil}
-
-      {mod,
-       %{
-         started_at: started_at,
-         finished_at: finished_at,
-         setup_finished_at: setup_finished_at,
-         teardown_started_at: teardown_started_at,
-         tests: tests
-       }}
+      {mod, build_module_result(tests, Map.get(module_timestamps, mod))}
     end)
   end
+
+  defp build_module_result(tests, nil) do
+    %{
+      started_at: tests |> Enum.map(& &1.started_at) |> compact() |> min_dt(),
+      finished_at: tests |> Enum.map(& &1.finished_at) |> compact() |> max_dt(),
+      setup_finished_at: nil,
+      teardown_started_at: nil,
+      tests: tests
+    }
+  end
+
+  defp build_module_result(tests, ts), do: Map.put(ts, :tests, tests)
 
   defp min_dt([]), do: nil
   defp min_dt(dts), do: Enum.min(dts, DateTime)

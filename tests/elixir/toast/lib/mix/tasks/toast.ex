@@ -150,13 +150,12 @@ defmodule Mix.Tasks.Toast do
     result = ToastTest.Runner.run_suites(suite_data, global_opts)
 
     abort_reason = ToastTest.Abort.reason()
-    has_sanitizer_errors = Summary.has_sanitizer_errors?(result.suites)
 
     run_results = %{
       test_failures: result.stats.failures,
       server_crashed: match?({:crash, _}, abort_reason),
       infrastructure_failure: abort_reason != nil and not match?({:crash, _}, abort_reason),
-      sanitizer_errors: has_sanitizer_errors
+      sanitizer_errors: Summary.has_sanitizer_errors?(result.suites)
     }
 
     if config.ci do
@@ -234,20 +233,19 @@ defmodule Mix.Tasks.Toast do
   ## Suite discovery helpers
 
   defp discover_and_compile_suites(suites_dir, suite_requests) do
-    suite_files =
-      [suites_dir, "*", "suite.ex"]
-      |> Path.join()
-      |> Path.wildcard()
-      |> filter_by_request(suite_requests)
-
-    Enum.flat_map(suite_files, &compile_single_suite/1)
+    [suites_dir, "*", "suite.ex"]
+    |> Path.join()
+    |> Path.wildcard()
+    |> filter_by_request(suite_requests)
+    |> Enum.flat_map(&compile_single_suite/1)
   end
 
   defp filter_by_request(suite_files, :all), do: suite_files
 
   defp filter_by_request(suite_files, names) do
     Enum.filter(suite_files, fn path ->
-      path |> Path.dirname() |> Path.basename() |> Kernel.in(names)
+      suite_name = path |> Path.dirname() |> Path.basename()
+      suite_name in names
     end)
   end
 
@@ -255,7 +253,7 @@ defmodule Mix.Tasks.Toast do
     case Kernel.ParallelCompiler.compile([suite_file], return_diagnostics: true) do
       {:ok, modules, _} ->
         for mod <- modules,
-            ToastTest.Suite in (mod.__info__(:attributes)[:behaviour] || []) do
+            ToastTest.Suite in behaviours(mod) do
           source = mod.__info__(:compile)[:source] |> to_string()
           {mod, Path.dirname(source)}
         end
@@ -265,6 +263,8 @@ defmodule Mix.Tasks.Toast do
         []
     end
   end
+
+  defp behaviours(mod), do: mod.__info__(:attributes)[:behaviour] || []
 
   defp compile_helpers([]), do: :ok
 
@@ -296,12 +296,12 @@ defmodule Mix.Tasks.Toast do
   defp warn_orphans([], _suite_dir), do: :ok
 
   defp warn_orphans(orphans, suite_dir) do
-    for path <- orphans do
+    Enum.each(orphans, fn path ->
       relative = Path.relative_to(path, Path.dirname(suite_dir))
 
       Logger.warning(
         "#{relative} is not a test file (must start with test_) and is not compiled as a helper (must end in .ex). This file is ignored."
       )
-    end
+    end)
   end
 end

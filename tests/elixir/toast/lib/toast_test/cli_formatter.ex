@@ -32,7 +32,6 @@ defmodule ToastTest.CLIFormatter do
       module_start_time: nil,
       module_test_count: 0,
       module_skipped_count: 0,
-      module_skipped_reason: nil,
       # Suite-level stats
       failure_counter: 0,
       counters: %{passed: 0, failed: 0, skipped: 0, excluded: 0, invalid: 0, total: 0},
@@ -57,8 +56,7 @@ defmodule ToastTest.CLIFormatter do
          module_header_printed: false,
          module_start_time: System.monotonic_time(:millisecond),
          module_test_count: 0,
-         module_skipped_count: 0,
-         module_skipped_reason: nil
+         module_skipped_count: 0
      }}
   end
 
@@ -86,7 +84,7 @@ defmodule ToastTest.CLIFormatter do
     {:noreply, state}
   end
 
-  def handle_cast({:module_finished, %ExUnit.TestModule{} = _mod}, state) do
+  def handle_cast({:module_finished, %ExUnit.TestModule{}}, state) do
     if state.module_header_printed do
       print_module_summary(state)
     else
@@ -370,9 +368,7 @@ defmodule ToastTest.CLIFormatter do
   # --- Helpers ---
 
   defp display_name(%ExUnit.Test{name: name}) do
-    name
-    |> to_string()
-    |> String.replace_prefix("test ", "")
+    name |> to_string() |> String.replace_prefix("test ", "")
   end
 
   defp module_file(%ExUnit.TestModule{state: {:failed, %{tags: %{file: file}}}}), do: file
@@ -412,8 +408,9 @@ defmodule ToastTest.CLIFormatter do
   end
 
   defp ansi_code(color) when is_list(color),
-    do: IO.iodata_to_binary(Enum.map(color, &apply(IO.ANSI, &1, [])))
+    do: IO.iodata_to_binary(Enum.map(color, &ansi_code/1))
 
+  defp ansi_code(:bold), do: IO.ANSI.bright()
   defp ansi_code(color) when is_atom(color), do: apply(IO.ANSI, color, [])
   defp ansi_code(color) when is_binary(color), do: color
 
@@ -421,20 +418,7 @@ defmodule ToastTest.CLIFormatter do
   defp colorize(text, color, %{colors_enabled: enabled}), do: colorize(text, color, enabled)
   defp colorize(text, _color, false), do: text
 
-  defp colorize(text, color, true) when is_list(color) do
-    ansi = Enum.map(color, &apply(IO.ANSI, &1, []))
-    IO.iodata_to_binary([ansi, text, IO.ANSI.reset()])
-  end
-
-  defp colorize(text, :bold, true) do
-    IO.iodata_to_binary([IO.ANSI.bright(), text, IO.ANSI.reset()])
-  end
-
-  defp colorize(text, color, true) when is_atom(color) do
-    IO.iodata_to_binary([apply(IO.ANSI, color, []), text, IO.ANSI.reset()])
-  end
-
-  defp colorize(text, color, true) when is_binary(color) do
-    IO.iodata_to_binary([color, text, IO.ANSI.reset()])
+  defp colorize(text, color, true) do
+    IO.iodata_to_binary([ansi_code(color), text, IO.ANSI.reset()])
   end
 end

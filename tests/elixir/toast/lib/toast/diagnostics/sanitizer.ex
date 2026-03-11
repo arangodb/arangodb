@@ -152,9 +152,8 @@ defmodule Toast.Diagnostics.Sanitizer do
   end
 
   defp collect_log_files(log_dir, base_name, sanitizer_type, server_id) do
-    pattern = Path.join(log_dir, "#{base_name}.*")
-
-    pattern
+    log_dir
+    |> Path.join("#{base_name}.*")
     |> Path.wildcard()
     |> Enum.flat_map(fn file_path ->
       case File.read(file_path) do

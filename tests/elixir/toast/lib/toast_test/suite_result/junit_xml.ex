@@ -53,7 +53,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded]))
     time = tests |> Enum.map(& &1.duration_us) |> Enum.sum() |> format_duration()
 
-    cases = Enum.map_join(tests, "\n", &render_testcase(&1, name, module, failure_index))
+    cases = Enum.map_join(tests, "\n", &render_testcase(&1, module, failure_index))
 
     [
       ~s(  <testsuite name="#{xml_escape(name)}" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
@@ -63,9 +63,9 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     |> Enum.join("\n")
   end
 
-  defp render_testcase(test, classname, module, failure_index) do
+  defp render_testcase(test, module, failure_index) do
     name = xml_escape(Atom.to_string(test.name))
-    cn = xml_escape(classname)
+    cn = xml_escape(Atom.to_string(module))
     time = format_duration(test.duration_us)
 
     case test.outcome do

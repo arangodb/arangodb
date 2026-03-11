@@ -55,8 +55,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
 
   def shutdown(state, timeout) do
     Logger.debug("Shutting down deployment #{state.id}")
-    state = %{state | status: :stopping}
-    do_cleanup(state, timeout)
+    do_cleanup(%{state | status: :stopping}, timeout)
   end
 
   @impl true

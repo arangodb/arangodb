@@ -39,14 +39,7 @@ defmodule Toast.Diagnostics.Coredump do
   @doc "Analyze a core file and extract stack traces."
   @spec analyze(Path.t(), Path.t(), keyword()) :: {:ok, Report.t()} | {:error, term()}
   def analyze(core_path, binary_path, opts \\ []) do
-    debugger =
-      Keyword.get_lazy(opts, :debugger, fn ->
-        case detect_debugger() do
-          {:ok, mod} -> mod
-          :none -> nil
-        end
-      end)
-
+    debugger = Keyword.get_lazy(opts, :debugger, fn -> detect_debugger_module() end)
     timeout = Keyword.get(opts, :timeout, @default_timeout_ms)
 
     case debugger do
@@ -118,7 +111,9 @@ defmodule Toast.Diagnostics.Coredump do
         per_core_timeout = max(1_000, div(remaining_ms, length(cores)))
 
         analyze_opts =
-          [timeout: per_core_timeout] ++ if(debugger, do: [debugger: debugger], else: [])
+          if debugger,
+            do: [timeout: per_core_timeout, debugger: debugger],
+            else: [timeout: per_core_timeout]
 
         Enum.flat_map(cores, &analyze_core(&1, server.binary_path, analyze_opts))
     end
@@ -231,6 +226,13 @@ defmodule Toast.Diagnostics.Coredump do
     Port.close(port)
   catch
     _, _ -> :ok
+  end
+
+  defp detect_debugger_module do
+    case detect_debugger() do
+      {:ok, mod} -> mod
+      :none -> nil
+    end
   end
 
   defp debugger_name(GDB), do: :gdb

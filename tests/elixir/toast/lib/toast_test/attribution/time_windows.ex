@@ -78,8 +78,7 @@ defmodule ToastTest.Attribution.TimeWindows do
   end
 
   defp find_low_match(timestamp, tests, tolerance_s) do
-    tests
-    |> Enum.filter(fn {_key, window} ->
+    Enum.filter(tests, fn {_key, window} ->
       after_window_within_tolerance?(timestamp, window.finished_at, tolerance_s)
     end)
     |> case do
@@ -108,8 +107,7 @@ defmodule ToastTest.Attribution.TimeWindows do
 
   defp in_setup?(timestamp, %{started_at: started, setup_finished_at: setup_end})
        when not is_nil(setup_end) do
-    in_window?(timestamp, started, setup_end) and
-      DateTime.compare(timestamp, setup_end) == :lt
+    in_window?(timestamp, started, setup_end)
   end
 
   defp in_setup?(_timestamp, _window), do: false

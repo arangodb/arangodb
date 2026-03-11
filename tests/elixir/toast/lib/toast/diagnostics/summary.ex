@@ -45,11 +45,11 @@ defmodule Toast.Diagnostics.Summary do
     |> Enum.flat_map(&core_dump_paths_from_detail(&1.detail))
   end
 
+  defp extract_core_dumps(_), do: []
+
   defp core_dump_paths_from_detail(%{coredumps: coredumps}) when is_list(coredumps) do
     for %{path: path} when is_binary(path) <- coredumps, do: path
   end
 
   defp core_dump_paths_from_detail(_), do: []
-
-  defp extract_core_dumps(_), do: []
 end

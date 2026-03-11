@@ -119,15 +119,11 @@ defmodule Toast.ResultPackaging do
   # --- Tier 3: Individually compressed ---
 
   defp package_tier3(opts, result_dir) do
-    core_dumps =
-      opts
-      |> Keyword.get(:suite_diagnostics, [])
-      |> Enum.flat_map(&Map.get(&1, :core_dumps, []))
-      |> Enum.filter(&File.exists?/1)
-
-    Enum.each(core_dumps, &package_core_dump(&1, result_dir))
-
-    :ok
+    opts
+    |> Keyword.get(:suite_diagnostics, [])
+    |> Enum.flat_map(&Map.get(&1, :core_dumps, []))
+    |> Enum.filter(&File.exists?/1)
+    |> Enum.each(&package_core_dump(&1, result_dir))
   end
 
   defp package_core_dump(core_path, result_dir) do

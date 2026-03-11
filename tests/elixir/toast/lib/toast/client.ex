@@ -100,9 +100,9 @@ defmodule Toast.Client do
       when is_integer(expected) and status == expected,
       do: {:ok, body}
 
-  def unwrap({:ok, %{status: status, body: body}}, %Range{} = expected) do
-    if status in expected, do: {:ok, body}, else: {:error, %{status: status, body: body}}
-  end
+  def unwrap({:ok, %{status: status, body: body}}, first..last//1)
+      when status >= first and status <= last,
+      do: {:ok, body}
 
   def unwrap({:ok, %{status: status, body: body}}, _expected),
     do: {:error, %{status: status, body: body}}
@@ -119,9 +119,9 @@ defmodule Toast.Client do
       when is_integer(expected) and status == expected,
       do: :ok
 
-  def unwrap_ok({:ok, %{status: status}}, %Range{} = expected) do
-    if status in expected, do: :ok, else: {:error, %{status: status}}
-  end
+  def unwrap_ok({:ok, %{status: status}}, first..last//1)
+      when status >= first and status <= last,
+      do: :ok
 
   def unwrap_ok({:ok, resp}, _expected), do: {:error, %{status: resp.status, body: resp.body}}
 

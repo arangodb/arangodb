@@ -72,7 +72,8 @@ defmodule Toast.Utils.Filesystem do
   end
 
   defp find_from_cwd(opts) do
-    Keyword.get_lazy(opts, :cwd, &File.cwd!/0)
+    opts
+    |> Keyword.get_lazy(:cwd, &File.cwd!/0)
     |> walk_up()
     |> Enum.find_value(:no_match, fn dir ->
       if repository_root?(dir), do: {:ok, dir}

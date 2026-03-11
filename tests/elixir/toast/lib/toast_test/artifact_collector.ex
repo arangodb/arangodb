@@ -20,11 +20,9 @@ defmodule ToastTest.ArtifactCollector do
 
   @spec collect(%{String.t() => ServerInstance.t()}, map()) :: t()
   def collect(servers, pid_history \\ %{}) do
-    servers
-    |> Enum.filter(fn {_id, server} -> server.server_dir != nil end)
-    |> Map.new(fn {id, server} ->
+    for {id, server} <- servers, server.server_dir != nil, into: %{} do
       {id, collect_server_artifacts(server, Map.get(pid_history, id, []))}
-    end)
+    end
   end
 
   defp collect_server_artifacts(server, historical_pids) do
@@ -48,8 +46,7 @@ defmodule ToastTest.ArtifactCollector do
     alubsan = Path.wildcard(Path.join(server_dir, "alubsan.log.*"))
     tsan = Path.wildcard(Path.join(server_dir, "tsan.log.*"))
 
-    (alubsan ++ tsan)
-    |> Enum.filter(&(file_size(&1) > @min_sanitizer_bytes))
+    Enum.filter(alubsan ++ tsan, &(file_size(&1) > @min_sanitizer_bytes))
   end
 
   defp file_size(path) do
