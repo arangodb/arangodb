@@ -72,6 +72,8 @@ const RESET = internal.COLORS.COLOR_RESET;
 const IS_A_TTY = internal.isATTy();
 
 const termSignal = 15;
+const SERVICE_API_DISABLED_ERROR_NUM =
+  (errors.ERROR_SERVICE_API_DISABLED && errors.ERROR_SERVICE_API_DISABLED.code) || 3099;
 
 const instanceRole = inst.instanceRole;
 
@@ -1165,7 +1167,7 @@ class instanceManager {
         try {
           if (reply.code === 403) {
             let parsedBody = JSON.parse(reply.body);
-            if (parsedBody.errorNum === errors.ERROR_SERVICE_API_DISABLED.code) {
+            if (parsedBody.errorNum === SERVICE_API_DISABLED_ERROR_NUM) {
               if (!this.options.noStartStopLogs) {
                 print("service API disabled, continuing.");
               }
