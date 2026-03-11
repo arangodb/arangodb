@@ -1390,16 +1390,6 @@ function DuplicateValuesSuite() {
       assertNotEqual(doc2._key, "");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: documents
-////////////////////////////////////////////////////////////////////////////////
-
-    testUniquenessAndLookup: function() {
-    },
-
-    testUniquenessAndLookup2: function() {
-    },
-
     testUniqueIndexNullSubattribute: function() {
       let idx = collection.ensureIndex({type: "persistent", unique: true, fields: ["a.b"]});
 

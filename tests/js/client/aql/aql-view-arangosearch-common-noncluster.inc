@@ -236,9 +236,6 @@ return function (args) {
       });
     },
 
-    testTransactionRegistration : function () {
-    },
-
     testAttributeEqualityFilter : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH doc.a == 'foo' OPTIONS { waitForSync : true } RETURN doc").toArray();
 

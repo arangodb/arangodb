@@ -153,6 +153,32 @@ function SelectivityIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityAfterCancelation : function () {
+      let idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: i });
+      }
+      collection.insert(docs);
+
+      waitForEstimatorSync();
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+      const selectivityBefore = idx.selectivityEstimate;
+
+      // insert documents inside a transaction, then abort — estimate must not change
+      const trx = internal.db._createTransaction({
+        collections: { write: [cn] }
+      });
+      const tc = trx.collection(cn);
+      docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: 1 }); // all identical to significantly skew selectivity if the abort doesn't work
+      }
+      tc.insert(docs);
+      trx.abort();
+
+      waitForEstimatorSync();
+      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+      assertEqual(selectivityBefore, idx.selectivityEstimate);
     },
 
   };

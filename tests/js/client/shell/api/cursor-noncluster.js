@@ -549,51 +549,6 @@ function testing_the_query_cache_in_transcationSuite() {
         assertEqual(res.status, "committed");
       }
     },
-
-    test_testing_js_transaction_aborted_set: function() {
-      let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
-      assertEqual(res.code, 201);
-      res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
-      assertEqual(res.code, 201);
-      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`).data;
-      assertEqual(res.code, 201);
-      assertFalse(res.cached);
-      assertEqual(res.result[0].value, 0);
-      res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
-      assertEqual(res.code, 201);
-      assertFalse(res.cached);
-      assertEqual(res.result[0].value, 0);
-    },
-
-    test_testing_js_transaction_committed_set: function() {
-      let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
-      assertEqual(res.code, 201);
-      res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
-      assertEqual(res.code, 201);
-      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`).data;
-      assertEqual(res.code, 201);
-      assertFalse(res.cached);
-      assertEqual(res.result[0].value, 0);
-      res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
-      assertEqual(res.code, 201);
-      assertFalse(res.cached);
-      assertEqual(res.result[0].value, 0);
-      db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
-      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
-      assertEqual(res.code, 201);
-      assertFalse(res.cached);
-      assertEqual(res.result[0].value, 1);
-
-      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
-      assertEqual(res.code, 201);
-      assertFalse(res.cached);
-      assertEqual(res.result[0].value, 1);
-
-      res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
-      assertEqual(res.code, 201);
-      assertTrue(res.cached);
-      assertEqual(res.result[0].value, 0);
-    },
   };
 }
 

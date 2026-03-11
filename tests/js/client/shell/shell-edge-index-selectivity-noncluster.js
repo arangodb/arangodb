@@ -167,8 +167,6 @@ function EdgeIndexSuite () {
       assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
     },
 
-    testIndexSelectivityAfterAbortion: function () {
-    },
   };
 }
 

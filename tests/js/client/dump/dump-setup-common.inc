@@ -296,9 +296,6 @@ function createStrings() {
   });
 }
 
-function createTransactional() {
-}
-
 function createPersistent() {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpPersistent");
@@ -1357,7 +1354,6 @@ exports.createAutoIncKeyGen = createAutoIncKeyGen;
 exports.createPaddedKeyGen = createPaddedKeyGen;
 exports.createUUIDKeyGen = createUUIDKeyGen;
 exports.createStrings = createStrings;
-exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;
 exports.createView = createView;
 exports.createSearch = createSearch;

@@ -297,9 +297,6 @@
         assertEqual(result[0], "the quick brown fox jumps over the lazy dog");
       },
 
-      testTransactionRegistration : function () {
-      },
-
       testViewCollectionOptions : function() {
         var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } RETURN doc").toArray();
 
