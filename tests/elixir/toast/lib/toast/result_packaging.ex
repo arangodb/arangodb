@@ -125,31 +125,33 @@ defmodule Toast.ResultPackaging do
       |> Enum.flat_map(&Map.get(&1, :core_dumps, []))
       |> Enum.filter(&File.exists?/1)
 
-    Enum.each(core_dumps, fn core_path ->
-      basename = Path.basename(core_path)
-
-      case compression_ext() do
-        nil ->
-          Logger.warning(
-            "No compression tool (zstd, gzip) available; copying #{core_path} uncompressed"
-          )
-
-          File.cp!(core_path, Path.join(result_dir, basename))
-
-        ext ->
-          dest = Path.join(result_dir, basename <> ext)
-
-          case compress_file(core_path, dest) do
-            {:ok, _} ->
-              :ok
-
-            {:error, reason} ->
-              Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
-          end
-      end
-    end)
+    Enum.each(core_dumps, &package_core_dump(&1, result_dir))
 
     :ok
+  end
+
+  defp package_core_dump(core_path, result_dir) do
+    basename = Path.basename(core_path)
+
+    case compression_ext() do
+      nil ->
+        Logger.warning(
+          "No compression tool (zstd, gzip) available; copying #{core_path} uncompressed"
+        )
+
+        File.cp!(core_path, Path.join(result_dir, basename))
+
+      ext ->
+        dest = Path.join(result_dir, basename <> ext)
+
+        case compress_file(core_path, dest) do
+          {:ok, _} ->
+            :ok
+
+          {:error, reason} ->
+            Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
+        end
+    end
   end
 
   defp compression_ext do

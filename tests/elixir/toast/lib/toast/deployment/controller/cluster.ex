@@ -5,10 +5,10 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   require Logger
 
-  alias Toast.Process.ServerProcess
-  alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
   alias Toast.Deployment.Controller.Helpers
+  alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
   alias Toast.Diagnostics.AgencyDump
+  alias Toast.Process.ServerProcess
 
   @impl true
   def init_servers(_id), do: %{}

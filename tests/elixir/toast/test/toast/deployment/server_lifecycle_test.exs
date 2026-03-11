@@ -13,7 +13,7 @@ end
 defmodule Toast.Deployment.ServerLifecycleTest do
   use ExUnit.Case, async: true
 
-  alias Toast.Deployment.{ServerLifecycle, ServerInstance}
+  alias Toast.Deployment.{ServerInstance, ServerLifecycle}
 
   defp server(overrides \\ []) do
     defaults = [id: "s1", role: :single, operational_state: :running, expecting_exit: false]

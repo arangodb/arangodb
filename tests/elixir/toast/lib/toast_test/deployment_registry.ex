@@ -19,7 +19,7 @@ defmodule ToastTest.DeploymentRegistry do
     :ok
   end
 
-  defp init_table(), do: :ets.new(@table, [:named_table, :public, :set])
+  defp init_table, do: :ets.new(@table, [:named_table, :public, :set])
 
   @spec put(module(), Toast.Deployment.t()) :: :ok
   def put(suite_module, deployment) do

@@ -41,8 +41,11 @@ end
 defmodule Toast.Deployment.ExpectCrashTest do
   use ExUnit.Case, async: false
 
+  alias Toast.Config
   alias Toast.Deployment
+  alias Toast.Deployment.Controller
   alias Toast.Deployment.ExpectCrashTest.MockController
+  alias Toast.Process.CrashInfo
 
   defp deployment(pid, mode \\ :single_server) do
     %Deployment{
@@ -197,11 +200,11 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
   describe "expect_crash timeout auto-clear" do
     test "expectation auto-clears after timeout" do
-      config = Toast.Config.load()
+      config = Config.load()
 
       {:ok, ctrl} =
-        Toast.Deployment.Controller.start_link(
-          mode: Toast.Deployment.Controller.SingleServer,
+        Controller.start_link(
+          mode: Controller.SingleServer,
           config: config
         )
 
@@ -232,11 +235,11 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
 
     test "verify_crash returns {:error, :timeout} when no crash occurs within verify timeout" do
-      config = Toast.Config.load()
+      config = Config.load()
 
       {:ok, ctrl} =
-        Toast.Deployment.Controller.start_link(
-          mode: Toast.Deployment.Controller.SingleServer,
+        Controller.start_link(
+          mode: Controller.SingleServer,
           config: config
         )
 
@@ -265,11 +268,11 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
 
     test "verify_crash returns {:error, :no_expectation} after expect timeout clears" do
-      config = Toast.Config.load()
+      config = Config.load()
 
       {:ok, ctrl} =
-        Toast.Deployment.Controller.start_link(
-          mode: Toast.Deployment.Controller.SingleServer,
+        Controller.start_link(
+          mode: Controller.SingleServer,
           config: config
         )
 
@@ -297,11 +300,11 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
 
     test "crash during expect window is captured and verify_crash succeeds" do
-      config = Toast.Config.load()
+      config = Config.load()
 
       {:ok, ctrl} =
-        Toast.Deployment.Controller.start_link(
-          mode: Toast.Deployment.Controller.SingleServer,
+        Controller.start_link(
+          mode: Controller.SingleServer,
           config: config
         )
 
@@ -319,13 +322,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
       :ok = GenServer.call(ctrl, {:expect_crash, server_id, 5_000})
 
       # Simulate crash notification
-      crash_info = %Toast.Process.CrashInfo{
+      info = %CrashInfo{
         exit_status: 139,
         signal: 11,
         timestamp: DateTime.utc_now()
       }
 
-      send(ctrl, {:server_crashed, server_id, crash_info})
+      send(ctrl, {:server_crashed, server_id, info})
 
       # Give handle_info time to process
       Process.sleep(50)

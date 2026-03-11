@@ -6,8 +6,8 @@ defmodule Toast.Deployment.Controller do
   require Logger
 
   alias Toast.Config
-  alias Toast.Deployment.{ServerInstance, ServerLifecycle}
   alias Toast.Deployment.Controller.Helpers
+  alias Toast.Deployment.{ServerInstance, ServerLifecycle}
   alias Toast.Process.CrashEvent
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed

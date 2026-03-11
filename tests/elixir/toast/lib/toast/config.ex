@@ -3,6 +3,8 @@ defmodule Toast.Config do
 
   require Logger
 
+  alias Toast.Diagnostics.Sanitizer
+
   @type server_args_map :: %{String.t() => String.t() | [String.t()]}
 
   @type t :: %__MODULE__{
@@ -81,10 +83,10 @@ defmodule Toast.Config do
 
     sanitizer_override =
       opt_or(opts, :sanitizer_override, env("TOAST_SANITIZER"), local[:sanitizer_override]) ||
-        Toast.Diagnostics.Sanitizer.detect_from_build_dir(build_dir)
+        Sanitizer.detect_from_build_dir(build_dir)
 
     active_sanitizers =
-      opt_or(opts, :active_sanitizers, Toast.Diagnostics.Sanitizer.detect(sanitizer_override))
+      opt_or(opts, :active_sanitizers, Sanitizer.detect(sanitizer_override))
 
     factor =
       opt_or(

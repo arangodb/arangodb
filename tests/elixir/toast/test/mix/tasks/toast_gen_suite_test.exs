@@ -1,6 +1,8 @@
 defmodule Mix.Tasks.Toast.Gen.SuiteTest do
   use ExUnit.Case, async: true
 
+  alias Mix.Tasks.Toast.Gen.Suite
+
   import ExUnit.CaptureIO
 
   @tag :tmp_dir
@@ -8,7 +10,7 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
     suite_dir = Path.join(dir, "suites/my_suite")
 
     capture_io(fn ->
-      in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["my_suite"]) end)
+      in_dir(dir, fn -> Suite.run(["my_suite"]) end)
     end)
 
     assert File.dir?(suite_dir)
@@ -19,7 +21,7 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
   @tag :tmp_dir
   test "suite.ex contains use ToastTest.Suite", %{tmp_dir: dir} do
     capture_io(fn ->
-      in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["smoke_test"]) end)
+      in_dir(dir, fn -> Suite.run(["smoke_test"]) end)
     end)
 
     content = File.read!(Path.join(dir, "suites/smoke_test/suite.ex"))
@@ -29,7 +31,7 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
   @tag :tmp_dir
   test "suite.ex uses camelized module name", %{tmp_dir: dir} do
     capture_io(fn ->
-      in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["smoke_test"]) end)
+      in_dir(dir, fn -> Suite.run(["smoke_test"]) end)
     end)
 
     content = File.read!(Path.join(dir, "suites/smoke_test/suite.ex"))
@@ -39,7 +41,7 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
   @tag :tmp_dir
   test "test_example.exs uses suite module name", %{tmp_dir: dir} do
     capture_io(fn ->
-      in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["smoke_test"]) end)
+      in_dir(dir, fn -> Suite.run(["smoke_test"]) end)
     end)
 
     content = File.read!(Path.join(dir, "suites/smoke_test/test_example.exs"))
@@ -50,7 +52,7 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
   @tag :tmp_dir
   test "--mode cluster produces mode: :cluster in suite.ex", %{tmp_dir: dir} do
     capture_io(fn ->
-      in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["cluster_tests", "--mode", "cluster"]) end)
+      in_dir(dir, fn -> Suite.run(["cluster_tests", "--mode", "cluster"]) end)
     end)
 
     content = File.read!(Path.join(dir, "suites/cluster_tests/suite.ex"))
@@ -61,7 +63,7 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
   test "--mode single_server produces mode: :single_server in suite.ex", %{tmp_dir: dir} do
     capture_io(fn ->
       in_dir(dir, fn ->
-        Mix.Tasks.Toast.Gen.Suite.run(["single_tests", "--mode", "single_server"])
+        Suite.run(["single_tests", "--mode", "single_server"])
       end)
     end)
 
@@ -72,7 +74,7 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
   @tag :tmp_dir
   test "no mode flag produces suite without explicit mode", %{tmp_dir: dir} do
     capture_io(fn ->
-      in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["no_mode"]) end)
+      in_dir(dir, fn -> Suite.run(["no_mode"]) end)
     end)
 
     content = File.read!(Path.join(dir, "suites/no_mode/suite.ex"))
@@ -85,20 +87,20 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
     File.mkdir_p!(suite_dir)
 
     assert_raise Mix.Error, ~r/already exists/, fn ->
-      in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["existing"]) end)
+      in_dir(dir, fn -> Suite.run(["existing"]) end)
     end
   end
 
   test "raises error on missing name argument" do
     assert_raise Mix.Error, ~r/Usage/, fn ->
-      Mix.Tasks.Toast.Gen.Suite.run([])
+      Suite.run([])
     end
   end
 
   @tag :tmp_dir
   test "invalid mode raises error", %{tmp_dir: dir} do
     assert_raise Mix.Error, ~r/Invalid mode/, fn ->
-      in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["bad_mode", "--mode", "invalid"]) end)
+      in_dir(dir, fn -> Suite.run(["bad_mode", "--mode", "invalid"]) end)
     end
   end
 
@@ -106,7 +108,7 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
   test "prints creation messages", %{tmp_dir: dir} do
     output =
       capture_io(fn ->
-        in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["msg_test"]) end)
+        in_dir(dir, fn -> Suite.run(["msg_test"]) end)
       end)
 
     assert output =~ "creating"
@@ -118,7 +120,7 @@ defmodule Mix.Tasks.Toast.Gen.SuiteTest do
   @tag :tmp_dir
   test "test_example.exs contains a test block", %{tmp_dir: dir} do
     capture_io(fn ->
-      in_dir(dir, fn -> Mix.Tasks.Toast.Gen.Suite.run(["content_check"]) end)
+      in_dir(dir, fn -> Suite.run(["content_check"]) end)
     end)
 
     content = File.read!(Path.join(dir, "suites/content_check/test_example.exs"))

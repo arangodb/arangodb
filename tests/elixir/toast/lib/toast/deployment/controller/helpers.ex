@@ -2,6 +2,8 @@ defmodule Toast.Deployment.Controller.Helpers do
   @moduledoc false
 
   alias Toast.Deployment.{ServerInstance, ServerLifecycle}
+  alias Toast.Process.ServerProcess
+  alias Toast.Process.Supervisor, as: ProcessSupervisor
 
   @spec fetch_server(Toast.Deployment.Controller.State.t(), String.t()) ::
           {:ok, ServerInstance.t()} | {:error, :not_found}
@@ -17,7 +19,7 @@ defmodule Toast.Deployment.Controller.Helpers do
 
   @spec start_single_health_monitor(String.t(), String.t()) :: {:ok, pid()} | {:error, term()}
   def start_single_health_monitor(server_id, endpoint) do
-    case Toast.Process.Supervisor.start_health_monitor(
+    case ProcessSupervisor.start_health_monitor(
            server_id: server_id,
            endpoint: endpoint,
            listener: self()
@@ -56,8 +58,8 @@ defmodule Toast.Deployment.Controller.Helpers do
 
       %{server_pid: pid} ->
         try do
-          Toast.Process.ServerProcess.stop(pid, timeout)
-          DynamicSupervisor.terminate_child(Toast.Process.Supervisor, pid)
+          ServerProcess.stop(pid, timeout)
+          DynamicSupervisor.terminate_child(ProcessSupervisor, pid)
         catch
           :exit, _ -> :ok
         end

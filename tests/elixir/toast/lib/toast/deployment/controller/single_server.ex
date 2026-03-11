@@ -5,10 +5,10 @@ defmodule Toast.Deployment.Controller.SingleServer do
 
   require Logger
 
-  alias Toast.Process.ServerProcess
-  alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
   alias Toast.Deployment.Controller.Helpers
+  alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
   alias Toast.PortAllocator
+  alias Toast.Process.ServerProcess
 
   @impl true
   def init_mode_state, do: %{}

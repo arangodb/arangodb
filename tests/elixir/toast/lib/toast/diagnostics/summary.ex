@@ -42,19 +42,18 @@ defmodule Toast.Diagnostics.Summary do
   defp extract_core_dumps(issues) when is_list(issues) do
     issues
     |> Enum.filter(&(&1.type == :crash))
-    |> Enum.flat_map(fn issue ->
-      case issue.detail do
-        %{coredumps: coredumps} when is_list(coredumps) ->
-          for %{path: path} when is_binary(path) <- coredumps, do: path
-
-        %{coredump_paths: paths} when is_list(paths) ->
-          Enum.filter(paths, &is_binary/1)
-
-        _ ->
-          []
-      end
-    end)
+    |> Enum.flat_map(&core_dump_paths_from_detail(&1.detail))
   end
+
+  defp core_dump_paths_from_detail(%{coredumps: coredumps}) when is_list(coredumps) do
+    for %{path: path} when is_binary(path) <- coredumps, do: path
+  end
+
+  defp core_dump_paths_from_detail(%{coredump_paths: paths}) when is_list(paths) do
+    Enum.filter(paths, &is_binary/1)
+  end
+
+  defp core_dump_paths_from_detail(_), do: []
 
   defp extract_core_dumps(_), do: []
 end

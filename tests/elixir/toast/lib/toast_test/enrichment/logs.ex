@@ -29,33 +29,38 @@ defmodule ToastTest.Enrichment.Logs do
 
   defp collect_lines(device, start_dt, end_dt, acc) do
     case IO.read(device, :line) do
-      :eof ->
-        finalize(acc)
-
-      {:error, _} ->
-        finalize(acc)
-
-      line ->
-        case parse_timestamp(line) do
-          {:ok, ts} ->
-            cond do
-              DateTime.compare(ts, start_dt) == :lt ->
-                collect_lines(device, start_dt, end_dt, acc)
-
-              DateTime.compare(ts, end_dt) == :gt ->
-                finalize(acc)
-
-              true ->
-                collect_lines(device, start_dt, end_dt, [line | acc])
-            end
-
-          :error ->
-            # Non-timestamped lines: include only if we're already inside the window
-            acc = if acc != [], do: [line | acc], else: acc
-            collect_lines(device, start_dt, end_dt, acc)
-        end
+      :eof -> finalize(acc)
+      {:error, _} -> finalize(acc)
+      line -> process_line(line, device, start_dt, end_dt, acc)
     end
   end
+
+  defp process_line(line, device, start_dt, end_dt, acc) do
+    case parse_timestamp(line) do
+      {:ok, ts} -> apply_window(ts, line, device, start_dt, end_dt, acc)
+      :error -> collect_with_continuation(line, device, start_dt, end_dt, acc)
+    end
+  end
+
+  defp apply_window(ts, line, device, start_dt, end_dt, acc) do
+    cond do
+      DateTime.compare(ts, start_dt) == :lt ->
+        collect_lines(device, start_dt, end_dt, acc)
+
+      DateTime.compare(ts, end_dt) == :gt ->
+        finalize(acc)
+
+      true ->
+        collect_lines(device, start_dt, end_dt, [line | acc])
+    end
+  end
+
+  # Non-timestamped lines: include only if we're already inside the window
+  defp collect_with_continuation(line, device, start_dt, end_dt, [_ | _] = acc),
+    do: collect_lines(device, start_dt, end_dt, [line | acc])
+
+  defp collect_with_continuation(_line, device, start_dt, end_dt, []),
+    do: collect_lines(device, start_dt, end_dt, [])
 
   defp finalize([]), do: ""
 

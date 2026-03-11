@@ -1,4 +1,6 @@
 defmodule ToastTest.SuiteResult.JSON do
+  @moduledoc false
+
   alias ToastTest.SuiteResult
 
   @spec write(SuiteResult.t(), Path.t()) :: :ok

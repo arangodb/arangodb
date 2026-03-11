@@ -3,8 +3,8 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   require Logger
 
-  alias Toast.Process.{CrashEvent, ServerProcess}
   alias Toast.Deployment.{Health, ServerInstance}
+  alias Toast.Process.{CrashEvent, HealthMonitor, ServerProcess}
 
   @intentional_exit_signals [nil, 15]
 
@@ -250,20 +250,20 @@ defmodule Toast.Deployment.ServerLifecycle do
   def suspend_health_monitor(%{health_monitor: nil}), do: :ok
 
   def suspend_health_monitor(%{health_monitor: pid}),
-    do: Toast.Process.HealthMonitor.suspend(pid)
+    do: HealthMonitor.suspend(pid)
 
   @spec resume_health_monitor(ServerInstance.t() | nil) :: :ok
   def resume_health_monitor(nil), do: :ok
   def resume_health_monitor(%{health_monitor: nil}), do: :ok
 
   def resume_health_monitor(%{health_monitor: pid}),
-    do: Toast.Process.HealthMonitor.resume(pid)
+    do: HealthMonitor.resume(pid)
 
   @spec stop_health_monitor(ServerInstance.t()) :: :ok
   def stop_health_monitor(%{health_monitor: nil}), do: :ok
 
   def stop_health_monitor(%{health_monitor: pid}) do
-    Toast.Process.HealthMonitor.stop(pid)
+    HealthMonitor.stop(pid)
   catch
     :exit, _ -> :ok
   end

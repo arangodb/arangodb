@@ -69,16 +69,20 @@ defmodule ToastTest.Attribution do
 
       coredumps =
         Enum.flat_map(server_artifacts.coredump_paths, fn core_path ->
-          case Enrichment.Coredump.analyze(core_path, server_artifacts.server, analyzer_opts) do
-            {:ok, result} ->
-              [%{path: core_path, signal: result.signal, threads: result.threads}]
-
-            {:error, _} ->
-              [%{path: core_path, signal: nil, threads: []}]
-          end
+          analyze_coredump(core_path, server_artifacts.server, analyzer_opts)
         end)
 
       Map.put(detail, :coredumps, coredumps)
+    end
+  end
+
+  defp analyze_coredump(core_path, server, analyzer_opts) do
+    case Enrichment.Coredump.analyze(core_path, server, analyzer_opts) do
+      {:ok, result} ->
+        [%{path: core_path, signal: result.signal, threads: result.threads}]
+
+      {:error, _} ->
+        [%{path: core_path, signal: nil, threads: []}]
     end
   end
 

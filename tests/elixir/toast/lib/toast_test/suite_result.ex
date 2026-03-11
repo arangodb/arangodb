@@ -1,4 +1,6 @@
 defmodule ToastTest.SuiteResult do
+  @moduledoc false
+
   @type t :: %__MODULE__{
           version: pos_integer(),
           suite: String.t(),

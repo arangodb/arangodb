@@ -3,8 +3,8 @@ defmodule ToastTest.InteractiveTest do
 
   import ExUnit.CaptureIO
 
-  alias ToastTest.Interactive
   alias ToastTest.DeploymentRegistry
+  alias ToastTest.Interactive
 
   # -- Fixture modules --
   #

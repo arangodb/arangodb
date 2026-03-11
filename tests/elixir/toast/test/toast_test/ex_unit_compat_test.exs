@@ -86,7 +86,7 @@ defmodule ToastTest.ExUnitCompatTest do
       assert %ExUnit.TestModule{} = metadata
       assert metadata.name == __MODULE__
       assert is_list(metadata.tests)
-      assert length(metadata.tests) > 0
+      assert metadata.tests != []
     end
   end
 

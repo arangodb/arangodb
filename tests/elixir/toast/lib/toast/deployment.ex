@@ -291,20 +291,16 @@ defmodule Toast.Deployment do
   end
 
   defp get_stop_info(pid) do
-    try do
-      info = Controller.get_info(pid)
-      %{servers: info[:servers] || %{}, error: info[:error]}
-    catch
-      :exit, _ -> %{servers: %{}, error: nil}
-    end
+    info = Controller.get_info(pid)
+    %{servers: info[:servers] || %{}, error: info[:error]}
+  catch
+    :exit, _ -> %{servers: %{}, error: nil}
   end
 
   defp terminate_controller(pid) do
-    try do
-      DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
-    catch
-      :exit, _ -> :ok
-    end
+    DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
+  catch
+    :exit, _ -> :ok
   end
 
   defp format_crash_message(nil) do

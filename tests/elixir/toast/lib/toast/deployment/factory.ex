@@ -4,10 +4,10 @@ defmodule Toast.Deployment.Factory do
   require Logger
 
   alias Toast.Config
-  alias Toast.PortAllocator
-  alias Toast.Utils.Filesystem
   alias Toast.Deployment.CommandBuilder
   alias Toast.Diagnostics.Sanitizer
+  alias Toast.PortAllocator
+  alias Toast.Utils.Filesystem
 
   defmodule LaunchSpec do
     @moduledoc "Server launch specification produced by Factory."

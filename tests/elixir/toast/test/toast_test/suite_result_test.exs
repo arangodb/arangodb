@@ -666,11 +666,9 @@ defmodule ToastTest.SuiteResultTest do
   # --- JSON helpers ---
 
   defp json_decode(content) do
-    try do
-      {:ok, :json.decode(content)}
-    rescue
-      e -> {:error, e}
-    end
+    {:ok, :json.decode(content)}
+  rescue
+    e -> {:error, e}
   end
 
   defp read_json!(dir, filename) do

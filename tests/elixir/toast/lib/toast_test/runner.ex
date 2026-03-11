@@ -542,7 +542,7 @@ defmodule ToastTest.Runner do
   end
 
   defp derive_suite_name(suite_module) do
-    suite_module |> Module.split() |> Enum.map(&Macro.underscore/1) |> Enum.join("_")
+    suite_module |> Module.split() |> Enum.map_join("_", &Macro.underscore/1)
   end
 
   defp start_process_history do
@@ -764,14 +764,18 @@ defmodule ToastTest.Runner do
           {acc, remaining}
 
         :ok ->
-          test = %{test | parameters: params}
-          Process.put(@current_key, test)
-
-          case run_test(config, test, context) do
-            {:ok, test} -> run_tests_loop(config, rest, params, context, [test | acc])
-            :max_failures_reached -> {acc, rest}
-          end
+          run_next_test(config, test, rest, params, context, acc)
       end
+    end
+  end
+
+  defp run_next_test(config, test, rest, params, context, acc) do
+    test = %{test | parameters: params}
+    Process.put(@current_key, test)
+
+    case run_test(config, test, context) do
+      {:ok, test} -> run_tests_loop(config, rest, params, context, [test | acc])
+      :max_failures_reached -> {acc, rest}
     end
   end
 

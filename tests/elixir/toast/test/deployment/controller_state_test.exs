@@ -1,8 +1,8 @@
 defmodule Toast.Deployment.ControllerStateTest do
   use ExUnit.Case, async: false
 
-  alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Controller, ServerInstance}
+  alias Toast.Process.ServerProcess
 
   import Toast.ServerTestHelpers, only: [cleanup_server: 1]
   import Toast.DeploymentTestHelpers, only: [inject_cluster_servers: 2]

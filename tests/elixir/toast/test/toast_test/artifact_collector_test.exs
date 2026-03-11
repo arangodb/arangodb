@@ -1,8 +1,8 @@
 defmodule ToastTest.ArtifactCollectorTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.ArtifactCollector
   alias Toast.Deployment.ServerInstance
+  alias ToastTest.ArtifactCollector
 
   defp make_server(id, opts \\ []) do
     %ServerInstance{

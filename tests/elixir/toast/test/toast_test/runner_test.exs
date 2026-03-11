@@ -1,6 +1,11 @@
 defmodule ToastTest.RunnerTest do
   use ExUnit.Case, async: false
 
+  alias Toast.Config
+  alias Toast.Deployment
+  alias Toast.Deployment.Controller
+  alias Toast.Deployment.ServerInstance
+  alias Toast.Process.CrashInfo
   alias ToastTest.{Abort, Runner}
 
   setup do
@@ -80,28 +85,28 @@ defmodule ToastTest.RunnerTest do
 
     test "check_health returns :ok for :ready status" do
       {:ok, ctrl} =
-        Toast.Deployment.Controller.start_link(
-          mode: Toast.Deployment.Controller.SingleServer,
-          config: Toast.Config.load()
+        Controller.start_link(
+          mode: Controller.SingleServer,
+          config: Config.load()
         )
 
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
 
       deployment = mock_deployment(ctrl, :single_server)
-      assert Toast.Deployment.check_health(deployment) == :ok
+      assert Deployment.check_health(deployment) == :ok
     end
 
     test "check_health returns error for :degraded status" do
       {:ok, ctrl} =
-        Toast.Deployment.Controller.start_link(
-          mode: Toast.Deployment.Controller.SingleServer,
-          config: Toast.Config.load()
+        Controller.start_link(
+          mode: Controller.SingleServer,
+          config: Config.load()
         )
 
       :sys.replace_state(ctrl, fn state ->
         id = state.id
 
-        server = %Toast.Deployment.ServerInstance{
+        server = %ServerInstance{
           id: id,
           role: :single,
           operational_state: :stopped,
@@ -112,18 +117,18 @@ defmodule ToastTest.RunnerTest do
       end)
 
       deployment = mock_deployment(ctrl, :single_server)
-      assert {:error, msg} = Toast.Deployment.check_health(deployment)
+      assert {:error, msg} = Deployment.check_health(deployment)
       assert msg =~ "degraded"
     end
 
     test "check_health returns error for :failed status" do
       {:ok, ctrl} =
-        Toast.Deployment.Controller.start_link(
-          mode: Toast.Deployment.Controller.SingleServer,
-          config: Toast.Config.load()
+        Controller.start_link(
+          mode: Controller.SingleServer,
+          config: Config.load()
         )
 
-      crash_info = %Toast.Process.CrashInfo{
+      crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
         timestamp: DateTime.utc_now()
@@ -133,20 +138,20 @@ defmodule ToastTest.RunnerTest do
       :sys.get_state(ctrl)
 
       deployment = mock_deployment(ctrl, :single_server)
-      assert {:error, msg} = Toast.Deployment.check_health(deployment)
+      assert {:error, msg} = Deployment.check_health(deployment)
       assert msg =~ "crashed" or msg =~ "failed"
     end
 
     test "check_health returns error for :stopped status" do
       {:ok, ctrl} =
-        Toast.Deployment.Controller.start_link(
-          mode: Toast.Deployment.Controller.SingleServer,
-          config: Toast.Config.load()
+        Controller.start_link(
+          mode: Controller.SingleServer,
+          config: Config.load()
         )
 
       deployment = mock_deployment(ctrl, :single_server)
       # Controller starts in :stopped status
-      assert {:error, msg} = Toast.Deployment.check_health(deployment)
+      assert {:error, msg} = Deployment.check_health(deployment)
       assert msg =~ "not ready"
     end
   end
@@ -321,10 +326,10 @@ defmodule ToastTest.RunnerTest do
   end
 
   defp mock_deployment(ctrl, mode) do
-    %Toast.Deployment{
+    %Deployment{
       id: "test-runner",
       mode: mode,
-      config: Toast.Config.load(),
+      config: Config.load(),
       controller: ctrl,
       endpoint: "http://127.0.0.1:0"
     }

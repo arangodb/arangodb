@@ -1,11 +1,11 @@
 defmodule ToastTest.AttributionTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.Attribution
+  alias Toast.Deployment.Factory.LaunchSpec
+  alias Toast.Deployment.ServerInstance
   alias Toast.Process.CrashEvent
   alias Toast.Process.CrashInfo
-  alias Toast.Deployment.ServerInstance
-  alias Toast.Deployment.Factory.LaunchSpec
+  alias ToastTest.Attribution
 
   # Suite: 10:00:00 - 10:10:00
   # ModA:  10:00:01 - 10:05:00

@@ -1,8 +1,8 @@
 defmodule ToastTest.Enrichment.CoredumpTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.Enrichment.Coredump
   alias Toast.Diagnostics.Coredump.Report
+  alias ToastTest.Enrichment.Coredump
 
   defp build_server(executable \\ "/usr/bin/arangod") do
     %Toast.Deployment.ServerInstance{

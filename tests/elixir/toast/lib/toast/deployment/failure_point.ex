@@ -68,12 +68,14 @@ defmodule Toast.Deployment.FailurePoint do
   defp apply_to_resolved_servers(deployment, target, fun) do
     with {:ok, server_ids} <- Deployment.resolve_target(deployment, target) do
       server_ids
-      |> Enum.map(fn server_id ->
-        with {:ok, client} <- Deployment.client(deployment, server_id) do
-          fun.(client)
-        end
-      end)
+      |> Enum.map(&apply_to_server(deployment, &1, fun))
       |> first_error()
+    end
+  end
+
+  defp apply_to_server(deployment, server_id, fun) do
+    with {:ok, client} <- Deployment.client(deployment, server_id) do
+      fun.(client)
     end
   end
 

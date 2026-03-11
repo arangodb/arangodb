@@ -81,9 +81,7 @@ defmodule ToastTest.ProcessHistory do
       state.events
       |> Enum.reduce(%{}, fn
         {:server_started, server_id, os_pid, _timestamp}, acc when is_integer(os_pid) ->
-          Map.update(acc, server_id, [os_pid], fn pids ->
-            if os_pid in pids, do: pids, else: [os_pid | pids]
-          end)
+          Map.update(acc, server_id, [os_pid], &prepend_unique(&1, os_pid))
 
         _other, acc ->
           acc
@@ -91,5 +89,9 @@ defmodule ToastTest.ProcessHistory do
       |> Map.new(fn {server_id, pids} -> {server_id, Enum.reverse(pids)} end)
 
     {:reply, result, state}
+  end
+
+  defp prepend_unique(pids, pid) do
+    if pid in pids, do: pids, else: [pid | pids]
   end
 end

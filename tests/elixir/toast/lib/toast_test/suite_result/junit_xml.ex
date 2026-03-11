@@ -1,4 +1,6 @@
 defmodule ToastTest.SuiteResult.JUnitXML do
+  @moduledoc false
+
   alias ToastTest.SuiteResult
 
   @spec write(SuiteResult.t(), Path.t()) :: :ok
@@ -102,26 +104,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
   defp render_system_err(issues) do
     crash_parts =
       for %{type: :crash, detail: detail} <- issues do
-        coredump_lines =
-          for %{path: path} = core <- detail[:coredumps] || [] do
-            if core[:signal],
-              do: "Coredump: #{path}, Signal: #{core.signal}",
-              else: "Coredump: #{path}"
-          end
-
-        coredump_path_lines =
-          for path <- detail[:coredump_paths] || [] do
-            "Coredump: #{path}"
-          end
-
-        [
-          labeled("Server", detail[:server]),
-          coredump_lines,
-          coredump_path_lines,
-          labeled("Logs", detail[:logs])
-        ]
-        |> List.flatten()
-        |> Toast.Utils.compact_join("\n")
+        render_crash_detail(detail)
       end
 
     sanitizer_parts =
@@ -135,6 +118,23 @@ defmodule ToastTest.SuiteResult.JUnitXML do
       parts -> wrap_cdata("system-err", Enum.join(parts, "\n\n"))
     end
   end
+
+  defp render_crash_detail(detail) do
+    coredump_lines = Enum.map(detail[:coredumps] || [], &format_coredump/1)
+    coredump_path_lines = Enum.map(detail[:coredump_paths] || [], &"Coredump: #{&1}")
+
+    [
+      labeled("Server", detail[:server]),
+      coredump_lines,
+      coredump_path_lines,
+      labeled("Logs", detail[:logs])
+    ]
+    |> List.flatten()
+    |> Toast.Utils.compact_join("\n")
+  end
+
+  defp format_coredump(%{path: path, signal: signal}), do: "Coredump: #{path}, Signal: #{signal}"
+  defp format_coredump(%{path: path}), do: "Coredump: #{path}"
 
   defp labeled(_label, nil), do: nil
   defp labeled(label, value), do: "#{label}: #{value}"

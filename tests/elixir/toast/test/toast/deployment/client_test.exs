@@ -36,8 +36,8 @@ defmodule Toast.Deployment.ClientTest do
   use ExUnit.Case, async: false
 
   alias Toast.Deployment
-  alias Toast.Deployment.ServerInstance
   alias Toast.Deployment.ClientTest.MockController
+  alias Toast.Deployment.ServerInstance
 
   defp server_instance(id, opts) do
     %ServerInstance{

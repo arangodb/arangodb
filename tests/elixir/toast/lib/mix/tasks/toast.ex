@@ -56,6 +56,10 @@ defmodule Mix.Tasks.Toast do
 
   require Logger
 
+  alias Mix.Tasks.Toast.Helpers
+  alias Toast.Diagnostics.Summary
+  alias Toast.ResultPackaging
+
   @compile {:no_warn_undefined, [ExUnit, ExUnit.Filters]}
 
   @preferred_cli_env :test
@@ -115,7 +119,7 @@ defmodule Mix.Tasks.Toast do
 
     Application.ensure_all_started(:ex_unit)
 
-    ex_unit_opts = Mix.Tasks.Toast.Helpers.process_opts(opts)
+    ex_unit_opts = Helpers.process_opts(opts)
     ExUnit.configure(ex_unit_opts)
 
     suites_dir = Path.join(File.cwd!(), "suites")
@@ -125,7 +129,7 @@ defmodule Mix.Tasks.Toast do
   defp run_suite_mode(args, opts, ex_unit_opts, suites_dir) do
     ExUnit.start(Keyword.merge(ex_unit_opts, autorun: false))
 
-    {suite_requests, file_filters} = Mix.Tasks.Toast.Helpers.parse_suite_args(args)
+    {suite_requests, file_filters} = Helpers.parse_suite_args(args)
 
     suite_modules = discover_and_compile_suites(suites_dir, suite_requests)
 
@@ -140,13 +144,13 @@ defmodule Mix.Tasks.Toast do
         prepare_suite(suite_module, suite_dir, file_filters, test_filter)
       end)
 
-    config = Toast.Config.load(Mix.Tasks.Toast.Helpers.opts_to_config_list(opts))
+    config = Toast.Config.load(Helpers.opts_to_config_list(opts))
     Toast.Application.reconfigure_file_logger(config.result_dir)
     global_opts = build_global_opts(config, ex_unit_opts)
     result = ToastTest.Runner.run_suites(suite_data, global_opts)
 
     abort_reason = ToastTest.Abort.reason()
-    has_sanitizer_errors = Toast.Diagnostics.Summary.has_sanitizer_errors?(result.suites)
+    has_sanitizer_errors = Summary.has_sanitizer_errors?(result.suites)
 
     run_results = %{
       test_failures: result.stats.failures,
@@ -156,16 +160,16 @@ defmodule Mix.Tasks.Toast do
     }
 
     if config.ci do
-      suite_diagnostics = Toast.Diagnostics.Summary.build_suite_diagnostics(result.suites)
+      suite_diagnostics = Summary.build_suite_diagnostics(result.suites)
 
-      Toast.ResultPackaging.package(
+      ResultPackaging.package(
         ci: true,
         result_dir: config.result_dir,
         suite_diagnostics: suite_diagnostics
       )
     end
 
-    exit_code = Toast.ResultPackaging.exit_code(run_results)
+    exit_code = ResultPackaging.exit_code(run_results)
 
     if exit_code > 0 do
       System.at_exit(fn _ -> exit({:shutdown, exit_code}) end)
@@ -173,11 +177,11 @@ defmodule Mix.Tasks.Toast do
   end
 
   defp prepare_suite(suite_module, suite_dir, file_filters, test_filter) do
-    {helpers, test_files} = Mix.Tasks.Toast.Helpers.discover_suite_files(suite_dir)
+    {helpers, test_files} = Helpers.discover_suite_files(suite_dir)
     compile_helpers(helpers)
 
     {test_files, line_filters} =
-      Mix.Tasks.Toast.Helpers.apply_file_filters(test_files, file_filters, suite_dir)
+      Helpers.apply_file_filters(test_files, file_filters, suite_dir)
 
     case test_files do
       [] -> []
@@ -194,7 +198,7 @@ defmodule Mix.Tasks.Toast do
         function_exported?(mod, :__toast_suite__, 0) and mod.__toast_suite__() == suite_module
       end)
 
-    suite_opts = Mix.Tasks.Toast.Helpers.build_suite_opts(test_modules, line_filters, test_filter)
+    suite_opts = Helpers.build_suite_opts(test_modules, line_filters, test_filter)
     [{suite_module, test_modules, suite_opts}]
   end
 
