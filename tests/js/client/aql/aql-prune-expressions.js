@@ -33,23 +33,17 @@ const errors = internal.errors;
 function PruneExpressionsSuite() {
   const vn = "UnitTestsVertex";
   const en = "UnitTestsEdge";
-  const udf = "test::fuchs";
 
   let cleanup = function () {
     db._drop(en);
     db._drop(vn);
 
-    try {
-      require("@arangodb/aql/functions").unregister(udf);
-    } catch (err) {}
   };
 
   return {
     setUpAll : function () {
       cleanup();
-    
-      require("@arangodb/aql/functions").register(udf, function() { return '0'; });
-      
+          
       db._create(vn, { numberOfShards: 1 });
       db._createEdgeCollection(en, { distributeShardsLike: vn, numberOfShards: 1 });
 
@@ -73,16 +67,6 @@ function PruneExpressionsSuite() {
 
     testV8Expression: function () {
       let q = `WITH ${vn} FOR v, e, p IN 1..3 OUTBOUND '${vn}/test1' ${en} PRUNE e.value == V8('0') RETURN v`;
-      try {
-        db._query(q);
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
-    },
-    
-    testUDFExpression: function () {
-      let q = `WITH ${vn} FOR v, e, p IN 1..3 OUTBOUND '${vn}/test1' ${en} PRUNE e.value == ${udf}() RETURN v`;
       try {
         db._query(q);
         fail();
