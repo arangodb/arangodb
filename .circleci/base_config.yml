@@ -297,13 +297,12 @@ commands:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - attach_workspace:
           at: .
-      - steps:
-          - persist_from_workspace_s3:
-            root: .
-            archive: << parameters.arch >>_binaries.tar.gz
-          - persist_from_workspace_s3:
-            root: .
-            archive: frontend.tar.gz
+      - persist_from_workspace_s3:
+          root: .
+          archive: << parameters.arch >>_binaries.tar.gz
+      - persist_from_workspace_s3:
+          root: .
+          archive: frontend.tar.gz
           
       - run:
           name: Log processes
