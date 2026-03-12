@@ -969,6 +969,8 @@ jobs:
     parameters:
       resource-class:
         type: string
+      arch:
+        type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
