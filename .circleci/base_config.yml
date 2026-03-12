@@ -869,11 +869,11 @@ jobs:
           extraArgs: << parameters.extraArgs >>
 
   run-rta-tests:
-    resource_class: << parameters.size >>
+    resource_class: << parameters.resource-class >>
     parameters:
       suiteName:
         type: string
-      size:
+      resource-class:
         type: string
       arch:
         type: string
