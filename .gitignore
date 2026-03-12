@@ -135,8 +135,6 @@ cmake-build*/
 
 js/node/**/*.map
 js/node/**/*.map.gz
-js/apps/**/*.map
-js/apps/**/*.map.gz
 
 swagger-ui-es-bundle*
 swagger-ui.js

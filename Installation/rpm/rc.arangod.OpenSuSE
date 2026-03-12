@@ -49,7 +49,6 @@ start () {
 
     ( cd /var/log/arangodb3 && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
     ( cd /var/lib/arangodb3 && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
-    ( cd /var/lib/arangodb3-apps && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
     ( cd $PIDDIR && chown arangodb:arangodb . && chmod 700 . ) || exit 1
 
     local current=/var/tmp/arangod

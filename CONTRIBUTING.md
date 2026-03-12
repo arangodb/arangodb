@@ -443,27 +443,7 @@ Mode:
 
 ### Runtime
 
-- start arangod with `--console` to get a debug console
 - Cheapen startup for valgrind: `--server.rest-server false`
-
-### Startup
-
-Arangod has a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript. A
-sample version to help working with the arangod rescue console may look like
-that:
-
-    internal = require("internal");
-    fs = require("fs");
-    db = internal.db;
-    time = internal.time;
-    timed = function (cb) {
-      let s = time();
-      cb();
-      return time() - s;
-    };
-    print = internal.print;
-
-_Hint_: You shouldn't lean on these variables in your Foxx services.
 
 ### Debugging AQL execution blocks
 
@@ -905,15 +885,6 @@ parameters will overrule global and default values.
 Running the same testsuite twice with different and shared parameters would look like this:
 
     ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"http":true,"suffix":"http"}]'
-
-
-#### Running Foxx Tests with a Fake Foxx Repo
-
-Since downloading Foxx apps from GitHub can be cumbersome with shaky DSL and
-DoS'ed GitHub, we can fake it like this:
-
-    export FOXX_BASE_URL="http://germany/fakegit/"
-    ./scripts/unittest single_server --test 'tests/js/server/shell/shell-foxx-manager-spec.js'
 
 ### Running jsUnity Tests
 

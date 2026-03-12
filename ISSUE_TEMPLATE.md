@@ -13,7 +13,7 @@
 ## Component, Query & Data
 
 __Affected feature__:
-<!-- e.g. Installation | Foxx | AQL query using web interface | arangosh | with driver | ... -->
+<!-- e.g. Installation | AQL query using web interface | arangosh | with driver | ... -->
 
 
 __AQL query (if applicable)__:
