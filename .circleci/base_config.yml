@@ -162,6 +162,9 @@ commands:
       archive:
         type: string
         default: workspace.tar.gz
+      paths:
+        type: string
+        default: .
     steps:
       - run:
           name: restore workspace from S3
