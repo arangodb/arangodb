@@ -1,5 +1,6 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
 
@@ -230,16 +231,55 @@
 
 * Remove FoxxMaster code.
 
+3.12.9-devel (XXXX-XX-XX)
+-------------------------
+
+* COR-286: Fixed a crash when executing AQL queries with `usePlanCache: true` on
+  cluster-one-shard databases containing graph traversals. When a cached
+  plan was restored, the `_appliedRules` metadata (including
+  `cluster-one-shard`) was not deserialized, causing the coordinator to
+  incorrectly attempt distributed execution on a plan optimized for a
+  single DB server. Additionally, graph nodes lost their
+  `LocalGraphNode` type during cache round-trip.
+
+* Fixed a bug in arangodump that prevented the `--local-network-threads`
+  startup option from accepting the specified value and potentially
+  overwriting the `--dbserver-worker-threads` setting.
+
+* COR-271: If a query uses an OR condition that affects multiple indexes
+  the covering index optimisation is now applied.
+
+* COR-168: Fixed the projections and filterProjections that were being cleared
+  up when an IndexNode had multiple indexes because of an OR operand in a query.
+
+* COR-298: Merge satellite joins to snippets that start with a Distribute node.
+  This is reduced inter-node communcation for some AQL queries.
+
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
+
+
+3.12.8 (2026-03-05)
+-------------------
+
+* COR-77: Pick correct replica during smart graph traversal when reading from
+  followers.
+
+* Updated minimatch to 10.2.3.
+
+* Fix potential shutdown blockage in UserManager which could block an upgrade.
+
+* Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
+
+* Accept `null` as valid value for the `roles` attribute in JWT tokens.
 
 * Serve OpenAPI spec on /_arango/vX/openapi.json .
 
 * Fixed BTS-2309: Treat empty object as null with respect to schema.
 
-* Updated minimatch to 10.2.1.
-
 * Add new API GET /_admin/options-public for new platform UI.
+
+* Fix ES-2824: SEARCH query produces wrong results.
 
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.

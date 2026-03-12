@@ -39,12 +39,12 @@ const c = "my_collection";
 function activityRegistrySuite() {
   function activityRestHandlerFilter() {
     return (a) => {
-      return a.type === "RestHandler" && a.metadata.handler === "ActivityRegistryRestHandler";
+      return a.type === "RestHandler" && a.data.handler === "ActivityRegistryRestHandler";
     };
   }
   function dumpRestHandlerFilter() {
     return (a) => {
-      return a.type === "RestHandler" && a.metadata.handler === "RestDumpHandler";
+      return a.type === "RestHandler" && a.data.handler === "RestDumpHandler";
     };
   }
   function dumpContextFilter() {
