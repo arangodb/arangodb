@@ -138,6 +138,7 @@ defmodule ToastTest.Runner do
 
   defp run_suite(suite_module, test_modules, global_opts, suite_opts, global_deadline) do
     config = suite_module.deployment_config()
+    validate_suite_config!(suite_module, config)
     suite_timeout = Keyword.get(config, :timeout, 3_600_000)
     timeout_factor = Keyword.get(global_opts, :timeout_factor, 1)
     suite_deadline = compute_suite_deadline(suite_timeout, global_deadline)
@@ -338,6 +339,17 @@ defmodule ToastTest.Runner do
 
   ## Suite helpers
 
+  @topology_keys [:cluster_agents, :cluster_dbservers, :cluster_coordinators, :replication_factor]
+  @known_suite_config_keys [
+                             :mode,
+                             :timeout,
+                             :server_args,
+                             :coordinator_args,
+                             :dbserver_args,
+                             :agent_args,
+                             :between_tests
+                           ] ++ @topology_keys
+
   defp validate_no_async!(test_modules) do
     async_modules =
       Enum.filter(test_modules, &match?(%{tags: %{async: true}}, Compat.get_test_metadata(&1)))
@@ -345,6 +357,16 @@ defmodule ToastTest.Runner do
     if async_modules != [] do
       names = Enum.map_join(async_modules, ", ", &inspect/1)
       raise "Toast does not support async test modules. Found: #{names}"
+    end
+  end
+
+  defp validate_suite_config!(suite_module, config) do
+    unknown = Keyword.keys(config) -- @known_suite_config_keys
+
+    if unknown != [] do
+      Logger.warning(
+        "#{inspect(suite_module)}.deployment_config/0 returned unknown keys: #{inspect(unknown)}"
+      )
     end
   end
 
@@ -365,7 +387,6 @@ defmodule ToastTest.Runner do
     end
   end
 
-  @topology_keys [:cluster_agents, :cluster_dbservers, :cluster_coordinators, :replication_factor]
   @infra_keys [
     :build_dir,
     :work_dir,

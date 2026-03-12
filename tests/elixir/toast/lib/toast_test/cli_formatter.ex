@@ -19,6 +19,8 @@ defmodule ToastTest.CLIFormatter do
 
   use GenServer
 
+  import ToastTest.Formatting
+
   @impl true
   def init(opts) do
     colors_enabled = colors_enabled?(opts)
@@ -214,27 +216,6 @@ defmodule ToastTest.CLIFormatter do
     IO.puts("\n#{formatted}")
   end
 
-  # ExUnit.Formatter callback for diff coloring.
-  # Diff callbacks may receive Inspect.Algebra documents (ExUnit 1.19+),
-  # not just iodata, so they use colorize_diff/2.
-  defp formatter_cb(:diff_enabled?, _default), do: true
-
-  defp formatter_cb(:error_info, msg), do: colorize(msg, :red, true)
-  defp formatter_cb(:extra_info, msg), do: colorize(msg, :cyan, true)
-  defp formatter_cb(:location_info, msg), do: colorize(msg, [:bright, :default_color], true)
-  defp formatter_cb(:diff_delete, msg), do: colorize_diff(msg, :red)
-
-  defp formatter_cb(:diff_delete_whitespace, msg),
-    do: colorize_diff(msg, IO.ANSI.color_background(1, 0, 0))
-
-  defp formatter_cb(:diff_insert, msg), do: colorize_diff(msg, :green)
-
-  defp formatter_cb(:diff_insert_whitespace, msg),
-    do: colorize_diff(msg, IO.ANSI.color_background(0, 1, 0))
-
-  defp formatter_cb(:blame_diff, msg), do: colorize_diff(msg, [:red, :bright])
-  defp formatter_cb(_, msg), do: msg
-
   # --- Session summary ---
 
   defp print_session_summary(state) do
@@ -396,29 +377,5 @@ defmodule ToastTest.CLIFormatter do
       colors = Keyword.get(opts, :colors, [])
       Keyword.get(colors, :enabled, IO.ANSI.enabled?())
     end)
-  end
-
-  # Colorize diff content — handles both iodata and Inspect.Algebra documents.
-  defp colorize_diff(msg, color) when is_binary(msg) or is_list(msg) do
-    colorize(msg, color, true)
-  end
-
-  defp colorize_diff(msg, color) do
-    Inspect.Algebra.concat([ansi_code(color), msg, IO.ANSI.reset()])
-  end
-
-  defp ansi_code(color) when is_list(color),
-    do: IO.iodata_to_binary(Enum.map(color, &ansi_code/1))
-
-  defp ansi_code(:bold), do: IO.ANSI.bright()
-  defp ansi_code(color) when is_atom(color), do: apply(IO.ANSI, color, [])
-  defp ansi_code(color) when is_binary(color), do: color
-
-  # Accepts state map or boolean for colors_enabled
-  defp colorize(text, color, %{colors_enabled: enabled}), do: colorize(text, color, enabled)
-  defp colorize(text, _color, false), do: text
-
-  defp colorize(text, color, true) do
-    IO.iodata_to_binary([ansi_code(color), text, IO.ANSI.reset()])
   end
 end

@@ -289,7 +289,7 @@ defmodule Toast.Config do
     end
   rescue
     error ->
-      Logger.warning("Failed to load .toast.local.exs: #{Exception.message(error)}")
+      Logger.error("Failed to load .toast.local.exs: #{Exception.message(error)}")
       %{}
   end
 

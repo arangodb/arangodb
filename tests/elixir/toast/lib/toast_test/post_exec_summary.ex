@@ -1,6 +1,8 @@
 defmodule ToastTest.PostExecSummary do
   @moduledoc false
 
+  import ToastTest.Formatting
+
   alias ToastTest.SuiteResult
 
   @max_sanitizer_lines 15
@@ -211,47 +213,5 @@ defmodule ToastTest.PostExecSummary do
   defp format_scope({:test, mod, name}) do
     short_name = name |> to_string() |> String.replace_prefix("test ", "")
     "#{inspect(mod)} > \"#{short_name}\""
-  end
-
-  # --- ExUnit formatter callback ---
-
-  defp formatter_cb(:diff_enabled?, _default), do: true
-  defp formatter_cb(:error_info, msg), do: colorize(msg, :red, true)
-  defp formatter_cb(:extra_info, msg), do: colorize(msg, :cyan, true)
-  defp formatter_cb(:location_info, msg), do: colorize(msg, [:bright, :default_color], true)
-  defp formatter_cb(:diff_delete, msg), do: colorize_diff(msg, :red)
-
-  defp formatter_cb(:diff_delete_whitespace, msg),
-    do: colorize_diff(msg, IO.ANSI.color_background(1, 0, 0))
-
-  defp formatter_cb(:diff_insert, msg), do: colorize_diff(msg, :green)
-
-  defp formatter_cb(:diff_insert_whitespace, msg),
-    do: colorize_diff(msg, IO.ANSI.color_background(0, 1, 0))
-
-  defp formatter_cb(:blame_diff, msg), do: colorize_diff(msg, [:red, :bright])
-  defp formatter_cb(_, msg), do: msg
-
-  # --- Color helpers ---
-
-  defp colorize_diff(msg, color) when is_binary(msg) or is_list(msg) do
-    colorize(msg, color, true)
-  end
-
-  defp colorize_diff(msg, color) do
-    Inspect.Algebra.concat([ansi_code(color), msg, IO.ANSI.reset()])
-  end
-
-  defp ansi_code(color) when is_list(color),
-    do: IO.iodata_to_binary(Enum.map(color, &ansi_code/1))
-
-  defp ansi_code(:bold), do: IO.ANSI.bright()
-  defp ansi_code(color) when is_atom(color), do: apply(IO.ANSI, color, [])
-  defp ansi_code(color) when is_binary(color), do: color
-
-  defp colorize(text, _color, false), do: text
-
-  defp colorize(text, color, true) do
-    IO.iodata_to_binary([ansi_code(color), text, IO.ANSI.reset()])
   end
 end
