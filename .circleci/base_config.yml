@@ -610,13 +610,13 @@ jobs:
                 path: build/bin/arango*
             - persist_to_workspace_s3:
                 # build/3rdParty/snowball/libstemmer/ required for cppcheck
+                # not there? install.tar.gz
                 root: .
                 paths: |
                   VERSIONS
                   ARANGO-VERSION
                   build/compile_commands.json
                   CMakePresets.json
-                  install.tar.gz
                   build/bin
                   build/etc
                   build/3rdParty/snowball/libstemmer/
