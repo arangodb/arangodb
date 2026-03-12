@@ -1,5 +1,6 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
 

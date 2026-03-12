@@ -18,33 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <string>
-#include <vector>
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-struct AuthenticationOptions {
-  bool authenticationUnixSockets = true;
-  bool active = true;
-  std::string externalRBACservice = "";  // means deactivated RBAC
-  double authenticationTimeout = 0.0;
-  double sessionTimeout = static_cast<double>(1 * 3600);  // 1 hour in seconds
-  double minimalJwtExpiryTime = 10.0;                     // 10 seconds
-  double maximalJwtExpiryTime = 3600.0;                   // 3600 seconds
+/// Registers obsolete options for features that were removed (e.g. V8/Foxx),
+/// so that config files from older installations don't cause startup errors
+/// during rolling upgrades.
+class LegacyOptionsFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  static constexpr std::string_view name() noexcept { return "LegacyOptions"; }
 
-  std::string jwtSecretProgramOption;
-  std::string jwtSecretKeyfileProgramOption;
-  std::string jwtSecretFolderProgramOption;
-  bool jwtSecretIsES256 = false;  // true if the active secret uses ES256
+  explicit LegacyOptionsFeature(
+      application_features::ApplicationServer& server);
 
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::vector<std::string> jwtPassiveSecrets;
-#endif
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 };
 
 }  // namespace arangodb
