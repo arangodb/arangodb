@@ -798,6 +798,12 @@ class instance {
     httpOptions.method = 'POST';
     httpOptions.returnBodyOnError = true;
     while (true) {
+      this.exitStatus = this.status(false);
+      if (this.exitStatus.status === 'RUNNING') {
+        this.exitStatus = null;
+      } else {
+        throw new Error('server exited during startup! bailing out!');
+      }
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
@@ -959,8 +965,10 @@ class instance {
     this.serverCrashedLocal = true;
     if (this.pid === null) {
       this.pid = pid;
-      print(`${RED}${Date()} ${this.name}: instance already gone? ${JSON.stringify(this.exitStatus)}${RESET}`);
-      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
+      const killCause = (this.exitStatus.status === "ABORTED" && this.exitStatus.hasOwnProperty('signal') && this.exitStatus.signal === 9) ?
+            " - maybe OOM killed by the kernel? ": "";
+      print(`${RED}${Date()} ${this.name}: instance already gone${killCause}? ${JSON.stringify(this.exitStatus)}${RESET}`);
+      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead${killCause}? ${JSON.stringify(this.exitStatus)}`);
       this.pid = null;
     } else {
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
@@ -1224,6 +1232,10 @@ class instance {
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
   readImportantLogLines () {
+    if (!fs.exists(fs.join(this.logFile))) {
+      print(`${RED}${Date()} unable to find ${this.logFile} of ${this.name}!${RESET}`);
+      return [];
+    }
     let fnLines = [];
     const buf = fs.readBuffer(fs.join(this.logFile));
     let lineStart = 0;

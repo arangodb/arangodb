@@ -1601,7 +1601,7 @@ function ParallelIndexSuite() {
         }
         for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
           let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] });';
-          clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreate" + i)});
+          clients.push(launchPlainSnippetInBG(command, "UnitTestsIndexCreate" + i));
         }
         if (time() - start > 180) {
           // wait for 3 minutes maximum
@@ -1631,7 +1631,7 @@ function ParallelIndexSuite() {
         }
         for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
           let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + (i % 4) + '"] });';
-          clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreateDuplicate" + i)});
+          clients.push(launchPlainSnippetInBG(command, "UnitTestsIndexCreateDuplicate" + i));
         }
         if (time() - start > 180) {
           // wait for 3 minutes maximum

@@ -18,22 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "Activities/registry.h"
-#include "Activities/activity.h"
+#include <cstdint>
 
+// This abstract interface for activity metrics is needed because
+// the concrete metrics are created in arangod code and the registry
+// code is inside the lib folder.
+//
+// Registry metrics are created as part of the feature and injected into
+// the registry after the feature is started.
 namespace arangodb::activities {
 
-Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
-    ActivityId activity) noexcept {
-  _oldExecutingActivity = Registry::currentlyExecutingActivity();
-  Registry::setCurrentlyExecutingActivity(activity);
-}
-
-Registry::ScopedCurrentlyExecutingActivity::
-    ~ScopedCurrentlyExecutingActivity() {
-  Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
-}
+struct IRegistryMetrics {
+  virtual ~IRegistryMetrics() = default;
+  virtual auto increment_total_nodes() -> void = 0;
+  virtual auto increment_registered_nodes() -> void = 0;
+  virtual auto store_registered_nodes(std::uint64_t count) -> void = 0;
+};
 
 }  // namespace arangodb::activities

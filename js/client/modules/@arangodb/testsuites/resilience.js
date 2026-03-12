@@ -35,7 +35,6 @@ const functionsDocumentation = {
   'resilience_transactions': 'resilience "transactions" tests',
   'resilience_sharddist': 'resilience "sharddist" tests',
   'resilience_analyzers': 'resilience analyzers tests',
-  'client_resilience': 'client resilience tests',
 };
 const optionsDocumentation = [
 ];
@@ -60,15 +59,6 @@ const testPaths = {
 
 var _resilience = function(path, enableAliveMonitor, skipServerJS) {
   this.func = function resilience (options) {
-    if (skipServerJS && options.skipServerJS) {
-      return {
-        [path]: {
-          status: true,
-          message: 'test needs v8 on the server. please recompile with -DUSE_V8=On'
-        },
-        status: true
-      };
-    }
     let suiteName = path;
     let localOptions = _.clone(options);
     localOptions.cluster = true;
@@ -106,28 +96,6 @@ const resilienceTransactions = (new _resilience('resilience_transactions', false
 const resilienceSharddist = (new _resilience('resilience_sharddist', true, false)).func;
 const resilienceAnalyzers = (new _resilience('resilience_analyzers', true, false)).func;
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: client resilience
-// //////////////////////////////////////////////////////////////////////////////
-
-function clientResilience (options) {
-  let localOptions = _.clone(options);
-  localOptions.cluster = true;
-  if (localOptions.coordinators < 2) {
-    localOptions.coordinators = 2;
-  }
-
-  let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
-  testCases = tu.splitBuckets(options, testCases);
-  let rc = new trs.runLocalInArangoshRunner(localOptions, 'client_resilience', {
-    'javascript.allow-external-process-control': 'true',
-    'javascript.allow-port-testing': 'true',
-    'javascript.allow-admin-execute': 'true',
-  }).run(testCases);
-  options.cleanup = options.cleanup && localOptions.cleanup;
-  return rc;
-}
-
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['resilience_move'] = resilienceMove;
@@ -139,7 +107,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['resilience_transactions'] = resilienceTransactions;
   testFns['resilience_sharddist'] = resilienceSharddist;
   testFns['resilience_analyzers'] = resilienceAnalyzers;
-  testFns['client_resilience'] = clientResilience;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

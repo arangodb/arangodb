@@ -17,9 +17,6 @@
 [submodule "3rdParty/rta-makedata"]
 	path = 3rdParty/rta-makedata
 	url = https://github.com/arangodb/rta-makedata
-[submodule "scripts/toolbox/feed"]
-	path = scripts/toolbox/feed
-	url = https://github.com/arangodb/feed.git
 [submodule "3rdParty/v8-build"]
 	path = 3rdParty/v8-build/v8
 	url = https://github.com/arangodb/v8.git

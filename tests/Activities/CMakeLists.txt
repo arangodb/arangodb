@@ -1,8 +1,8 @@
 add_library(arango_tests_activities OBJECT
-  ActivityMetadataTest.cpp
   ActivitiesAsyncTest.cpp
   ActivitiesSchedulerTest.cpp
-  ActivityRegistryTest.cpp)
+  ActivityRegistryTest.cpp
+  GenericActivityTest.cpp)
 target_link_libraries(arango_tests_activities PRIVATE
   arango_activities_global
   arango_tests_basics 
