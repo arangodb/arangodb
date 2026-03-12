@@ -31,6 +31,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include <absl/strings/str_cat.h>
+
 #include "V8/V8SecurityFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -330,9 +332,14 @@ void V8SecurityFeature::validateOptions(
 
   // file access
   if (isArangod && _options.filesAllowList.empty()) {
-    // If list is empty, put a pattern with only the empty string in
-    // there to have a sane default behaviour:
-    _options.filesAllowList.push_back("^$");
+    // If list is empty, put a pattern which protects important Linux
+    // paths, note that some file access is needed for Foxx apps:
+    _options.filesAllowList.push_back(absl::StrCat(
+        R"(^(?!(\/bin\/.*))(?!(\/dev\/.*))(?!(\/etc\/.*))(?!(\/lib\/.*))",
+        R"((?!(\/lifecycle\/.*))(?!(\/media\/.*))(?!(\/mnt\/.*))",
+        R"((?!(\/opt\/.*))(?!(\/proc\/.*))(?!(\/root\/.*))(?!(\/run\/.*))",
+        R"((?!(\/sbin\/.*))(?!(\/secrets\/.*))(?!(\/srv\/.*))",
+        R"((?!(\/usr\/.*))(?!(\/var\/.*)).+)"));
   }
   convertToSingleExpression(_options.filesAllowList, _filesAllowList);
   testRegexPair(_filesAllowList, "", "files");
