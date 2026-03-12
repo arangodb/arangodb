@@ -357,8 +357,7 @@ jobs:
             git submodule update --init 3rdParty/rta-makedata
       - persist_to_workspace_s3:
           root: .
-          paths:
-            - .
+          paths: .
 
   check-log-ids:
     docker:
@@ -484,8 +483,7 @@ jobs:
             yarn build
       - persist_to_workspace_s3:
           root: .
-          paths:
-            - js/apps/system/_admin/aardvark/APP/react/build
+          paths: js/apps/system/_admin/aardvark/APP/react/build
 
   compile-linux:
     parameters:
@@ -611,29 +609,30 @@ jobs:
             - store_artifacts:
                 path: build/bin/arango*
             - persist_to_workspace_s3:
+                # build/3rdParty/snowball/libstemmer/ required for cppcheck
                 root: .
-                paths:
-                  - VERSIONS
-                  - ARANGO-VERSION
-                  - build/compile_commands.json
-                  - CMakePresets.json
-                  - install.tar.gz
-                  - build/bin
-                  - build/etc
-                  - build/3rdParty/snowball/libstemmer/ # required for cppcheck
-                  - build/build_version.cc
-                  - scripts/
-                  - js/
-                  - enterprise/js
-                  - etc/
-                  - tests/js
-                  - enterprise/tests/js
-                  - utils
-                  - lib/iresearch/tests/resources
-                  - 3rdParty/rta-makedata
-                  - tsan_arangodb_suppressions.txt
-                  - ubsan_arangodb_suppressions.txt
-                  - lsan_arangodb_suppressions.txt
+                paths: |
+                  VERSIONS
+                  ARANGO-VERSION
+                  build/compile_commands.json
+                  CMakePresets.json
+                  install.tar.gz
+                  build/bin
+                  build/etc
+                  build/3rdParty/snowball/libstemmer/
+                  build/build_version.cc
+                  scripts/
+                  js/
+                  enterprise/js
+                  etc/
+                  tests/js
+                  enterprise/tests/js
+                  utils
+                  lib/iresearch/tests/resources
+                  3rdParty/rta-makedata
+                  tsan_arangodb_suppressions.txt
+                  ubsan_arangodb_suppressions.txt
+                  lsan_arangodb_suppressions.txt
 
   create-docker-image:
     parameters:
