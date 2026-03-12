@@ -197,9 +197,8 @@ RestStatus RestWalAccessHandler::execute() {
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected GET /_api/wal/[tail|range|lastTick]>");
     return RestStatus::DONE;
   }
 
@@ -218,13 +217,9 @@ RestStatus RestWalAccessHandler::execute() {
               _request->requestType() == RequestType::PUT ||
               _request->requestType() == RequestType::DELETE_REQ)) {
     handleCommandTail(wal);
-  } else if (suffixes[0] == "open-transactions" &&
-             _request->requestType() == RequestType::GET) {
-    handleCommandDetermineOpenTransactions(wal);
   } else {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected GET /_api/wal/[tail|range|lastTick]>");
   }
 
   return RestStatus::DONE;
@@ -416,53 +411,3 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 }
 
 /// @brief deprecated. remove in future version
-void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
-    WalAccess const* wal) {
-  // determine start and end tick
-
-  std::pair<TRI_voc_tick_t, TRI_voc_tick_t> minMax;
-  Result res = wal->tickRange(minMax);
-  if (res.fail()) {
-    generateError(res);
-    return;
-  }
-
-  bool found = false;
-  std::string const& value1 = _request->value("from", found);
-  if (found) {
-    minMax.first = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value1));
-  }
-  // determine end tick for dump
-  std::string const& value2 = _request->value("to", found);
-  if (found) {
-    minMax.second = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
-  }
-  if (minMax.first > minMax.second || minMax.second == 0) {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid from/to values");
-    return;
-  }
-
-  // check whether a database was specified
-  WalAccess::Filter filter;
-  filter.tickStart = minMax.first;
-  filter.tickEnd = minMax.second;
-  if (!parseFilter(filter)) {
-    return;
-  }
-
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  builder.openArray();
-  builder.close();
-
-  _response->setContentType(rest::ContentType::DUMP);
-  if (res.fail()) {
-    generateError(res);
-  } else {
-    generateResult(ResponseCode::NO_CONTENT, std::move(buffer));
-
-    _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent, "true");
-    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded, "0");
-  }
-}
