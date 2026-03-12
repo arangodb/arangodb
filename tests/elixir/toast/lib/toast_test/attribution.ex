@@ -18,10 +18,12 @@ defmodule ToastTest.Attribution do
           [ToastTest.SuiteResult.issue()]
   def run(test_data, artifacts, crash_events, opts \\ []) do
     windows = TimeWindows.build(test_data)
+    timeout_kills = Keyword.get(opts, :timeout_kills, [])
 
     test_failure_issues(test_data.failures) ++
       crash_issues(crash_events, artifacts, windows, opts) ++
-      sanitizer_issues(artifacts, windows)
+      sanitizer_issues(artifacts, windows) ++
+      timeout_issues(timeout_kills, artifacts)
   end
 
   # --- Test failures ---
@@ -100,6 +102,39 @@ defmodule ToastTest.Attribution do
     case Enrichment.Logs.extract_crash_lines(log_file) do
       "" -> detail
       logs -> Map.put(detail, :logs, logs)
+    end
+  end
+
+  # --- Timeouts ---
+
+  defp timeout_issues([], _artifacts), do: []
+
+  defp timeout_issues(timeout_kills, artifacts) do
+    Enum.map(timeout_kills, fn kill ->
+      servers =
+        Enum.map(kill.servers, fn server_info ->
+          coredump_path = find_coredump_path(artifacts, server_info.server_id)
+          Map.put(server_info, :coredump, coredump_path)
+        end)
+
+      %{
+        type: :timeout,
+        scope: :suite,
+        confidence: :high,
+        detail: %{
+          source: kill.source,
+          reason: kill.reason,
+          timestamp: kill.timestamp,
+          servers: servers
+        }
+      }
+    end)
+  end
+
+  defp find_coredump_path(artifacts, server_id) do
+    case Map.get(artifacts, server_id) do
+      %{coredump_paths: [path | _]} -> path
+      _ -> nil
     end
   end
 

@@ -85,6 +85,146 @@ defmodule ToastTest.ProcessHistoryTest do
     end
   end
 
+  describe "pids_by_server/0" do
+    test "returns empty map when no events recorded", %{name: name} do
+      assert GenServer.call(name, :pids_by_server) == %{}
+    end
+
+    test "collects OS PIDs from server_started events", %{name: name} do
+      GenServer.cast(name, {:event, {:server_started, "s1", 1001, ~U[2026-03-09 10:00:00Z]}})
+      GenServer.cast(name, {:event, {:server_started, "s2", 1002, ~U[2026-03-09 10:00:01Z]}})
+
+      result = GenServer.call(name, :pids_by_server)
+      assert result == %{"s1" => [1001], "s2" => [1002]}
+    end
+
+    test "collects multiple PIDs for the same server (relaunch)", %{name: name} do
+      GenServer.cast(name, {:event, {:server_started, "s1", 1001, ~U[2026-03-09 10:00:00Z]}})
+      GenServer.cast(name, {:event, {:server_started, "s1", 1002, ~U[2026-03-09 10:01:00Z]}})
+
+      result = GenServer.call(name, :pids_by_server)
+      assert MapSet.new(result["s1"]) == MapSet.new([1001, 1002])
+      assert length(result["s1"]) == 2
+    end
+
+    test "deduplicates repeated PIDs", %{name: name} do
+      GenServer.cast(name, {:event, {:server_started, "s1", 1001, ~U[2026-03-09 10:00:00Z]}})
+      GenServer.cast(name, {:event, {:server_started, "s1", 1001, ~U[2026-03-09 10:00:01Z]}})
+
+      result = GenServer.call(name, :pids_by_server)
+      assert result == %{"s1" => [1001]}
+    end
+
+    test "ignores non-server_started events", %{name: name} do
+      GenServer.cast(name, {:event, {:server_stopped, "s1", 1001, nil, ~U[2026-03-09 10:00:00Z]}})
+      GenServer.cast(name, {:event, %{type: :some_other_event}})
+
+      assert GenServer.call(name, :pids_by_server) == %{}
+    end
+  end
+
+  describe "unexpected_crashes/0" do
+    test "returns empty list when no events recorded", %{name: name} do
+      assert GenServer.call(name, :unexpected_crashes) == []
+    end
+
+    test "returns only unexpected crash events", %{name: name} do
+      unexpected = %Toast.Process.CrashEvent{
+        server_id: "s1",
+        crash_info: %Toast.Process.CrashInfo{
+          exit_status: 139,
+          signal: 11,
+          timestamp: ~U[2026-03-09 10:00:00Z]
+        },
+        expected: false
+      }
+
+      expected = %Toast.Process.CrashEvent{
+        server_id: "s2",
+        crash_info: %Toast.Process.CrashInfo{
+          exit_status: 139,
+          signal: 11,
+          timestamp: ~U[2026-03-09 10:00:00Z]
+        },
+        expected: true
+      }
+
+      GenServer.cast(name, {:event, {:server_crashed, unexpected}})
+      GenServer.cast(name, {:event, {:server_crashed, expected}})
+
+      crashes = GenServer.call(name, :unexpected_crashes)
+      assert length(crashes) == 1
+      assert hd(crashes).server_id == "s1"
+    end
+
+    test "returns crashes in chronological order", %{name: name} do
+      for i <- 1..3 do
+        event = %Toast.Process.CrashEvent{
+          server_id: "s#{i}",
+          crash_info: %Toast.Process.CrashInfo{
+            exit_status: 139,
+            signal: 11,
+            timestamp: ~U[2026-03-09 10:00:00Z]
+          },
+          expected: false
+        }
+
+        GenServer.cast(name, {:event, {:server_crashed, event}})
+      end
+
+      crashes = GenServer.call(name, :unexpected_crashes)
+      ids = Enum.map(crashes, & &1.server_id)
+      assert ids == ["s1", "s2", "s3"]
+    end
+  end
+
+  describe "timeout_kills/0" do
+    test "returns empty list when no timeout events", %{name: name} do
+      assert GenServer.call(name, :timeout_kills) == []
+    end
+
+    test "records and retrieves timeout kill events", %{name: name} do
+      kill_info = %{
+        source: :suite_timeout,
+        reason: "Suite timeout exceeded",
+        servers: [%{server_id: "s1", os_pid: 1001, log_file: "/tmp/s1.log"}],
+        timestamp: ~U[2026-03-09 10:05:00Z]
+      }
+
+      GenServer.cast(name, {:event, {:timeout_kill, kill_info}})
+
+      kills = GenServer.call(name, :timeout_kills)
+      assert length(kills) == 1
+      assert hd(kills).source == :suite_timeout
+      assert hd(kills).reason == "Suite timeout exceeded"
+      assert length(hd(kills).servers) == 1
+    end
+
+    test "returns multiple timeout kills in chronological order", %{name: name} do
+      for {source, i} <- Enum.with_index([:suite_timeout, :global_timeout]) do
+        kill_info = %{
+          source: source,
+          reason: "Timeout #{i}",
+          servers: [],
+          timestamp: DateTime.add(~U[2026-03-09 10:00:00Z], i, :minute)
+        }
+
+        GenServer.cast(name, {:event, {:timeout_kill, kill_info}})
+      end
+
+      kills = GenServer.call(name, :timeout_kills)
+      sources = Enum.map(kills, & &1.source)
+      assert sources == [:suite_timeout, :global_timeout]
+    end
+
+    test "ignores non-timeout events", %{name: name} do
+      GenServer.cast(name, {:event, {:server_started, "s1", 1001, ~U[2026-03-09 10:00:00Z]}})
+      GenServer.cast(name, {:event, %{type: :something_else}})
+
+      assert GenServer.call(name, :timeout_kills) == []
+    end
+  end
+
   describe "clear/0" do
     test "removes all recorded events", %{name: name} do
       GenServer.cast(name, {:event, %{type: :started, server_id: "s1"}})

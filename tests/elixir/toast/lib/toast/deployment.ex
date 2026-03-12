@@ -83,6 +83,29 @@ defmodule Toast.Deployment do
     end
   end
 
+  @doc """
+  Abort all running deployments by sending SIGABRT to every server.
+
+  Iterates all controllers under the deployment supervisor and sends SIGABRT
+  to each running server. This triggers the crash handler (backtrace + coredump)
+  in each server process.
+
+  Returns a flat list of maps describing each aborted server:
+  `[%{server_id: ..., os_pid: ..., log_file: ...}, ...]`
+  """
+  @spec abort_all() :: [map()]
+  def abort_all do
+    Toast.Deployment.Supervisor
+    |> DynamicSupervisor.which_children()
+    |> Enum.flat_map(fn
+      {_id, pid, :worker, _modules} when is_pid(pid) ->
+        Controller.abort(pid)
+
+      _ ->
+        []
+    end)
+  end
+
   @spec stop(t(), keyword()) :: {:ok, map()} | {:error, term(), map()}
   def stop(%__MODULE__{controller: pid} = deployment, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
@@ -340,8 +363,7 @@ defmodule Toast.Deployment do
   defp format_test_context(%{name: name}), do: " after test \"#{name}\""
   defp format_test_context(_), do: ""
 
-  defp default_shutdown_timeout(%__MODULE__{mode: :cluster}), do: 60_000
-  defp default_shutdown_timeout(%__MODULE__{}), do: 30_000
+  defp default_shutdown_timeout(%__MODULE__{config: config}), do: config.shutdown_timeout
 
   defp mode_module(:single_server), do: Controller.SingleServer
   defp mode_module(:cluster), do: Controller.Cluster

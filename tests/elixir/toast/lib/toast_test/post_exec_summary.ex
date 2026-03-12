@@ -7,7 +7,7 @@ defmodule ToastTest.PostExecSummary do
   @max_backtrace_frames 20
   @max_crash_log_lines 15
 
-  @issue_types_by_severity [:test_failure, :sanitizer_report, :crash]
+  @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :timeout]
 
   @spec print(SuiteResult.t()) :: :ok
   def print(%SuiteResult{issues: []}), do: :ok
@@ -42,6 +42,7 @@ defmodule ToastTest.PostExecSummary do
   defp section_header(:test_failure, count), do: {"TEST FAILURES (#{count})", :red}
   defp section_header(:sanitizer_report, count), do: {"SANITIZER REPORTS (#{count})", :yellow}
   defp section_header(:crash, count), do: {"CRASHES (#{count})", :red}
+  defp section_header(:timeout, count), do: {"TIMEOUTS (#{count})", :red}
 
   # --- Test failures ---
 
@@ -84,6 +85,36 @@ defmodule ToastTest.PostExecSummary do
 
     counter + 1
   end
+
+  # --- Timeouts ---
+
+  defp print_issue(:timeout, issue, counter, colors) do
+    %{detail: %{reason: reason, servers: servers}} = issue
+
+    server_count = length(servers)
+    server_word = if server_count == 1, do: "server", else: "servers"
+
+    IO.puts(
+      "\n  #{colorize("#{reason} \u2014 killed #{server_count} #{server_word}:", :red, colors)}"
+    )
+
+    Enum.each(servers, fn server ->
+      pid_part = if server.os_pid, do: " (PID #{server.os_pid})", else: ""
+      IO.puts("    #{colorize("#{server.server_id}#{pid_part}", :cyan, colors)}")
+
+      if server.log_file do
+        IO.puts(IO.ANSI.format([:blue, "      Log: #{server.log_file}", :reset]))
+      end
+
+      if server[:coredump] do
+        IO.puts(IO.ANSI.format([:blue, "      Coredump: #{server.coredump}", :reset]))
+      end
+    end)
+
+    counter + 1
+  end
+
+  # --- Crash details ---
 
   defp print_crash_info(%{server: server, crash_info: info}, colors) do
     parts =

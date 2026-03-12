@@ -36,7 +36,7 @@ defmodule ToastTest.SuiteResult do
   @type scope :: :suite | {:module, module()} | {:test, module(), atom()}
 
   @type issue :: %{
-          type: :test_failure | :crash | :sanitizer_report | :deadlock,
+          type: :test_failure | :crash | :sanitizer_report | :timeout,
           scope: scope(),
           confidence: :high | :low | nil,
           detail: map()

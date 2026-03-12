@@ -404,6 +404,112 @@ defmodule ToastTest.AttributionTest do
     end
   end
 
+  # --- Timeouts ---
+
+  describe "run/4 — timeout kills" do
+    test "empty timeout_kills produces no timeout issues" do
+      issues = Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [])
+      assert issues == []
+    end
+
+    test "timeout kill becomes a :timeout issue with suite scope" do
+      kill = %{
+        source: :suite_timeout,
+        reason: "Suite timeout exceeded",
+        servers: [%{server_id: "single1", os_pid: 1001, log_file: "/tmp/single1.log"}],
+        timestamp: ~U[2026-03-09 10:05:00Z]
+      }
+
+      issues = Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [kill])
+
+      assert [issue] = issues
+      assert issue.type == :timeout
+      assert issue.scope == :suite
+      assert issue.confidence == :high
+      assert issue.detail.source == :suite_timeout
+      assert issue.detail.reason == "Suite timeout exceeded"
+      assert issue.detail.timestamp == ~U[2026-03-09 10:05:00Z]
+    end
+
+    test "timeout servers enriched with coredump path from artifacts" do
+      server = build_server("single1")
+
+      artifacts = %{
+        "single1" => %{
+          server: server,
+          coredump_paths: ["/tmp/core.1001"],
+          sanitizer_files: []
+        }
+      }
+
+      kill = %{
+        source: :suite_timeout,
+        reason: "Suite timeout exceeded",
+        servers: [%{server_id: "single1", os_pid: 1001, log_file: "/tmp/single1.log"}],
+        timestamp: ~U[2026-03-09 10:05:00Z]
+      }
+
+      issues = Attribution.run(build_test_data(), artifacts, [], timeout_kills: [kill])
+
+      assert [issue] = issues
+      [server_info] = issue.detail.servers
+      assert server_info.coredump == "/tmp/core.1001"
+      assert server_info.server_id == "single1"
+    end
+
+    test "timeout server without artifacts gets nil coredump" do
+      kill = %{
+        source: :suite_timeout,
+        reason: "Suite timeout exceeded",
+        servers: [%{server_id: "single1", os_pid: 1001, log_file: "/tmp/single1.log"}],
+        timestamp: ~U[2026-03-09 10:05:00Z]
+      }
+
+      issues = Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [kill])
+
+      assert [issue] = issues
+      [server_info] = issue.detail.servers
+      assert server_info.coredump == nil
+    end
+
+    test "multiple killed servers in a single timeout event" do
+      server1 = build_server("agent1")
+      server2 = build_server("dbserver1")
+
+      artifacts = %{
+        "agent1" => %{
+          server: server1,
+          coredump_paths: ["/tmp/core.agent1"],
+          sanitizer_files: []
+        },
+        "dbserver1" => %{
+          server: server2,
+          coredump_paths: [],
+          sanitizer_files: []
+        }
+      }
+
+      kill = %{
+        source: :suite_timeout,
+        reason: "Suite timeout exceeded",
+        servers: [
+          %{server_id: "agent1", os_pid: 2001, log_file: "/tmp/agent1.log"},
+          %{server_id: "dbserver1", os_pid: 2002, log_file: "/tmp/dbserver1.log"}
+        ],
+        timestamp: ~U[2026-03-09 10:05:00Z]
+      }
+
+      issues = Attribution.run(build_test_data(), artifacts, [], timeout_kills: [kill])
+
+      assert [issue] = issues
+      assert length(issue.detail.servers) == 2
+
+      by_id = Map.new(issue.detail.servers, &{&1.server_id, &1})
+      assert by_id["agent1"].coredump == "/tmp/core.agent1"
+      assert by_id["dbserver1"].coredump == nil
+    end
+  end
+
   # --- Mixed ---
 
   describe "run/4 — mixed issues" do

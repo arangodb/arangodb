@@ -46,6 +46,35 @@ defmodule ToastTest.ProcessHistory do
     :exit, _ -> []
   end
 
+  @doc """
+  Record that servers were killed due to a timeout.
+
+  `source` identifies what timed out (e.g., `:suite_timeout`, `:global_timeout`).
+  `reason` is a human-readable description.
+  `killed_servers` is the list returned by `Toast.Deployment.abort_all/0`.
+  """
+  @spec record_timeout_kill(atom(), String.t(), [map()]) :: :ok
+  def record_timeout_kill(source, reason, killed_servers) do
+    event =
+      {:timeout_kill,
+       %{
+         source: source,
+         reason: reason,
+         servers: killed_servers,
+         timestamp: DateTime.utc_now()
+       }}
+
+    GenServer.cast(__MODULE__, {:event, event})
+  end
+
+  @doc "Return timeout kill events in chronological order."
+  @spec timeout_kills() :: [map()]
+  def timeout_kills do
+    GenServer.call(__MODULE__, :timeout_kills)
+  catch
+    :exit, _ -> []
+  end
+
   @impl true
   def init(_) do
     {:ok, %{events: []}}
@@ -73,6 +102,14 @@ defmodule ToastTest.ProcessHistory do
           do: event
 
     {:reply, Enum.reverse(crashes), state}
+  end
+
+  @impl true
+  def handle_call(:timeout_kills, _from, state) do
+    kills =
+      for {:timeout_kill, info} <- state.events, do: info
+
+    {:reply, Enum.reverse(kills), state}
   end
 
   @impl true

@@ -94,6 +94,7 @@ defmodule ToastTest.Runner do
     {suite_results, acc_stats} =
       Enum.reduce(suites, {[], %{total: 0, failures: 0, skipped: 0, excluded: 0}}, fn
         suite_entry, {results, acc} ->
+          check_global_deadline!(global_deadline)
           {suite_module, test_modules, suite_opts} = normalize_suite_entry(suite_entry)
 
           if ToastTest.Abort.reason() do
@@ -506,9 +507,12 @@ defmodule ToastTest.Runner do
     if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
     pid_history = ToastTest.ProcessHistory.pids_by_server()
     crash_events = ToastTest.ProcessHistory.unexpected_crashes()
+    timeout_kills = ToastTest.ProcessHistory.timeout_kills()
     artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history)
 
-    issues = ToastTest.Attribution.run(test_data, artifacts, crash_events)
+    issues =
+      ToastTest.Attribution.run(test_data, artifacts, crash_events, timeout_kills: timeout_kills)
+
     suite_result = ToastTest.SuiteResult.build(test_data, issues)
     ToastTest.SuiteResult.write_all(suite_result, toast_config.result_dir)
     print_post_exec_summary(suite_result)
@@ -980,8 +984,22 @@ defmodule ToastTest.Runner do
 
   defp check_suite_deadline!(%{suite_deadline: deadline}) do
     if System.monotonic_time(:millisecond) >= deadline do
-      ToastTest.Abort.abort!({:timeout, "Suite timeout exceeded"})
+      abort_with_timeout(:suite_timeout, "Suite timeout exceeded")
     end
+  end
+
+  defp check_global_deadline!(nil), do: :ok
+
+  defp check_global_deadline!(deadline) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      abort_with_timeout(:global_timeout, "Global execution timeout exceeded")
+    end
+  end
+
+  defp abort_with_timeout(source, reason) do
+    killed_servers = Toast.Deployment.abort_all()
+    ToastTest.ProcessHistory.record_timeout_kill(source, reason, killed_servers)
+    ToastTest.Abort.abort!({:timeout, reason})
   end
 
   defp failed(:error, %ExUnit.MultiError{errors: errors}, _stack) do

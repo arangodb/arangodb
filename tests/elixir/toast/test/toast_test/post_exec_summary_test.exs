@@ -199,11 +199,88 @@ defmodule ToastTest.PostExecSummaryTest do
     assert output =~ "Log: /tmp/arangodb/agent1.log"
   end
 
-  test "orders sections by severity" do
+  test "prints timeout with killed servers, log paths, and coredump paths" do
+    issue = %{
+      type: :timeout,
+      scope: :suite,
+      confidence: :high,
+      detail: %{
+        source: :suite_timeout,
+        reason: "Suite timeout exceeded",
+        timestamp: ~U[2026-03-09 10:05:00Z],
+        servers: [
+          %{
+            server_id: "agent1",
+            os_pid: 22788,
+            log_file: "/tmp/agent1.log",
+            coredump: "/tmp/core.22788"
+          },
+          %{server_id: "dbserver1", os_pid: 22790, log_file: "/tmp/dbserver1.log", coredump: nil},
+          %{
+            server_id: "coordinator1",
+            os_pid: 22792,
+            log_file: "/tmp/coordinator1.log",
+            coredump: "/tmp/core.22792"
+          }
+        ]
+      }
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+
+    assert output =~ "TIMEOUTS (1)"
+    assert output =~ "Suite timeout exceeded"
+    assert output =~ "killed 3 servers:"
+
+    assert output =~ "agent1 (PID 22788)"
+    assert output =~ "Log: /tmp/agent1.log"
+    assert output =~ "Coredump: /tmp/core.22788"
+
+    assert output =~ "dbserver1 (PID 22790)"
+    assert output =~ "Log: /tmp/dbserver1.log"
+    refute output =~ "Coredump: /tmp/core.22790"
+
+    assert output =~ "coordinator1 (PID 22792)"
+    assert output =~ "Coredump: /tmp/core.22792"
+  end
+
+  test "prints timeout with single server" do
+    issue = %{
+      type: :timeout,
+      scope: :suite,
+      confidence: :high,
+      detail: %{
+        source: :suite_timeout,
+        reason: "Suite timeout exceeded",
+        timestamp: ~U[2026-03-09 10:05:00Z],
+        servers: [
+          %{server_id: "single", os_pid: 12345, log_file: "/tmp/single.log", coredump: nil}
+        ]
+      }
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+
+    assert output =~ "killed 1 server:"
+    assert output =~ "single (PID 12345)"
+  end
+
+  test "orders sections by severity with timeouts last" do
     issues = [
       crash_issue_with_coredump(),
       test_failure_issue(),
-      sanitizer_issue()
+      sanitizer_issue(),
+      %{
+        type: :timeout,
+        scope: :suite,
+        confidence: :high,
+        detail: %{
+          source: :suite_timeout,
+          reason: "Suite timeout exceeded",
+          timestamp: ~U[2026-03-09 10:05:00Z],
+          servers: [%{server_id: "single", os_pid: 1234, log_file: nil, coredump: nil}]
+        }
+      }
     ]
 
     output = capture_io(fn -> PostExecSummary.print(suite_result(issues)) end)
@@ -211,9 +288,11 @@ defmodule ToastTest.PostExecSummaryTest do
     failure_pos = :binary.match(output, "TEST FAILURES") |> elem(0)
     sanitizer_pos = :binary.match(output, "SANITIZER REPORTS") |> elem(0)
     crash_pos = :binary.match(output, "CRASHES") |> elem(0)
+    timeout_pos = :binary.match(output, "TIMEOUTS") |> elem(0)
 
     assert failure_pos < sanitizer_pos
     assert sanitizer_pos < crash_pos
+    assert crash_pos < timeout_pos
   end
 
   test "formats scope attribution" do

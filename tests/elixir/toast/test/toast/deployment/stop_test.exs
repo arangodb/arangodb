@@ -112,22 +112,25 @@ defmodule Toast.Deployment.StopTest do
       assert [{:shutdown, 45_000} | _] = MockController.calls(pid)
     end
 
-    test "uses default timeout based on mode" do
-      {:ok, single_pid} =
+    test "uses shutdown_timeout from config" do
+      {:ok, default_pid} =
         MockController.start_link(
           responses: %{shutdown: :ok, get_info: %{servers: %{}, error: nil}}
         )
 
-      {:ok, cluster_pid} =
+      {:ok, custom_pid} =
         MockController.start_link(
           responses: %{shutdown: :ok, get_info: %{servers: %{}, error: nil}}
         )
 
-      Deployment.stop(deployment(single_pid, :single_server))
-      Deployment.stop(deployment(cluster_pid, :cluster))
+      Deployment.stop(deployment(default_pid))
 
-      assert [{:shutdown, 30_000} | _] = MockController.calls(single_pid)
-      assert [{:shutdown, 60_000} | _] = MockController.calls(cluster_pid)
+      custom_config = %Toast.Config{shutdown_timeout: 15_000}
+      custom_deployment = %{deployment(custom_pid) | config: custom_config}
+      Deployment.stop(custom_deployment)
+
+      assert [{:shutdown, 60_000} | _] = MockController.calls(default_pid)
+      assert [{:shutdown, 15_000} | _] = MockController.calls(custom_pid)
     end
   end
 

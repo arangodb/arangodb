@@ -43,6 +43,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
     else
       {:error, reason} ->
         Logger.error("Deploy failed for #{id}: #{inspect(reason)}")
+        Helpers.abort_all_servers(state)
         failed_state = rollback(state, reason)
         {:error, reason, failed_state}
     end

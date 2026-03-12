@@ -1,6 +1,8 @@
 defmodule Toast.Deployment.Controller.Helpers do
   @moduledoc false
 
+  require Logger
+
   alias Toast.Deployment.{ServerInstance, ServerLifecycle}
   alias Toast.Process.ServerProcess
   alias Toast.Process.Supervisor, as: ProcessSupervisor
@@ -81,6 +83,61 @@ defmodule Toast.Deployment.Controller.Helpers do
   @spec clear_server_pids(map()) :: map()
   def clear_server_pids(servers) do
     Map.new(servers, fn {id, server} -> {id, %{server | server_pid: nil, health_monitor: nil}} end)
+  end
+
+  @abort_timeout 5_000
+
+  @doc """
+  Send SIGABRT to all servers that have a running process.
+
+  Used before rollback during deploy failure to get crash backtraces
+  from all servers. Waits for the aborted processes to terminate by
+  receiving `{:server_crashed, ...}` messages from `ServerProcess`
+  (up to `@abort_timeout` ms). Does NOT register expected crashes
+  (the crashes during rollback are handled by the stopping flow).
+
+  Must be called from the Controller process (the listener for crash
+  notifications).
+  """
+  @spec abort_all_servers(Toast.Deployment.Controller.State.t()) :: :ok
+  def abort_all_servers(state) do
+    servers_with_pids =
+      Enum.filter(state.servers, fn {_id, server} -> server.server_pid != nil end)
+
+    aborted_ids =
+      Enum.flat_map(servers_with_pids, fn {server_id, server} ->
+        case ServerProcess.send_signal(server.server_pid, :sigabrt) do
+          :ok ->
+            Logger.info("Sent SIGABRT to #{server_id} for crash backtrace")
+            [server_id]
+
+          {:error, :not_running} ->
+            []
+        end
+      end)
+
+    await_crashes(Map.new(aborted_ids, &{&1, true}), @abort_timeout)
+    :ok
+  end
+
+  defp await_crashes(remaining, _timeout) when map_size(remaining) == 0, do: :ok
+
+  defp await_crashes(remaining, timeout) do
+    deadline = System.monotonic_time(:millisecond) + timeout
+    do_await_crashes(remaining, deadline)
+  end
+
+  defp do_await_crashes(remaining, _deadline) when map_size(remaining) == 0, do: :ok
+
+  defp do_await_crashes(remaining, deadline) do
+    timeout = max(0, deadline - System.monotonic_time(:millisecond))
+
+    receive do
+      {:server_crashed, server_id, _crash_info} when is_map_key(remaining, server_id) ->
+        do_await_crashes(Map.delete(remaining, server_id), deadline)
+    after
+      timeout -> :ok
+    end
   end
 
   @spec remaining_ms(integer()) :: non_neg_integer()

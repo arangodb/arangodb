@@ -46,6 +46,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     else
       {:error, reason} ->
         Logger.error("Deploy failed for #{state.id}: #{inspect(reason)}")
+        Helpers.abort_all_servers(state)
         failed_state = rollback(state, reason)
         {:error, reason, failed_state}
     end

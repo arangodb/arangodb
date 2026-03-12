@@ -84,6 +84,20 @@ defmodule Toast.Deployment.Controller do
     GenServer.call(server, {:shutdown, timeout}, timeout + 5_000)
   end
 
+  @doc """
+  Abort all running servers by sending SIGABRT.
+
+  Registers each server as expecting a crash (so crashes are classified as
+  expected) and sends SIGABRT to trigger the crash handler (backtrace + coredump).
+  Returns a list of maps describing each aborted server.
+  """
+  @spec abort(GenServer.server()) :: [map()]
+  def abort(server) do
+    GenServer.call(server, :abort, 10_000)
+  catch
+    :exit, _ -> []
+  end
+
   @spec dump_agency(GenServer.server(), timeout()) :: term()
   def dump_agency(server, timeout \\ 60_000) do
     GenServer.call(server, :dump_agency, timeout)
@@ -164,6 +178,11 @@ defmodule Toast.Deployment.Controller do
 
   def handle_call({:shutdown, _timeout}, _from, state) do
     {:reply, {:error, {:invalid_status, state.status}}, state}
+  end
+
+  def handle_call(:abort, _from, state) do
+    {killed_servers, new_state} = do_abort_all_servers(state)
+    {:reply, killed_servers, new_state}
   end
 
   def handle_call(:get_status, _from, state) do
@@ -374,6 +393,37 @@ defmodule Toast.Deployment.Controller do
   def handle_info(msg, state) do
     Logger.debug("Unexpected message: #{inspect(msg)}")
     {:noreply, state}
+  end
+
+  # --- Abort all servers ---
+
+  @abort_timeout 60_000
+
+  defp do_abort_all_servers(state) do
+    running_servers =
+      Enum.filter(state.servers, fn {_id, server} ->
+        server.operational_state in [:running, :paused]
+      end)
+
+    # Register expected crashes and send SIGABRT to each server
+    expected_crashes =
+      Enum.reduce(running_servers, state.expected_crashes, fn {server_id, server}, acc ->
+        case ServerLifecycle.expect_crash(server_id, @abort_timeout, acc, server) do
+          {:ok, updated} -> updated
+          {:error, :already_expected} -> acc
+        end
+      end)
+
+    # Collect info before sending signals (process may die quickly)
+    killed_servers =
+      Enum.map(running_servers, fn {server_id, server} ->
+        os_pid = Toast.Process.ServerProcess.os_pid(server.server_pid)
+        ServerLifecycle.abort_server(server)
+
+        %{server_id: server_id, os_pid: os_pid, log_file: server.log_file}
+      end)
+
+    {killed_servers, %{state | expected_crashes: expected_crashes}}
   end
 
   # --- Control operations ---

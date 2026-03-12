@@ -29,6 +29,12 @@ defmodule Toast.Deployment.ServerLifecycle do
     :ok
   end
 
+  @spec abort_server(ServerInstance.t()) :: :ok | {:error, :not_running}
+  def abort_server(%ServerInstance{} = server) do
+    suspend_health_monitor(server)
+    ServerProcess.send_signal(server.server_pid, :sigabrt)
+  end
+
   @spec pause_server(ServerInstance.t()) :: :ok
   def pause_server(%ServerInstance{} = server) do
     ServerProcess.pause(server.server_pid)

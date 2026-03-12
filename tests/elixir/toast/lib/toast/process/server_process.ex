@@ -5,7 +5,7 @@ defmodule Toast.Process.ServerProcess do
   Provides:
   - Process lifecycle (start/stop)
   - Crash detection via erlexec monitoring
-  - Graceful shutdown: SIGTERM → wait → SIGKILL (handled by erlexec)
+  - Graceful shutdown: SIGTERM → wait → SIGABRT → wait → SIGKILL
   - Process group management (child cleanup on BEAM exit)
 
   The GenServer does NOT auto-restart the OS process on crash.
@@ -99,6 +99,18 @@ defmodule Toast.Process.ServerProcess do
 
   @spec kill(GenServer.server()) :: :ok | {:error, :not_running}
   def kill(server), do: GenServer.call(server, :kill)
+
+  @doc """
+  Send a signal to the OS process without changing the GenServer state.
+
+  The process remains in its current state (:running, :paused, etc.) and will
+  transition normally when the OS process exits (via the erlexec DOWN message).
+  This is used for SIGABRT during timeout handling — the signal triggers the
+  crash handler (backtrace + coredump) and the crash flows through the normal
+  expected-crash path.
+  """
+  @spec send_signal(GenServer.server(), pos_integer() | atom()) :: :ok | {:error, :not_running}
+  def send_signal(server, signal), do: GenServer.call(server, {:send_signal, signal})
 
   @spec pause(GenServer.server()) :: :ok | {:error, :not_running}
   def pause(server), do: GenServer.call(server, :pause)
@@ -199,6 +211,16 @@ defmodule Toast.Process.ServerProcess do
     {:reply, {:error, :not_running}, state}
   end
 
+  def handle_call({:send_signal, signal}, _from, %{status: status} = state)
+      when status in [:running, :paused] do
+    :exec.kill(state.os_pid, signal)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:send_signal, _signal}, _from, state) do
+    {:reply, {:error, :not_running}, state}
+  end
+
   def handle_call(:pause, _from, %{status: :running} = state) do
     :exec.kill(state.os_pid, @sigstop)
     {:reply, :ok, %{state | status: :paused}}
@@ -247,11 +269,23 @@ defmodule Toast.Process.ServerProcess do
   end
 
   def handle_info(:stop_timeout, %{status: :stopping} = state) do
-    Logger.warning("#{state.id} (pid=#{state.os_pid}) stop timed out, sending SIGKILL")
+    Logger.warning(
+      "#{state.id} (pid=#{state.os_pid}) stop timed out, sending SIGABRT for crash backtrace"
+    )
 
-    if state.os_pid, do: :exec.kill(state.os_pid, 9)
+    if state.os_pid, do: :exec.kill(state.os_pid, :sigabrt)
 
-    # Give 5s for the DOWN message after SIGKILL; if it never comes, give up
+    timer_ref = Process.send_after(self(), :abort_timeout, 5_000)
+    {:noreply, %{state | stop_timer: timer_ref}}
+  end
+
+  def handle_info(:abort_timeout, %{status: :stopping} = state) do
+    Logger.warning(
+      "#{state.id} (pid=#{state.os_pid}) did not exit after SIGABRT, sending SIGKILL"
+    )
+
+    if state.os_pid, do: :exec.kill(state.os_pid, @sigkill)
+
     timer_ref = Process.send_after(self(), :kill_timeout, 5_000)
     {:noreply, %{state | stop_timer: timer_ref}}
   end
@@ -264,7 +298,7 @@ defmodule Toast.Process.ServerProcess do
     {:noreply, reset_process_state(state, :stopped)}
   end
 
-  def handle_info(msg, state) when msg in [:stop_timeout, :kill_timeout] do
+  def handle_info(msg, state) when msg in [:stop_timeout, :abort_timeout, :kill_timeout] do
     {:noreply, state}
   end
 
@@ -300,7 +334,7 @@ defmodule Toast.Process.ServerProcess do
     cmd = [to_charlist(state.executable) | Enum.map(state.args, &to_charlist/1)]
 
     exec_opts =
-      [:monitor, {:stdin, :null}, {:kill_timeout, 5}, {:group, 0}, :kill_group] ++
+      [:monitor, {:stdin, :null}, {:kill_timeout, 300}, {:group, 0}, :kill_group] ++
         if(state.output_handler, do: [:stderr], else: []) ++
         exec_env(state.env) ++
         exec_cd(state.working_dir)
@@ -327,10 +361,10 @@ defmodule Toast.Process.ServerProcess do
   defp do_stop(state, timeout, from) do
     Logger.debug("Stopping #{state.id} (pid=#{state.os_pid}) with SIGTERM")
 
-    # Non-blocking: initiates SIGTERM, then SIGKILL after kill_timeout (5s)
+    # Non-blocking: initiates SIGTERM (erlexec kill_timeout=300s is a safety net only)
     :exec.stop(state.exec_pid)
 
-    # Set our own timeout as a safety net
+    # Our timers handle the escalation: stop_timeout → SIGABRT → abort_timeout → SIGKILL
     timer_ref = Process.send_after(self(), :stop_timeout, timeout)
 
     %{state | status: :stopping, stop_from: from, stop_timer: timer_ref}
