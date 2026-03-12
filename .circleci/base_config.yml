@@ -148,7 +148,7 @@ commands:
 
             tar -czf "$TAR" $PATHS
 
-            aws s3 cp \
+            aws s3 cp --no-sign-request \
               "$TAR" \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}"
 
@@ -181,7 +181,7 @@ commands:
 
             cd "$ROOT"
 
-            aws s3 cp \
+            aws s3 cp --no-sign-request \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}" \
               "$TAR"
             tar -xzf "$TAR" $PATHS
