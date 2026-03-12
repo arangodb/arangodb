@@ -150,6 +150,7 @@ commands:
             cd "$ROOT"
 
             tar -czf "$TAR" $PATHS
+            ls -l "$TAR"
             aws configure set profile.anon.s3.multipart_threshold 5GB
             aws s3 cp --no-sign-request \
               "$TAR" \
