@@ -115,6 +115,41 @@ parameters:
 
 
 commands:
+  persist_to_workspace_s3:
+    parameters:
+      root:
+        type: string
+      paths:
+        type: string
+      archive:
+        type: string
+        default: workspace.tar.gz
+    steps:
+      - run:
+          name: Save workspace to S3
+          command: |
+            set -eo pipefail
+
+            ROOT="<< parameters.root >>"
+            PATHS="<< parameters.paths >>"
+            ARCHIVE="<< parameters.archive >>"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/circleci-workspace
+            TAR="/tmp/circleci-workspace/${ARCHIVE}"
+
+            cd "$ROOT"
+
+            tar -czf "$TAR" $PATHS
+
+            aws s3 cp \
+              "$TAR" \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}"
+
   checkout-arangodb:
     parameters:
       destination:
@@ -320,7 +355,7 @@ jobs:
             # we are only interested in the rta-makedata submodule because we want to run eslint on it,
             # but we do not care about the other submodules (specifically we do _not_ want to clone v8)
             git submodule update --init 3rdParty/rta-makedata
-      - persist_to_workspace:
+      - persist_to_workspace_s3:
           root: .
           paths:
             - .
@@ -447,7 +482,7 @@ jobs:
             tar -xJf /node_modules.tar.xz
             yarn install
             yarn build
-      - persist_to_workspace:
+      - persist_to_workspace_s3:
           root: .
           paths:
             - js/apps/system/_admin/aardvark/APP/react/build
@@ -522,7 +557,7 @@ jobs:
       - run:
           name: Build
           command: |
-            TARGETS="<< pipeline.parameters.build-targets >>"
+            TARGETS='<< pipeline.parameters.build-targets >>'
             if [ << parameters.build-tests >> = true ]; then
               TARGETS="$TARGETS << pipeline.parameters.test-build-targets >>"
             fi
@@ -575,7 +610,7 @@ jobs:
           steps:
             - store_artifacts:
                 path: build/bin/arango*
-            - persist_to_workspace:
+            - persist_to_workspace_s3:
                 root: .
                 paths:
                   - VERSIONS
