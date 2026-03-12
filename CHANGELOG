@@ -1,6 +1,15 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Make defaults for JavaScript security options stricter: Use a default deny
+  policy for the following options:
+    - `--javascript.endpoints-allowlist`
+    - `--javascript.environment-variables-allowlist`
+    - `--javascript.files-allowlist`
+    - `--javascript.startup-options-allowlist`
+  This changes nothing if you **have set these options**. But if you have not,
+  then the default is now "deny".
+
 * COR-286: Fixed a crash when executing AQL queries with `usePlanCache: true` on
   cluster-one-shard databases containing graph traversals. When a cached
   plan was restored, the `_appliedRules` metadata (including
