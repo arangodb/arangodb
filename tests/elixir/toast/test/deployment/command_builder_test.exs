@@ -104,6 +104,8 @@ defmodule Toast.Deployment.CommandBuilderTest do
                @paths.app_dir,
                "--log.file",
                @paths.log_file,
+               "--log.level",
+               "crash=info",
                "--server.storage-engine",
                "rocksdb"
              ]
@@ -117,11 +119,20 @@ defmodule Toast.Deployment.CommandBuilderTest do
       assert "--log.level" in result
       assert "debug" in result
 
-      log_idx = Enum.find_index(result, &(&1 == "--log.level"))
-      assert Enum.at(result, log_idx + 1) == "debug"
+      # Custom log.level should come after the base crash=info and role args
+      log_indices =
+        result
+        |> Enum.with_index()
+        |> Enum.filter(fn {v, _i} -> v == "--log.level" end)
+        |> Enum.map(&elem(&1, 1))
+
+      # Two --log.level flags: base (crash=info) and custom (debug)
+      assert length(log_indices) == 2
+      [_base_idx, custom_idx] = log_indices
+      assert Enum.at(result, custom_idx + 1) == "debug"
 
       role_idx = Enum.find_index(result, &(&1 == "--server.storage-engine"))
-      assert log_idx > role_idx
+      assert custom_idx > role_idx
     end
   end
 

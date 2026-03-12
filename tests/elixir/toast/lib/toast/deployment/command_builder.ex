@@ -56,7 +56,9 @@ defmodule Toast.Deployment.CommandBuilder do
       "--javascript.app-path",
       paths.app_dir,
       "--log.file",
-      paths.log_file
+      paths.log_file,
+      "--log.level",
+      "crash=info"
     ]
   end
 
