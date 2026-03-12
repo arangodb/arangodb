@@ -869,10 +869,7 @@ jobs:
           extraArgs: << parameters.extraArgs >>
 
   run-rta-tests:
-    machine:
-      image: ubuntu-2204:current
-    resource_class: large
-    # resource_class: << parameters.size >> TODO
+    resource_class: << parameters.size >>
     parameters:
       suiteName:
         type: string
@@ -987,6 +984,9 @@ jobs:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
     steps:
+      - persist_from_workspace_s3:
+          root: .
+          archive: << parameters.arch >>_binaries.tar.bz2
       - persist_from_workspace_s3:
           root: .
           archive: << parameters.arch >>_cppcheck.tar.bz2
