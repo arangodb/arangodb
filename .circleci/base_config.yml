@@ -109,6 +109,9 @@ parameters:
   sanitizer:
     type: string
     default: ""
+  arch:
+    type: string
+    default: ""
   docker_image:
     type: string
     default: "<< pipeline.parameters.test-docker-image >>"
