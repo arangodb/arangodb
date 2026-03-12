@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused:false */
-/* global runSetup assertEqual, assertNotNull, assertTrue*/
+/* global runSetup assertEqual, assertNotNull, assertTrue */
 
 'use strict';
 
@@ -34,7 +34,11 @@ function addConnectionArgs(args) {
 function restoreLegacyGeoFixture() {
   const inputDir = fs.normalize(fs.makeAbsolute(fixtureDir));
 
-  const restoreBin = pu.ARANGORESTORE_BIN || pu.arangorestoreBin || 'arangorestore';
+  const restoreBin = pu.ARANGORESTORE_BIN;
+  if (!restoreBin || !fs.isFile(restoreBin)) {
+    throw new Error('arangorestore not found! ARANGORESTORE_BIN=' + restoreBin);
+  }
+
   const args = ['--create-database', 'true', '--input-directory', inputDir];
   addConnectionArgs(args);
 

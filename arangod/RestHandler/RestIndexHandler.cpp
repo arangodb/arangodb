@@ -528,7 +528,7 @@ async<void> RestIndexHandler::createIndex() {
     if (typeSlice.isString() &&
         (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                    "Index type 'geo1' and 'geo2' are no longer supported. "
+                    "Index types 'geo1' and 'geo2' are no longer supported. "
                     "Please use 'geo' instead.");
       co_return;
     }
