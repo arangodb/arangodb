@@ -56,14 +56,7 @@ inline bool checkAscendingMatchesMetric(
     case SimilarityMetric::kInnerProduct:
       return !ascending;
   }
-  return false;
-}
-
-inline bool isIndexedFieldSameAsSearched(
-    std::shared_ptr<Index> const& vectorIndex,
-    std::vector<basics::AttributeName> const& attributeName) {
-  TRI_ASSERT(vectorIndex->fields().size() == 1);
-  return attributeName == vectorIndex->fields()[0];
+  TRI_ASSERT(false);
 }
 
 inline bool isCompatibleVectorIndex(std::shared_ptr<Index> const& candidate,

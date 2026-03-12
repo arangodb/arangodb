@@ -68,8 +68,8 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
                                                          false)) {
     return false;
   }
-  if (!isIndexedFieldSameAsSearched(vectorIndex,
-                                    attributeAccessResult.second)) {
+  TRI_ASSERT(vectorIndex->fields().size() == 1);
+  if (attributeAccessResult.second != vectorIndex->fields()[0]) {
     return false;
   }
 

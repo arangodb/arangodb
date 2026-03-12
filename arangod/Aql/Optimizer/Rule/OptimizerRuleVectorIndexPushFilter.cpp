@@ -124,6 +124,40 @@ bool areAllAttributesCovered(
   return true;
 }
 
+// Find a compatible vector index whose storedValues cover the filter
+// expression. We consider all vector indexes on the collection, not just the
+// currently assigned one -- a different index with the right storedValues can
+// avoid a full document materialization.
+std::shared_ptr<Index> findBestVectorIndex(
+    std::unique_ptr<ExecutionPlan> const& plan,
+    std::unique_ptr<Expression> const& filterExpression,
+    EnumerateNearVectorNode const* enumerateNearVectorNode) {
+  auto const& currentIndex = enumerateNearVectorNode->index();
+  bool ascending = enumerateNearVectorNode->isAscending();
+  auto const& allIndexes = enumerateNearVectorNode->collection()->indexes();
+
+  for (auto const& candidate : allIndexes) {
+    if (!isCompatibleVectorIndex(candidate, currentIndex, ascending)) {
+      continue;
+    }
+    auto const& storedValues = candidate->storedValues();
+    if (storedValues.empty()) {
+      LOG_RULE << "Index " << candidate->name()
+               << " has no storedValues, skipping";
+      continue;
+    }
+    if (!areAllAttributesCovered(plan, filterExpression,
+                                 enumerateNearVectorNode, storedValues)) {
+      LOG_RULE << "Index " << candidate->name()
+               << " storedValues don't cover filter";
+      continue;
+    }
+    return candidate;
+  }
+
+  return nullptr;
+}
+
 // This rule check if EnumerateNearVectorNode has a FilterNode and if so tries
 // to remove it and apply early pruning in EnumerateNearVectorNode.
 // Also we check if we can use storedFields optimization with the given index.
@@ -173,46 +207,14 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
     enumerateNearVectorNode->setFilterExpression(filterExpression.get());
     modified = true;
 
-    // Try to find a vector index whose storedValues cover the filter
-    // expression. We consider all compatible vector indexes on the collection,
-    // not just the currently assigned one -- a different index with the right
-    // storedValues can avoid a full document materialization.
-    auto const& currentIndex = enumerateNearVectorNode->index();
-    bool ascending = enumerateNearVectorNode->isAscending();
-    auto const& allIndexes = enumerateNearVectorNode->collection()->indexes();
-
-    std::shared_ptr<Index> bestIndex = nullptr;
-    for (auto const& candidate : allIndexes) {
-      if (!isCompatibleVectorIndex(candidate, currentIndex, ascending)) {
-        continue;
+    if (auto bestIndex = findBestVectorIndex(plan, filterExpression,
+                                             enumerateNearVectorNode);
+        bestIndex != nullptr) {
+      if (bestIndex != enumerateNearVectorNode->index()) {
+        enumerateNearVectorNode->setIndex(std::move(bestIndex));
       }
-      auto const& storedValues = candidate->storedValues();
-      if (storedValues.empty()) {
-        LOG_RULE << "Index " << candidate->name()
-                 << " has no storedValues, skipping";
-        continue;
-      }
-      if (!areAllAttributesCovered(plan, filterExpression,
-                                   enumerateNearVectorNode, storedValues)) {
-        LOG_RULE << "Index " << candidate->name()
-                 << " storedValues don't cover filter";
-        continue;
-      }
-      bestIndex = candidate;
-      break;
+      enumerateNearVectorNode->setIsCoveredByStoredValues(true);
     }
-
-    if (!bestIndex) {
-      LOG_RULE << "No vector index with storedValues covering the filter";
-      continue;
-    }
-
-    LOG_RULE << ADB_HERE << "Using storedValues from index "
-             << bestIndex->name();
-    if (bestIndex != currentIndex) {
-      enumerateNearVectorNode->setIndex(bestIndex);
-    }
-    enumerateNearVectorNode->setIsCoveredByStoredValues(true);
   }
 
   opt->addPlan(std::move(plan), rule, modified);
