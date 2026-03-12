@@ -565,6 +565,7 @@ class CircleCIGenerator(OutputGenerator):
             "name": job_name,
             "suiteName": suite_name,
             "suites": suite_str,
+            "arch": build_config.architecture.value,
             "size": resource_class,
             "cluster": is_cluster,
             "requires": build_jobs,
