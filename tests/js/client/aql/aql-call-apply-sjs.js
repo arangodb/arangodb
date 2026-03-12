@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, assertNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -92,14 +92,14 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCallNonExisting : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CALL()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CALL()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('nono-existing', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('foobar', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL(' trim', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('foo::bar::baz', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL(123, 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL([ ], 'baz')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('nono-existing', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('foobar', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL(' trim', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('foo::bar::baz', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL(123, 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL([ ], 'baz')");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +120,7 @@ function ahuacatlCallApplyTestSuite () {
       recursion.push('  foo bar  ');
       let query = "RETURN CALL('" + recursion.join('\',\'') + "')";
       actual = getQueryResults(query);
-      
+
       assertEqual(actual, [ 'foo bar' ]);
 
     },
@@ -185,15 +185,15 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testApplyNonExisting : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY('TRIM', 1, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY('TRIM', 1, 2)");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('nono-existing', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('foobar', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY(' trim', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('foo::bar::baz', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY(123, [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY([ ], [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('nono-existing', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('foobar', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY(' trim', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('foo::bar::baz', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY(123, [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY([ ], [ 'baz' ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +222,7 @@ function ahuacatlCallApplyTestSuite () {
       recursion += '[\'TRIM\', [ \'  foo bar  \'] ' + close;
       let query = "RETURN APPLY(" + recursion + ")";
       actual = getQueryResults(query);
-      
+
       assertEqual(actual, [ 'foo bar' ]);
     }
 
@@ -331,8 +331,8 @@ function ahuacatlCallUserDefinedTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUserDefNonExisting : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('UNITTESTS::FUNC::MEOW', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('UNITTESTS::FUNC::MEOW', [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('UNITTESTS::FUNC::MEOW', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('UNITTESTS::FUNC::MEOW', [ 'baz' ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,8 +340,8 @@ function ahuacatlCallUserDefinedTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUserDefThrows : function () {
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN CALL('UNITTESTS::FUNC::THROWING')"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN APPLY('UNITTESTS::FUNC::THROWING', [ ])"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN CALL('UNITTESTS::FUNC::THROWING')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN APPLY('UNITTESTS::FUNC::THROWING', [ ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,10 +353,10 @@ function ahuacatlCallUserDefinedTestSuite () {
 
       let actual = getQueryResults("RETURN UnitTests::func::call()");
       assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
-      
+
       actual = getQueryResults("RETURN CALL('UNITTESTS::FUNC::CALL', [])");
       assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
-      
+
       actual = getQueryResults("RETURN CALL('unittests::func::call', [])");
       assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
     }
@@ -364,7 +364,113 @@ function ahuacatlCallUserDefinedTestSuite () {
   };
 }
 
+function ahuacatlUDFSecurityDefaultsTestSuite () {
+  const aqlfunctions = require("@arangodb/aql/functions");
+  const funcNames = ["fileread", "filewrite", "envread", "enuminenv", "getoptions"];
+
+  return {
+    setUp : function () {
+      funcNames.forEach(function (f) {
+        try { aqlfunctions.unregister("UnitTests::security::" + f); } catch (e) {}
+      });
+
+      // Try to read a file - should be forbidden with default settings
+      aqlfunctions.register("UnitTests::security::fileread", function () {
+        var fs = require('fs');
+        return fs.read('/etc/passwd');
+      });
+
+      // Try to write a file - should be forbidden with default settings
+      aqlfunctions.register("UnitTests::security::filewrite", function () {
+        var fs = require('fs');
+        fs.write('/tmp/arangodb-test-udf-security.txt', 'test');
+        return true;
+      });
+
+      // Try to read an env variable - should return undefined/null with default settings
+      aqlfunctions.register("UnitTests::security::envread", function () {
+        return process.env.PATH;
+      });
+
+      // Try to enumerate env variables - should return empty array with default settings
+      aqlfunctions.register("UnitTests::security::enuminenv", function () {
+        return Object.keys(process.env);
+      });
+
+      // Try to read startup options - should return empty object with default settings
+      aqlfunctions.register("UnitTests::security::getoptions", function () {
+        var internal = require('internal');
+        return internal.options();
+      });
+    },
+
+    tearDown : function () {
+      funcNames.forEach(function (f) {
+        try { aqlfunctions.unregister("UnitTests::security::" + f); } catch (e) {}
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that file read is blocked by default security settings
+////////////////////////////////////////////////////////////////////////////////
+
+    testFileReadBlocked : function () {
+      try {
+        let x = getQueryResults("RETURN UnitTests::security::fileread()");
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that file write is blocked by default security settings
+////////////////////////////////////////////////////////////////////////////////
+
+    testFileWriteBlocked : function () {
+      try {
+        let x = getQueryResults("RETURN UnitTests::security::filewrite()");
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that env variables are not exposed with default security settings
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnvVarNotExposed : function () {
+      // With default settings (empty allowlist), env vars are not exposed
+      let result = getQueryResults("RETURN UnitTests::security::envread()");
+      assertNull(result[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that env variable enumeration returns empty with default security settings
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnvVarsEnumerationEmpty : function () {
+      // With default settings, no env vars should be enumerable
+      let result = getQueryResults("RETURN UnitTests::security::enuminenv()");
+      assertEqual([], result[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that startup options are not exposed with default security settings
+////////////////////////////////////////////////////////////////////////////////
+
+    testStartupOptionsEmpty : function () {
+      // With default settings (empty allowlist), no startup options should be exposed
+      let result = getQueryResults("RETURN UnitTests::security::getoptions()");
+      assertEqual({}, result[0]);
+    }
+
+  };
+}
+
 jsunity.run(ahuacatlCallApplyTestSuite);
 jsunity.run(ahuacatlCallUserDefinedTestSuite);
+jsunity.run(ahuacatlUDFSecurityDefaultsTestSuite);
 
 return jsunity.done();

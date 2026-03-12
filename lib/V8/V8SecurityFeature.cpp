@@ -34,6 +34,7 @@
 #include "V8/V8SecurityFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -287,7 +288,16 @@ void V8SecurityFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
   // check if the regular expressions compile properly
 
+  // Only do the hardening in `arangod`, not `arangosh` or other
+  // client toos:
+  bool isArangod = ArangoGlobalContext::CONTEXT->binaryName() == "arangod";
+
   // startup options
+  if (isArangod && _options.startupOptionsAllowList.empty()) {
+    // If list is empty, put a pattern with only the empty string in
+    // there to have a sane default behaviour:
+    _options.startupOptionsAllowList.push_back("^$");
+  }
   convertToSingleExpression(_options.startupOptionsAllowList,
                             _startupOptionsAllowList);
   convertToSingleExpression(_options.startupOptionsDenyList,
@@ -296,6 +306,11 @@ void V8SecurityFeature::validateOptions(
                 "startup-options");
 
   // environment variables
+  if (isArangod && _options.environmentVariablesAllowList.empty()) {
+    // If list is empty, put a pattern with only the empty string in
+    // there to have a sane default behaviour:
+    _options.environmentVariablesAllowList.push_back("^$");
+  }
   convertToSingleExpression(_options.environmentVariablesAllowList,
                             _environmentVariablesAllowList);
   convertToSingleExpression(_options.environmentVariablesDenyList,
@@ -304,11 +319,21 @@ void V8SecurityFeature::validateOptions(
                 "environment-variables");
 
   // endpoints
+  if (isArangod && _options.endpointsAllowList.empty()) {
+    // If list is empty, put a pattern with only the empty string in
+    // there to have a sane default behaviour:
+    _options.endpointsAllowList.push_back("^$");
+  }
   convertToSingleExpression(_options.endpointsAllowList, _endpointsAllowList);
   convertToSingleExpression(_options.endpointsDenyList, _endpointsDenyList);
   testRegexPair(_endpointsAllowList, _endpointsDenyList, "endpoints");
 
   // file access
+  if (isArangod && _options.filesAllowList.empty()) {
+    // If list is empty, put a pattern with only the empty string in
+    // there to have a sane default behaviour:
+    _options.filesAllowList.push_back("^$");
+  }
   convertToSingleExpression(_options.filesAllowList, _filesAllowList);
   testRegexPair(_filesAllowList, "", "files");
 }
@@ -434,7 +459,8 @@ bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
 
 bool V8SecurityFeature::shouldExposeStartupOption(
     v8::Isolate* /*isolate*/, std::string const& name) const {
-  return checkAllowAndDenyList(name, true, _startupOptionsAllowListRegex,
+  return checkAllowAndDenyList(name, !_startupOptionsAllowList.empty(),
+                               _startupOptionsAllowListRegex,
                                !_startupOptionsDenyList.empty(),
                                _startupOptionsDenyListRegex)
       .result;
@@ -442,7 +468,8 @@ bool V8SecurityFeature::shouldExposeStartupOption(
 
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(
     v8::Isolate* /*isolate*/, std::string const& name) const {
-  return checkAllowAndDenyList(name, true, _environmentVariablesAllowListRegex,
+  return checkAllowAndDenyList(name, !_environmentVariablesAllowList.empty(),
+                               _environmentVariablesAllowListRegex,
                                !_environmentVariablesDenyList.empty(),
                                _environmentVariablesDenyListRegex)
       .result;
@@ -460,12 +487,12 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
   }
 
   auto endpointResult = checkAllowAndDenyList(
-      endpoint, true, _endpointsAllowListRegex, !_endpointsDenyList.empty(),
-      _endpointsDenyListRegex);
+      endpoint, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
+      !_endpointsDenyList.empty(), _endpointsDenyListRegex);
 
-  auto urlResult = checkAllowAndDenyList(url, true, _endpointsAllowListRegex,
-                                         !_endpointsDenyList.empty(),
-                                         _endpointsDenyListRegex);
+  auto urlResult = checkAllowAndDenyList(
+      url, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
+      !_endpointsDenyList.empty(), _endpointsDenyListRegex);
 
   return endpointResult.result || (urlResult.result && !endpointResult.deny);
 }
@@ -517,7 +544,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     return true;
   }
 
-  return checkAllowAndDenyList(path, true,
+  return checkAllowAndDenyList(path, !_filesAllowList.empty(),
                                _filesAllowListRegex, false, _filesAllowListRegex /*passed to match the signature but not used*/)
       .result;
 }
