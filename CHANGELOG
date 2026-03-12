@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-
+* No longer support `/_api/collection?collection=<collection-name>`, 
+  `/_api/document/<collection-id>`, and `/_api/collection/<collection-id>`.
+  
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
 
