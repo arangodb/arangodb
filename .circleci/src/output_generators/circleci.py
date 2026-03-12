@@ -268,7 +268,7 @@ class CircleCIGenerator(OutputGenerator):
                 {
                     "run-cppcheck": {
                         "name": "cppcheck",
-                        "requires": [build_jobs[0]]
+                        "requires": [build_jobs[0]],
                         "resource-class": self.sizer.get_resource_class(
                             ResourceSize.XLARGE, build_config.architecture
                         ),

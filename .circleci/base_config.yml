@@ -311,7 +311,6 @@ commands:
       - persist_from_workspace_s3:
           root: .
           archive: frontend.tar.bz2
-          
       - run:
           name: Log processes
           command: |
