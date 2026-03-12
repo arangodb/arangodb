@@ -665,12 +665,10 @@ R"=(
       ]
     }
 },
-"AsyncReplication": {},
 "Views": {
 "_system": {}
 },
 "Version": 50,
-"Singles": {},
 "Lock": "UNLOCKED"
 }
 )="
