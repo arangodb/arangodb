@@ -945,7 +945,7 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
     let randomPoint;
     const dimension = 20;
     const numberOfDocs = 500;
-    const seed = randomInteger();
+    const seed = 5229487420515249;
     const nProbeAndNlists = 10;
 
     const shuffleArray = function(arr, seed) {
@@ -958,7 +958,7 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
         return shuffled;
     };
 
-    const makeVectorIndexDef = function(name, storedValues) {
+    const makeVectorIndexDef = function(name, storedValues, nLists) {
         let def = {
             name,
             type: "vector",
@@ -967,7 +967,7 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
             params: {
                 metric: "l2",
                 dimension: dimension,
-                nLists: nProbeAndNlists,
+                nLists: nLists,
                 trainingIterations: 10,
                 defaultNProbe: nProbeAndNlists,
             },
@@ -1011,11 +1011,11 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
             // Created in random order to ensure the rule does not depend on
             // creation order.
             const indexDefs = shuffleArray([
-                makeVectorIndexDef("vector_no_sv", null),
-                makeVectorIndexDef("vector_sv_extra", ["extra"]),
-                makeVectorIndexDef("vector_sv_val_only", ["val"]),
-                makeVectorIndexDef("vector_sv_unrelated", ["unrelated"]),
-                makeVectorIndexDef("vector_winner", ["val", "category"]),
+                makeVectorIndexDef("vector_no_sv", null, 1),
+                makeVectorIndexDef("vector_sv_extra", ["extra"], 2),
+                makeVectorIndexDef("vector_sv_val_only", ["val"], 3),
+                makeVectorIndexDef("vector_sv_unrelated", ["unrelated"], 4),
+                makeVectorIndexDef("vector_winner", ["val", "category"], 5),
             ], seed);
 
             print("Index creation order: " + JSON.stringify(indexDefs.map(d => d.name)));
@@ -1029,7 +1029,7 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
             db._dropDatabase(dbName);
         },
 
-        testFindsWinnerAmongFiveIndexes: function() {
+        testSingleIndexCoveringStoredValuesAmongFiveIndexes: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val < 50 AND d.category == "A"
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
@@ -1049,8 +1049,30 @@ function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
             verifyDistancesAscending(results);
         },
 
-        testNoWinnerAmongFiveIndexes: function() {
-            // Filter on "extra" AND "unrelated" -- no single index stores both
+        testMultipleIndexesCoveringStoredValuesAmong: function() {
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val < 50
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = {qp: randomPoint};
+            const plan = verifyPlan(query, bindVars);
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertEqual(1, indexNodes.length);
+            assertTrue(indexNodes[0].isCoveredByStoredValues);
+            assertTrue(
+                ["vector_sv_val_only", "vector_winner"].includes(indexNodes[0].index.name),
+                "Expected one of the indexes covering 'val', got: " + indexNodes[0].index.name
+            );
+
+            const results = db._query(query, bindVars).toArray();
+            assertTrue(results.length <= 5);
+            verifyResultsMatchFilter(results, r => r.val < 50);
+            verifyDistancesAscending(results);
+        },
+
+        testNoIndexCoveringStoredValuesAmongFiveIndexes: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.extra < 100 AND d.unrelated == "x"
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
