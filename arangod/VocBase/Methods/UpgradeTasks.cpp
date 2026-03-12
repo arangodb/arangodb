@@ -812,7 +812,7 @@ Result UpgradeTasks::dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
     for (auto const& index : indexes) {
       if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
           index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-        LOG_TOPIC("d4e3f", WARN, Logger::STARTUP)
+        LOG_TOPIC("5550a", WARN, Logger::STARTUP)
             << "Dropping obsolete geo1/geo2 index '" << index->id().id()
             << "' from collection '" << collection->name()
             << "' - geo1/geo2 indexes are no longer supported";
@@ -821,7 +821,7 @@ Result UpgradeTasks::dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
             methods::Indexes::drop(*collection, index->id()).waitAndGet();
 
         if (res.fail()) {
-          LOG_TOPIC("d4e40", ERR, Logger::STARTUP)
+          LOG_TOPIC("5550b", ERR, Logger::STARTUP)
               << "Error dropping obsolete geo1/geo2 index: "
               << res.errorMessage();
           return res;
