@@ -9,9 +9,6 @@ defmodule ToastTest.Attribution do
   alias ToastTest.Attribution.TimeWindows
   alias ToastTest.Enrichment
 
-  @crash_log_window_before_s 10
-  @crash_log_window_after_s 5
-
   @spec run(
           ToastTest.ResultCollector.test_data(),
           ToastTest.ArtifactCollector.t(),
@@ -48,7 +45,7 @@ defmodule ToastTest.Attribution do
       server_artifacts = Map.get(artifacts, event.server_id)
 
       detail =
-        %{server: event.server_id}
+        %{server: event.server_id, crash_info: event.crash_info}
         |> enrich_coredumps(server_artifacts, opts)
         |> enrich_logs(server_artifacts, event.crash_info.timestamp)
 
@@ -95,11 +92,12 @@ defmodule ToastTest.Attribution do
 
   defp enrich_logs(detail, %{server: %{log_file: nil}}, _timestamp), do: detail
 
-  defp enrich_logs(detail, %{server: %{log_file: log_file}}, timestamp) do
-    start_dt = DateTime.add(timestamp, -@crash_log_window_before_s, :second)
-    end_dt = DateTime.add(timestamp, @crash_log_window_after_s, :second)
+  defp enrich_logs(detail, %{server: %{log_file: log_file}}, _timestamp) do
+    detail = Map.put(detail, :log_file, log_file)
 
-    case Enrichment.Logs.extract_window(log_file, start_dt, end_dt) do
+    # Extract only the last contiguous {crash} block — earlier crashes in the
+    # same log (e.g. from resilience tests) are expected and irrelevant.
+    case Enrichment.Logs.extract_crash_lines(log_file) do
       "" -> detail
       logs -> Map.put(detail, :logs, logs)
     end

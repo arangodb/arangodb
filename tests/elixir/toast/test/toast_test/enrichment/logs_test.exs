@@ -19,6 +19,94 @@ defmodule ToastTest.Enrichment.LogsTest do
 
   defp dt(iso), do: DateTime.from_iso8601(iso) |> elem(1)
 
+  describe "extract_crash_lines/1" do
+    test "returns last contiguous block of {crash} lines", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          "2026-03-11T15:22:17Z [22788-1] S INFO [abc01] {general} starting up",
+          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7902] {crash} caught signal 11",
+          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7903] {crash} Hello crash handler",
+          "2026-03-11T15:22:19Z [22788-30] S INFO [a7904] {general} shutting down"
+        ])
+
+      result = Logs.extract_crash_lines(path)
+
+      assert result =~ "caught signal 11"
+      assert result =~ "Hello crash handler"
+      refute result =~ "starting up"
+      refute result =~ "shutting down"
+    end
+
+    test "returns only the last crash block when multiple exist", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          "2026-03-11T15:00:00Z [1000-1] S FATAL [a7902] {crash} first crash signal 6",
+          "2026-03-11T15:00:01Z [1000-1] S INFO [c962b] {crash} first backtrace frame 1",
+          "2026-03-11T15:00:02Z [1000-1] S INFO [abc01] {general} server restarted",
+          "2026-03-11T15:00:10Z [2000-1] S INFO [abc02] {general} normal operation",
+          "2026-03-11T15:22:18Z [2000-30] S FATAL [a7902] {crash} second crash signal 11",
+          "2026-03-11T15:22:18Z [2000-30] S INFO [c962b] {crash} second backtrace frame 1",
+          "2026-03-11T15:22:18Z [2000-30] S INFO [308c3] {crash} second backtrace frame 2",
+          "2026-03-11T15:22:18Z [2000-30] S FATAL [a7903] {crash} Hello crash handler"
+        ])
+
+      result = Logs.extract_crash_lines(path)
+
+      assert result =~ "second crash signal 11"
+      assert result =~ "second backtrace frame 1"
+      assert result =~ "second backtrace frame 2"
+      assert result =~ "Hello crash handler"
+      refute result =~ "first crash"
+      refute result =~ "first backtrace"
+    end
+
+    test "returns empty string when no {crash} lines", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          "2026-03-11T15:22:17Z [22788-1] S INFO [abc01] {general} starting up",
+          "2026-03-11T15:22:18Z [22788-1] S FATAL [abc02] {startup} something failed"
+        ])
+
+      assert Logs.extract_crash_lines(path) == ""
+    end
+
+    test "returns empty string for nonexistent file" do
+      assert Logs.extract_crash_lines("/nonexistent/file.log") == ""
+    end
+
+    test "returns empty string for empty file", %{tmp_dir: dir} do
+      path = Path.join(dir, "empty.log")
+      File.write!(path, "")
+      assert Logs.extract_crash_lines(path) == ""
+    end
+
+    test "handles crash block at very end of file (no trailing non-crash lines)", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          "2026-03-11T15:22:17Z [22788-1] S INFO [abc01] {general} starting up",
+          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7902] {crash} caught signal 11",
+          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7903] {crash} Hello crash handler"
+        ])
+
+      result = Logs.extract_crash_lines(path)
+      assert result =~ "caught signal 11"
+      assert result =~ "Hello crash handler"
+      refute result =~ "starting up"
+    end
+
+    test "handles file with only crash lines", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7902] {crash} caught signal 11",
+          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7903] {crash} Hello crash handler"
+        ])
+
+      result = Logs.extract_crash_lines(path)
+      assert result =~ "caught signal 11"
+      assert result =~ "Hello crash handler"
+    end
+  end
+
   describe "extract_window/3" do
     test "returns lines within time window", %{tmp_dir: dir} do
       path =

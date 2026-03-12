@@ -354,7 +354,8 @@ defmodule Toast.Process.ServerProcess do
         crash_info = %Toast.Process.CrashInfo{
           exit_status: exit_status,
           signal: signal,
-          timestamp: DateTime.utc_now()
+          timestamp: DateTime.utc_now(),
+          os_pid: state.os_pid
         }
 
         Logger.error("#{state.id} crashed (status=#{exit_status}, signal=#{inspect(signal)})")

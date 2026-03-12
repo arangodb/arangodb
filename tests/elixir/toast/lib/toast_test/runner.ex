@@ -523,18 +523,7 @@ defmodule ToastTest.Runner do
   end
 
   defp print_post_exec_summary(suite_result) do
-    exunit_tests =
-      for %{type: :test_failure, detail: detail} <- suite_result.issues, do: detail.test
-
-    if exunit_tests != [], do: ToastTest.CLIFormatter.print_failure_summary(exunit_tests)
-
-    for %{type: :crash, detail: detail} <- suite_result.issues do
-      IO.puts([IO.ANSI.red(), "Server crashed: #{detail.server}", IO.ANSI.reset()])
-    end
-
-    for %{type: :sanitizer_report, detail: detail} <- suite_result.issues do
-      IO.puts([IO.ANSI.yellow(), "Sanitizer report: #{detail.server}", IO.ANSI.reset()])
-    end
+    ToastTest.PostExecSummary.print(suite_result)
   end
 
   defp derive_suite_name(suite_module) do
