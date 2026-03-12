@@ -661,7 +661,7 @@ class CircleCIGenerator(OutputGenerator):
 
         result_jobs = []
         for deployment in deployments:
-            is_cluster = deployment_type == "cluster"
+            is_cluster = deployment == "cluster"
             sanitizer_suffix = build_config.build_variant.get_suffix()
             size_override = self._get_size_override(job.name, build_config, is_cluster)
             size = size_override or job.options.size or ResourceSize.SMALL
