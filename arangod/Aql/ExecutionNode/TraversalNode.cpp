@@ -712,7 +712,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     containers::HashSet<size_t> toRemove;
     aql::Condition::collectOverlappingMembers(
         _plan, options()->tmpVar(), remainderCondition, indexCondition,
-        toRemove, nullptr, false);
+        toRemove, nullptr, true, false);
     size_t n = remainderCondition->numMembers();
 
     if (n != toRemove.size()) {

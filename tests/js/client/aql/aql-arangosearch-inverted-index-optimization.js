@@ -115,6 +115,35 @@ function testOptimizeFilterCondition() {
         }
       }
       assertTrue(hasFilter);
+    },
+
+    //  COR-267: https://github.com/arangodb/arangodb/issues/21944
+    testArrayExpansionWithInvertedIndexAndPostFilter: function() {
+      db._createDocumentCollection('arr_exp_test');
+      db.arr_exp_test.ensureIndex({
+        "type": "inverted",
+        "name": "arr_exp_test_inv",
+        "inBackground": true,
+        "features": [],
+        "cache": false,
+        "includeAllFields": false,
+        "trackListPositions": false,
+        "searchField": false,
+        "fields": [
+            {
+            "name": "labels[*]"
+            }
+        ]
+      });
+      db.arr_exp_test.insert({ name: 'record_1', labels: [ 'epss' ], _is_latest: true });
+      db.arr_exp_test.insert({ name: 'record_2', labels: [ 'epss' ], _is_latest: false });
+
+      const query = `for doc in arr_exp_test OPTIONS { indexHint: 'arr_exp_test_inv', forceIndexHint: true,
+        waitForSync: true } FILTER doc.labels[*] == 'epss' and doc._is_latest == true return doc`;
+      let results = db._query(query).toArray();
+
+      assertEqual(results.length, 1);
+      assertEqual(results[0].name, 'record_1');
     }
   };
 }
