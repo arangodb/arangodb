@@ -255,6 +255,9 @@ jobs:
           configuration_path: continuation_config.yml
           parameters: parameters.json
 
+      - store_artifacts:
+          path: continuation_config.yml
+
 # our single workflow, that triggers the setup job defined above
 workflows:
   setup:
