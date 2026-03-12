@@ -515,24 +515,6 @@ directory specified by `--result-dir`):
 - `results.json` -- Structured test results with diagnostics
 - `results.xml` -- JUnit XML format for CI integration
 
-### mix toast.analyze
-
-Post-run analysis of exported results:
-
-```bash
-# Summary overview (default)
-mix toast.analyze toast-results/results.json
-
-# Detailed failure info with stack traces
-mix toast.analyze toast-results/results.json --failures
-
-# Crash diagnostics, sanitizer errors, coredump traces
-mix toast.analyze toast-results/results.json --crashes
-
-# Slowest tests
-mix toast.analyze toast-results/results.json --slow 20
-```
-
 ### Exit Codes
 
 | Code | Meaning |

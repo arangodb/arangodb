@@ -221,21 +221,23 @@ stop_and_collect(deployment)
   |
   2. Controller.shutdown(timeout)
   |   Stop health monitors, stop server processes
-  |   Collect base diagnostics per server:
-  |     - sanitizer_errors: Sanitizer.collect_errors(server_dir, id)
-  |     - server_log: ServerLog.scan(log_content)
-  |     - crash_report: CrashLogParser.parse(log_content)
-  |     - server_error: state.error
-  |     - server: %ServerInstance{...}
+  |   Collect per-server state (error, ServerInstance)
   |
-  3. Coredump analysis (post-shutdown)
+  3. ArtifactCollector -- discover coredumps and sanitizer logs per server
   |   For each server with a recorded os_pid:
   |     Coredump.discover(server_dir, os_pid)
-  |     Coredump.analyze(core_path, binary_path, debugger)
+  |   Glob sanitizer log files from server directories
+  |
+  4. Attribution -- produce typed issues from test data + artifacts + crash events
+  |   Uses TimeWindows to attribute diagnostics to tests
+  |
+  5. Enrichment -- enrich issues with content
+  |   Enrichment.Logs: extract crash lines and time-windowed excerpts from logs
+  |   Enrichment.Sanitizer: read and classify sanitizer report files
+  |   Enrichment.Coredump: run debugger analysis on discovered core files
   |   Runs within coredump_timeout budget
   |
-  4. merge_diagnostics(base, agency_dump, coredump_reports)
-     Combine all results into a single diagnostics map
+  6. Build SuiteResult with typed issues for export
 ```
 
 
@@ -265,12 +267,13 @@ Channel 2 catches liveness failures (deadlock, resource exhaustion) where the
 process is still alive but not serving requests.
 
 After shutdown, crash details are extracted from the server log by
-`CrashLogParser`:
+`Enrichment.Logs`:
 
 ```
 Log line scanning:
   "{crash}" topic  --> crash_header, signal, backtrace frames
   "FATAL" level    --> fatal_lines (non-crash fatals: assertion failures, etc.)
+  Time-windowed excerpts for test attribution
 
 Output:
   %{
@@ -360,13 +363,20 @@ all servers and core files. If analysis of one core takes too long, it's
 killed and the remaining budget is used for the next.
 
 
-### Test Attribution (Matcher)
+### Test Attribution
 
-After diagnostics are collected, crashes and sanitizer errors are matched to
-the tests that triggered them using timestamps:
+After artifacts are collected, `ToastTest.Attribution` orchestrates issue
+production from test data, artifacts, and crash events. It uses
+`ToastTest.Attribution.TimeWindows` to attribute diagnostics to specific tests
+using timestamps:
 
 ```
-Matcher.match(items, test_results, item_key, opts)
+Attribution produces SuiteResult issues from:
+  - test results (from ResultCollector)
+  - artifacts (from ArtifactCollector: coredumps, sanitizer logs)
+  - crash events (from Controller)
+
+TimeWindows.attribute(items, test_results)
   |
   For each item (crash or sanitizer error) with a timestamp:
     For each test with started_at / finished_at:
@@ -376,11 +386,7 @@ Matcher.match(items, test_results, item_key, opts)
         --> :none otherwise
     Take best match (:high stops search, :low continues looking)
   |
-  Returns:
-    %{
-      matched: [%{module: M, test: "test name", confidence: :high, <key>: item}],
-      unmatched: [item]  -- items with no matching test window
-    }
+  Returns attributed and unattributed items
 ```
 
 The 5-second tolerance for `:low` confidence accounts for:
@@ -388,47 +394,17 @@ The 5-second tolerance for `:low` confidence accounts for:
 - Crashes that occur during test teardown / on_exit handlers
 - Clock granularity between Elixir monotonic time and OS timestamps
 
-Two domain-specific modules delegate to `Matcher`:
-
-- `CrashMatcher.match/3` -- extracts crash reports from diagnostics (handles
-  both single/cluster), filters to crashes with signal + timestamp, delegates
-  to `Matcher.match/4` with `:crash` key
-
-- `SanitizerMatcher.match/3` -- extracts all sanitizer errors, delegates to
-  `Matcher.match/4` with `:error` key
+`Attribution` handles both crash and sanitizer attribution internally,
+producing typed issues for the `SuiteResult`.
 
 
-### Diagnostics Data Shape
+### SuiteResult Data Shape
 
-**Single-server diagnostics** (flat map):
-
-```elixir
-%{
-  sanitizer_errors: [%{content, file_path, timestamp, sanitizer_type, server_id}],
-  server_log: %{assertion_failures: [...], warnings: [...]},
-  crash_report: %{signal_number, signal_name, crash_header, backtrace, ...},
-  server_error: {:server_crashed, server_id, crash_info} | nil,
-  server: %ServerInstance{...},
-  agency_dump: %{...} | nil,       # added by merge_diagnostics
-  coredump_reports: [%Report{...}]  # added by merge_diagnostics
-}
-```
-
-**Cluster diagnostics** (map of server_id => per-server diagnostics):
-
-```elixir
-%{
-  "agent1" => %{sanitizer_errors: [...], crash_report: ..., ...},
-  "dbserver1" => %{...},
-  "coordinator1" => %{...},
-  ...
-  agency_dump: %{...},        # top-level, not per-server
-  coredump_reports: [...]      # top-level
-}
-```
-
-`Toast.Diagnostics.cluster_diagnostics?/1` distinguishes these by checking
-whether the map has server ID keys rather than known diagnostic keys.
+The diagnostics pipeline produces a `ToastTest.SuiteResult` struct with typed
+issues rather than a raw diagnostics map. Issues are produced by `Attribution`
+and enriched by the `Enrichment.*` modules. The `SuiteResult` is the central
+data structure consumed by both CLI output (`PostExecSummary`) and export
+(`SuiteResult.JSON`, `SuiteResult.JUnitXML`).
 
 
 ## Results and Export
@@ -442,21 +418,22 @@ Test execution
   |      Receives ExUnit events
   |      Prints Google Test-style output with timestamps
   |
-  +--> ResultFormatter (GenServer)
+  +--> ResultCollector (GenServer)
   |      Receives ExUnit events
   |      Collects structured test results into Application env
   |      Stores as %{tests: [...], suite_started_at, suite_finished_at, times_us}
   |
   +--> After suite completes:
-         stop_and_collect(deployment) --> diagnostics
-         CrashMatcher.match(diagnostics, test_results) --> crash_matching
-         SanitizerMatcher.match(diagnostics, test_results) --> sanitizer_matching
-         Summary.format_crash_attribution(crash_matching) --> CLI output
-         Summary.format_sanitizer_issues(sanitizer_matching) --> CLI output
-         ResultExporter.export()
-           --> JSON.render(results, diagnostics, sanitizer, crash)
-           --> JUnitXML.render(results, diagnostics, sanitizer, crash)
-           --> writes results.json, results.xml to result_dir
+         stop_and_collect(deployment)
+         ArtifactCollector -- discover coredumps, sanitizer logs per server
+         Attribution -- produce typed issues using TimeWindows
+         Enrichment.Logs -- extract crash lines, log excerpts
+         Enrichment.Sanitizer -- read and classify sanitizer reports
+         Enrichment.Coredump -- run debugger analysis on core files
+         PostExecSummary.format(...) --> CLI output
+         SuiteResult.JSON.render(suite_result) --> results.json
+         SuiteResult.JUnitXML.render(suite_result) --> results.xml
+         --> writes to result_dir
 ```
 
 ### CI Result Tiers

@@ -15,7 +15,7 @@ comprehensive diagnostics when things go wrong.
 
 ## System Overview
 
-Toast has seven major subsystems:
+Toast has eight major subsystems:
 
 ```
 +---------------------------------------------------------------------+
@@ -28,14 +28,18 @@ Toast has seven major subsystems:
   +-------------+    +------------------+    +------------------+
                               |
               +---------------+---------------+
-              |                               |
-              v                               v
-  +-------------------------+     +------------------------+
-  | Deployment              |     | Diagnostics            |
-  | (Controller, Lifecycle, |     | (Coredump, Sanitizer,  |
-  |  Factory, Health)       |     |  CrashLogParser,       |
-  +-------------------------+     |  Matcher, Summary)     |
-              |                   +------------------------+
+              |               |               |
+              v               v               v
+  +-----------------+  +--------------+  +------------------------+
+  | Deployment      |  | Attribution  |  | Diagnostics            |
+  | (Controller,    |  | & Enrichment |  | (Coredump, Sanitizer,  |
+  |  Lifecycle,     |  | (Attribution,|  |  AgencyDump)           |
+  |  Factory,       |  |  Logs,       |  +------------------------+
+  |  Health)        |  |  Sanitizer,  |           ^
+  +-----------------+  |  Coredump,   |           |
+              |        |  PostExec    |     (uses low-level
+              |        |  Summary)    |      analysis tools)
+              |        +--------------+
               v
   +-------------------------+
   | Process                 |
@@ -55,8 +59,8 @@ Data flows top-to-bottom during setup and test execution:
 2. Runner starts a deployment per suite via `Toast.Deployment.start/2`
 3. Controller (GenServer) orchestrates server launch via Factory + ServerProcess
 4. Tests run against the deployment via Client REST wrappers
-5. On completion, diagnostics are collected (logs, sanitizer, coredumps)
-6. Results are exported to JSON/XML and optionally packaged for CI
+5. On completion, artifacts are collected and attributed to tests via Attribution + Enrichment
+6. Results are structured as SuiteResult, exported to JSON/XML, and optionally packaged for CI
 
 
 ## OTP Supervision Tree
@@ -113,6 +117,7 @@ Design decisions:
 | `Toast.Deployment.Controller` | GenServer + behaviour. Shared state machine. Delegates to mode callbacks. |
 | `Controller.SingleServer` | Mode callback for single arangod instance. |
 | `Controller.Cluster` | Mode callback for agent/dbserver/coordinator cluster. |
+| `Controller.Helpers` | Helper functions for Controller (server lookup, update, health monitor management, relaunch logic). |
 | `Toast.Deployment.ServerLifecycle` | Pure functions for server ops (stop, kill, pause, resume, relaunch, crash handling). Used by Controller. |
 | `Toast.Deployment.Factory` | Builds launch specs (executable path, args, env, dirs) from Config. |
 | `Toast.Deployment.CommandBuilder` | Generates arangod CLI arguments per role. |
@@ -127,6 +132,8 @@ Design decisions:
 |--------|------|
 | `Toast.Process.ServerProcess` | GenServer wrapping erlexec for one OS process. Lifecycle + crash detection. |
 | `Toast.Process.HealthMonitor` | GenServer polling HTTP health. Notifies listener after N consecutive failures. |
+| `Toast.Process.CrashInfo` | Data struct for crash information (exit status, signal, timestamp, PID). |
+| `Toast.Process.CrashEvent` | Data struct for crash event metadata. |
 | `Toast.Process.Supervisor` | DynamicSupervisor for ServerProcess and HealthMonitor children. |
 
 ### Test Execution (`ToastTest.*`)
@@ -140,17 +147,20 @@ Design decisions:
 | `ToastTest.SuiteRun` | Data struct: per-suite execution context (module, deployment, deadline). |
 | `ToastTest.DeploymentRegistry` | ETS-based mapping of suite modules to active deployments. |
 | `ToastTest.CrashMonitor` | Default `on_crash` callback; calls `Runner.abort!`. |
+| `ToastTest.Abort` | ETS-backed suite-level abort state with human-readable messages. |
 | `ToastTest.ProcessHistory` | GenServer recording server lifecycle events (start/stop/crash). |
 | `ToastTest.StateCleanup` | Resets shared state between suite runs (ETS tables, formatters, callbacks). |
+| `ToastTest.TestLifecycle` | Shared test lifecycle primitives (spawn_setup_all, spawn_test, etc.) used by both Interactive and Runner. |
 | `ToastTest.Interactive` | Run individual tests against an existing deployment (debugging). |
 
 ### Diagnostics (`Toast.Diagnostics.*`)
 
+Lower-level infrastructure for sanitizer detection, core dump analysis, and
+agency state capture. Higher-level attribution and enrichment logic lives in
+`ToastTest.Attribution` and `ToastTest.Enrichment.*`.
+
 | Module | Role |
 |--------|------|
-| `Toast.Diagnostics` | Shared utility: detect cluster vs single-server diagnostics layout. |
-| `Toast.Diagnostics.CrashLogParser` | Parse arangod log files for crash signal, backtrace, FATAL lines. |
-| `Toast.Diagnostics.ServerLog` | Scan logs for non-crash issues (assertion failures, FATAL warnings). |
 | `Toast.Diagnostics.Sanitizer` | Detect sanitizers, build env vars, collect log files post-shutdown. |
 | `Toast.Diagnostics.Coredump` | Discover core dumps, run GDB/LLDB analysis. |
 | `Toast.Diagnostics.Coredump.Debugger` | Behaviour for debugger backends + shared frame filtering. |
@@ -158,10 +168,23 @@ Design decisions:
 | `Toast.Diagnostics.Coredump.LLDB` | LLDB-specific command building and output parsing. |
 | `Toast.Diagnostics.Coredump.Report` | Data struct: structured coredump analysis result. |
 | `Toast.Diagnostics.AgencyDump` | Capture agency config/state/plan from live agents (cluster only). |
-| `Toast.Diagnostics.Matcher` | Timestamp-based matching of diagnostic items to test windows. |
-| `Toast.Diagnostics.CrashMatcher` | Match crash reports to tests using Matcher. |
-| `Toast.Diagnostics.SanitizerMatcher` | Match sanitizer errors to tests using Matcher. |
-| `Toast.Diagnostics.Summary` | Format diagnostic results for CLI output (crash attribution, sanitizer). |
+
+### Attribution & Enrichment (`ToastTest.Attribution.*`, `ToastTest.Enrichment.*`)
+
+Orchestrates issue production from test data, artifacts, and deployment errors.
+`ArtifactCollector` discovers filesystem artifacts, `Attribution` combines them
+with test results into `SuiteResult` issues, and `Enrichment.*` modules handle
+reading/parsing specific artifact types.
+
+| Module | Role |
+|--------|------|
+| `ToastTest.Attribution` | Orchestrates issue production by combining test failures, crash analysis, and sanitizer reports into SuiteResult issues. |
+| `ToastTest.Attribution.TimeWindows` | Time window calculations for attributing diagnostics to tests. |
+| `ToastTest.ArtifactCollector` | Inventories filesystem artifacts (coredumps, sanitizer logs) for server instances. Pure discovery only. |
+| `ToastTest.Enrichment.Logs` | Extract excerpts from ArangoDB log files. Supports time-windowed and crash-line extraction. |
+| `ToastTest.Enrichment.Sanitizer` | Read and classify sanitizer report files. |
+| `ToastTest.Enrichment.Coredump` | Enrichment wrapper around Toast.Diagnostics.Coredump.analyze, transforms Report to SuiteResult issue format. |
+| `ToastTest.PostExecSummary` | Post-execution summary formatting for CLI output (crash attribution, sanitizer errors, coredump traces). |
 
 ### Client (`Toast.Client.*`)
 
@@ -179,10 +202,10 @@ Design decisions:
 | Module | Role |
 |--------|------|
 | `ToastTest.CLIFormatter` | Google Test-style console output with timestamps. Replaces ExUnit.CLIFormatter. |
-| `ToastTest.ResultFormatter` | ExUnit formatter collecting test results for structured export. |
-| `ToastTest.ResultExporter` | Writes results.json and results.xml from collected data. |
-| `ToastTest.ResultExporter.JSON` | JSON serialization of test results + diagnostics. |
-| `ToastTest.ResultExporter.JUnitXML` | JUnit XML serialization for CI integration. |
+| `ToastTest.ResultCollector` | ExUnit formatter that collects test results with module-level timestamp tracking. |
+| `ToastTest.SuiteResult` | Data struct for structured suite results with typed issues, module results, and test results. |
+| `ToastTest.SuiteResult.JSON` | JSON serialization of SuiteResult. |
+| `ToastTest.SuiteResult.JUnitXML` | JUnit XML serialization of SuiteResult for CI. |
 | `Toast.ResultPackaging` | Tiered CI artifact packaging (Tier 1: always, Tier 2: logs archive, Tier 3: coredumps). |
 
 ### Utilities
@@ -191,6 +214,7 @@ Design decisions:
 |--------|------|
 | `Toast.Config` | Load configuration from env vars, CLI opts, `.toast.local.exs`. |
 | `Toast.PortAllocator` | GenServer for sequential port allocation with socket probing. |
+| `Toast.Utils` | Utility functions (conditional_put, compact, compact_join). |
 | `Toast.Utils.Filesystem` | Server directory creation, arangod binary discovery, repo root detection. |
 | `Toast.LogFormatter` | Custom log format for both Elixir Logger and Erlang `:logger` handler. |
 
@@ -201,7 +225,6 @@ Design decisions:
 | `Mix.Tasks.Toast` | Main entry point: suite discovery, compilation, runner invocation. |
 | `Mix.Tasks.Toast.Helpers` | Pure helper functions for CLI arg parsing and option mapping. |
 | `Mix.Tasks.Toast.Gen.Suite` | Code generator for new test suites. |
-| `Mix.Tasks.Toast.Analyze` | Post-run analysis of results.json (failures, crashes, performance). |
 
 
 ## Deployment Subsystem
@@ -407,7 +430,7 @@ The Controller classifies the crash:
   |           Update expected_crashes with crash_info.
   |           Set status based on derive_status().
   |
-  +-- NO --> Is server.intentional == true?
+  +-- NO --> Is server.expecting_exit == true?
              +-- YES --> Was signal in [nil, 15]?
              |           +-- YES --> :intentional_exit (clean SIGTERM from stop_server)
              |           +-- NO  --> :crash_during_intentional_stop
@@ -437,7 +460,7 @@ Tests can manipulate deployment servers for chaos testing:
 | `start_server` | Relaunch stopped/crashed | `relaunch_and_wait` | Resumed |
 
 Health monitors are suspended during intentional operations to prevent false
-unhealthy notifications. The `intentional` flag on ServerInstance prevents the
+unhealthy notifications. The `expecting_exit` flag on ServerInstance prevents the
 Controller from treating the subsequent process exit as a crash.
 
 ### Target Resolution
@@ -593,9 +616,3 @@ suites/my_suite/
   test_example.exs -- example test using the suite
 ```
 
-### `mix toast.analyze`
-
-Post-run analysis of `results.json`:
-- `--failures`: detailed failure info with stack traces
-- `--crashes`: crash diagnostics, sanitizer errors, coredump traces
-- `--slow N`: N slowest tests with durations
