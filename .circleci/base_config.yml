@@ -298,10 +298,10 @@ commands:
       - attach_workspace:
           at: .
       - run:
-          persist_from_workspace_s3:
+          - persist_from_workspace_s3:
             root: .
             archive: << parameters.arch >>_binaries.tar.gz
-          persist_from_workspace_s3:
+          - persist_from_workspace_s3:
             root: .
             archive: frontend.tar.gz
           
