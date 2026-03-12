@@ -149,7 +149,7 @@ commands:
 
             cd "$ROOT"
 
-            tar -cJf "$TAR" $PATHS
+            tar -cjf "$TAR" $PATHS
             ls -l "$TAR"
             aws configure set profile.anon.s3.multipart_threshold 5GB
             aws s3 cp --no-sign-request --profile anon \
@@ -192,7 +192,7 @@ commands:
             aws s3 cp --no-sign-request --profile anon \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}" \
               "$TAR"
-            tar -xJfC $PATHS "$TAR" 
+            cd $PATHS; tar -xjf "$TAR" 
 
   checkout-arangodb:
     parameters:
@@ -307,10 +307,10 @@ commands:
           at: .
       - persist_from_workspace_s3:
           root: .
-          archive: << parameters.arch >>_binaries.tar.xz
+          archive: << parameters.arch >>_binaries.tar.bz2
       - persist_from_workspace_s3:
           root: .
-          archive: frontend.tar.xz
+          archive: frontend.tar.bz2
           
       - run:
           name: Log processes
@@ -539,7 +539,7 @@ jobs:
       - persist_to_workspace_s3:
           root: .
           paths: js/apps/system/_admin/aardvark/APP/react/build
-          archive: frontend.tar.xz
+          archive: frontend.tar.bz2
 
   compile-linux:
     parameters:
@@ -668,7 +668,7 @@ jobs:
                 # build/3rdParty/snowball/libstemmer/ required for cppcheck
                 # not there? install.tar.gz
                 root: .
-                archive: << parameters.arch >>_binaries.tar.xz
+                archive: << parameters.arch >>_binaries.tar.bz2
                 paths: |
                   VERSIONS
                   ARANGO-VERSION
@@ -868,7 +868,7 @@ jobs:
   run-rta-tests:
     machine:
       image: ubuntu-2204:current
-    resource_class: large
+    resource_class: << parameters.size >>
     parameters:
       suiteName:
         type: string
@@ -966,7 +966,7 @@ jobs:
   run-cppcheck:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    resource_class: medium+
+    resource_class: << parameters.resource-class >>
     steps:
       - run:
           name: Prepare container
