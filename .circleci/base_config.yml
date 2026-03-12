@@ -130,7 +130,7 @@ commands:
           command: |
             set -eo pipefail
             set +x
-            python3 -m pip install awscli
+            python3 -m pip install awscli tests/js/client/aql/aql-skipping-cluster.js
 
             ROOT="<< parameters.root >>"
             PATHS="<< parameters.paths >>"
