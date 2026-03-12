@@ -229,7 +229,12 @@ class CircleCIGenerator(OutputGenerator):
         suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}-frontend"
 
-        return {"build-frontend": {"name": name}}
+        return {"build-frontend": {
+            "name": name,
+            "resource-class": self.sizer.get_resource_class(
+                ResourceSize.XXLARGE, build_config.architecture
+            ),
+        }}
 
     def _create_non_maintainer_build_job(
         self, build_config: BuildConfig
