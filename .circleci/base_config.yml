@@ -130,6 +130,7 @@ commands:
           command: |
             set -eo pipefail
             set +x
+            python3 -m pip install awscli
 
             ROOT="<< parameters.root >>"
             PATHS="<< parameters.paths >>"
@@ -356,7 +357,7 @@ jobs:
             # we are only interested in the rta-makedata submodule because we want to run eslint on it,
             # but we do not care about the other submodules (specifically we do _not_ want to clone v8)
             git submodule update --init 3rdParty/rta-makedata
-      - persist_to_workspace_s3:
+      - persist_to_workspace:
           root: .
           paths: .
 
