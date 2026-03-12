@@ -434,8 +434,7 @@ bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
 
 bool V8SecurityFeature::shouldExposeStartupOption(
     v8::Isolate* /*isolate*/, std::string const& name) const {
-  return checkAllowAndDenyList(name, !_startupOptionsAllowList.empty(),
-                               _startupOptionsAllowListRegex,
+  return checkAllowAndDenyList(name, true, _startupOptionsAllowListRegex,
                                !_startupOptionsDenyList.empty(),
                                _startupOptionsDenyListRegex)
       .result;
@@ -443,8 +442,7 @@ bool V8SecurityFeature::shouldExposeStartupOption(
 
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(
     v8::Isolate* /*isolate*/, std::string const& name) const {
-  return checkAllowAndDenyList(name, !_environmentVariablesAllowList.empty(),
-                               _environmentVariablesAllowListRegex,
+  return checkAllowAndDenyList(name, true, _environmentVariablesAllowListRegex,
                                !_environmentVariablesDenyList.empty(),
                                _environmentVariablesDenyListRegex)
       .result;
@@ -462,12 +460,12 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
   }
 
   auto endpointResult = checkAllowAndDenyList(
-      endpoint, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
-      !_endpointsDenyList.empty(), _endpointsDenyListRegex);
+      endpoint, true, _endpointsAllowListRegex, !_endpointsDenyList.empty(),
+      _endpointsDenyListRegex);
 
-  auto urlResult = checkAllowAndDenyList(
-      url, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
-      !_endpointsDenyList.empty(), _endpointsDenyListRegex);
+  auto urlResult = checkAllowAndDenyList(url, true, _endpointsAllowListRegex,
+                                         !_endpointsDenyList.empty(),
+                                         _endpointsDenyListRegex);
 
   return endpointResult.result || (urlResult.result && !endpointResult.deny);
 }
@@ -519,7 +517,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     return true;
   }
 
-  return checkAllowAndDenyList(path, !_filesAllowList.empty(),
+  return checkAllowAndDenyList(path, true,
                                _filesAllowListRegex, false, _filesAllowListRegex /*passed to match the signature but not used*/)
       .result;
 }
