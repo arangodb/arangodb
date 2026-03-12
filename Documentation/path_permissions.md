@@ -170,22 +170,22 @@ Also registered at `/_api/version` (line 601) with identical behavior.
 
 This handler has highly variable auth by sub-path:
 
-| Method | Sub-path | Permission | Notes | Ref |
-|--------|----------|------------|-------|-----|
-| GET | `/availability` | **NONE** | Auth bypassed at CommTask level. Intentionally unauthenticated health check. | CommTask.cpp:851 |
-| GET | `/mode` | **ANY** | No in-handler check | |
-| PUT | `/mode` | **_system** + **DB:RW** on `_system` | Checks `databaseAuthLevel` for user on `_system` | :192-205 |
-| GET | `/id` | **ANY** | Returns server ID | |
-| GET | `/role` | **ANY** | Returns server role | |
-| GET | `/databaseDefaults` | **ANY** | | |
-| GET | `/tls` | **ANY** | | |
-| POST | `/tls` | **SUPERUSER** | Reload TLS config | :279 |
-| GET | `/api-calls` | **SUPERUSER** or **ADMIN** | Depends on `--server.api-recording-only-superuser` | :326-338 |
-| GET | `/aql-queries` | **SUPERUSER** or **ADMIN** | Depends on `--server.api-recording-only-superuser` | :381-393 |
-| GET | `/jwt` | **ANY** | **Enterprise only.** Returns JWT secret hashes. Community returns 404. | EE:RestAdminServerHandlerEE.cpp:87 |
-| POST | `/jwt` | **SUPERUSER** | **Enterprise only.** Reload JWT secrets from file. Requires `isAuthEnabled() && isSuperuser()`. Community returns 404. | EE:RestAdminServerHandlerEE.cpp:95-96 |
-| GET | `/encryption` | **ANY** | **Enterprise only.** Returns encryption key hashes. Community returns 404. Not available on coordinators. Requires encryption enabled. | EE:RestAdminServerHandlerEE.cpp:138 |
-| POST | `/encryption` | **SUPERUSER** | **Enterprise only.** Rotate encryption keys. Requires `isAuthEnabled() && isSuperuser()`. Not on coordinators. Requires encryption + key rotation enabled. | EE:RestAdminServerHandlerEE.cpp:146-147 |
+| Method | Sub-path            | Permission                           | Notes                                                                                                                                                      | Ref                                     |
+|--------|---------------------|--------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|
+| GET    | `/availability`     | **NONE**                             | Auth bypassed at CommTask level. Intentionally unauthenticated health check.                                                                               | CommTask.cpp:851                        |
+| GET    | `/mode`             | **ANY**                              | No in-handler check                                                                                                                                        |                                         |
+| PUT    | `/mode`             | **_system** + **DB:RW** on `_system` | Checks `databaseAuthLevel` for user on `_system`                                                                                                           | :192-205                                |
+| GET    | `/id`               | **ANY**                              | Returns server ID                                                                                                                                          |                                         |
+| GET    | `/role`             | **ANY**                              | Returns server role                                                                                                                                        |                                         |
+| GET    | `/databaseDefaults` | **ANY**                              |                                                                                                                                                            |                                         |
+| GET    | `/tls`              | **ANY**                              |                                                                                                                                                            |                                         |
+| POST   | `/tls`              | **SUPERUSER**                        | Reload TLS config                                                                                                                                          | :279                                    |
+| GET    | `/api-calls`        | **SUPERUSER** or **ADMIN**           | Depends on `--server.api-recording-only-superuser`                                                                                                         | :326-338                                |
+| GET    | `/aql-queries`      | **SUPERUSER** or **ADMIN**           | Depends on `--server.api-recording-only-superuser`                                                                                                         | :381-393                                |
+| GET    | `/jwt`              | **ANY**                              | **Enterprise only.** Returns JWT secret hashes. Community returns 404.                                                                                     | EE:RestAdminServerHandlerEE.cpp:87      |
+| POST   | `/jwt`              | **SUPERUSER**                        | **Enterprise only.** Reload JWT secrets from file. Requires `isAuthEnabled() && isSuperuser()`. Community returns 404.                                     | EE:RestAdminServerHandlerEE.cpp:95-96   |
+| GET    | `/encryption`       | **ANY**                              | **Enterprise only.** Returns encryption key hashes. Community returns 404. Not available on coordinators. Requires encryption enabled.                     | EE:RestAdminServerHandlerEE.cpp:138     |
+| POST   | `/encryption`       | **SUPERUSER**                        | **Enterprise only.** Rotate encryption keys. Requires `isAuthEnabled() && isSuperuser()`. Not on coordinators. Requires encryption + key rotation enabled. | EE:RestAdminServerHandlerEE.cpp:146-147 |
 
 ---
 
@@ -1265,7 +1265,7 @@ We should map the permissions in the following way to RBAC actions and resources
 | `db:AdminMonitoring`          | -                          | anything completely harmless like metrics, also support-info             |
 | `db:AdminMonitoringInternal`  | -                          | async registry, engine stats, system report, not crashes                 |
 | `db:AdminCompaction`          | -                          | trigger RocksDB compactions                                              |
-| `db:AdminSecurity`            | -                          | Auth reload, jwt info, encryption info                                   |
+| `db:AdminAuthReload`          | -                          | Auth reload                                                              |
 | `db:AdminCrashHandler`        | -                          | get information about crashes                                            |
 | `db:AdminApiCalls`            | -                          | get recent API calls `/_admin/server/api-calls`                          |
 | `db:AdminAqlQueries`          | -                          | get recent AQL queries `/_admin/server/aql-queries`                      |
@@ -1286,255 +1286,269 @@ We should map the permissions in the following way to RBAC actions and resources
 | `db:AdminWriteReplicatedLog`  | -                          | access to the replicated log read (Replication2)                         |
 | `db:AdminWalAccess`           | -                          | this is read/write access to the WAL                                     |
 | `db:AdminReadAgency`          | -                          | get an agency dump, shard distribution, cluster inventory                |
+| `db:AdminReadOnlyMode`        | -                          | `PUT /_admin/server/mode` for read-only mode                             |
 
 ---
 
 ## 9. Complete Endpoint–Action Reference Table
 
-| HTTP Method | URL Path | RBAC Action |
-|-------------|----------|-------------|
-| GET         | `/` | |
-| GET         | `/_admin/aardvark/*` | |
-| GET         | `/_admin/server/availability` | |
-| POST        | `/_open/auth/` | |
-| POST        | `/_open/auth/renew` | |
-| GET         | `/_admin/version` | `db:UseApiVersion` |
-| GET         | `/_api/version` | `db:UseApiVersion` |
-| ANY         | `/_admin/status` | `db:AdminMonitoring` |
-| GET         | `/_admin/debug/failat` | |
-| PUT         | `/_admin/debug/failat` | |
-| DELETE      | `/_admin/debug/failat` | |
-| GET         | `/_admin/debug/raceControl` | |
-| PUT         | `/_admin/debug/raceControl` | |
-| DELETE      | `/_admin/debug/raceControl` | |
-| GET         | `/_admin/debug/crash` | |
-| PUT         | `/_admin/debug/crash` | |
-| DELETE      | `/_admin/debug/crash` | |
-| POST        | `/_admin/execute` | |
-| GET         | `/_admin/time` | |
-| PUT         | `/_admin/compact` | `db:AdminCompaction` |
-| ANY         | `/_admin/auth/reload` | `db:AdminSecurity` |
-| GET         | `/_admin/actions` | |
-| POST        | `/_admin/actions` | |
-| PUT         | `/_admin/actions` | |
-| DELETE      | `/_admin/actions` | |
-| GET         | `/_admin/server/mode` | |
-| PUT         | `/_admin/server/mode` | `db:WriteDatabase` |
-| GET         | `/_admin/server/id` | |
-| GET         | `/_admin/server/role` | |
-| GET         | `/_admin/server/databaseDefaults` | |
-| GET         | `/_admin/server/tls` | |
-| POST        | `/_admin/server/tls` | `db:AdminSecurity` |
-| GET         | `/_admin/server/api-calls` | `db:AdminApiCalls` |
-| GET         | `/_admin/server/aql-queries` | `db:AdminAqlQueries` |
-| GET         | `/_admin/server/jwt` | `db:AdminSecurity` |
-| POST        | `/_admin/server/jwt` | `db:AdminSecurity` |
-| GET         | `/_admin/server/encryption` | `db:AdminSecurity` |
-| POST        | `/_admin/server/encryption` | `db:AdminSecurity` |
-| GET         | `/_admin/shutdown` | `db:AdminShutdown` |
-| DELETE      | `/_admin/shutdown` | `db:AdminShutdown` |
-| GET         | `/_admin/statistics` | `db:AdminMonitoring` |
-| GET         | `/_admin/statistics-description` | `db:AdminMonitoring` |
-| GET         | `/_admin/metrics` | `db:AdminMonitoring` |
-| GET         | `/_admin/usage-metrics` | `db:AdminMonitoring` |
-| GET         | `/_admin/log` | `db:AdminReadLogs` |
-| PUT         | `/_admin/log` | `db:AdminSetLogLevel` |
-| DELETE      | `/_admin/log` | `db:AdminSetLogLevel` |
-| POST        | `/_admin/log` | `db:AdminSetLogLevel` |
-| GET         | `/_admin/support-info` | `db:AdminMonitoring` |
-| GET         | `/_admin/telemetrics` | `db:AdminMonitoring` |
-| DELETE      | `/_admin/telemetrics` | `db:AdminMonitoring` |
-| GET         | `/_admin/options` | `db:AdminOptions` |
-| GET         | `/_admin/options-description` | `db:AdminOptions` |
-| GET         | `/_admin/options-public` | `db:ReadDatabase` |
-| GET         | `/_admin/system-report` | `db:AdminMonitoringInternal` |
-| GET         | `/_admin/crashes` | `db:AdminCrashHandler` |
-| DELETE      | `/_admin/crashes` | `db:AdminCrashHandler` |
-| GET         | `/_admin/deployment/id` | |
-| GET         | `/_admin/supervisionState` | `db:AdminSupervisionState` |
-| ANY         | `/_admin/routing/reload` | |
-| GET         | `/_admin/database/target-version` | |
-| GET         | `/_admin/cluster/health` | |
-| GET         | `/_admin/cluster/numberOfServers` | |
-| PUT         | `/_admin/cluster/numberOfServers` | `db:AdminClusterInfo` |
-| PUT         | `/_admin/cluster/maintenance` | `db:AdminClusterInfo` |
-| PUT         | `/_admin/cluster/maintenance/{serverId}` | `db:AdminClusterInfo` |
-| POST        | `/_admin/cluster/cleanoutServer` | `db:AdminClusterInfo` |
-| POST        | `/_admin/cluster/resignLeadership` | `db:ChangeDataDistribution` |
-| POST        | `/_admin/cluster/moveShard` | `db:ChangeDataDistribution` |
-| POST        | `/_admin/cluster/cancelJob` | `db:AdminClusterInfo` |
-| GET         | `/_admin/cluster/queryJobStatus` | `db:AdminClusterInfo` |
-| POST        | `/_admin/cluster/removeServer` | `db:AdminRemoveServer` |
-| GET         | `/_admin/cluster/shardDistribution` | `db:AdminClusterInfo` |
-| GET         | `/_admin/cluster/collectionShardDistribution` | `db:AdminClusterInfo` |
-| GET         | `/_admin/cluster/shardStatistics` | `db:AdminClusterInfo` |
-| POST        | `/_admin/cluster/rebalanceShards` | `db:WriteDatabase` |
-| POST        | `/_admin/cluster/rebalance` | `db:AdminClusterInfo` |
-| GET         | `/_admin/cluster/rebalance` | `db:AdminClusterInfo` |
-| PUT         | `/_admin/cluster/vpackSortMigration` | |
-| PUT         | `/_admin/cluster/uniqId` | `db:AdminClusterInfo` |
-| GET         | `/_admin/wal/transactions` | |
-| GET         | `/_admin/wal/properties` | |
-| PUT         | `/_admin/wal/properties` | |
-| PUT         | `/_admin/wal/flush` | |
-| PUT         | `/_admin/wal/wait_for_estimator_sync` | `db:AdminWalAccess` |
-| GET         | `/_admin/async-registry` | `db:AdminMonitoringInternal` |
-| GET         | `/_admin/activities` | `db:AdminMonitoringInternal` |
-| GET         | `/_admin/license` | `db:AdminLicense` |
-| PUT         | `/_admin/license` | `db:AdminLicense` |
-| POST        | `/_admin/backup/create` | `db:AdminBackup` |
-| POST        | `/_admin/backup/delete` | `db:AdminBackup` |
-| POST        | `/_admin/backup/list` | `db:AdminBackup` |
-| POST        | `/_admin/backup/upload` | `db:AdminBackup` |
-| POST        | `/_admin/backup/download` | `db:AdminBackup` |
-| GET         | `/_admin/job` | `db:AdminJobs` |
-| PUT         | `/_admin/job` | `db:AdminJobs` |
-| DELETE      | `/_admin/job` | `db:AdminJobs` |
-| GET         | `/openapi.json` | |
-| POST        | `/_api/analyzer` | `db:WriteAnalyzer` |
-| GET         | `/_api/analyzer/{analyzer}` | `db:ReadAnalyzer` |
-| GET         | `/_api/analyzer` | `db:ReadAnalyzer` |
-| DELETE      | `/_api/analyzer/{analyzer}` | `db:WriteAnalyzer` |
-| POST        | `/_api/cursor` | `db:ReadDocuments` |
-| POST        | `/_api/cursor/{cursor-id}` | `db:ReadDocuments` |
-| PUT         | `/_api/cursor/{cursor-id}` | `db:ReadDocuments` |
-| DELETE      | `/_api/cursor/{cursor-id}` | |
-| POST        | `/_api/cursor/json` | `db:ReadDocuments` |
-| GET         | `/_api/database/` | `db:ReadDatabases` |
-| GET         | `/_api/database/user` | `db:ReadDatabase` |
-| GET         | `/_api/database/current` | |
-| GET         | `/_api/database/shardStatistics` | |
-| POST        | `/_api/database/` | `db:WriteDatabase` |
-| DELETE      | `/_api/database/{db-name}` | `db:WriteDatabase` |
-| GET         | `/_api/document` | `db:ReadDocuments` |
-| HEAD        | `/_api/document` | `db:ReadDocuments` |
-| POST        | `/_api/document` | `db:WriteDocuments` |
-| PUT         | `/_api/document` | `db:WriteDocuments` |
-| PATCH       | `/_api/document` | `db:WriteDocuments` |
-| DELETE      | `/_api/document` | `db:WriteDocuments` |
-| GET         | `/_api/edges` | `db:ReadDocuments` |
-| POST        | `/_api/edges` | `db:WriteDocuments` |
-| GET         | `/_api/gharial` | `db:ReadDocuments` |
-| POST        | `/_api/gharial` | `db:WriteDocuments` |
-| PUT         | `/_api/gharial` | `db:WriteDocuments` |
-| PATCH       | `/_api/gharial` | `db:WriteDocuments` |
-| DELETE      | `/_api/gharial` | `db:WriteDocuments` |
-| GET         | `/_api/endpoint` | |
-| POST        | `/_api/import` | `db:WriteDocuments` |
-| GET         | `/_api/index/{coll}/{idx}` | `db:ReadCollection` |
-| GET         | `/_api/index/selectivity` | `db:ReadCollection` |
-| POST        | `/_api/index/` | `db:WriteCollection` |
-| DELETE      | `/_api/index/{coll}/{idx}` | `db:WriteCollection` |
-| PUT         | `/_api/simple/all` | `db:ReadDocuments` |
-| PUT         | `/_api/simple/all-keys` | `db:ReadDocuments` |
-| PUT         | `/_api/simple/by-example` | `db:ReadDocuments` |
-| PUT         | `/_api/simple/lookup-by-keys` | `db:ReadDocuments` |
-| PUT         | `/_api/simple/remove-by-keys` | `db:WriteDocuments` |
-| GET         | `/_api/tasks` | `db:AdminJobs` |
-| POST        | `/_api/tasks` | `db:AdminJobs` |
-| PUT         | `/_api/tasks` | `db:AdminJobs` |
-| DELETE      | `/_api/tasks/{task-id}` | `db:AdminJobs` |
-| POST        | `/_api/upload` | |
-| GET         | `/_api/user/` | `db:AdminReadUser` |
-| GET         | `/_api/user/{user}` | `db:AdminReadUser` |
-| GET         | `/_api/user/{user}/database/{db}` | `db:AdminReadUser` |
-| POST        | `/_api/user/` | `db:AdminWriteUser` |
-| PUT         | `/_api/user/{user}` | `db:AdminWriteUser` |
-| PUT         | `/_api/user/{user}/database/{db}` | `db:AdminWriteUser` |
-| PUT         | `/_api/user/{user}/config/{key}` | `db:AdminWriteUser` |
-| PATCH       | `/_api/user/{user}` | `db:AdminWriteUser` |
-| DELETE      | `/_api/user/{user}` | `db:AdminWriteUser` |
-| DELETE      | `/_api/user/{user}/database/{db}` | `db:AdminWriteUser` |
-| DELETE      | `/_api/user/{user}/config/{key}` | `db:AdminWriteUser` |
-| GET         | `/_api/token/{user}` | `db:AdminWriteUser` |
-| POST        | `/_api/token/{user}` | `db:AdminWriteUser` |
-| DELETE      | `/_api/token/{user}` | `db:AdminWriteUser` |
-| GET         | `/_api/view/` | `db:ReadView` |
-| GET         | `/_api/view/{view}` | `db:ReadView` |
-| GET         | `/_api/view/{view}/properties` | `db:ReadView` |
-| POST        | `/_api/view/` | `db:WriteView` |
-| PUT         | `/_api/view/{view}/properties` | `db:WriteView` |
-| PATCH       | `/_api/view/{view}/properties` | `db:WriteView` |
-| PUT         | `/_api/view/{view}/rename` | `db:WriteView` |
-| DELETE      | `/_api/view/{view}` | `db:WriteView` |
-| GET         | `/_api/log` | `db:AdminReadReplicatedLog` |
-| POST        | `/_api/log` | `db:AdminReadReplicatedLog` |
-| DELETE      | `/_api/log` | `db:AdminReadReplicatedLog` |
-| POST        | `/_api/log-internal` | `db:AdminWriteReplicatedLog` |
-| ALL         | `/_api/document-state-external` | |
-| POST        | `/_api/aql/setup` | |
-| PUT         | `/_api/aql/{query-id}/{op}` | |
-| DELETE      | `/_api/aql/{query-id}` | |
-| GET         | `/_api/aql-builtin` | |
-| GET         | `/_api/aqlfunction` | |
-| POST        | `/_api/aqlfunction` | |
-| DELETE      | `/_api/aqlfunction` | |
-| POST        | `/_api/dump/start` | `db:ReadDocuments` |
-| POST        | `/_api/dump/next/{id}` | `db:ReadDocuments` |
-| DELETE      | `/_api/dump/{id}` | |
-| POST        | `/_api/explain` | `db:ReadDocuments` |
-| GET         | `/_api/key-generators` | |
-| GET         | `/_api/query/registry` | |
-| GET         | `/_api/query/slow` | `db:ReadDocuments` |
-| GET         | `/_api/query/current` | |
-| GET         | `/_api/query/properties` | |
-| GET         | `/_api/query/rules` | |
-| PUT         | `/_api/query/properties` | |
-| DELETE      | `/_api/query/slow` | |
-| DELETE      | `/_api/query/{query-id}` | |
-| GET         | `/_api/query-cache/properties` | |
-| GET         | `/_api/query-cache/entries` | |
-| PUT         | `/_api/query-cache/properties` | |
-| DELETE      | `/_api/query-cache/` | |
-| DELETE      | `/_api/query-plan-cache` | `db:WriteDatabase` |
-| GET         | `/_api/query-plan-cache` | `db:ReadDatabase` |
-| GET         | `/_api/wal/range` | `db:AdminWalAccess` |
-| GET         | `/_api/wal/lastTick` | `db:AdminWalAccess` |
-| GET         | `/_api/wal/tail` | `db:AdminWalAccess` |
-| PUT         | `/_api/wal/open-transactions` | `db:AdminWalAccess` |
-| DELETE      | `/_api/wal/*` | `db:AdminWalAccess` |
-| GET         | `/_api/agency` | `db:AdminReadAgency` |
-| POST        | `/_api/agency` | `db:AdminReadAgency` |
-| POST        | `/_api/agency_priv` | |
-| GET         | `/_api/engine/` | |
-| GET         | `/_api/engine/stats` | `db:AdminMonitoringInternal` |
-| GET         | `/_api/transaction/` | |
-| GET         | `/_api/transaction/history` | |
-| POST        | `/_api/transaction/begin` | `db:ReadDocuments` |
-| PUT         | `/_api/transaction/{trx-id}` | `db:ReadDocuments` |
-| DELETE      | `/_api/transaction/{trx-id}` | |
-| DELETE      | `/_api/transaction/history` | |
-| POST        | `/_api/transaction/write` | `db:WriteDocuments` |
-| GET         | `/_api/ttl/properties` | |
-| GET         | `/_api/ttl/statistics` | |
-| PUT         | `/_api/ttl/properties` | |
-| GET         | `/_api/collection/` | `db:ReadCollection` |
-| GET         | `/_api/collection/{coll}/...` | `db:ReadCollection` |
-| POST        | `/_api/collection/` | `db:WriteCollection` |
-| PUT         | `/_api/collection/{coll}/...` | `db:WriteCollection` |
-| DELETE      | `/_api/collection/{coll}` | `db:WriteCollection` |
-| PUT         | `/_api/collection/{coll}/recalculateCount` | `db:WriteCollection` |
-| POST        | `/_api/replication/batch` | `db:ReadDocuments` |
-| GET         | `/_api/replication/inventory` | `db:ReadCollection` |
-| GET         | `/_api/replication/dump` | `db:ReadDocuments` |
-| PUT         | `/_api/replication/restore-collection` | `db:WriteCollection` |
-| PUT         | `/_api/replication/restore-indexes` | `db:WriteCollection` |
-| PUT         | `/_api/replication/restore-data` | `db:WriteDocuments` |
-| PUT         | `/_api/replication/restore-view` | `db:WriteView` |
-| GET         | `/_api/replication/logger-state` | `db:AdminReadReplicatedLog` |
-| GET         | `/_api/replication/logger-follow` | `db:AdminReadReplicatedLog` |
-| GET         | `/_api/replication/logger-first-tick` | `db:AdminReadReplicatedLog` |
-| GET         | `/_api/replication/logger-tick-ranges` | `db:AdminReadReplicatedLog` |
-| PUT         | `/_api/replication/make-follower` | `db:AdminReadReplicatedLog` |
-| GET         | `/_api/replication/clusterInventory` | `db:AdminReadAgency` |
-| PUT         | `/_api/replication/addFollower` | `db:AdminReadReplicatedLog` |
-| PUT         | `/_api/replication/removeFollower` | `db:AdminReadReplicatedLog` |
-| POST        | `/_api/test` | |
-| GET         | `/cluster-info` | `db:AdminClusterInfo` |
-| GET         | `/cluster-info/...` | `db:AdminClusterInfo` |
-| POST        | `/cluster-info/...` | `db:AdminClusterInfo` |
-| PUT         | `/cluster-info/...` | `db:AdminClusterInfo` |
-| DELETE      | `/cluster-info/...` | `db:AdminClusterInfo` |
-| POST        | `/cluster-callback` | |
-| PUT         | `/_internal/traverser` | |
-| DELETE      | `/_internal/traverser` | |
+Ideas:
+
+ - `NONE` stays no authentication required
+ - `ANY` stays any authenticated user (no further checks in handler)
+ - `DB` access stays as it is
+ - `COLL` access distinguishes meta data and document data
+ - views and analyzers get their own actions like collection meta data
+ - `ADMIN` is split into many actions with prefix `db:Admin`
+ - `HARDENED` is considered to be always on for RBAC, so becomes the same as `ADMIN`
+ - `SUPERUSER` stays superuser only
+
+In the following table we just put the above case or the action required.
+ 
+| HTTP Method | URL Path                                      | RBAC Action                  |
+|-------------|-----------------------------------------------|------------------------------|
+| GET         | `/`                                           | `NONE`                       |
+| GET         | `/_admin/aardvark/*`                          | `NONE`                       |
+| GET         | `/_admin/server/availability`                 | `NONE`                       |
+| POST        | `/_open/auth/`                                | `NONE`                       |
+| POST        | `/_open/auth/renew`                           | `NONE`                       |
+| GET         | `/_admin/version`                             | `ANY`                        |
+| GET         | `/_api/version`                               | `ANY`                        |
+| `ANY`       | `/_admin/status`                              | `db:AdminMonitoring`         |
+| GET         | `/_admin/debug/failat`                        | `ANY`                        |
+| PUT         | `/_admin/debug/failat`                        | `ANY`                        |
+| DELETE      | `/_admin/debug/failat`                        | `ANY`                        |
+| GET         | `/_admin/debug/raceControl`                   | `ANY`                        |
+| PUT         | `/_admin/debug/raceControl`                   | `ANY`                        |
+| DELETE      | `/_admin/debug/raceControl`                   | `ANY`                        |
+| GET         | `/_admin/debug/crash`                         | `ANY`                        |
+| PUT         | `/_admin/debug/crash`                         | `ANY`                        |
+| DELETE      | `/_admin/debug/crash`                         | `ANY`                        |
+| POST        | `/_admin/execute`                             | `ANY`                        |
+| GET         | `/_admin/time`                                | `ANY`                        |
+| PUT         | `/_admin/compact`                             | `db:AdminCompaction` SUPER?  |
+| ANY         | `/_admin/auth/reload`                         | `db:AdminAuthReload`         |
+| GET         | `/_admin/actions`                             | `ANY`                        |
+| POST        | `/_admin/actions`                             | `ANY`                        |
+| PUT         | `/_admin/actions`                             | `ANY`                        |
+| DELETE      | `/_admin/actions`                             | `ANY`                        |
+| GET         | `/_admin/server/mode`                         | `ANY`                        |
+| PUT         | `/_admin/server/mode`                         | `db:ReadOnlyMode`            |
+| GET         | `/_admin/server/id`                           | `ANY`                        |
+| GET         | `/_admin/server/role`                         | `ANY`                        |
+| GET         | `/_admin/server/databaseDefaults`             | `ANY`                        |
+| GET         | `/_admin/server/tls`                          | `ANY`                        |
+| POST        | `/_admin/server/tls`                          | `SUPERUSER`                  |
+| GET         | `/_admin/server/api-calls`                    | `db:AdminApiCalls`           |
+| GET         | `/_admin/server/aql-queries`                  | `db:AdminAqlQueries`         |
+| GET         | `/_admin/server/jwt`                          | `ANY`                        |
+| POST        | `/_admin/server/jwt`                          | `SUPERUSER`                  |
+| GET         | `/_admin/server/encryption`                   | `ANY`                        |
+| POST        | `/_admin/server/encryption`                   | `SUPERUSER`                  |
+| GET         | `/_admin/shutdown`                            | `db:AdminShutdown`           |
+| DELETE      | `/_admin/shutdown`                            | `db:AdminShutdown`           |
+| GET         | `/_admin/statistics`                          | `db:AdminMonitoring`         |
+| GET         | `/_admin/statistics-description`              | `db:AdminMonitoring`         |
+| GET         | `/_admin/metrics`                             | `db:AdminMonitoring`         |
+| GET         | `/_admin/usage-metrics`                       | `db:AdminMonitoring`         |
+| GET         | `/_admin/log`                                 | `db:AdminReadLogs`           |
+| PUT         | `/_admin/log`                                 | `db:AdminSetLogLevel`        |
+| DELETE      | `/_admin/log`                                 | `db:AdminSetLogLevel`        |
+| POST        | `/_admin/log`                                 | `db:AdminSetLogLevel`        |
+| GET         | `/_admin/support-info`                        | `db:AdminMonitoring`         |
+| GET         | `/_admin/telemetrics`                         | `db:AdminMonitoringInternal` |
+| DELETE      | `/_admin/telemetrics`                         | `db:AdminMonitoringInternal` |
+| GET         | `/_admin/options`                             | `db:AdminOptions`            |
+| GET         | `/_admin/options-description`                 | `db:AdminOptions`            |
+| GET         | `/_admin/options-public`                      | `db:ReadDatabase`            |
+| GET         | `/_admin/system-report`                       | `db:AdminMonitoringInternal` |
+| GET         | `/_admin/crashes`                             | `db:AdminCrashHandler`       |
+| DELETE      | `/_admin/crashes`                             | `db:AdminCrashHandler`       |
+| GET         | `/_admin/deployment/id`                       |                              |
+| GET         | `/_admin/supervisionState`                    | `db:AdminSupervisionState`   |
+| ANY         | `/_admin/routing/reload`                      |                              |
+| GET         | `/_admin/database/target-version`             |                              |
+| GET         | `/_admin/cluster/health`                      |                              |
+| GET         | `/_admin/cluster/numberOfServers`             |                              |
+| PUT         | `/_admin/cluster/numberOfServers`             | `db:AdminClusterInfo`        |
+| PUT         | `/_admin/cluster/maintenance`                 | `db:AdminClusterInfo`        |
+| PUT         | `/_admin/cluster/maintenance/{serverId}`      | `db:AdminClusterInfo`        |
+| POST        | `/_admin/cluster/cleanoutServer`              | `db:AdminClusterInfo`        |
+| POST        | `/_admin/cluster/resignLeadership`            | `db:ChangeDataDistribution`  |
+| POST        | `/_admin/cluster/moveShard`                   | `db:ChangeDataDistribution`  |
+| POST        | `/_admin/cluster/cancelJob`                   | `db:AdminClusterInfo`        |
+| GET         | `/_admin/cluster/queryJobStatus`              | `db:AdminClusterInfo`        |
+| POST        | `/_admin/cluster/removeServer`                | `db:AdminRemoveServer`       |
+| GET         | `/_admin/cluster/shardDistribution`           | `db:AdminClusterInfo`        |
+| GET         | `/_admin/cluster/collectionShardDistribution` | `db:AdminClusterInfo`        |
+| GET         | `/_admin/cluster/shardStatistics`             | `db:AdminClusterInfo`        |
+| POST        | `/_admin/cluster/rebalanceShards`             | `db:WriteDatabase`           |
+| POST        | `/_admin/cluster/rebalance`                   | `db:AdminClusterInfo`        |
+| GET         | `/_admin/cluster/rebalance`                   | `db:AdminClusterInfo`        |
+| PUT         | `/_admin/cluster/vpackSortMigration`          |                              |
+| PUT         | `/_admin/cluster/uniqId`                      | `db:AdminClusterInfo`        |
+| GET         | `/_admin/wal/transactions`                    |                              |
+| GET         | `/_admin/wal/properties`                      |                              |
+| PUT         | `/_admin/wal/properties`                      |                              |
+| PUT         | `/_admin/wal/flush`                           |                              |
+| PUT         | `/_admin/wal/wait_for_estimator_sync`         | `db:AdminWalAccess`          |
+| GET         | `/_admin/async-registry`                      | `db:AdminMonitoringInternal` |
+| GET         | `/_admin/activities`                          | `db:AdminMonitoringInternal` |
+| GET         | `/_admin/license`                             | `db:AdminLicense`            |
+| PUT         | `/_admin/license`                             | `db:AdminLicense`            |
+| POST        | `/_admin/backup/create`                       | `db:AdminBackup`             |
+| POST        | `/_admin/backup/delete`                       | `db:AdminBackup`             |
+| POST        | `/_admin/backup/list`                         | `db:AdminBackup`             |
+| POST        | `/_admin/backup/upload`                       | `db:AdminBackup`             |
+| POST        | `/_admin/backup/download`                     | `db:AdminBackup`             |
+| GET         | `/_admin/job`                                 | `db:AdminJobs`               |
+| PUT         | `/_admin/job`                                 | `db:AdminJobs`               |
+| DELETE      | `/_admin/job`                                 | `db:AdminJobs`               |
+| GET         | `/openapi.json`                               |                              |
+| POST        | `/_api/analyzer`                              | `db:WriteAnalyzer`           |
+| GET         | `/_api/analyzer/{analyzer}`                   | `db:ReadAnalyzer`            |
+| GET         | `/_api/analyzer`                              | `db:ReadAnalyzer`            |
+| DELETE      | `/_api/analyzer/{analyzer}`                   | `db:WriteAnalyzer`           |
+| POST        | `/_api/cursor`                                | `db:ReadDocuments`           |
+| POST        | `/_api/cursor/{cursor-id}`                    | `db:ReadDocuments`           |
+| PUT         | `/_api/cursor/{cursor-id}`                    | `db:ReadDocuments`           |
+| DELETE      | `/_api/cursor/{cursor-id}`                    |                              |
+| POST        | `/_api/cursor/json`                           | `db:ReadDocuments`           |
+| GET         | `/_api/database/`                             | `db:ReadDatabases`           |
+| GET         | `/_api/database/user`                         | `db:ReadDatabase`            |
+| GET         | `/_api/database/current`                      |                              |
+| GET         | `/_api/database/shardStatistics`              |                              |
+| POST        | `/_api/database/`                             | `db:WriteDatabase`           |
+| DELETE      | `/_api/database/{db-name}`                    | `db:WriteDatabase`           |
+| GET         | `/_api/document`                              | `db:ReadDocuments`           |
+| HEAD        | `/_api/document`                              | `db:ReadDocuments`           |
+| POST        | `/_api/document`                              | `db:WriteDocuments`          |
+| PUT         | `/_api/document`                              | `db:WriteDocuments`          |
+| PATCH       | `/_api/document`                              | `db:WriteDocuments`          |
+| DELETE      | `/_api/document`                              | `db:WriteDocuments`          |
+| GET         | `/_api/edges`                                 | `db:ReadDocuments`           |
+| POST        | `/_api/edges`                                 | `db:WriteDocuments`          |
+| GET         | `/_api/gharial`                               | `db:ReadDocuments`           |
+| POST        | `/_api/gharial`                               | `db:WriteDocuments`          |
+| PUT         | `/_api/gharial`                               | `db:WriteDocuments`          |
+| PATCH       | `/_api/gharial`                               | `db:WriteDocuments`          |
+| DELETE      | `/_api/gharial`                               | `db:WriteDocuments`          |
+| GET         | `/_api/endpoint`                              |                              |
+| POST        | `/_api/import`                                | `db:WriteDocuments`          |
+| GET         | `/_api/index/{coll}/{idx}`                    | `db:ReadCollection`          |
+| GET         | `/_api/index/selectivity`                     | `db:ReadCollection`          |
+| POST        | `/_api/index/`                                | `db:WriteCollection`         |
+| DELETE      | `/_api/index/{coll}/{idx}`                    | `db:WriteCollection`         |
+| PUT         | `/_api/simple/all`                            | `db:ReadDocuments`           |
+| PUT         | `/_api/simple/all-keys`                       | `db:ReadDocuments`           |
+| PUT         | `/_api/simple/by-example`                     | `db:ReadDocuments`           |
+| PUT         | `/_api/simple/lookup-by-keys`                 | `db:ReadDocuments`           |
+| PUT         | `/_api/simple/remove-by-keys`                 | `db:WriteDocuments`          |
+| GET         | `/_api/tasks`                                 | `db:AdminJobs`               |
+| POST        | `/_api/tasks`                                 | `db:AdminJobs`               |
+| PUT         | `/_api/tasks`                                 | `db:AdminJobs`               |
+| DELETE      | `/_api/tasks/{task-id}`                       | `db:AdminJobs`               |
+| POST        | `/_api/upload`                                |                              |
+| GET         | `/_api/user/`                                 | `db:AdminReadUser`           |
+| GET         | `/_api/user/{user}`                           | `db:AdminReadUser`           |
+| GET         | `/_api/user/{user}/database/{db}`             | `db:AdminReadUser`           |
+| POST        | `/_api/user/`                                 | `db:AdminWriteUser`          |
+| PUT         | `/_api/user/{user}`                           | `db:AdminWriteUser`          |
+| PUT         | `/_api/user/{user}/database/{db}`             | `db:AdminWriteUser`          |
+| PUT         | `/_api/user/{user}/config/{key}`              | `db:AdminWriteUser`          |
+| PATCH       | `/_api/user/{user}`                           | `db:AdminWriteUser`          |
+| DELETE      | `/_api/user/{user}`                           | `db:AdminWriteUser`          |
+| DELETE      | `/_api/user/{user}/database/{db}`             | `db:AdminWriteUser`          |
+| DELETE      | `/_api/user/{user}/config/{key}`              | `db:AdminWriteUser`          |
+| GET         | `/_api/token/{user}`                          | `db:AdminWriteUser`          |
+| POST        | `/_api/token/{user}`                          | `db:AdminWriteUser`          |
+| DELETE      | `/_api/token/{user}`                          | `db:AdminWriteUser`          |
+| GET         | `/_api/view/`                                 | `db:ReadView`                |
+| GET         | `/_api/view/{view}`                           | `db:ReadView`                |
+| GET         | `/_api/view/{view}/properties`                | `db:ReadView`                |
+| POST        | `/_api/view/`                                 | `db:WriteView`               |
+| PUT         | `/_api/view/{view}/properties`                | `db:WriteView`               |
+| PATCH       | `/_api/view/{view}/properties`                | `db:WriteView`               |
+| PUT         | `/_api/view/{view}/rename`                    | `db:WriteView`               |
+| DELETE      | `/_api/view/{view}`                           | `db:WriteView`               |
+| GET         | `/_api/log`                                   | `db:AdminReadReplicatedLog`  |
+| POST        | `/_api/log`                                   | `db:AdminReadReplicatedLog`  |
+| DELETE      | `/_api/log`                                   | `db:AdminReadReplicatedLog`  |
+| POST        | `/_api/log-internal`                          | `db:AdminWriteReplicatedLog` |
+| ALL         | `/_api/document-state-external`               |                              |
+| POST        | `/_api/aql/setup`                             |                              |
+| PUT         | `/_api/aql/{query-id}/{op}`                   |                              |
+| DELETE      | `/_api/aql/{query-id}`                        |                              |
+| GET         | `/_api/aql-builtin`                           |                              |
+| GET         | `/_api/aqlfunction`                           |                              |
+| POST        | `/_api/aqlfunction`                           |                              |
+| DELETE      | `/_api/aqlfunction`                           |                              |
+| POST        | `/_api/dump/start`                            | `db:ReadDocuments`           |
+| POST        | `/_api/dump/next/{id}`                        | `db:ReadDocuments`           |
+| DELETE      | `/_api/dump/{id}`                             |                              |
+| POST        | `/_api/explain`                               | `db:ReadDocuments`           |
+| GET         | `/_api/key-generators`                        |                              |
+| GET         | `/_api/query/registry`                        |                              |
+| GET         | `/_api/query/slow`                            | `db:ReadDocuments`           |
+| GET         | `/_api/query/current`                         |                              |
+| GET         | `/_api/query/properties`                      |                              |
+| GET         | `/_api/query/rules`                           |                              |
+| PUT         | `/_api/query/properties`                      |                              |
+| DELETE      | `/_api/query/slow`                            |                              |
+| DELETE      | `/_api/query/{query-id}`                      |                              |
+| GET         | `/_api/query-cache/properties`                |                              |
+| GET         | `/_api/query-cache/entries`                   |                              |
+| PUT         | `/_api/query-cache/properties`                |                              |
+| DELETE      | `/_api/query-cache/`                          |                              |
+| DELETE      | `/_api/query-plan-cache`                      | `db:WriteDatabase`           |
+| GET         | `/_api/query-plan-cache`                      | `db:ReadDatabase`            |
+| GET         | `/_api/wal/range`                             | `db:AdminWalAccess`          |
+| GET         | `/_api/wal/lastTick`                          | `db:AdminWalAccess`          |
+| GET         | `/_api/wal/tail`                              | `db:AdminWalAccess`          |
+| PUT         | `/_api/wal/open-transactions`                 | `db:AdminWalAccess`          |
+| DELETE      | `/_api/wal/*`                                 | `db:AdminWalAccess`          |
+| GET         | `/_api/agency`                                | `db:AdminReadAgency`         |
+| POST        | `/_api/agency`                                | `db:AdminReadAgency`         |
+| POST        | `/_api/agency_priv`                           |                              |
+| GET         | `/_api/engine/`                               |                              |
+| GET         | `/_api/engine/stats`                          | `db:AdminMonitoringInternal` |
+| GET         | `/_api/transaction/`                          |                              |
+| GET         | `/_api/transaction/history`                   |                              |
+| POST        | `/_api/transaction/begin`                     | `db:ReadDocuments`           |
+| PUT         | `/_api/transaction/{trx-id}`                  | `db:ReadDocuments`           |
+| DELETE      | `/_api/transaction/{trx-id}`                  |                              |
+| DELETE      | `/_api/transaction/history`                   |                              |
+| POST        | `/_api/transaction/write`                     | `db:WriteDocuments`          |
+| GET         | `/_api/ttl/properties`                        |                              |
+| GET         | `/_api/ttl/statistics`                        |                              |
+| PUT         | `/_api/ttl/properties`                        |                              |
+| GET         | `/_api/collection/`                           | `db:ReadCollection`          |
+| GET         | `/_api/collection/{coll}/...`                 | `db:ReadCollection`          |
+| POST        | `/_api/collection/`                           | `db:WriteCollection`         |
+| PUT         | `/_api/collection/{coll}/...`                 | `db:WriteCollection`         |
+| DELETE      | `/_api/collection/{coll}`                     | `db:WriteCollection`         |
+| PUT         | `/_api/collection/{coll}/recalculateCount`    | `db:WriteCollection`         |
+| POST        | `/_api/replication/batch`                     | `db:ReadDocuments`           |
+| GET         | `/_api/replication/inventory`                 | `db:ReadCollection`          |
+| GET         | `/_api/replication/dump`                      | `db:ReadDocuments`           |
+| PUT         | `/_api/replication/restore-collection`        | `db:WriteCollection`         |
+| PUT         | `/_api/replication/restore-indexes`           | `db:WriteCollection`         |
+| PUT         | `/_api/replication/restore-data`              | `db:WriteDocuments`          |
+| PUT         | `/_api/replication/restore-view`              | `db:WriteView`               |
+| GET         | `/_api/replication/logger-state`              | `db:AdminReadReplicatedLog`  |
+| GET         | `/_api/replication/logger-follow`             | `db:AdminReadReplicatedLog`  |
+| GET         | `/_api/replication/logger-first-tick`         | `db:AdminReadReplicatedLog`  |
+| GET         | `/_api/replication/logger-tick-ranges`        | `db:AdminReadReplicatedLog`  |
+| PUT         | `/_api/replication/make-follower`             | `db:AdminReadReplicatedLog`  |
+| GET         | `/_api/replication/clusterInventory`          | `db:AdminReadAgency`         |
+| PUT         | `/_api/replication/addFollower`               | `db:AdminReadReplicatedLog`  |
+| PUT         | `/_api/replication/removeFollower`            | `db:AdminReadReplicatedLog`  |
+| POST        | `/_api/test`                                  |                              |
+| GET         | `/cluster-info`                               | `db:AdminClusterInfo`        |
+| GET         | `/cluster-info/...`                           | `db:AdminClusterInfo`        |
+| POST        | `/cluster-info/...`                           | `db:AdminClusterInfo`        |
+| PUT         | `/cluster-info/...`                           | `db:AdminClusterInfo`        |
+| DELETE      | `/cluster-info/...`                           | `db:AdminClusterInfo`        |
+| POST        | `/cluster-callback`                           |                              |
+| PUT         | `/_internal/traverser`                        |                              |
+| DELETE      | `/_internal/traverser`                        |                              |
