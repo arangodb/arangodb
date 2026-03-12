@@ -726,6 +726,7 @@ jobs:
     steps:
       - run-test:
           suiteName: << parameters.suiteName >>
+          arch: << parameters.arch >>
           suites: << parameters.suites >>
           cluster: << parameters.cluster >>
           arangosh_args: << parameters.arangosh_args >>
