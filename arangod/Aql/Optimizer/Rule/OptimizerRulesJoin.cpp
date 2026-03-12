@@ -24,6 +24,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstHelper.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -433,9 +434,11 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
                                        Variable const* outVariable) {
   if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     TRI_ASSERT(node->numMembers() == 1);
-    if (node->getMember(0)->type == NODE_TYPE_REFERENCE) {
-      auto iNode = node->getMember(0);
-      auto const* other = static_cast<Variable const*>(iNode->getData());
+    ast::AttributeAccessNode attrAccess(node);
+    auto objNode = attrAccess.getObject();
+    if (objNode->type == NODE_TYPE_REFERENCE) {
+      ast::ReferenceNode ref(objNode);
+      auto const* other = ref.getVariable();
       TRI_ASSERT(other != nullptr);
 
       if (other->isEqualTo(*outVariable)) {
@@ -539,8 +542,9 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
                                    IndicesOffsets& indicesOffsets,
                                    VarSet const* knownConstVariables) {
   TRI_ASSERT(eqRoot->numMembers() == 2);
-  auto const* leftMember = eqRoot->getMember(0);
-  auto const* rightMember = eqRoot->getMember(1);
+  ast::RelationalOperatorNode eqOp(eqRoot);
+  auto const* leftMember = eqOp.getLeft();
+  auto const* rightMember = eqOp.getRight();
 
   LOG_JOIN_OPTIMIZER_RULE << "Analysing binary condition: ("
                           << leftMember->toString() << " - "
@@ -605,7 +609,8 @@ bool checkCandidateEligibleForAdvancedJoin(
   if (candidateConditionRoot->type == NODE_TYPE_OPERATOR_NARY_OR) {
     LOG_JOIN_OPTIMIZER_RULE << "FOUND: NODE_TYPE_OPERATOR_NARY_OR";
     TRI_ASSERT(candidateConditionRoot->numMembers() == 1);
-    auto member = candidateConditionRoot->getMember(0);
+    ast::NaryOperatorNode naryOr(candidateConditionRoot);
+    auto member = naryOr.getOperands()[0];
 
     if (member->type == NODE_TYPE_OPERATOR_NARY_AND) {
       eligible = analyseNodeTypeOperatorNaryAnd(
@@ -694,7 +699,8 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
         return {false, {}};
       }
 
-      root = root->getMember(0);
+      ast::NaryOperatorNode naryOrRoot(root);
+      root = naryOrRoot.getOperands()[0];
       LOG_JOIN_OPTIMIZER_RULE
           << "Calling CandidateEligible check for other candidate ("
           << candidate->id() << ")";
