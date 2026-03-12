@@ -800,21 +800,32 @@ Result UpgradeTasks::migrateHashSkiplistToPersistent(
 
 Result UpgradeTasks::dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
                                           velocypack::Slice /*slice*/) {
-  auto collections = vocbase.collections(false);
+  // On a coordinator, vocbase.collections() returns empty because collections
+  // live in ClusterInfo. Use methods::Collections which handles both cases.
+  auto collections = methods::Collections::sorted(vocbase);
 
+  // Drop all geo1/geo2 indexes from all collections.
+  // Uses methods::Indexes::drop which on a coordinator propagates the
+  // drop through the agency so that DBServers pick up the change.
   for (auto const& collection : collections) {
     auto indexes = collection->getPhysical()->getReadyIndexes();
     for (auto const& index : indexes) {
       if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
           index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-        auto res = collection->dropIndex(index->id());
+        LOG_TOPIC("d4e3f", WARN, Logger::STARTUP)
+            << "Dropping obsolete geo1/geo2 index '" << index->id().id()
+            << "' from collection '" << collection->name()
+            << "' - geo1/geo2 indexes are no longer supported";
+
+        auto res =
+            methods::Indexes::drop(*collection, index->id()).waitAndGet();
+
         if (res.fail()) {
-          LOG_TOPIC("5550a", ERR, Logger::STARTUP)
-              << "Error dropping legacy geo1/geo2 indexes: " << res.errorMessage();
+          LOG_TOPIC("d4e40", ERR, Logger::STARTUP)
+              << "Error dropping obsolete geo1/geo2 index: "
+              << res.errorMessage();
           return res;
         }
-        LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
-            << "Dropped legacy geo1/geo2 index '" << index->id().id() << "'";
       }
     }
   }
