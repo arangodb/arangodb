@@ -427,7 +427,7 @@ void RocksDBBuilderIndex::beforeCreate() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, docCF));
 
   it->Seek(bounds.start());
-  _wrapped->prepareIndex(std::move(it), upper, &methods);
+  _wrapped->prepareIndex(std::move(it), upper, &methods, _numDocsHint);
 }
 
 Result RocksDBBuilderIndex::fillIndexForeground(

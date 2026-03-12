@@ -938,6 +938,19 @@ Result IndexFactory::enhanceJsonIndexVector(
       return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
     }
 
+    // When factory is used with scaling nLists, it must contain {nLists}
+    // placeholder for resolution at training time.
+    if (vectorIndexDefinition.factory.has_value() &&
+        isNListsScaling(vectorIndexDefinition.nLists)) {
+      if (vectorIndexDefinition.factory->find("{nLists}") ==
+          std::string::npos) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                "When 'nLists' is a scaling specification, 'factory' must "
+                "contain the '{nLists}' placeholder. "
+                "Example: \"IVF{nLists}_HNSW10,Flat\""};
+      }
+    }
+
     if (auto const res =
             processIndexStoredValues(definition, builder, 1, 32, create,
                                      /*allowSubAttributes*/ true,

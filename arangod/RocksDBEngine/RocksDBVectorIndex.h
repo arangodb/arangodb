@@ -27,6 +27,7 @@
 #include "RocksDBIndex.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexTraining.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -71,7 +72,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   bool matchesDefinition(VPackSlice const& /*unused*/) const override;
 
   void prepareIndex(std::unique_ptr<rocksdb::Iterator> it, rocksdb::Slice upper,
-                    RocksDBMethods* methods) override;
+                    RocksDBMethods* methods,
+                    std::uint64_t numDocsHint = 0) override;
 
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
@@ -112,6 +114,12 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
  private:
   UserVectorIndexDefinition _definition;
+  // The actual nLists value used for FAISS operations.
+  // Resolved at training time via resolveNListsParameter().
+  std::int64_t _resolvedNLists{0};
+  // The actual defaultNProbe value used at query time.
+  // Resolved at training time: explicit value or sqrt(nLists).
+  std::int64_t _resolvedDefaultNProbe{0};
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   std::optional<TrainedData> _trainedData;
   StoredValues const _storedValues;

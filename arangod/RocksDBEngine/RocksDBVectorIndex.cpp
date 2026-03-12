@@ -29,6 +29,7 @@
 #include <format>
 #include <functional>
 #include <cstring>
+#include <faiss/index_factory.h>
 #include <omp.h>
 
 #include "Aql/AstNode.h"
@@ -58,13 +59,9 @@
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/DocumentExpressionContext.h"
 
-#include "faiss/IndexFlat.h"
-#include "faiss/IndexIVFFlat.h"
+#include "faiss/IndexIVF.h"
 #include "faiss/MetricType.h"
-#include "faiss/index_factory.h"
 #include "faiss/utils/distances.h"
-#include "faiss/index_io.h"
-#include "faiss/impl/io.h"
 
 namespace arangodb {
 
@@ -100,58 +97,16 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   }
 
   if (_trainedData) {
-    faiss::VectorIOReader reader;
-    // TODO prevent this copy, but instead implement own IOReader, reading
-    // directly from the training data.
-    reader.data = _trainedData->codeData;
-    _faissIndex = std::unique_ptr<faiss::IndexIVF>{
-        dynamic_cast<faiss::IndexIVF*>(faiss::read_index(&reader))};
-    ADB_PROD_ASSERT(_faissIndex != nullptr);
+    auto restored =
+        vector::VectorIndexTrainer::restoreFromTrainedData(*_trainedData);
+    _faissIndex = std::move(restored.faissIndex);
+    _resolvedNLists = restored.resolvedNLists;
+    _resolvedDefaultNProbe = restored.resolvedDefaultNProbe;
 
     _faissIndex->replace_invlists(
-        new vector::RocksDBInvertedLists(this, &coll, _definition.nLists,
+        new vector::RocksDBInvertedLists(this, &coll, _resolvedNLists,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
-  } else {
-    if (_definition.factory) {
-      std::shared_ptr<faiss::Index> index;
-      index.reset(faiss::index_factory(
-          _definition.dimension, _definition.factory->c_str(),
-          vector::metricToFaissMetric(_definition.metric)));
-
-      _faissIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
-      if (_faissIndex == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "Index definition not supported. Expected IVF index.");
-      }
-
-      if (std::size_t(_definition.nLists) != _faissIndex->nlist) {
-        THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER,
-            "The nLists parameter has to agree with the actual nlists implied "
-            "by the factory string (which is %zu)",
-            _faissIndex->nlist);
-      }
-
-      _definition.nLists = _faissIndex->nlist;
-    } else {
-      auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
-        switch (_definition.metric) {
-          case arangodb::SimilarityMetric::kL2:
-            return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
-          case arangodb::SimilarityMetric::kCosine:
-            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-          case arangodb::SimilarityMetric::kInnerProduct:
-            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-        }
-      });
-
-      _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
-          quantizer.get(), _definition.dimension, _definition.nLists,
-          vector::metricToFaissMetric(_definition.metric));
-      _faissIndex->own_fields = nullptr != quantizer.release();
-    }
   }
 }
 
@@ -252,7 +207,7 @@ RocksDBVectorIndex::readBatch(
 
   faiss::SearchParametersIVF searchParametersIvf;
   searchParametersIvf.nprobe =
-      searchParameters.nProbe.value_or(_definition.defaultNProbe);
+      searchParameters.nProbe.value_or(_resolvedDefaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
   _faissIndex->search(count, inputs.data(), topK, distances.data(),
                       labels.data(), &searchParametersIvf);
@@ -269,51 +224,8 @@ RocksDBVectorIndex::readBatch(
 
 Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
                                                   std::vector<float>& output) {
-  TRI_ASSERT(_fields.size() == 1);
-
-  try {
-    VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
-
-    // this fails if index is not sparse
-    if (value.isNone()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              std::format("vector field not present in document {}",
-                          transaction::helpers::extractKeyFromDocument(doc))};
-    }
-
-    if (!value.isArray()) {
-      return {TRI_ERROR_TYPE_ERROR,
-              std::format("array expected for vector attribute for document {}",
-                          transaction::helpers::extractKeyFromDocument(doc))};
-    }
-
-    if (value.length() != _definition.dimension) {
-      return {TRI_ERROR_TYPE_ERROR,
-              std::format(
-                  "provided vector is not of matching dimension for document "
-                  "{}, index dimension: {}, document dimension: {}",
-                  transaction::helpers::extractKeyFromDocument(doc),
-                  _definition.dimension, value.length())};
-    }
-
-    // We don't make assumptions here if output contains one or more vectors
-    for (auto const d : VPackArrayIterator(value)) {
-      if (not d.isNumber<double>()) {
-        return {
-            TRI_ERROR_TYPE_ERROR,
-            std::format("vector contains data not representable as double for "
-                        "document {}",
-                        transaction::helpers::extractKeyFromDocument(doc))};
-      }
-      output.push_back(d.getNumericValue<double>());
-    }
-
-    return {};
-  } catch (velocypack::Exception const& e) {
-    return {TRI_ERROR_TYPE_ERROR,
-            std::format("deserialization error when accessing a document: {}",
-                        e.what())};
-  }
+  return vector::readDocumentVectorData(doc, _fields, _definition.dimension,
+                                        output);
 }
 
 /// @brief inserts a document into the index
@@ -323,6 +235,11 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
+  if (_faissIndex == nullptr) {
+    LOG_TOPIC("d1e0a", WARN, Logger::ENGINES)
+        << "vector index " << _iid.id() << " not yet trained, skipping insert";
+    return {};
+  }
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -374,72 +291,25 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                       rocksdb::Slice upper,
-                                      RocksDBMethods* methods) {
+                                      RocksDBMethods* methods,
+                                      std::uint64_t numDocsHint) {
   // In normal replication code this can be called multiple times
   // so to stop retraining of vector index we ignore this part
-  if (_faissIndex->is_trained) {
+  if (_faissIndex && _faissIndex->is_trained) {
     return;
   }
-  std::int64_t counter{0};
-  std::int64_t trainingDataSize =
-      _faissIndex->cp.max_points_per_centroid * _definition.nLists;
-  std::vector<float> trainingData;
-  std::vector<float> input;
-  input.reserve(_definition.dimension);
 
-  LOG_VECTOR_INDEX("b161b", INFO, Logger::FIXME)
-      << "Loading " << trainingDataSize << " vectors of dimension "
-      << _definition.dimension << " for training.";
+  vector::VectorIndexTrainer trainer(_definition, _sparse, _fields,
+                                     _collection.name(), _iid.id());
+  auto result = trainer.train(*it, upper, numDocsHint);
 
-  while (counter < trainingDataSize && it->Valid()) {
-    TRI_ASSERT(it->key().compare(upper) < 0);
-    auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
-    // TODO Don't use input array only trainingData array
-    if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
-      if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
-        it->Next();
-        continue;
-      }
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res.errorNumber(),
-          std::format(
-              "failed to read document vector data, "
-              "embeddings are in a wrong format and index is not sparse: {}",
-              res.errorMessage()));
-    }
-
-    trainingData.insert(trainingData.end(), input.begin(), input.end());
-    input.clear();
-
-    it->Next();
-    ++counter;
-  }
-
-  if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
-  }
-
-  LOG_VECTOR_INDEX("a162b", INFO, Logger::FIXME)
-      << "Loaded " << counter << " vectors. Start training process on "
-      << _definition.nLists << " centroids.";
-
-  if (trainingData.size() == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "For the vector index to be created documents "
-        "must be present in the respective collection for the training "
-        "process.");
-  }
-  _faissIndex->train(counter, trainingData.data());
-  LOG_VECTOR_INDEX("a160b", INFO, Logger::FIXME) << "Finished training.";
-
-  // Update vector definition data with quantizier data
-  faiss::VectorIOWriter writer;
-  faiss::write_index(_faissIndex.get(), &writer);
-  _trainedData.emplace().codeData = std::move(writer.data);
+  _faissIndex = std::move(result.faissIndex);
+  _resolvedNLists = result.resolvedNLists;
+  _resolvedDefaultNProbe = result.resolvedDefaultNProbe;
+  _trainedData = std::move(result.trainedData);
 
   _faissIndex->replace_invlists(
-      new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
+      new vector::RocksDBInvertedLists(this, &collection(), _resolvedNLists,
                                        _faissIndex->code_size),
       true /* faiss owns the inverted list */);
 }
@@ -450,6 +320,11 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
+  if (_faissIndex == nullptr) {
+    LOG_TOPIC("d1e0b", WARN, Logger::ENGINES)
+        << "vector index " << _iid.id() << " not yet trained, skipping remove";
+    return {};
+  }
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -748,7 +623,7 @@ Result RocksDBVectorIndex::ingestVectors(
     }
   };
 
-  LOG_VECTOR_INDEX("71c45", INFO, Logger::FIXME)
+  LOG_VECTOR_INDEX("71c45", INFO, Logger::STATISTICS)
       << "Ingesting vectors into index. Threads: num-readers=" << numReaders
       << " num-encoders=" << numEncoders << " numWriters=" << numWriters;
 
@@ -761,14 +636,14 @@ Result RocksDBVectorIndex::ingestVectors(
   _threads.clear();
 
   if (firstError.ok()) {
-    LOG_VECTOR_INDEX("41658", INFO, Logger::FIXME)
+    LOG_VECTOR_INDEX("41658", INFO, Logger::STATISTICS)
         << "Ingestion done. Encoded " << countDocuments << " vectors in "
         << countBatches
         << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
         << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
         << " " << counters.writeConsumeBlocked;
   } else {
-    LOG_VECTOR_INDEX("96a80", ERR, Logger::FIXME)
+    LOG_VECTOR_INDEX("96a80", ERR, Logger::STATISTICS)
         << "Ingestion failed: " << firstError;
   }
 

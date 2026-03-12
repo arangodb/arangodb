@@ -23,11 +23,18 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <optional>
+#include <string>
+#include <string_view>
+#include <variant>
 #include <vector>
 
+#include "Basics/overload.h"
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
 
 namespace arangodb {
 
@@ -51,6 +58,7 @@ struct SearchParameters {
   }
 };
 
+/// @brief Similarity metrics for vector index.
 enum class SimilarityMetric : std::uint8_t {
   kL2,
   kCosine,
@@ -73,13 +81,187 @@ struct TrainedData {
   }
 };
 
+/// @brief Strategy for computing nLists from document count.
+enum class NListsStrategy : std::uint8_t {
+  kAutoSqrt,
+};
+
+template<class Inspector>
+inline auto inspect(Inspector& f, NListsStrategy& x) {
+  return f.enumeration(x).values(NListsStrategy::kAutoSqrt, "autoSqrt");
+}
+
+/// @brief A single tier in the NLists scaling specification.
+/// If the document count N >= minN, use fixedValue for nLists.
+struct NListsTier {
+  std::int64_t minN{0};
+  std::int64_t fixedValue{1};
+
+  bool operator==(NListsTier const&) const noexcept = default;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, NListsTier& x) {
+    return f.object(x).fields(
+        f.field("min_n", x.minN)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"min_n must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("fixed_value", x.fixedValue)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"fixed_value must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }));
+  }
+};
+
+/// @brief Tiered NLists scaling specification.
+/// For small N: nLists = max(minNLists, multiplier * func(N))
+/// For large N: uses fixed values from tiers (first tier whose min_n <= N).
+/// Tiers should be provided in descending order of min_n.
+struct NListsScalingSpec {
+  NListsStrategy strategy{NListsStrategy::kAutoSqrt};
+  std::int64_t multiplier{8};
+  std::int64_t minNLists{10};
+  std::vector<NListsTier> tiers;
+
+  bool operator==(NListsScalingSpec const&) const noexcept = default;
+
+  std::int64_t compute(std::int64_t docCount) const {
+    // Sort tiers by minN descending to match the highest threshold first.
+    auto sortedTiers = tiers;
+    std::sort(sortedTiers.begin(), sortedTiers.end(),
+              [](auto const& a, auto const& b) { return a.minN > b.minN; });
+    for (auto const& tier : sortedTiers) {
+      if (docCount >= tier.minN) {
+        return tier.fixedValue;
+      }
+    }
+
+    // No tier matched: apply strategy.
+    switch (strategy) {
+      case NListsStrategy::kAutoSqrt: {
+        return std::max(minNLists, static_cast<std::int64_t>(
+                                       multiplier * std::sqrt(docCount)));
+      }
+    }
+  }
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, NListsScalingSpec& x) {
+    return f.object(x).fields(
+        f.field("strategy", x.strategy).fallback(NListsStrategy::kAutoSqrt),
+        f.field("multiplier", x.multiplier)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"multiplier must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("minNLists", x.minNLists)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"minNLists must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("tiers", x.tiers));
+  }
+};
+
+/// @brief NLists parameter: either a fixed integer or a tiered scaling spec.
+/// JSON: 100  OR  { "multiplier": 8, "minNLists": 10, "tiers": [...] }
+using NListsParameter = std::variant<std::int64_t, NListsScalingSpec>;
+
+template<class Inspector>
+inline auto inspect(Inspector& f, NListsParameter& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::inlineType<std::int64_t>(), insp::inlineType<NListsScalingSpec>());
+}
+
+/// @brief Check if an NListsParameter is in scaling mode.
+inline bool isNListsScaling(NListsParameter const& p) {
+  return std::holds_alternative<NListsScalingSpec>(p);
+}
+
+/// @brief Resolve an NListsParameter to a concrete value.
+/// In fixed mode, returns the fixed value.
+/// In scaling mode, evaluates tiers or computes multiplier * sqrt(docCount).
+inline std::int64_t resolveNListsParameter(NListsParameter const& p,
+                                           std::int64_t docCount) {
+  return std::visit(
+      overload{
+          [](std::int64_t fixed) -> std::int64_t { return fixed; },
+          [docCount](NListsScalingSpec const& spec) -> std::int64_t {
+            return spec.compute(docCount);
+          },
+      },
+      p);
+}
+
+/// @brief NProbe parameter: either a fixed integer or a strategy.
+/// JSON: 10  OR  "autoSqrt"
+using NProbeParameter = std::variant<std::int64_t, NListsStrategy>;
+
+template<class Inspector>
+inline auto inspect(Inspector& f, NProbeParameter& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::inlineType<std::int64_t>(), insp::inlineType<NListsStrategy>());
+}
+
+/// @brief Resolve an NProbeParameter to a concrete value.
+/// Fixed mode returns the value directly.
+/// Strategy mode computes from resolvedNLists (autoSqrt → sqrt(nLists), min 1).
+inline std::int64_t resolveNProbeParameter(NProbeParameter const& p,
+                                           std::int64_t resolvedNLists) {
+  return std::visit(
+      overload{
+          [](std::int64_t fixed) -> std::int64_t { return fixed; },
+          [resolvedNLists](NListsStrategy strategy) -> std::int64_t {
+            switch (strategy) {
+              case NListsStrategy::kAutoSqrt:
+                return std::max<std::int64_t>(
+                    1, static_cast<std::int64_t>(std::sqrt(resolvedNLists)));
+            }
+          },
+      },
+      p);
+}
+
+/// @brief Resolve a scaling factory string by replacing {nLists} with the
+/// computed nLists value.
+/// Example: "IVF{nLists}_HNSW10,Flat" with nLists=1500
+///       -> "IVF1500_HNSW10,Flat"
+inline std::string resolveScalingFactory(std::string const& factoryTemplate,
+                                         std::int64_t nLists) {
+  std::string result = factoryTemplate;
+  static constexpr std::string_view placeholder = "{nLists}";
+  auto pos = result.find(placeholder);
+  if (pos != std::string::npos) {
+    result.replace(pos, placeholder.length(), std::to_string(nLists));
+  }
+  return result;
+}
+
 struct UserVectorIndexDefinition {
   std::uint64_t dimension;
   SimilarityMetric metric;
-  std::int64_t nLists;
+  NListsParameter nLists;
   std::uint64_t trainingIterations;
-  std::uint64_t defaultNProbe;
 
+  // Default nProbe: either a fixed integer or a strategy like "autoSqrt"
+  // which computes sqrt(resolvedNLists) at training time.
+  NProbeParameter defaultNProbe;
+
+  // FAISS factory string. In fixed nLists mode, nLists must match the IVF
+  // number in the string. In scaling nLists mode, the string must contain a
+  // {nLists} placeholder that is resolved at training time.
   std::optional<std::string> factory;
 
   bool operator==(UserVectorIndexDefinition const&) const noexcept = default;
@@ -96,9 +278,16 @@ struct UserVectorIndexDefinition {
             }),
         f.field("metric", x.metric),
         f.field("nLists", x.nLists)
-            .invariant([](auto value) -> inspection::Status {
-              if (value < 1) {
-                return {"nLists must be 1 or greater!"};
+            .fallback(NListsParameter{NListsScalingSpec{
+                NListsStrategy::kAutoSqrt,
+                8,
+                10,
+                {{100000000, 1048576}, {10000000, 262144}, {1000000, 65536}}}})
+            .invariant([](auto const& value) -> inspection::Status {
+              if (auto* fixed = std::get_if<std::int64_t>(&value)) {
+                if (*fixed < 1) {
+                  return {"nLists must be 1 or greater!"};
+                }
               }
               return inspection::Status::Success{};
             }),
@@ -106,10 +295,12 @@ struct UserVectorIndexDefinition {
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)
-            .fallback(kdefaultNProbe)
-            .invariant([](auto value) -> inspection::Status {
-              if (value == 0) {
-                return {"defaultNProbe must be 1 or greater!"};
+            .fallback(NProbeParameter{NListsStrategy::kAutoSqrt})
+            .invariant([](auto const& value) -> inspection::Status {
+              if (auto* fixed = std::get_if<std::int64_t>(&value)) {
+                if (*fixed < 1) {
+                  return {"defaultNProbe must be 1 or greater!"};
+                }
               }
               return inspection::Status::Success{};
             }));

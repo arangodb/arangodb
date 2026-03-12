@@ -108,7 +108,8 @@ class RocksDBIndex : public Index {
   void destroyCache() noexcept;
 
   virtual void prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
-                            rocksdb::Slice upper, RocksDBMethods* methods) {}
+                            rocksdb::Slice upper, RocksDBMethods* methods,
+                            std::uint64_t numDocsHint = 0) {}
 
   /// performs a preflight check for an insert operation, not carrying out any
   /// modifications to the index.
