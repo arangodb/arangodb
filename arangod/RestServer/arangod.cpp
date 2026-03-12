@@ -113,6 +113,7 @@ void ArangodServer::addFeatures(
   addFeature<GreetingsFeature>();
   addFeature<InitDatabaseFeature>(kNonServerFeatures);
   addFeature<LanguageCheckFeature>();
+  addFeature<LegacyOptionsFeature>();
   addFeature<LanguageFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();

@@ -73,8 +73,7 @@ int main(int argc, char* argv[]) {
     std::shared_ptr<options::ProgramOptions> options(
         new options::ProgramOptions(
             argv[0], "Usage: " + context.binaryName() + " [<options>]",
-            "For more information use:", BIN_DIRECTORY,
-            arangodb::options::ParseJsOps::parseJS));
+            "For more information use:", BIN_DIRECTORY));
     application_features::ApplicationServer server(options, BIN_DIRECTORY);
 
     // Add features in order (based on ArangoshFeaturesList)

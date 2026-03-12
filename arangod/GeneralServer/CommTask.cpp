@@ -812,21 +812,6 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     }
 #endif
 
-    if (result == Flow::Abort && _auth->authenticationSystemOnly()) {
-      // authentication required, but only for /_api, /_admin etc.
-      if (!path.empty()) {
-        // check if path starts with /_
-        // or path begins with /
-        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
-          // simon: upgrade rights for Foxx apps. FIXME
-          result = Flow::Continue;
-          vc->forceSuperuser();
-          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
-              << "Upgrading rights for " << path;
-        }
-      }
-    }
-
     if (result == Flow::Abort) {
       std::string const& username = req.user();
 
