@@ -129,6 +129,7 @@ commands:
           name: Save workspace to S3
           command: |
             set -eo pipefail
+            set +x
 
             ROOT="<< parameters.root >>"
             PATHS="<< parameters.paths >>"
