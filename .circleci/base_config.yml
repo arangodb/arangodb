@@ -161,7 +161,7 @@ commands:
         default: workspace.tar.gz
     steps:
       - run:
-          name: Save workspace to S3
+          name: restore workspace from S3
           command: |
             set -eo pipefail
             set -x
@@ -298,10 +298,11 @@ commands:
       - attach_workspace:
           at: .
       - run:
-          - persist_from_workspace_s3:
+          persist_from_workspace_s3:
             root: .
             archive: << parameters.arch >>_binaries.tar.gz
-          - persist_from_workspace_s3:
+      - run:
+          persist_from_workspace_s3:
             root: .
             archive: frontend.tar.gz
           
