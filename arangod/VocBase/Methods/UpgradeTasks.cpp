@@ -810,7 +810,7 @@ Result UpgradeTasks::dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
         auto res = collection->dropIndex(index->id());
         if (res.fail()) {
           LOG_TOPIC("5550a", ERR, Logger::STARTUP)
-              << "Error upgrading geo indexes " << res.errorMessage();
+              << "Error dropping legacy geo1/geo2 indexes: " << res.errorMessage();
           return res;
         }
         LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
