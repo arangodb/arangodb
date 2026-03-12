@@ -966,7 +966,7 @@ jobs:
           path: ./test-results/
 
   run-cppcheck:
-    params:
+    parameters:
       resource-class:
         type: string
     docker:
