@@ -265,7 +265,15 @@ class CircleCIGenerator(OutputGenerator):
             and not build_config.build_variant.is_instrumented
         ):
             workflow["jobs"].append(
-                {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
+                {
+                    "run-cppcheck": {
+                        "name": "cppcheck",
+                        "requires": [build_jobs[0]]
+                        "resource-class": self.sizer.get_resource_class(
+                            ResourceSize.XLARGE, build_config.architecture
+                        ),
+                    }
+                }
             )
 
         # Docker image creation

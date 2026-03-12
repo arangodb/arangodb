@@ -665,7 +665,11 @@ jobs:
             - store_artifacts:
                 path: build/bin/arango*
             - persist_to_workspace_s3:
-                # build/3rdParty/snowball/libstemmer/ required for cppcheck
+                root: .
+                archive: << parameters.arch >>_cppcheck.tar.bz2
+                paths: |
+                  build/3rdParty/snowball/libstemmer/
+            - persist_to_workspace_s3:
                 # not there? install.tar.gz
                 root: .
                 archive: << parameters.arch >>_binaries.tar.bz2
@@ -676,7 +680,6 @@ jobs:
                   CMakePresets.json
                   build/bin
                   build/etc
-                  build/3rdParty/snowball/libstemmer/
                   build/build_version.cc
                   scripts/
                   js/
@@ -964,10 +967,16 @@ jobs:
           path: ./test-results/
 
   run-cppcheck:
+    params:
+      resource-class:
+        type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
     steps:
+      - persist_from_workspace_s3:
+          root: .
+          archive: << parameters.arch >>_cppcheck.tar.bz2
       - run:
           name: Prepare container
           command: |
