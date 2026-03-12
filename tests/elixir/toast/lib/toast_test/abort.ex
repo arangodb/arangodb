@@ -16,16 +16,21 @@ defmodule ToastTest.Abort do
   """
   @spec abort!(String.t() | {atom(), String.t()}) :: :ok
   def abort!(reason) do
+    bar = String.duplicate("\u2550", 80)
+
     if :ets.insert_new(@table, {:aborted, reason}) do
-      IO.puts([
-        IO.ANSI.red(),
-        "====================================",
-        "\n   ",
-        display_reason(reason),
-        "\n   !!! Aborting further tests !!!\n",
-        "====================================\n",
-        IO.ANSI.reset()
-      ])
+      IO.puts(
+        IO.ANSI.format([
+          :red,
+          bar,
+          "\n ",
+          display_reason(reason),
+          "\n ABORTING FURTHER TESTS\n",
+          bar,
+          "\n",
+          :reset
+        ])
+      )
     end
 
     :ok
