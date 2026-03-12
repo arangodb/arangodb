@@ -263,8 +263,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
   // produce inventory for all databases?
-  bool isGlobal = false;
-  getApplier(isGlobal);
+  bool isGlobal = _request->parsedValue("global", false);
 
   // "collection" is optional, and may in the DB server case contain the name of
   // a single shard for shard synchronization
