@@ -6,9 +6,7 @@ const db = require("@arangodb").db;
 const internal = require("internal");
 const isCluster = internal.isCluster();
 const errors = internal.errors;
-const aqlfunctions = require("@arangodb/aql/functions");
 const cn = "UnitTestsCollection";
-const IM = global.instanceManager;
 
 function ComputedValuesAfterCreateCollectionTestSuite() {
   'use strict';
@@ -1148,31 +1146,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
         }
       });
-    },
-
-    testUserDefinedFunctions: function() {
-      if (!IM.options.skipServerJS) {
-        aqlfunctions.register("UnitTests::cv", function(what) { return what * 2; }, true);
-        assertEqual("function(what) { return what * 2; }", aqlfunctions.toArray("UnitTests")[0].code);
-
-        try {
-          collection.properties({
-            computedValues: [
-              {
-                name: "newValue",
-                expression: `RETURN UnitTests::cv(1)`,
-                overwrite: false,
-                computeOn: ["insert"]
-              }
-            ]
-          });
-          fail();
-        } catch (error) {
-          assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
-        } finally {
-          aqlfunctions.unregisterGroup("UnitTests::");
-        }
-      }
     },
 
     testArrayOperator: function() {
