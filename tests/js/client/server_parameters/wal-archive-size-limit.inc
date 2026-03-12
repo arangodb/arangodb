@@ -62,6 +62,12 @@ function WalArchiveSizeLimitSuite() {
   };
 }
 let getLogLines = function() {
+  for (let i = 0; i < 10; i++) {
+    if (fs.exists(IM.arangods[0].logFile)) {
+      break;
+    }
+    require('internal').sleep(1);
+  }
   let content = fs.readFileSync(IM.arangods[0].logFile, 'ascii');
   let lines = content.split('\n');
 

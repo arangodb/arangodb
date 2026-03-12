@@ -502,7 +502,11 @@ function unitTestPrettyPrintResults (options, results) {
               failedMessages += '\n';
               onlyFailedMessages += '\n';
             }
-            m = '  ****> "' + one + '" failed:\n' + details[one].replaceAll('\\n', '\n');
+            if (details[one] !== undefined) {
+              m = `  ****> "${one}" failed:\n${details[one].replaceAll('\\n', '\n')}`;
+            } else {
+              m= `   ***> No detail message for "${one}"`;
+            }
             failedMessages += RED + m + RESET + '\n\n';
             onlyFailedMessages += m + '\n\n';
             count++;
