@@ -469,6 +469,9 @@ jobs:
             fi
 
   build-frontend:
+    parameters:
+      resource-class:
+        type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
