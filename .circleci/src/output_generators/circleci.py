@@ -658,10 +658,14 @@ class CircleCIGenerator(OutputGenerator):
             rta_branch = job.repository.git_branch
 
         deployments = ["single", "cluster"]
-        sanitizer_suffix = build_config.build_variant.get_suffix()
 
         result_jobs = []
         for deployment in deployments:
+            is_cluster = deployment_type == "cluster"
+            sanitizer_suffix = build_config.build_variant.get_suffix()
+            size_override = self._get_size_override(job.name, build_config, is_cluster)
+            size = size_override or job.options.size or ResourceSize.SMALL
+            resource_class = self.sizer.get_test_size(size, build_config, is_cluster)
             job_dict = {
                 "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
                 "suiteName": f"{deployment}-UI",
@@ -669,6 +673,7 @@ class CircleCIGenerator(OutputGenerator):
                 "deployment": "SG" if deployment == "single" else "CL",
                 "browser": "Remote_CHROME",
                 "enterprise": "EP",
+                "size": resource_class,
                 "filterStatement": ui_filter,
                 "requires": build_jobs,
                 "rta-branch": rta_branch,
