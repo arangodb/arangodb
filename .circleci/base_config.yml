@@ -192,7 +192,7 @@ commands:
             aws s3 cp --no-sign-request --profile anon \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}" \
               "$TAR"
-            tar -xJf "$TAR" $PATHS
+            tar -xJfC $PATHS "$TAR" 
 
   checkout-arangodb:
     parameters:
