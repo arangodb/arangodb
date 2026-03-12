@@ -92,14 +92,14 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCallNonExisting : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CALL()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CALL()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('nono-existing', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('foobar', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL(' trim', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('foo::bar::baz', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL(123, 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL([ ], 'baz')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('nono-existing', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('foobar', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL(' trim', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('foo::bar::baz', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL(123, 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL([ ], 'baz')");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +120,7 @@ function ahuacatlCallApplyTestSuite () {
       recursion.push('  foo bar  ');
       let query = "RETURN CALL('" + recursion.join('\',\'') + "')";
       actual = getQueryResults(query);
-      
+
       assertEqual(actual, [ 'foo bar' ]);
 
     },
@@ -185,15 +185,15 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testApplyNonExisting : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY('TRIM', 1, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY('TRIM', 1, 2)");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('nono-existing', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('foobar', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY(' trim', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('foo::bar::baz', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY(123, [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY([ ], [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('nono-existing', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('foobar', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY(' trim', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('foo::bar::baz', [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY(123, [ 'baz' ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY([ ], [ 'baz' ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +222,7 @@ function ahuacatlCallApplyTestSuite () {
       recursion += '[\'TRIM\', [ \'  foo bar  \'] ' + close;
       let query = "RETURN APPLY(" + recursion + ")";
       actual = getQueryResults(query);
-      
+
       assertEqual(actual, [ 'foo bar' ]);
     }
 
@@ -331,8 +331,8 @@ function ahuacatlCallUserDefinedTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUserDefNonExisting : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('UNITTESTS::FUNC::MEOW', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('UNITTESTS::FUNC::MEOW', [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('UNITTESTS::FUNC::MEOW', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('UNITTESTS::FUNC::MEOW', [ 'baz' ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,8 +340,8 @@ function ahuacatlCallUserDefinedTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUserDefThrows : function () {
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN CALL('UNITTESTS::FUNC::THROWING')"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN APPLY('UNITTESTS::FUNC::THROWING', [ ])"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN CALL('UNITTESTS::FUNC::THROWING')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN APPLY('UNITTESTS::FUNC::THROWING', [ ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,10 +353,10 @@ function ahuacatlCallUserDefinedTestSuite () {
 
       let actual = getQueryResults("RETURN UnitTests::func::call()");
       assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
-      
+
       actual = getQueryResults("RETURN CALL('UNITTESTS::FUNC::CALL', [])");
       assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
-      
+
       actual = getQueryResults("RETURN CALL('unittests::func::call', [])");
       assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
     }
@@ -383,7 +383,7 @@ function ahuacatlUDFSecurityDefaultsTestSuite () {
       // Try to write a file - should be forbidden with default settings
       aqlfunctions.register("UnitTests::security::filewrite", function () {
         var fs = require('fs');
-        fs.write('/tmp/arangodb-test-udf-security.txt', 'test');
+        fs.write('/root/arangodb-test-udf-security.txt', 'test');
         return true;
       });
 
