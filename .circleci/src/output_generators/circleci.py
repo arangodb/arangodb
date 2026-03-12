@@ -674,7 +674,9 @@ class CircleCIGenerator(OutputGenerator):
                 "deployment": "SG" if deployment == "single" else "CL",
                 "browser": "Remote_CHROME",
                 "enterprise": "EP",
-                "resource-class": resource_class,
+                "resource-class": self.sizer.get_resource_class(
+                    resource_class, build_config.architecture
+                ),
                 "filterStatement": ui_filter,
                 "requires": build_jobs,
                 "rta-branch": rta_branch,
