@@ -471,7 +471,7 @@ jobs:
   build-frontend:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    resource_class: large
+    resource_class: << parameters.resource-class >>
     steps:
       - checkout-arangodb:
           with-submodules: false
@@ -486,6 +486,7 @@ jobs:
       - persist_to_workspace_s3:
           root: .
           paths: js/apps/system/_admin/aardvark/APP/react/build
+          archive: frontend.tar.gz
 
   compile-linux:
     parameters:
