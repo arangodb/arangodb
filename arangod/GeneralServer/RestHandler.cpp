@@ -23,6 +23,7 @@
 
 #include "RestHandler.h"
 
+#include "Activities/GenericActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
 #include "Basics/dtrace-wrapper.h"
@@ -45,13 +46,14 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
-#include "Activities/activity.h"
+#include "Activities/RegistryGlobalVariable.h"
 
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
 #include <absl/strings/str_cat.h>
 #include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
+#include <unordered_map>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -200,8 +202,8 @@ void RestHandler::trackTaskEnd() noexcept {
 }
 
 void RestHandler::startActivity() {
-  _activity = std::make_unique<activities::Activity>(
-      "RestHandler", activities::Metadata{
+  _activity = activities::make<activities::GenericActivity>(
+      "RestHandler", std::unordered_map<std::string, std::string>{
                          {"handler", name()},
                          {"url", _request->fullUrl()},
                          {"method", std::string{GeneralRequest::translateMethod(
@@ -672,6 +674,18 @@ void RestHandler::generateError(rest::ResponseCode code,
 void RestHandler::generateError(arangodb::Result const& r) {
   ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
   generateError(code, r.errorNumber(), r.errorMessage());
+}
+
+// checks if the HTTP method is allowed and generates an error if not
+bool RestHandler::isAllowedHttpMethod(
+    std::initializer_list<rest::RequestType> allowed) {
+  auto method = _request->requestType();
+  if (std::find(allowed.begin(), allowed.end(), method) != allowed.end()) {
+    return true;
+  }
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return false;
 }
 
 // -----------------------------------------------------------------------------

@@ -25,6 +25,7 @@
 #ifndef ARANGO_CXX_DRIVER_MESSAGE
 #define ARANGO_CXX_DRIVER_MESSAGE
 
+#include <fuerte/ApiVersion.h>
 #include <fuerte/asio_ns.h>
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
@@ -101,7 +102,7 @@ struct RequestHeader final : public MessageHeader {
   /// Database that is the target of the request
   std::string database;
 
-  /// Local path of the request (without "/_db/" prefix)
+  /// Local path of the request (without "/_db/" and "/_arango/vX" prefixes)
   std::string path;
 
   /// Query parameters
@@ -109,6 +110,10 @@ struct RequestHeader final : public MessageHeader {
 
   /// HTTP method
   RestVerb restVerb = RestVerb::Illegal;
+
+  /// @brief API version, if specified via /_arango/vX or /_arango/experimental.
+  /// std::nullopt means no prefix was present; appendPath will not add one.
+  std::optional<std::string> apiVersion = std::nullopt;
 
   // accept header accessors
   ContentType acceptType() const { return _acceptType; }

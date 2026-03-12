@@ -227,9 +227,7 @@ commands:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - attach_workspace:
           at: .
-      - run:
-          name: Enabled coredumps
-          command: ulimit -c unlimited
+
       - run:
           name: Log processes
           command: |
@@ -257,6 +255,8 @@ commands:
           no_output_timeout: 20m
           command: |
             set -x
+            # ulimit needs to be in here since it only has effect for this verry shell and its subprocesses:
+            ulimit -c unlimited
             mkdir work
             if [ "<< parameters.sanitizer >>" = "alubsan" ]; then
               export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
@@ -728,9 +728,15 @@ jobs:
       - run:
           name: Wait for Kafka brokers to be ready
           command: |
+            count=0
             wait_server() {
                 # shellcheck disable=SC2091
                 until $(/usr/bin/nc -z $1 $2); do
+                    count=$((count + 1))
+                    if test "$count" -gt 300; then
+                       print "server not ready after 5 mins, giving up."
+                       exit 1
+                    fi
                     printf '.'
                     sleep 1
                 done

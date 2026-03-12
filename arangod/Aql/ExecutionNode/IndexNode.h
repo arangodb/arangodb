@@ -48,6 +48,7 @@ class ExecutionPlan;
 class Expression;
 class Projections;
 struct NonConstExpressionContainer;
+struct PerIndexCovering;
 
 template<typename T>
 struct RegisterPlanT;
@@ -233,6 +234,9 @@ class IndexNode : public ExecutionNode,
 
   /// @brief determine the IndexNode strategy
   Strategy strategy() const;
+
+  /// @brief compute per-index covering info for multi-index OR queries
+  std::vector<PerIndexCovering> computePerIndexCovering() const;
 
   NonConstExpressionContainer buildNonConstExpressions() const;
 

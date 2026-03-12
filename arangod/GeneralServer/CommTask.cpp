@@ -25,7 +25,7 @@
 
 #include "CommTask.h"
 
-#include "Activities/registry.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
@@ -192,13 +192,6 @@ CommTask::Flow CommTask::prepareExecution(
     return !ServerState::isCoordinatorId(_requestSource) &&
            !ServerState::isDBServerId(_requestSource);
   });
-
-  // Detect and strip API version prefix (/_arango/vX or /_arango/experimental)
-  if (Result res = req.detectAndStripApiVersion(); res.fail()) {
-    sendErrorResponse(rest::ResponseCode::BAD, req.contentTypeResponse(),
-                      req.messageId(), res.errorNumber(), res.errorMessage());
-    return Flow::Abort;
-  }
 
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
@@ -451,7 +444,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   }
 
   auto activityGuard = activities::Registry::ScopedCurrentlyExecutingActivity(
-      handler->_activity->id());
+      handler->_activity);
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase
@@ -810,21 +803,6 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
       result = Flow::Continue;
     }
 #endif
-
-    if (result == Flow::Abort && _auth->authenticationSystemOnly()) {
-      // authentication required, but only for /_api, /_admin etc.
-      if (!path.empty()) {
-        // check if path starts with /_
-        // or path begins with /
-        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
-          // simon: upgrade rights for Foxx apps. FIXME
-          result = Flow::Continue;
-          vc->forceSuperuser();
-          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
-              << "Upgrading rights for " << path;
-        }
-      }
-    }
 
     if (result == Flow::Abort) {
       std::string const& username = req.user();

@@ -10,18 +10,17 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
-      CACHE STRING
-      "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
-      FORCE
+    CACHE STRING
+    "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
+    FORCE
   )
 endif()
 
 if(NOT(CMAKE_BUILD_TYPE STREQUAL "Debug"
-      OR CMAKE_BUILD_TYPE STREQUAL "Release"
-      OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
-      OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
-      OR CMAKE_BUILD_TYPE STREQUAL "None"))
-
+  OR CMAKE_BUILD_TYPE STREQUAL "Release"
+  OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+  OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
+  OR CMAKE_BUILD_TYPE STREQUAL "None"))
   message(FATAL_ERROR "expecting CMAKE_BUILD_TYPE: None Debug Release RelWithDebInfo MinSizeRel, got ${CMAKE_BUILD_TYPE}.")
 endif()
 
@@ -106,16 +105,16 @@ if(DEFINED ARANGODB_VERSION_RELEASE_TYPE)
 else()
   set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}")
 endif()
+
 set(ARANGODB_JS_VERSION "js")
 
 message(STATUS "ARANGODB PLAIN VERSION: ${ARANGODB_PLAIN_VERSION}")
 message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
 message(STATUS "ARANGODB JS VERSION: ${ARANGODB_JS_VERSION}")
 
-################################################################################
+# ###############################################################################
 # SNAP version
-################################################################################
-
+# ###############################################################################
 set(ARANGODB_SNAP_REVISION "1")
 
 message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
@@ -123,7 +122,6 @@ message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
 # ------------------------------------------------------------------------------
 #
 # ------------------------------------------------------------------------------
-
 project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 
 # Enable CMake's Testing facilities.
@@ -138,8 +136,8 @@ set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(USE_FAIL_ON_WARNINGS
-    AND CMAKE_GENERATOR MATCHES "^Visual Studio"
-    AND CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
+  AND CMAKE_GENERATOR MATCHES "^Visual Studio"
+  AND CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
   message(WARNING [[
     clang-cl is used with USE_FAIL_ON_WARNINGS(i.e. /WX).
     The build will probably fail, because system header includes aren't passed
@@ -149,6 +147,7 @@ endif()
 
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
+
 if(STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -161,12 +160,14 @@ endif()
 
 # enable dtrace
 option(USE_DTRACE "enable dtrace probes" OFF)
+
 if(USE_DTRACE)
   add_definitions("-DUSE_DTRACE=1")
 endif()
 
 # enable code coverage
 option(USE_COVERAGE "enable gcov code coverage" OFF)
+
 if(USE_COVERAGE)
   add_compile_options(-fno-stack-protector -fprofile-arcs -ftest-coverage)
   add_link_options(--coverage)
@@ -178,24 +179,23 @@ set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
 # for the packages
-set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
+set(ARANGODB_PACKAGE_VENDOR "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arango.ai")
-set(ARANGODB_DISPLAY_NAME    "ArangoDB")
-set(ARANGODB_URL_INFO_ABOUT  "https://arango.ai")
-set(ARANGODB_HELP_LINK       "https://docs.arango.ai/arangodb/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
-set(ARANGODB_CONTACT         "hackers@arango.ai")
+set(ARANGODB_DISPLAY_NAME "ArangoDB")
+set(ARANGODB_URL_INFO_ABOUT "https://arango.ai")
+set(ARANGODB_HELP_LINK "https://docs.arango.ai/arangodb/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
+set(ARANGODB_CONTACT "hackers@arango.ai")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model graph database")
 
-
 # binaries
-set(BIN_ARANGOBACKUP  arangobackup)
-set(BIN_ARANGOD       arangod)
-set(BIN_ARANGODUMP    arangodump)
-set(BIN_ARANGOEXPORT  arangoexport)
-set(BIN_ARANGOIMPORT  arangoimport)
+set(BIN_ARANGOBACKUP arangobackup)
+set(BIN_ARANGOD arangod)
+set(BIN_ARANGODUMP arangodump)
+set(BIN_ARANGOEXPORT arangoexport)
+set(BIN_ARANGOIMPORT arangoimport)
 set(BIN_ARANGORESTORE arangorestore)
-set(BIN_ARANGOSH      arangosh)
-set(BIN_ARANGOVPACK   arangovpack)
+set(BIN_ARANGOSH arangosh)
+set(BIN_ARANGOVPACK arangovpack)
 
 # test binaries
 set(BIN_ARANGODB_TESTS arangodbtests)
@@ -208,7 +208,6 @@ set(INSTALL_CONFIGFILES_LIST)
 # ------------------------------------------------------------------------------
 # update files containing VERSION information
 # ------------------------------------------------------------------------------
-
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
@@ -216,6 +215,7 @@ configure_file(
 )
 
 option(ARANGODB_BUILD_DATE "Specific build date set from the outside(leave empty to auto-generate)" "")
+
 if(ARANGODB_BUILD_DATE STREQUAL "" OR ARANGODB_BUILD_DATE STREQUAL "OFF")
   if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h")
     # auto-generate build date
@@ -236,7 +236,7 @@ if(NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
     "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
     NEWLINE_STYLE UNIX
-    )
+  )
 else()
   set(GENERATE_BUILD_DATE OFF CACHE INTERNAL "whether we should generate the build date")
 endif()
@@ -247,10 +247,9 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
-################################################################################
-## Find the git revision
-################################################################################
-
+# ###############################################################################
+# # Find the git revision
+# ###############################################################################
 function(determine_repository_version source_dir build_repository have_build_repository)
   # Get commit hash
   execute_process(
@@ -258,6 +257,7 @@ function(determine_repository_version source_dir build_repository have_build_rep
     COMMAND ${GIT_EXE} rev-parse --short HEAD
     OUTPUT_VARIABLE COMMIT_RAW
   )
+
   if(NOT COMMIT_RAW)
     message(FATAL_ERROR "Can't extract current commit with the command: 'git rev-parse --short HEAD'")
   endif()
@@ -269,6 +269,7 @@ function(determine_repository_version source_dir build_repository have_build_rep
       WORKING_DIRECTORY ${source_dir}
       COMMAND ${GIT_EXE} branch --show-current
       OUTPUT_VARIABLE BRANCH_NAME_RAW)
+
     if(NOT BRANCH_NAME_RAW)
       # For example, in docker we do 'checkout'. Hence, it is impossible to detect branch
       set(${build_repository} "${COMMIT_SHORT}" PARENT_SCOPE)
@@ -284,11 +285,13 @@ function(determine_repository_version source_dir build_repository have_build_rep
     else()
       set(RELEASE_TAG ${ARANGODB_VERSION})
     endif()
+
     set(RELEASE_TAG "v${RELEASE_TAG}")
     execute_process(
       WORKING_DIRECTORY ${source_dir}
       COMMAND ${GIT_EXE} describe --all --tags --match ${RELEASE_TAG}
       OUTPUT_VARIABLE TAG_RAW)
+
     if(NOT TAG_RAW)
       message(FATAL_ERROR "Can't extract tag using the command: 'git describe --all --tags --match v${ARANGODB_PLAIN_VERSION}")
     else()
@@ -306,6 +309,7 @@ function(determine_repository_version source_dir build_repository have_build_rep
 endfunction()
 
 find_program(GIT_EXE git)
+
 if(DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
   determine_repository_version(${CMAKE_SOURCE_DIR} ARANGODB_BUILD_REPOSITORY HAVE_ARANGODB_BUILD_REPOSITORY)
 else()
@@ -338,10 +342,9 @@ if(VERBOSE)
   message(STATUS "ENTERPRISE_BUILD_REPOSITORY=\"${ENTERPRISE_BUILD_REPOSITORY}\"")
 endif()
 
-################################################################################
-## OPERATING SYSTEM
-################################################################################
-
+# ###############################################################################
+# # OPERATING SYSTEM
+# ###############################################################################
 if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
   set(LINUX TRUE)
 elseif(CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
@@ -363,7 +366,6 @@ endif()
 # ------------------------------------------------------------------------------
 # LINUX system call GETTID
 # ------------------------------------------------------------------------------
-
 option(CHECK_GETTID "check for the existance of gettid" ON)
 
 if(CHECK_GETTID)
@@ -373,17 +375,16 @@ if(CHECK_GETTID)
   )
 
   if(GETTID_COMPILE_TEST)
-      message(STATUS "gettid appears to be available at compile time.")
-      add_definitions("-DHAVE_SYS_GETTID=1")
+    message(STATUS "gettid appears to be available at compile time.")
+    add_definitions("-DHAVE_SYS_GETTID=1")
   else()
-      message(STATUS "gettid does NOT appear to be available at compile time.")
+    message(STATUS "gettid does NOT appear to be available at compile time.")
   endif()
 endif()
 
 # ------------------------------------------------------------------------------
 # user options
 # ------------------------------------------------------------------------------
-
 option(USE_JEMALLOC "use jemalloc memory allocator" ON)
 
 option(USE_LIBUNWIND "use libunwind for stack traces" ON)
@@ -405,6 +406,7 @@ string(REPLACE " " " -Wl," mold_test_flags "${mold_test_flags}")
 execute_process(
   COMMAND "${CMAKE_CXX_COMPILER} ${mold_test_flags}"
   OUTPUT_VARIABLE LINKER_VERSION_OUT)
+
 if(LINKER_VERSION_OUT MATCHES ^mold)
   SET(LINKER_IS_MOLD TRUE)
   message(STATUS "Using MOLD")
@@ -414,17 +416,16 @@ else()
 endif()
 
 # mold doesn't support the linker scripts currently used for the build id reader, and will result in the error
-#   mold: fatal: /home/tobias/Documents/ArangoDB/arangodb/arangodb/lib/BuildId/BuildId.ld:1: build_id_start = ADDR(.note.gnu.build-id);
-#                                                                                    ^ unknown linker script token
+# mold: fatal: /home/tobias/Documents/ArangoDB/arangodb/arangodb/lib/BuildId/BuildId.ld:1: build_id_start = ADDR(.note.gnu.build-id);
+# ^ unknown linker script token
 # . Let's warn about this early, and how to work around it:
 if(LINKER_IS_MOLD AND USE_BUILD_ID_READER)
   message(SEND_ERROR "It looks like you're using mold as a linker. That doesn't work together with USE_BUILD_ID_READER. Either disable USE_BUILD_ID_READER, or use another linker.")
 endif()
 
-################################################################################
-## EXTERNAL PROGRAMS
-################################################################################
-
+# ###############################################################################
+# # EXTERNAL PROGRAMS
+# ###############################################################################
 set(MAKE make)
 
 find_package(PythonInterp 3 EXACT REQUIRED)
@@ -432,10 +433,11 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} -c "from shutil import which"
-    RESULT_VARIABLE EXIT_CODE
-    OUTPUT_QUIET
-    )
+  COMMAND ${PYTHON_EXECUTABLE} -c "from shutil import which"
+  RESULT_VARIABLE EXIT_CODE
+  OUTPUT_QUIET
+)
+
 if(NOT "${EXIT_CODE}" EQUAL "0")
   message(FATAL_ERROR "python shutil.which package is required! ")
 endif()
@@ -459,27 +461,25 @@ find_program(
 )
 message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
 
-################################################################################
-## ARCHITECTURE
-################################################################################
-
+# ###############################################################################
+# # ARCHITECTURE
+# ###############################################################################
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 
-################################################################################
-## COMPILER FEATURES
-################################################################################
-
+# ###############################################################################
+# # COMPILER FEATURES
+# ###############################################################################
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   set(CMAKE_COMPILER_IS_CLANG 1)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
   set(CMAKE_COMPILER_IS_CLANG 1)
 endif()
 
-set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
-set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
+set(BASE_FLAGS "" CACHE STRING "base flags")
+set(BASE_C_FLAGS "${CMAKE_C_FLAGS}   $ENV{CFLAGS}" CACHE STRING "base C flags")
 set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
-set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
-set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
+set(BASE_LD_FLAGS "$ENV{LDFLAGS}" CACHE STRING "base linker flags")
+set(BASE_LIBS "$ENV{LIBS}" CACHE STRING "base libraries")
 
 include(CheckCompilerVersion)
 
@@ -494,6 +494,7 @@ endif()
 # need c++20
 # XXX this should really be set on a per target level using cmake compile_features capabilities
 set(CMAKE_CXX_STANDARD 20)
+
 # turn off compiler language extensions(e.g. don't use -std=gnu++20, but
 # -std=c++20).
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -510,16 +511,15 @@ if(THREADS_HAVE_PTHREAD_ARG)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 endif()
 
-################################################################################
-## TARGET ARCHITECTURE
-################################################################################
-
+# ###############################################################################
+# # TARGET ARCHITECTURE
+# ###############################################################################
 include(OptimizeForArchitecture)
 set(BASE_FLAGS "${BASE_FLAGS} ${ARCHITECTURE_OPTIMIZATIONS}")
 
-################################################################################
-## BACKTRACE
-################################################################################
+# ###############################################################################
+# # BACKTRACE
+# ###############################################################################
 
 # iresearch uses backtrace, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
@@ -531,9 +531,9 @@ else()
   set(BT_LIBS "" CACHE PATH "Debug Helper libraries")
 endif()
 
-################################################################################
-## ASSEMBLER OPTIMIZATIONS
-################################################################################
+# ###############################################################################
+# # ASSEMBLER OPTIMIZATIONS
+# ###############################################################################
 
 # Allow to prohibit assembler optimization code explicitly
 if(ARCH_AMD64)
@@ -551,10 +551,9 @@ else(ASM_OPTIMIZATIONS)
   add_definitions("-DASM_OPTIMIZATIONS=0")
 endif(ASM_OPTIMIZATIONS)
 
-################################################################################
-## MAINTAINER MODE
-################################################################################
-
+# ###############################################################################
+# # MAINTAINER MODE
+# ###############################################################################
 option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features"
   OFF
@@ -564,12 +563,14 @@ if(USE_MAINTAINER_MODE)
   add_definitions("-DIRESEARCH_DEBUG")
 
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
+
   if((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=3")
   endif()
 
   find_package(FLEX)
   find_package(BISON)
+
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
   find_program(SED_EXECUTABLE sed)
@@ -577,6 +578,7 @@ if(USE_MAINTAINER_MODE)
 endif()
 
 option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
+
 if(USE_GOOGLE_TESTS)
   add_definitions("-DARANGODB_USE_GOOGLE_TESTS=1")
 endif()
@@ -585,10 +587,9 @@ include(debugInformation)
 find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 
-################################################################################
-## FAILURE TESTS
-################################################################################
-
+# ###############################################################################
+# # FAILURE TESTS
+# ###############################################################################
 option(USE_FAILURE_TESTS
   "whether we want to have failure tests compiled in"
   OFF
@@ -598,10 +599,9 @@ if(USE_FAILURE_TESTS)
   add_definitions("-DARANGODB_ENABLE_FAILURE_TESTS=1")
 endif()
 
-################################################################################
-## INTERPROCEDURAL OPTIMIZATION(LINK TIME OPTIMIZATION)
-################################################################################
-
+# ###############################################################################
+# # INTERPROCEDURAL OPTIMIZATION(LINK TIME OPTIMIZATION)
+# ###############################################################################
 set(USE_IPO AUTO CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
 set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
 
@@ -618,7 +618,7 @@ if(USE_IPO STREQUAL "AUTO")
   # So this check may be removed later as soon as we use fixed gcc versions.
   # - Tobias, 2019-08-08
   if(NOT USE_GOOGLE_TESTS AND
-   (CMAKE_BUILD_TYPE STREQUAL "Release"
+    (CMAKE_BUILD_TYPE STREQUAL "Release"
     OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
     OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
     set(IPO_ENABLED True)
@@ -638,14 +638,13 @@ if(IPO_ENABLED)
   add_definitions("-DARANGODB_USE_IPO=1")
 endif()
 
-################################################################################
-## LIBRARIES
-################################################################################
+# ###############################################################################
+# # LIBRARIES
+# ###############################################################################
 
 # ------------------------------------------------------------------------------
 # IMPLICIT INCLUDES AND LIBRARY DIRECTORIES
 # ------------------------------------------------------------------------------
-
 function(CREATE_FLAGS OUTPUT GLUE)
   set(_TMP_RESULT "")
 
@@ -659,13 +658,11 @@ endfunction()
 # ------------------------------------------------------------------------------
 # RESOLV and RT
 # ------------------------------------------------------------------------------
-
 set(SYS_LIBS ${SYS_LIBS} resolv rt)
 
 # ------------------------------------------------------------------------------
 # JEMALLOC
 # ------------------------------------------------------------------------------
-
 option(USE_JEMALLOC_PROF "use jemalloc profiler" ON)
 option(USE_JEMALLOC_CHECKS "use jemalloc extended safety checks" ON)
 
@@ -683,7 +680,6 @@ endif()
 # ------------------------------------------------------------------------------
 # LIBUNWIND
 # ------------------------------------------------------------------------------
-
 if(USE_LIBUNWIND)
   add_definitions("-DARANGODB_HAVE_LIBUNWIND=1")
 endif()
@@ -691,13 +687,11 @@ endif()
 # ------------------------------------------------------------------------------
 # NDEBUG
 # ------------------------------------------------------------------------------
-
 add_definitions(-DNDEBUG)
 
-################################################################################
-## FLAGS
-################################################################################
-
+# ###############################################################################
+# # FLAGS
+# ###############################################################################
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 
@@ -708,6 +702,7 @@ include(CheckCXXCompilerFlag)
 function(add_c_flags_if_supported var)
   foreach(flag ${ARGN})
     set(flag_var_name "C_COMPILER_SUPPORTS_${flag}")
+
     # Note that this compiles a test file, also using CMAKE_C_FLAGS, which
     # may thus affect the result.
     # Also note that check_c_compiler_flag *internally caches* the result for
@@ -716,10 +711,12 @@ function(add_c_flags_if_supported var)
     # An alternative(albeit more costly) would be to unset the variable each time.
     check_c_compiler_flag(${flag} "${flag_var_name}")
     set(is_supported ${${flag_var_name}})
+
     if(is_supported)
       set(${var} "${${var}} ${flag}")
     endif()
   endforeach()
+
   set(${var} "${${var}}" PARENT_SCOPE)
 endfunction()
 
@@ -730,6 +727,7 @@ endfunction()
 function(add_cxx_flags_if_supported var)
   foreach(flag ${ARGN})
     set(flag_var_name "CXX_COMPILER_SUPPORTS_${flag}")
+
     # Note that this compiles a test file, also using CMAKE_CXX_FLAGS, which
     # may thus affect the result.
     # Also note that check_cxx_compiler_flag *internally caches* the result for
@@ -738,19 +736,23 @@ function(add_cxx_flags_if_supported var)
     # An alternative(albeit more costly) would be to unset the variable each time.
     check_cxx_compiler_flag(${flag} "${flag_var_name}")
     set(is_supported ${${flag_var_name}})
+
     if(is_supported)
       set(${var} "${${var}} ${flag}")
     endif()
   endforeach()
+
   set(${var} "${${var}}" PARENT_SCOPE)
 endfunction()
 
 function(add_compile_warnings_flags)
   if(USE_FAIL_ON_WARNINGS)
     add_compile_options(-Werror -Wno-error=deprecated-declarations)
+
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       # This option has too many false positives
       add_compile_options(-Wno-error=maybe-uninitialized)
+
       # This prevents useful partial initializations
       add_compile_options(-Wno-missing-field-initializers)
     endif()
@@ -761,7 +763,6 @@ if(VERBOSE)
   message(STATUS)
 endif()
 
-
 # compiler options
 set(EXTRA_C_FLAGS "")
 set(EXTRA_CXX_FLAGS "")
@@ -770,9 +771,11 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
   set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
+
   if(CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
     set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
   endif()
+
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0.0")
     # the following warning types need to be suppressed with newer
     # versions of g++, as they produce a lot of false positives.
@@ -787,6 +790,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
+
   # -Wno-error=unused-command-line-argument is needed otherwise snappy configure step
   # might fails when we use additional compiler flags like fcoverage...
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=unused-command-line-argument ${BASE_FLAGS}")
@@ -796,8 +800,9 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # clang 11 and higher supports -Wsuggest-override. older versions don't
     set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
   endif()
+
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "19.0")
-  # broken warnings in clang-19
+    # broken warnings in clang-19
     set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=missing-designated-field-initializers")
   endif()
 else()
@@ -823,33 +828,33 @@ endif()
 # the base flags from CMAKE_C_FLAGS with build type-specific flags in
 # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
 # there is no need to repeat the base flags in the build-type specific flags!
-set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
-set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
-set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
-set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
+set(CMAKE_C_FLAGS "" CACHE INTERNAL "default C compiler flags")
+set(CMAKE_C_FLAGS_DEBUG "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1" CACHE INTERNAL "C debug flags")
+set(CMAKE_C_FLAGS_MINSIZEREL "${NODEBUGINFO_FLAGS} -Os" CACHE INTERNAL "C minimal size flags")
+set(CMAKE_C_FLAGS_RELEASE "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer" CACHE INTERNAL "C release flags")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
 
 # cxx
 # note: when building one of the build types, CMake will automatically combine
 # the base flags from CMAKE_CXX_FLAGS with build type-specific flags in
 # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
 # there is no need to repeat the base flags in the build-type specific flags!
-set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
-set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
-set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
-set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
+set(CMAKE_CXX_FLAGS "" CACHE INTERNAL "default C++ compiler flags")
+set(CMAKE_CXX_FLAGS_DEBUG "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1" CACHE INTERNAL "C++ debug flags")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "${NODEBUGINFO_FLAGS} -Os" CACHE INTERNAL "C++ minimal size flags")
+set(CMAKE_CXX_FLAGS_RELEASE "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer" CACHE INTERNAL "C++ release flags")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    # On Darwin -fstandalone-debug is enabled by default, so we don't need
-    # to add it for AppleClang.
-    set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
+  # On Darwin -fstandalone-debug is enabled by default, so we don't need
+  # to add it for AppleClang.
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
 endif()
 
 # put together the final flags
-set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
-set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${EXTRA_CXX_FLAGS}")
+set(CMAKE_C_FLAGS "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${EXTRA_CXX_FLAGS}")
 
 if(VERBOSE)
   message(STATUS "Info BASE_FLAGS:     ${BASE_FLAGS}")
@@ -867,6 +872,7 @@ if(VERBOSE)
     message(STATUS "Info CMAKE_C_FLAGS:   ${CMAKE_C_FLAGS}")
     message(STATUS "Info CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
   endif()
+
   message(STATUS "Info CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}:   ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
   message(STATUS "Info CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}: ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
 
@@ -875,17 +881,18 @@ if(VERBOSE)
 endif()
 
 if(ARANGODB_DEBUG_CMAKE)
-  get_directory_property(DirDefs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMPILE_DEFINITIONS )
-  foreach(d ${DirDefs} )
-    message(STATUS "Found Define: " ${d} )
+  get_directory_property(DirDefs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMPILE_DEFINITIONS)
+
+  foreach(d ${DirDefs})
+    message(STATUS "Found Define: " ${d})
   endforeach()
-  message(STATUS "DirDefs: ${DirDefs}" )
+
+  message(STATUS "DirDefs: ${DirDefs}")
 endif()
 
-################################################################################
-## OpenSSL
-################################################################################
-
+# ###############################################################################
+# # OpenSSL
+# ###############################################################################
 if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
   message(FATAL_ERROR "expecting ${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
 else()
@@ -897,23 +904,26 @@ else()
   else()
     set(OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([0-9]\.[0-9]\.[^0-9\"]*).*")
   endif()
+
   string(REGEX MATCH
-            "${OPENSSL_VERSION_PATTERN}"
-            ARANGODB_REQUIRED_OPENSSL_VERSION
-            "${ARANGODB_VERSIONS_CONTENT}")
+    "${OPENSSL_VERSION_PATTERN}"
+    ARANGODB_REQUIRED_OPENSSL_VERSION
+    "${ARANGODB_VERSIONS_CONTENT}")
+
   if("${CMAKE_MATCH_1}" STREQUAL "")
     message(FATAL_ERROR "expecting OPENSSL_${TARGET_OS} in ${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
   else()
     set(ARANGODB_REQUIRED_OPENSSL_VERSION "${CMAKE_MATCH_1}")
+
     if(USE_STRICT_OPENSSL_VERSION)
       set(MSG_ARANGODB_REQUIRED_OPENSSL_VERSION "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
     else()
       set(MSG_ARANGODB_REQUIRED_OPENSSL_VERSION "${ARANGODB_REQUIRED_OPENSSL_VERSION}*")
     endif()
+
     message(STATUS "Required OpenSSL version: ${MSG_ARANGODB_REQUIRED_OPENSSL_VERSION}")
   endif()
 endif()
-
 
 if(NOT DEFINED OPENSSL_ROOT_DIR OR "${OPENSSL_ROOT_DIR}" STREQUAL "")
   if(DEFINED ENV{OPENSSL_ROOT_DIR} AND NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
@@ -970,16 +980,15 @@ if(USE_OPENSSL_NO_SSL2)
   add_definitions(-DOPENSSL_NO_SSL2)
 endif()
 
-################################################################################
-## 3RD PARTY
-################################################################################
+# ###############################################################################
+# # 3RD PARTY
+# ###############################################################################
 
 # ------------------------------------------------------------------------------
 # Boost
 # ------------------------------------------------------------------------------
-
-add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1)  # fix random provider
-add_definitions(-DBOOST_ALL_NO_LIB=1)  # disable boost autolink on windows
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) # fix random provider
+add_definitions(-DBOOST_ALL_NO_LIB=1) # disable boost autolink on windows
 add_subdirectory(3rdParty EXCLUDE_FROM_ALL) # TODO: specific includes
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
@@ -987,18 +996,17 @@ add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 # ------------------------------------------------------------------------------
 # ZLIB
 # ------------------------------------------------------------------------------
-
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 link_directories("${PROJECT_BINARY_DIR}/bin")
 
 # ------------------------------------------------------------------------------
 # FAISS
 # ------------------------------------------------------------------------------
-
 find_package(ZLIB REQUIRED) # TODO should be removed, see ZLIB above
 
 # This is hardcoded since we know exactly with which OpenMP version we want to build
 add_definitions(-DARANGODB_OPENMP_VERSION="5.1")
+
 if(STATIC_EXECUTABLES)
   # These variables are used when linking BIN_ARANGOD
   # and are specific for how we build our docker build
@@ -1013,6 +1021,7 @@ if(STATIC_EXECUTABLES)
     set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
     set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/aarch64-linux-gnu/13/libgomp.a")
   endif()
+
   message(STATUS "LAPACK: ${LAPACK_LIBRARIES}")
   message(STATUS "BLAS: ${BLAS_LIBRARIES}")
 
@@ -1068,11 +1077,11 @@ else()
   message(STATUS "OpenMP_pthread_LIBRARY: ${OpenMP_pthread_LIBRARY}")
   message(STATUS "OpenMP_CXX_LIBRARIES: ${OpenMP_CXX_LIBRARIES}")
 
-
   find_package(LAPACK)
   find_package(BLAS)
 
   set(FAISS_EXE_LINKER_FLAGS "${OpenMP_CXX_FLAGS}")
+
   foreach(lapack_lib ${LAPACK_LIBRARIES})
     message(STATUS "Using LAPACK library: ${lapack_lib}")
     set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} ${lapack_lib}")
@@ -1102,7 +1111,6 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
-
 add_dependencies(rocksdb snappy)
 
 if(USE_JEMALLOC)
@@ -1113,13 +1121,11 @@ endif()
 # ------------------------------------------------------------------------------
 # VELOCYPACK
 # ------------------------------------------------------------------------------
-
 add_definitions("-DVELOCYPACK_XXHASH=1")
 
 # ------------------------------------------------------------------------------
 # V8
 # ------------------------------------------------------------------------------
-
 set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
@@ -1133,6 +1139,7 @@ endforeach()
 
 add_subdirectory(Documentation)
 include(ArangoDBInstall)
+
 if(NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()
@@ -1155,6 +1162,7 @@ set(ERRORS_DAT lib/Basics/errors.dat)
 
 foreach(m IN LISTS ERROR_FILES)
   get_filename_component(GEN_BASENAME "${m}" NAME)
+
   if(GEN_BASENAME STREQUAL "errors.js")
     # generated errors.js is copied into the source dir
     set(TARGET_FILENAME ${CMAKE_SOURCE_DIR}/${m})
@@ -1162,6 +1170,7 @@ foreach(m IN LISTS ERROR_FILES)
     # generated C++ header files are copied into the build dir
     set(TARGET_FILENAME ${CMAKE_BINARY_DIR}/${m})
   endif()
+
   add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/${m}
     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/generateErrorfile.py ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
@@ -1169,7 +1178,7 @@ foreach(m IN LISTS ERROR_FILES)
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
     DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ${CMAKE_SOURCE_DIR}/utils/generateErrorfile.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT  "Building errors file ${m}"
+    COMMENT "Building errors file ${m}"
     VERBATIM
   )
 
@@ -1196,7 +1205,7 @@ foreach(m IN LISTS EXIT_CODE_FILES)
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
     DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ${CMAKE_SOURCE_DIR}/utils/generateExitCodesFiles.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT  "Building exitcode file ${m}"
+    COMMENT "Building exitcode file ${m}"
     VERBATIM
   )
 
@@ -1205,10 +1214,9 @@ endforeach()
 
 add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
 
-################################################################################
-## SUB-PROJECTS
-################################################################################
-
+# ###############################################################################
+# # SUB-PROJECTS
+# ###############################################################################
 list(INSERT SYSTEM_LIBRARIES 0
   ${BT_LIBS}
   ${ZLIB_LIBS}
@@ -1253,6 +1261,6 @@ if(USE_ENTERPRISE)
 endif()
 
 add_custom_target(arangodb
-   DEPENDS arangod client-tools)
+  DEPENDS arangod client-tools)
 
 add_subdirectory(utils/gdb-pretty-printers/immer/test)

@@ -1,8 +1,7 @@
 target_sources(arango_activities
 PRIVATE
-  activity.cpp
-  registry.cpp)
+  Registry.cpp)
 
 target_sources(arango_activities_global
 PRIVATE
-  activity_registry_variable.cpp)
+  RegistryGlobalVariable.cpp)

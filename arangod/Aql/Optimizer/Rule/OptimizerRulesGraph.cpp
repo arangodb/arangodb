@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
 #include "Basics/StaticStrings.h"
 #include "Containers/SmallVector.h"
@@ -65,7 +66,14 @@ auto swapOutLastElementAccesses(
         if (node->type == NODE_TYPE_REFERENCE ||
             node->type == NODE_TYPE_VARIABLE) {
           // we are on the bottom of the tree. Check if it is our pathVar
-          auto variable = static_cast<Variable*>(node->getData());
+          Variable const* variable;
+          if (node->type == NODE_TYPE_REFERENCE) {
+            ast::ReferenceNode ref(node);
+            variable = ref.getVariable();
+          } else {
+            ast::VariableNode varNode(node);
+            variable = varNode.getVariable();
+          }
           if (pathVariables.contains(variable)) {
             currentState = PathAccessState::kAccessEdgesOrVertices;
             matchingPath = variable;

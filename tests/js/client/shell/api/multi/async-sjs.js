@@ -124,8 +124,8 @@ function dealing_with_async_requestsSuite () {
     },
 
     test_checks_whether_POST_returns_status_202: function() {
-      let cmd = "/_api/version";
-      let doc = arango.POST_RAW(cmd, "", { "X-Arango-Async": "true" });
+      let cmd = "/_api/cursor";
+      let doc = arango.POST_RAW(cmd, '{"query": "RETURN 1"}', { "X-Arango-Async": "true" });
 
       assertEqual(doc.code, 202);
       assertFalse(doc.headers.hasOwnProperty("x-arango-async-id"));

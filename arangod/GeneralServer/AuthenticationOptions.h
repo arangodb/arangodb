@@ -29,7 +29,6 @@ namespace arangodb {
 
 struct AuthenticationOptions {
   bool authenticationUnixSockets = true;
-  bool authenticationSystemOnly = true;
   bool active = true;
   std::string externalRBACservice = "";  // means deactivated RBAC
   double authenticationTimeout = 0.0;
