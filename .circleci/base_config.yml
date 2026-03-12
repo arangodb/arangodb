@@ -130,7 +130,7 @@ commands:
           command: |
             set -eo pipefail
             set -x
-            python3 -m pip --break-system-packages install awscli 
+            python3 -m pip install --break-system-packages awscli 
 
             ROOT="<< parameters.root >>"
             PATHS="<< parameters.paths >>"
