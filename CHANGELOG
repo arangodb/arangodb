@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* No longer support `/_api/collection?collection=<collection-name>`, 
+  `/_api/document/<collection-id>`, and `/_api/collection/<collection-id>`.
+
 * Raised minimal CPU architecture to Haswell-like (x86-64) and graviton2-like
   (aarch64).
 
@@ -11,7 +14,7 @@
 
 * Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
   dependencies.
-
+  
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
 
