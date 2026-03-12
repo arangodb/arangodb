@@ -33,7 +33,7 @@ const arangosh = require('@arangodb/arangosh');
 // / @brief constructor
 // //////////////////////////////////////////////////////////////////////////////
 
-function ArangoCollection (database, data) {
+function ArangoCollection(database, data) {
   this._database = database;
   this._dbName = database._name();
   this._dbPrefix = '/_db/' + encodeURIComponent(database._name());
@@ -80,7 +80,7 @@ let appendOverwriteModeParameter = function (url, mode) {
   if (mode) {
     if (url.includes('?')) {
       url += '&';
-    }else {
+    } else {
       url += '?';
     }
     url += 'overwriteMode=' + mode;
@@ -151,7 +151,7 @@ ArangoCollection.prototype._baseurl = function (suffix) {
 
 ArangoCollection.prototype._documenturl = function (id) {
   let s = id.split('/'), url;
-  let name = this.name(); 
+  let name = this.name();
   // note: no need to use encodeURIComponent(name) here, because
   // _database._documenturl() will call URL-encode the parts of
   // the URL already
@@ -265,8 +265,11 @@ ArangoCollection.prototype._help = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.name = function () {
-  if (this._name === null) {
-    this.refresh();
+  if (this._name === null || this._name === undefined) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+      errorMessage: "Collection name is not set"
+    });
   }
 
   return this._name;
@@ -321,7 +324,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'cacheEnabled': true,
     'computedValues': true,
     'syncByRevision': false,
-    'schema' : true,
+    'schema': true,
     'isDisjoint': false,
     'groupId': false,
     'supportsRBAC': true,
@@ -348,7 +351,7 @@ ArangoCollection.prototype.properties = function (properties) {
     arangosh.checkRequestResult(requestResult);
   }
 
-  let result = { };
+  let result = {};
   for (let a in attributes) {
     if (attributes.hasOwnProperty(a) &&
       requestResult.hasOwnProperty(a) &&
@@ -521,8 +524,13 @@ ArangoCollection.prototype.rename = function (name) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.refresh = function () {
-  const url = (this._name !== null) ? this._name : this._id;
-  let requestResult = this._database._connection.GET(this._database._collectionurl(url));
+  if (this._name === null || this._name === undefined) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+      errorMessage: "Collection name is not set"
+    });
+  }
+  let requestResult = this._database._connection.GET(this._database._collectionurl(this._name));
   arangosh.checkRequestResult(requestResult);
 
   this._name = requestResult.name;
@@ -695,7 +703,7 @@ ArangoCollection.prototype.exists = function (id, options) {
   }
 
   arangosh.checkRequestResult(requestResult);
-  return {_id: requestResult._id, _key: requestResult._key, _rev: requestResult._rev};
+  return { _id: requestResult._id, _key: requestResult._key, _rev: requestResult._rev };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -703,20 +711,20 @@ ArangoCollection.prototype.exists = function (id, options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.any = function () {
-    let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc";
-    let cursor = require('internal').db._query(query, {"@coll": this.name()});
-    if (cursor.hasNext()) {
-      return cursor.next();
-    }
-    return null;
-  };
+  let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc";
+  let cursor = require('internal').db._query(query, { "@coll": this.name() });
+  if (cursor.hasNext()) {
+    return cursor.next();
+  }
+  return null;
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / arangod/RestHandler/RestSimpleQueryHandler.cpp::buildExampleQuery
 // //////////////////////////////////////////////////////////////////////////////
 
-let buildExampleQuery = function(col, exampleDoc, skip, limit) {
-  let bindVars = {'@collection': col};
+let buildExampleQuery = function (col, exampleDoc, skip, limit) {
+  let bindVars = { '@collection': col };
   let query = "FOR doc IN @@collection";
   let count = 0;
 
@@ -825,7 +833,7 @@ ArangoCollection.prototype.save =
       url = appendSyncParameter(url, options.waitForSync);
     }
 
-    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "isRestore"].forEach(function(key) {
+    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "isRestore"].forEach(function (key) {
       if (options[key]) {
         url = appendBoolParameter(url, key, options[key]);
       }
@@ -849,11 +857,11 @@ ArangoCollection.prototype.save =
 
       url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects, true);
     }
-    
+
     url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
-  
+
     if (options.versionAttribute) {
-      url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+      url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute);
     }
 
     if (data === undefined || typeof data !== 'object') {
@@ -869,7 +877,7 @@ ArangoCollection.prototype.save =
     );
     arangosh.checkRequestResult(requestResult);
     return options.silent ? true : requestResult;
-};
+  };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief removes a document in the collection
@@ -976,7 +984,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 // / @example replace("example/996280832675", { a : 1, c : 2}, {waitForSync: false, overwrite: true})
 // //////////////////////////////////////////////////////////////////////////////
 
-function fillInSpecial (id, data) {
+function fillInSpecial(id, data) {
   if (data === null || typeof data !== 'object' || Array.isArray(data)) {
     return;
   }
@@ -998,7 +1006,7 @@ function fillInSpecial (id, data) {
     } else {
       delete data._id;
       delete data._key;
-    // Server shall fail here
+      // Server shall fail here
     }
   } else if (typeof id === 'string') {
     delete data._rev;
@@ -1099,9 +1107,9 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     url = appendBoolParameter(url, 'silent', options.silent);
   }
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
-  
+
   if (options.versionAttribute) {
-    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute);
   }
 
   let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
@@ -1160,7 +1168,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     }
     params = '?skipDocumentValidation=' + options.skipDocumentValidation;
 
-    if (! options.hasOwnProperty('keepNull')) {
+    if (!options.hasOwnProperty('keepNull')) {
       options.keepNull = true;
     }
     params += '&keepNull=' + options.keepNull;
@@ -1226,9 +1234,9 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     url = appendBoolParameter(url, 'silent', options.silent);
   }
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
-  
+
   if (options.versionAttribute) {
-    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute);
   }
 
   let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
@@ -1277,11 +1285,11 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.removeByExample = function (example,
-                                                        waitForSync, limit) {
+  waitForSync, limit) {
   let query = buildExampleQuery(this.name(), example, 0, limit);
   var opts = {
-  waitForSync: waitForSync
-};
+    waitForSync: waitForSync
+  };
   query['query'] += ' REMOVE doc IN @@collection OPTIONS ' + JSON.stringify(opts);
   return require('internal').db._query(query).getExtra().stats.writesExecuted;
 };
@@ -1291,7 +1299,7 @@ ArangoCollection.prototype.removeByExample = function (example,
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.replaceByExample = function (example,
-                                                         newValue, waitForSync, limit) {
+  newValue, waitForSync, limit) {
   let query = buildExampleQuery(this.name(), example, 0, limit);
   var opts = {
     waitForSync: waitForSync,
@@ -1306,7 +1314,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.updateByExample = function (example,
-                                                       newValue, keepNull, waitForSync, limit) {
+  newValue, keepNull, waitForSync, limit) {
   let query = buildExampleQuery(this.name(), example, 0, limit);
   var opts = {
     waitForSync: waitForSync,
@@ -1354,8 +1362,8 @@ ArangoCollection.prototype._revisionTreePendingUpdates = function () {
 /// @brief MerkleTreeVerification
 //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._revisionTreeVerification = function() {
-  let batch = this._database._connection.POST(this._prefixurl('/_api/replication/batch'), {ttl : 3600});
+ArangoCollection.prototype._revisionTreeVerification = function () {
+  let batch = this._database._connection.POST(this._prefixurl('/_api/replication/batch'), { ttl: 3600 });
   if (!batch.hasOwnProperty("id")) {
     throw "Could not create batch!";
   }
@@ -1370,7 +1378,7 @@ ArangoCollection.prototype._revisionTreeVerification = function() {
 /// @brief MerkleTreeRebuilding
 //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._revisionTreeRebuild = function() {
+ArangoCollection.prototype._revisionTreeRebuild = function () {
   // For some reason we need a batch ID here, which is not used!
   let requestResult = this._database._connection.POST(this._prefixurl(
     `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&batchId=42`), {});

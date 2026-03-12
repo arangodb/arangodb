@@ -329,7 +329,11 @@ ArangoDatabase.prototype._collections = function () {
 
     // add all collections to object
     for (let i = 0;  i < collections.length;  ++i) {
-      let collection = new ArangoCollection(this, collections[i]);
+      const col = collections[i];
+      if (col.name === undefined || col.name === null) {
+        continue; // skip collection without name
+      }
+      let collection = new ArangoCollection(this, col);
       this[collection._name] = collection;
       result.push(collection);
     }
