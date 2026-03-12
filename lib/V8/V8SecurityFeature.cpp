@@ -334,12 +334,12 @@ void V8SecurityFeature::validateOptions(
   if (isArangod && _options.filesAllowList.empty()) {
     // If list is empty, put a pattern which protects important Linux
     // paths, note that some file access is needed for Foxx apps:
-    _options.filesAllowList.push_back(absl::StrCat(
-        R"(^(?!(\/bin\/.*))(?!(\/dev\/.*))(?!(\/etc\/.*))(?!(\/lib\/.*))",
-        R"((?!(\/lifecycle\/.*))(?!(\/media\/.*))(?!(\/mnt\/.*))",
-        R"((?!(\/opt\/.*))(?!(\/proc\/.*))(?!(\/root\/.*))(?!(\/run\/.*))",
-        R"((?!(\/sbin\/.*))(?!(\/secrets\/.*))(?!(\/srv\/.*))",
-        R"((?!(\/usr\/.*))(?!(\/var\/.*)).+)"));
+    _options.filesAllowList.push_back(
+        absl::StrCat("^(?!(/bin/.*))(?!(/dev/.*))(?!(/etc/.*))(?!(/lib/.*))",
+                     "(?!(/lifecycle/.*))(?!(/media/.*))(?!(/mnt/.*))",
+                     "(?!(/opt/.*))(?!(/proc/.*))(?!(/root/.*))(?!(/run/.*))",
+                     "(?!(/sbin/.*))(?!(/secrets/.*))(?!(/srv/.*))",
+                     "(?!(/usr/.*))(?!(/var/.*)).+"));
   }
   convertToSingleExpression(_options.filesAllowList, _filesAllowList);
   testRegexPair(_filesAllowList, "", "files");
