@@ -1363,7 +1363,7 @@ ArangoCollection.prototype._revisionTreePendingUpdates = function () {
 //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._revisionTreeVerification = function() {
-  let batch = this._database._connection.POST(this._prefixurl('/_api/replication/batch'), {ttl : 3600 });
+  let batch = this._database._connection.POST(this._prefixurl('/_api/replication/batch'), {ttl : 3600});
   if (!batch.hasOwnProperty("id")) {
     throw "Could not create batch!";
   }
