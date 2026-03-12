@@ -129,7 +129,7 @@ commands:
           name: Save workspace to S3
           command: |
             set -eo pipefail
-            set +x
+            set -x
             python3 -m pip install awscli tests/js/client/aql/aql-skipping-cluster.js
 
             ROOT="<< parameters.root >>"
