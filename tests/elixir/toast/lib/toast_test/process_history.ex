@@ -3,6 +3,8 @@ defmodule ToastTest.ProcessHistory do
 
   use GenServer
 
+  require Logger
+
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
     name = Keyword.get(opts, :name, __MODULE__)
@@ -11,8 +13,30 @@ defmodule ToastTest.ProcessHistory do
 
   @spec handle_event(term()) :: :ok
   def handle_event(event) do
+    log_event(event)
     GenServer.cast(__MODULE__, {:event, event})
   end
+
+  defp log_event({:server_started, server_id, os_pid, _timestamp}),
+    do: Logger.debug("ProcessHistory: server_started #{server_id} (pid=#{os_pid})")
+
+  defp log_event({:server_stopped, server_id, _os_pid, _reason, _timestamp}),
+    do: Logger.debug("ProcessHistory: server_stopped #{server_id}")
+
+  defp log_event({:server_crashed, %{server_id: server_id}}),
+    do: Logger.debug("ProcessHistory: server_crashed #{server_id}")
+
+  defp log_event({:server_killed, server_id, _timestamp}),
+    do: Logger.debug("ProcessHistory: server_killed #{server_id}")
+
+  defp log_event({:server_paused, server_id, _timestamp}),
+    do: Logger.debug("ProcessHistory: server_paused #{server_id}")
+
+  defp log_event({:server_resumed, server_id, _timestamp}),
+    do: Logger.debug("ProcessHistory: server_resumed #{server_id}")
+
+  defp log_event(event),
+    do: Logger.debug("ProcessHistory: #{inspect(event)}")
 
   @doc false
   @spec events(GenServer.server()) :: [term()]

@@ -203,6 +203,7 @@ defmodule Toast.Process.ServerProcess do
 
   def handle_call(:kill, _from, %{status: status} = state)
       when status in [:running, :paused] do
+    Logger.info("#{state.id}: killing process (SIGKILL)")
     :exec.kill(state.os_pid, @sigkill)
     {:reply, :ok, %{state | status: :killed}}
   end
@@ -222,6 +223,7 @@ defmodule Toast.Process.ServerProcess do
   end
 
   def handle_call(:pause, _from, %{status: :running} = state) do
+    Logger.debug("#{state.id}: pausing process (SIGSTOP)")
     :exec.kill(state.os_pid, @sigstop)
     {:reply, :ok, %{state | status: :paused}}
   end
@@ -231,6 +233,7 @@ defmodule Toast.Process.ServerProcess do
   end
 
   def handle_call(:resume, _from, %{status: :paused} = state) do
+    Logger.debug("#{state.id}: resuming process (SIGCONT)")
     :exec.kill(state.os_pid, @sigcont)
     {:reply, :ok, %{state | status: :running}}
   end
@@ -241,12 +244,17 @@ defmodule Toast.Process.ServerProcess do
 
   def handle_call({:relaunch, opts}, _from, %{status: status} = state)
       when status in [:stopped, :killed, :crashed] do
+    Logger.info("#{state.id}: relaunching process")
     extra_args = Keyword.get(opts, :args, [])
     merged_state = %{state | exec_pid: nil, os_pid: nil, args: state.original_args ++ extra_args}
 
     case do_launch(merged_state) do
-      {:ok, new_state} -> {:reply, :ok, new_state}
-      {:error, reason} -> {:reply, {:error, reason}, state}
+      {:ok, new_state} ->
+        Logger.debug("#{state.id}: process relaunched (os_pid=#{new_state.os_pid})")
+        {:reply, :ok, new_state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
     end
   end
 

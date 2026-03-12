@@ -9,6 +9,8 @@ defmodule ToastTest.Attribution do
   alias ToastTest.Attribution.TimeWindows
   alias ToastTest.Enrichment
 
+  require Logger
+
   @spec run(
           ToastTest.ResultCollector.test_data(),
           ToastTest.ArtifactCollector.t(),
@@ -20,10 +22,22 @@ defmodule ToastTest.Attribution do
     windows = TimeWindows.build(test_data)
     timeout_kills = Keyword.get(opts, :timeout_kills, [])
 
-    test_failure_issues(test_data.failures) ++
-      crash_issues(crash_events, artifacts, windows, opts) ++
-      sanitizer_issues(artifacts, windows) ++
-      timeout_issues(timeout_kills, artifacts)
+    issues =
+      test_failure_issues(test_data.failures) ++
+        crash_issues(crash_events, artifacts, windows, opts) ++
+        sanitizer_issues(artifacts, windows) ++
+        timeout_issues(timeout_kills, artifacts)
+
+    breakdown =
+      issues
+      |> Enum.frequencies_by(& &1.type)
+      |> Enum.map_join(", ", fn {t, n} -> "#{n} #{t}" end)
+
+    Logger.debug(
+      "Attribution: #{length(issues)} issue(s)#{if breakdown != "", do: " (#{breakdown})", else: ""}"
+    )
+
+    issues
   end
 
   # --- Test failures ---

@@ -17,6 +17,7 @@ defmodule Toast.Deployment.ServerLifecycle do
   @spec stop_server(ServerInstance.t(), keyword()) :: :ok
   def stop_server(%ServerInstance{} = server, opts \\ []) do
     factor = Keyword.get(opts, :timeout_factor, 1)
+    Logger.info("Stopping server #{server.id} (timeout=#{@base_stop_timeout * factor}ms)")
     ServerProcess.stop(server.server_pid, @base_stop_timeout * factor)
     suspend_health_monitor(server)
     :ok
@@ -24,6 +25,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   @spec kill_server(ServerInstance.t()) :: :ok
   def kill_server(%ServerInstance{} = server) do
+    Logger.info("Killing server #{server.id}")
     ServerProcess.kill(server.server_pid)
     suspend_health_monitor(server)
     :ok
@@ -31,12 +33,14 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   @spec abort_server(ServerInstance.t()) :: :ok | {:error, :not_running}
   def abort_server(%ServerInstance{} = server) do
+    Logger.info("Aborting server #{server.id} (SIGABRT)")
     suspend_health_monitor(server)
     ServerProcess.send_signal(server.server_pid, :sigabrt)
   end
 
   @spec pause_server(ServerInstance.t()) :: :ok
   def pause_server(%ServerInstance{} = server) do
+    Logger.info("Pausing server #{server.id}")
     ServerProcess.pause(server.server_pid)
     suspend_health_monitor(server)
     :ok
@@ -44,6 +48,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   @spec resume_server(ServerInstance.t()) :: :ok
   def resume_server(%ServerInstance{} = server) do
+    Logger.info("Resuming server #{server.id}")
     ServerProcess.resume(server.server_pid)
     resume_health_monitor(server)
     :ok
@@ -52,6 +57,8 @@ defmodule Toast.Deployment.ServerLifecycle do
   @spec stop_before_restart(ServerInstance.t(), keyword()) :: :ok
   def stop_before_restart(%ServerInstance{} = server, opts \\ []) do
     factor = Keyword.get(opts, :timeout_factor, 1)
+
+    Logger.info("Stopping server #{server.id} before restart (state=#{server.operational_state})")
 
     case server.operational_state do
       :running ->
@@ -70,6 +77,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   @spec relaunch_and_wait(ServerInstance.t(), keyword()) :: :ok | {:error, term()}
   def relaunch_and_wait(%ServerInstance{} = server, opts) do
+    Logger.info("Relaunching server #{server.id}")
     factor = Keyword.get(opts, :timeout_factor, 1)
     process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
 
@@ -80,6 +88,7 @@ defmodule Toast.Deployment.ServerLifecycle do
              process_check_fn: process_check_fn
            ) do
       resume_health_monitor(server)
+      Logger.info("Server #{server.id} relaunched and ready")
       :ok
     end
   end
@@ -175,6 +184,7 @@ defmodule Toast.Deployment.ServerLifecycle do
   end
 
   def expect_crash(server_id, timeout, expected_crashes, %ServerInstance{} = server) do
+    Logger.debug("Registered expected crash for #{server_id} (timeout=#{timeout}ms)")
     suspend_health_monitor(server)
     timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, timeout)
     entry = %{timer: timer, crash_info: nil, waiter: nil}

@@ -155,9 +155,11 @@ defmodule Toast.Deployment.Controller do
   def handle_call({:deploy, timeout}, _from, %{status: :stopped} = state) do
     case state.mode.deploy(state, timeout) do
       {:ok, new_state} ->
+        Logger.debug("Deploy succeeded, status=#{new_state.status}")
         {:reply, :ok, new_state}
 
       {:error, reason, new_state} ->
+        Logger.debug("Deploy failed: #{inspect(reason)}")
         {:reply, {:error, reason}, new_state}
     end
   end
@@ -168,7 +170,9 @@ defmodule Toast.Deployment.Controller do
 
   def handle_call({:shutdown, timeout}, _from, %{status: status} = state)
       when status in [:ready, :degraded, :failed] do
+    Logger.info("Shutting down deployment (status=#{status}, timeout=#{timeout}ms)")
     new_state = state.mode.shutdown(state, timeout)
+    Logger.info("Shutdown complete, status=#{new_state.status}")
     {:reply, :ok, new_state}
   end
 
@@ -181,7 +185,9 @@ defmodule Toast.Deployment.Controller do
   end
 
   def handle_call(:abort, _from, state) do
+    Logger.info("Aborting all servers")
     {killed_servers, new_state} = do_abort_all_servers(state)
+    Logger.info("Aborted #{length(killed_servers)} servers")
     {:reply, killed_servers, new_state}
   end
 
@@ -315,6 +321,10 @@ defmodule Toast.Deployment.Controller do
         {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
 
       :unexpected_crash ->
+        Logger.debug(
+          "Deployment status: #{state.status} -> :failed (server #{server_id} crashed)"
+        )
+
         state =
           if server,
             do: Helpers.update_server(state, server_id, operational_state: :crashed),
@@ -345,6 +355,7 @@ defmodule Toast.Deployment.Controller do
       {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
     )
 
+    Logger.debug("Deployment status: #{state.status} -> :failed")
     {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}
   end
 
@@ -378,16 +389,23 @@ defmodule Toast.Deployment.Controller do
 
         case Helpers.start_single_health_monitor(server_id, server.endpoint) do
           {:ok, new_pid} ->
+            Logger.info("HealthMonitor for #{server_id} restarted successfully")
             updated = %{server | health_monitor: new_pid}
             {:noreply, %{state | servers: Map.put(state.servers, server_id, updated)}}
 
           {:error, _} ->
+            Logger.warning("Failed to restart HealthMonitor for #{server_id}")
             {:noreply, state}
         end
 
       _ ->
         {:noreply, state}
     end
+  end
+
+  def handle_info({:DOWN, _ref, :process, _pid, reason}, state)
+      when reason in [:normal, :shutdown] do
+    {:noreply, state}
   end
 
   def handle_info(msg, state) do

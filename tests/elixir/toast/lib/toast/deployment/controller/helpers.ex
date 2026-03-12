@@ -54,6 +54,8 @@ defmodule Toast.Deployment.Controller.Helpers do
 
   @spec stop_server_process(Toast.Deployment.Controller.State.t(), String.t(), timeout()) :: :ok
   def stop_server_process(state, server_id, timeout) do
+    Logger.debug("Stopping server process for #{server_id}")
+
     case state.servers[server_id] do
       %{server_pid: pid} when pid != nil ->
         ServerProcess.stop(pid, timeout)
@@ -104,6 +106,8 @@ defmodule Toast.Deployment.Controller.Helpers do
     servers_with_pids =
       Enum.filter(state.servers, fn {_id, server} -> server.server_pid != nil end)
 
+    Logger.info("Aborting #{length(servers_with_pids)} server(s) for crash backtrace")
+
     aborted_ids =
       Enum.flat_map(servers_with_pids, fn {server_id, server} ->
         case ServerProcess.send_signal(server.server_pid, :sigabrt) do
@@ -117,6 +121,7 @@ defmodule Toast.Deployment.Controller.Helpers do
       end)
 
     await_crashes(Map.new(aborted_ids, &{&1, true}), @abort_timeout)
+    Logger.debug("All abort crash notifications received")
     :ok
   end
 

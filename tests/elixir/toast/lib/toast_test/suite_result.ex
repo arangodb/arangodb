@@ -42,6 +42,8 @@ defmodule ToastTest.SuiteResult do
           detail: map()
         }
 
+  require Logger
+
   defstruct [
     :suite,
     :started_at,
@@ -69,10 +71,14 @@ defmodule ToastTest.SuiteResult do
 
   @spec write_all(t(), Path.t()) :: :ok
   def write_all(%__MODULE__{} = result, result_dir) do
+    Logger.info("Writing results to #{result_dir}")
     File.mkdir_p!(result_dir)
     __MODULE__.JSON.write(result, result_dir)
+    Logger.debug("Wrote #{Path.join(result_dir, "outcomes.json")}")
     write_diagnostics_etf(result, result_dir)
+    Logger.debug("Wrote #{Path.join(result_dir, "#{result.suite}.diagnostics.etf")}")
     __MODULE__.JUnitXML.write(result, result_dir)
+    Logger.debug("Wrote #{Path.join(result_dir, "#{result.suite}.xml")}")
     :ok
   end
 

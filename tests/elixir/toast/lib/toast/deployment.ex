@@ -95,6 +95,8 @@ defmodule Toast.Deployment do
   """
   @spec abort_all() :: [map()]
   def abort_all do
+    Logger.info("Aborting all active deployments")
+
     Toast.Deployment.Supervisor
     |> DynamicSupervisor.which_children()
     |> Enum.flat_map(fn
@@ -108,6 +110,7 @@ defmodule Toast.Deployment do
 
   @spec stop(t(), keyword()) :: {:ok, map()} | {:error, term(), map()}
   def stop(%__MODULE__{controller: pid} = deployment, opts \\ []) do
+    Logger.info("Stopping deployment #{deployment.id}")
     timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
 
     shutdown_result =
@@ -119,6 +122,7 @@ defmodule Toast.Deployment do
 
     stop_info = get_stop_info(pid)
     terminate_controller(pid)
+    Logger.info("Deployment #{deployment.id} stopped")
 
     case shutdown_result do
       :ok -> {:ok, stop_info}

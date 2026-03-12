@@ -407,15 +407,18 @@ defmodule Toast.Deployment.Controller.Cluster do
 
         if server.server_pid do
           try do
+            Logger.debug("#{server_id}: stopping server process")
             ServerProcess.stop(server.server_pid, timeout)
             DynamicSupervisor.terminate_child(Toast.Process.Supervisor, server.server_pid)
+            Logger.debug("#{server_id}: server process stopped")
 
             ServerLifecycle.notify_event(
               on_event,
               {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()}
             )
           catch
-            :exit, _ -> :ok
+            :exit, reason ->
+              Logger.debug("#{server_id}: stop exited (#{inspect(reason)})")
           end
         end
       end,
@@ -433,6 +436,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     ms = state.mode_state
     all_ids = ms.agents ++ ms.dbservers ++ ms.coordinators
     stop_servers(all_ids, state, 5_000 * state.config.timeout_factor)
+    Logger.debug("Rollback complete for #{state.id}")
 
     %{
       state
@@ -447,6 +451,7 @@ defmodule Toast.Deployment.Controller.Cluster do
   defp start_all_health_monitors(state) do
     ms = state.mode_state
     all_ids = ms.agents ++ ms.dbservers ++ ms.coordinators
+    Logger.debug("Starting health monitors for #{length(all_ids)} servers")
 
     Enum.reduce_while(all_ids, {:ok, state}, fn server_id, {:ok, acc} ->
       server = acc.servers[server_id]

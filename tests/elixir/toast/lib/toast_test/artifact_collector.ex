@@ -8,6 +8,8 @@ defmodule ToastTest.ArtifactCollector do
   alias Toast.Deployment.ServerInstance
   alias Toast.Diagnostics.Coredump
 
+  require Logger
+
   @type server_artifacts :: %{
           server: ServerInstance.t(),
           coredump_paths: [Path.t()],
@@ -20,9 +22,19 @@ defmodule ToastTest.ArtifactCollector do
 
   @spec collect(%{String.t() => ServerInstance.t()}, map()) :: t()
   def collect(servers, pid_history \\ %{}) do
-    for {id, server} <- servers, server.server_dir != nil, into: %{} do
-      {id, collect_server_artifacts(server, Map.get(pid_history, id, []))}
-    end
+    result =
+      for {id, server} <- servers, server.server_dir != nil, into: %{} do
+        {id, collect_server_artifacts(server, Map.get(pid_history, id, []))}
+      end
+
+    n_coredumps = result |> Map.values() |> Enum.map(&length(&1.coredump_paths)) |> Enum.sum()
+    n_sanitizer = result |> Map.values() |> Enum.map(&length(&1.sanitizer_files)) |> Enum.sum()
+
+    Logger.debug(
+      "Artifacts: #{n_coredumps} coredump(s), #{n_sanitizer} sanitizer report(s) from #{map_size(servers)} server(s)"
+    )
+
+    result
   end
 
   defp collect_server_artifacts(server, historical_pids) do

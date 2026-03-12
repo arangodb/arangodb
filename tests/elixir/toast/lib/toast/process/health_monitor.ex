@@ -48,11 +48,15 @@ defmodule Toast.Process.HealthMonitor do
 
   @impl true
   def init(opts) do
+    server_id = Keyword.fetch!(opts, :server_id)
+    interval = Keyword.get(opts, :interval, @default_interval)
+    Logger.debug("#{server_id}: health monitor started (interval=#{interval}ms)")
+
     state = %{
-      server_id: Keyword.fetch!(opts, :server_id),
+      server_id: server_id,
       endpoint: Keyword.fetch!(opts, :endpoint),
       listener: Keyword.fetch!(opts, :listener),
-      interval: Keyword.get(opts, :interval, @default_interval),
+      interval: interval,
       max_failures: Keyword.get(opts, :max_failures, @default_max_failures),
       consecutive_failures: 0,
       status: :healthy,
@@ -105,11 +109,13 @@ defmodule Toast.Process.HealthMonitor do
 
   @impl true
   def handle_cast(:suspend, state) do
+    Logger.debug("#{state.server_id}: health monitor suspended")
     cancel_timer(state.timer_ref)
     {:noreply, %{state | status: :suspended, timer_ref: nil}}
   end
 
   def handle_cast(:resume, %{status: status} = state) when status in [:suspended, :unhealthy] do
+    Logger.debug("#{state.server_id}: health monitor resumed")
     {:noreply, schedule_check(%{state | status: :healthy, consecutive_failures: 0})}
   end
 

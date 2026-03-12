@@ -82,6 +82,7 @@ defmodule ToastTest.Runner do
           end
         end)
 
+      Logger.info("Starting #{length(suites)} suite(s)")
       do_run_suites(suites, global_opts)
     after
       System.untrap_signal(:sigquit, id)
@@ -152,6 +153,7 @@ defmodule ToastTest.Runner do
     validate_no_async!(test_modules)
 
     mode = resolve_deployment_mode(config, global_opts)
+    Logger.info("Running suite #{inspect(suite_module)} (mode=#{mode})")
     deployment_opts = build_deployment_opts(config, global_opts)
     toast_config = Toast.Config.load(deployment_opts)
     callback_opts = Keyword.take(deployment_opts, [:on_crash, :on_event])
@@ -184,10 +186,12 @@ defmodule ToastTest.Runner do
        ) do
     suite_run = %{suite_run | deployment: deployment}
     ToastTest.DeploymentRegistry.put(suite_module, deployment)
+    Logger.debug("Suite #{inspect(suite_module)}: deployment ready")
 
     {stats, test_data} =
       case run_suite_setup(suite_module, deployment) do
         {:ok, extra_context} ->
+          Logger.debug("Suite #{inspect(suite_module)}: setup complete")
           ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
           result = run_suite_tests(suite_run, test_modules, global_opts, suite_opts)
           run_suite_teardown(suite_module, deployment)
@@ -429,6 +433,8 @@ defmodule ToastTest.Runner do
   end
 
   defp run_suite_teardown(suite_module, deployment) do
+    Logger.debug("Suite #{inspect(suite_module)}: teardown starting")
+
     if function_exported?(suite_module, :teardown_deployment, 1) do
       case suite_module.teardown_deployment(deployment) do
         {:error, reason} ->
@@ -524,18 +530,24 @@ defmodule ToastTest.Runner do
   end
 
   defp post_execution(deployment, test_data, toast_config) do
+    Logger.debug("Post-execution: stopping deployment")
     {servers, error} = stop_deployment(deployment)
     if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
     pid_history = ToastTest.ProcessHistory.pids_by_server()
     crash_events = ToastTest.ProcessHistory.unexpected_crashes()
     timeout_kills = ToastTest.ProcessHistory.timeout_kills()
+    Logger.debug("Post-execution: collecting artifacts")
     artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history)
+
+    Logger.debug("Post-execution: running attribution")
 
     issues =
       ToastTest.Attribution.run(test_data, artifacts, crash_events, timeout_kills: timeout_kills)
 
+    Logger.debug("Post-execution: building results (#{length(issues)} issues found)")
     suite_result = ToastTest.SuiteResult.build(test_data, issues)
     ToastTest.SuiteResult.write_all(suite_result, toast_config.result_dir)
+    Logger.debug("Post-execution: results written to #{toast_config.result_dir}")
     print_post_exec_summary(suite_result)
     suite_result
   end
@@ -1019,6 +1031,7 @@ defmodule ToastTest.Runner do
 
   defp abort_with_timeout(source, reason) do
     killed_servers = Toast.Deployment.abort_all()
+    Logger.warning("#{reason} — aborting suite, killed #{length(killed_servers)} server(s)")
     ToastTest.ProcessHistory.record_timeout_kill(source, reason, killed_servers)
     ToastTest.Abort.abort!({:timeout, reason})
   end
