@@ -669,6 +669,7 @@ class CircleCIGenerator(OutputGenerator):
             job_dict = {
                 "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
                 "suiteName": f"{deployment}-UI",
+                "arch": build_config.architecture.value,
                 "arangosh_args": "",
                 "deployment": "SG" if deployment == "single" else "CL",
                 "browser": "Remote_CHROME",
