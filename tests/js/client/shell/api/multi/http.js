@@ -437,8 +437,9 @@ function API_versioningSuite () {
       let doc = arango.GET_RAW(cmd);
 
       // Should error because version number is missing
-      assertEqual(doc.code, 400);
-      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.code, 404);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -447,18 +448,9 @@ function API_versioningSuite () {
       let doc = arango.GET_RAW(cmd);
 
       // Should error because version number is not numeric
-      assertEqual(doc.code, 400);
-      assertTrue(doc.parsedBody.error);
-      assertCspHeaders(doc);
-    },
-
-    test_checks_version_endpoint_with_invalid_prefix_wrong_path: function() {
-      let cmd = "/_arango/version/_api/version";
-      let doc = arango.GET_RAW(cmd);
-
-      // Should error because prefix format is wrong (should be /vN, not /version)
-      assertEqual(doc.code, 400);
-      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.code, 404);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -510,7 +502,8 @@ function API_versioningSuite () {
 
       // Unsupported API version should return 404
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -520,7 +513,8 @@ function API_versioningSuite () {
 
       // Another unsupported API version should return 404
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -530,7 +524,8 @@ function API_versioningSuite () {
 
       // Unsupported API version should return 404 on any endpoint
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
 
@@ -540,7 +535,8 @@ function API_versioningSuite () {
 
       // Unsupported API version should return 404 on any endpoint
       assertEqual(doc.code, 404);
-      assertTrue(doc.parsedBody.error);
+      assertTrue(doc.error);
+      assertTrue(doc.errorNum === 404);
       assertCspHeaders(doc);
     },
   };

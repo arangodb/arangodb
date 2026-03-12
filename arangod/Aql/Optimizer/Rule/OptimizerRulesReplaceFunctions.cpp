@@ -24,6 +24,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -69,16 +70,17 @@ struct FulltextParams {
 
   explicit FulltextParams(AstNode const* node) {
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
-    AstNode* arr = node->getMember(0);
-    TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-    if (arr->getMember(0)->isStringValue()) {
-      collection = arr->getMember(0)->getString();
+    ast::FunctionCallNode fcall(node);
+    auto args = fcall.getArguments().getElements();
+    TRI_ASSERT(args.size() >= 2);
+    if (args[0]->isStringValue()) {
+      collection = args[0]->getString();
     }
-    if (arr->getMember(1)->isStringValue()) {
-      attribute = arr->getMember(1)->getString();
+    if (args[1]->isStringValue()) {
+      attribute = args[1]->getString();
     }
-    if (arr->numMembers() > 3) {
-      limit = arr->getMember(3);
+    if (args.size() > 3) {
+      limit = args[3];
     }
   }
 };
@@ -89,7 +91,8 @@ AstNode* getAstNode(CalculationNode* c) noexcept {
 
 Function* getFunction(AstNode const* ast) noexcept {
   if (ast->type == AstNodeType::NODE_TYPE_FCALL) {
-    return static_cast<Function*>(ast->getData());
+    ast::FunctionCallNode fcall(ast);
+    return fcall.getFunction();
   }
   return nullptr;
 }
@@ -283,11 +286,13 @@ void arangodb::aql::replaceLikeWithRangeRule(
         // originally supplied string for the upper bound and append a \uFFFF
         // character to it, which compares higher than other characters.
         bool caseInsensitive = false;  // this is the default behavior of LIKE
-        auto args = node->getMember(0);
-        if (args->numMembers() >= 3) {
+        ast::FunctionCallNode likeFcall(node);
+        auto args = likeFcall.getArguments().getElements();
+        TRI_ASSERT(args.size() >= 2);
+        if (args.size() >= 3) {
           caseInsensitive =
               true;  // we have 3 arguments, set case-sensitive to false now
-          auto caseArg = args->getMember(2);
+          auto caseArg = args[2];
           if (caseArg->isConstant()) {
             // ok, we can figure out at compile time if the parameter is true or
             // false
@@ -295,19 +300,20 @@ void arangodb::aql::replaceLikeWithRangeRule(
           }
         }
 
-        auto patternArg = args->getMember(1);
+        auto patternArg = args[1];
 
         if (!caseInsensitive && patternArg->isStringValue() &&
-            args->getMember(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          AstNode const* sub = args->getMember(0);
+            args[0]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          AstNode const* sub = args[0];
           while (sub != nullptr && sub->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            sub = sub->getMember(0);
+            ast::AttributeAccessNode attrAccess(sub);
+            sub = attrAccess.getObject();
           }
           if (sub == nullptr || sub->type != NODE_TYPE_REFERENCE) {
             return node;
           }
-          auto setter = plan->getVarSetBy(
-              static_cast<Variable const*>(sub->getData())->id);
+          ast::ReferenceNode ref(sub);
+          auto setter = plan->getVarSetBy(ref.getVariable()->id);
           if (setter == nullptr ||
               setter->getType() != EN::ENUMERATE_COLLECTION) {
             // setter could be a view. for views we do not want to change the
@@ -359,7 +365,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
                 ast->createNodeValueString(p, unescapedPattern.size());
 
             return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
-                                                 args->getMember(0), pattern);
+                                                 args[0], pattern);
           }
 
           if (!unescapedPattern.empty()) {
@@ -372,7 +378,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
             AstNode* pattern =
                 ast->createNodeValueString(p, unescapedPattern.size());
             AstNode* lhs = ast->createNodeBinaryOperator(
-                NODE_TYPE_OPERATOR_BINARY_GE, args->getMember(0), pattern);
+                NODE_TYPE_OPERATOR_BINARY_GE, args[0], pattern);
 
             // add a new end character \uFFFF that is expected to sort "higher"
             // than anything else (note: \xef\xbf\xbf is equivalent to \uFFFF).
@@ -382,7 +388,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
                                                 unescapedPattern.size());
             pattern = ast->createNodeValueString(p, unescapedPattern.size());
             AstNode* rhs = ast->createNodeBinaryOperator(
-                NODE_TYPE_OPERATOR_BINARY_LT, args->getMember(0), pattern);
+                NODE_TYPE_OPERATOR_BINARY_LT, args[0], pattern);
 
             AstNode* op = ast->createNodeBinaryOperator(
                 NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);
