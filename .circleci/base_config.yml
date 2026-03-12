@@ -150,7 +150,7 @@ commands:
             cd "$ROOT"
 
             tar -czf "$TAR" $PATHS
-
+            aws configure set profile.anon.s3.multipart_threshold 5GB
             aws s3 cp --no-sign-request \
               "$TAR" \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}"
@@ -187,6 +187,7 @@ commands:
 
             cd "$ROOT"
 
+            aws configure set profile.anon.s3.multipart_threshold 5GB
             aws s3 cp --no-sign-request \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}" \
               "$TAR"
