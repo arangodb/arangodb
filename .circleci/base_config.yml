@@ -152,6 +152,40 @@ commands:
               "$TAR" \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}"
 
+  persist_from_workspace_s3:
+    parameters:
+      root:
+        type: string
+      archive:
+        type: string
+        default: workspace.tar.gz
+    steps:
+      - run:
+          name: Save workspace to S3
+          command: |
+            set -eo pipefail
+            set -x
+            python3 -m pip install --break-system-packages awscli 
+
+            ROOT="<< parameters.root >>"
+            PATHS="<< parameters.paths >>"
+            ARCHIVE="<< parameters.archive >>"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/circleci-workspace
+            TAR="/tmp/circleci-workspace/${ARCHIVE}"
+
+            cd "$ROOT"
+
+            aws s3 cp \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}" \
+              "$TAR"
+            tar -xzf "$TAR" $PATHS
+
   checkout-arangodb:
     parameters:
       destination:
@@ -255,13 +289,22 @@ commands:
         type: string
       sanitizer:
         type: string
+      arch:
+        type: string
     steps:
       - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - attach_workspace:
           at: .
-
+      - run:
+          persist_from_workspace_s3:
+            root: .
+            archive: << parameters.arch >>_binaries.tar.gz
+          persist_from_workspace_s3:
+            root: .
+            archive: frontend.tar.gz
+          
       - run:
           name: Log processes
           command: |
@@ -618,6 +661,7 @@ jobs:
                 # build/3rdParty/snowball/libstemmer/ required for cppcheck
                 # not there? install.tar.gz
                 root: .
+                archive: << parameters.arch >>_binaries.tar.gz
                 paths: |
                   VERSIONS
                   ARANGO-VERSION
