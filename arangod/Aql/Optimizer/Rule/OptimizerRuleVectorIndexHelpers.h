@@ -55,8 +55,9 @@ inline bool checkAscendingMatchesMetric(
     case SimilarityMetric::kCosine:
     case SimilarityMetric::kInnerProduct:
       return !ascending;
+    default:
+      TRI_ASSERT(false);
   }
-  TRI_ASSERT(false);
 }
 
 inline bool isCompatibleVectorIndex(std::shared_ptr<Index> const& candidate,
