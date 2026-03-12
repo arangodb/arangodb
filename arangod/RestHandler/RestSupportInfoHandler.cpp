@@ -41,6 +41,10 @@ RestSupportInfoHandler::RestSupportInfoHandler(
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestSupportInfoHandler::execute() {
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
   auto const& apiPolicy = gs.supportInfoApiPolicy();
   TRI_ASSERT(apiPolicy != "disabled");
