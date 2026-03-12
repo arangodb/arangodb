@@ -877,6 +877,8 @@ jobs:
         type: string
       size:
         type: string
+      arch:
+        type: string
       enterprise:
         type: string
       deployment:
