@@ -175,6 +175,8 @@
 3.12.7 (2025-12-06)
 -------------------
 
+* Implemented FRB-419: Added audit log event for user permission read
+
 * Updated ArangoDB Starter to v0.19.15.
 
 * Rebuilt included rclone v1.65.2 with go1.24.11 and non-vulnerable
