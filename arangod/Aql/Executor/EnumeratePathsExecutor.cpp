@@ -143,8 +143,10 @@ EnumeratePathsExecutor<FinderType>::EnumeratePathsExecutor(Fetcher& fetcher,
       _inputRow{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _finder{infos.finder()},
-      _sourceBuilder{},
-      _targetBuilder{} {
+      _sourceBuilderSB(infos.query().resourceMonitor()),
+      _targetBuilderSB(infos.query().resourceMonitor()),
+      _sourceBuilder(_sourceBuilderSB),
+      _targetBuilder(_targetBuilderSB) {
   if (!_infos.useRegisterForSourceInput()) {
     _sourceBuilder.add(VPackValue(_infos.getSourceInputValue()));
   }

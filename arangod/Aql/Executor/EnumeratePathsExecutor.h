@@ -29,6 +29,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -182,6 +183,9 @@ class EnumeratePathsExecutor {
   ExecutionState _rowState;
   /// @brief the shortest path finder.
   FinderType& _finder;
+
+  arangodb::velocypack::SupervisedBuffer _sourceBuilderSB;
+  arangodb::velocypack::SupervisedBuffer _targetBuilderSB;
 
   /// @brief temporary memory mangement for source id
   arangodb::velocypack::Builder _sourceBuilder;
