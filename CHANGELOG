@@ -1,13 +1,13 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-4.
+
 * Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
   dependencies.
 
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
-
-* Updated ArangoDB Starter to v0.20.0-preview-3.
 
 * Remove `GET /_admin/statistics`, `GET /_admin/statistics-description`, and cluster endpoints
   `/_admin/cluster/nodeStatistics` and `/_admin/cluster/statistics`.
