@@ -361,8 +361,9 @@ ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line,
               break;
             }
 
-            // ignore spaces
-            while ((*ptr == ' ' || *ptr == '\t') && (ptr + 1) < parser->_stop) {
+            // ignore spaces (unless it's a field separator)
+            while ((*ptr == ' ' || *ptr == '\t') &&
+                   *ptr != parser->_separator && (ptr + 1) < parser->_stop) {
               ++ptr;
             }
 
