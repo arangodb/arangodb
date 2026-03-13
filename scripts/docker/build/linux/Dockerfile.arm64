@@ -1,3 +1,4 @@
+LABEL org.opencontainers.image.authors=hackers@arango.ai
 # First rebuild glibc with a special option and provide some .deb files:
 ARG COMPILER_VERSION=13
 ARG CLANG_VERSION=19
@@ -111,7 +112,7 @@ RUN cd / ; git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/ar
 
 FROM nodejs
 
-MAINTAINER Max Neunhoeffer <max@arango.ai>
+LABEL org.opencontainers.image.authors="Max Neunhoeffer <max@arango.ai>"
 
 ARG ARCH="aarch64"
 ARG COMPILER_VERSION
