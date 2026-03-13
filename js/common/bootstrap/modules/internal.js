@@ -1385,7 +1385,7 @@ global.DEFINE_MODULE('internal', (function () {
       } else {
         var context = {
           customInspect: true,
-          emit: 16384,
+          emit: printShell.emit,
           level: 0,
           limitString: printShell.limitString,
           names: [],
@@ -1406,7 +1406,7 @@ global.DEFINE_MODULE('internal', (function () {
 
     output('\n');
   }
-
+  printShell.emit = 16384;
   printShell.limitString = 256;
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -1825,6 +1825,34 @@ global.DEFINE_MODULE('internal', (function () {
     }
 
     output('\n');
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief _PRINT
+  // //////////////////////////////////////////////////////////////////////////////
+
+  global._PRINT = function _PRINT () {
+    var output = require('internal').output;
+    var printRecursive = require('internal').printRecursive;
+
+    var context = {
+      customInspect: false, // Don't call _PRINT (recursively)
+      emit: printShell.emit,
+      level: 0,
+      limitString: printShell.limitString,
+      names: [],
+      output: '',
+      path: '~',
+      prettyPrint: usePrettyPrint,
+      seen: [],
+      showFunction: false,
+      useColor: useColor,
+      useToString: true
+    };
+
+    printRecursive(global, context);
+
+    output(context.output);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
