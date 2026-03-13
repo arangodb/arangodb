@@ -54,6 +54,8 @@
 #include <regex>
 #include <string_view>
 
+#include "Logger/LogMacros.h"
+
 namespace {
 
 using namespace arangodb;
@@ -356,7 +358,11 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
                                    "invalid index type definition");
   }
 
-  auto& factory = IndexFactory::factory(type.copyString());
+
+  std::string typeStr = type.copyString();
+  LOG_DEVEL << "IndexFactory::prepareIndexFromSlice: type: " << typeStr;
+
+  auto& factory = IndexFactory::factory(typeStr);
   std::shared_ptr<Index> index =
       factory.instantiate(collection, definition, id, isClusterConstructor);
 

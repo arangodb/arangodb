@@ -142,6 +142,7 @@ struct GeoIndexFactory : public DefaultIndexFactory {
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
+    LOG_DEVEL << "Creating a geo index. definition.type: " << definition.get(StaticStrings::IndexType).toString();
     return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo");
   }
 
@@ -171,6 +172,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
+    LOG_DEVEL << "Creating a geo1 index. definition.type: " << definition.get(StaticStrings::IndexType).toString();
     return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
                                              "geo1");
   }
@@ -181,7 +183,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(
         StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
@@ -201,6 +203,7 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
+    LOG_DEVEL << "Creating a geo2 index. definition.type: " << definition.get(StaticStrings::IndexType).toString();
     return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
                                              "geo2");
   }
@@ -211,7 +214,7 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(
         StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {

@@ -1883,20 +1883,20 @@ Result RestReplicationHandler::processRestoreIndexes(
         continue;
       }
 
-      if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
-        // transform type "geo1" or "geo2" into "geo".
-        rebuilder.clear();
-        rebuilder.openObject();
-        rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
-        for (auto const& it : VPackObjectIterator(idxDef)) {
-          if (!it.key.isEqualString(StaticStrings::IndexType)) {
-            rebuilder.add(it.key);
-            rebuilder.add(it.value);
-          }
-        }
-        rebuilder.close();
-        idxDef = rebuilder.slice();
-      }
+      // if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+      //   // transform type "geo1" or "geo2" into "geo".
+      //   rebuilder.clear();
+      //   rebuilder.openObject();
+      //   rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
+      //   for (auto const& it : VPackObjectIterator(idxDef)) {
+      //     if (!it.key.isEqualString(StaticStrings::IndexType)) {
+      //       rebuilder.add(it.key);
+      //       rebuilder.add(it.value);
+      //     }
+      //   }
+      //   rebuilder.close();
+      //   idxDef = rebuilder.slice();
+      // }
 
       if (type.isEqualString(StaticStrings::IndexNameVector) &&
           !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
@@ -2018,20 +2018,20 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       continue;
     }
 
-    if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
-      // transform type "geo1" or "geo2" into "geo".
-      rebuilder.clear();
-      rebuilder.openObject();
-      rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
-      for (auto const& it : VPackObjectIterator(idxDef)) {
-        if (!it.key.isEqualString(StaticStrings::IndexType)) {
-          rebuilder.add(it.key);
-          rebuilder.add(it.value);
-        }
-      }
-      rebuilder.close();
-      idxDef = rebuilder.slice();
-    }
+    // if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+    //   // transform type "geo1" or "geo2" into "geo".
+    //   rebuilder.clear();
+    //   rebuilder.openObject();
+    //   rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
+    //   for (auto const& it : VPackObjectIterator(idxDef)) {
+    //     if (!it.key.isEqualString(StaticStrings::IndexType)) {
+    //       rebuilder.add(it.key);
+    //       rebuilder.add(it.value);
+    //     }
+    //   }
+    //   rebuilder.close();
+    //   idxDef = rebuilder.slice();
+    // }
 
     if (type.isEqualString("fulltext")) {
       VPackSlice minLength = idxDef.get("minLength");
