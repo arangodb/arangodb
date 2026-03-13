@@ -1,11 +1,11 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Updated ArangoDB Starter to v0.19.18.
+
 * COR-123: The push-filter-into-enumerate-near optimizer rule now considers all
   compatible vector indexes on a collection to find if one whose storedValues cover
   the filter expression.
-
-* Updated ArangoDB Starter to v0.19.18-preview-1.
 
 * Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 
