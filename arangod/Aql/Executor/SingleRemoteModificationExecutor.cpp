@@ -31,6 +31,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -42,8 +43,10 @@ namespace arangodb::aql {
 
 namespace {
 std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
-                                    RevisionId revision) {
-  auto builder = std::make_unique<VPackBuilder>();
+                                    RevisionId revision,
+                                    ResourceMonitor& resourceMonitor) {
+  auto sb = std::make_shared<velocypack::SupervisedBuffer>(resourceMonitor);
+  auto builder = std::make_unique<VPackBuilder>(sb);
   {
     VPackObjectBuilder guard(builder.get());
     TRI_SanitizeObject(document, *builder);
@@ -154,7 +157,8 @@ auto SingleRemoteModificationExecutor<
                                    "missing document reference");
   }
 
-  VPackBuilder inBuilder;
+  velocypack::SupervisedBuffer sbForInBuilder(_info.resourceMonitor());
+  VPackBuilder inBuilder(sbForInBuilder);
   VPackSlice inSlice = VPackSlice::emptyObjectSlice();
   if (_info._input1RegisterId.isValid()) {  // IF NOT REMOVE OR SELECT
     AqlValue const& inDocument = input.getValue(_info._input1RegisterId);
@@ -164,7 +168,8 @@ auto SingleRemoteModificationExecutor<
 
   std::unique_ptr<VPackBuilder> mergedBuilder = nullptr;
   if (!_info._key.empty()) {
-    mergedBuilder = merge(inSlice, _info._key, RevisionId::none());
+    mergedBuilder =
+        merge(inSlice, _info._key, RevisionId::none(), _info.resourceMonitor());
     inSlice = mergedBuilder->slice();
   }
 

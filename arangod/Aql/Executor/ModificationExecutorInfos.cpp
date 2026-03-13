@@ -59,7 +59,8 @@ ModificationExecutorInfos::ModificationExecutorInfos(
       _input3RegisterId(input3RegisterId),
       _outputNewRegisterId(outputNewRegisterId),
       _outputOldRegisterId(outputOldRegisterId),
-      _outputRegisterId(outputRegisterId) {
+      _outputRegisterId(outputRegisterId),
+      _resourceMonitor(query.resourceMonitor()) {
   // If we're running on a DBServer in a cluster some modification operations
   // legitimately fail due to the affected document not being available (which
   // is reflected in _ignoreDocumentNotFound). This makes sure that results are
