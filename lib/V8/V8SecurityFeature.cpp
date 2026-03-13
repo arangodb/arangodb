@@ -299,6 +299,11 @@ void V8SecurityFeature::validateOptions(
     // If list is empty, put a pattern with only the empty string in
     // there to have a sane default behaviour:
     _options.startupOptionsAllowList.push_back("^$");
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // In maintainer mode, we add a few variables to the allow list,
+    // which we need in our own tests:
+    _options.startupOptionsAllowList.push_back("^database.directory$");
+#endif
   }
   convertToSingleExpression(_options.startupOptionsAllowList,
                             _startupOptionsAllowList);
@@ -312,6 +317,12 @@ void V8SecurityFeature::validateOptions(
     // If list is empty, put a pattern with only the empty string in
     // there to have a sane default behaviour:
     _options.environmentVariablesAllowList.push_back("^$");
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // In maintainer mode, we add a few variables to the allow list,
+    // which we need in our own tests:
+    _options.environmentVariablesAllowList.push_back(
+        "^rocksdb-encryption-keyfolder$");
+#endif
   }
   convertToSingleExpression(_options.environmentVariablesAllowList,
                             _environmentVariablesAllowList);
