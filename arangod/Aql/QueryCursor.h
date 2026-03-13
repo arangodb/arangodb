@@ -26,6 +26,7 @@
 
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
@@ -157,7 +158,7 @@ class QueryStreamCursor final : public Cursor {
 
   void cleanupStateCallback();
 
-  velocypack::UInt8Buffer _extrasBuffer;
+  velocypack::SupervisedBuffer _extrasBuffer;
   std::deque<SharedAqlItemBlockPtr> _queryResults;  /// buffered results
   std::shared_ptr<transaction::Context> _ctx;       /// cache context
   std::shared_ptr<aql::Query> _query;
