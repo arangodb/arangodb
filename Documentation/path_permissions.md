@@ -1261,7 +1261,7 @@ We should map the permissions in the following way to RBAC actions and resources
 | `db:ReadAnalyzer`             | `db:analyzer:<db>:<name>`  | read analyzer metadata                                                   |
 | `db:WriteAnalyzer`            | `db:analyzer:<db>:<name>`  | modify analyzer metadata                                                 |
 | `db:UseApiVerson`             | `db:apiversion:vX`         | use API version (this is in addition to other perms)                     |
-| `db:ChangeDataDistribution`   | `db:collection:<db>:<coll> | moveShard, resignLeadership, cleanOutServer                              |
+| `db:AdminChangeDataDist`      | `db:collection:<db>:<coll> | moveShard, resignLeadership, cleanOutServer                              |
 | `db:AdminMonitoring`          | -                          | anything completely harmless like metrics, also support-info             |
 | `db:AdminMonitoringInternal`  | -                          | async registry, engine stats, system report, not crashes                 |
 | `db:AdminCompaction`          | -                          | trigger RocksDB compactions                                              |
@@ -1276,6 +1276,7 @@ We should map the permissions in the following way to RBAC actions and resources
 | `db:AdminSupervisionState`    | -                          | get copy of all jobs in Supervision                                      |
 | `db:AdminRemoveServer`        | -                          | remove a server from the cluster                                         |
 | `db:AdminClusterInfo`         | -                          | shard statistics, /_api/cluster/cluster-info                             |
+| `db:AdminMaintenance`         | -                          | change number of servers, `/_admin/cluster/maintenance`                  |
 | `db:AdminLicense`             | -                          | set a new license or query information about it                          |
 | `db:AdminBackup`              | -                          | note that it can be switched to "Superuser only"                         |
 | `db:AdminJobs`                | -                          | this was ANY but should be RBACed                                        |
@@ -1303,6 +1304,20 @@ Ideas:
  - `HARDENED` is considered to be always on for RBAC, so becomes the same as `ADMIN`
  - `SUPERUSER` stays superuser only
 
+Note that some APIs are marked "ANY", but this is **not** dangerous because
+  - the API is only available in MAINTAINER_MODE
+  - the API is only available on DBServers or agents, which do not have users, so they
+    only accept SUPERUSER anyway
+  - the API is only compiled in when FAILURE_TESTS are activated
+
+Others are marked `ADMIN` but run only on DBServers or agents, so that they actually only
+accept SUPERUSER anyway.
+  
+Furthermore, there are some command line switches, which change authentication behaviour,
+in a lot of cases these have 3 possible values: `SUPERUSER`, `ADMIN`, `ANY`, sometimes
+it is possible to switch off the API entirely. These switches remain and take precedence.
+RBAC will only be considered if the switch is on `ADMIN`.
+  
 In the following table we just put the above case or the action required.
  
 | HTTP Method | URL Path                                      | RBAC Action                  |
@@ -1360,38 +1375,39 @@ In the following table we just put the above case or the action required.
 | DELETE      | `/_admin/telemetrics`                         | `db:AdminMonitoringInternal` |
 | GET         | `/_admin/options`                             | `db:AdminOptions`            |
 | GET         | `/_admin/options-description`                 | `db:AdminOptions`            |
-| GET         | `/_admin/options-public`                      | `db:ReadDatabase`            |
+| GET         | `/_admin/options-public`                      | `ANY`                        |
 | GET         | `/_admin/system-report`                       | `db:AdminMonitoringInternal` |
 | GET         | `/_admin/crashes`                             | `db:AdminCrashHandler`       |
 | DELETE      | `/_admin/crashes`                             | `db:AdminCrashHandler`       |
-| GET         | `/_admin/deployment/id`                       |                              |
+| GET         | `/_admin/deployment/id`                       | `ANY`                        |
 | GET         | `/_admin/supervisionState`                    | `db:AdminSupervisionState`   |
-| ANY         | `/_admin/routing/reload`                      |                              |
-| GET         | `/_admin/database/target-version`             |                              |
-| GET         | `/_admin/cluster/health`                      |                              |
-| GET         | `/_admin/cluster/numberOfServers`             |                              |
-| PUT         | `/_admin/cluster/numberOfServers`             | `db:AdminClusterInfo`        |
-| PUT         | `/_admin/cluster/maintenance`                 | `db:AdminClusterInfo`        |
-| PUT         | `/_admin/cluster/maintenance/{serverId}`      | `db:AdminClusterInfo`        |
-| POST        | `/_admin/cluster/cleanoutServer`              | `db:AdminClusterInfo`        |
-| POST        | `/_admin/cluster/resignLeadership`            | `db:ChangeDataDistribution`  |
-| POST        | `/_admin/cluster/moveShard`                   | `db:ChangeDataDistribution`  |
-| POST        | `/_admin/cluster/cancelJob`                   | `db:AdminClusterInfo`        |
-| GET         | `/_admin/cluster/queryJobStatus`              | `db:AdminClusterInfo`        |
+| ANY         | `/_admin/routing/reload`                      | `ANY`                        |
+| GET         | `/_admin/database/target-version`             | `ANY`                        |
+| GET         | `/_admin/cluster/health`                      | `ANY`                        |
+| GET         | `/_admin/cluster/numberOfServers`             | `ANY`                        |
+| PUT         | `/_admin/cluster/numberOfServers`             | `db:AdminMaintenance`        |
+| PUT         | `/_admin/cluster/maintenance`                 | `db:AdminMaintenance`        |
+| PUT         | `/_admin/cluster/maintenance/{serverId}`      | `db:AdminMaintenance`        |
+| POST        | `/_admin/cluster/cleanoutServer`              | `db:AdminChangeDataDist`     |
+| POST        | `/_admin/cluster/resignLeadership`            | `db:AdminChangeDataDist`     |
+| POST        | `/_admin/cluster/moveShard`                   | `db:AdminChangeDataDist`     |
+| POST        | `/_admin/cluster/cancelJob`                   | `db:AdminChangeDataDist`     |
+| GET         | `/_admin/cluster/queryJobStatus`              | `db:AdminChangeDataDist`     |
 | POST        | `/_admin/cluster/removeServer`                | `db:AdminRemoveServer`       |
 | GET         | `/_admin/cluster/shardDistribution`           | `db:AdminClusterInfo`        |
 | GET         | `/_admin/cluster/collectionShardDistribution` | `db:AdminClusterInfo`        |
 | GET         | `/_admin/cluster/shardStatistics`             | `db:AdminClusterInfo`        |
-| POST        | `/_admin/cluster/rebalanceShards`             | `db:WriteDatabase`           |
-| POST        | `/_admin/cluster/rebalance`                   | `db:AdminClusterInfo`        |
-| GET         | `/_admin/cluster/rebalance`                   | `db:AdminClusterInfo`        |
-| PUT         | `/_admin/cluster/vpackSortMigration`          |                              |
+| POST        | `/_admin/cluster/rebalanceShards`             | `db:AdminChangeDataDist`     |
+| POST        | `/_admin/cluster/rebalance`                   | `db:AdminChangaDataDist`     |
+| GET         | `/_admin/cluster/rebalance`                   | `db:AdminChangaDataDist`     |
+| GET         | `/_admin/cluster/vpackSortMigration`          | `db:AdminMaintenance`        |
+| PUT         | `/_admin/cluster/vpackSortMigration`          | `db:AdminMaintenance`        |
 | PUT         | `/_admin/cluster/uniqId`                      | `db:AdminClusterInfo`        |
-| GET         | `/_admin/wal/transactions`                    |                              |
-| GET         | `/_admin/wal/properties`                      |                              |
-| PUT         | `/_admin/wal/properties`                      |                              |
-| PUT         | `/_admin/wal/flush`                           |                              |
-| PUT         | `/_admin/wal/wait_for_estimator_sync`         | `db:AdminWalAccess`          |
+| GET         | `/_admin/wal/transactions`                    | `db:AdminWalAccess` SUPER?   |
+| GET         | `/_admin/wal/properties`                      | `db:AdminWalAccess` SUPER?   |
+| PUT         | `/_admin/wal/properties`                      | `db:AdminWalAccess` SUPER?   |
+| PUT         | `/_admin/wal/flush`                           | `db:AdminWalAccess` SUPER?   |
+| PUT         | `/_admin/wal/wait_for_estimator_sync`         | `SUPERUSER`                  |
 | GET         | `/_admin/async-registry`                      | `db:AdminMonitoringInternal` |
 | GET         | `/_admin/activities`                          | `db:AdminMonitoringInternal` |
 | GET         | `/_admin/license`                             | `db:AdminLicense`            |
@@ -1404,16 +1420,16 @@ In the following table we just put the above case or the action required.
 | GET         | `/_admin/job`                                 | `db:AdminJobs`               |
 | PUT         | `/_admin/job`                                 | `db:AdminJobs`               |
 | DELETE      | `/_admin/job`                                 | `db:AdminJobs`               |
-| GET         | `/openapi.json`                               |                              |
+| GET         | `/openapi.json`                               | `ANY`                        |
 | POST        | `/_api/analyzer`                              | `db:WriteAnalyzer`           |
 | GET         | `/_api/analyzer/{analyzer}`                   | `db:ReadAnalyzer`            |
-| GET         | `/_api/analyzer`                              | `db:ReadAnalyzer`            |
+| GET         | `/_api/analyzer`                              | `db:ReadDatabase`            |
 | DELETE      | `/_api/analyzer/{analyzer}`                   | `db:WriteAnalyzer`           |
-| POST        | `/_api/cursor`                                | `db:ReadDocuments`           |
-| POST        | `/_api/cursor/{cursor-id}`                    | `db:ReadDocuments`           |
-| PUT         | `/_api/cursor/{cursor-id}`                    | `db:ReadDocuments`           |
-| DELETE      | `/_api/cursor/{cursor-id}`                    |                              |
-| POST        | `/_api/cursor/json`                           | `db:ReadDocuments`           |
+| POST        | `/_api/cursor`                                | `DELEGATED`                  |
+| POST        | `/_api/cursor/{cursor-id}`                    | `DELEGATED`                  |
+| PUT         | `/_api/cursor/{cursor-id}`                    | `DELEGATED`                  |
+| DELETE      | `/_api/cursor/{cursor-id}`                    | `DELEGATED`                  |
+| POST        | `/_api/cursor/json`                           | `DELEGATED`                  |
 | GET         | `/_api/database/`                             | `db:ReadDatabases`           |
 | GET         | `/_api/database/user`                         | `db:ReadDatabase`            |
 | GET         | `/_api/database/current`                      |                              |
