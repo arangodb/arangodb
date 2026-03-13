@@ -984,17 +984,17 @@ jobs:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
     steps:
-      - persist_from_workspace_s3:
-          root: .
-          archive: << parameters.arch >>_binaries.tar.bz2
-      - persist_from_workspace_s3:
-          root: .
-          archive: << parameters.arch >>_cppcheck.tar.bz2
       - run:
           name: Prepare container
           command: |
             mkdir -p /root/workspace/
             mkdir -p /root/project/
+      - persist_from_workspace_s3:
+          root: /root/workspace/
+          archive: << parameters.arch >>_binaries.tar.bz2
+      - persist_from_workspace_s3:
+          root: /root/workspace/
+          archive: << parameters.arch >>_cppcheck.tar.bz2
       - attach_workspace:
           at: "/root/workspace/"
       - run:
