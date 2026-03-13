@@ -37,6 +37,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterFeature.h"
@@ -202,6 +203,8 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     co_return;
   }
 
+  // Cannot be supervised (i.e. pass ResourceMonitor&) as this will live longer
+  // than ResourceMonitor
   std::shared_ptr<VPackBuilder> bindParameters = nullptr;
   {
     VPackSlice bindParametersSlice = querySlice.get("bindParameters");
@@ -268,7 +271,8 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   // TODO: technically we could change the code in prepareClusterQuery to parse
   //       the collection info directly
   // Build the collection information
-  VPackBuilder collectionBuilder;
+  VPackBuilder collectionBuilder;  // Cannot add SupervisedBuffer as this will
+                                   // live longer than ResourceMonitor
   collectionBuilder.openArray();
   for (auto lockInf : VPackObjectIterator(lockInfoSlice)) {
     if (!lockInf.value.isArray()) {
@@ -325,7 +329,9 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
       co_await createTransactionContext(access, origin), std::move(options));
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
-  VPackBufferUInt8 buffer;
+  VPackBufferUInt8 buffer;  // This buffer is for http response, cannot use
+                            // SupervisedBuffer since the response will live
+                            // longer than the query and its ResourceMonitor
   VPackBuilder answerBuilder(buffer);
   answerBuilder.openObject();
   answerBuilder.add(StaticStrings::Error, VPackValue(false));
@@ -711,7 +717,10 @@ auto RestAqlHandler::handleUseQuery(std::string const& operation,
     opts = &_engine->getQuery().vpackOptions();
   }
 
-  VPackBuffer<uint8_t> answerBuffer;
+  VPackBufferUInt8
+      answerBuffer;  // This buffer is for http response, cannot use
+                     // SupervisedBuffer since the response will live longer
+                     // than the query and its ResourceMonitor
   VPackBuilder answerBuilder(answerBuffer);
   answerBuilder.openObject(/*unindexed*/ true);
 
@@ -813,7 +822,9 @@ auto RestAqlHandler::handleFinishQuery(std::string const& idString)
       << "Finalizing query with use_count " << query.use_count();
   auto res = co_await query->finalizeClusterQuery(errorCode);
 
-  VPackBufferUInt8 buffer;
+  VPackBufferUInt8 buffer;  // This buffer is for http response, cannot use
+  // SupervisedBuffer since the response will live
+  // longer than the query and its ResourceMonitor
   VPackBuilder answerBuilder(buffer);
   answerBuilder.openObject(/*unindexed*/ true);
   answerBuilder.add(VPackValue("stats"));
