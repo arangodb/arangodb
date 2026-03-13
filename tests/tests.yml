@@ -25,37 +25,8 @@
     args:
       extraArgs:log.level: replication=trace
     suites:
-      - replication_fuzz
-      - replication_ongoing
-      - replication_ongoing_frompresent
-      - replication_ongoing_global
-      - replication_ongoing_global_spec
       - shell_replication
       - http_replication
-# one run for each test...
-- replication_static:
-    options:
-      priority: 500
-      parallelity: 3
-      size: small
-      type: single
-      buckets: 2
-    args:
-      extraArgs:log.level: replication=trace
-# TODO - we could actually use 4 buckets instead of 2,
-# but ATM this causes issues with other tests on Jenkins
-# For CircleCI we have a special case in the generate_config
-# script to override this. Once we can change the buckets
-# here, make sure to remove this special case!
-- replication_sync:
-    options:
-      priority: 8000
-      buckets: 9
-      parallelity: 3
-      size: medium
-      type: single
-    args:
-      extraArgs:log.level: replication=trace
 
 
 - authentication_audit_endpoints_import_export_agency:
@@ -621,19 +592,6 @@
     options:
       type: single
       priority: 500
-    requires:
-      full: true
-- replication_aql:
-    options:
-      priority: 1000
-      type: single
-    requires:
-      full: true
-- replication_random:
-    options:
-      priority: 1000
-      type: single
-
     requires:
       full: true
 # Full Cluster Tests
