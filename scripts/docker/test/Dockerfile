@@ -5,7 +5,7 @@ ARG arch
 ARG CLANG_VERSION=19
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y software-properties-common net-tools gnupg2 wget && \
+    apt-get install -y software-properties-common net-tools gnupg2 wget awscli bzip2 && \
     apt-get update && \
     apt-get upgrade -y
 

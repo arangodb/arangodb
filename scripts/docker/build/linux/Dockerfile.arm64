@@ -17,7 +17,7 @@ FROM ubuntu:24.04 AS prepare
 RUN apt-get update --fix-missing && \
     apt-get upgrade -y && \
     apt-get install -y \
-      software-properties-common net-tools lsb-release \
+      software-properties-common net-tools lsb-release awscli bzip2 \
       build-essential cmake make bison flex python3 ccache git libjemalloc-dev \
       vim exuberant-ctags gdb fish psmisc sudo debhelper debconf jq libdb-dev \
       gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev gfortran \
