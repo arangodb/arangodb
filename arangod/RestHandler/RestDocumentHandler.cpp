@@ -156,20 +156,14 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 async<void> RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if (suffixes.size() != 1) {
+  if (suffixes.size() > 1) {
     generateError(
-        rest::ResponseCode::BAD,
-        suffixes.size() > 1 ? TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES
-                            : TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-        suffixes.size() > 1
-            ? "superfluous suffix, expecting " + DOCUMENT_PATH + "/<collection>"
-            : "'collection' is missing, expecting " + DOCUMENT_PATH +
-                  " POST /_api/document/<collection>");
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+        "superfluous suffix, expecting " + DOCUMENT_PATH + "/<collection>");
     co_return;
   }
 
-  std::string const& cname = suffixes[0];
-  if (cname.empty()) {
+  if (suffixes.empty() || suffixes[0].empty()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
@@ -177,6 +171,7 @@ async<void> RestDocumentHandler::insertDocument() {
     co_return;
   }
 
+  std::string const& cname = suffixes[0];
   // if name is a numeric collection id, generate a 400 error
   if (rejectNumericCollectionId(cname)) {
     co_return;
@@ -316,16 +311,11 @@ async<void> RestDocumentHandler::readDocument() {
 
   switch (len) {
     case 0:
-    case 1: {
-      const std::string& cname = _request->suffixes()[0];
-      if (!cname.empty() && rejectNumericCollectionId(cname)) {
-        co_return;
-      }
+    case 1:
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "expecting GET /_api/document/<collection>/<key>");
       co_return;
-    }
     case 2:
       co_return co_await readSingleDocument(true);
 
