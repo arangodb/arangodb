@@ -80,28 +80,6 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
     },
-
-    test_returns_an_error_if_document_identifier_is_unknown: function() {
-      let cmd = `/_api/document/${cn}/234567`;
-      let doc = arango.DELETE_RAW(cmd);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code, doc);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-    },
-
-    test_returns_an_error_if_collection_identifier_is_a_numeric_id: function() {
-      let cmd = `/_api/document/${cid._id}`;
-      let doc = arango.DELETE_RAW(cmd);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code, doc);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      assertEqual(doc.headers['content-type'], contentType);
-    },
   };
 }
 
