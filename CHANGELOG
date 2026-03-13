@@ -1,6 +1,8 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Updated ArangoDB Starter to v0.19.18-preview-1.
+
 * Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 
 * COR-267, github issue #21944: Fixed a bug in the handling of post filters
