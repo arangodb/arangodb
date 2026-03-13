@@ -574,6 +574,7 @@ jobs:
                   - enterprise/js
                   - etc/
                   - tests/js
+                  - tests/fixtures
                   - enterprise/tests/js
                   - utils
                   - lib/iresearch/tests/resources

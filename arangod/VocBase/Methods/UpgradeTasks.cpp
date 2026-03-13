@@ -74,69 +74,6 @@ using basics::VelocyPackHelper;
 
 namespace {
 
-arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
-                                  arangodb::LogicalCollection& collection,
-                                  arangodb::RocksDBIndex* oldIndex) {
-  IndexId iid = oldIndex->id();
-
-  VPackBuilder oldDesc;
-  oldIndex->toVelocyPack(oldDesc, Index::makeFlags());
-  VPackBuilder overw;
-
-  overw.openObject();
-  overw.add(arangodb::StaticStrings::IndexType,
-            arangodb::velocypack::Value(
-                arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
-  overw.close();
-
-  VPackBuilder newDesc =
-      VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
-  arangodb::Result res = collection.dropIndex(iid);
-
-  if (res.fail()) {
-    return res;
-  }
-
-  bool created = false;
-  auto newIndex = collection.getPhysical()
-                      ->createIndex(newDesc.slice(), /*restore*/ true, created)
-                      .waitAndGet();
-
-  if (!created) {
-    res.reset(TRI_ERROR_INTERNAL);
-  }
-
-  TRI_ASSERT(newIndex->id() == iid);  // will break cluster otherwise
-  TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
-
-  return res;
-}
-
-Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
-  auto collections = vocbase.collections(false);
-
-  for (auto const& collection : collections) {
-    auto indexes = collection->getPhysical()->getReadyIndexes();
-    for (auto const& index : indexes) {
-      auto* rIndex = basics::downCast<RocksDBIndex>(index.get());
-      if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
-          index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-        LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
-            << "Upgrading legacy geo index '" << rIndex->id().id() << "'";
-
-        auto res = ::recreateGeoIndex(vocbase, *collection, rIndex);
-
-        if (res.fail()) {
-          LOG_TOPIC("5550a", ERR, Logger::STARTUP)
-              << "Error upgrading geo indexes " << res.errorMessage();
-          return res;
-        }
-      }
-    }
-  }
-  return {};
-}
-
 Result createSystemCollections(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
@@ -338,7 +275,6 @@ Result createSystemCollectionsIndices(
     }
   }
 
-  res = upgradeGeoIndexes(vocbase);
   if (!res.ok()) {
     return res;
   }
@@ -856,4 +792,42 @@ Result UpgradeTasks::migrateHashSkiplistToPersistent(
     return convertHashSkiplistIndexesInPlanCoordinator(vocbase, clusterFeature);
   }
   return convertHashSkiplistInDefinitionsColumnFamily(vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops legacy geo1/geo2 indexes
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
+                                          velocypack::Slice /*slice*/) {
+  // On a coordinator, vocbase.collections() returns empty because collections
+  // live in ClusterInfo. Use methods::Collections which handles both cases.
+  auto collections = methods::Collections::sorted(vocbase);
+
+  // Drop all geo1/geo2 indexes from all collections.
+  // Uses methods::Indexes::drop which on a coordinator propagates the
+  // drop through the agency so that DBServers pick up the change.
+  for (auto const& collection : collections) {
+    auto indexes = collection->getPhysical()->getReadyIndexes();
+    for (auto const& index : indexes) {
+      if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
+          index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+        LOG_TOPIC("5550a", WARN, Logger::STARTUP)
+            << "Dropping obsolete geo1/geo2 index '" << index->id().id()
+            << "' from collection '" << collection->name()
+            << "' - geo1/geo2 indexes are no longer supported";
+
+        auto res =
+            methods::Indexes::drop(*collection, index->id()).waitAndGet();
+
+        if (res.fail()) {
+          LOG_TOPIC("5550b", ERR, Logger::STARTUP)
+              << "Error dropping obsolete geo1/geo2 index: "
+              << res.errorMessage();
+          return res;
+        }
+      }
+    }
+  }
+  return {};
 }

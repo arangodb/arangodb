@@ -1,5 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Legacy geo index types `geo1` and `geo2` are no longer supported. Existing
+  indexes of these types are automatically dropped during database upgrade.
 
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.

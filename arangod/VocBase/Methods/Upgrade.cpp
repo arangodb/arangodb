@@ -302,6 +302,15 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           &UpgradeTasks::dropLegacyAnalyzersCollection  // action
   );
 
+  // Legacy geo1/geo2 indexes: drop on single server locally; on coordinator
+  // drop via agency so DB servers pick up the change.
+  addTask(
+      upgradeFeature, "dropLegacyGeoIndexes", "drop legacy geo1/geo2 indexes",
+      /*system*/ Flags::DATABASE_ALL,
+      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
+      /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING | DATABASE_ONLY_ONCE,
+      &UpgradeTasks::dropLegacyGeoIndexes);
+
   addTask(upgradeFeature, "dropOldStatisticsCollections",
           "drop old statistics collections: _statistics, _statistics15, "
           "_statisticsRaw",
