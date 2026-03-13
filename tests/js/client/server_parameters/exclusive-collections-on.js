@@ -32,11 +32,17 @@ if (getOptions === true) {
 }
 
 var jsunity = require("jsunity");
-var tasks = require("@arangodb/tasks");
+const {
+  launchPlainSnippetInBG,
+  joinBGShells,
+} = require('@arangodb/testutils/client-tools').run;
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 
 var ERRORS = arangodb.errors;
+
+let IM = global.instanceManager;
+const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -46,55 +52,51 @@ function OptionsTestSuite () {
   var cn1 = "UnitTestsExclusiveCollection1"; // used for test data
   var cn2 = "UnitTestsExclusiveCollection2"; // used for communication
   var c1, c2;
+  let clients = [];
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
+      clients = [];
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
+      joinBGShells(IM.options, clients, waitFor, cn1);
       db._drop(cn1);
       db._drop(cn2);
     },
 
     testExclusiveExpectConflictWithoutOption : function () {
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let task = tasks.register({
-        command: function() {
-          let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+      clients.push(launchPlainSnippetInBG(`
+        let db = require("internal").db;
+        db["${cn2}"].insert({ _key: "runner1", value: false });
 
-          while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
-            require("internal").sleep(0.02);
-          }
-
-          db._executeTransaction({
-            collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
-            action: function () {
-              let db = require("internal").db;
-              for (let i = 0; i < 100000; ++i) {
-                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
-              }
-              db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
-            }
-          });
+        while (!db["${cn2}"].exists("runner2")) {
+          require("internal").sleep(0.02);
         }
-      });
 
-      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
-      while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
+        const trx = db._createTransaction({
+          collections: { write: ["${cn1}", "${cn2}"] }
+        });
+        try {
+          for (let i = 0; i < 10; ++i) {
+            trx.collection("${cn1}").update("XXX", { name: "runner1" });
+          }
+          trx.collection("${cn2}").update("runner1", { value: true });
+          trx.commit();
+        } catch (e) {
+          trx.abort();
+          throw e;
+        }
+      `, 'testExclusiveExpectConflictWithoutOption'));
+
+      db[cn2].insert({ _key: "runner2", value: false });
+      while (!db[cn2].exists("runner1")) {
         require("internal").sleep(0.02);
       }
 
@@ -110,24 +112,22 @@ function OptionsTestSuite () {
         throw e;
       }
 
-      while (true) {
-        try {
-          tasks.get(task);
-          require("internal").wait(0.25, false);
-        } catch (err) {
-          // "task not found" means the task is finished
-          break;
-        }
-      }
+      joinBGShells(IM.options, clients, waitFor, cn1);
+      clients = [];
 
+      // both transactions should have succeeded (exclusive writes serialize, not reject)
       assertEqual(2, c2.count());
-      // both transactions should have succeeded
-      assertTrue(c2.document("runner1").value);  // runner1 transaction should succeed
-      assertTrue(c2.document("runner2").value); // runner2 transaction should succeed
+      let docs = c2.toArray();
+      assertEqual(docs[0].value, true);
+      assertEqual(docs[1].value, true);
     },
 
   };
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suite
+////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(OptionsTestSuite);
 

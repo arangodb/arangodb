@@ -2289,8 +2289,6 @@ function IResearchFeatureDDLTestSuite2() {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test creating link with 'inBackground' set to true
     ////////////////////////////////////////////////////////////////////////////
-    testCreateLinkInBackgroundModeSJS: function () {
-    },
     testCreateLinkInBackgroundMode: function () {
       const IM = global.instanceManager;
       const ct = require('@arangodb/testutils/client-tools');
