@@ -33,6 +33,7 @@
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionManager.h"
+#include "Metrics/Fwd.h"
 
 #include <array>
 #include <atomic>
@@ -115,7 +116,8 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
+  Manager(application_features::ApplicationServer& server,
+          SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
           CacheOptions const& options);
 
   Manager(Manager const&) = delete;
@@ -138,7 +140,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   template<typename Hasher>
   std::shared_ptr<Cache> createCache(
-      CacheType type, bool enableWindowedStats = false,
+      CacheType type, std::string_view name, bool enableWindowedStats = false,
       std::uint64_t maxSize = std::numeric_limits<std::uint64_t>::max());
 
   //////////////////////////////////////////////////////////////////////////////
@@ -309,6 +311,17 @@ class Manager {
   std::atomic<std::uint64_t> _rebalancingTasks;
   std::atomic<std::uint64_t> _resizingTasks;
   time_point _rebalanceCompleted;
+
+  // cache usage detailed
+  metrics::MetricsFeature& _mf;
+  metrics::Gauge<uint64_t>& _cacheLabeledFixed;
+  metrics::Gauge<uint64_t>& _cacheLabeledTables;
+  metrics::Gauge<uint64_t>& _cacheLabeledMax;
+  metrics::Gauge<uint64_t>& _cacheLabeledAllocated;
+  metrics::Gauge<uint64_t>& _cacheLabeledDeserved;
+  metrics::Gauge<uint64_t>& _cacheLabeledUsage;
+  metrics::Gauge<uint64_t>& _cacheLabeledHardLimit;
+  metrics::Gauge<uint64_t>& _cacheLabeledSoftLimit;
 
   // friend class tasks and caches to allow access
   friend class Cache;

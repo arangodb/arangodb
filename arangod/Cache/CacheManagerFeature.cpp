@@ -93,8 +93,8 @@ void CacheManagerFeature::start() {
       << ", max spare allocation: " << _options.maxSpareAllocation
       << ", enable windowed stats: " << _options.enableWindowedStats;
 
-  _manager = std::make_unique<Manager>(_sharedPRNGFeature, std::move(postFn),
-                                       _options);
+  _manager = std::make_unique<Manager>(scheduler->server(), _sharedPRNGFeature,
+                                       std::move(postFn), _options);
 
   _rebalancer = std::make_unique<CacheRebalancerThread>(
       server(), _manager.get(), _options.rebalancingInterval);
