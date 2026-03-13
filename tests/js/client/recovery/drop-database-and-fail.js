@@ -33,7 +33,6 @@ if (runSetup === true) {
   'use strict';
   global.instanceManager.debugClearFailAt();
 
-  internal.wal.properties({ historicLogfiles: 0 });
   internal.wal.flush();
 
   db._drop('test');
