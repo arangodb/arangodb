@@ -133,7 +133,6 @@ commands:
           command: |
             set -eo pipefail
             set -x
-            python3 -m pip install --break-system-packages awscli 
 
             ROOT="<< parameters.root >>"
             PATHS="<< parameters.paths >>"
@@ -172,7 +171,6 @@ commands:
           command: |
             set -eo pipefail
             set -x
-            python3 -m pip install --break-system-packages awscli 
 
             ROOT="<< parameters.root >>"
             PATHS="<< parameters.paths >>"
@@ -187,7 +185,6 @@ commands:
             TAR="/tmp/circleci-workspace/${ARCHIVE}"
 
             cd "$ROOT"
-            apt-get update; apt-get install bzip2
 
             aws configure set profile.anon.s3.multipart_threshold 5GB
             aws s3 cp --no-sign-request --profile anon \
