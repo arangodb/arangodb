@@ -44,7 +44,6 @@ const setup = require(base);
   setup.createPaddedKeyGen();
   setup.createUUIDKeyGen();
   setup.createStrings();
-  setup.createTransactional();
   setup.createPersistent();
   setup.createView();
   setup.createSearch();

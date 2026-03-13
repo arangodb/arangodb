@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertFalse */
+/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertFalse, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,19 +25,32 @@
 /// @author Copyright 2024, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const jwtSecret = 'abc123';
+
 if (getOptions === true) {
   return {
-    'server.export-shard-usage-metrics': "enabled-per-shard",
+    'server.export-shard-usage-metrics': "enabled-per-shard-per-user",
+    'server.authentication': 'true',
+    'server.jwt-secret': jwtSecret,
   };
 }
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
 const internal = require('internal');
-const { getDBServers } = require("@arangodb/test-helper");
+const { instanceRole } = require("@arangodb/testutils/instance");
+const { deriveTestSuite } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
+const users = require("@arangodb/users");
+const crypto = require('@arangodb/crypto');
 const dh = require("@arangodb/testutils/document-state-helper");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+let IM = global.instanceManager;
+
+const jwt = crypto.jwtEncode(jwtSecret, {
+  "server_id": "ABCD",
+  "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+}, 'HS256');
 
 // note: these tests will currently partially fail under replication2.
 // the reason is that the tests expect the bytes_written metrics to be
@@ -55,7 +68,7 @@ const lh = require("@arangodb/testutils/replicated-logs-helper");
 // this can be fixed by storing the user information in the replicated
 // log, and using it when the write operation is later applied on the
 // follower.
-function testSuite() {
+function BaseTestSuite(targetUser) {
   const baseName = "UnitTestsCollection";
   let nextCollectionId = 0;
 
@@ -65,8 +78,9 @@ function testSuite() {
 
   let getRawMetrics = function() {
     let lines = [];
-    getDBServers().forEach((server) => {
-      let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
+    IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach(server => {
+      let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics", auth: { bearer: jwt } });
+      assertEqual(200, res.status);
       lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
     });
     return lines;
@@ -100,12 +114,16 @@ function testSuite() {
         let [key,value] = label.split('=');
         found[key] = value.replace(/"/g, '');
       });
-      
       assertTrue(found.hasOwnProperty("shard"), found);
       assertTrue(found.hasOwnProperty("db"), found);
       assertTrue(found.hasOwnProperty("collection"), found);
-      
+      assertTrue(found.hasOwnProperty("user"), found);
+  
       if (found["db"] !== database || !collections.includes(found["collection"])) {
+        return;
+      }
+
+      if (found["user"] !== targetUser) {
         return;
       }
 
@@ -120,7 +138,6 @@ function testSuite() {
       }
       result[type][shard] += amount;
     });
-
     return result;
   };
 
@@ -158,7 +175,7 @@ function testSuite() {
 
   const getShardsAndLogs = (db, c) => {
     if (db._properties().replicationVersion === "2") {
-      return dh.getCollectionShardsAndLogs(db, c);
+      return dh.getCollectionShardsAndLogs(db, c, jwt);
     }
     return {
       shards: c.shards(),
@@ -254,15 +271,6 @@ function testSuite() {
   };
 
   return {
-    setUpAll : function () {
-      // set this failure point so that metrics updates are pushed immediately
-      global.instanceManager.debugSetFailAt("alwaysPublishShardMetrics");
-    },
-      
-    tearDownAll : function () {
-      global.instanceManager.debugRemoveFailAt("alwaysPublishShardMetrics");
-    },
-
     testDoesNotPolluteNormalMetricsAPI : function () {
       const cn = getUniqueCollectionName();
 
@@ -281,7 +289,7 @@ function testSuite() {
         
         // check if the normal metrics endpoint exports any shard-specific metrics
         let lines = [];
-        getDBServers().forEach((server) => {
+        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
           let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
         });
@@ -289,7 +297,7 @@ function testSuite() {
 
         // check if the usage-metrics endpoint exports any regular metrics
         lines = [];
-        getDBServers().forEach((server) => {
+        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
           let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
           // we look for any metric name starting with "rocksdb_" here as a placeholder
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^rocksdb_/)));
@@ -346,6 +354,7 @@ function testSuite() {
 
         let c = db._create(cn, {replicationFactor});
         try {
+
           // must insert first to read something back
           const n = 50;
           let payloadLength = 0;
@@ -401,7 +410,6 @@ function testSuite() {
 
         let c = db._create(cn, {replicationFactor});
         try {
-
           const n = 30;
           for (let i = 0; i < n; ++i) {
             c.insert({ value: i });
@@ -534,7 +542,8 @@ function testSuite() {
             docs.push({ _key: "test" + i, value: i + 1 });
           }
           c.update(docs, docs);
-
+          
+          let parsed = getParsedMetrics(db._name(), cn);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
           assertWriteOnlyMetricsAreCounted(c, replicationFactor, n * 40 + n * 40, n * 50 + n * 50);
         } finally {
@@ -564,7 +573,9 @@ function testSuite() {
             docs.push({ _key: "test" + i, payload });
           }
           c.update(docs, docs);
-
+          
+          let parsed = getParsedMetrics(db._name(), cn);
+          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
           assertWriteOnlyMetricsAreCounted(c, replicationFactor, n * 40 + n * 3100, n * 50 + n * 3150);
         } finally {
@@ -591,7 +602,6 @@ function testSuite() {
           for (let i = 0; i < n; ++i) {
             c.replace("test" + i, { value: i + 1 });
           }
-
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
           assertWriteOnlyMetricsAreCounted(c, replicationFactor, n * 40 + n * 40, n * 50 + n * 50);
         } finally {
@@ -636,6 +646,9 @@ function testSuite() {
         let c = db._create(cn, {numberOfShards: 3, replicationFactor});
 
         try {
+          let shards = c.shards();
+          assertEqual(3, shards.length);
+
           const n = 100;
           let docs = [];
           for (let i = 0; i < n; ++i) {
@@ -654,8 +667,11 @@ function testSuite() {
     testHasMetricsReadOnlyAQL : function () {
       const cn = getUniqueCollectionName();
 
-      let c = db._create(cn, {replicationFactor: 1});
+      let c = db._create(cn);
       try {
+        let shards = c.shards();
+        assertEqual(1, shards.length);
+
         db._query(`FOR doc IN ${cn} RETURN doc`);
         
         let parsed = getParsedMetrics(db._name(), cn);
@@ -671,11 +687,14 @@ function testSuite() {
         
         // run query again, now with documents
         db._query(`FOR doc IN ${cn} RETURN doc`);
+          
+        parsed = getParsedMetrics(db._name(), cn);
 
+        assertTrue(parsed.hasOwnProperty("writes"), parsed);
         // we still assume 40-50 bytes read per document, as we still need to
         // read it entirely from the storage engine
-        assertReadMetricsAreCounted(c, 1, n * 40, n * 50);
-
+        assertTrue(parsed.reads[shards[0]] > n * 40, {parsed});
+        assertTrue(parsed.reads[shards[0]] < n * 50, {parsed});
       } finally {
         db._drop(cn);
       }
@@ -933,6 +952,7 @@ function testSuite() {
         let c = db._create(cn, {replicationFactor});
 
         try {
+
           const n = 100;
           db._query(`FOR i IN 1..${n} INSERT {} INTO ${cn}`);
 
@@ -1022,36 +1042,14 @@ function testSuite() {
 
         const payload = Array(512).join("abcd");
         db._query(`LET payload = '${payload}' FOR doc IN ${c1.name()} INSERT {payload} INTO ${c2.name()} RETURN doc`);
-        
-        let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
-        
-        let shards = c1.shards();
-        let totalWritten = 0;
-        let totalRead = 0;
-        shards.forEach((shard) => {
-          assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-          assertTrue(parsed.reads.hasOwnProperty(shard), {shards, parsed});
-          totalWritten += parsed.writes[shard];
-          totalRead += parsed.reads[shard];
-        });
 
         // count 40-50 bytes for each insert into c1
-        assertTrue(totalWritten > n * 40, {parsed, shards, totalWritten});
-        assertTrue(totalWritten < n * 50, {parsed, shards, totalWritten});
-        
-        assertTrue(totalRead > n * 40, {parsed, shards, totalRead});
-        assertTrue(totalRead < n * 50, {parsed, shards, totalRead});
-        
-        shards = c2.shards();
-        totalWritten = 0;
-        shards.forEach((shard) => {
-          assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-          assertFalse(parsed.reads.hasOwnProperty(shard), {parsed, shards});
-          totalWritten += parsed.writes[shard];
-        });
+        assertTotalWriteMetricsAreCounted(c1, 1, n * 40, n * 50, true);
+        // also count 40-50 bytes for each read in c1 for the query
+        assertTotalReadMetricsAreCounted(c1, n * 40, n * 50);
+
         // count 2050-2150 bytes for each insert into c2
-        assertTrue(totalWritten > n * 2050, {parsed, shards, totalWritten});
-        assertTrue(totalWritten < n * 2150, {parsed, shards, totalWritten});
+        assertTotalWriteMetricsAreCounted(c2, 1, n * 2050, n * 2150);
       } finally {
         db._drop(c2.name());
         db._drop(c1.name());
@@ -1065,32 +1063,12 @@ function testSuite() {
       try {
         const n = 89;
         db._query(`FOR i IN 1..${n} INSERT {} INTO ${c1.name()} OPTIONS {exclusive: true} INSERT {} INTO ${c2.name()} OPTIONS {exclusive: true}`);
-        
-        let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
-        assertFalse(parsed.hasOwnProperty("reads"), {parsed});
-        
-        let shards = c1.shards();
-        shards.forEach((shard) => {
-          assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-        });
-        let totalWritten = 0;
-        shards.forEach((shard) => {
-          totalWritten += parsed.writes[shard];
-        });
 
         // count 30-40 bytes for each insert into c1
-        assertTrue(totalWritten > n * 30, {parsed, shards, totalWritten});
-        assertTrue(totalWritten < n * 40, {parsed, shards, totalWritten});
-        
-        shards = c2.shards();
-        totalWritten = 0;
-        shards.forEach((shard) => {
-          assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-          totalWritten += parsed.writes[shard];
-        });
+        assertTotalWriteMetricsAreCounted(c1, 1, n * 30, n * 40);
+
         // count 30-40 bytes for each insert into c2
-        assertTrue(totalWritten > n * 30, {parsed, shards, totalWritten});
-        assertTrue(totalWritten < n * 40, {parsed, shards, totalWritten});
+        assertTotalWriteMetricsAreCounted(c2, 1, n * 30, n * 40);
       } finally {
         db._drop(c2.name());
         db._drop(c1.name());
@@ -1107,9 +1085,7 @@ function testSuite() {
           const payload = Array(100).join("foo");
           db._query(`LET payload = '${payload}' FOR i IN 1..${n} INSERT {} INTO ${c1.name()} INSERT {payload} INTO ${c2.name()}`);
 
-          // count 30-40 bytes for each insert into c1
           assertTotalWriteMetricsAreCounted(c1, replicationFactor, n * 30, n * 40);
-          // count 360-370 bytes for each insert into c2
           assertTotalWriteMetricsAreCounted(c2, replicationFactor, n * 350, n * 370);
         } finally {
           db._drop(c2.name());
@@ -1126,8 +1102,6 @@ function testSuite() {
         try {
           c.ensureIndex({ type: "persistent", fields: ["value1"] });
           c.ensureIndex({ type: "persistent", fields: ["value2"] });
-          let shards = c.shards();
-          assertEqual(1, shards.length);
 
           const payload = Array(1024).join("z");
           const n = 42;
@@ -1144,36 +1118,24 @@ function testSuite() {
           for (let i = 0; i < n; ++i) {
             db._query(`FOR doc IN ${cn} FILTER doc.value1 == 'testmann${i}' RETURN doc._key`);
           }
-            
-          let parsed = getParsedMetrics(db._name(), cn);
 
-          assertTrue(parsed.hasOwnProperty("writes"), parsed);
-          assertTrue(parsed.reads[shards[0]] > n * 1050, {parsed});
-          assertTrue(parsed.reads[shards[0]] < n * 1150, {parsed});
+          assertReadMetricsAreCounted(c, replicationFactor, n * 1050, n * 1150);
           
           // read data back via secondary indexes, but only return indexed value
           for (let i = 0; i < n; ++i) {
             db._query(`FOR doc IN ${cn} FILTER doc.value1 == 'testmann${i}' RETURN doc.value1`);
           }
 
-          parsed = getParsedMetrics(db._name(), cn);
-
           // number of bytes read shouldn't have changed
-          assertTrue(parsed.hasOwnProperty("writes"), parsed);
-          assertTrue(parsed.reads[shards[0]] > n * 1050, {parsed});
-          assertTrue(parsed.reads[shards[0]] < n * 1150, {parsed});
+          assertReadMetricsAreCounted(c, replicationFactor, n * 1050, n * 1150);
           
           // try to read back non-existing values
           for (let i = 0; i < n; ++i) {
             db._query(`FOR doc IN ${cn} FILTER doc.value2 == 'fuchsbau${i}' RETURN doc`);
           }
 
-          parsed = getParsedMetrics(db._name(), cn);
-
           // number of bytes read shouldn't have changed
-          assertTrue(parsed.hasOwnProperty("writes"), parsed);
-          assertTrue(parsed.reads[shards[0]] > n * 1050, {parsed});
-          assertTrue(parsed.reads[shards[0]] < n * 1150, {parsed});
+          assertReadMetricsAreCounted(c, replicationFactor, n * 1050, n * 1150);
           
           // remove all docs
           docs = [];
@@ -1184,7 +1146,7 @@ function testSuite() {
           c.remove(docs);
 
           // we assume 1050-1150 bytes written per document (for the insert) plus a few bytes for each remove
-          assertWriteOnlyMetricsAreCounted(c, replicationFactor, n * (1050 + 10), n * (1150 + 20), true);
+          assertWriteOnlyMetricsAreCounted(c, replicationFactor, n * 1050 + n * 10, n * 1150 + n * 20, true);
         } finally {
           db._drop(cn);
         }
@@ -1197,26 +1159,25 @@ function testSuite() {
       const databases = [baseName + "1", baseName + "2", baseName + "3"];
 
       try {
+        let old = db._name();
+        db._useDatabase('_system');
         databases.forEach((name) => {
           db._createDatabase(name);
         });
+        db._useDatabase(old);
 
         databases.forEach((name, iter) => {
           db._useDatabase(name);
       
           let c = db._create(cn, {replicationFactor: 1});
-          let shards = c.shards();
-          assertEqual(1, shards.length);
 
           const n = (iter + 1) * 15;
           for (let i = 0; i < n; ++i) {
             c.insert({ value: i });
           }
-        
-          let parsed = getParsedMetrics(db._name(), cn);
+
           // count 40-50 bytes for each insert
-          assertTrue(parsed.writes[shards[0]] > n * 40, {parsed, shards});
-          assertTrue(parsed.writes[shards[0]] < n * 50, {parsed, shards});
+          assertWriteOnlyMetricsAreCounted(c, 1, n * 40, n * 50);
         });
       } finally {
         db._useDatabase("_system");
@@ -1249,11 +1210,10 @@ function testSuite() {
 
           // count 40-50 bytes for each insert
           assertWriteOnlyMetricsAreCounted(c, replicationFactor, n * 40, n * 50);
-
+        
           c.truncate();
-
           // count 10-20 bytes for each remove
-          assertWriteOnlyMetricsAreCounted(c, replicationFactor, n * (40 + 10), n * (50 + 20));
+          assertWriteOnlyMetricsAreCounted(c, replicationFactor, n * 40 + n * 10, n * 50 + n * 20);
         } finally {
           db._drop(cn);
         }
@@ -1326,11 +1286,12 @@ function testSuite() {
 
           // no insert into local part
           let shards = db["_local_" + en].shards();
-          assertFalse(parsed.hasOwnProperty("writes"), {shards, parsed});
+          assertFalse(parsed.hasOwnProperty("reads"), {shards, parsed});
 
           // we must have inserts into from/to parts
           // count 120-170 bytes for each insert into en
           assertTotalWriteMetricsAreCounted(db["_from_" + en], replicationFactor, n * 120, n * 170);
+
           assertTotalWriteMetricsAreCounted(db["_to_" + en], replicationFactor, n * 120, n * 170);
 
           // now perform reads
@@ -1344,14 +1305,12 @@ function testSuite() {
           shards = db["_local_" + en].shards();
           assertFalse(parsed.hasOwnProperty("reads"), {shards, parsed});
 
-          parsed = getParsedMetrics(db._name(), "_from_" + en);
-          // we must have reads in from/to parts
-          shards = db["_from_" + en].shards();
+          // we must have reads in from parts
           assertTotalReadMetricsAreCounted(db["_from_" + en], n * 120, n * 170);
 
+          // No read in to parts
           parsed = getParsedMetrics(db._name(), "_to_" + en);
           shards = db["_to_" + en].shards();
-          // no reads into _to_ part
           assertFalse(parsed.hasOwnProperty("reads"), {shards, parsed});
         } finally {
           cleanup();
@@ -1383,22 +1342,22 @@ function testSuite() {
         try {
           const n = 24;
           db._query(`FOR i IN 1..${n} INSERT {_key: CONCAT('test', (i % 10), ':test', i), testi: CONCAT('test', (i % 10))} INTO ${vn}`);
-          
-          let parsed = getParsedMetrics(db._name(), vn);
-          let shards = db[vn].shards();
+
           // count 50-60 bytes for each insert into vn
           assertTotalWriteMetricsAreCounted(db[vn], replicationFactor, n * 50, n * 60);
 
           let keys = db._query(`FOR i IN 1..${n} INSERT {_from: CONCAT('${vn}/test', i, ':test', (i % 10)), _to: CONCAT('${vn}/test', ((i + 1) % 100), ':test', (i % 10)), testi: (i % 10)} INTO ${en} RETURN NEW._key`).toArray();
           
-          parsed = getParsedMetrics(db._name(), "_local_" + en);
+          let parsed = getParsedMetrics(db._name(), "_local_" + en);
           
           // no insert into local part
-          shards = db["_local_" + en].shards();
-          assertFalse(parsed.hasOwnProperty("writes"), {shards, parsed});
+          assertFalse(parsed.hasOwnProperty("writes"));
+          assertFalse(parsed.hasOwnProperty("reads"));
 
           // we must have inserts into from/to parts
+          // count 120-170 bytes for each insert into en
           assertTotalWriteMetricsAreCounted(db["_from_" + en], replicationFactor, n * 120, n * 170);
+
           assertTotalWriteMetricsAreCounted(db["_to_" + en], replicationFactor, n * 120, n * 170);
 
           db._query(`FOR doc IN ${en} FILTER doc._key IN @keys RETURN doc`, { keys });
@@ -1406,21 +1365,15 @@ function testSuite() {
           parsed = getParsedMetrics(db._name(), "_local_" + en);
          
           // no reads in local part
-          shards = db["_local_" + en].shards();
-          assertFalse(parsed.hasOwnProperty("reads"), {shards, parsed});
+          assertFalse(parsed.hasOwnProperty("writes"));
+          assertFalse(parsed.hasOwnProperty("reads"));
 
-          // we must have reads in from part
-          parsed = getParsedMetrics(db._name(), "_from_" + en);
-          shards = db["_from_" + en].shards();
+          // we must have reads in from/to parts
           // count 120-170 bytes for each read
           assertTotalReadMetricsAreCounted(db["_from_" + en], n * 120, n * 170);
 
-          // But none in _to part
           parsed = getParsedMetrics(db._name(), "_to_" + en);
-
-          // no reads in local part
-          shards = db["_to_" + en].shards();
-          assertFalse(parsed.hasOwnProperty("reads"), {shards, parsed});
+          assertFalse(parsed.hasOwnProperty("reads"));
         } finally {
           cleanup();
         }
@@ -1458,6 +1411,8 @@ function testSuite() {
 
         let c = db._create(cn, {numberOfShards: 3, replicationFactor});
         try {
+          let shards = c.shards();
+          assertEqual(3, shards.length);
 
           const n = 50;
           let trx = db._createTransaction({ collections: { write: cn } });
@@ -1468,22 +1423,21 @@ function testSuite() {
             for (let i = 0; i < n; ++i) {
               c.insert({ value: i });
             }
-
             assertTotalWriteMetricsAreCounted(db[cn], replicationFactor, n * 40, n * 50);
-
             // issue read query inside streaming trx
             trx.query(`FOR doc IN ${cn} RETURN doc`).toArray();
 
             // total written should remain unchanged
             assertTotalWriteMetricsAreCounted(db[cn], replicationFactor, n * 40, n * 50, true);
+            // But reads should change
             assertTotalReadMetricsAreCounted(db[cn], n * 40, n * 50);
 
             // write into the collection
             trx.query(`FOR i IN 1..5000 INSERT {} INTO ${cn}`);
 
-            // Count 5.000 times 30-40 bytes for the insert query
+            // total written should increase
             assertTotalWriteMetricsAreCounted(db[cn], replicationFactor, n * 40 + 5000 * 30, n * 50 + 5000 * 40, true);
-            // total read should remain unchanged
+            // But reads should not change
             assertTotalReadMetricsAreCounted(db[cn], n * 40, n * 50);
           } finally {
             trx.abort();
@@ -1494,7 +1448,7 @@ function testSuite() {
       });
     },
     
-    testHasMetricsWhenUsingJavaScriptReadTrx : function () {
+    testHasMetricsWhenUsingStreamingReadTrx : function () {
       const cn = getUniqueCollectionName();
 
       let c = db._create(cn, {numberOfShards: 3, replicationFactor: 1});
@@ -1506,57 +1460,48 @@ function testSuite() {
 
         db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i)} INTO ${cn}`);
 
-        db._executeTransaction({ 
-          collections: { write: cn }, 
-          params: { cn, n }, 
-          action: (params) => {
-            let db = require("internal").db;
-            let c = db._collection(params.cn);
-
-            for (let i = 0; i < params.n; ++i) {
-              c.document("test" + i);
-            }
+        const trx = db._createTransaction({ collections: { read: [cn] } });
+        try {
+          const tc = trx.collection(cn);
+          for (let i = 0; i < n; ++i) {
+            tc.document("test" + i);
           }
-        });
+          trx.commit();
+        } catch (err) {
+          trx.abort();
+          throw err;
+        }
 
-        let parsed = getParsedMetrics(db._name(), cn);
-          
-        let totalWritten = 0;
-        let totalRead = 0;
-        shards.forEach((shard) => {
-          totalWritten += parsed.writes[shard];
-          totalRead += parsed.reads[shard];
-        });
-        assertTrue(totalWritten > n * 20, {parsed, totalWritten});
-        assertTrue(totalWritten < n * 40, {parsed, totalWritten});
-        
-        assertTrue(totalRead > n * 20, {parsed, totalWritten});
-        assertTrue(totalRead < n * 40, {parsed, totalWritten});
+        // Write happened before the transaction
+        assertTotalWriteMetricsAreCounted(c, 1, n * 20, n * 40, true);
+        // Read within it
+        assertTotalReadMetricsAreCounted(c, n * 20, n * 40);
       } finally {
         db._drop(cn);
-      } 
+      }
     },
-    
-    testHasMetricsWhenUsingJavaScriptWriteTrx : function () {
+
+    testHasMetricsWhenUsingStreamingWriteTrx : function () {
       [1, 2].forEach((replicationFactor) => {
         const cn = getUniqueCollectionName();
 
         let c = db._create(cn, {numberOfShards: 3, replicationFactor});
         try {
+          let shards = c.shards();
+          assertEqual(3, shards.length);
 
           const n = 50;
-          db._executeTransaction({ 
-            collections: { write: cn }, 
-            params: { cn, n }, 
-            action: (params) => {
-              let db = require("internal").db;
-              let c = db._collection(params.cn);
-
-              for (let i = 0; i < params.n; ++i) {
-                c.insert({ value: i });
-              }
+          const trx = db._createTransaction({ collections: { write: [cn] } });
+          try {
+            const tc = trx.collection(cn);
+            for (let i = 0; i < n; ++i) {
+              tc.insert({ value: i });
             }
-          });
+            trx.commit();
+          } catch (err) {
+            trx.abort();
+            throw err;
+          }
 
           assertTotalWriteMetricsAreCounted(c, replicationFactor, n * 40, n * 50);
         } finally {
@@ -1579,7 +1524,7 @@ function testSuite() {
           db._drop(vn);
           db._drop(en);
         };
-
+      
         graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 3, replicationFactor });
         try {
           const n = 29;
@@ -1590,7 +1535,9 @@ function testSuite() {
             g[vn].insert({ _key: "test" + i, value: i });
           }
 
+          // count 40-50 bytes for each insert into vn
           assertTotalWriteMetricsAreCounted(db[vn], replicationFactor, n * 40, n * 50);
+
           // edge collection
           for (let i = 0; i < (n - 1); ++i) {
             g[en].insert({ _key: "test" + i, _from: vn + "/test" + i, _to: vn + "/test" + i });
@@ -1607,5 +1554,84 @@ function testSuite() {
   };
 }
 
-jsunity.run(testSuite);
+function TestUser1Suite() {
+  'use strict';
+
+  const name = 'UnitTestsMetrics';
+  const user = 'user1';
+
+  const protocol = 'tcp';
+  let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
+  let oldUser = arango.connectedUser();
+
+  let suite = {
+    setUpAll: function () {
+      users.save(user, "");
+      users.grantDatabase(user, '_system', 'rw');
+
+      db._createDatabase(name);
+      db._useDatabase(name);
+
+      users.grantDatabase(user, name, 'rw');
+    
+      arango.reconnect(endpoint, db._name(), user, '');
+      // set this failure point so that metrics updates are pushed immediately
+      IM.debugSetFailAt("alwaysPublishShardMetrics");
+    },
+
+    tearDownAll: function () {
+      IM.debugRemoveFailAt("alwaysPublishShardMetrics");
+      arango.reconnect(endpoint, '_system', oldUser, '');
+
+      db._useDatabase("_system");
+      db._dropDatabase(name);
+      users.remove(user);
+    },
+  };
+
+  deriveTestSuite(BaseTestSuite(user), suite, '_' + user);
+  return suite;
+}
+
+function TestUser2Suite() {
+  'use strict';
+
+  const name = 'UnitTestsMetricsOther';
+  const user = 'user2';
+
+  const protocol = 'tcp';
+  let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
+  let oldUser = arango.connectedUser();
+
+  let suite = {
+    setUpAll: function () {
+      users.save(user, "");
+      users.grantDatabase(user, '_system', 'rw');
+
+      db._createDatabase(name);
+      db._useDatabase(name);
+
+      users.grantDatabase(user, name, 'rw');
+    
+      arango.reconnect(endpoint, db._name(), user, '');
+      // set this failure point so that metrics updates are pushed immediately
+      IM.debugSetFailAt("alwaysPublishShardMetrics");
+    },
+
+    tearDownAll: function () {
+      IM.debugRemoveFailAt("alwaysPublishShardMetrics");
+      arango.reconnect(endpoint, '_system', oldUser, '');
+
+      db._useDatabase("_system");
+      db._dropDatabase(name);
+      users.remove(user);
+    },
+  };
+
+  deriveTestSuite(BaseTestSuite(user), suite, '_' + user);
+  return suite;
+}
+
+jsunity.run(TestUser1Suite);
+jsunity.run(TestUser2Suite);
 return jsunity.done();

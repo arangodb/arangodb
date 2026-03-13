@@ -44,23 +44,27 @@ if (runSetup === true) {
 
     db._create('UnitTestsRecovery');
 
-    db._executeTransaction({
-      collections: {
-        write: 'UnitTestsRecovery'
-      },
-      action: function () {
-        var db = require('@arangodb').db;
+    const trx = db._createTransaction({ collections: { write: 'UnitTestsRecovery' } });
+    try {
+      const c = trx.collection('UnitTestsRecovery');
 
-        var i, c = db._collection('UnitTestsRecovery');
-        for (i = 0; i < 10000; ++i) {
-          c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
-        }
-        for (i = 0; i < 10000; i += 2) {
-          c.remove('test' + i);
-        }
-        c.update('test1', { value2: 1 }, { waitForSync: true }); // enfore sync
+      const docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ _key: 'test' + i, value1: 'test' + i, value2: i });
       }
-    });
+      c.insert(docs);
+
+      const toRemove = [];
+      for (let i = 0; i < 10000; i += 2) {
+        toRemove.push('test' + i);
+      }
+      c.remove(toRemove);
+
+      trx.commit();
+    } catch (e) {
+      trx.abort();
+      throw e;
+    }
   });
 
   db._useDatabase('_system');

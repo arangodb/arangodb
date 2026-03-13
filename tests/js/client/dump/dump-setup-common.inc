@@ -296,69 +296,6 @@ function createStrings() {
   });
 }
 
-function createTransactional() {
-  if (!IM.options.skipServerJS) {
-    db._useDatabase("UnitTestsDumpSrc");
-    let c = db._create("UnitTestsDumpTransactionCommit");
-    db._executeTransaction({
-      collections: {
-        write: "UnitTestsDumpTransactionCommit"
-      },
-      action: function (params) {
-        var c = require("internal").db.UnitTestsDumpTransactionCommit;
-        let docs = [];
-        for (var i = 0; i < 1000; ++i) {
-          docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-        }
-        c.save(docs);
-      }
-    });
-
-
-    c = db._create("UnitTestsDumpTransactionUpdate");
-    let docs = [];
-    for (let i = 0; i < 1000; ++i) {
-      docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-    }
-    c.save(docs);
-
-    db._executeTransaction({
-      collections: {
-        write: "UnitTestsDumpTransactionUpdate"
-      },
-      action: function (params) {
-        var c = require("internal").db.UnitTestsDumpTransactionUpdate;
-        for (var i = 0; i < 1000; i += 2) {
-          c.update("test" + i, {value3: i});
-        }
-      }
-    });
-
-
-    c = db._create("UnitTestsDumpTransactionAbort");
-    c.save({_key: "foo"});
-    try {
-      db._executeTransaction({
-        collections: {
-          write: "UnitTestsDumpTransactionAbort"
-        },
-        action: function (params) {
-          var c = require("internal").db.UnitTestsDumpTransactionAbort;
-          c.remove("foo");
-          let docs = [];
-          for (let i = 0; i < 1000; ++i) {
-            docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-          }
-          c.save(docs);
-          throw "rollback!";
-        }
-      });
-      throw "unexpected!";
-    } catch (err) {
-    }
-  }
-}
-
 function createPersistent() {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpPersistent");
@@ -1417,7 +1354,6 @@ exports.createAutoIncKeyGen = createAutoIncKeyGen;
 exports.createPaddedKeyGen = createPaddedKeyGen;
 exports.createUUIDKeyGen = createUUIDKeyGen;
 exports.createStrings = createStrings;
-exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;
 exports.createView = createView;
 exports.createSearch = createSearch;

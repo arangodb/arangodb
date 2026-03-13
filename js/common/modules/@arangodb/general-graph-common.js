@@ -432,30 +432,21 @@ var bindEdgeCollections = function (self, edgeCollections) {
       self.__collectionsToLock[edgeCollection] = 1;
       removeEdge(graphs, edgeCollection, edgeId, self);
 
+      var trx = db._createTransaction({
+        collections: { write: Object.keys(self.__collectionsToLock) }
+      });
       try {
-        db._executeTransaction({
-          collections: {
-            write: Object.keys(self.__collectionsToLock)
-          },
-          embed: true,
-          action: function (params) {
-            var db = require('internal').db;
-            params.ids.forEach(
-              function (edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-          },
-          params: {
-            ids: Object.keys(self.__idsToRemove),
-            options: options
+        var ids = Object.keys(self.__idsToRemove);
+        ids.forEach(function (edgeId) {
+          if (options) {
+            trx.collection(edgeId.split('/')[0]).remove(edgeId.split('/')[1], options);
+          } else {
+            trx.collection(edgeId.split('/')[0]).remove(edgeId.split('/')[1]);
           }
         });
+        trx.commit();
       } catch (e) {
+        try { trx.abort(); } catch (ignored) {}
         self.__idsToRemove = {};
         self.__collectionsToLock = {};
         throw e;
@@ -508,36 +499,28 @@ var bindVertexCollections = function (self, vertexCollections) {
         }
       );
 
+      var trx = db._createTransaction({
+        collections: { write: Object.keys(self.__collectionsToLock) }
+      });
       try {
-        db._executeTransaction({
-          collections: {
-            write: Object.keys(self.__collectionsToLock)
-          },
-          embed: true,
-          action: function (params) {
-            var db = require('internal').db;
-            params.ids.forEach(
-              function (edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-            if (params.options) {
-              db._remove(params.vertexId, params.options);
-            } else {
-              db._remove(params.vertexId);
-            }
-          },
-          params: {
-            ids: Object.keys(self.__idsToRemove),
-            options: options,
-            vertexId: vertexId
+        var ids = Object.keys(self.__idsToRemove);
+        ids.forEach(function (edgeId) {
+          var parts = edgeId.split('/');
+          if (options) {
+            trx.collection(parts[0]).remove(parts[1], options);
+          } else {
+            trx.collection(parts[0]).remove(parts[1]);
           }
         });
+        var vtxParts = vertexId.split('/');
+        if (options) {
+          trx.collection(vtxParts[0]).remove(vtxParts[1], options);
+        } else {
+          trx.collection(vtxParts[0]).remove(vtxParts[1]);
+        }
+        trx.commit();
       } catch (e) {
+        try { trx.abort(); } catch (ignored) {}
         self.__idsToRemove = {};
         self.__collectionsToLock = {};
         throw e;

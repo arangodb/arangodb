@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertMatch, fail, SYS_IS_V8_BUILD */
+/*global assertEqual, assertTrue, assertMatch, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -62,45 +62,6 @@ function CommonStatisticsSuite() {
                 , "1 started: " + stats1.transactions.started
                 + " -- 2 started: " + stats2.transactions.started);
       assertTrue(stats1.transactions.committed < stats2.transactions.committed);
-    },
-
-    testServerStatsAbortWrite: function () {
-      if (SYS_IS_V8_BUILD) {
-        let stats1 = internal.serverStatistics();
-        let stats2;
-        try {
-          db._executeTransaction({
-            collections: {write: ["_graphs"]},
-            action: function () {
-              var err = new Error('abort on purpose');
-              throw err;
-            }
-          });
-          fail();
-        } catch (err) {
-          stats2 = internal.serverStatistics();
-          assertMatch(/abort on purpose/, err.errorMessage);
-        }
-
-        assertTrue(stats1.transactions.started < stats2.transactions.started);
-        assertTrue(stats1.transactions.aborted < stats2.transactions.aborted);
-      }
-    },
-
-    testServerStatsRead: function () {
-      if (SYS_IS_V8_BUILD) {
-        let stats1 = internal.serverStatistics();
-        db._executeTransaction({
-          collections: {read: ["_graphs"]},
-          action: function () {
-            var db = require("@arangodb").db;
-            return db._graphs.toArray();
-          }
-        });
-        let stats2 = internal.serverStatistics();
-
-        assertTrue(stats1.transactions.readOnly < stats2.transactions.readOnly);
-      }
     },
 
     testIntermediateCommitsCommit: function () {

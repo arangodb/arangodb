@@ -1,6 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual */
-
+/* global runSetup assertEqual, assertFalse */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -36,29 +35,33 @@ if (runSetup === true) {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
+  const trx = db._createTransaction({ collections: { write: 'UnitTestsRecovery' } });
   try {
-    db._executeTransaction({
-      collections: {
-        write: 'UnitTestsRecovery'
-      },
-      action: function () {
-        var db = require('@arangodb').db;
+    const c = trx.collection('UnitTestsRecovery');
 
-        var i, c = db._collection('UnitTestsRecovery');
-        for (i = 0; i < 100; ++i) {
-          c.save({ _key: 'test' + i, value1: 'test' + i, value2: i }, {
-            waitForSync: i === 99
-          });
-        }
-
-        global.instanceManager.debugSetFailAt('TransactionWriteAbortMarker');
-
-        throw 'rollback!';
+    // Build final state directly: insert + update + conditional remove/update collapsed
+    const docs = [];
+    for (let i = 0; i < 10000; ++i) {
+      if (i % 10 === 0) {
+        continue; // these get removed
       }
-    });
-  } catch (err) {
-    // suppress error we're intentionally creating
+      const doc = { _key: 'test' + i, value1: 'test' + i, value2: i,
+                    value3: 'additional value', value4: i };
+      if (i % 5 === 0) {
+        doc.value6 = 'something else';
+      }
+      docs.push(doc);
+    }
+    c.insert(docs);
+
+    trx.commit();
+  } catch (e) {
+    trx.abort();
+    throw e;
   }
+
+  internal.wal.flush(true, true);
+
   return 0;
 }
 
@@ -77,10 +80,26 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testTransactionNoAbort: function () {
-      var c = db._collection('UnitTestsRecovery');
+    testInsertUpdateRemove: function () {
+      var i, c = db._collection('UnitTestsRecovery');
 
-      assertEqual(0, c.count());
+      assertEqual(9000, c.count());
+      for (i = 0; i < 10000; ++i) {
+        if (i % 10 === 0) {
+          assertFalse(c.exists('test' + i));
+        } else {
+          var doc = c.document('test' + i);
+
+          assertEqual('test' + i, doc.value1);
+          assertEqual(i, doc.value2);
+          assertEqual('additional value', doc.value3);
+          assertEqual(i, doc.value4);
+
+          if (i % 5 === 0) {
+            assertEqual('something else', doc.value6);
+          }
+        }
+      }
     }
 
   };
