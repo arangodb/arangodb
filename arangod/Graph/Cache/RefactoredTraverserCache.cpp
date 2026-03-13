@@ -63,3 +63,26 @@ arangodb::velocypack::HashedStringRef RefactoredTraverserCache::persistString(
   guard.steal();
   return res;
 }
+
+void RefactoredTraverserCache::validateVertexIdCollection(
+    velocypack::HashedStringRef id) const {
+  if (_allowImplicitCollections) {
+    return;
+  }
+
+  auto collectionNameResult = extractCollectionName(id);
+  if (collectionNameResult.fail()) {
+    THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+  }
+
+  auto&& [cn, _] = collectionNameResult.get();
+
+  auto const* q = _query;
+  if (q->collections().get(cn) == nullptr) {
+    auto message = absl::StrCat("collection not known to traversal: '", cn,
+                                "'. please add 'WITH ", cn,
+                                "' as the first line in your AQL");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                   message);
+  }
+}

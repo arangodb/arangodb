@@ -57,6 +57,8 @@ class RefactoredTraverserCache {
   arangodb::velocypack::HashedStringRef persistString(
       arangodb::velocypack::HashedStringRef idString);
 
+  void validateVertexIdCollection(velocypack::HashedStringRef id) const;
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid
