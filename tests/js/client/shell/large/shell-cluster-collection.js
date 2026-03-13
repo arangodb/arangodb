@@ -328,7 +328,6 @@ function ClusterCollectionSuite () {
       var cn = "example", id = "1234567890";
 
       db._drop(cn);
-      db._drop(id);
       try {
         var c1 = db._create(cn, {id: id});
 
@@ -741,8 +740,12 @@ function ClusterCollectionSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
-
-      assertNull(db._collection("1234"));
+      try {
+        db._collection("1234");
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_HTTP_BAD_PARAMETER.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

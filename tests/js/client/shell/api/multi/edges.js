@@ -101,7 +101,7 @@ function known_collection_nameSuite () {
     },
 
     test_creating_an_edge: function() {
-      let cmd = `/_api/document?collection=${cv}`;
+      let cmd = `/_api/document/${cv}`;
 
       // create first vertex;
       let body = { "a" : 1 };
@@ -128,7 +128,7 @@ function known_collection_nameSuite () {
       let id2 = doc.parsedBody['_id'];
 
       // create edge;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = {"_from":id1,"_to":id2};
       doc = arango.POST_RAW(cmd, body);
 
@@ -151,7 +151,7 @@ function known_collection_nameSuite () {
       assertEqual(doc.headers['content-type'], contentType);
 
       // create another edge;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "e" : 1, "_from" : id1, "_to": id2 };
       doc = arango.POST_RAW(cmd, body);
 
@@ -179,7 +179,7 @@ function known_collection_nameSuite () {
       assertEqual(doc.headers['content-type'], contentType);
 
       // create third edge;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "e" : 2, "_from" : id2, "_to" : id1 };
       doc = arango.POST_RAW(cmd, body);
 

@@ -412,9 +412,9 @@ function single_collection_transactionsSuite () {
 
     test_read_only__using_write__single: function() {
       let body = { };
-      let doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
+      let doc = arango.POST_RAW(`/_api/document/${cn}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn}`, body);
 
       assertEqual(db[cn].count(), 3);
 
@@ -434,9 +434,9 @@ function single_collection_transactionsSuite () {
 
     test_read_only__using_read__single: function() {
       let body = { };
-      let doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
+      let doc = arango.POST_RAW(`/_api/document/${cn}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn}`, body);
 
       assertEqual(db[cn].count(), 3);
 
@@ -504,10 +504,10 @@ function multi_collection_transactionsSuite () {
 
     test_read_only__using_write__multi: function() {
       let body = { };
-      let doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn2}`, body);
+      let doc = arango.POST_RAW(`/_api/document/${cn1}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn1}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn1}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn2}`, body);
 
       assertEqual(db[cn1].count(), 3);
       assertEqual(db[cn2].count(), 1);
@@ -529,10 +529,10 @@ function multi_collection_transactionsSuite () {
 
     test_read_only__using_read__multi: function() {
       let body = { };
-      let doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
-      doc = arango.POST_RAW(`/_api/document?collection=${cn2}`, body);
+      let doc = arango.POST_RAW(`/_api/document/${cn1}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn1}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn1}`, body);
+      doc = arango.POST_RAW(`/_api/document/${cn2}`, body);
 
       assertEqual(db[cn1].count(), 3);
       assertEqual(db[cn2].count(), 1);

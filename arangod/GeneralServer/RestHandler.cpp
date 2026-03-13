@@ -697,6 +697,18 @@ bool RestHandler::isAllowedHttpMethod(
   return false;
 }
 
+// checks if collection name is a numeric collection id
+// and generates an error if so
+bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
+  if (!cname.empty() && cname[0] >= '0' && cname[0] <= '9') {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Numeric collection IDs are not allowed; please use the "
+                  "collection name instead");
+    return true;
+  }
+  return false;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------

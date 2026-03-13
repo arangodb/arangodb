@@ -265,8 +265,11 @@ ArangoCollection.prototype._help = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.name = function () {
-  if (this._name === null) {
-    this.refresh();
+  if (this._name === null || this._name === undefined) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+      errorMessage: "Collection name is not set"
+    });
   }
 
   return this._name;
@@ -513,7 +516,7 @@ ArangoCollection.prototype.rename = function (name) {
   delete this._database[this._name];
   this._database[name] = this;
   this._status = null;
-  this._name = null;
+  this._name = name;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -521,7 +524,13 @@ ArangoCollection.prototype.rename = function (name) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.refresh = function () {
-  let requestResult = this._database._connection.GET(this._database._collectionurl(this._id));
+  if (this._name === null || this._name === undefined) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+      errorMessage: "Collection name is not set"
+    });
+  }
+  let requestResult = this._database._connection.GET(this._database._collectionurl(this._name));
   arangosh.checkRequestResult(requestResult);
 
   this._name = requestResult.name;

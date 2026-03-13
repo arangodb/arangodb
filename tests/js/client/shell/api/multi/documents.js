@@ -54,7 +54,7 @@ function dealing_with_documentSuite () {
     ////////////////////////////////////////////////////////////////////////////////;
 
     test_creates_a_document_with_an_invalid_type_1: function() {
-      let cmd = api + "?collection=" + cn;
+      let cmd = api + "/" + cn;
       let body = "[ [] ]";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -65,7 +65,7 @@ function dealing_with_documentSuite () {
     },
 
     test_creates_a_document_with_an_invalid_type_2: function() {
-      let cmd = api + "?collection=" + cn;
+      let cmd = api + "/" + cn;
       let body = '"test"';
       let doc = arango.POST_RAW(cmd, body);
 

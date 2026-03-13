@@ -175,6 +175,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // checks if the HTTP method is allowed and generates an error if not
   bool isAllowedHttpMethod(std::initializer_list<rest::RequestType> allowed);
 
+  // checks if collection name is a numeric collection id
+  // and generates an error if so
+  bool rejectNumericCollectionId(std::string_view cname);
+
   enum class HandlerState : uint8_t {
     PREPARE = 0,
     EXECUTE,

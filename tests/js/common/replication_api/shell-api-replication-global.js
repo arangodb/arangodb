@@ -470,7 +470,7 @@ function dealing_with_wal_access_apiSuite () {
         cuid = cid.properties()["globallyUniqueId"];
         
         // create document;
-        cmd = "/_api/document?collection=UnitTestsReplication";
+        cmd = "/_api/document/UnitTestsReplication";
         body = { "_key" : "test", "test" : false };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201, doc);
@@ -664,7 +664,7 @@ function dealing_with_wal_access_apiSuite () {
       let cuid = cid.properties()["globallyUniqueId"];
 
       // create document;
-      cmd = "/_api/document?collection=UnitTestsReplication";
+      cmd = "/_api/document/UnitTestsReplication";
       let body = { "_key" : "test", "test" : false };
       doc = arango.POST_RAW(cmd, body);
       assertEqual(doc.code, 201, doc);
@@ -755,7 +755,7 @@ function dealing_with_wal_access_apiSuite () {
 
       // create documents;
       for (let value = 0; value < 250; value ++) {
-        cmd = "/_api/document?collection=UnitTestsReplication";
+        cmd = "/_api/document/UnitTestsReplication";
         let body = { "value" : "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201);
@@ -767,13 +767,13 @@ function dealing_with_wal_access_apiSuite () {
         docsBody.push({ "value" : value });
       }
       docsBody.push({ "value" : "500" });
-      cmd = "/_api/document?collection=UnitTestsReplication";
+      cmd = "/_api/document/UnitTestsReplication";
       doc = arango.POST_RAW(cmd, docsBody);
       assertEqual(doc.code, 201);
 
       // create more documents;
       for(let value = 0; value < 500; value ++) {
-        cmd = "/_api/document?collection=UnitTestsReplication";
+        cmd = "/_api/document/UnitTestsReplication";
         let body = { "value" : "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201);
