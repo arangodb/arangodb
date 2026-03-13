@@ -869,7 +869,10 @@ jobs:
           extraArgs: << parameters.extraArgs >>
 
   run-rta-tests:
-    resource_class: << parameters.resource-class >>
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large
+    #resource_class: << parameters.resource-class >>
     parameters:
       suiteName:
         type: string
