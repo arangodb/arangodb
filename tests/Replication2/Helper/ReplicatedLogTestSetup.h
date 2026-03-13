@@ -53,12 +53,10 @@
 
 namespace arangodb::replication2::test {
 
-auto inline operator"" _Lx(unsigned long long x) -> LogIndex {
+auto inline operator""_Lx(unsigned long long x) -> LogIndex {
   return LogIndex{x};
 }
-auto inline operator"" _T(unsigned long long x) -> LogTerm {
-  return LogTerm{x};
-}
+auto inline operator""_T(unsigned long long x) -> LogTerm { return LogTerm{x}; }
 
 struct LogArguments {
   std::variant<LogRange, std::vector<LogPayload>> initialLogRange = {};
