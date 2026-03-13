@@ -25,7 +25,7 @@ parameters:
     default: "arangodb/ubuntubuildarangodb-devel:19"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4331f810
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-b0e36dfa3
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
