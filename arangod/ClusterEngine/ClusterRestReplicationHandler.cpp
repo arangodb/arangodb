@@ -39,14 +39,6 @@ ClusterRestReplicationHandler::handleCommandBatch() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief run the command that determines which transactions were open at
-/// a given tick value
-/// this is an internal method use by ArangoDB's replication that should not
-/// be called by client drivers directly
-void ClusterRestReplicationHandler::handleCommandDetermineOpenTransactions() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 void ClusterRestReplicationHandler::handleCommandInventory() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

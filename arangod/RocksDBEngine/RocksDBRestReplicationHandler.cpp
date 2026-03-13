@@ -229,19 +229,6 @@ RocksDBRestReplicationHandler::handleCommandBatch() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-/// @brief run the command that determines which transactions were open at
-/// a given tick value
-/// this is an internal method use by ArangoDB's replication that should not
-/// be called by client drivers directly
-void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
-  generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
-  // rocksdb only includes finished transactions in the WAL.
-  _response->setContentType(rest::ContentType::DUMP);
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick, "0");
-  // always true to satisfy continuous syncer
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent, "true");
-}
-
 void RocksDBRestReplicationHandler::handleCommandInventory() {
   bool found;
   std::string batchId = _request->value("batchId", found);

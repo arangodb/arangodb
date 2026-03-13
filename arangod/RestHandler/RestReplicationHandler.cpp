@@ -465,6 +465,9 @@ bool RestReplicationHandler::isCoordinatorError() {
 }
 
 std::string const RestReplicationHandler::LoggerState = "logger-state";
+std::string const RestReplicationHandler::LoggerTickRanges =
+    "logger-tick-ranges";
+std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
 std::string const RestReplicationHandler::LoggerLast = "logger-last";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
@@ -508,6 +511,22 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
+    } else if (command == LoggerTickRanges) {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      if (isCoordinatorError()) {
+        co_return;
+      }
+      handleCommandLoggerTickRanges();
+    } else if (command == LoggerFirstTick) {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      if (isCoordinatorError()) {
+        co_return;
+      }
+      handleCommandLoggerFirstTick();
     } else if (command == LoggerLast) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -2661,6 +2680,49 @@ void RestReplicationHandler::handleCommandLoggerState() {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return the first tick available in a logfile
+/// @route GET logger-first-tick
+/// @caller js/client/modules/@arangodb/replication.js
+/// @response VPackObject with minTick of LogfileManager->ranges()
+//////////////////////////////////////////////////////////////////////////////
+void RestReplicationHandler::handleCommandLoggerFirstTick() {
+  TRI_voc_tick_t tick = UINT64_MAX;
+  Result res =
+      server().getFeature<EngineSelectorFeature>().engine().firstTick(tick);
+
+  VPackBuilder b;
+  b.add(VPackValue(VPackValueType::Object));
+  if (tick == UINT64_MAX || res.fail()) {
+    b.add("firstTick", VPackValue(VPackValueType::Null));
+  } else {
+    auto tickString = std::to_string(tick);
+    b.add("firstTick", VPackValue(tickString));
+  }
+  b.close();
+  generateResult(rest::ResponseCode::OK, b.slice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the available logfile range
+/// @route GET logger-tick-ranges
+/// @caller js/client/modules/@arangodb/replication.js
+/// @response VPackArray, containing info about each datafile
+///           * filename
+///           * status
+///           * tickMin - tickMax
+//////////////////////////////////////////////////////////////////////////////
+void RestReplicationHandler::handleCommandLoggerTickRanges() {
+  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  VPackBuilder b;
+  Result res = engine.createTickRanges(b);
+  if (res.ok()) {
+    generateResult(rest::ResponseCode::OK, b.slice());
+  } else {
+    generateError(res);
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @route GET logger-last
 /// @caller js/client/modules/@arangodb/replication.js
 /// @response VPackObject with minTick of LogfileManager->lastLogger()

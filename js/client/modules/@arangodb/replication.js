@@ -43,6 +43,22 @@ logger.state = function () {
   return requestResult;
 };
 
+logger.tickRanges = function () {
+  var db = internal.db;
+
+  var requestResult = db._connection.GET('/_api/replication/logger-tick-ranges');
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+logger.firstTick = function () {
+  var requestResult = internal.db._connection.GET('/_api/replication/logger-first-tick');
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.firstTick;
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return the first tick that can be provided by the replication logger
 // //////////////////////////////////////////////////////////////////////////////

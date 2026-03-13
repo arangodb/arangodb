@@ -72,6 +72,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
   static std::string const LoggerState;
+  static std::string const LoggerTickRanges;
+  static std::string const LoggerFirstTick;
   static std::string const LoggerLast;
   static std::string const Batch;
   static std::string const Inventory;
@@ -179,6 +181,9 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerState();
+
+  void handleCommandLoggerFirstTick();
+  void handleCommandLoggerTickRanges();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the first tick available in a logfile
@@ -371,12 +376,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle the command to determine the transactions that were open
-  /// at a certain point in time
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandDetermineOpenTransactions() = 0;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a batch command
   //////////////////////////////////////////////////////////////////////////////
