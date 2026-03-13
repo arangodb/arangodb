@@ -75,6 +75,18 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("log", "logging");
 
+  options
+      ->addOption("--log",
+                  "Set the topic-specific log level, using `--log level` "
+                  "for the general topic or `--log topic=level` for the "
+                  "specified topic (can be specified multiple times). "
+                  "Available log levels: fatal, error, warning, info, debug, "
+                  "trace.",
+                  new VectorParameter<StringParameter>(&_options.levels),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setDeprecatedIn(30500);
+
   options->addOption(
       "--log.color", "Use colors for TTY logging.",
       new BooleanParameter(&_options.useColor),
