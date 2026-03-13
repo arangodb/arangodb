@@ -364,8 +364,7 @@ ArangoDatabase.prototype._collection = function (cname) {
   // return null in case of not found
   if (requestResult !== null
       && requestResult.error === true
-      && (requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code || 
-          requestResult.errorNum === internal.errors.ERROR_HTTP_BAD_PARAMETER.code)) {
+      && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 
