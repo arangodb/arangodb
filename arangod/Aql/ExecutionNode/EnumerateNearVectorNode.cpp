@@ -263,6 +263,13 @@ bool EnumerateNearVectorNode::isAscending() const noexcept {
   return _ascending;
 }
 
+void EnumerateNearVectorNode::setIndex(
+    transaction::Methods::IndexHandle indexHandle) {
+  TRI_ASSERT(indexHandle->type() ==
+             Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
+  _index = std::move(indexHandle);
+}
+
 void EnumerateNearVectorNode::setFilterExpression(
     Expression* filterExpression) {
   _filterExpression = filterExpression->clone(_plan->getAst());
