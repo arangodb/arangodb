@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
+  dependencies.
+
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
 
@@ -143,9 +146,6 @@
 
 * arangorestore now automatically converts deprecated `fulltext` indexes to
   `inverted` indexes when restoring dumps from older versions.
-
-* Upgraded included rclone to v1.73.1 with go1.24.13 and non-vulnerable
-  dependencies.
 
 * Remove leftovers of arangoimp.
 
