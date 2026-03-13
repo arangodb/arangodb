@@ -1,6 +1,6 @@
 FROM public.ecr.aws/b0b8h2r4/test-ubuntu:latest
 LABEL org.opencontainers.image.authors=hackers@arango.ai
- 
+
 ARG arch
 
 RUN apt-get update --fix-missing && \
