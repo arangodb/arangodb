@@ -138,11 +138,6 @@ auto SubqueryEndExecutor::consumeShadowRow(ShadowAqlItemRow shadowRow,
 }
 
 void SubqueryEndExecutor::Accumulator::reset() noexcept {
-  if (_memoryUsage > 0) {
-    _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
-    _memoryUsage = 0;
-  }
-
   // Buffer present. we can get away with reusing and clearing
   // the existing Builder, which points to the Buffer
   _builder.clear();
@@ -151,41 +146,19 @@ void SubqueryEndExecutor::Accumulator::reset() noexcept {
 }
 
 void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
-  size_t previousLength = _builder.bufferRef().byteSize();
-
   TRI_ASSERT(_builder.isOpenArray());
   value.toVelocyPack(_options, _builder,
                      /*allowUnindexed*/ false);
   ++_numValues;
-
-  size_t currentLength = _builder.bufferRef().byteSize();
-  TRI_ASSERT(currentLength >= previousLength);
-
-  // per-item overhead (this is because we have to account for the index
-  // table entries as well, which are only added later in VelocyPack when
-  // the array is closed). this is approximately only, but that should be
-  // ok here.
-  size_t entryOverhead;
-  if (_memoryUsage > 65535) {
-    entryOverhead = 4;
-  } else if (_memoryUsage > 255) {
-    entryOverhead = 2;
-  } else {
-    entryOverhead = 1;
-  }
-  size_t diff = currentLength - previousLength + entryOverhead;
-  _resourceMonitor.increaseMemoryUsage(diff);
-  _memoryUsage += diff;
 }
 
 SubqueryEndExecutor::Accumulator::Accumulator(
     arangodb::ResourceMonitor& resourceMonitor, VPackOptions const* options)
-    : _resourceMonitor(resourceMonitor), _options(options), _builder(_buffer) {
+    : _resourceMonitor(resourceMonitor),
+      _options(options),
+      _buffer(resourceMonitor),
+      _builder(_buffer) {
   reset();
-}
-
-SubqueryEndExecutor::Accumulator::~Accumulator() {
-  _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
 }
 
 AqlValueGuard SubqueryEndExecutor::Accumulator::stealValue(AqlValue& result) {
