@@ -29,6 +29,7 @@
 #include "Aql/Executor/ModificationExecutorAccumulator.h"
 #include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/QueryContext.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -39,6 +40,12 @@ class CollectionNameResolver;
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
+
+UpdateReplaceModifierCompletion::UpdateReplaceModifierCompletion(
+    ModificationExecutorInfos& infos)
+    : _infos(infos),
+      _keyDocBuilder(std::make_shared<velocypack::SupervisedBuffer>(
+          infos.getResourceMonitor())) {}
 
 ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
     ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {

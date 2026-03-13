@@ -34,6 +34,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Logger/LogTopic.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
@@ -147,6 +148,8 @@ UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
       _updateResults(Result(), infos._options),
       _insertResults(Result(), infos._options),
+      _keyDocBuilder(std::make_shared<velocypack::SupervisedBuffer>(
+          infos.getResourceMonitor())),  // Monitoring memory usage for builder
       // Batch size has to be 1 in case the upsert modifier sees its own
       // writes. otherwise it will use the default batching
       _batchSize(_infos._batchSize),

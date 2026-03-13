@@ -36,8 +36,8 @@ struct ModificationExecutorInfos;
 
 class UpdateReplaceModifierCompletion {
  public:
-  explicit UpdateReplaceModifierCompletion(ModificationExecutorInfos& infos)
-      : _infos(infos) {}
+  explicit UpdateReplaceModifierCompletion(ModificationExecutorInfos& infos);
+
   ~UpdateReplaceModifierCompletion() = default;
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,

@@ -29,12 +29,20 @@
 #include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
+
+RemoveModifierCompletion::RemoveModifierCompletion(
+    ModificationExecutorInfos& infos)
+    : _infos(infos),
+      // Monitors memory usage for builder object
+      _keyDocBuilder(std::make_shared<velocypack::SupervisedBuffer>(
+          infos.getResourceMonitor())) {}
 
 ModifierOperationType RemoveModifierCompletion::accumulate(
     ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
