@@ -1105,33 +1105,38 @@
         }, 500);
       }
     },
-    downloadQuery: function (url, body, callback) {
-      $.ajax({
-        type: 'POST',
-        data: JSON.stringify(body),
-        url: url,
-        contentType: 'application/json',
-        success: function (result, dummy, request) {
-          if (callback) {
-            callback(result);
-            return;
+    downloadQueryResults: function (queryBody, filename) {
+      var self = this;
+      var allResults = [];
+
+      var fetchResults = function (cursorId) {
+        var url = cursorId
+          ? self.databaseUrl('/_api/cursor/' + encodeURIComponent(cursorId))
+          : self.databaseUrl('/_api/cursor');
+        var method = cursorId ? 'PUT' : 'POST';
+        var data = cursorId ? undefined : JSON.stringify(queryBody);
+
+        $.ajax({
+          cache: false,
+          type: method,
+          url: url,
+          data: data,
+          contentType: 'application/json',
+          success: function (result) {
+            allResults = allResults.concat(result.result);
+            if (result.hasMore && result.id) {
+              fetchResults(result.id);
+            } else {
+              self.downloadLocalBlob(JSON.stringify(allResults, null, 2), 'json', filename);
+            }
+          },
+          error: function (err) {
+            self.arangoError('Query error', 'could not download results: ' + (err.responseJSON?.errorMessage || err.statusText));
           }
+        });
+      };
 
-          var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
-          var blobUrl = window.URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          document.body.appendChild(a);
-          a.style = 'display: none';
-          a.href = blobUrl;
-          a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
-          a.click();
-
-          window.setTimeout(function () {
-            window.URL.revokeObjectURL(blobUrl);
-            document.body.removeChild(a);
-          }, 500);
-        }
-      });
+      fetchResults(null);
     },
     download: function (url, callback) {
       $.ajax({

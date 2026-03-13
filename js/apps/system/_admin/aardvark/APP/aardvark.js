@@ -310,23 +310,6 @@ authRouter.get('/query/download/:user', function (req, res) {
   Download and export all queries from the given username.
 `);
 
-authRouter.post('/query/result/download', function (req, res) {
-   const result = db._query(req.body.query, req.body.bindVars).toArray();
-   const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
-   res.attachment(`results-${namePart}.json`);
-   res.json(result);
- })
-.body(joi.object({
-  query: joi.string().required(),
-  bindVars: joi.object().optional()
-})
-.required(), 'Query and bindVars to download.')
-.error('bad request', 'The query is invalid or malformed.')
-.summary('Download the result of a query')
-.description(dd`
-  This function downloads the result of a user query.
-`);
-
 authRouter.post('/graph-examples/create/:name', function (req, res) {
   const name = req.pathParams.name;
 

@@ -10,7 +10,8 @@ import {
 } from "@chakra-ui/react";
 import React, { useMemo } from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
-import { downloadPost } from "../../../utils/downloadHelper";
+import { getCurrentDB } from "../../../utils/arangoClient";
+import { downloadLocalData } from "../../../utils/downloadHelper";
 import { QueryResultType } from "../ArangoQuery.types";
 import { useQueryContext } from "../QueryContextProvider";
 import { CSVDownloadButton } from "./CSVDownloadButton";
@@ -247,14 +248,14 @@ const QueryExecuteResultFooter = ({
     setCurrentView
   } = useQueryContext();
   const { queryValue, queryBindParams } = queryResult;
-  const onDownload = async () => {
-    const path = `query/result/download`;
-    await downloadPost({
-      url: path,
-      body: {
-        query: queryValue,
-        bindVars: queryBindParams || {}
-      }
+  const onDownload = () => {
+    const dbName = getCurrentDB().name.replace(/[^-_a-z0-9]/gi, "_");
+    const fileName = `results-${dbName}.json`;
+    const jsonString = JSON.stringify(queryResult.result, null, 2);
+    downloadLocalData({
+      data: jsonString,
+      fileName,
+      type: "json"
     });
   };
   const onCopyToQueryEditor = () => {
