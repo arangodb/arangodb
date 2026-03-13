@@ -1,5 +1,5 @@
 FROM ubuntu:24.04
-MAINTAINER hackers@arango.ai
+LABEL org.opencontainers.image.authors=hackers@arango.ai
 
 ARG arch
 ARG CLANG_VERSION=19
