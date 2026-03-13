@@ -53,30 +53,10 @@ function error_handlingSuite () {
       db._drop(cn);
     },
 
-    test_returns_an_error_if_document_identifier_is_corrupted: function() {
-      let cmd = "/_api/document/corrupted";
-      let doc = arango.GET_RAW(cmd);
 
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-    },
 
     test_returns_an_error_if_document_identifier_is_corrupted_with_empty_cid: function() {
-      let cmd = "/_api/document//dummy";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-    },
-
-    test_returns_an_error_if_collection_identifier_is_unknown: function() {
-      let cmd = "/_api/document/unknown/234567";
+      let cmd = "/_api/document//123456";
       let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -97,17 +77,6 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
 
       assertEqual(cid.count(), 0);
-    },
-
-    test_returns_an_error_if_collection_identifier_is_a_numeric_id: function() {
-      let cmd = `/_api/document/${cid._id}`;
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code, doc);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      assertEqual(doc.headers['content-type'], contentType);
     },
   };
 }

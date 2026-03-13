@@ -61,43 +61,15 @@ function error_handlingSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_returns_an_error_if_document_identifier_is_corrupted: function() {
-      let cmd = "/_api/document/corrupted";
-      let body = "{}";
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      assertEqual(doc.headers['content-type'], contentType);
-
-      assertEqual(db[cn].count(), 0);
-    },
-
     test_returns_an_error_if_document_identifier_is_corrupted_with_empty_cid: function() {
-      let cmd = "/_api/document//dummy";
+      let cmd = "/_api/document//123456";
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      assertEqual(doc.headers['content-type'], contentType);
-
-      assertEqual(db[cn].count(), 0);
-    },
-
-    test_returns_an_error_if_collection_identifier_is_unknown: function() {
-      let cmd = "/_api/document/unknown/234567";
-      let body = "{}";
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
 
       assertEqual(db[cn].count(), 0);

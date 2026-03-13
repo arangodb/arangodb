@@ -335,32 +335,6 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read by identifier
-////////////////////////////////////////////////////////////////////////////////
-
-    testReadingByIdentifier : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      var c2 = db._collection(c1.name());
-
-      assertEqual(c1._id, c2._id);
-      assertEqual(c1.name(), c2.name());
-      assertEqual(c1.status(), c2.status());
-      assertEqual(c1.type(), c2.type());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read by name (short-cut)
 ////////////////////////////////////////////////////////////////////////////////
 

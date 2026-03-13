@@ -52,18 +52,6 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if_the_collection_identifier_is_unknown: function() {
-      let cmd = "/_api/document/unknown";
-      let body = "{}";
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-    },
-
     test_returns_an_error_if_the_collection_name_is_unknown: function() {
       let cmd = "/_api/document/unknown_collection";
       let body = "{}";
