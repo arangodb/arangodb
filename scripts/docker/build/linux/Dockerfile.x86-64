@@ -17,7 +17,7 @@ FROM ubuntu:24.04 AS prepare
 RUN apt-get update --fix-missing && \
     apt-get upgrade -y && \
     apt-get install -y \
-      software-properties-common net-tools lsb-release awscli bzip2 \
+      software-properties-common net-tools lsb-release bzip2 \
       build-essential cmake make bison flex python3 ccache git libjemalloc-dev \
       vim exuberant-ctags gdb fish psmisc sudo debhelper debconf jq libdb-dev \
       gcovr prometheus bc tcpdump liburing-dev cppcheck libopenblas-dev gfortran \
@@ -170,6 +170,6 @@ RUN git config --global --add safe.directory '*'
 
 COPY --from=node_modules /root/node_modules.tar.xz /node_modules.tar.xz
 
-RUN pip3 install py7zr psutil cppcheck-junit lcov_cobertura --break-system-packages
+RUN pip3 install awscli py7zr psutil cppcheck-junit lcov_cobertura --break-system-packages
 
 CMD [ "/usr/bin/fish" ]
