@@ -1,6 +1,8 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Fixed a bug in arangosh that made it quit when entering `global`.
+
 * COR-267, github issue #21944: Fixed a bug in the handling of post filters
   with array expansion operators and inverted indexes.
 
