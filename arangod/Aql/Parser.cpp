@@ -137,6 +137,8 @@ QueryResult Parser::parseWithDetails() {
   QueryResult result;
   result.collectionNames = _query.collections().collectionNames();
   result.bindParameters = _ast.bindParameterNames();
+  // Cannot be supervised (i.e. add SupervisedBuffer) because this builder will
+  // live longer than ResourceMonitor& as QueryResult.data
   auto builder = std::make_shared<VPackBuilder>();
   _ast.toVelocyPack(*builder, false);
   result.data = std::move(builder);
