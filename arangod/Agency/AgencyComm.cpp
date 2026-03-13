@@ -1284,7 +1284,6 @@ bool AgencyComm::tryInitializeStructure() {
     builder.add(VPackValue("Current"));  // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("AsyncReplication", builder);
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -1296,7 +1295,6 @@ bool AgencyComm::tryInitializeStructure() {
       addEmptyVPackObject("Coordinators", builder);
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("DBServers", builder);
-      addEmptyVPackObject("Singles", builder);
       builder.add(VPackValue("ServersRegistered"));
       {
         VPackObjectBuilder c2(&builder);
@@ -1310,7 +1308,6 @@ bool AgencyComm::tryInitializeStructure() {
     builder.add(VPackValue("Plan"));  // Plan ----------------------------------
     {
       VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("AsyncReplication", builder);
       addEmptyVPackObject("Coordinators", builder);
       builder.add(VPackValue("Databases"));
       {
@@ -1335,7 +1332,6 @@ bool AgencyComm::tryInitializeStructure() {
       }
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("DBServers", builder);
-      addEmptyVPackObject("Singles", builder);
       builder.add("Version", VPackValue(1));
       builder.add(VPackValue("Collections"));
       {

@@ -93,8 +93,10 @@ void ReplicationFeature::collectOptions(
       new BooleanParameter(&_options.replicationApplierAutoStart),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options->addOldOption("--replication.automatic-failover",
-                        "--replication.active-failover");
+  options->addObsoleteOption("--replication.active-failover",
+                             "active failover has been removed", true);
+  options->addObsoleteOption("--replication.automatic-failover",
+                             "active failover has been removed", true);
 
   options->addOption(
       "--replication.max-parallel-tailing-invocations",

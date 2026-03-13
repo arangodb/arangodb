@@ -59,12 +59,10 @@ static_assert(!std::is_default_constructible<Root::Arango::Current::ServersRegis
 static_assert(!std::is_default_constructible<Root::Arango::Current::ServersRegistered::Server::AdvertisedEndpoint>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::ServersRegistered::Server::Version>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::NewServers>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Current::AsyncReplication>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::Coordinators>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::Coordinators::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::Version>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::Lock>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Current::Singles>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::DbServers>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::DbServers::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::Collections>::value, CONSTRUCTIBLE_MESSAGE);
@@ -96,12 +94,10 @@ static_assert(!std::is_default_constructible<Root::Arango::Current::ReplicatedLo
 static_assert(!std::is_default_constructible<Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Views>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Views::Database>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Plan::AsyncReplication>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Coordinators>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Coordinators::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Version>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Lock>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Plan::Singles>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::DbServers>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::DbServers::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections>::value, CONSTRUCTIBLE_MESSAGE);
@@ -222,12 +218,10 @@ static_assert(!std::is_constructible<Root::Arango::Current::ServersRegistered::S
 static_assert(!std::is_constructible<Root::Arango::Current::ServersRegistered::Server::AdvertisedEndpoint, Root::Arango::Current::ServersRegistered::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::ServersRegistered::Server::Version, Root::Arango::Current::ServersRegistered::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::NewServers, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Current::AsyncReplication, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Coordinators, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Coordinators::Server, Root::Arango::Current::Coordinators>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Version, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Lock, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Current::Singles, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::DbServers, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::DbServers::Server, Root::Arango::Current::DbServers>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Collections, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
@@ -258,12 +252,10 @@ static_assert(!std::is_constructible<Root::Arango::Current::ReplicatedLogs::Data
 static_assert(!std::is_constructible<Root::Arango::Plan, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Views, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Views::Database, Root::Arango::Plan::Views>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::AsyncReplication, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Coordinators, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Coordinators::Server, Root::Arango::Plan::Coordinators>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Version, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Lock, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::Singles, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::DbServers, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::DbServers::Server, Root::Arango::Plan::DbServers>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
@@ -422,13 +414,11 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Plan", "Views"}, root()->arango()->plan()->views()},
       {{"arango", "Plan", "Views", "_system"}, root()->arango()->plan()->views()->database("_system")},
       {{"arango", "Plan", "Views", "myDb"}, root()->arango()->plan()->views()->database("myDb")},
-      {{"arango", "Plan", "AsyncReplication"}, root()->arango()->plan()->asyncReplication()},
       {{"arango", "Plan", "Coordinators"}, root()->arango()->plan()->coordinators()},
       {{"arango", "Plan", "Coordinators", "CRDN-1234"}, root()->arango()->plan()->coordinators()->server("CRDN-1234")},
       {{"arango", "Plan", "Coordinators", "CRDN-5678"}, root()->arango()->plan()->coordinators()->server("CRDN-5678")},
       {{"arango", "Plan", "Version"}, root()->arango()->plan()->version()},
       {{"arango", "Plan", "Lock"}, root()->arango()->plan()->lock()},
-      {{"arango", "Plan", "Singles"}, root()->arango()->plan()->singles()},
       {{"arango", "Plan", "DBServers"}, root()->arango()->plan()->dBServers()},
       {{"arango", "Plan", "DBServers", "PRMR-1234"}, root()->arango()->plan()->dBServers()->server("PRMR-1234")},
       {{"arango", "Plan", "DBServers", "PRMR-5678"}, root()->arango()->plan()->dBServers()->server("PRMR-5678")},
@@ -505,12 +495,10 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Current", "ServersRegistered", "PRMR-1234", "advertisedEndpoint"}, root()->arango()->current()->serversRegistered()->server("PRMR-1234")->advertisedEndpoint()},
       {{"arango", "Current", "ServersRegistered", "PRMR-1234", "version"}, root()->arango()->current()->serversRegistered()->server("PRMR-1234")->version()},
       {{"arango", "Current", "NewServers"}, root()->arango()->current()->newServers()},
-      {{"arango", "Current", "AsyncReplication"}, root()->arango()->current()->asyncReplication()},
       {{"arango", "Current", "Coordinators"}, root()->arango()->current()->coordinators()},
       {{"arango", "Current", "Coordinators", "CRDN-1234"}, root()->arango()->current()->coordinators()->server("CRDN-1234")},
       {{"arango", "Current", "Version"}, root()->arango()->current()->version()},
       {{"arango", "Current", "Lock"}, root()->arango()->current()->lock()},
-      {{"arango", "Current", "Singles"}, root()->arango()->current()->singles()},
       {{"arango", "Current", "DBServers"}, root()->arango()->current()->dBServers()},
       {{"arango", "Current", "DBServers", "PRMR-1234"}, root()->arango()->current()->dBServers()->server("PRMR-1234")},
       {{"arango", "Current", "DBServers", "PRMR-5678"}, root()->arango()->current()->dBServers()->server("PRMR-5678")},
