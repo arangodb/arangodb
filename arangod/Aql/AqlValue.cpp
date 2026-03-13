@@ -1417,6 +1417,7 @@ bool equal_to<AqlValue>::operator()(AqlValue const& a,
     case AqlValue::VPACK_MANAGED_SLICE:
       return a._data.managedSliceMeta.pointer ==
              b._data.managedSliceMeta.pointer;
+
     case AqlValue::VPACK_MANAGED_STRING:
       return a._data.managedStringMeta.pointer ==
              b._data.managedStringMeta.pointer;

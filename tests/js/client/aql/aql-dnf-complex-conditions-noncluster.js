@@ -90,7 +90,11 @@ function MaxNumberOfConditionsSuite () {
     testComplexConditionNoThresholdExceedsMemory : function () {
       let parts = [];
       for (let i = 0; i < 8; ++i) {
-        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
+        // Use unique attribute names per branch so that our duplicate-condition
+        // optimizer cannot reduce the 3^8 = 6561 DNF branches. Shared conditions
+        // (like a single foo=='bar' across all branches) would be deduplicated by
+        // optimize(), leaving far fewer unique branches that no longer cause OOM.
+        parts.push(`(doc.value1 == ${i} && doc.tag${i} == 'tag${i}' && doc.key${i} NOT IN ['k${i}a', 'k${i}b', 'k${i}c'])`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
@@ -102,11 +106,15 @@ function MaxNumberOfConditionsSuite () {
         assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
     },
-    
+
     testComplexConditionWithThresholdMemoryUsage : function () {
       let parts = [];
       for (let i = 0; i < 8; ++i) {
-        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
+        // Use unique attribute names per branch so that our duplicate-condition
+        // optimizer cannot reduce the 3^8 = 6561 DNF branches. Shared conditions
+        // (like a single foo=='bar' across all branches) would be deduplicated by
+        // optimize(), leaving far fewer unique branches that no longer cause OOM.
+        parts.push(`(doc.value1 == ${i} && doc.tag${i} == 'tag${i}' && doc.key${i} NOT IN ['k${i}a', 'k${i}b', 'k${i}c'])`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
@@ -136,7 +144,7 @@ function MaxNumberOfConditionsSuite () {
 
       let parts = [];
       for (let i = 0; i < 8; ++i) {
-        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
+        parts.push(`(doc.value1 == ${i} && doc.tag${i} == 'tag${i}' && doc.key${i} NOT IN ['k${i}a', 'k${i}b', 'k${i}c'])`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;

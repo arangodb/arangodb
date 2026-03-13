@@ -193,6 +193,9 @@ struct OptimizerRule {
     // replace simple OR conditions with IN
     replaceOrWithInRule,
 
+    // replace ANY == conditions with IN
+    replaceAnyEqWithInRule,
+
     // remove redundant OR conditions
     removeRedundantOrRule,
 

@@ -24,6 +24,7 @@
 #include "OptimizerRulesFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilter.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleReplaceAnyEqWithIn.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
@@ -325,6 +326,14 @@ are not used in data modification queries.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Combine multiple `OR` equality conditions on the same
 variable or attribute with an `IN` condition.)");
+
+  // try to replace ANY == array comparisons with IN
+  registerRule(
+      "replace-any-eq-with-in", replaceAnyEqWithInRule,
+      OptimizerRule::replaceAnyEqWithInRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace `ANY ==` array comparison expressions with equivalent `IN`
+expressions to enable further optimizations and index usage.)");
 
   // try to remove redundant OR conditions
   registerRule("remove-redundant-or", removeRedundantOrRule,

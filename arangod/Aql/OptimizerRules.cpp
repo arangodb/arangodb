@@ -24,9 +24,8 @@
 
 #include "OptimizerRules.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/Ast.h"
 #include "Aql/Aggregator.h"
+#include "Aql/Ast.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstHelper.h"
 #include "Aql/AttributeNamePath.h"
@@ -45,6 +44,7 @@
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
 #include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
@@ -72,10 +72,10 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
-#include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
+#include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortElement.h"
@@ -84,14 +84,9 @@
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/AttributeNameParser.h"
 #include "Basics/NumberUtils.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/SupervisedBuffer.h"
-#include "Containers/FlatHashSet.h"
-#include "Containers/SmallUnorderedMap.h"
-#include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
@@ -1524,6 +1519,14 @@ void arangodb::aql::removeUnnecessaryFiltersRule(
       // filter is always true
       // remove filter node and merge with following node
       toUnlink.emplace(n);
+      modified = true;
+    } else if (root->isFalse() &&
+               rule.level == OptimizerRule::removeUnnecessaryFiltersRule2) {
+      // filter is always false - replace with NoResultsNode
+      // Only do this in the second pass (level 210) after all transformations
+      // This allows isFalse() to catch IN [] expressions created by rules
+      auto noRes = plan->createNode<NoResultsNode>(plan.get(), plan->nextId());
+      plan->replaceNode(n, noRes);
       modified = true;
     }
     // before 3.6, if the filter is always false (i.e. root->isFalse()), at this
@@ -5811,22 +5814,34 @@ struct CommonNodeFinder {
   }
 };
 
-/// @brief auxilliary struct for the OR-to-IN conversion
-struct OrSimplifier {
-  Ast* ast;
-  ExecutionPlan* plan;
-
-  OrSimplifier(Ast* ast, ExecutionPlan* plan) : ast(ast), plan(plan) {}
-
-  std::string stringifyNode(AstNode const* node) const {
+/// @brief common utilities for checking and stringifying AST nodes
+struct SimplifierHelper {
+  /// @brief convert AST node to its string representation
+  /// @param node The node to stringify (may be nullptr)
+  /// @return The string representation, or empty string on failure or nullptr
+  static std::string stringifyNode(AstNode const* node) {
+    if (node == nullptr) {
+      return std::string();
+    }
     try {
       return node->toString();
     } catch (...) {
+      return std::string();
     }
-    return std::string();
   }
 
-  bool qualifies(AstNode const* node, std::string& attributeName) const {
+  /// @brief Check if a node qualifies as an attribute/reference expression
+  ///
+  /// Constants are excluded as they cannot be used for index lookups.
+  ///
+  /// @param node The node to check (may be nullptr)
+  /// @param attributeName Output parameter: the stringified attribute name
+  /// @return true if the node is a valid attribute/reference expression
+  static bool qualifies(AstNode const* node, std::string& attributeName) {
+    if (node == nullptr) {
+      return false;
+    }
+
     if (node->isConstant()) {
       return false;
     }
@@ -5839,6 +5854,22 @@ struct OrSimplifier {
     }
 
     return false;
+  }
+};
+
+/// @brief auxilliary struct for the OR-to-IN conversion
+struct OrSimplifier {
+  Ast* ast;
+  ExecutionPlan* plan;
+
+  OrSimplifier(Ast* ast, ExecutionPlan* plan) : ast(ast), plan(plan) {}
+
+  std::string stringifyNode(AstNode const* node) const {
+    return SimplifierHelper::stringifyNode(node);
+  }
+
+  bool qualifies(AstNode const* node, std::string& attributeName) const {
+    return SimplifierHelper::qualifies(node, attributeName);
   }
 
   bool detect(AstNode const* node, bool preferRight, std::string& attributeName,
@@ -6052,7 +6083,6 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, modified);
 }
-
 struct RemoveRedundantOr {
   AstNode const* bestValue = nullptr;
   AstNodeType comparison;
