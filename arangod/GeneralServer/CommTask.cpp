@@ -223,7 +223,7 @@ CommTask::Flow CommTask::prepareExecution(
 
       // passed authentication!
       TRI_ASSERT(allowEarlyConnections);
-      if (path == "/_api/version" || path == "/_admin/version" ||
+      if (path == "/_api/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
           path.starts_with("/_admin/debug/") ||
 #endif
@@ -240,7 +240,7 @@ CommTask::Flow CommTask::prepareExecution(
 
     case ServerState::Mode::MAINTENANCE: {
       if (allowEarlyConnections &&
-          (path == "/_api/version" || path == "/_admin/version" ||
+          (path == "/_api/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
            path.starts_with("/_admin/debug/") ||
 #endif
