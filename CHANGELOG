@@ -137,6 +137,8 @@
 * Improve the output of fields `dbStats` for every column family
   when calling `db._engineStats()` or calling the API `_api/engine/stats`.
 
+* Return proper exit code if `arangoimport` fails.
+
 * COR-53: Fixed handling of forced vector index hints in AQL, so it is
   handled properly by changing the order of optimization rules.
 

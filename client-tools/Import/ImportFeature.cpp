@@ -672,6 +672,7 @@ void ImportFeature::start() {
     }
 
     if (!ok) {
+      ret = EXIT_FAILURE;
       auto const& msgs = ih.getErrorMessages();
       if (!msgs.empty()) {
         LOG_TOPIC("46995", ERR, arangodb::Logger::FIXME) << "error message(s):";
@@ -683,9 +684,11 @@ void ImportFeature::start() {
   } catch (std::exception const& ex) {
     LOG_TOPIC("a7dca", ERR, arangodb::Logger::FIXME)
         << "caught exception: " << ex.what();
+    ret = EXIT_FAILURE;
   } catch (...) {
     LOG_TOPIC("fc131", ERR, arangodb::Logger::FIXME)
         << "caught unknown exception";
+    ret = EXIT_FAILURE;
   }
 
   *_result = ret;
