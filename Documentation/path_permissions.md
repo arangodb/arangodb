@@ -1333,7 +1333,7 @@ In the following table we just put the above case or the action required.
 | POST        | `/_open/auth/renew`                           | `NONE`                        |
 | GET         | `/_admin/version`                             | `ANY`                         |
 | GET         | `/_api/version`                               | `ANY`                         |
-| `ANY`       | `/_admin/status`                              | `db:AdminMonitoring`          |
+| ANY         | `/_admin/status`                              | `db:AdminMonitoring`          |
 | GET         | `/_admin/debug/failat`                        | `ANY`                         |
 | PUT         | `/_admin/debug/failat`                        | `ANY`                         |
 | DELETE      | `/_admin/debug/failat`                        | `ANY`                         |
