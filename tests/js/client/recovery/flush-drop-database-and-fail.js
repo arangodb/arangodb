@@ -33,8 +33,6 @@ if (runSetup === true) {
   var i;
   global.instanceManager.debugClearFailAt();
 
-  internal.wal.properties({ historicLogfiles: 0 });
-
   db._drop('test');
   db._create('test');
 
