@@ -1,4 +1,3 @@
-LABEL org.opencontainers.image.authors=hackers@arango.ai
 # First rebuild glibc with a special option and provide some .deb files:
 ARG COMPILER_VERSION=13
 ARG CLANG_VERSION=19
