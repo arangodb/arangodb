@@ -13,7 +13,7 @@ RUN cd /tmp/ && \
     tar xf apache-maven-3.9.14-bin.tar.gz -C /opt && \
     echo 'export M3_HOME=/opt/apache-maven-3.9.14\nexport MAVEN_HOME=/opt/apache-maven-3.9.14\nexport PATH=${M3_HOME}/bin:${PATH}\n' > /etc/profile.d/maven.sh && \
     chmod +x /etc/profile.d/maven.sh && \
-    ln -s /opt/apache-maven-3.9.14/bin/mvn /usr/bin/ &&
+    ln -s /opt/apache-maven-3.9.14/bin/mvn /usr/bin/
 
 RUN git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/spring-data && \
   cd spring-data && \
