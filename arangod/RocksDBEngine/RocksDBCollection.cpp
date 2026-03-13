@@ -53,6 +53,8 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -64,6 +66,8 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReplicationContextGuard.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "RocksDBEngine/RocksDBReplicationIterator.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSavePoint.h"
@@ -385,6 +389,17 @@ void RocksDBCollection::freeMemory() noexcept {
       // unloading drops any potential caches
       idx->unload();
 
+      // Join vector index build thread before dropping the index so the
+      // destructor does not run in the build thread (self-join would
+      // deadlock and cause std::terminate).
+      // Guard with !inProgress() to skip RocksDBBuilderIndex wrappers --
+      // their type() also returns TRI_IDX_TYPE_VECTOR_INDEX but the object
+      // is not a RocksDBVectorIndex.
+      if (idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX &&
+          !idx->inProgress()) {
+        static_cast<RocksDBVectorIndex*>(idx.get())->joinBuildThread();
+      }
+
       if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
         // we keep the primary index object around, because it can
         // be referred to by the collection object with a pointer.
@@ -594,24 +609,43 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // release inventory lock while we are filling the index
     inventoryLocker.unlock();
 
-    // prepare index for insertion, e.g. vector index needs to be trained
-    buildIdx->beforeCreate();
-
     // Step 4. fill index
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
 
-    if (inBackground) {
-      // allow concurrent inserts into index
-      {
-        RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-        _indexes.emplace(buildIdx);
+    // This distincint is only specific for vector, if we can speed up the index
+    // creation by using the vector fast path, we do it.
+    bool vectorFastPath = false;
+    if (!inBackground && !newIdx->sparse() &&
+        newIdx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+      auto& vecIdx = static_cast<RocksDBVectorIndex&>(*newIdx);
+      if (static_cast<std::int64_t>(_meta.numberDocuments()) >=
+          vecIdx.trainingThreshold()) {
+        vector::VectorIndexBuildManager mgr(vecIdx);
+        res = mgr.build(locker);
+        if (res.fail()) {
+          co_return res;
+        }
+        vecIdx.setDocumentCount(
+            static_cast<std::int64_t>(_meta.numberDocuments()));
+        vecIdx.setTrainingState(VectorIndexTrainingState::kIngesting,
+                                VectorIndexTrainingState::kReady);
+        vectorFastPath = true;
       }
+    }
+    if (!vectorFastPath) {
+      if (inBackground) {
+        {
+          RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+          _indexes.emplace(buildIdx);
+        }
 
-      RocksDBFilePurgePreventer walKeeper(&engine);
-      res = co_await buildIdx->fillIndexBackground(locker, std::move(progress));
-    } else {
-      res = buildIdx->fillIndexForeground(std::move(progress));
+        RocksDBFilePurgePreventer walKeeper(&engine);
+        res =
+            co_await buildIdx->fillIndexBackground(locker, std::move(progress));
+      } else {
+        res = buildIdx->fillIndexForeground(std::move(progress));
+      }
     }
     if (res.fail()) {
       co_return res;

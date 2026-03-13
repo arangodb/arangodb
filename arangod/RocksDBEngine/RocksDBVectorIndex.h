@@ -22,41 +22,50 @@
 
 #pragma once
 
+#include <atomic>
+#include <chrono>
+#include <memory>
+#include <thread>
 #include <type_traits>
 
-#include "RocksDBIndex.h"
-#include "Indexes/VectorIndexDefinition.h"
-#include "RocksDBEngine/RocksDBIndex.h"
-#include "Transaction/Methods.h"
-#include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Aql/RegisterId.h"
 #include "Aql/Variable.h"
+#include "Indexes/VectorIndexDefinition.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
+#include "Transaction/Methods.h"
+#include "Metrics/Fwd.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
-#include <faiss/MetricType.h>
+#include <faiss/IndexIVF.h>
+#include <rocksdb/iterator.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
-namespace faiss {
-struct IndexIVF;
-}  // namespace faiss
+namespace rocksdb {
+class DB;
+}  // namespace rocksdb
 
 namespace arangodb {
-class LogicalCollection;
-class RocksDBMethods;
-
-namespace velocypack {
-class Builder;
-class Slice;
-}  // namespace velocypack
 
 using VectorIndexLabelId = faiss::idx_t;
+
+enum class VectorIndexTrainingState : std::uint8_t {
+  kUntrained,
+  kTraining,
+  kIngesting,
+  kReady
+};
 
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
   RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                      arangodb::velocypack::Slice info);
+  ~RocksDBVectorIndex();
 
   IndexType type() const override { return Index::TRI_IDX_TYPE_VECTOR_INDEX; }
 
@@ -70,9 +79,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   bool matchesDefinition(VPackSlice const& /*unused*/) const override;
 
-  void prepareIndex(std::unique_ptr<rocksdb::Iterator> it, rocksdb::Slice upper,
-                    RocksDBMethods* methods) override;
-
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
@@ -83,23 +89,52 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
       std::vector<float>& inputs, SearchParameters const& searchParameters,
       RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
-      std::shared_ptr<LogicalCollection> collection, std::size_t count,
-      std::size_t topK, aql::Expression* filterExpression,
-      aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
+      std::shared_ptr<LogicalCollection> collection, std::size_t topK,
+      aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
+      aql::QueryContext& queryContext,
       std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
           filterVarsToRegs,
       aql::Variable const* documentVariable, bool isCovered);
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
-  Result ingestVectors(rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator>);
-
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector);
+
+  std::shared_ptr<faiss::IndexIVF> const& faissIndex() const noexcept {
+    return _faissIndex;
+  }
+
+  std::int64_t trainingThreshold() const noexcept { return _trainingThreshold; }
+
+  void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
+                           TrainedData trainedData);
+
+  Result ingestVectors(rocksdb::DB* rootDB,
+                       std::unique_ptr<rocksdb::Iterator> documentIterator);
 
   bool hasStoredValues() const noexcept;
 
   StoredValues const& storedValues() const override;
+
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) override;
+
+  bool setTrainingState(VectorIndexTrainingState expected,
+                        VectorIndexTrainingState desired) noexcept;
+
+  /// @brief Join the build thread from another thread (e.g. before dropping the
+  /// index). Must not be called from the build thread itself (avoids self-join
+  /// which would deadlock and cause std::terminate).
+  void joinBuildThread() noexcept;
+
+  std::int64_t documentCount() const noexcept {
+    return _documentCount.load(std::memory_order_relaxed);
+  }
+
+  void setDocumentCount(std::int64_t count) noexcept {
+    _documentCount.store(count, std::memory_order_relaxed);
+  }
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -111,10 +146,43 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
+  /// @brief Try to build the index if the training threshold is reached.
+  void tryBuilding();
+
+  /// @brief Clear trained data on build failure so that
+  /// stale training state is not accidentally persisted.
+  void resetTrainingState() noexcept;
+
+  void updateTrainingMetrics(VectorIndexTrainingState previous,
+                             VectorIndexTrainingState next) noexcept;
+
+  void registerMetrics();
+  void deregisterMetrics();
+
+  std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
+  bruteForceSearch(
+      std::vector<float>& inputs, std::size_t topK, transaction::Methods* trx,
+      aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
+      aql::QueryContext* queryContext,
+      std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
+          filterVarsToRegs,
+      aql::Variable const* documentVariable);
+
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
-  std::optional<TrainedData> _trainedData;
+  TrainedData _trainedData;
   StoredValues const _storedValues;
+
+  std::atomic<std::int64_t> _documentCount{0};
+  std::int64_t _trainingThreshold{0};
+  std::atomic<VectorIndexTrainingState> _trainingState{
+      VectorIndexTrainingState::kUntrained};
+  std::jthread _buildThread;
+
+  metrics::Gauge<uint64_t>* _metricState{nullptr};
+  metrics::Gauge<double>* _metricTrainingDuration{nullptr};
+  metrics::Gauge<double>* _metricIngestingDuration{nullptr};
+  std::chrono::steady_clock::time_point _stateEnteredAt{};
 };
 
 }  // namespace arangodb

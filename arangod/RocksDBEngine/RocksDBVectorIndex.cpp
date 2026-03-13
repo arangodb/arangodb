@@ -22,24 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <format>
 #include <functional>
 #include <cstring>
+#include <thread>
 #include <omp.h>
 
 #include "Aql/AstNode.h"
+#include "Basics/BoundedChannel.h"
 #include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
-#include "Basics/BoundedChannel.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
@@ -47,24 +50,35 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/DocumentExpressionContext.h"
+#include "Cluster/ServerState.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 
-#include "faiss/IndexFlat.h"
-#include "faiss/IndexIVFFlat.h"
+#include <rocksdb/db.h>
+#include <rocksdb/write_batch.h>
+
 #include "faiss/MetricType.h"
-#include "faiss/index_factory.h"
 #include "faiss/utils/distances.h"
-#include "faiss/index_io.h"
-#include "faiss/impl/io.h"
+#include "faiss/utils/Heap.h"
+
+DECLARE_GAUGE(arangodb_vector_index_training_state, uint64_t,
+              "Current training state of a vector index "
+              "(0=untrained, 1=training, 2=ingesting, 3=ready)");
+DECLARE_GAUGE(arangodb_vector_index_training_duration_seconds, double,
+              "Wall-clock seconds spent in the last training phase");
+DECLARE_GAUGE(arangodb_vector_index_ingesting_duration_seconds, double,
+              "Wall-clock seconds spent in the last ingesting phase");
 
 namespace arangodb {
 
@@ -79,6 +93,20 @@ static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
 #define LOG_VECTOR_INDEX(lid, level, topic) \
   LOG_TOPIC((lid), level, topic)            \
       << "[shard=" << _collection.name() << ", index=" << _iid.id() << "] "
+
+std::string_view trainingStateToString(
+    VectorIndexTrainingState const state) noexcept {
+  switch (state) {
+    case VectorIndexTrainingState::kUntrained:
+      return "untrained";
+    case VectorIndexTrainingState::kTraining:
+      return "training";
+    case VectorIndexTrainingState::kIngesting:
+      return "ingesting";
+    case VectorIndexTrainingState::kReady:
+      return "ready";
+  }
+}
 
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                        arangodb::velocypack::Slice info)
@@ -96,63 +124,94 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
   if (auto data = info.get("trainedData"); !data.isNone()) {
-    velocypack::deserialize(data, _trainedData.emplace());
-  }
-
-  if (_trainedData) {
-    faiss::VectorIOReader reader;
-    // TODO prevent this copy, but instead implement own IOReader, reading
-    // directly from the training data.
-    reader.data = _trainedData->codeData;
-    _faissIndex = std::unique_ptr<faiss::IndexIVF>{
-        dynamic_cast<faiss::IndexIVF*>(faiss::read_index(&reader))};
-    ADB_PROD_ASSERT(_faissIndex != nullptr);
+    velocypack::deserialize(data, _trainedData);
+    _faissIndex =
+        vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
 
     _faissIndex->replace_invlists(
         new vector::RocksDBInvertedLists(this, &coll, _definition.nLists,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
-  } else {
-    if (_definition.factory) {
-      std::shared_ptr<faiss::Index> index;
-      index.reset(faiss::index_factory(
-          _definition.dimension, _definition.factory->c_str(),
-          vector::metricToFaissMetric(_definition.metric)));
 
-      _faissIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
-      if (_faissIndex == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "Index definition not supported. Expected IVF index.");
-      }
-
-      if (std::size_t(_definition.nLists) != _faissIndex->nlist) {
-        THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER,
-            "The nLists parameter has to agree with the actual nlists implied "
-            "by the factory string (which is %zu)",
-            _faissIndex->nlist);
-      }
-
-      _definition.nLists = _faissIndex->nlist;
-    } else {
-      auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
-        switch (_definition.metric) {
-          case arangodb::SimilarityMetric::kL2:
-            return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
-          case arangodb::SimilarityMetric::kCosine:
-            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-          case arangodb::SimilarityMetric::kInnerProduct:
-            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-        }
-      });
-
-      _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
-          quantizer.get(), _definition.dimension, _definition.nLists,
-          vector::metricToFaissMetric(_definition.metric));
-      _faissIndex->own_fields = nullptr != quantizer.release();
-    }
+    setTrainingState(VectorIndexTrainingState::kUntrained,
+                     VectorIndexTrainingState::kReady);
   }
+
+  if (auto dc = info.get("documentCount"); !dc.isNone()) {
+    _documentCount.store(dc.getInt());
+  }
+  // Below 1000 documents training is not worth the effort nor having a index
+  // 39 is the minimum number of documents to train the vector index, but that
+  // does not mean it cannot be achieved with less documents.
+  _trainingThreshold = std::max<std::int64_t>(_definition.nLists * 39, 1000);
+
+  registerMetrics();
+}
+
+void RocksDBVectorIndex::joinBuildThread() noexcept {
+  if (!_buildThread.joinable()) {
+    return;
+  }
+  // Avoid self-join: if the current thread is the build thread, joining would
+  // deadlock and the runtime can call std::terminate().
+  if (std::this_thread::get_id() == _buildThread.get_id()) {
+    return;
+  }
+  _buildThread.join();
+}
+
+RocksDBVectorIndex::~RocksDBVectorIndex() {
+  joinBuildThread();
+  deregisterMetrics();
+}
+
+namespace {
+
+template<typename T>
+T makeVectorMetric(RocksDBVectorIndex const& idx) {
+  T metric;
+  metric.addLabel("db", idx.collection().vocbase().name());
+  metric.addLabel("collection", idx.collection().name());
+  if (ServerState::instance()->isDBServer()) {
+    metric.addLabel("shard", idx.collection().name());
+  }
+  metric.addLabel("index", idx.name());
+  metric.addLabel("index_id", std::to_string(idx.id().id()));
+  return metric;
+}
+
+}  // namespace
+
+void RocksDBVectorIndex::registerMetrics() {
+  auto& mf =
+      _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
+  _metricState = &mf.ensureMetric(
+      makeVectorMetric<arangodb_vector_index_training_state>(*this));
+  _metricTrainingDuration = &mf.ensureMetric(
+      makeVectorMetric<arangodb_vector_index_training_duration_seconds>(*this));
+  _metricIngestingDuration = &mf.ensureMetric(
+      makeVectorMetric<arangodb_vector_index_ingesting_duration_seconds>(
+          *this));
+
+  _metricState->store(
+      static_cast<uint64_t>(_trainingState.load(std::memory_order_relaxed)),
+      std::memory_order_relaxed);
+}
+
+void RocksDBVectorIndex::deregisterMetrics() {
+  if (_metricState == nullptr) {
+    return;
+  }
+  auto& mf =
+      _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
+  mf.remove(makeVectorMetric<arangodb_vector_index_training_state>(*this));
+  mf.remove(
+      makeVectorMetric<arangodb_vector_index_training_duration_seconds>(*this));
+  mf.remove(makeVectorMetric<arangodb_vector_index_ingesting_duration_seconds>(
+      *this));
+  _metricState = nullptr;
+  _metricTrainingDuration = nullptr;
+  _metricIngestingDuration = nullptr;
 }
 
 /// @brief Test if this index matches the definition
@@ -200,10 +259,19 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.close();
   }
 
-  if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals) &&
+  builder.add("trainingState",
+              VPackValue(trainingStateToString(_trainingState)));
+
+  if (Index::hasFlag(flags, Index::Serialize::Internals) &&
+      !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
+    builder.add("documentCount", VPackValue(_documentCount.load()));
+  }
+
+  if (_trainingState.load() == VectorIndexTrainingState::kReady &&
+      Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
     builder.add(VPackValue("trainedData"));
-    velocypack::serialize(builder, *_trainedData);
+    velocypack::serialize(builder, _trainedData);
   }
 }
 
@@ -211,24 +279,30 @@ std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
 RocksDBVectorIndex::readBatch(
     std::vector<float>& inputs, SearchParameters const& searchParameters,
     RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
-    std::shared_ptr<LogicalCollection> collection, std::size_t count,
-    std::size_t topK, aql::Expression* filterExpression,
-    aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
+    std::shared_ptr<LogicalCollection> collection, std::size_t topK,
+    aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
+    aql::QueryContext& queryContext,
     std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
         filterVarsToRegs,
     aql::Variable const* documentVariable, bool isCoveredByStoredValues) {
-  TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK)
-      << "Number of components does not match vectors dimensions, topK: "
-      << topK << ", count: " << count
+  TRI_ASSERT(inputs.size() == _definition.dimension)
+      << "Number of components does not match vector dimension, topK: " << topK
       << ", dimension: " << _definition.dimension
       << ", inputs size: " << inputs.size();
 
-  std::vector<float> distances(topK * count);
-  std::vector<faiss::idx_t> labels(topK * count);
-
   if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, count, inputs.data());
+    faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
   }
+
+  if (_trainingState != VectorIndexTrainingState::kReady) {
+    return bruteForceSearch(inputs, topK, trx, filterExpression, inputRow,
+                            &queryContext, &filterVarsToRegs, documentVariable);
+  }
+  TRI_ASSERT(_faissIndex != nullptr);
+
+  // Trained: normal FAISS IVF search
+  std::vector<float> distances(topK);
+  std::vector<faiss::idx_t> labels(topK);
 
   // Used by the faiss iterator
   auto faissSearchContext =
@@ -254,8 +328,8 @@ RocksDBVectorIndex::readBatch(
   searchParametersIvf.nprobe =
       searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
-  _faissIndex->search(count, inputs.data(), topK, distances.data(),
-                      labels.data(), &searchParametersIvf);
+  _faissIndex->search(1, inputs.data(), topK, distances.data(), labels.data(),
+                      &searchParametersIvf);
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
@@ -269,51 +343,120 @@ RocksDBVectorIndex::readBatch(
 
 Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
                                                   std::vector<float>& output) {
-  TRI_ASSERT(_fields.size() == 1);
+  return vector::readDocumentVectorData(doc, _fields, _definition.dimension,
+                                        output);
+}
 
-  try {
-    VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
+void RocksDBVectorIndex::applyTrainingResult(
+    std::shared_ptr<faiss::IndexIVF> faissIndex, TrainedData trainedData) {
+  _faissIndex = std::move(faissIndex);
+  _trainedData = std::move(trainedData);
 
-    // this fails if index is not sparse
-    if (value.isNone()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              std::format("vector field not present in document {}",
-                          transaction::helpers::extractKeyFromDocument(doc))};
-    }
+  _faissIndex->replace_invlists(
+      new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
+                                       _faissIndex->code_size),
+      true /* faiss owns the inverted list */);
+}
 
-    if (!value.isArray()) {
-      return {TRI_ERROR_TYPE_ERROR,
-              std::format("array expected for vector attribute for document {}",
-                          transaction::helpers::extractKeyFromDocument(doc))};
-    }
-
-    if (value.length() != _definition.dimension) {
-      return {TRI_ERROR_TYPE_ERROR,
-              std::format(
-                  "provided vector is not of matching dimension for document "
-                  "{}, index dimension: {}, document dimension: {}",
-                  transaction::helpers::extractKeyFromDocument(doc),
-                  _definition.dimension, value.length())};
-    }
-
-    // We don't make assumptions here if output contains one or more vectors
-    for (auto const d : VPackArrayIterator(value)) {
-      if (not d.isNumber<double>()) {
-        return {
-            TRI_ERROR_TYPE_ERROR,
-            std::format("vector contains data not representable as double for "
-                        "document {}",
-                        transaction::helpers::extractKeyFromDocument(doc))};
-      }
-      output.push_back(d.getNumericValue<double>());
-    }
-
-    return {};
-  } catch (velocypack::Exception const& e) {
-    return {TRI_ERROR_TYPE_ERROR,
-            std::format("deserialization error when accessing a document: {}",
-                        e.what())};
+void RocksDBVectorIndex::tryBuilding() {
+  if (_documentCount < _trainingThreshold) {
+    return;
   }
+  if (!setTrainingState(VectorIndexTrainingState::kUntrained,
+                        VectorIndexTrainingState::kTraining)) {
+    return;
+  }
+
+  LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
+      << "Training threshold reached (" << _trainingThreshold
+      << " documents). Starting deferred training.";
+
+  _buildThread = std::jthread([this] {
+#ifdef TRI_HAVE_SYS_PRCTL_H
+    pthread_setname_np(pthread_self(), "VectorIdxBuild");
+#endif
+    auto const indexId = id().id();
+    try {
+      vector::VectorIndexBuildManager builder(*this);
+      if (auto const res = builder.build(); res.fail()) {
+        LOG_TOPIC("e164b", ERR, Logger::ENGINES)
+            << "[index=" << indexId
+            << "] Vector build failed: " << res.errorMessage();
+        this->resetTrainingState();
+        return;
+      }
+      this->setTrainingState(VectorIndexTrainingState::kIngesting,
+                             VectorIndexTrainingState::kReady);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("e164c", ERR, Logger::ENGINES)
+          << "[index=" << indexId
+          << "] Vector build thread exception: " << ex.what();
+      this->resetTrainingState();
+    } catch (...) {
+      LOG_TOPIC("e164d", ERR, Logger::ENGINES)
+          << "[index=" << indexId << "] Vector build thread unknown exception";
+      this->resetTrainingState();
+    }
+  });
+}
+
+bool RocksDBVectorIndex::setTrainingState(
+    VectorIndexTrainingState expected,
+    VectorIndexTrainingState desired) noexcept {
+  if (!_trainingState.compare_exchange_strong(expected, desired,
+                                              std::memory_order_acq_rel,
+                                              std::memory_order_acquire)) {
+    LOG_TOPIC("e167b", WARN, Logger::ENGINES)
+        << "Training state CAS failed: desired "
+        << trainingStateToString(desired) << ", actual "
+        << trainingStateToString(expected);
+    return false;
+  }
+
+  updateTrainingMetrics(expected, desired);
+
+  return true;
+}
+
+void RocksDBVectorIndex::resetTrainingState() noexcept {
+  auto const previous = _trainingState.exchange(
+      VectorIndexTrainingState::kUntrained, std::memory_order_acq_rel);
+  updateTrainingMetrics(previous, VectorIndexTrainingState::kUntrained);
+}
+
+void RocksDBVectorIndex::updateTrainingMetrics(
+    VectorIndexTrainingState previous, VectorIndexTrainingState next) noexcept {
+  if (_metricState == nullptr) {
+    return;
+  }
+
+  auto const now = std::chrono::steady_clock::now();
+
+  if (previous == VectorIndexTrainingState::kTraining) {
+    auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
+    _metricTrainingDuration->store(elapsed.count(), std::memory_order_relaxed);
+  } else if (previous == VectorIndexTrainingState::kIngesting) {
+    auto const elapsed = std::chrono::duration<double>(now - _stateEnteredAt);
+    _metricIngestingDuration->store(elapsed.count(), std::memory_order_relaxed);
+  }
+
+  if (next == VectorIndexTrainingState::kTraining ||
+      next == VectorIndexTrainingState::kIngesting) {
+    _stateEnteredAt = now;
+  }
+
+  _metricState->store(static_cast<uint64_t>(next), std::memory_order_relaxed);
+}
+
+void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
+                                        TRI_voc_tick_t tick,
+                                        transaction::Methods* trx) {
+  joinBuildThread();
+  resetTrainingState();
+  _faissIndex.reset();
+  _trainedData = {};
+  _documentCount.store(0);
+  RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 
 /// @brief inserts a document into the index
@@ -333,11 +476,24 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     }
     return res;
   }
+  // During initial fill or deferred training trigger, only count and maybe
+  // start training; do not write. During kIngesting we're in
+  // fillIndexBackground and must perform the actual insert.
+  if (const auto state = _trainingState.load();
+      state == VectorIndexTrainingState::kUntrained ||
+      state == VectorIndexTrainingState::kTraining) {
+    // even when we are not writing yet; otherwise fail early.
+    _documentCount.fetch_add(1);
+    tryBuilding();
+    return {};
+  }
+  TRI_ASSERT(_faissIndex != nullptr);
 
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
+  // Trained: normal FAISS path
   faiss::idx_t listId{0};
   TRI_ASSERT(_faissIndex->quantizer != nullptr);
   _faissIndex->quantizer->assign(1, input.data(), &listId);
@@ -372,78 +528,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   return rocksutils::convertStatus(status);
 }
 
-void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
-                                      rocksdb::Slice upper,
-                                      RocksDBMethods* methods) {
-  // In normal replication code this can be called multiple times
-  // so to stop retraining of vector index we ignore this part
-  if (_faissIndex->is_trained) {
-    return;
-  }
-  std::int64_t counter{0};
-  std::int64_t trainingDataSize =
-      _faissIndex->cp.max_points_per_centroid * _definition.nLists;
-  std::vector<float> trainingData;
-  std::vector<float> input;
-  input.reserve(_definition.dimension);
-
-  LOG_VECTOR_INDEX("b161b", INFO, Logger::FIXME)
-      << "Loading " << trainingDataSize << " vectors of dimension "
-      << _definition.dimension << " for training.";
-
-  while (counter < trainingDataSize && it->Valid()) {
-    TRI_ASSERT(it->key().compare(upper) < 0);
-    auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
-    // TODO Don't use input array only trainingData array
-    if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
-      if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
-        it->Next();
-        continue;
-      }
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res.errorNumber(),
-          std::format(
-              "failed to read document vector data, "
-              "embeddings are in a wrong format and index is not sparse: {}",
-              res.errorMessage()));
-    }
-
-    trainingData.insert(trainingData.end(), input.begin(), input.end());
-    input.clear();
-
-    it->Next();
-    ++counter;
-  }
-
-  if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
-  }
-
-  LOG_VECTOR_INDEX("a162b", INFO, Logger::FIXME)
-      << "Loaded " << counter << " vectors. Start training process on "
-      << _definition.nLists << " centroids.";
-
-  if (trainingData.size() == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "For the vector index to be created documents "
-        "must be present in the respective collection for the training "
-        "process.");
-  }
-  _faissIndex->train(counter, trainingData.data());
-  LOG_VECTOR_INDEX("a160b", INFO, Logger::FIXME) << "Finished training.";
-
-  // Update vector definition data with quantizier data
-  faiss::VectorIOWriter writer;
-  faiss::write_index(_faissIndex.get(), &writer);
-  _trainedData.emplace().codeData = std::move(writer.data);
-
-  _faissIndex->replace_invlists(
-      new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
-                                       _faissIndex->code_size),
-      true /* faiss owns the inverted list */);
-}
-
 /// @brief removes a document from the index
 Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   RocksDBMethods* methods,
@@ -459,6 +543,13 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
     return res;
   }
 
+  if (auto const state = _trainingState.load();
+      state == VectorIndexTrainingState::kUntrained ||
+      state == VectorIndexTrainingState::kTraining) {
+    _documentCount.fetch_sub(1);
+    return {};
+  }
+
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
@@ -466,12 +557,12 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   faiss::idx_t listId{0};
   TRI_ASSERT(_faissIndex->quantizer != nullptr);
   _faissIndex->quantizer->assign(1, input.data(), &listId);
+
   RocksDBKey rocksdbKey;
   rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
   auto const status = methods->Delete(_cf, rocksdbKey);
 
   if (!status.ok()) {
-    // Here we need to throw since there is no way to return the status
     auto const res = rocksutils::convertStatus(status);
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -492,27 +583,108 @@ StoredValues const& RocksDBVectorIndex::storedValues() const {
   return _storedValues;
 }
 
-#define LOG_INGESTION LOG_DEVEL_IF(false)
+std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
+RocksDBVectorIndex::bruteForceSearch(
+    std::vector<float>& inputs, std::size_t topK, transaction::Methods* trx,
+    aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
+    aql::QueryContext* queryContext,
+    std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
+        filterVarsToRegs,
+    aql::Variable const* documentVariable) {
+  auto const dim = _definition.dimension;
+  bool const isDescending =
+      _definition.metric == SimilarityMetric::kCosine ||
+      _definition.metric == SimilarityMetric::kInnerProduct;
+
+  std::vector<faiss::idx_t> labels(topK, -1);
+  // Initialize heap: max-heap for L2 (keep smallest distances),
+  // min-heap for IP/cosine (keep largest inner products)
+  auto const minValue = std::invoke([&]() {
+    if (isDescending) {
+      return -std::numeric_limits<float>::max();
+    } else {
+      return std::numeric_limits<float>::max();
+    }
+  });
+  std::vector<float> distances(topK, minValue);
+
+  auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
+  aql::AqlFunctionsInternalCache aqlFunctionsInternalCache;
+  iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
+                         velocypack::Slice docSlice) -> bool {
+    std::vector<float> vec;
+    vec.reserve(dim);
+    if (readDocumentVectorData(docSlice, vec).fail()) {
+      return true;
+    }
+
+    if (filterExpression != nullptr) {
+      TRI_ASSERT(queryContext != nullptr);
+      TRI_ASSERT(filterVarsToRegs != nullptr);
+      TRI_ASSERT(inputRow != nullptr);
+
+      aql::GenericDocumentExpressionContext ctx(
+          *trx, *queryContext, aqlFunctionsInternalCache, *filterVarsToRegs,
+          *inputRow, documentVariable);
+      ctx.setCurrentDocument(docSlice);
+
+      bool mustDestroy{false};
+      aql::AqlValue expressionEvaluation =
+          filterExpression->execute(&ctx, mustDestroy);
+      aql::AqlValueGuard const guard(expressionEvaluation, mustDestroy);
+      if (!expressionEvaluation.toBoolean()) {
+        return true;
+      }
+    }
+
+    if (_definition.metric == SimilarityMetric::kCosine) {
+      faiss::fvec_renorm_L2(dim, 1, vec.data());
+    }
+
+    auto const id = static_cast<faiss::idx_t>(docId.id());
+
+    if (isDescending) {
+      float dist = faiss::fvec_inner_product(inputs.data(), vec.data(), dim);
+      if (dist > distances[0]) {
+        faiss::minheap_replace_top(topK, distances.data(), labels.data(), dist,
+                                   id);
+      }
+    } else {
+      float dist = faiss::fvec_L2sqr(inputs.data(), vec.data(), dim);
+      if (dist < distances[0]) {
+        faiss::maxheap_replace_top(topK, distances.data(), labels.data(), dist,
+                                   id);
+      }
+    }
+    return true;
+  });
+
+  // Reorder heap so results are sorted
+  if (isDescending) {
+    faiss::minheap_reorder(topK, distances.data(), labels.data());
+  } else {
+    faiss::maxheap_reorder(topK, distances.data(), labels.data());
+  }
+
+  // L2: fvec_L2sqr returns squared distances, take sqrt
+  if (_definition.metric == SimilarityMetric::kL2) {
+    std::ranges::transform(distances, distances.begin(),
+                           [](float d) { return std::sqrt(d); });
+  }
+
+  return {std::move(labels), std::move(distances)};
+}
 
 Result RocksDBVectorIndex::ingestVectors(
     rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> documentIterator) {
-  // Ingestion Strategy
-  // We have three thread groups:
-  // 1. Reader - read documents and extract the vector data from them
-  // 2. Encoder - use the faiss index to encode the vectors
-  // 3. Writer - collect encoded vectors into write batches and write them to
-  // disk The number of threads in each group can be configured. Also, each
-  // stage communicates with the next stage via a bounded queue. This limits the
-  // amount of excess work and makes sure that the bottleneck is never starving
-  // of work.
-  LOG_INGESTION << __func__
-                << " BEGIN iter->valid = " << documentIterator->Valid();
+  auto const dim = _definition.dimension;
+  auto const& fields = _fields;
+  auto const hasStored = hasStoredValues();
+  auto const& stored = _storedValues;
 
   struct DocumentVectors {
     std::vector<LocalDocumentId> docIds;
-    // dim * docIds.size() vectors
     std::vector<float> vectors;
-    // Only used if the storedValues are defined on index
     std::vector<velocypack::SharedSlice> storedValues;
   };
 
@@ -520,7 +692,6 @@ Result RocksDBVectorIndex::ingestVectors(
     std::vector<LocalDocumentId> docIds;
     std::unique_ptr<faiss::idx_t[]> lists;
     std::unique_ptr<uint8_t[]> codes;
-    // Only used if the storedValues are defined on index
     std::vector<velocypack::SharedSlice> storedValues;
   };
 
@@ -574,9 +745,6 @@ Result RocksDBVectorIndex::ingestVectors(
   };
 
   auto readDocuments = [&] {
-    // This is a simple implementation, using a single thread.
-    // If reading becomes the bottleneck, we can always adapt the parallel index
-    // reader code
     static_assert(numReaders == 1,
                   "this code is not prepared for multiple reads");
 
@@ -586,8 +754,8 @@ Result RocksDBVectorIndex::ingestVectors(
       auto const prepareBatch = [&] {
         auto batch = std::make_unique<DocumentVectors>();
         batch->docIds.reserve(documentPerBatch);
-        batch->vectors.reserve(documentPerBatch * _definition.dimension);
-        if (hasStoredValues()) {
+        batch->vectors.reserve(documentPerBatch * dim);
+        if (hasStored) {
           batch->storedValues.reserve(documentPerBatch);
         }
         return batch;
@@ -597,27 +765,29 @@ Result RocksDBVectorIndex::ingestVectors(
       while (documentIterator->Valid() && not hasError.load()) {
         LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
         VPackSlice doc = RocksDBValue::data(documentIterator->value());
-        if (auto const res = readDocumentVectorData(doc, batch->vectors);
+        if (auto const res = vector::readDocumentVectorData(doc, fields, dim,
+                                                            batch->vectors);
             res.fail()) {
-          // If the documents does not have an embedding attribute and the index
-          // is sparse skip
-          if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
+          if (res.is(TRI_ERROR_BAD_PARAMETER) && sparse()) {
             documentIterator->Next();
             continue;
           }
           THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
         }
         batch->docIds.push_back(docId);
-        if (hasStoredValues()) {
+        if (hasStored) {
           auto const extractedAttributeValues =
-              transaction::extractAttributeValues(_storedValues, doc, true);
+              transaction::extractAttributeValues(stored, doc, true);
           batch->storedValues.push_back(
               extractedAttributeValues->sharedSlice());
         }
 
         documentIterator->Next();
         if (batch->docIds.size() == documentPerBatch) {
-          LOG_INGESTION << "READ done with batch " << documentPerBatch;
+          if (_definition.metric == SimilarityMetric::kCosine) {
+            faiss::fvec_renorm_L2(dim, batch->docIds.size(),
+                                  batch->vectors.data());
+          }
           auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
           counters.readProduceBlocked += blocked;
 
@@ -628,14 +798,11 @@ Result RocksDBVectorIndex::ingestVectors(
         }
       }
 
-      if (_definition.metric == SimilarityMetric::kCosine) {
-        faiss::fvec_renorm_L2(_definition.dimension, batch->docIds.size(),
-                              batch->vectors.data());
-      }
-
-      if (batch) {
-        LOG_INGESTION << "READ producing final batch size="
-                      << batch->docIds.size();
+      if (batch && !batch->docIds.empty()) {
+        if (_definition.metric == SimilarityMetric::kCosine) {
+          faiss::fvec_renorm_L2(dim, batch->docIds.size(),
+                                batch->vectors.data());
+        }
         std::ignore = documentChannel.push(std::move(batch));
       }
     });
@@ -643,7 +810,6 @@ Result RocksDBVectorIndex::ingestVectors(
 
   auto encodeVectors = [&]() {
     BoundedChannelProducerGuard guard(encodedChannel);
-    // This trivially parallelizes
     while (true) {
       auto [item, blocked] = documentChannel.pop();
       if (item == nullptr) {
@@ -673,8 +839,9 @@ Result RocksDBVectorIndex::ingestVectors(
         encoded->codes = std::move(flat_codes);
         encoded->storedValues = std::move(item->storedValues);
 
-        LOG_INGESTION << "ENCODE encoded " << encoded->docIds.size()
-                      << " vectors";
+        LOG_VECTOR_INDEX("e167m", INFO, Logger::ENGINES)
+            << "ENCODE encoded " << encoded->docIds.size()
+            << " vectors, code size: " << code_size;
         bool pushBlocked = false;
         std::tie(shouldStop, pushBlocked) =
             encodedChannel.push(std::move(encoded));
@@ -687,7 +854,6 @@ Result RocksDBVectorIndex::ingestVectors(
   };
 
   auto writeDocuments = [&] {
-    // This parallelized trivially already
     rocksdb::WriteBatch batch;
     while (true) {
       auto [item, blocked] = encodedChannel.pop();
@@ -708,7 +874,7 @@ Result RocksDBVectorIndex::ingestVectors(
 
           auto const value = std::invoke([&]() {
             auto* ptr = item->codes.get() + k * _faissIndex->code_size;
-            if (hasStoredValues()) {
+            if (hasStored) {
               RocksDBVectorIndexEntryValue rocksdbEntryValue;
               rocksdbEntryValue.encodedValue =
                   std::vector<uint8_t>(ptr, ptr + _faissIndex->code_size);
@@ -716,7 +882,6 @@ Result RocksDBVectorIndex::ingestVectors(
 
               return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
             } else {
-              // Store raw encoded values directly for better performance
               return RocksDBValue::VectorIndexValue(ptr,
                                                     _faissIndex->code_size);
             }
@@ -728,11 +893,8 @@ Result RocksDBVectorIndex::ingestVectors(
           }
         }
 
-        LOG_INGESTION << "[WRITE] writing " << item->docIds.size()
-                      << " encoded vectors, batch size = " << batch.Count();
-
-        rocksdb::WriteOptions ro;
-        status = rootDB->Write(ro, &batch);
+        rocksdb::WriteOptions wo;
+        status = rootDB->Write(wo, &batch);
         if (not status.ok()) {
           THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
         }
@@ -740,25 +902,24 @@ Result RocksDBVectorIndex::ingestVectors(
     }
   };
 
-  std::vector<std::jthread> _threads;
+  std::vector<std::jthread> threads;
 
   auto startNThreads = [&](auto& func, size_t n) {
     for (size_t k = 0; k < n; k++) {
-      _threads.emplace_back(func);
+      threads.emplace_back(func);
     }
   };
 
   LOG_VECTOR_INDEX("71c45", INFO, Logger::FIXME)
-      << "Ingesting vectors into index. Threads: num-readers=" << numReaders
-      << " num-encoders=" << numEncoders << " numWriters=" << numWriters;
+      << "Ingesting vectors into index on a fast path. Threads: num-readers="
+      << numReaders << " num-encoders=" << numEncoders
+      << " numWriters=" << numWriters;
 
   startNThreads(readDocuments, numReaders);
   startNThreads(encodeVectors, numEncoders);
   startNThreads(writeDocuments, numWriters);
 
-  LOG_INGESTION << "ALL THREADS STARTED!";
-
-  _threads.clear();
+  threads.clear();
 
   if (firstError.ok()) {
     LOG_VECTOR_INDEX("41658", INFO, Logger::FIXME)

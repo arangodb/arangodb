@@ -34,6 +34,7 @@
 
 namespace arangodb {
 class RocksDBBatchedBaseMethods;
+class RocksDBVectorIndex;
 
 namespace trx {
 struct BuilderTrx : public transaction::Methods {
@@ -82,21 +83,29 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   explicit RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex>,
                                uint64_t numDocsHint, size_t parallelism);
 
+  /// @brief Construct from vector index reference only (no collection lookup).
+  explicit RocksDBBuilderIndex(RocksDBVectorIndex& vectorIndex);
+
+  /// @brief Return the wrapped index (ptr; works for both owned and vector
+  /// ref).
+  RocksDBIndex* wrapped() noexcept { return getWrapped(); }
+  RocksDBIndex const* wrapped() const noexcept { return getWrapped(); }
+
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(
       velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type) const override;
 
-  char const* typeName() const override { return _wrapped->typeName(); }
+  char const* typeName() const override { return getWrapped()->typeName(); }
 
-  IndexType type() const override { return _wrapped->type(); }
+  IndexType type() const override { return getWrapped()->type(); }
 
   bool canBeDropped() const override {
     return false;  // TODO ?!
   }
 
   /// @brief whether or not the index is sorted
-  bool isSorted() const override { return _wrapped->isSorted(); }
+  bool isSorted() const override { return getWrapped()->isSorted(); }
 
   /// @brief if true this index should not be shown externally
   bool isHidden() const override {
@@ -107,18 +116,18 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
     return true;  // do not show building indices
   }
 
-  size_t memory() const override { return _wrapped->memory(); }
+  size_t memory() const override { return getWrapped()->memory(); }
 
-  Result drop() override { return _wrapped->drop(); }
+  Result drop() override { return getWrapped()->drop(); }
 
   void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) final {
-    _wrapped->truncateCommit(std::move(guard), tick, trx);
+    getWrapped()->truncateCommit(std::move(guard), tick, trx);
   }
 
-  void load() override { _wrapped->load(); }
+  void load() override { getWrapped()->load(); }
 
-  void unload() override { _wrapped->unload(); }
+  void unload() override { getWrapped()->unload(); }
 
   /// @brief whether or not the index has a selectivity estimate
   bool hasSelectivityEstimate() const override { return false; }
@@ -136,16 +145,14 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   /// @brief get index estimator, optional
   RocksDBCuckooIndexEstimatorType* estimator() override {
-    return _wrapped->estimator();
+    return getWrapped()->estimator();
   }
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override {
     TRI_ASSERT(false);
   }
-  void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
-
-  /// @brief prepares the index for the creation process, e.g. if we need to
-  /// train index before any insertion
-  void beforeCreate();
+  void recalculateEstimates() override {
+    return getWrapped()->recalculateEstimates();
+  }
 
   /// @brief assumes an exclusive lock on the collection
   Result fillIndexForeground(
@@ -170,10 +177,15 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
  private:
+  RocksDBIndex* getWrapped() noexcept;
+  RocksDBIndex const* getWrapped() const noexcept;
+
   static constexpr uint64_t kThreadBatchSize = 100000;
   static constexpr size_t kSingleThreadThreshold = 120000;
 
   std::shared_ptr<RocksDBIndex> _wrapped;
+  RocksDBVectorIndex* _vectorIndex =
+      nullptr;  // when set, we wrap by ref (no ownership)
   std::atomic<uint64_t> _docsProcessed;
   uint64_t const _numDocsHint;
   size_t const _numThreads;

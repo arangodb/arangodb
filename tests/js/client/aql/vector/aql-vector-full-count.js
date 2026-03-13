@@ -27,40 +27,42 @@
 const internal = require("internal");
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const helper = require("@arangodb/aql-helper");
 const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
-const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
-
-const { versionHas } = require("@arangodb/test-helper");
+const {
+    insertDocsAndEnsureIndex,
+    waitForIndexBuild,
+    withSuffix,
+} = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
+
 const dbName = "vectorDB";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexFullCountTestSuite() {
+function VectorIndexFullCountTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 100;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = 12132390894;
+    const nLists = 10;
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards: 3
             });
 
             let docs = [];
@@ -76,20 +78,28 @@ function VectorIndexFullCountTestSuite() {
                     vector,
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nLists,
+                        trainingIterations: 10,
+                        defaultNProbe: nLists,
+                    },
+                }),
             });
+
+            const expectedState = expectedTrained ? "ready" : "untrained";
+            assertTrue(
+                waitForIndexBuild(collection, expectedState, expectedTrained ? 60 : 5),
+                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -239,21 +249,22 @@ function VectorIndexFullCountTestSuite() {
 /// The test suite with vector index not having enough
 // documents in single nList will not return true full count in collection but how much
 // it actually produced.
-// Check more details in EnumerateNearVectorExucutor file
+// Check more details in EnumerateNearVectorExecutor file
 function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 10;
+    const numberOfDocs = 4;
     const seed = 12132390894;
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards: 3
             });
 
             let docs = [];
@@ -269,9 +280,11 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                     vector
                 });
             }
-            collection.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
-            collection.ensureIndex({
+            const ensureIndex = () => collection.ensureIndex({
                 name: "vector_l2",
                 type: "vector",
                 fields: ["vector"],
@@ -283,6 +296,18 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                     trainingIterations: 10,
                 },
             });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
+            }
         },
 
         tearDownAll: function() {
@@ -319,10 +344,10 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
 
             const queryResults = db._query(query, bindVars, options);
             const results = queryResults.toArray();
-            assertEqual(results.length, 4);
+            assertEqual(results.length, 10);
 
             const stats = queryResults.getExtra().stats;
-            assertEqual(stats.fullCount, 4);
+            assertEqual(stats.fullCount, 16);
         },
     };
 }
@@ -336,11 +361,12 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards: 3
             });
 
             let docs = [];
@@ -356,9 +382,11 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                     vector
                 });
             }
-            collection.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
-            collection.ensureIndex({
+            const ensureIndex = () => collection.ensureIndex({
                 name: "vector_l2",
                 type: "vector",
                 fields: ["vector"],
@@ -370,6 +398,18 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                     trainingIterations: 10,
                 },
             });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
+            }
         },
 
         tearDownAll: function() {
@@ -417,7 +457,16 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     };
 }
 
-jsunity.run(VectorIndexFullCountTestSuite);
+// Untrained (brute-force)
+jsunity.run(function VectorIndexFullCountUntrainedTestSuite() {
+    return withSuffix(VectorIndexFullCountTestSuite(false), '_untrained');
+});
+
+// Trained
+jsunity.run(function VectorIndexFullCountTrainedTestSuite() {
+    return withSuffix(VectorIndexFullCountTestSuite(true), '_trained');
+});
+
 jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);
 jsunity.run(VectorIndexFullCountCollectionWithSmallAmountOfDocs);
 

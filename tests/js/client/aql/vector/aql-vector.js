@@ -29,7 +29,6 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const helper = require("@arangodb/aql-helper");
 const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 const db = internal.db;
@@ -40,7 +39,10 @@ const {
 const {
     createVectorGenerator,
     DistanceFunctions,
-} = require("@arangodb/testutils/vector-generator");
+    insertDocsAndEnsureIndex,
+    waitForIndexBuild,
+    withSuffix,
+} = require("@arangodb/testutils/vector-index-common");
 
 const {
     versionHas
@@ -53,11 +55,12 @@ const collName = "vectorColl";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexL2TestSuite() {
+function VectorIndexL2TestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -74,6 +77,7 @@ function VectorIndexL2TestSuite() {
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -85,20 +89,27 @@ function VectorIndexL2TestSuite() {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            collection.insert(vectorData.docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs: vectorData.docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 10,
+                        trainingIterations: 10,
+                    },
+                }),
             });
+
+            const trainingState = expectedTrained ? "ready" : "untrained";
+            assertTrue(
+                waitForIndexBuild(collection, trainingState, expectedTrained ? 10 : 5),
+                "Expected index to become " + trainingState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -522,11 +533,12 @@ function VectorIndexL2TestSuite() {
 }
 
 
-function VectorIndexCosineTestSuite() {
+function VectorIndexCosineTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 1000;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -544,6 +556,7 @@ function VectorIndexCosineTestSuite() {
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -555,18 +568,25 @@ function VectorIndexCosineTestSuite() {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            collection.insert(vectorData.docs);
-
-            collection.ensureIndex({
-                name: "vector_cosine",
-                type: "vector",
-                fields: ["vector"],
-                params: {
-                    metric: "cosine",
-                    dimension: dimension,
-                    nLists: 10
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs: vectorData.docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_cosine",
+                    type: "vector",
+                    fields: ["vector"],
+                    params: {
+                        metric: "cosine",
+                        dimension: dimension,
+                        nLists: 10
+                    },
+                }),
             });
+
+            const trainingState = expectedTrained ? "ready" : "untrained";
+            assertTrue(
+                waitForIndexBuild(collection, trainingState, expectedTrained ? 60 : 5),
+                "Expected index to become " + trainingState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -700,11 +720,12 @@ function VectorIndexCosineTestSuite() {
     };
 }
 
-function VectorIndexInnerProductTestSuite() {
+function VectorIndexInnerProductTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 1000;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -722,6 +743,7 @@ function VectorIndexInnerProductTestSuite() {
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -733,18 +755,25 @@ function VectorIndexInnerProductTestSuite() {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            collection.insert(vectorData.docs);
-
-            collection.ensureIndex({
-                name: "vector_inner_product",
-                type: "vector",
-                fields: ["vector"],
-                params: {
-                    metric: "innerProduct",
-                    dimension: dimension,
-                    nLists: 10
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs: vectorData.docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_inner_product",
+                    type: "vector",
+                    fields: ["vector"],
+                    params: {
+                        metric: "innerProduct",
+                        dimension: dimension,
+                        nLists: 10
+                    },
+                }),
             });
+
+            const trainingState = expectedTrained ? "ready" : "untrained";
+            assertTrue(
+                waitForIndexBuild(collection, trainingState, expectedTrained ? 60 : 5),
+                "Expected index to become " + trainingState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -864,6 +893,7 @@ function MultipleVectorIndexesOnField() {
     return {
         setUp: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -886,7 +916,13 @@ function MultipleVectorIndexesOnField() {
                     fieldVec: vector
                 });
             }
-            collection.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            for (let i = 0; i < numBatches; i++) {
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
         },
 
         tearDown: function() {
@@ -917,7 +953,6 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
-
             const query =
                 "FOR d IN " +
                 collection.name() +
@@ -992,7 +1027,6 @@ function MultipleVectorIndexesOnField() {
             assertEqual(5, results.length);
         },
 
-        // Test is mostly to see behavior
         testApproxL2WhenMultipleIndexesOnDifferentFields: function() {
             collection.ensureIndex({
                 name: "field_l2",
@@ -1055,9 +1089,28 @@ function MultipleVectorIndexesOnField() {
     };
 }
 
-jsunity.run(VectorIndexL2TestSuite);
-jsunity.run(VectorIndexCosineTestSuite);
-jsunity.run(VectorIndexInnerProductTestSuite);
+// Run with trained index
+jsunity.run(function VectorIndexL2TrainedTestSuite() {
+    return withSuffix(VectorIndexL2TestSuite(true), '_trained');
+});
+jsunity.run(function VectorIndexCosineTrainedTestSuite() {
+    return withSuffix(VectorIndexCosineTestSuite(true), '_trained');
+});
+jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
+    return withSuffix(VectorIndexInnerProductTestSuite(true), '_trained');
+});
+
+// Run with untrained index
+jsunity.run(function VectorIndexL2UntrainedTestSuite() {
+    return withSuffix(VectorIndexL2TestSuite(false), '_untrained');
+});
+jsunity.run(function VectorIndexCosineUntrainedTestSuite() {
+    return withSuffix(VectorIndexCosineTestSuite(false), '_untrained');
+});
+jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
+    return withSuffix(VectorIndexInnerProductTestSuite(false), '_untrained');
+});
+
 jsunity.run(MultipleVectorIndexesOnField);
 
 return jsunity.done();

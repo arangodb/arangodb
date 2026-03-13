@@ -36,6 +36,12 @@ const {
     randomNumberGeneratorFloat,
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    insertDocsAndEnsureIndex,
+    waitForIndexBuild,
+    withSuffix,
+} = require("@arangodb/testutils/vector-index-common");
+const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
 
@@ -97,17 +103,19 @@ const verifyPlan = function(query, bindVars, numberOfCalculationNodes) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexL2FilterTestSuite() {
+function VectorIndexL2FilterTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -147,21 +155,28 @@ function VectorIndexL2FilterTestSuite() {
                 });
             }
 
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nProbeAndNlists,
-                    trainingIterations: 10,
-                    defaultNProbe: nProbeAndNlists,
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                }),
             });
+
+            const expectedState = expectedTrained ? "ready" : "untrained";
+            assertTrue(
+                waitForIndexBuild(collection, expectedState, expectedTrained ? 60 : 5),
+                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -618,12 +633,13 @@ function VectorIndexL2FilterTestSuite() {
     };
 }
 
-function VectorIndexL2FilterTestMultipleCollectionsSuite() {
+function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
     let collection1;
     let collection2;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
     const col2 = "col2";
@@ -631,6 +647,7 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
     return {
         setUpAll: function() {
             print(`Using seed: ${seed}`);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -658,10 +675,11 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
                     val: i
                 });
             }
-            collection1.insert(docs);
-            collection2.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
-            collection1.ensureIndex({
+            const ensureIndex = () => collection1.ensureIndex({
                 name: "vector_l2",
                 type: "vector",
                 fields: ["vector"],
@@ -674,6 +692,25 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
                     defaultNProbe: nProbeAndNlists,
                 },
             });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                const batch = docs.slice(start, end);
+                collection1.insert(batch);
+                collection2.insert(batch);
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
+            }
+            const expectedState = expectedTrained ? "ready" : "untrained";
+            assertTrue(
+                waitForIndexBuild(collection1, expectedState, expectedTrained ? 60 : 5),
+                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -721,17 +758,19 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
     };
 }
 
-function VectorIndexL2FilterStoredValuesTestSuite() {
+function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -762,22 +801,29 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
                     floatField: i + 0.5
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2_stored_values",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nProbeAndNlists,
-                    trainingIterations: 10,
-                    defaultNProbe: nProbeAndNlists,
-                },
-                storedValues: ["val", "stringField", "boolField", "floatField"]
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2_stored_values",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                    storedValues: ["val", "stringField", "boolField", "floatField"]
+                }),
             });
+
+            const expectedState = expectedTrained ? "ready" : "untrained";
+            assertTrue(
+                waitForIndexBuild(collection, expectedState, expectedTrained ? 60 : 5),
+                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -940,8 +986,26 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
     };
 }
 
-jsunity.run(VectorIndexL2FilterTestSuite);
-jsunity.run(VectorIndexL2FilterTestMultipleCollectionsSuite);
-jsunity.run(VectorIndexL2FilterStoredValuesTestSuite);
+// Untrained (brute-force)
+jsunity.run(function VectorIndexL2FilterUntrainedTestSuite() {
+    return withSuffix(VectorIndexL2FilterTestSuite(false), '_untrained');
+});
+jsunity.run(function VectorIndexL2FilterMultipleCollectionsUntrainedTestSuite() {
+    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(false), '_untrained');
+});
+jsunity.run(function VectorIndexL2FilterStoredValuesUntrainedTestSuite() {
+    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(false), '_untrained');
+});
+
+// Trained
+jsunity.run(function VectorIndexL2FilterTrainedTestSuite() {
+    return withSuffix(VectorIndexL2FilterTestSuite(true), '_trained');
+});
+jsunity.run(function VectorIndexL2FilterMultipleCollectionsTrainedTestSuite() {
+    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(true), '_trained');
+});
+jsunity.run(function VectorIndexL2FilterStoredValuesTrainedTestSuite() {
+    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(true), '_trained');
+});
 
 return jsunity.done();

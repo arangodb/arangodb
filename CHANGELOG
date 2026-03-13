@@ -1,5 +1,11 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+* COR-255: Fixed vector index not being properly trained on follower shards when
+  replicationFactor is increased. The follower now trains and populates
+  the vector index from local documents after initial sync. Added per-vector-index
+  metrics on DB servers: `arangodb_vector_index_training_state`,
+  `arangodb_vector_index_training_duration_seconds`, and
+  `arangodb_vector_index_ingesting_duration_seconds`.
 
 * COR-267, github issue #21944: Fixed a bug in the handling of post filters
   with array expansion operators and inverted indexes.

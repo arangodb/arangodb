@@ -26,14 +26,17 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
-const arangodb = require("@arangodb");
-const helper = require("@arangodb/aql-helper");
 const errors = internal.errors;
 const db = internal.db;
 const {
   randomNumberGeneratorFloat,
   randomInteger,
 } = require("@arangodb/testutils/seededRandom");
+const {
+  waitForIndexBuild,
+  withSuffix,
+} = require("@arangodb/testutils/vector-index-common");
+const isCluster = require("internal").isCluster();
 
 const dbName = "vectorIndexHintDb";
 const collName = "vectorIndexHintColl";
@@ -56,19 +59,23 @@ function getVectorIndexName(query, bindVars = {}) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test suite for vector index hints
 ////////////////////////////////////////////////////////////////////////////////
-function VectorIndexHintsSuite() {
+function VectorIndexHintsSuite(expectedTrained) {
   let collection;
   let randomPoint;
   const dimension = 128;
-  const numberOfDocs = 100;
+  const numberOfDocsFactor = isCluster ? 3 : 1;
+  const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
   const seed = randomInteger();
 
   return {
     setUpAll: function () {
+      db._useDatabase("_system");
       db._createDatabase(dbName);
       db._useDatabase(dbName);
 
-      collection = db._create(collName, { numberOfShards: 3 });
+      collection = db._create(collName, {
+        numberOfShards: 3,
+      });
 
       // Generate random vectors
       let docs = [];
@@ -83,48 +90,43 @@ function VectorIndexHintsSuite() {
         }
         
         docs.push({
-          _key: `doc${i}`,
           vector: vector,
           vectorCosine: vectorCosine,
           vectorInnerProduct: vectorInnerProduct,
           value: i,
         });
       }
-      collection.insert(docs);
+      const batchSize = 100;
+      const numBatches = Math.ceil(docs.length / batchSize);
 
-      collection.ensureIndex({
-        name: "vector_l2",
-        type: "vector",
-        fields: ["vector"],
-        params: {
-          metric: "l2",
-          dimension: dimension,
-          nLists: 5,
-        },
-      });
+      for (let i = 0; i < numBatches; i++) {
+        const start = i * batchSize;
+        const end = Math.min(start + batchSize, docs.length);
+        collection.insert(docs.slice(start, end));
+      }
 
-      collection.ensureIndex({
-        name: "vector_l2_secondary",
-        type: "vector",
-        fields: ["vector"],
-        params: {
-          metric: "l2",
-          dimension: dimension,
-          nLists: 3,
-        },
-      });
+      const state = expectedTrained ? "ready" : "untrained";
+      const indexTimeoutSec = expectedTrained ? (isCluster ? 120 : 60) : 5;
 
-      collection.ensureIndex({
-        name: "vector_l2_with_filter",
-        type: "vector",
-        fields: ["vector"],
-        storedValues: ["value"],
-        params: {
-          metric: "l2",
-          dimension: dimension,
-          nLists: 4,
-        },
-      });
+      const indexes = [
+        {name: "vector_l2", fields: ["vector"], params: {metric: "l2", dimension, nLists: 5}},
+        {name: "vector_l2_secondary", fields: ["vector"], params: {metric: "l2", dimension, nLists: 3}},
+        {name: "vector_l2_with_filter", fields: ["vector"], storedValues: ["value"], params: {metric: "l2", dimension, nLists: 4}},
+      ];
+
+      for (const idx of indexes) {
+        collection.ensureIndex({type: "vector", ...idx});
+        // In cluster, wait for each index build to complete before creating
+        // the next one to avoid lock contention between build threads.
+        if (isCluster) {
+          assertTrue(waitForIndexBuild(collection, state, indexTimeoutSec),
+            "Expected indexes to become " + state);
+        }
+      }
+      if (!isCluster) {
+        assertTrue(waitForIndexBuild(collection, state, indexTimeoutSec),
+          "Expected indexes to become " + state);
+      }
     },
 
     tearDownAll: function () {
@@ -249,6 +251,14 @@ function VectorIndexHintsSuite() {
   };
 }
 
-jsunity.run(VectorIndexHintsSuite);
+// Untrained (brute-force)
+// jsunity.run(function VectorIndexHintsUntrainedSuite() {
+//     return withSuffix(VectorIndexHintsSuite(false), '_untrained');
+// });
+
+// Trained
+jsunity.run(function VectorIndexHintsTrainedSuite() {
+    return withSuffix(VectorIndexHintsSuite(true), '_trained');
+});
 
 return jsunity.done();

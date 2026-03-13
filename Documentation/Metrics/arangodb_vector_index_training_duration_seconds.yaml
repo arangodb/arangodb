@@ -1,0 +1,16 @@
+name: arangodb_vector_index_training_duration_seconds
+introducedIn: "3.12.9"
+help: |
+  Wall-clock seconds spent in the last training phase of a vector index.
+unit: seconds
+type: gauge
+category: VectorIndex
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Wall-clock duration in seconds of the most recent training phase for
+  a vector index. The value is updated when the index transitions out
+  of the "training" state (state 1). It remains at its last recorded
+  value until training is triggered again.

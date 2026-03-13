@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual */
+/*global assertEqual, assertNotEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,22 +26,17 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
-const arangodb = require("@arangodb");
-const helper = require("@arangodb/aql-helper");
-const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
-const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
-
-const { versionHas } = require("@arangodb/test-helper");
+const {
+    insertDocsAndEnsureIndex,
+    waitForIndexBuild,
+} = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -52,10 +47,13 @@ function VectorIndexL2NprobeTestSuite() {
     let randomPoint;
     const dimension = 500;
     const seed = 12132390894;
-    const defaultNProbe = 1;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    // 3 shards; enough docs per shard (300*5=15000 total in cluster) to trigger training
+    const numberOfDocs = numberOfDocsFactor * 300 * 50;
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -65,7 +63,7 @@ function VectorIndexL2NprobeTestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
@@ -76,21 +74,25 @@ function VectorIndexL2NprobeTestSuite() {
                     vector
                 });
             }
-            collection.insert(docs);
-
-            // big number of nLists causes that results are spread across
-            // multiple nLists and makes probability of returning all the results with 1 nProbe lower
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 300,
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 300,
+                    },
+                }),
             });
+
+            assertTrue(
+                waitForIndexBuild(collection, "ready", 60),
+                "Expected vector index to become trained"
+            );
         },
 
         tearDownAll: function() {
@@ -133,12 +135,12 @@ function VectorIndexL2NprobeTestSuite() {
             const queryWithoutNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 1}) LIMIT 20 RETURN {key: d._key}";
+                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 1}) LIMIT 300 RETURN {key: d._key}";
             const queryWithNProbe =
                 "FOR d IN " +
                 collection.name() +
                 " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 100}) " +
-                " LIMIT 20 RETURN {key: d._key}";
+                " LIMIT 300 RETURN {key: d._key}";
 
             const bindVars = {
                 qp: randomPoint

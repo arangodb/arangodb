@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertNotEqual */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,35 +26,42 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 const db = require("internal").db;
 const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    insertDocsAndEnsureIndex,
+    waitForIndexBuild,
+    withSuffix,
+} = require("@arangodb/testutils/vector-index-common");
+const isCluster = require("internal").isCluster();
 
 const { versionHas } = require("@arangodb/test-helper");
 
 const dbName = "vectorDB";
 const collName = "coll";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexCreateAndRemoveTestSuite() {
+function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
     let collection;
     const dimension = 500;
     const seed = 12132390894;
     let randomPoint;
-    const insertedDocsCount = 100;
+    const insertedDocsCountFactor = isCluster ? 3 : 1;
+    const insertedDocsCount = expectedTrained ? 1500 * insertedDocsCountFactor : 100;
     let insertedDocs = [];
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
+            try {
+                db._dropDatabase(dbName);
+            } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -75,19 +82,28 @@ function VectorIndexCreateAndRemoveTestSuite() {
                     vector
                 });
             }
-            insertedDocs = db.coll.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension,
-                    nLists: 1
-                },
+            insertedDocs = [];
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension,
+                        nLists: 10
+                    },
+                }),
+                onBatchInserted: (result) => insertedDocs.push(...result),
             });
+
+            const expectedState = expectedTrained ? "ready" : "untrained";
+            assertTrue(
+                waitForIndexBuild(collection, expectedState, expectedTrained ? 120 : 5),
+                "Expected index to become " + expectedState + " with " + insertedDocsCount + " docs"
+            );
         },
 
         tearDown: function() {
@@ -204,6 +220,10 @@ function VectorIndexTestCreationWithVectors() {
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
+            try {
+                db._dropDatabase(dbName);
+            } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -436,16 +456,21 @@ function VectorIndexTestCreationWithVectors() {
 }
 
 
-function VectorIndexStoredValuesTestSuite() {
+function VectorIndexStoredValuesTestSuite(expectedTrained) {
     let collection;
     const dimension = 128;
     const seed = 123456789;
     let randomPoint;
-    const insertedDocsCount = 50;
+    const insertedDocsCountFactor = isCluster ? 3 : 1;
+    const insertedDocsCount = expectedTrained ? 1500 * insertedDocsCountFactor : 50;
     let insertedDocs = [];
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
+            try {
+                db._dropDatabase(dbName);
+            } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -476,21 +501,29 @@ function VectorIndexStoredValuesTestSuite() {
                     description: `This is document number ${i} with some description text`
                 });
             }
-            insertedDocs = db.coll.insert(docs);
-
-            // Create vector index with storedValues
-            collection.ensureIndex({
-                name: "vector_l2_stored",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                storedValues: ["name", "value", "category", "metadata", "description"],
-                params: {
-                    metric: "l2",
-                    dimension,
-                    nLists: 1
-                },
+            insertedDocs = [];
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2_stored",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    storedValues: ["name", "value", "category", "metadata", "description"],
+                    params: {
+                        metric: "l2",
+                        dimension,
+                        nLists: 1
+                    },
+                }),
+                onBatchInserted: (result) => insertedDocs.push(...result),
             });
+
+            const expectedState = expectedTrained ? "ready" : "untrained";
+            assertTrue(
+                waitForIndexBuild(collection, expectedState, expectedTrained ? 120 : 5),
+                "Expected index to become " + expectedState + " with " + insertedDocsCount + " docs"
+            );
         },
 
         tearDown: function() {
@@ -680,8 +713,22 @@ function VectorIndexStoredValuesTestSuite() {
 }
 
 
-jsunity.run(VectorIndexCreateAndRemoveTestSuite);
+// Untrained (brute-force)
+jsunity.run(function VectorIndexCreateAndRemoveUntrainedTestSuite() {
+    return withSuffix(VectorIndexCreateAndRemoveTestSuite(false), '_untrained');
+});
+jsunity.run(function VectorIndexStoredValuesUntrainedTestSuite() {
+    return withSuffix(VectorIndexStoredValuesTestSuite(false), '_untrained');
+});
+
+// Trained (FAISS IVF)
+jsunity.run(function VectorIndexCreateAndRemoveTrainedTestSuite() {
+    return withSuffix(VectorIndexCreateAndRemoveTestSuite(true), '_trained');
+});
+jsunity.run(function VectorIndexStoredValuesTrainedTestSuite() {
+    return withSuffix(VectorIndexStoredValuesTestSuite(true), '_trained');
+});
+
 jsunity.run(VectorIndexTestCreationWithVectors);
-jsunity.run(VectorIndexStoredValuesTestSuite);
 
 return jsunity.done();
