@@ -39,7 +39,18 @@ let didRegex = /^([0-9a-zA-Z]+)\/([0-9a-zA-Z\-_]+)/;
 // error handling;
 ////////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
+  let cn = "UnitTestsCollectionBasics";
+  let cid;
   return {
+    setUpAll: function() {
+      db._drop(cn);
+      cid = db._create(cn);
+    },
+
+    tearDownAll: function() {
+      db._drop(cn);
+    },
+
     test_returns_an_error_if_collection_idenifier_is_missing: function() {
       let cmd = "/_api/document";
       let body = "{}";
@@ -65,150 +76,93 @@ function error_handlingSuite () {
     },
 
     test_returns_an_error_if_the_JSON_body_is_corrupted: function() {
-      let cn = "UnitTestsCollectionBasics";
-      db._create(cn);
+      let cmd = `/_api/document/${cn}`;
+      let body = "{ 1 : 2 }";
+      let doc = arango.POST_RAW(cmd, body);
 
-      try {
-        let cmd = `/_api/document/${cn}`;
-        let body = "{ 1 : 2 }";
-        let doc = arango.POST_RAW(cmd, body);
-        
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-        
-        assertEqual(db[cn].count(), 0);
-      } finally {
-        db._drop(cn);
-      }
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+
+      assertEqual(db[cn].count(), 0);
     },
 
     test_returns_an_error_if_an_object_sub_attribute_in_the_JSON_body_is_corrupted: function() {
-      let cn = "UnitTestsCollectionBasics";
-      db._create(cn);
+      let cmd = `/_api/document/${cn}`;
+      let body = "{ \"foo\" : { \"bar\" : \"baz\", \"blue\" : moo } }";
+      let doc = arango.POST_RAW(cmd, body);
 
-      try {
-        let cmd = `/_api/document/${cn}`;
-        let body = "{ \"foo\" : { \"bar\" : \"baz\", \"blue\" : moo } }";
-        let doc = arango.POST_RAW(cmd, body);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
 
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-
-        assertEqual(db[cn].count(), 0);
-      } finally {
-        db._drop(cn);
-      }
+      assertEqual(db[cn].count(), 0);
     },
 
     test_returns_an_error_if_an_array_attribute_in_the_JSON_body_is_corrupted: function() {
-      let cn = "UnitTestsCollectionBasics";
-      db._create(cn);
-      try {
-        let cmd = `/_api/document/${cn}`;
-        let body = "{ \"foo\" : [ 1, 2, \"bar\", moo ] }";
-        let doc = arango.POST_RAW(cmd, body);
+      let cmd = `/_api/document/${cn}`;
+      let body = "{ \"foo\" : [ 1, 2, \"bar\", moo ] }";
+      let doc = arango.POST_RAW(cmd, body);
 
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
 
-        assertEqual(db[cn].count(), 0);
-
-      } finally {
-        db._drop(cn);
-      }
+      assertEqual(db[cn].count(), 0);
     },
 
     test_post_with_collection_query_param_is_rejected: function () {
-      const cn = "UnitTestsCollectionBasics";
-      try {
-        db._create(cn);
-        const res = arango.POST_RAW(`/_api/document?collection=${cn}`, "{ \"Hallo\" : \"World\" }");
-        assertEqual(res.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(res.parsedBody['error']);
-        assertEqual(res.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      } finally {
-        db._drop(cn);
-      }
+      const res = arango.POST_RAW(`/_api/document?collection=${cn}`, "{ \"Hallo\" : \"World\" }");
+      assertEqual(res.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(res.parsedBody['error']);
+      assertEqual(res.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
     test_put_with_collection_query_param_is_rejected: function () {
-      const cn = "UnitTestsCollectionBasics";
-      try {
-        db._create(cn);
-        const res = arango.PUT_RAW(`/_api/document?collection=${cn}`, "{ \"Hallo\" : \"World\" }");
-        assertEqual(res.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(res.parsedBody['error']);
-        assertEqual(res.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      } finally {
-        db._drop(cn);
-      }
+      const res = arango.PUT_RAW(`/_api/document?collection=${cn}`, "{ \"Hallo\" : \"World\" }");
+      assertEqual(res.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(res.parsedBody['error']);
+      assertEqual(res.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
     test_patch_with_collection_query_param_is_rejected: function () {
-      const cn = "UnitTestsCollectionBasics";
-      try {
-        db._create(cn);
-        const res = arango.PATCH_RAW(`/_api/document?collection=${cn}`, "{ \"Hallo\" : \"World\" }");
-        assertEqual(res.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(res.parsedBody['error']);
-        assertEqual(res.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      } finally {
-        db._drop(cn);
-      }
+      const res = arango.PATCH_RAW(`/_api/document?collection=${cn}`, "{ \"Hallo\" : \"World\" }");
+      assertEqual(res.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(res.parsedBody['error']);
+      assertEqual(res.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
     test_post_with_numeric_collection_id_is_rejected: function () {
-      const cn = "UnitTestsCollectionBasics";
-      try {
-        const coll = db._create(cn);
-        const cmd = `/_api/document/${coll._id}`;
-        const body = "{ \"Hallo\" : \"World\" }";
-        const doc = arango.POST_RAW(cmd, body);
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      } finally {
-        db._drop(cn);
-      }
+      const cmd = `/_api/document/${cid._id}`;
+      const body = "{ \"Hallo\" : \"World\" }";
+      const doc = arango.POST_RAW(cmd, body);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
     test_put_with_numeric_collection_id_is_rejected: function () {
-      const cn = "UnitTestsCollectionBasics";
-      try {
-        const coll = db._create(cn);
-        const cmd = `/_api/document/${coll._id}`;
-        const body = "{ \"Hallo\" : \"World\" }";
-        const doc = arango.PUT_RAW(cmd, body);
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      } finally {
-        db._drop(cn);
-      }
+      const cmd = `/_api/document/${cid._id}`;
+      const body = "{ \"Hallo\" : \"World\" }";
+      const doc = arango.PUT_RAW(cmd, body);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
     test_patch_with_numeric_collection_id_is_rejected: function () {
-      const cn = "UnitTestsCollectionBasics";
-      try {
-        const coll = db._create(cn);
-        const cmd = `/_api/document/${coll._id}`;
-        const body = "{ \"Hallo\" : \"World\" }";
-        const doc = arango.PATCH_RAW(cmd, body);
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      } finally {
-        db._drop(cn);
-      }
+      const cmd = `/_api/document/${cid._id}`;
+      const body = "{ \"Hallo\" : \"World\" }";
+      const doc = arango.PATCH_RAW(cmd, body);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
   };
 }
@@ -219,11 +173,12 @@ function error_handlingSuite () {
 function known_collection_identifier__waitForSync_EQ_trueSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    setUp: function() {
-      let cid = db._create(cn, { waitForSync: true } );
+    setUpAll: function() {
+      db._drop(cn);
+      db._create(cn, { waitForSync: true } );
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
@@ -630,11 +585,12 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
 function known_collection_identifier__waitForSync_EQ_falseSuite () {
   let cn = "UnitTestsCollectionUnsynced";
   return {
-    setUp: function() {
-      let cid = db._create(cn);
+    setUpAll: function() {
+      db._drop(cn);
+      db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
@@ -862,11 +818,12 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
 function known_collection_nameSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    setUp: function() {
+    setUpAll: function() {
+      db._drop(cn);
       db._create(cn, { waitForSync: true});
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
@@ -942,7 +899,7 @@ function known_collection_nameSuite () {
 function unknown_collection_nameSuite () {
   let cn = `UnitTestsCollectionNamed${internal.time()}`;
   return {
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
@@ -968,11 +925,12 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
   let cn = "UnitTestsCollectionUnsynced";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function() {
+      db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 

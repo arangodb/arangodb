@@ -298,7 +298,7 @@ function numeric_collection_id_rejectionSuite () {
       db._drop(cn);
       cid = db._create(cn);
     },
-    
+
     tearDown: function() {
       db._drop(cn);
     },
@@ -729,6 +729,7 @@ function propertiesSuite () {
 jsunity.run(all_collectionsSuite);
 jsunity.run(error_handlingSuite);
 jsunity.run(schema_validationSuite);
+jsunity.run(numeric_collection_id_rejectionSuite);
 jsunity.run(readingSuite);
 jsunity.run(deletingSuite);
 jsunity.run(creatingSuite);
