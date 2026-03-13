@@ -1,13 +1,13 @@
 import { ReactTable, TableControl, useSortableReactTable } from "@arangodb/ui";
+import { CollectionMetadata } from "arangojs/collection";
 import { Flex, Link } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { ListHeader } from "../../../components/table/ListHeader";
 import { useCollectionsContext } from "../CollectionsContext";
 import { STATUS_TO_LABEL_MAP, TYPE_TO_LABEL_MAP } from "../CollectionsHelpers";
-import { LockableCollectionDescription } from "../useFetchCollections";
 
-const columnHelper = createColumnHelper<LockableCollectionDescription>();
+const columnHelper = createColumnHelper<CollectionMetadata>();
 
 const TABLE_COLUMNS = [
   columnHelper.accessor("name", {
@@ -52,17 +52,10 @@ const TABLE_COLUMNS = [
     }
   ),
   columnHelper.accessor(
-    row => (row.isLocked ? "Locked" : STATUS_TO_LABEL_MAP[row.status]),
+    row => STATUS_TO_LABEL_MAP[row.status],
     {
       header: "Status",
       id: "status",
-      cell: info => {
-        const cellValue = info.cell.getValue();
-        if (info.row.original.isLocked && info.row.original.lockReason) {
-          return info.row.original.lockReason;
-        }
-        return cellValue;
-      },
       filterFn: "arrIncludesSome",
       meta: {
         filterType: "multi-select"
@@ -77,7 +70,7 @@ export const CollectionsTable = ({
   onAddCollectionClick: () => void;
 }) => {
   const { collections } = useCollectionsContext();
-  const tableInstance = useSortableReactTable<LockableCollectionDescription>({
+  const tableInstance = useSortableReactTable<CollectionMetadata>({
     data: collections || [],
     columns: TABLE_COLUMNS,
     defaultSorting: [
@@ -98,9 +91,9 @@ export const CollectionsTable = ({
     <Flex direction="column" gap="2">
       <Flex direction="column" gap="4">
         <CollectionTableHeader onAddCollectionClick={onAddCollectionClick} />
-        <TableControl<LockableCollectionDescription> table={tableInstance} />
+        <TableControl<CollectionMetadata> table={tableInstance} />
       </Flex>
-      <ReactTable<LockableCollectionDescription>
+      <ReactTable<CollectionMetadata>
         table={tableInstance}
         emptyStateMessage="No collections found"
         onRowSelect={row => {

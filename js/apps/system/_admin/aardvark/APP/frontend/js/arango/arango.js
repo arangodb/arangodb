@@ -848,6 +848,9 @@
       });
     },
 
+    // Returns unfinished Aardvark jobs for views.
+    // Note: Index jobs are no longer tracked here - index progress uses native
+    // /_api/index progress field (see useFetchCollectionIndices.ts).
     syncAndReturnUnfinishedAardvarkJobs: function (type, callback) {
       var callbackInner = function (error, AaJobs) {
         if (error) {
@@ -860,7 +863,8 @@
               var array = [];
               if (pendingJobs.length > 0) {
                 _.each(AaJobs, function (aardvark) {
-                  if (aardvark.type === type || aardvark.type === undefined) {
+                  // Only process view jobs (type parameter kept for API compatibility)
+                  if (aardvark.type === 'view') {
                     var found = false;
                     _.each(pendingJobs, function (pending) {
                       if (aardvark.id === pending) {

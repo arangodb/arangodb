@@ -6,7 +6,6 @@ import { isArray, isObject } from "lodash";
 import React from "react";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { TYPE_TO_LABEL_MAP } from "../CollectionIndicesHelpers";
-import { useSyncIndexCreationJob } from "../useSyncIndexCreationJob";
 import { CollectionIndexActionButtons } from "./CollectionIndexActionButtons";
 
 const columnHelper = createColumnHelper<HiddenIndex>();
@@ -131,7 +130,6 @@ const TABLE_COLUMNS = [
 ];
 
 export const CollectionIndicesTable = () => {
-  useSyncIndexCreationJob();
   const { collectionIndices } = useCollectionIndicesContext();
   const tableInstance = useSortableReactTable<HiddenIndex>({
     data: collectionIndices || [],
