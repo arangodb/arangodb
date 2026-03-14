@@ -287,30 +287,6 @@ Using the value 0 disables the automatic response compression.")");
                   new BooleanParameter(&_options.allowEarlyConnections))
       .setIntroducedIn(31000);
 
-  options->addOldOption("frontend.proxy-request-check",
-                        "web-interface.proxy-request-check");
-
-  options->addOption("--web-interface.proxy-request-check",
-                     "Enable proxy request checking.",
-                     new BooleanParameter(&_options.proxyCheck),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options->addOldOption("frontend.trusted-proxy",
-                        "web-interface.trusted-proxy");
-
-  options->addOption(
-      "--web-interface.trusted-proxy",
-      "The list of proxies to trust (can be IP or network). Make "
-      "sure `--web-interface.proxy-request-check` is enabled.",
-      new VectorParameter<StringParameter>(&_options.trustedProxies),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   options->addOption(
       "--server.failure-point",
@@ -466,16 +442,8 @@ bool GeneralServerFeature::handleContentEncodingForUnauthenticatedRequests()
   return _options.handleContentEncodingForUnauthenticatedRequests;
 }
 
-bool GeneralServerFeature::proxyCheck() const noexcept {
-  return _options.proxyCheck;
-}
-
 bool GeneralServerFeature::returnQueueTimeHeader() const noexcept {
   return _options.returnQueueTimeHeader;
-}
-
-std::vector<std::string> GeneralServerFeature::trustedProxies() const {
-  return _options.trustedProxies;
 }
 
 std::vector<std::string> const&

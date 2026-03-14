@@ -3,7 +3,6 @@
 #getent passwd arangodb > /dev/null || adduser -S -G arangodb -D -h /usr/share/arangodb3 -H -s /bin/false -g "ArangoDB Application User" arangodb
 
 install -o root -g root -m 755 -d /var/lib/arangodb3
-install -o root -g root -m 755 -d /var/lib/arangodb3-apps
 # Note that the log dir is 777 such that any user can log there.
 install -o root -g root -m 777 -d /var/log/arangodb3
 
@@ -17,12 +16,3 @@ sed -i \
     -e 's!^\(file\s*=\s*\).*!\1 -!' \
     -e 's~^uid = .*$~~' \
     /etc/arangodb3/arangod.conf
-
-rm -f /usr/bin/foxx
-cat >> /usr/bin/foxx <<'EOF'
-#!/bin/sh
-test -d /tmp/foxx || mkdir -m 700 /tmp/foxx
-export HOME=/tmp/foxx
-exec /usr/lib/node_modules/foxx-cli/bin/foxx "$@"
-EOF
-chmod 755 /usr/bin/foxx

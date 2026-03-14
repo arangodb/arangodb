@@ -28,7 +28,6 @@
 
 %define _cfgdir %{_sysconfdir}/arangodb3
 %define _databasedir %{_localstatedir}/lib/arangodb3
-%define _appdir %{_localstatedir}/lib/arangodb3-apps
 %define _logdir %{_localstatedir}/log/arangodb3
 
 %if 0%{?suse_version} >= 1230
@@ -115,7 +114,6 @@ Debug symbols for the arangodb database
 ## -----------------------------------------------------------------------------
 
 mkdir -p %{buildroot}%{_databasedir}
-mkdir -p %{buildroot}%{_appdir}
 mkdir -p %{buildroot}%{_logdir}
 mkdir -p %{buildroot}%{_piddir}
 
@@ -144,7 +142,6 @@ mkdir -p %{buildroot}%{_piddir}
 /usr/share/doc/arangodb3/README.txt
 
 %attr(0755,arangodb,arangodb) %{_databasedir}
-%attr(0755,arangodb,arangodb) %{_appdir}
 %attr(0755,arangodb,arangodb) %{_logdir}
 
 %ghost %attr(0755,arangodb,arangodb) %{_piddir}

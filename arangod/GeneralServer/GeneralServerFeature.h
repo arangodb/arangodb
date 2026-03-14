@@ -67,9 +67,7 @@ class GeneralServerFeature final
 
   double keepAliveTimeout() const noexcept;
   bool handleContentEncodingForUnauthenticatedRequests() const noexcept;
-  bool proxyCheck() const noexcept;
   bool returnQueueTimeHeader() const noexcept;
-  std::vector<std::string> trustedProxies() const;
   std::vector<std::string> const& accessControlAllowOrigins() const;
   Result reloadTLS();
   bool permanentRootRedirect() const noexcept;

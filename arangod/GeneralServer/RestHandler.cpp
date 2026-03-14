@@ -115,16 +115,7 @@ uint64_t RestHandler::messageId() const {
 RequestLane RestHandler::determineRequestLane() {
   if (_lane == RequestLane::UNDEFINED) {
     bool found;
-    _request->header(StaticStrings::XArangoFrontend, found);
-
-    if (!found) {
-      // header not found, but for requests to root and to /_admin/aardvark/ we
-      // are still increasing the priority
-      auto const& requestPath = _request->requestPath();
-      if (requestPath == "/" || requestPath.starts_with("/_admin/aardvark/")) {
-        found = true;
-      }
-    }
+    _request->header(StaticStrings::XArangoFrontend, found);  // TODO
 
     if (found) {
       _lane = RequestLane::CLIENT_UI;

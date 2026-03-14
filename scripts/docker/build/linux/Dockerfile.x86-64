@@ -73,7 +73,7 @@ RUN ln -s $(echo llvm-toolchain-${CLANG_VERSION}-*) /llvm-toolchain-${CLANG_VERS
 WORKDIR /llvm-toolchain-${CLANG_VERSION}
 
 # Patch omp to enable running when it is a static library
-RUN git apply /diff_llvm.patch 
+RUN git apply /diff_llvm.patch
 
 WORKDIR build
 
@@ -83,32 +83,7 @@ RUN cmake -G Ninja -DLLVM_ENABLE_PROJECTS="clang;openmp" -DCMAKE_C_COMPILER=clan
   -DENABLE_LIBOMPTARGET=OFF -DLIBOMP_INSTALL_ALIASES=OFF ../llvm && ninja && \
   mkdir -p /opt/omp && cp ./lib/libomp.so.5 /opt/omp/libomp.a
 
-
-FROM prepare AS nodejs
-# yarn for UI build:
-ARG NODE_VERSION="20.14.0"
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
-  export NVM_DIR="$HOME/.nvm" &&\
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" \
-  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" && \
-  nvm install ${NODE_VERSION} && \
-  nvm use ${NODE_VERSION} && \
-  node --version && \
-  npm install -g yarn && \
-  ln -s /root/.nvm/versions/node/v${NODE_VERSION}/bin/* /usr/local/bin/
-
-
-FROM nodejs AS node_modules
-
-RUN cd / ; git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb && \
-  cd /arangodb && git sparse-checkout set --no-cone js/apps/system/_admin/aardvark/APP/react && \
-  git checkout && \
-  cd /arangodb/js/apps/system/_admin/aardvark/APP/react && yarn install && mv node_modules / && \
-  cd / && rm -rf /arangodb && tar -cvJf /root/node_modules.tar.xz node_modules && rm -rf /node_modules
-
 # Finally, build the actual build image based on the above preparation:
-
-FROM nodejs
 
 MAINTAINER Max Neunhoeffer <max@arango.ai>
 
@@ -147,7 +122,7 @@ RUN curl -L https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERS
 #COPY --from=v8 /opt/v8/third_party /opt/v8/third_party
 
 # Fetch libomp
-COPY --from=openmp /opt/omp /opt/omp 
+COPY --from=openmp /opt/omp /opt/omp
 
 # Build openssl and openldap libraries in specific versions and with static
 # libraries, install with prefix /opt:

@@ -1,8 +1,8 @@
 # ArangoDB configuration file
-# 
-# Documentation: 
+#
+# Documentation:
 # https://docs.arango.ai/arangodb/stable/operations/administration/configuration/
-# 
+#
 
 [database]
 directory = @LOCALSTATEDIR@/lib/arangodb3
@@ -43,7 +43,6 @@ statistics = true
 # gid = arangodb
 
 @DEFINEUID@uid = arangodb
-
 
 [log]
 level = info

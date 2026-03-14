@@ -27,9 +27,7 @@ apps:
     command: arangod  \
       --configuration=none \
       --server.endpoint=tcp://0.0.0.0:@SNAP_PORT@ \
-      --javascript.startup-directory=${SNAP}/@CMAKE_INSTALL_DATAROOTDIR_ARANGO@/js \
       --database.directory=${SNAP_COMMON}/db3 \
-      --javascript.app-path=${SNAP_COMMON} \
       --temp.path=${SNAP_DATA} \
       --log.file=${SNAP_DATA}/arangodb3.log
 

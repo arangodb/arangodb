@@ -34,6 +34,7 @@
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -207,21 +208,22 @@ LogBufferFeature::LogBufferFeature(
 void LogBufferFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
-      ->addOption("--log.in-memory",
-                  "Use an in-memory log appender which can be queried via the "
-                  "API and web interface.",
-                  new BooleanParameter(&_options.useInMemoryAppender),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+      ->addOption(
+          "--log.in-memory",
+          "Use an in-memory log appender which can be queried via the API",
+          new BooleanParameter(&_options.useInMemoryAppender),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setDeprecatedIn(40000)
       .setIntroducedIn(30800)
       .setLongDescription(R"(You can use this option to toggle storing log
 messages in memory, from which they can be consumed via the `/_admin/log`
-HTTP API and via the web interface.
+HTTP API.
 
-By default, this option is turned on, so log messages are consumable via the API
-and web interface. Turning this option off disables that functionality, saves a
-bit of memory for the in-memory log buffers, and prevents potential log
-information leakage via these means.)");
+By default, this option is turned on, so log messages are consumable via the API.
+Turning this option off disables that functionality, saves a bit of memory for
+the in-memory log buffers, and prevents potential log information leakage via
+these means.)");
 
   std::unordered_set<std::string> const logLevels = {
       "fatal", "error", "err", "warning", "warn", "info", "debug", "trace"};
