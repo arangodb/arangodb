@@ -13,7 +13,7 @@ defmodule Toast.Process.HealthMonitor do
   (e.g., during intentional server stops).
   """
 
-  use GenServer
+  use GenServer, restart: :temporary
 
   require Logger
 
@@ -39,9 +39,10 @@ defmodule Toast.Process.HealthMonitor do
   @doc false
   def status(server), do: GenServer.call(server, :status)
 
-  @spec stop(GenServer.server()) :: :ok
-  def stop(server) do
-    GenServer.stop(server, :normal)
+  @spec stop(pid()) :: :ok
+  def stop(pid) when is_pid(pid) do
+    DynamicSupervisor.terminate_child(Toast.Process.Supervisor, pid)
+    :ok
   end
 
   # --- Server callbacks ---

@@ -13,7 +13,7 @@ defmodule Toast.Process.ServerProcess do
   deployment controller) via `{:server_crashed, server_id, info}` messages.
   """
 
-  use GenServer
+  use GenServer, restart: :temporary
 
   require Logger
 
