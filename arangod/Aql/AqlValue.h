@@ -25,9 +25,8 @@
 #pragma once
 
 #include "Aql/AqlValueFwd.h"
-#include "Aql/RegisterId.h"
-#include "Aql/RegIdFlatSet.h"
 #include "Basics/Endian.h"
+#include "Basics/ResourceUsage.h"
 #include "IResearch/Misc.h"
 
 #include <velocypack/Slice.h>
@@ -140,8 +139,9 @@ struct AqlValue final {
                           // number value (in little-endian)
     VPACK_INLINE_UINT64,  // contains vpack data, inline and unpacked 64bit uint
                           // number value (in little-endian)
-    VPACK_INLINE_DOUBLE   // contains vpack data, inline and unpacked 64bit
+    VPACK_INLINE_DOUBLE,  // contains vpack data, inline and unpacked 64bit
                           // double number value (in little-endian)
+    VPACK_SUPERVISED_SLICE
   };
 
   static_assert(
@@ -182,6 +182,7 @@ struct AqlValue final {
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_SLICE_POINTER
   /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_MANAGED_SLICE
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_MANAGED_STRING
+  /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_SUPERVISED_SLICE
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | RANGE
   /// | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_INLINE
   /// | AT | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
@@ -272,6 +273,57 @@ struct AqlValue final {
     } longNumberMeta;
     static_assert(sizeof(longNumberMeta) == 16,
                   "VPACK_INLINE_INT64 layout is not 16 bytes!");
+
+    // VPACK_SUPERVISED_SLICE
+    // [Caution 1]
+    //  SupervisedSlice's pointer points to [ ResourceMonitor* | Actual Data ]
+    //  So, the pointer itself points to the pointer of ResourceMonitor
+    //  Actual data starts at 9th byte!
+    // [Caution 2]
+    //  getLength() (this is from the 3rd to 8th byte) returns the size of the
+    //  actual data, whereas memoryUsage() returns the size of the actual data
+    //  PLUS sizeof(ResourceMonitor*)
+    struct {
+      velocypack::Slice toSlice() const noexcept {
+        return velocypack::Slice(getPayloadPtr());
+      }
+
+      // Only returns the size of the actual data
+      // Doesn't include sizeof(ResourceMonitor*)
+      uint64_t getLength() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0xffffffffffff0000ULL) >> 16;
+        } else {
+          return (lengthOrigin & 0x0000ffffffffffffULL);
+        }
+      }
+
+      uint64_t getOrigin() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0x000000000000ff00ULL) >> 8;
+        } else {
+          return (lengthOrigin & 0x00ff000000000000ULL) >> 48;
+        }
+      }
+
+      // PD points to [ ResourceMonitor* | Actual Data ]
+      // So 'pointer' itself is a pointer to a pointer
+      arangodb::ResourceMonitor* getResourceMonitor() const noexcept {
+        return *reinterpret_cast<arangodb::ResourceMonitor* const*>(pointer);
+      }
+
+      // Actual data starts at the 9th byte!!!
+      // pointer's first 8 bytes are the pointer of ResourceMonitor
+      uint8_t* getPayloadPtr() const noexcept {
+        return pointer + sizeof(arangodb::ResourceMonitor*);
+      }
+      uint64_t lengthOrigin;  // The first 8 bytes looks like
+                              // [ AT | MO | ML | ML | ML | ML | ML ]
+      uint8_t* pointer;
+    } supervisedSliceMeta;
+    static_assert(sizeof(supervisedSliceMeta) == 16,
+                  "VPACK_SUPERVISED_SLICE layout must be 16 bytes!");
+
   } _data;
 
   /// @brief type of memory that we are dealing with for values of type
@@ -310,26 +362,33 @@ struct AqlValue final {
   explicit AqlValue(AqlValueHintUInt v) noexcept;
 
   // construct from std::string
-  explicit AqlValue(std::string_view value);
+  explicit AqlValue(std::string_view value,
+                    arangodb::ResourceMonitor* rm = nullptr);
 
   explicit AqlValue(AqlValueHintEmptyArray) noexcept;
 
   explicit AqlValue(AqlValueHintEmptyObject) noexcept;
 
   // construct from Buffer, potentially taking over its ownership
-  explicit AqlValue(velocypack::Buffer<uint8_t>&& buffer);
+  explicit AqlValue(velocypack::Buffer<uint8_t>&& buffer,
+                    arangodb::ResourceMonitor* rm = nullptr);
+  explicit AqlValue(velocypack::Buffer<uint8_t> const& buffer,
+                    arangodb::ResourceMonitor* rm = nullptr);
 
   // construct from slice data, not copying!
   explicit AqlValue(AqlValueHintSliceNoCopy v) noexcept;
 
   // construct from slice data, copying the data
-  explicit AqlValue(AqlValueHintSliceCopy v);
+  explicit AqlValue(AqlValueHintSliceCopy v,
+                    arangodb::ResourceMonitor* rm = nullptr);
 
-  // construct from Slice, copying contents
-  explicit AqlValue(velocypack::Slice slice);
+  // construct from Slice, copying contents (calls slice.byteSize() internally)
+  explicit AqlValue(velocypack::Slice slice,
+                    arangodb::ResourceMonitor* rm = nullptr);
 
   // construct from Slice and length, copying contents
-  AqlValue(velocypack::Slice slice, velocypack::ValueLength length);
+  explicit AqlValue(velocypack::Slice slice, velocypack::ValueLength length,
+                    arangodb::ResourceMonitor* rm = nullptr);
 
   // construct range type
   AqlValue(int64_t low, int64_t high);
@@ -475,7 +534,9 @@ struct AqlValue final {
 
  private:
   /// @brief initializes value from a slice, when the length is already known
-  void initFromSlice(velocypack::Slice slice, velocypack::ValueLength length);
+  void initFromSlice(velocypack::Slice slice,
+                     velocypack::ValueLength length,
+                     ResourceMonitor* rm = nullptr);
   void initFromUint(uint64_t v);
   void initFromInt(int64_t v);
 
@@ -491,11 +552,28 @@ struct AqlValue final {
   /// @brief store meta information for values of type VPACK_MANAGED_SLICE
   void setManagedSliceData(MemoryOriginType mot,
                            velocypack::ValueLength length);
+
+  // helpers for supervised values
+  // @brief set the first 2 bytes for SupervisedSlice and SupervisedString
+  void setSupervisedData(AqlValueType, velocypack::ValueLength);
+
+  static uint8_t* allocateSupervised(arangodb::ResourceMonitor& rm,
+                                     std::uint64_t len);
+
+  static void deallocateSupervised(uint8_t* base, std::uint64_t len) noexcept;
+
+  /// @brief get the ResourceMonitor pointer if this is a VPACK_SUPERVISED_SLICE
+  arangodb::ResourceMonitor* getResourceMonitor() const noexcept {
+    if (type() == VPACK_SUPERVISED_SLICE) {
+      return _data.supervisedSliceMeta.getResourceMonitor();
+    }
+    return nullptr;
+  }
 };
 
 static_assert(std::is_trivially_copy_constructible_v<AqlValue>);
-static_assert(std::is_trivially_move_constructible_v<AqlValue>);
 static_assert(std::is_trivially_copy_assignable_v<AqlValue>);
+static_assert(std::is_trivially_move_constructible_v<AqlValue>);
 static_assert(std::is_trivially_move_assignable_v<AqlValue>);
 static_assert(std::is_trivially_destructible_v<AqlValue>);
 static_assert(std::is_standard_layout_v<AqlValue>);
@@ -527,3 +605,10 @@ class AqlValueGuard {
 
 }  // namespace aql
 }  // namespace arangodb
+
+namespace std {
+template<>
+struct equal_to<arangodb::aql::AqlValue>;
+template<>
+struct hash<arangodb::aql::AqlValue>;
+}  // namespace std

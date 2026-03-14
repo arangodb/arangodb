@@ -1008,9 +1008,21 @@ void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
     auto& valueInfo = _valueCount[value.data()];
     if (++valueInfo.refCount == 1) {
       // we just inserted the item
-      size_t memoryUsage = value.memoryUsage();
-      increaseMemoryUsage(memoryUsage);
-      valueInfo.setMemoryUsage(memoryUsage);
+      // IMPORTANT: Supervised slices already track their own memory in the
+      // ResourceMonitor during allocateSupervised(). We must NOT double-count
+      // by calling increaseMemoryUsage() again here.
+      // For supervised slices, we store 0 in memoryUsage so that later
+      // when we accumulate totalUsed, we don't try to decrease memory we never
+      // increased. For all other types (VPACK_MANAGED_SLICE,
+      // VPACK_MANAGED_STRING, RANGE), we track the memory usage via
+      // AqlItemBlock.
+      if (value.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+        valueInfo.setMemoryUsage(0);  // Don't track in block
+      } else {
+        size_t memoryUsage = value.memoryUsage();
+        increaseMemoryUsage(memoryUsage);
+        valueInfo.setMemoryUsage(memoryUsage);
+      }
     }
   }
 
@@ -1042,6 +1054,8 @@ void AqlItemBlock::destroyValue(size_t index, RegisterId::value_t column) {
     }
   }
 
+  // if value not found in _valueCount, assume ownership has been transferred
+  // and simply erase the AqlValue without destroying its data
   element.erase();
 }
 
