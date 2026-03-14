@@ -229,7 +229,12 @@ class CircleCIGenerator(OutputGenerator):
         suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}-frontend"
 
-        return {"build-frontend": {"name": name}}
+        return {"build-frontend": {
+            "name": name,
+            "resource-class": self.sizer.get_resource_class(
+                ResourceSize.XXLARGE, build_config.architecture
+            ),
+        }}
 
     def _create_non_maintainer_build_job(
         self, build_config: BuildConfig
@@ -260,7 +265,16 @@ class CircleCIGenerator(OutputGenerator):
             and not build_config.build_variant.is_instrumented
         ):
             workflow["jobs"].append(
-                {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
+                {
+                    "run-cppcheck": {
+                        "name": "cppcheck",
+                        "requires": [build_jobs[0]],
+                        "arch": build_config.architecture.value,
+                        "resource-class": self.sizer.get_resource_class(
+                            ResourceSize.XLARGE, build_config.architecture
+                        ),
+                    }
+                }
             )
 
         # Docker image creation
@@ -340,7 +354,8 @@ class CircleCIGenerator(OutputGenerator):
         """
         # Handle RTA UI tests specially - they generate multiple jobs
         if job.job_type == "run-rta-tests":
-            return self._create_rta_test_jobs(job, build_config, build_jobs)
+            return []
+            # TODO RTA UI return self._create_rta_test_jobs(job, build_config, build_jobs)
 
         result = []
         deployment_type = job.options.deployment_type
@@ -560,6 +575,7 @@ class CircleCIGenerator(OutputGenerator):
             "name": job_name,
             "suiteName": suite_name,
             "suites": suite_str,
+            "arch": build_config.architecture.value,
             "size": resource_class,
             "cluster": is_cluster,
             "requires": build_jobs,
@@ -643,17 +659,24 @@ class CircleCIGenerator(OutputGenerator):
             rta_branch = job.repository.git_branch
 
         deployments = ["single", "cluster"]
-        sanitizer_suffix = build_config.build_variant.get_suffix()
 
         result_jobs = []
         for deployment in deployments:
+            is_cluster = deployment == "cluster"
+            sanitizer_suffix = build_config.build_variant.get_suffix()
+            size_override = self._get_size_override(job.name, build_config, is_cluster)
+            size = size_override or job.options.size or ResourceSize.SMALL
             job_dict = {
                 "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
                 "suiteName": f"{deployment}-UI",
+                "arch": build_config.architecture.value,
                 "arangosh_args": "",
                 "deployment": "SG" if deployment == "single" else "CL",
                 "browser": "Remote_CHROME",
                 "enterprise": "EP",
+                "resource-class": self.sizer.get_resource_class(
+                    size, build_config.architecture
+                ),
                 "filterStatement": ui_filter,
                 "requires": build_jobs,
                 "rta-branch": rta_branch,

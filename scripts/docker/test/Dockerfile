@@ -1,11 +1,11 @@
 FROM ubuntu:24.04
-MAINTAINER hackers@arango.ai
+LABEL org.opencontainers.image.authors=hackers@arango.ai
 
 ARG arch
 ARG CLANG_VERSION=19
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y software-properties-common net-tools gnupg2 wget && \
+    apt-get install -y software-properties-common net-tools gnupg2 wget bzip2 && \
     apt-get update && \
     apt-get upgrade -y
 
@@ -26,7 +26,7 @@ RUN apt-get update && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install psutil py7zr --break-system-packages
+RUN pip3 install awscli psutil py7zr --break-system-packages
 
 RUN if [ "$arch" = "amd64" ]; then \
         VERSION=$(curl -Ls https://api.github.com/repos/prometheus/prometheus/releases/latest | jq ".tag_name" | xargs | cut -c2-) && \
