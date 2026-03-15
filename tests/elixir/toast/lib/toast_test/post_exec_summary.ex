@@ -91,30 +91,38 @@ defmodule ToastTest.PostExecSummary do
   # --- Timeouts ---
 
   defp print_issue(:timeout, issue, counter, colors) do
-    %{detail: %{reason: reason, servers: servers}} = issue
+    %{detail: %{source: source, reason: reason, servers: servers}} = issue
 
-    server_count = length(servers)
-    server_word = if server_count == 1, do: "server", else: "servers"
+    label = timeout_source_label(source)
+    IO.puts("\n  #{colorize("[#{label}] #{reason}", :red, colors)}")
 
-    IO.puts(
-      "\n  #{colorize("#{reason} \u2014 killed #{server_count} #{server_word}:", :red, colors)}"
-    )
+    if servers != [] do
+      server_count = length(servers)
+      server_word = if server_count == 1, do: "server", else: "servers"
+      IO.puts("    Aborted #{server_count} #{server_word}:")
 
-    Enum.each(servers, fn server ->
-      pid_part = if server.os_pid, do: " (PID #{server.os_pid})", else: ""
-      IO.puts("    #{colorize("#{server.server_id}#{pid_part}", :cyan, colors)}")
+      Enum.each(servers, fn server ->
+        pid_part = if server.os_pid, do: " (PID #{server.os_pid})", else: ""
+        IO.puts("    #{colorize("#{server.server_id}#{pid_part}", :cyan, colors)}")
 
-      if server.log_file do
-        IO.puts(IO.ANSI.format([:blue, "      Log: #{server.log_file}", :reset]))
-      end
+        if server.log_file do
+          IO.puts(IO.ANSI.format([:blue, "      Log: #{server.log_file}", :reset]))
+        end
 
-      if server[:coredump] do
-        IO.puts(IO.ANSI.format([:blue, "      Coredump: #{server.coredump}", :reset]))
-      end
-    end)
+        if server[:coredump] do
+          IO.puts(IO.ANSI.format([:blue, "      Coredump: #{server.coredump}", :reset]))
+        end
+      end)
+    end
 
     counter + 1
   end
+
+  defp timeout_source_label(:startup_timeout), do: "Startup Timeout"
+  defp timeout_source_label(:shutdown_timeout), do: "Shutdown Timeout"
+  defp timeout_source_label(:test_timeout), do: "Test Timeout"
+  defp timeout_source_label(:global_timeout), do: "Global Timeout"
+  defp timeout_source_label(other), do: "Timeout: #{other}"
 
   # --- Crash details ---
 

@@ -76,12 +76,21 @@ defmodule Toast.Deployment.Controller do
 
   @spec deploy(GenServer.server(), timeout()) :: :ok | {:error, term()}
   def deploy(server, timeout \\ 120_000) do
-    GenServer.call(server, {:deploy, timeout}, timeout + 5_000)
+    # Use :infinity because on failure the error cleanup (abort_all_servers +
+    # rollback) can take significantly longer than the deploy timeout itself.
+    # Internal timeouts (health check deadlines, abort waits) are all bounded.
+    GenServer.call(server, {:deploy, timeout}, :infinity)
   end
 
   @spec shutdown(GenServer.server(), timeout()) :: :ok | {:error, term()}
   def shutdown(server, timeout \\ 60_000) do
-    GenServer.call(server, {:shutdown, timeout}, timeout + 5_000)
+    # Use :infinity because the actual shutdown time depends on mode-specific
+    # factors (number of sequential phases, escalation cascades) that the caller
+    # can't predict. The controller has comprehensive internal timeout management:
+    # per-phase deadlines, Task.async_stream timeouts, and ServerProcess
+    # escalation timers — all bounded. Deployment.stop/2 catches :exit if the
+    # controller process dies.
+    GenServer.call(server, {:shutdown, timeout}, :infinity)
   end
 
   @doc """

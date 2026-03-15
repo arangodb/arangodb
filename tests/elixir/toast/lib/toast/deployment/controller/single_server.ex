@@ -27,25 +27,13 @@ defmodule Toast.Deployment.Controller.SingleServer do
          {:ok, launch_spec} <- Factory.build_single_server(state.config, id, port),
          state = apply_launch_spec(state, id, launch_spec),
          {:ok, server_pid} <- start_server_process(launch_spec),
-         {:ok, state} <- launch_and_notify(state, id, server_pid),
-         :ok <- wait_for_ready(state, id, timeout),
-         {:ok, monitor_pid} <-
-           Helpers.start_single_health_monitor(id, state.servers[id].endpoint) do
-      Logger.info("Deployment #{id} ready at #{state.servers[id].endpoint}")
-
-      state =
-        Helpers.update_server(state, id,
-          health_monitor: monitor_pid,
-          operational_state: :running
-        )
-
-      {:ok, %{state | status: :ready}}
+         {:ok, state} <- launch_and_notify(state, id, server_pid) do
+      wait_and_finalize(state, id, timeout)
     else
       {:error, reason} ->
+        # Pre-launch failure: no OS process to abort, just rollback GenServer.
         Logger.error("Deploy failed for #{id}: #{inspect(reason)}")
-        Helpers.abort_all_servers(state)
-        failed_state = rollback(state, reason)
-        {:error, reason, failed_state}
+        {:error, reason, rollback(state, reason)}
     end
   end
 
@@ -106,6 +94,29 @@ defmodule Toast.Deployment.Controller.SingleServer do
     }
   end
 
+  # --- Deploy failure handling ---
+
+  # State here has server_pid from launch_and_notify, so
+  # abort_all_servers in the else clause can reach the server process.
+  defp wait_and_finalize(state, id, timeout) do
+    with :ok <- wait_for_ready(state, id, timeout),
+         {:ok, monitor_pid} <-
+           Helpers.start_single_health_monitor(id, state.servers[id].endpoint) do
+      Logger.info("Deployment #{id} ready at #{state.servers[id].endpoint}")
+
+      state =
+        Helpers.update_server(state, id,
+          health_monitor: monitor_pid,
+          operational_state: :running
+        )
+
+      {:ok, %{state | status: :ready}}
+    else
+      {:error, reason} ->
+        Helpers.handle_deploy_failure(state, reason, &rollback/2)
+    end
+  end
+
   # --- Private helpers ---
 
   defp init_server_port(state, id, port) do
@@ -156,14 +167,16 @@ defmodule Toast.Deployment.Controller.SingleServer do
     Logger.debug("Cleaning up #{state.id}")
     Helpers.stop_all_health_monitors(state)
 
-    for {server_id, server} <- state.servers do
-      Helpers.stop_server_process(state, server_id, timeout)
+    escalated =
+      for {server_id, _server} <- state.servers do
+        Helpers.stop_server_process(state, server_id, timeout, on_event: state.on_event)
+      end
+      |> Enum.flat_map(fn
+        {:escalated, info} -> [info]
+        _ -> []
+      end)
 
-      ServerLifecycle.notify_event(
-        state.on_event,
-        {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()}
-      )
-    end
+    Helpers.record_shutdown_escalations(state.id, escalated)
 
     %{state | status: :stopped, servers: Helpers.clear_server_pids(state.servers)}
   end
@@ -173,7 +186,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
     Helpers.stop_all_health_monitors(state)
 
     for {server_id, _server} <- state.servers do
-      Helpers.stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
+      Helpers.stop_server_process(state, server_id, state.config.shutdown_timeout)
     end
 
     %{

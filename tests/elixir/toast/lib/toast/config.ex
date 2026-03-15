@@ -38,6 +38,7 @@ defmodule Toast.Config do
 
   @default_result_dir "toast-results"
 
+  # all timeouts are in milliseconds
   defstruct build_dir: nil,
             work_dir: nil,
             result_dir: @default_result_dir,

@@ -22,6 +22,10 @@ defmodule Toast.Process.ServerProcess do
   @sigstop 19
   @sigcont 18
 
+  # Escalation chain waits after SIGTERM times out
+  @abort_wait 5_000
+  @kill_wait 5_000
+
   # --- Types ---
 
   @type server_id :: String.t()
@@ -37,7 +41,16 @@ defmodule Toast.Process.ServerProcess do
           name: GenServer.name()
         ]
 
-  @type status :: :starting | :running | :stopping | :stopped | :crashed | :paused | :killed
+  @type status ::
+          :starting
+          | :running
+          | :stopping
+          | :aborting
+          | :killing
+          | :stopped
+          | :crashed
+          | :paused
+          | :killed
 
   @type crash_info :: Toast.Process.CrashInfo.t()
 
@@ -70,15 +83,22 @@ defmodule Toast.Process.ServerProcess do
     GenServer.call(server, :launch)
   end
 
+  # GenServer.call headroom: SIGABRT wait + SIGKILL wait + buffer
+  @escalation_overhead @abort_wait + @kill_wait + 5_000
+
+  @doc "Maximum time the escalation chain (SIGABRT → SIGKILL) can add beyond the SIGTERM timeout."
+  @spec escalation_overhead() :: pos_integer()
+  def escalation_overhead, do: @escalation_overhead
+
   @doc """
   Gracefully stop the OS process.
 
   Sends SIGTERM and waits up to `timeout` ms for the process to exit.
-  If it doesn't exit in time, erlexec escalates to SIGKILL.
+  If it doesn't exit in time, escalates to SIGABRT, then SIGKILL.
   """
-  @spec stop(GenServer.server(), timeout()) :: :ok | {:error, term()}
+  @spec stop(GenServer.server(), timeout()) :: :ok | :escalated | {:error, term()}
   def stop(server, timeout \\ @default_stop_timeout) do
-    GenServer.call(server, {:stop, timeout}, timeout + 5_000)
+    GenServer.call(server, {:stop, timeout}, timeout + @escalation_overhead)
   end
 
   @doc """
@@ -283,25 +303,25 @@ defmodule Toast.Process.ServerProcess do
 
     if state.os_pid, do: :exec.kill(state.os_pid, :sigabrt)
 
-    timer_ref = Process.send_after(self(), :abort_timeout, 5_000)
-    {:noreply, %{state | stop_timer: timer_ref}}
+    timer_ref = Process.send_after(self(), :abort_timeout, @abort_wait)
+    {:noreply, %{state | stop_timer: timer_ref, status: :aborting}}
   end
 
-  def handle_info(:abort_timeout, %{status: :stopping} = state) do
+  def handle_info(:abort_timeout, %{status: :aborting} = state) do
     Logger.warning(
       "#{state.id} (pid=#{state.os_pid}) did not exit after SIGABRT, sending SIGKILL"
     )
 
     if state.os_pid, do: :exec.kill(state.os_pid, @sigkill)
 
-    timer_ref = Process.send_after(self(), :kill_timeout, 5_000)
-    {:noreply, %{state | stop_timer: timer_ref}}
+    timer_ref = Process.send_after(self(), :kill_timeout, @kill_wait)
+    {:noreply, %{state | stop_timer: timer_ref, status: :killing}}
   end
 
-  def handle_info(:kill_timeout, %{status: :stopping} = state) do
+  def handle_info(:kill_timeout, %{status: :killing} = state) do
     Logger.error("#{state.id} (pid=#{state.os_pid}) did not exit after SIGKILL, giving up")
 
-    if state.stop_from, do: GenServer.reply(state.stop_from, :ok)
+    if state.stop_from, do: GenServer.reply(state.stop_from, :escalated)
 
     {:noreply, reset_process_state(state, :stopped)}
   end
@@ -328,7 +348,7 @@ defmodule Toast.Process.ServerProcess do
 
   @impl true
   def terminate(_reason, %{exec_pid: pid, status: status})
-      when pid != nil and status in [:running, :stopping, :paused] do
+      when pid != nil and status in [:running, :stopping, :aborting, :killing, :paused] do
     :exec.stop(pid)
   catch
     :exit, _ -> :ok
@@ -387,6 +407,11 @@ defmodule Toast.Process.ServerProcess do
       :stopping ->
         Logger.debug("#{state.id} exited during stop (status=#{exit_status})")
         if state.stop_from, do: GenServer.reply(state.stop_from, :ok)
+        reset_process_state(state, :stopped)
+
+      status when status in [:aborting, :killing] ->
+        Logger.debug("#{state.id} exited during stop after escalation (status=#{exit_status})")
+        if state.stop_from, do: GenServer.reply(state.stop_from, :escalated)
         reset_process_state(state, :stopped)
 
       :killed ->

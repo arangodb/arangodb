@@ -136,9 +136,37 @@ defmodule Toast.Process.ServerProcessTest do
       os_pid = ServerProcess.os_pid(pid)
       assert os_process_alive?(os_pid)
 
-      # erlexec handles SIGTERM → SIGKILL escalation (kill_timeout: 5s)
-      # Our stop timeout is a safety net on top of that.
-      assert ServerProcess.stop(pid, 10_000) == :ok
+      # Give the bash trap a moment to fully set up
+      Process.sleep(200)
+      assert os_process_alive?(os_pid), "process died before stop was called"
+
+      # The unkillable server traps SIGTERM but not SIGABRT, so escalation
+      # (SIGABRT → SIGKILL) is required.
+      assert ServerProcess.stop(pid, 500) == :escalated
+      assert ServerProcess.status(pid) == :stopped
+
+      Process.sleep(100)
+      refute os_process_alive?(os_pid)
+    end
+  end
+
+  describe "full escalation chain (SIGTERM → SIGABRT → SIGKILL)" do
+    @fully_unkillable_server Path.expand("../support/fully_unkillable_server.sh", __DIR__)
+
+    test "escalates through all three signals when both SIGTERM and SIGABRT are ignored", %{
+      id: id
+    } do
+      pid = start_server(id, executable: @fully_unkillable_server, args: [])
+      ServerProcess.launch(pid)
+      os_pid = ServerProcess.os_pid(pid)
+
+      # Give the bash traps a moment to fully set up
+      Process.sleep(200)
+      assert os_process_alive?(os_pid), "process died before stop was called"
+
+      # Both SIGTERM and SIGABRT are trapped, so the full chain runs:
+      # SIGTERM (500ms timeout) → SIGABRT (5s timeout) → SIGKILL
+      assert ServerProcess.stop(pid, 500) == :escalated
       assert ServerProcess.status(pid) == :stopped
 
       Process.sleep(100)

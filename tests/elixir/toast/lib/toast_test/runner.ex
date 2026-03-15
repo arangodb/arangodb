@@ -156,6 +156,7 @@ defmodule ToastTest.Runner do
     Logger.info("Running suite #{inspect(suite_module)} (mode=#{mode})")
     deployment_opts = build_deployment_opts(config, global_opts)
     toast_config = Toast.Config.load(deployment_opts)
+    Logger.debug("Toast config: #{inspect(toast_config)}")
     callback_opts = Keyword.take(deployment_opts, [:on_crash, :on_event])
 
     case Toast.Deployment.start(mode, toast_config, callback_opts) do
@@ -171,7 +172,7 @@ defmodule ToastTest.Runner do
         )
 
       {:error, reason} ->
-        handle_deployment_failure(suite_module, test_modules, reason, global_opts)
+        handle_deployment_failure(suite_module, test_modules, reason, global_opts, toast_config)
     end
   end
 
@@ -207,14 +208,18 @@ defmodule ToastTest.Runner do
     %{stats: stats, suite_result: suite_result}
   end
 
-  defp handle_deployment_failure(suite_module, test_modules, reason, global_opts) do
+  defp handle_deployment_failure(suite_module, test_modules, reason, global_opts, toast_config) do
     Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
     ToastTest.Abort.abort!({:deploy_failed, "Deployment failed: #{inspect(reason)}"})
 
     {stats, test_data} =
       mark_all_skipped_stats(test_modules, reason, global_opts, suite_module)
 
-    suite_result = ToastTest.SuiteResult.build(test_data, [])
+    timeout_kills = ToastTest.ProcessHistory.timeout_kills()
+    issues = ToastTest.Attribution.run(test_data, %{}, [], timeout_kills: timeout_kills)
+    suite_result = ToastTest.SuiteResult.build(test_data, issues)
+    ToastTest.SuiteResult.write_all(suite_result, toast_config.result_dir)
+    print_post_exec_summary(suite_result)
 
     ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}
@@ -840,8 +845,9 @@ defmodule ToastTest.Runner do
   defp spawn_test(config, test, context) do
     parent_pid = self()
     timeout = get_timeout(config, test.tags)
+    start_time = System.monotonic_time()
     {test_pid, test_ref} = spawn_test_monitor(config, test, parent_pid, context)
-    test = receive_test_reply(test, test_pid, test_ref, timeout)
+    test = receive_test_reply(test, test_pid, test_ref, timeout, start_time)
     exec_on_exit(test, test_pid, timeout)
   end
 
@@ -898,33 +904,39 @@ defmodule ToastTest.Runner do
     end
   end
 
-  defp receive_test_reply(test, test_pid, test_ref, timeout) do
+  defp receive_test_reply(test, test_pid, test_ref, timeout, start_time) do
     receive do
       {^test_pid, :test_finished, test} ->
         Process.demonitor(test_ref, [:flush])
         test
 
       {:DOWN, ^test_ref, :process, ^test_pid, error} ->
-        %{test | state: failed({:EXIT, test_pid}, error, [])}
+        elapsed_us = elapsed_us(start_time)
+        %{test | state: failed({:EXIT, test_pid}, error, []), time: elapsed_us}
     after
       timeout ->
         case Process.info(test_pid, :current_stacktrace) do
           {:current_stacktrace, stacktrace} ->
             Process.demonitor(test_ref, [:flush])
             Process.exit(test_pid, :kill)
+            elapsed_us = elapsed_us(start_time)
 
             exception =
-              ExUnit.TimeoutError.exception(
+              ToastTest.TimeoutError.exception(
                 timeout: timeout,
                 type: Atom.to_string(test.tags.test_type)
               )
 
-            %{test | state: failed(:error, exception, stacktrace)}
+            %{test | state: failed(:error, exception, stacktrace), time: elapsed_us}
 
           nil ->
-            receive_test_reply(test, test_pid, test_ref, timeout)
+            receive_test_reply(test, test_pid, test_ref, timeout, start_time)
         end
     end
+  end
+
+  defp elapsed_us(start_time) do
+    System.convert_time_unit(System.monotonic_time() - start_time, :native, :microsecond)
   end
 
   defp exec_test_setup(%ExUnit.Test{module: module} = test, context) do
@@ -1017,7 +1029,7 @@ defmodule ToastTest.Runner do
 
   defp check_suite_deadline!(%{suite_deadline: deadline}) do
     if System.monotonic_time(:millisecond) >= deadline do
-      abort_with_timeout(:suite_timeout, "Suite timeout exceeded")
+      abort_with_timeout(:test_timeout, "Suite timeout exceeded")
     end
   end
 
@@ -1030,9 +1042,8 @@ defmodule ToastTest.Runner do
   end
 
   defp abort_with_timeout(source, reason) do
-    killed_servers = Toast.Deployment.abort_all()
-    Logger.warning("#{reason} — aborting suite, killed #{length(killed_servers)} server(s)")
-    ToastTest.ProcessHistory.record_timeout_kill(source, reason, killed_servers)
+    Logger.warning("#{reason} — aborting suite")
+    ToastTest.ProcessHistory.record_timeout_kill(source, reason, [])
     ToastTest.Abort.abort!({:timeout, reason})
   end
 

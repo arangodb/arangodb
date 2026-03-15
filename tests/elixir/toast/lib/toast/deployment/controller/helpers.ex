@@ -52,15 +52,33 @@ defmodule Toast.Deployment.Controller.Helpers do
     end
   end
 
-  @spec stop_server_process(Toast.Deployment.Controller.State.t(), String.t(), timeout()) :: :ok
-  def stop_server_process(state, server_id, timeout) do
+  @spec stop_server_process(
+          Toast.Deployment.Controller.State.t(),
+          String.t(),
+          timeout(),
+          keyword()
+        ) ::
+          :ok | {:escalated, map()}
+  def stop_server_process(state, server_id, timeout, opts \\ []) do
     Logger.debug("Stopping server process for #{server_id}")
 
     case state.servers[server_id] do
-      %{server_pid: pid} when pid != nil ->
-        ServerProcess.stop(pid, timeout)
+      %{server_pid: pid} = server when pid != nil ->
+        result = ServerProcess.stop(pid, timeout)
         DynamicSupervisor.terminate_child(ProcessSupervisor, pid)
-        :ok
+
+        ServerLifecycle.notify_event(
+          opts[:on_event],
+          {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()}
+        )
+
+        case result do
+          :escalated ->
+            {:escalated, %{server_id: server_id, os_pid: server.pid, log_file: server.log_file}}
+
+          _ ->
+            :ok
+        end
 
       _ ->
         :ok
@@ -101,28 +119,30 @@ defmodule Toast.Deployment.Controller.Helpers do
   Must be called from the Controller process (the listener for crash
   notifications).
   """
-  @spec abort_all_servers(Toast.Deployment.Controller.State.t()) :: :ok
+  @spec abort_all_servers(Toast.Deployment.Controller.State.t()) :: [map()]
   def abort_all_servers(state) do
     servers_with_pids =
       Enum.filter(state.servers, fn {_id, server} -> server.server_pid != nil end)
 
     Logger.info("Aborting #{length(servers_with_pids)} server(s) for crash backtrace")
 
-    aborted_ids =
+    aborted =
       Enum.flat_map(servers_with_pids, fn {server_id, server} ->
+        os_pid = ServerProcess.os_pid(server.server_pid)
+
         case ServerProcess.send_signal(server.server_pid, :sigabrt) do
           :ok ->
-            Logger.info("Sent SIGABRT to #{server_id} for crash backtrace")
-            [server_id]
+            Logger.info("Sent SIGABRT to #{server_id} (os_pid=#{os_pid}) for crash backtrace")
+            [%{server_id: server_id, os_pid: os_pid, log_file: server.log_file}]
 
           {:error, :not_running} ->
             []
         end
       end)
 
-    await_crashes(Map.new(aborted_ids, &{&1, true}), @abort_timeout)
+    await_crashes(Map.new(aborted, &{&1.server_id, true}), @abort_timeout)
     Logger.debug("All abort crash notifications received")
-    :ok
+    aborted
   end
 
   defp await_crashes(remaining, _timeout) when map_size(remaining) == 0, do: :ok
@@ -143,6 +163,40 @@ defmodule Toast.Deployment.Controller.Helpers do
     after
       timeout -> :ok
     end
+  end
+
+  @spec handle_deploy_failure(
+          Toast.Deployment.Controller.State.t(),
+          term(),
+          (Toast.Deployment.Controller.State.t(), term() ->
+             Toast.Deployment.Controller.State.t())
+        ) :: {:error, term(), Toast.Deployment.Controller.State.t()}
+  def handle_deploy_failure(state, reason, rollback_fn) do
+    Logger.error("Deploy failed for #{state.id}: #{inspect(reason)}")
+    killed_servers = abort_all_servers(state)
+
+    if reason == :timeout do
+      ToastTest.ProcessHistory.record_timeout_kill(
+        :startup_timeout,
+        "Startup timeout — deployment did not become ready in time",
+        killed_servers
+      )
+    end
+
+    {:error, reason, rollback_fn.(state, reason)}
+  end
+
+  @spec record_shutdown_escalations(String.t(), [map()]) :: :ok
+  def record_shutdown_escalations(_id, []), do: :ok
+
+  def record_shutdown_escalations(id, escalated) do
+    Logger.warning("#{id}: #{length(escalated)} server(s) required shutdown escalation")
+
+    ToastTest.ProcessHistory.record_timeout_kill(
+      :shutdown_timeout,
+      "Shutdown timeout — server(s) did not respond to SIGTERM",
+      escalated
+    )
   end
 
   @spec remaining_ms(integer()) :: non_neg_integer()

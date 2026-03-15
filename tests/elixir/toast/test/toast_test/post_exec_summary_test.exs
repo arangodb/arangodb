@@ -199,14 +199,14 @@ defmodule ToastTest.PostExecSummaryTest do
     assert output =~ "Log: /tmp/arangodb/agent1.log"
   end
 
-  test "prints timeout with killed servers, log paths, and coredump paths" do
+  test "prints startup timeout with aborted servers, log paths, and coredump paths" do
     issue = %{
       type: :timeout,
       scope: :suite,
       confidence: :high,
       detail: %{
-        source: :suite_timeout,
-        reason: "Suite timeout exceeded",
+        source: :startup_timeout,
+        reason: "Startup timeout — deployment did not become ready in time",
         timestamp: ~U[2026-03-09 10:05:00Z],
         servers: [
           %{
@@ -229,8 +229,9 @@ defmodule ToastTest.PostExecSummaryTest do
     output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
 
     assert output =~ "TIMEOUTS (1)"
-    assert output =~ "Suite timeout exceeded"
-    assert output =~ "killed 3 servers:"
+    assert output =~ "[Startup Timeout]"
+    assert output =~ "Startup timeout"
+    assert output =~ "Aborted 3 servers:"
 
     assert output =~ "agent1 (PID 22788)"
     assert output =~ "Log: /tmp/agent1.log"
@@ -244,14 +245,34 @@ defmodule ToastTest.PostExecSummaryTest do
     assert output =~ "Coredump: /tmp/core.22792"
   end
 
-  test "prints timeout with single server" do
+  test "prints test timeout without server list" do
     issue = %{
       type: :timeout,
       scope: :suite,
       confidence: :high,
       detail: %{
-        source: :suite_timeout,
+        source: :test_timeout,
         reason: "Suite timeout exceeded",
+        timestamp: ~U[2026-03-09 10:05:00Z],
+        servers: []
+      }
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+
+    assert output =~ "[Test Timeout]"
+    assert output =~ "Suite timeout exceeded"
+    refute output =~ "Aborted"
+  end
+
+  test "prints shutdown timeout with escalated server" do
+    issue = %{
+      type: :timeout,
+      scope: :suite,
+      confidence: :high,
+      detail: %{
+        source: :shutdown_timeout,
+        reason: "Shutdown timeout — server(s) did not respond to SIGTERM",
         timestamp: ~U[2026-03-09 10:05:00Z],
         servers: [
           %{server_id: "single", os_pid: 12345, log_file: "/tmp/single.log", coredump: nil}
@@ -261,7 +282,8 @@ defmodule ToastTest.PostExecSummaryTest do
 
     output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
 
-    assert output =~ "killed 1 server:"
+    assert output =~ "[Shutdown Timeout]"
+    assert output =~ "Aborted 1 server:"
     assert output =~ "single (PID 12345)"
   end
 
@@ -275,10 +297,10 @@ defmodule ToastTest.PostExecSummaryTest do
         scope: :suite,
         confidence: :high,
         detail: %{
-          source: :suite_timeout,
+          source: :test_timeout,
           reason: "Suite timeout exceeded",
           timestamp: ~U[2026-03-09 10:05:00Z],
-          servers: [%{server_id: "single", os_pid: 1234, log_file: nil, coredump: nil}]
+          servers: []
         }
       }
     ]

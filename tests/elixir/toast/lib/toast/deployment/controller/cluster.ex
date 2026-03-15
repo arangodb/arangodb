@@ -10,6 +10,10 @@ defmodule Toast.Deployment.Controller.Cluster do
   alias Toast.Diagnostics.AgencyDump
   alias Toast.Process.ServerProcess
 
+  # Buffer for Task.async_stream to account for scheduling/collection overhead
+  # beyond the per-task timeout.
+  @task_stream_buffer 5_000
+
   @impl true
   def init_servers(_id), do: %{}
 
@@ -32,23 +36,13 @@ defmodule Toast.Deployment.Controller.Cluster do
 
     with {:ok, topology} <- Factory.build_cluster(state.config, state.id),
          state = init_servers_from_topology(state, topology),
-         {:ok, state} <- start_all_server_processes(state, topology),
-         {:ok, state} <- launch_agents(state, deadline),
-         :ok <- wait_for_agency(state, deadline),
-         {:ok, state} <- launch_dbservers(state, deadline),
-         {:ok, state} <- launch_coordinators(state, deadline),
-         {:ok, state} <- start_all_health_monitors(state) do
-      state = fetch_cluster_id_mapping(state)
-      servers = Map.new(state.servers, fn {id, s} -> {id, %{s | operational_state: :running}} end)
-      state = %{state | servers: servers}
-      Logger.info("Cluster #{state.id} ready")
-      {:ok, %{state | status: :ready}}
+         {:ok, state} <- start_all_server_processes(state, topology) do
+      launch_and_finalize(state, deadline)
     else
       {:error, reason} ->
+        # Pre-launch failure: no OS processes to abort, just rollback GenServers.
         Logger.error("Deploy failed for #{state.id}: #{inspect(reason)}")
-        Helpers.abort_all_servers(state)
-        failed_state = rollback(state, reason)
-        {:error, reason, failed_state}
+        {:error, reason, rollback(state, reason)}
     end
   end
 
@@ -177,6 +171,27 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   def handle_call_extra(_msg, _from, _state), do: :not_handled
 
+  # --- Deploy failure handling ---
+
+  # State here has server_pids from start_all_server_processes, so
+  # abort_all_servers in the else clause can reach all server processes.
+  defp launch_and_finalize(state, deadline) do
+    with {:ok, state} <- launch_agents(state, deadline),
+         :ok <- wait_for_agency(state, deadline),
+         {:ok, state} <- launch_dbservers(state, deadline),
+         {:ok, state} <- launch_coordinators(state, deadline),
+         {:ok, state} <- start_all_health_monitors(state) do
+      state = fetch_cluster_id_mapping(state)
+      servers = Map.new(state.servers, fn {id, s} -> {id, %{s | operational_state: :running}} end)
+      state = %{state | servers: servers}
+      Logger.info("Cluster #{state.id} ready")
+      {:ok, %{state | status: :ready}}
+    else
+      {:error, reason} ->
+        Helpers.handle_deploy_failure(state, reason, &rollback/2)
+    end
+  end
+
   # --- Deploy helpers ---
 
   defp init_servers_from_topology(state, topology) do
@@ -257,7 +272,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   defp launch_servers(state, server_ids, opts) do
     health_check? = Keyword.get(opts, :health_check, false)
-    timeout = Keyword.get(opts, :timeout, 60_000)
+    timeout = Keyword.fetch!(opts, :timeout)
     count = length(server_ids)
     on_event = state.on_event
 
@@ -267,7 +282,7 @@ defmodule Toast.Deployment.Controller.Cluster do
         &launch_single_server(state.servers[&1], &1, health_check?, timeout, on_event),
         ordered: false,
         max_concurrency: count,
-        timeout: timeout + 5_000
+        timeout: timeout + @task_stream_buffer
       )
       |> Enum.to_list()
 
@@ -387,45 +402,38 @@ defmodule Toast.Deployment.Controller.Cluster do
     deadline = System.monotonic_time(:millisecond) + timeout
 
     Helpers.stop_all_health_monitors(state)
-    Logger.debug("#{state.id}: stopping coordinators")
-    stop_servers(state.mode_state.coordinators, state, Helpers.remaining_ms(deadline))
-    Logger.debug("#{state.id}: stopping dbservers")
-    stop_servers(state.mode_state.dbservers, state, Helpers.remaining_ms(deadline))
-    Logger.debug("#{state.id}: stopping agents")
-    stop_servers(state.mode_state.agents, state, Helpers.remaining_ms(deadline))
+
+    escalated =
+      Enum.flat_map(
+        [
+          {"coordinators", state.mode_state.coordinators},
+          {"dbservers", state.mode_state.dbservers},
+          {"agents", state.mode_state.agents}
+        ],
+        fn {label, ids} ->
+          Logger.debug("#{state.id}: stopping #{label}")
+          stop_servers(ids, state, Helpers.remaining_ms(deadline))
+        end
+      )
+
+    Helpers.record_shutdown_escalations(state.id, escalated)
 
     %{state | status: :stopped, servers: Helpers.clear_server_pids(state.servers)}
   end
 
   defp stop_servers(server_ids, state, timeout) do
-    on_event = state.on_event
+    opts = [on_event: state.on_event]
 
     Task.async_stream(
       server_ids,
-      fn server_id ->
-        server = state.servers[server_id]
-
-        if server.server_pid do
-          try do
-            Logger.debug("#{server_id}: stopping server process")
-            ServerProcess.stop(server.server_pid, timeout)
-            DynamicSupervisor.terminate_child(Toast.Process.Supervisor, server.server_pid)
-            Logger.debug("#{server_id}: server process stopped")
-
-            ServerLifecycle.notify_event(
-              on_event,
-              {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()}
-            )
-          catch
-            :exit, reason ->
-              Logger.debug("#{server_id}: stop exited (#{inspect(reason)})")
-          end
-        end
-      end,
+      &Helpers.stop_server_process(state, &1, timeout, opts),
       ordered: false,
-      timeout: timeout + 5_000
+      timeout: timeout + ServerProcess.escalation_overhead() + @task_stream_buffer
     )
-    |> Stream.run()
+    |> Enum.flat_map(fn
+      {:ok, {:escalated, info}} -> [info]
+      _ -> []
+    end)
   end
 
   # --- Rollback ---
@@ -435,7 +443,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     Helpers.stop_all_health_monitors(state)
     ms = state.mode_state
     all_ids = ms.agents ++ ms.dbservers ++ ms.coordinators
-    stop_servers(all_ids, state, 5_000 * state.config.timeout_factor)
+    stop_servers(all_ids, state, state.config.shutdown_timeout)
     Logger.debug("Rollback complete for #{state.id}")
 
     %{
