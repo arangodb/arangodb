@@ -377,7 +377,9 @@ defmodule Toast.Config do
   end
 
   defp default_work_dir do
-    Path.join([System.tmp_dir!(), "toast", "run_#{System.unique_integer([:positive])}"])
+    ts = DateTime.utc_now(:second) |> DateTime.to_iso8601()
+    suffix = :crypto.strong_rand_bytes(2) |> Base.encode16()
+    Path.join([System.tmp_dir!(), "toast", "#{ts}_#{suffix}"])
   end
 
   defp env(name), do: System.get_env(name)

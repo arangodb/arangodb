@@ -68,7 +68,7 @@ defmodule Toast.ConfigTest do
       config = Config.load()
 
       assert String.starts_with?(config.work_dir, System.tmp_dir!())
-      assert config.work_dir =~ ~r/toast\/run_\d+$/
+      assert config.work_dir =~ ~r/toast\/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z_[0-9A-F]{4}$/
     end
   end
 
