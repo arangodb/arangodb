@@ -10,7 +10,9 @@ defmodule ToastTest.Interactive do
   def run(module_or_path, opts \\ [])
 
   def run(path, opts) when is_binary(path) do
-    [{module, _}] = Code.compile_file(path)
+    ensure_ex_unit_started()
+    compile_suite_deps(path)
+    [{module, _}] = recompile_file(path)
     run(module, opts)
   end
 
@@ -148,5 +150,37 @@ defmodule ToastTest.Interactive do
     passed = Enum.count(results, &(&1.outcome == :passed))
     failed = Enum.count(results, &(&1.outcome == :failed))
     IO.puts("#{passed} passed, #{failed} failed")
+  end
+
+  defp ensure_ex_unit_started do
+    case Application.ensure_all_started(:ex_unit) do
+      {:ok, started} when started != [] -> ExUnit.start(autorun: false)
+      {:ok, _} -> :ok
+    end
+  end
+
+  defp recompile_file(path) do
+    prev = Code.compiler_options()[:ignore_module_conflict]
+    Code.compiler_options(ignore_module_conflict: true)
+
+    try do
+      Code.compile_file(path)
+    after
+      Code.compiler_options(ignore_module_conflict: prev)
+    end
+  end
+
+  # Compile suite.ex and helper .ex files in the same directory as the test file.
+  # This mirrors what `mix toast` does via discover_and_compile_suites + compile_helpers.
+  defp compile_suite_deps(test_path) do
+    suite_dir = Path.dirname(test_path)
+
+    ex_files =
+      suite_dir
+      |> Path.join("*.ex")
+      |> Path.wildcard()
+      |> Enum.sort_by(&(&1 |> Path.basename() != "suite.ex"))
+
+    Enum.each(ex_files, &Code.require_file/1)
   end
 end
