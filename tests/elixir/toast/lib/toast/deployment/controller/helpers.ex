@@ -87,8 +87,10 @@ defmodule Toast.Deployment.Controller.Helpers do
     :exit, _ -> :ok
   end
 
-  @spec spec_to_server_opts(map()) :: keyword()
-  def spec_to_server_opts(spec) do
+  @spec spec_to_server_opts(map(), Toast.Config.t()) :: keyword()
+  def spec_to_server_opts(spec, config) do
+    handler = if config.show_server_logs, do: &ServerLifecycle.print_server_output/2
+
     [
       id: spec.id,
       executable: spec.executable,
@@ -96,7 +98,7 @@ defmodule Toast.Deployment.Controller.Helpers do
       env: spec.env,
       working_dir: spec.working_dir,
       listener: self(),
-      output_handler: &ServerLifecycle.print_server_output/2
+      output_handler: handler
     ]
   end
 

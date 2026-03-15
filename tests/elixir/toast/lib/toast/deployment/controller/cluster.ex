@@ -236,7 +236,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     all_specs = topology.agents ++ topology.dbservers ++ topology.coordinators
 
     Enum.reduce_while(all_specs, {:ok, state}, fn spec, {:ok, acc} ->
-      case Toast.Process.Supervisor.start_server(Helpers.spec_to_server_opts(spec)) do
+      case Toast.Process.Supervisor.start_server(Helpers.spec_to_server_opts(spec, state.config)) do
         {:ok, pid} ->
           updated_server = %{acc.servers[spec.id] | server_pid: pid, launch_spec: spec}
           {:cont, {:ok, %{acc | servers: Map.put(acc.servers, spec.id, updated_server)}}}

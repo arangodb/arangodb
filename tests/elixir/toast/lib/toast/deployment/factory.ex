@@ -220,9 +220,13 @@ defmodule Toast.Deployment.Factory do
   defp role_config_args(config, :agent), do: config.agent_args
 
   defp build_server_args(config) do
-    # Use "+" (stderr) for visible output. erlexec defaults all streams to /dev/null,
-    # but ServerProcess explicitly captures stderr via pipe and forwards it to IO.
-    log_output = if config.show_server_logs, do: "+", else: "+;all=error"
-    Map.merge(%{"log.output" => log_output}, config.server_args)
+    base = config.server_args
+
+    if config.show_server_logs do
+      # Add stderr log appender — ServerProcess captures stderr and prints it
+      Map.put_new(base, "log.output", "+")
+    else
+      base
+    end
   end
 end

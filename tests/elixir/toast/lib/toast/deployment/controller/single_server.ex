@@ -26,7 +26,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
          state = init_server_port(state, id, port),
          {:ok, launch_spec} <- Factory.build_single_server(state.config, id, port),
          state = apply_launch_spec(state, id, launch_spec),
-         {:ok, server_pid} <- start_server_process(launch_spec),
+         {:ok, server_pid} <- start_server_process(launch_spec, state.config),
          {:ok, state} <- launch_and_notify(state, id, server_pid) do
       wait_and_finalize(state, id, timeout)
     else
@@ -149,8 +149,8 @@ defmodule Toast.Deployment.Controller.SingleServer do
     end
   end
 
-  defp start_server_process(launch_spec) do
-    Toast.Process.Supervisor.start_server(Helpers.spec_to_server_opts(launch_spec))
+  defp start_server_process(launch_spec, config) do
+    Toast.Process.Supervisor.start_server(Helpers.spec_to_server_opts(launch_spec, config))
   end
 
   defp wait_for_ready(state, id, timeout) do
