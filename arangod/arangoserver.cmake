@@ -157,6 +157,7 @@ add_library(arangoserver STATIC
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VectorIndexFeature.cpp
+  VectorIndex/VectorIndexBuildCoordinator.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   Sharding/ShardDistributionReporter.cpp

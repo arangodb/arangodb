@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,7 +22,8 @@
 #include "VectorIndexFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "RestServer/DatabaseFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Parameters.h"
 
@@ -30,9 +31,10 @@ namespace arangodb {
 
 VectorIndexFeature::VectorIndexFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : ApplicationFeature{server, *this},
+      _coordinator(server.getFeature<DatabaseFeature>()) {
   setOptional(false);
-  startsAfter<application_features::BasicFeaturePhaseServer>();
+  startsAfter<application_features::DatabaseFeaturePhase>();
 }
 
 void VectorIndexFeature::collectOptions(
@@ -54,6 +56,17 @@ leave the option enabled.)");
 
   options->addOldOption("--experimental-vector-index", "--vector-index");
 }
+
+void VectorIndexFeature::start() {
+  if (!isVectorIndexEnabled()) {
+    return;
+  }
+  _coordinator.start();
+}
+
+void VectorIndexFeature::beginShutdown() { _coordinator.beginShutdown(); }
+
+void VectorIndexFeature::stop() { _coordinator.stop(); }
 
 bool VectorIndexFeature::isVectorIndexEnabled() const {
   return _options.useVectorIndex;

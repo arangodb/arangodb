@@ -36,6 +36,7 @@
 #include <thread>
 
 #include "Assertions/Assert.h"
+#include "Basics/BoundedChannel.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 #include "Indexes/Index.h"
@@ -44,14 +45,18 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/iterator.h>
+#include <rocksdb/write_batch.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 
 #include "faiss/IndexFlat.h"
@@ -189,8 +194,8 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex() const {
 }
 
 std::vector<float> VectorIndexTrainer::collectTrainingDataset(
-    rocksdb::Iterator& it, rocksdb::Slice upper,
-    std::int64_t maxVectors) const {
+    rocksdb::Iterator& it, rocksdb::Slice upper, std::int64_t maxVectors,
+    std::stop_token stopToken) const {
   std::vector<float> trainingData;
   std::vector<float> input;
   input.reserve(_definition.dimension);
@@ -202,6 +207,10 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
       _shardName, _indexId, maxVectors, _definition.dimension);
 
   while (counter < maxVectors && it.Valid()) {
+    if (counter % 1000 == 0 && stopToken.stop_requested()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                     "vector training aborted");
+    }
     TRI_ASSERT(it.key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it.value().data()));
     if (auto const res =
@@ -242,12 +251,14 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
 }
 
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::train(
-    rocksdb::Iterator& it, rocksdb::Slice upper) const {
+    rocksdb::Iterator& it, rocksdb::Slice upper,
+    std::stop_token stopToken) const {
   auto faissIndex = createFaissIndex();
 
   std::int64_t trainingDataSize =
       faissIndex->cp.max_points_per_centroid * _definition.nLists;
-  auto const trainingData = collectTrainingDataset(it, upper, trainingDataSize);
+  auto const trainingData =
+      collectTrainingDataset(it, upper, trainingDataSize, stopToken);
   auto numVectors =
       static_cast<std::int64_t>(trainingData.size() / _definition.dimension);
 
@@ -270,6 +281,286 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::train(
   return faissIndex;
 }
 
+Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
+                     std::unique_ptr<rocksdb::Iterator> documentIterator,
+                     std::stop_token stopToken) {
+  auto const& definition = index.getDefinition();
+  auto const dim = definition.dimension;
+  auto const& fields = index.fields();
+  auto const hasStored = index.hasStoredValues();
+  auto const& stored = index.storedValues();
+  auto const faissIndex = index.faissIndex();
+  auto* cf = index.columnFamily();
+  auto const oid = index.objectId();
+
+  auto const shardName = index.collection().name();
+  auto const indexId = index.id().id();
+
+  struct DocumentVectors {
+    std::vector<LocalDocumentId> docIds;
+    std::vector<float> vectors;
+    std::vector<velocypack::SharedSlice> storedValues;
+  };
+
+  struct EncodedVectors {
+    std::vector<LocalDocumentId> docIds;
+    std::unique_ptr<faiss::idx_t[]> lists;
+    std::unique_ptr<uint8_t[]> codes;
+    std::vector<velocypack::SharedSlice> storedValues;
+  };
+
+  struct BlockCounters {
+    uint64_t readProduceBlocked{0};
+    uint64_t encodeProduceBlocked{0};
+    uint64_t encodeConsumeBlocked{0};
+    uint64_t writeConsumeBlocked{0};
+  } counters;
+
+  BoundedChannel<DocumentVectors> documentChannel{5};
+  BoundedChannel<EncodedVectors> encodedChannel{5};
+
+  constexpr auto numReaders = 1;
+  constexpr auto numEncoders = 8;
+  constexpr auto numWriters = 2;
+
+  constexpr auto documentPerBatch = 8000;
+
+  std::atomic<std::size_t> countBatches{0};
+  std::atomic<std::size_t> countDocuments{0};
+
+  std::atomic<bool> hasError{false};
+  Result firstError;
+
+  std::stop_callback stopCb(stopToken, [&] {
+    if (hasError.exchange(true) == false) {
+      firstError =
+          Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "ingestion aborted"};
+    }
+    documentChannel.stop();
+    encodedChannel.stop();
+  });
+
+  auto setResult = [&](Result result) {
+    if (result.fail()) {
+      if (hasError.exchange(true) == false) {
+        firstError = std::move(result);
+      }
+    }
+  };
+
+  auto errorExceptionHandler = [&](auto&& fn) noexcept {
+    try {
+      auto constexpr returnsResult = requires {
+        { fn() } -> std::convertible_to<Result>;
+      };
+
+      if constexpr (returnsResult) {
+        setResult(fn());
+      }
+      else {
+        fn();
+      }
+    } catch (basics::Exception const& e) {
+      setResult({e.code(), e.message()});
+    } catch (std::exception const& e) {
+      setResult({TRI_ERROR_INTERNAL, e.what()});
+    }
+  };
+
+  auto readDocuments = [&] {
+    static_assert(numReaders == 1,
+                  "this code is not prepared for multiple reads");
+
+    errorExceptionHandler([&] {
+      BoundedChannelProducerGuard guard(documentChannel);
+
+      auto const prepareBatch = [&] {
+        auto batch = std::make_unique<DocumentVectors>();
+        batch->docIds.reserve(documentPerBatch);
+        batch->vectors.reserve(documentPerBatch * dim);
+        if (hasStored) {
+          batch->storedValues.reserve(documentPerBatch);
+        }
+        return batch;
+      };
+
+      std::unique_ptr<DocumentVectors> batch = prepareBatch();
+      while (documentIterator->Valid() && not hasError.load()) {
+        LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
+        VPackSlice doc = RocksDBValue::data(documentIterator->value());
+        if (auto const res =
+                readDocumentVectorData(doc, fields, dim, batch->vectors);
+            res.fail()) {
+          if (res.is(TRI_ERROR_BAD_PARAMETER) && index.sparse()) {
+            documentIterator->Next();
+            continue;
+          }
+          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+        }
+        batch->docIds.push_back(docId);
+        if (hasStored) {
+          auto const extractedAttributeValues =
+              transaction::extractAttributeValues(stored, doc, true);
+          batch->storedValues.push_back(
+              extractedAttributeValues->sharedSlice());
+        }
+
+        documentIterator->Next();
+        if (batch->docIds.size() == documentPerBatch) {
+          if (definition.metric == SimilarityMetric::kCosine) {
+            faiss::fvec_renorm_L2(dim, batch->docIds.size(),
+                                  batch->vectors.data());
+          }
+          auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
+          counters.readProduceBlocked += blocked;
+
+          if (shouldStop) {
+            return;
+          }
+          batch = prepareBatch();
+        }
+      }
+
+      if (batch && !batch->docIds.empty()) {
+        if (definition.metric == SimilarityMetric::kCosine) {
+          faiss::fvec_renorm_L2(dim, batch->docIds.size(),
+                                batch->vectors.data());
+        }
+        std::ignore = documentChannel.push(std::move(batch));
+      }
+    });
+  };
+
+  auto encodeVectors = [&]() {
+    BoundedChannelProducerGuard guard(encodedChannel);
+    while (true) {
+      auto [item, blocked] = documentChannel.pop();
+      if (item == nullptr) {
+        return;
+      }
+
+      bool shouldStop = false;
+      errorExceptionHandler([&] {
+        counters.encodeConsumeBlocked += blocked;
+        auto n = item->docIds.size();
+        countBatches += 1;
+        countDocuments += n;
+
+        float* x = item->vectors.data();
+        std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
+        faissIndex->quantizer->assign(n, x, coarse_idx.get());
+        auto code_size = faissIndex->code_size;
+        std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
+
+        // TODO: since we only use IVTFlat this is just copying the data.
+        //  Probably we want to use some PQ encoding later on.
+        faissIndex->encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
+
+        auto encoded = std::make_unique<EncodedVectors>();
+        encoded->docIds = std::move(item->docIds);
+        encoded->lists = std::move(coarse_idx);
+        encoded->codes = std::move(flat_codes);
+        encoded->storedValues = std::move(item->storedValues);
+
+        LOG_TOPIC("e167m", INFO, Logger::ENGINES)
+            << "[shard=" << shardName << ", index=" << indexId << "] "
+            << "ENCODE encoded " << encoded->docIds.size()
+            << " vectors, code size: " << code_size;
+        bool pushBlocked = false;
+        std::tie(shouldStop, pushBlocked) =
+            encodedChannel.push(std::move(encoded));
+        counters.encodeProduceBlocked += pushBlocked;
+      });
+      if (shouldStop) {
+        break;
+      }
+    }
+  };
+
+  auto writeDocuments = [&] {
+    rocksdb::WriteBatch batch;
+    while (true) {
+      auto [item, blocked] = encodedChannel.pop();
+      if (item == nullptr) {
+        break;
+      }
+
+      errorExceptionHandler([&] {
+        counters.writeConsumeBlocked += blocked;
+        batch.Clear();
+
+        RocksDBKey key;
+        rocksdb::Status status;
+
+        for (size_t k = 0; k < item->docIds.size(); k++) {
+          key.constructVectorIndexValue(oid, item->lists[k], item->docIds[k]);
+
+          auto const value = std::invoke([&]() {
+            auto* ptr = item->codes.get() + k * faissIndex->code_size;
+            if (hasStored) {
+              RocksDBVectorIndexEntryValue rocksdbEntryValue;
+              rocksdbEntryValue.encodedValue =
+                  std::vector<uint8_t>(ptr, ptr + faissIndex->code_size);
+              rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
+
+              return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
+            } else {
+              return RocksDBValue::VectorIndexValue(ptr, faissIndex->code_size);
+            }
+          });
+
+          status = batch.Put(cf, key.string(), value.string());
+          if (not status.ok()) {
+            THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
+          }
+        }
+
+        rocksdb::WriteOptions wo;
+        status = rootDB->Write(wo, &batch);
+        if (not status.ok()) {
+          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
+        }
+      });
+    }
+  };
+
+  std::vector<std::jthread> threads;
+
+  auto startNThreads = [&](auto& func, size_t n) {
+    for (size_t k = 0; k < n; k++) {
+      threads.emplace_back(func);
+    }
+  };
+
+  LOG_TOPIC("71c45", INFO, Logger::FIXME)
+      << "[shard=" << shardName << ", index=" << indexId << "] "
+      << "Ingesting vectors into index on a fast path. Threads: num-readers="
+      << numReaders << " num-encoders=" << numEncoders
+      << " numWriters=" << numWriters;
+
+  startNThreads(readDocuments, numReaders);
+  startNThreads(encodeVectors, numEncoders);
+  startNThreads(writeDocuments, numWriters);
+
+  threads.clear();
+
+  if (firstError.ok()) {
+    LOG_TOPIC("41658", INFO, Logger::FIXME)
+        << "[shard=" << shardName << ", index=" << indexId << "] "
+        << "Ingestion done. Encoded " << countDocuments << " vectors in "
+        << countBatches
+        << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
+        << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
+        << " " << counters.writeConsumeBlocked;
+  } else {
+    LOG_TOPIC("96a80", ERR, Logger::FIXME)
+        << "[shard=" << shardName << ", index=" << indexId << "] "
+        << "Ingestion failed: " << firstError;
+  }
+
+  return firstError;
+}
+
 VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
     : _index(index),
       _engine(index.collection().vocbase().engine<RocksDBEngine>()),
@@ -277,29 +568,42 @@ VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuildManager::build(RocksDBBuilderIndex::Locker& locker) {
-  return buildImpl(locker, /*foreground=*/true);
+Result VectorIndexBuildManager::build(RocksDBBuilderIndex::Locker& locker,
+                                      std::stop_token stopToken) {
+  if (!_index.setTrainingState(VectorIndexTrainingState::kUntrained,
+                               VectorIndexTrainingState::kTraining)) {
+    return Result{TRI_ERROR_INTERNAL, "vector index is not in untrained state"};
+  }
+
+  return buildImpl(locker, /*foreground=*/true, std::move(stopToken));
 }
 
-Result VectorIndexBuildManager::build() {
+Result VectorIndexBuildManager::build(std::stop_token stopToken) {
+  if (!_index.setTrainingState(VectorIndexTrainingState::kUntrained,
+                               VectorIndexTrainingState::kTraining)) {
+    return Result{TRI_ERROR_INTERNAL, "vector index is not in untrained state"};
+  }
+
   RocksDBBuilderIndex::Locker locker(_rcoll);
   if (!std::move(locker.lock()).waitAndGet()) {
+    _index.resetTrainingState();
     return Result{TRI_ERROR_LOCK_TIMEOUT,
                   "failed to acquire collection lock for vector index build"};
   }
 
-  return buildImpl(locker, /*foreground=*/false);
+  return buildImpl(locker, /*foreground=*/false, std::move(stopToken));
 }
 
 Result VectorIndexBuildManager::buildImpl(RocksDBBuilderIndex::Locker& locker,
-                                          bool foreground) {
-  if (_index.collection().deleted()) {
-    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-  }
+                                          bool foreground,
+                                          std::stop_token stopToken) {
+  auto shouldAbort = [&]() -> bool {
+    return stopToken.stop_requested() || _index.collection().deleted();
+  };
 
-  if (foreground) {
-    _index.setTrainingState(VectorIndexTrainingState::kUntrained,
-                            VectorIndexTrainingState::kTraining);
+  if (shouldAbort()) {
+    _index.resetTrainingState();
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   rocksdb::Slice upper(_bounds.end());
@@ -316,13 +620,14 @@ Result VectorIndexBuildManager::buildImpl(RocksDBBuilderIndex::Locker& locker,
   std::shared_ptr<faiss::IndexIVF> faissIndex;
   constexpr int kMaxRetries = 10;
   for (int retry = 0; retry < kMaxRetries; ++retry) {
-    if (_index.collection().deleted()) {
+    if (shouldAbort()) {
+      _index.resetTrainingState();
       return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }
     std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
     trainIt->Seek(_bounds.start());
     try {
-      faissIndex = trainer.train(*trainIt, upper);
+      faissIndex = trainer.train(*trainIt, upper, stopToken);
       break;
     } catch (basics::Exception const& ex) {
       bool noDocsForTraining =
@@ -335,7 +640,8 @@ Result VectorIndexBuildManager::buildImpl(RocksDBBuilderIndex::Locker& locker,
     }
   }
 
-  if (_index.collection().deleted()) {
+  if (shouldAbort()) {
+    _index.resetTrainingState();
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
@@ -365,11 +671,14 @@ Result VectorIndexBuildManager::buildImpl(RocksDBBuilderIndex::Locker& locker,
         << "[shard=" << _index.collection().name()
         << ", index=" << _index.id().id() << "] "
         << "Vector ingestion failed: " << res.errorMessage();
+    _index.resetTrainingState();
   } else {
     LOG_TOPIC("e165b", INFO, Logger::ENGINES)
         << "[shard=" << _index.collection().name()
         << ", index=" << _index.id().id() << "] "
         << "Ingestion completed.";
+    _index.setTrainingState(VectorIndexTrainingState::kIngesting,
+                            VectorIndexTrainingState::kReady);
   }
 
   return res;

@@ -32,6 +32,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <stop_token>
 #include <string_view>
 #include <vector>
 
@@ -89,7 +90,8 @@ class VectorIndexTrainer {
   ///  4. Train the FAISS index
   ///  5. Serialize the trained index data
   std::shared_ptr<faiss::IndexIVF> train(rocksdb::Iterator& it,
-                                         rocksdb::Slice upper) const;
+                                         rocksdb::Slice upper,
+                                         std::stop_token stopToken = {}) const;
 
  private:
   /// Collect training vectors from the iterator.
@@ -97,7 +99,8 @@ class VectorIndexTrainer {
   /// normalization if needed, and returns the flat training buffer.
   std::vector<float> collectTrainingDataset(rocksdb::Iterator& it,
                                             rocksdb::Slice upper,
-                                            std::int64_t maxVectors) const;
+                                            std::int64_t maxVectors,
+                                            std::stop_token stopToken) const;
 
   UserVectorIndexDefinition const& _definition;
   bool _isSparse;
@@ -105,6 +108,14 @@ class VectorIndexTrainer {
   std::string_view _shardName;
   std::uint64_t _indexId;
 };
+
+/// Bulk-ingest all vectors from a document iterator into a trained vector
+/// index. Uses a multi-threaded pipeline (read → encode → write) for
+/// throughput. Moved here from RocksDBVectorIndex to decouple the index from
+/// its build lifecycle.
+Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
+                     std::unique_ptr<rocksdb::Iterator> documentIterator,
+                     std::stop_token stopToken = {});
 
 /// Orchestrates the full build pipeline for a vector index: train the FAISS
 /// index from collection documents, apply the result, then bulk-ingest all
@@ -115,11 +126,13 @@ class VectorIndexBuildManager {
  public:
   explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
 
-  Result build(RocksDBBuilderIndex::Locker& locker);
-  Result build();
+  Result build(RocksDBBuilderIndex::Locker& locker,
+               std::stop_token stopToken = {});
+  Result build(std::stop_token stopToken = {});
 
  private:
-  Result buildImpl(RocksDBBuilderIndex::Locker& locker, bool foreground);
+  Result buildImpl(RocksDBBuilderIndex::Locker& locker, bool foreground,
+                   std::stop_token stopToken);
 
   RocksDBVectorIndex& _index;
   RocksDBEngine& _engine;

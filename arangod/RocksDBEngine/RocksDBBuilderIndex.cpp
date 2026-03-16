@@ -49,6 +49,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "RocksDBVectorIndex.h"
+#include "RocksDBVectorIndexBuilder.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -372,7 +373,7 @@ static Result fillIndex(
       auto& vecIdx = dynamic_cast<RocksDBVectorIndex&>(ridx);
       if (vecIdx.faissIndex() != nullptr) {
         it->Seek(bounds.start());
-        return vecIdx.ingestVectors(rootDB, std::move(it));
+        return vector::ingestVectors(vecIdx, rootDB, std::move(it));
       }
     }
   }

@@ -25,7 +25,6 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
-#include <thread>
 #include <type_traits>
 
 #include "Aql/Expression.h"
@@ -35,7 +34,6 @@
 #include "Aql/Variable.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "Transaction/Methods.h"
 #include "Metrics/Fwd.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -110,9 +108,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
                            TrainedData trainedData);
 
-  Result ingestVectors(rocksdb::DB* rootDB,
-                       std::unique_ptr<rocksdb::Iterator> documentIterator);
-
   bool hasStoredValues() const noexcept;
 
   StoredValues const& storedValues() const override;
@@ -123,18 +118,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   bool setTrainingState(VectorIndexTrainingState expected,
                         VectorIndexTrainingState desired) noexcept;
 
-  /// @brief Join the build thread from another thread (e.g. before dropping the
-  /// index). Must not be called from the build thread itself (avoids self-join
-  /// which would deadlock and cause std::terminate).
-  void joinBuildThread() noexcept;
-
-  std::int64_t documentCount() const noexcept {
-    return _documentCount.load(std::memory_order_relaxed);
+  VectorIndexTrainingState trainingState() const noexcept {
+    return _trainingState.load(std::memory_order_acquire);
   }
 
-  void setDocumentCount(std::int64_t count) noexcept {
-    _documentCount.store(count, std::memory_order_relaxed);
-  }
+  /// @brief Clear trained data on build failure so that
+  /// stale training state is not accidentally persisted.
+  void resetTrainingState() noexcept;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -146,13 +136,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  /// @brief Try to build the index if the training threshold is reached.
-  void tryBuilding();
-
-  /// @brief Clear trained data on build failure so that
-  /// stale training state is not accidentally persisted.
-  void resetTrainingState() noexcept;
-
   void updateTrainingMetrics(VectorIndexTrainingState previous,
                              VectorIndexTrainingState next) noexcept;
 
@@ -173,11 +156,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   TrainedData _trainedData;
   StoredValues const _storedValues;
 
-  std::atomic<std::int64_t> _documentCount{0};
   std::int64_t _trainingThreshold{0};
   std::atomic<VectorIndexTrainingState> _trainingState{
       VectorIndexTrainingState::kUntrained};
-  std::jthread _buildThread;
 
   metrics::Gauge<uint64_t>* _metricState{nullptr};
   metrics::Gauge<double>* _metricTrainingDuration{nullptr};

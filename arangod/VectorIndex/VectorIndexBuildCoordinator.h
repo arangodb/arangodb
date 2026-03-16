@@ -17,39 +17,38 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <string_view>
-
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "VectorIndex/VectorIndexBuildCoordinator.h"
-#include "RestServer/VectorIndexFeatureOptions.h"
+#include <chrono>
+#include <stop_token>
+#include <thread>
 
 namespace arangodb {
 
-class VectorIndexFeature final
-    : public application_features::ApplicationFeature {
+class DatabaseFeature;
+
+/// Single background thread that periodically scans for untrained vector
+/// indexes and builds them one at a time. The same thread scans and builds.
+class VectorIndexBuildCoordinator {
  public:
-  explicit VectorIndexFeature(application_features::ApplicationServer& server);
+  static constexpr auto kScanInterval = std::chrono::seconds(5);
+  static constexpr auto kSleepGranularity = std::chrono::milliseconds(100);
 
-  static constexpr std::string_view name() noexcept { return "VectorIndex"; }
+  explicit VectorIndexBuildCoordinator(DatabaseFeature& dbFeature);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  void start() override final;
-
-  void beginShutdown() override final;
-
-  void stop() override final;
-
-  bool isVectorIndexEnabled() const;
+  void start();
+  void beginShutdown();
+  void stop();
 
  private:
-  VectorIndexFeatureOptions _options;
-  VectorIndexBuildCoordinator _coordinator;
+  void run(std::stop_token stopToken);
+
+  DatabaseFeature& _dbFeature;
+  std::jthread _thread;
 };
 
 }  // namespace arangodb
