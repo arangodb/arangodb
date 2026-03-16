@@ -44,7 +44,7 @@ struct AQLQueryActivity
   AQLQueryActivity(activities::ActivityId id, activities::ActivityHandle parent,
                    AQLQueryActivityData data)
       : activities::GuardedActivity<AQLQueryActivity, AQLQueryActivityData>(
-            id, parent, "AQLQueryActivity", std::move(data)) {}
+            id, parent, "AQLQuery", std::move(data)) {}
   using Data = AQLQueryActivityData;
 };
 }  // namespace arangodb::aql::query::activity
