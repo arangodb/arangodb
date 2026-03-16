@@ -871,10 +871,10 @@ jobs:
                     sleep 1
                 done
             }
-            wait_server kafka-1 9092
-            wait_server kafka-2 9092
-            wait_server kafka-3 9092
-            wait_server kafka-schema-registry 8081
+            wait_server localhost 9092
+            wait_server localhost 9095
+            wait_server localhost 9097
+            wait_server localhost 8081
       - run-test:
           suiteName: << parameters.suiteName >>
           suites: << parameters.suites >>
