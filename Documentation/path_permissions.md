@@ -1261,7 +1261,7 @@ We should map the permissions in the following way to RBAC actions and resources
 | `db:WriteView`                | `db:view:<db>:<view>`      | modify view metadata                                                     |
 | `db:ReadAnalyzer`             | `db:analyzer:<db>:<name>`  | read analyzer metadata                                                   |
 | `db:WriteAnalyzer`            | `db:analyzer:<db>:<name>`  | modify analyzer metadata                                                 |
-| `db:UseApiVerson`             | `db:apiversion:vX`         | use API version (this is in addition to other perms)                     |
+| `db:UseApiVersion`            | `db:apiversion:vX`         | use API version (this is in addition to other perms)                     |
 | `db:AdminChangeDataDist`      | `db:collection:<db>:<coll> | moveShard, resignLeadership, cleanOutServer                              |
 | `db:AdminMonitoring`          | -                          | anything completely harmless like metrics, also support-info             |
 | `db:AdminMonitoringInternal`  | -                          | async registry, engine stats, system report, not crashes                 |

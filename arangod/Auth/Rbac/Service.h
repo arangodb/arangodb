@@ -40,65 +40,126 @@ struct Service {
   };
 
   struct Category {
-    struct Databases {};
-    struct Database {
+    struct ReadDatabases {};
+    struct ReadDatabase {
       std::string name;
     };
-    struct Collection {
+    struct WriteDatabase {
+      std::string name;
+    };
+    struct ReadCollection {
       std::string database;
       std::string name;
     };
-    struct View {
+    struct WriteCollection {
       std::string database;
       std::string name;
     };
-    struct Analyzer {
+    struct ReadView {
       std::string database;
       std::string name;
     };
-    struct Documents {
+    struct WriteView {
+      std::string database;
+      std::string name;
+    };
+    struct ReadAnalyzer {
+      std::string database;
+      std::string name;
+    };
+    struct WriteAnalyzer {
+      std::string database;
+      std::string name;
+    };
+    struct ReadDocuments {
       std::string database;
       std::string collection;
     };
-    using Any = std::variant<Databases, Database, Collection, View, Analyzer,
-                             Documents>;
+    struct WriteDocuments {
+      std::string database;
+      std::string collection;
+    };
+    struct UseApiVersion {
+      std::string version;
+    };
+    // Admin actions with a collection resource:
+    struct AdminChangeDataDist {
+      std::string database;
+      std::string collection;
+    };
+    // Admin actions with a user resource:
+    struct AdminReadUser {
+      std::string username;
+    };
+    struct AdminWriteUser {
+      std::string username;
+    };
+    // Admin actions without a resource:
+    struct AdminMonitoring {};
+    struct AdminMonitoringInternal {};
+    struct AdminCompaction {};
+    struct AdminAuthReload {};
+    struct AdminCrashHandler {};
+    struct AdminApiCalls {};
+    struct AdminAqlQueries {};
+    struct AdminShutdown {};
+    struct AdminReadLogs {};
+    struct AdminSetLogLevel {};
+    struct AdminOptions {};
+    struct AdminSupervisionState {};
+    struct AdminRemoveServer {};
+    struct AdminClusterInfo {};
+    struct AdminMaintenance {};
+    struct AdminLicense {};
+    struct AdminBackup {};
+    struct AdminJobs {};
+    struct AdminTasks {};
+    struct AdminReadReplicatedLog {};
+    struct AdminWriteReplicatedLog {};
+    struct AdminWalAccess {};
+    struct AdminReadAgency {};
+    struct AdminReadOnlyMode {};
+    struct AdminFoxx {};
+    struct AdminReadAqlFunctions {};
+    struct AdminWriteAqlFunctions {};
+    using Any = std::variant<
+        ReadDatabases, ReadDatabase, WriteDatabase, ReadCollection,
+        WriteCollection, ReadView, WriteView, ReadAnalyzer, WriteAnalyzer,
+        ReadDocuments, WriteDocuments, UseApiVersion, AdminChangeDataDist,
+        AdminReadUser, AdminWriteUser, AdminMonitoring, AdminMonitoringInternal,
+        AdminCompaction, AdminAuthReload, AdminCrashHandler, AdminApiCalls,
+        AdminAqlQueries, AdminShutdown, AdminReadLogs, AdminSetLogLevel,
+        AdminOptions, AdminSupervisionState, AdminRemoveServer,
+        AdminClusterInfo, AdminMaintenance, AdminLicense, AdminBackup,
+        AdminJobs, AdminTasks, AdminReadReplicatedLog, AdminWriteReplicatedLog,
+        AdminWalAccess, AdminReadAgency, AdminReadOnlyMode, AdminFoxx,
+        AdminReadAqlFunctions, AdminWriteAqlFunctions>;
   };
-
-  enum class Permission { Read, Write };
 
   struct AuthorizationQuery {
     std::string action;
     std::string resource;
   };
 
-  // Expands a (Permission, Category) pair into the full hierarchy of
-  // authorization queries required by the RBAC design. For example,
-  // reading documents requires db:ReadDocuments, db:ReadCollection,
-  // and db:ReadDatabase.
-  static auto toAuthorizationQueries(Permission permission,
-                                     Category::Any const& category)
+  // Translates a Category into the corresponding authorization query.
+  // Currently each Category maps to exactly one AuthorizationQuery.
+  static auto toAuthorizationQueries(Category::Any const& category)
       -> std::vector<AuthorizationQuery>;
 
-  auto may(User user, Permission permission,
-           Category::Any const& category) noexcept -> async<ResultT<bool>>;
+  auto may(User user, Category::Any const& category) noexcept
+      -> async<ResultT<bool>>;
 
   [[deprecated("Use the asynchronous counterpart instead")]] auto maySync(
-      User user, Permission permission, Category::Any const& category) noexcept
-      -> ResultT<bool>;
-
-  struct PermissionQuery {
-    Permission permission;
-    Category::Any category;
-  };
+      User user, Category::Any const& category) noexcept -> ResultT<bool>;
 
   // TODO We might want to change the return type in a way that it reports
   //      which permission(s) are missing, in order to give a proper error
   //      message to the user.
-  auto mayAll(User user, std::vector<PermissionQuery> queries) noexcept
+  auto mayAll(User user, std::vector<Category::Any> categories) noexcept
       -> async<ResultT<bool>>;
 
   [[deprecated("Use the asynchronous counterpart instead")]] auto mayAllSync(
-      User user, std::vector<PermissionQuery> queries) noexcept
+      User user, std::vector<Category::Any> categories) noexcept
       -> ResultT<bool>;
 
  private:
