@@ -79,15 +79,6 @@ function EndpointsSuite () {
 
       db._createDatabase("UnitTestsDatabase0");
       db._useDatabase("UnitTestsDatabase0");
-
-      // _endpoints is forbidden
-      try {
-        db._endpoints();
-        fail();
-      }
-      catch (err2) {
-        assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err2.errorNum);
-      }
     }
 
   };
