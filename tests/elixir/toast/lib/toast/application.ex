@@ -9,6 +9,8 @@ defmodule Toast.Application do
   def start(_type, _args) do
     setup_file_logger()
 
+    Logger.info("Starting Toast 🍞")
+
     children = [
       {Toast.PortAllocator, []},
       {Toast.Process.Supervisor, []},
