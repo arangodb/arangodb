@@ -287,6 +287,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     const cwd = fs.normalize(fs.makeAbsolute(this.options.sparksource));
     const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
     if (rc.exit !== 0) {
+      print(`${RED}${date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
       status = false;
     }
     this.getAllureResults(testResultsDir, results, status, 'sparkdriver');
