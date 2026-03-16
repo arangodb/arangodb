@@ -197,4 +197,11 @@ void LegacyOptionsFeature::collectOptions(
   options->addObsoleteOption("--web-interface.version-check",
                              "Alert the user if new versions are available.",
                              false);
+
+  // GeneralServerFeature options
+  options->addObsoleteOption("--web-interface.proxy-request-check",
+                             "Enable proxy request checking.", true);
+  options->addObsoleteOption(
+      "--web-interface.trusted-proxy",
+      "The list of proxies to trust (can be IP or network)", true);
 }
