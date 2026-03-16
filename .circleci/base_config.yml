@@ -662,25 +662,25 @@ jobs:
             - persist_to_workspace:
                 root: .
                 paths: |
-                  VERSIONS
-                  ARANGO-VERSION
-                  build/compile_commands.json
-                  CMakePresets.json
-                  build/bin
-                  build/etc
-                  build/build_version.cc
-                  scripts/
-                  js/
-                  enterprise/js
-                  etc/
-                  tests/js
-                  enterprise/tests/js
-                  utils
-                  lib/iresearch/tests/resources
-                  3rdParty/rta-makedata
-                  tsan_arangodb_suppressions.txt
-                  ubsan_arangodb_suppressions.txt
-                  lsan_arangodb_suppressions.txt
+                  - VERSIONS
+                  - ARANGO-VERSION
+                  - build/compile_commands.json
+                  - CMakePresets.json
+                  - build/bin
+                  - build/etc
+                  - build/build_version.cc
+                  - scripts/
+                  - js/
+                  - enterprise/js
+                  - etc/
+                  - tests/js
+                  - enterprise/tests/js
+                  - utils
+                  - lib/iresearch/tests/resources
+                  - 3rdParty/rta-makedata
+                  - tsan_arangodb_suppressions.txt
+                  - ubsan_arangodb_suppressions.txt
+                  - lsan_arangodb_suppressions.txt
             - persist_to_workspace_s3:
                 root: .
                 archive: cppcheck.tar.bz2
