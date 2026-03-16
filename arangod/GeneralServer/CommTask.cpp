@@ -239,12 +239,11 @@ CommTask::Flow CommTask::prepareExecution(
     }
 
     case ServerState::Mode::MAINTENANCE: {
-      if (allowEarlyConnections &&
-          (path == "/_api/version" ||
+      if (allowEarlyConnections && (path == "/_api/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-           path.starts_with("/_admin/debug/") ||
+                                    path.starts_with("/_admin/debug/") ||
 #endif
-           path == "/_admin/status")) {
+                                    path == "/_admin/status")) {
         return Flow::Continue;
       }
 
