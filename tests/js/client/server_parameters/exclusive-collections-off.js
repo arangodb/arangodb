@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, getOptions, fail, assertFalse, assertMatch */
+/*global assertEqual, assertTrue, fail, assertFalse, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,12 +24,6 @@
 /// @author Jan Christoph Uhde
 /// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
-
-if (getOptions === true) {
-  return {
-    'rocksdb.exclusive-writes': 'false',
-  };
-}
 
 const jsunity = require("jsunity");
 const {

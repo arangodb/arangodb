@@ -169,7 +169,7 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks2 : function () {
-      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
+      c.ensureIndex({type: 'persistent', fields:['val', 'text1'], unique: true});
 
       let indexMeta = {};
       let viewMeta = {};
@@ -258,7 +258,7 @@ function TransactionsIResearchSuite() {
       let links = view.properties().links;
       assertNotEqual(links[cn], undefined);
 
-      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
+      c.ensureIndex({type: 'persistent', fields:['val', 'text1'], unique: true});
 
       const trx = db._createTransaction({ collections: { write: cn } });
       try {
@@ -303,7 +303,7 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of removals
     ////////////////////////////////////////////////////////////////////////////
     testRollbackRemovalWithLinks1 : function () {
-      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
+      c.ensureIndex({type: 'persistent', fields:['val', 'text1'], unique: true});
 
       let indexMeta = {};
       let viewMeta = {};
@@ -370,7 +370,7 @@ function TransactionsIResearchSuite() {
     /// @brief waitForSync queries must be rejected inside a transaction
     ////////////////////////////////////////////////////////////////////////////
     testWaitForSyncError : function () {
-      c.ensureIndex({type: 'hash', fields:['val', 'text'], unique: true});
+      c.ensureIndex({type: 'persistent', fields:['val', 'text'], unique: true});
 
       let indexMeta = {};
       let viewMeta = {};
