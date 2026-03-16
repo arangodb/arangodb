@@ -6,10 +6,16 @@ defmodule ToastTest.Attribution.ServerLogs do
   overlapping windows, then extracts matching log lines for each server.
   """
 
-  alias ToastTest.Attribution.TimeWindows
   alias ToastTest.Enrichment
 
   @type window :: {DateTime.t(), DateTime.t()}
+
+  # Padding (in seconds) around issue timestamps for log extraction.
+  # Each type gets a different window reflecting how much context is useful.
+  @test_failure_pad {-1, 1}
+  @sanitizer_pad {-5, 1}
+  @crash_pad {-20, 0}
+  @timeout_pad {-10, 0}
 
   @doc """
   Collect server log excerpts for all servers based on issue time windows.
@@ -20,27 +26,32 @@ defmodule ToastTest.Attribution.ServerLogs do
   @spec collect(
           [ToastTest.SuiteResult.issue()],
           ToastTest.ArtifactCollector.t(),
-          TimeWindows.windows()
+          ToastTest.Attribution.TimeWindows.windows()
         ) :: %{String.t() => [{DateTime.t(), DateTime.t(), String.t()}]}
   def collect(issues, artifacts, windows) do
-    merged = issues |> compute_windows(windows) |> merge_windows()
+    issues
+    |> compute_windows(windows)
+    |> merge_windows()
+    |> do_collect(artifacts)
+  end
 
-    if merged == [] do
-      %{}
-    else
-      for {server_id, server_artifacts} <- artifacts,
-          log_file = server_artifacts.server.log_file,
-          log_file != nil,
-          into: %{} do
-        excerpts =
-          for {start_dt, end_dt} <- merged,
-              lines = Enrichment.Logs.extract_window(log_file, start_dt, end_dt),
-              lines != "" do
-            {start_dt, end_dt, lines}
-          end
+  defp do_collect([], _), do: %{}
 
-        {server_id, excerpts}
-      end
+  defp do_collect(merged, artifacts) do
+    for {server_id, server_artifacts} <- artifacts,
+        log_file = server_artifacts.server.log_file,
+        log_file != nil,
+        into: %{} do
+      excerpts =
+        merged
+        |> Enrichment.Logs.extract_windows(log_file)
+        |> Enum.zip(merged)
+        |> Enum.flat_map(fn
+          {"", _window} -> []
+          {lines, {start_dt, end_dt}} -> [{start_dt, end_dt, lines}]
+        end)
+
+      {server_id, excerpts}
     end
   end
 
@@ -50,7 +61,11 @@ defmodule ToastTest.Attribution.ServerLogs do
   Each issue type has different padding reflecting how much context
   is useful for diagnosing that kind of problem.
   """
-  @spec compute_windows([ToastTest.SuiteResult.issue()], TimeWindows.windows()) :: [window()]
+  @spec compute_windows(
+          [ToastTest.SuiteResult.issue()],
+          ToastTest.Attribution.TimeWindows.windows()
+        ) ::
+          [window()]
   def compute_windows(issues, windows) do
     Enum.flat_map(issues, &issue_window(&1, windows))
   end
@@ -74,7 +89,7 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   defp issue_window(%{type: :test_failure, scope: {:test, mod, name}}, windows) do
     case Map.get(windows.tests, {mod, name}) do
-      %{started_at: s, finished_at: f} -> [pad(s, f, -1, 1)]
+      %{started_at: s, finished_at: f} -> [pad(s, f, @test_failure_pad)]
       nil -> []
     end
   end
@@ -88,21 +103,21 @@ defmodule ToastTest.Attribution.ServerLogs do
     # We can't recover it here, so sanitizer reports without an explicit
     # timestamp in their detail are skipped.
     case Map.get(detail, :timestamp) do
-      %DateTime{} = ts -> [pad(ts, ts, -5, 1)]
+      %DateTime{} = ts -> [pad(ts, ts, @sanitizer_pad)]
       nil -> []
     end
   end
 
   defp issue_window(%{type: :crash, detail: %{crash_info: %{timestamp: ts}}}, _windows)
        when not is_nil(ts) do
-    [pad(ts, ts, -20, 0)]
+    [pad(ts, ts, @crash_pad)]
   end
 
   defp issue_window(%{type: :crash}, _windows), do: []
 
   defp issue_window(%{type: :timeout, detail: %{timestamp: ts}}, _windows)
        when not is_nil(ts) do
-    [pad(ts, ts, -10, 0)]
+    [pad(ts, ts, @timeout_pad)]
   end
 
   defp issue_window(%{type: :timeout}, _windows), do: []
@@ -128,7 +143,7 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   # --- Helpers ---
 
-  defp pad(start_dt, end_dt, before_s, after_s) do
+  defp pad(start_dt, end_dt, {before_s, after_s}) do
     {DateTime.add(start_dt, before_s, :second), DateTime.add(end_dt, after_s, :second)}
   end
 end

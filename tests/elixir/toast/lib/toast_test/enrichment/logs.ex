@@ -106,59 +106,27 @@ defmodule ToastTest.Enrichment.Logs do
   defp join_block(lines), do: Enum.join(lines, "\n")
 
   @doc """
-  Return all log lines whose timestamp falls in [start, finish].
+  Extract log lines for multiple sorted, non-overlapping time windows in a single pass.
 
-  Returns `""` if the file does not exist or contains no matching lines.
+  Returns a list of strings (one per window), in the same order as the input windows.
+  Empty string for windows with no matching lines.
   """
-  @spec extract_window(Path.t(), DateTime.t(), DateTime.t()) :: String.t()
-  def extract_window(path, start_dt, end_dt) do
+  @spec extract_windows([{DateTime.t(), DateTime.t()}], Path.t()) :: [String.t()]
+  def extract_windows([], _path), do: []
+
+  def extract_windows(windows, path) do
     case File.open(path, [:read, :utf8]) do
       {:ok, device} ->
         try do
-          collect_lines(device, start_dt, end_dt, [])
+          collect_multi_windows(device, windows, [], [])
         after
           File.close(device)
         end
 
       {:error, _} ->
-        ""
+        List.duplicate("", length(windows))
     end
   end
-
-  defp collect_lines(device, start_dt, end_dt, acc) do
-    case IO.read(device, :line) do
-      :eof -> finalize(acc)
-      {:error, _} -> finalize(acc)
-      line -> process_line(line, device, start_dt, end_dt, acc)
-    end
-  end
-
-  defp process_line(line, device, start_dt, end_dt, acc) do
-    case parse_timestamp(line) do
-      {:ok, ts} -> apply_window(ts, line, device, start_dt, end_dt, acc)
-      :error -> collect_with_continuation(line, device, start_dt, end_dt, acc)
-    end
-  end
-
-  defp apply_window(ts, line, device, start_dt, end_dt, acc) do
-    cond do
-      DateTime.compare(ts, start_dt) == :lt ->
-        collect_lines(device, start_dt, end_dt, acc)
-
-      DateTime.compare(ts, end_dt) == :gt ->
-        finalize(acc)
-
-      true ->
-        collect_lines(device, start_dt, end_dt, [line | acc])
-    end
-  end
-
-  # Non-timestamped lines: include only if we're already inside the window
-  defp collect_with_continuation(line, device, start_dt, end_dt, [_ | _] = acc),
-    do: collect_lines(device, start_dt, end_dt, [line | acc])
-
-  defp collect_with_continuation(_line, device, start_dt, end_dt, []),
-    do: collect_lines(device, start_dt, end_dt, [])
 
   defp finalize([]), do: ""
 
@@ -166,6 +134,90 @@ defmodule ToastTest.Enrichment.Logs do
     acc
     |> Enum.reverse()
     |> Enum.map_join("\n", &String.trim_trailing(&1, "\n"))
+  end
+
+  # --- Multi-window single-pass extraction ---
+
+  # All windows consumed — finalize current accumulator and pad remaining with ""
+  defp collect_multi_windows(_device, [], acc, results) do
+    Enum.reverse([finalize(acc) | results])
+  end
+
+  defp collect_multi_windows(device, [{start_dt, end_dt} | rest_windows] = windows, acc, results) do
+    case IO.read(device, :line) do
+      :eof ->
+        # Finalize current window and pad remaining windows with ""
+        remaining = [finalize(acc) | results]
+        padded = List.duplicate("", length(rest_windows))
+        Enum.reverse(remaining) ++ padded
+
+      {:error, _} ->
+        remaining = [finalize(acc) | results]
+        padded = List.duplicate("", length(rest_windows))
+        Enum.reverse(remaining) ++ padded
+
+      line ->
+        case parse_timestamp(line) do
+          {:ok, ts} ->
+            cond do
+              DateTime.compare(ts, start_dt) == :lt ->
+                # Before current window — skip
+                collect_multi_windows(device, windows, acc, results)
+
+              DateTime.compare(ts, end_dt) == :gt ->
+                # Past current window — finalize it, try this line against next window
+                collect_multi_windows(
+                  device,
+                  rest_windows,
+                  [],
+                  [finalize(acc) | results],
+                  line
+                )
+
+              true ->
+                # Inside current window — collect
+                collect_multi_windows(device, windows, [line | acc], results)
+            end
+
+          :error ->
+            # Non-timestamped line: include only if inside a window (acc non-empty)
+            if acc != [] do
+              collect_multi_windows(device, windows, [line | acc], results)
+            else
+              collect_multi_windows(device, windows, acc, results)
+            end
+        end
+    end
+  end
+
+  # Re-process a line that overshot the previous window against remaining windows
+  defp collect_multi_windows(_device, [], _acc, results, _pending_line) do
+    Enum.reverse(results)
+  end
+
+  defp collect_multi_windows(
+         device,
+         [{start_dt, end_dt} | rest_windows] = windows,
+         acc,
+         results,
+         line
+       ) do
+    case parse_timestamp(line) do
+      {:ok, ts} ->
+        cond do
+          DateTime.compare(ts, start_dt) == :lt ->
+            collect_multi_windows(device, windows, acc, results)
+
+          DateTime.compare(ts, end_dt) == :gt ->
+            collect_multi_windows(device, rest_windows, [], [finalize(acc) | results], line)
+
+          true ->
+            collect_multi_windows(device, windows, [line | acc], results)
+        end
+
+      :error ->
+        collect_multi_windows(device, windows, acc, results)
+    end
   end
 
   defp parse_timestamp(line) do

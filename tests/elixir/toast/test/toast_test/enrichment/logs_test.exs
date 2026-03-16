@@ -107,118 +107,176 @@ defmodule ToastTest.Enrichment.LogsTest do
     end
   end
 
-  describe "extract_window/3" do
-    test "returns lines within time window", %{tmp_dir: dir} do
+  describe "extract_windows/2" do
+    test "empty windows list returns []", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] startup message",
-          "2026-01-15T12:00:05Z [1234] INFO [abc13] first event",
-          "2026-01-15T12:00:10Z [1234] WARNING [abc14] something happened",
-          "2026-01-15T12:00:15Z [1234] INFO [abc15] second event",
-          "2026-01-15T12:00:20Z [1234] INFO [abc16] later event"
+          "2026-01-15T12:00:00Z [1234] INFO [abc12] some line"
         ])
 
-      result = Logs.extract_window(path, dt("2026-01-15T12:00:05Z"), dt("2026-01-15T12:00:15Z"))
-
-      assert result =~ "first event"
-      assert result =~ "something happened"
-      assert result =~ "second event"
-      refute result =~ "startup message"
-      refute result =~ "later event"
+      assert Logs.extract_windows([], path) == []
     end
 
-    test "returns empty string for nonexistent file" do
-      result =
-        Logs.extract_window(
-          "/nonexistent/file.log",
-          dt("2026-01-15T12:00:00Z"),
-          dt("2026-01-15T12:01:00Z")
-        )
-
-      assert result == ""
-    end
-
-    test "returns empty string when no lines match window", %{tmp_dir: dir} do
-      path =
-        write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] early",
-          "2026-01-15T12:00:01Z [1234] INFO [abc13] still early"
-        ])
-
-      result = Logs.extract_window(path, dt("2026-01-15T13:00:00Z"), dt("2026-01-15T14:00:00Z"))
-      assert result == ""
-    end
-
-    test "handles exact boundary timestamps (inclusive)", %{tmp_dir: dir} do
+    test "single window extracts matching lines", %{tmp_dir: dir} do
       path =
         write_log(dir, [
           "2026-01-15T12:00:00Z [1234] INFO [abc12] before",
-          "2026-01-15T12:00:05Z [1234] INFO [abc13] at start",
-          "2026-01-15T12:00:10Z [1234] INFO [abc14] at end",
-          "2026-01-15T12:00:15Z [1234] INFO [abc15] after"
+          "2026-01-15T12:00:05Z [1234] INFO [abc13] in window",
+          "2026-01-15T12:00:10Z [1234] WARNING [abc14] also in window",
+          "2026-01-15T12:00:20Z [1234] INFO [abc15] after"
         ])
 
-      result = Logs.extract_window(path, dt("2026-01-15T12:00:05Z"), dt("2026-01-15T12:00:10Z"))
+      start_dt = dt("2026-01-15T12:00:05Z")
+      end_dt = dt("2026-01-15T12:00:10Z")
 
-      assert result =~ "at start"
-      assert result =~ "at end"
+      [result] = Logs.extract_windows([{start_dt, end_dt}], path)
+
+      assert result =~ "in window"
+      assert result =~ "also in window"
       refute result =~ "before"
       refute result =~ "after"
     end
 
-    test "stops reading after window end for efficiency", %{tmp_dir: dir} do
-      # Generate a large log file - lines after the window should be skipped
-      early_lines =
-        for i <- 1..100 do
-          ts =
-            "2026-01-15T11:#{String.pad_leading("#{div(i, 60)}", 2, "0")}:#{String.pad_leading("#{rem(i, 60)}", 2, "0")}Z"
+    test "multiple non-overlapping windows each get their own excerpt", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 line1",
+          "2026-01-15T12:00:05Z [1234] INFO [abc13] w1 line2",
+          "2026-01-15T12:00:15Z [1234] INFO [abc14] gap line",
+          "2026-01-15T12:00:20Z [1234] INFO [abc15] w2 line1",
+          "2026-01-15T12:00:25Z [1234] INFO [abc16] w2 line2",
+          "2026-01-15T12:00:35Z [1234] INFO [abc17] trailing"
+        ])
 
-          "#{ts} [1234] INFO [abc12] early line #{i}"
-        end
-
-      target_lines = [
-        "2026-01-15T12:00:00Z [1234] INFO [abc13] target line"
+      windows = [
+        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:10Z")},
+        {dt("2026-01-15T12:00:20Z"), dt("2026-01-15T12:00:30Z")}
       ]
 
-      late_lines =
-        for i <- 1..100 do
-          ts =
-            "2026-01-15T13:#{String.pad_leading("#{div(i, 60)}", 2, "0")}:#{String.pad_leading("#{rem(i, 60)}", 2, "0")}Z"
+      [w1, w2] = Logs.extract_windows(windows, path)
 
-          "#{ts} [1234] INFO [abc14] late line #{i}"
-        end
+      assert w1 =~ "w1 line1"
+      assert w1 =~ "w1 line2"
+      refute w1 =~ "gap line"
+      refute w1 =~ "w2 line"
 
-      path = write_log(dir, early_lines ++ target_lines ++ late_lines)
-
-      result = Logs.extract_window(path, dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:00Z"))
-      assert result =~ "target line"
-      refute result =~ "late line"
+      assert w2 =~ "w2 line1"
+      assert w2 =~ "w2 line2"
+      refute w2 =~ "gap line"
+      refute w2 =~ "trailing"
     end
 
-    test "skips lines without parseable timestamps", %{tmp_dir: dir} do
+    test "line overshooting window 1 appears in window 2", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] before",
-          "this line has no timestamp",
-          "2026-01-15T12:00:05Z [1234] INFO [abc13] in window",
-          "another non-timestamp line",
-          "2026-01-15T12:00:20Z [1234] INFO [abc14] after"
+          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 line",
+          "2026-01-15T12:00:10Z [1234] INFO [abc13] overshoot into w2",
+          "2026-01-15T12:00:15Z [1234] INFO [abc14] w2 line"
         ])
 
-      result = Logs.extract_window(path, dt("2026-01-15T12:00:03Z"), dt("2026-01-15T12:00:10Z"))
-      assert result =~ "in window"
-      refute result =~ "before"
-      refute result =~ "after"
-      # Non-timestamp lines between window boundaries should be included
-      # (they belong to the preceding timestamped line conceptually)
+      windows = [
+        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
+        {dt("2026-01-15T12:00:08Z"), dt("2026-01-15T12:00:20Z")}
+      ]
+
+      [w1, w2] = Logs.extract_windows(windows, path)
+
+      assert w1 =~ "w1 line"
+      refute w1 =~ "overshoot"
+
+      assert w2 =~ "overshoot into w2"
+      assert w2 =~ "w2 line"
     end
 
-    test "handles empty file", %{tmp_dir: dir} do
+    test "non-timestamped continuation lines stay with their window", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 start",
+          "  continuation of w1",
+          "2026-01-15T12:00:15Z [1234] INFO [abc13] gap",
+          "  orphan continuation",
+          "2026-01-15T12:00:20Z [1234] INFO [abc14] w2 start",
+          "  continuation of w2"
+        ])
+
+      windows = [
+        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
+        {dt("2026-01-15T12:00:18Z"), dt("2026-01-15T12:00:25Z")}
+      ]
+
+      [w1, w2] = Logs.extract_windows(windows, path)
+
+      assert w1 =~ "w1 start"
+      assert w1 =~ "continuation of w1"
+      refute w1 =~ "orphan"
+
+      assert w2 =~ "w2 start"
+      assert w2 =~ "continuation of w2"
+      refute w2 =~ "orphan"
+    end
+
+    test "file not found returns list of empty strings", _context do
+      windows = [
+        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
+        {dt("2026-01-15T12:00:10Z"), dt("2026-01-15T12:00:15Z")},
+        {dt("2026-01-15T12:00:20Z"), dt("2026-01-15T12:00:25Z")}
+      ]
+
+      assert Logs.extract_windows(windows, "/nonexistent/file.log") == ["", "", ""]
+    end
+
+    test "empty file returns list of empty strings", %{tmp_dir: dir} do
       path = Path.join(dir, "empty.log")
       File.write!(path, "")
 
-      result = Logs.extract_window(path, dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:01:00Z"))
-      assert result == ""
+      windows = [
+        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
+        {dt("2026-01-15T12:00:10Z"), dt("2026-01-15T12:00:15Z")}
+      ]
+
+      assert Logs.extract_windows(windows, path) == ["", ""]
+    end
+
+    test "EOF mid-window finalizes current and pads remaining with empty strings", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 line",
+          "2026-01-15T12:00:10Z [1234] INFO [abc13] w2 partial"
+        ])
+
+      windows = [
+        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
+        {dt("2026-01-15T12:00:08Z"), dt("2026-01-15T12:00:15Z")},
+        {dt("2026-01-15T12:00:20Z"), dt("2026-01-15T12:00:25Z")}
+      ]
+
+      [w1, w2, w3] = Logs.extract_windows(windows, path)
+
+      assert w1 =~ "w1 line"
+      assert w2 =~ "w2 partial"
+      assert w3 == ""
+    end
+
+    test "window with no matching lines returns empty string while others work", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 line",
+          "2026-01-15T12:00:05Z [1234] INFO [abc13] w1 line2",
+          "2026-01-15T12:00:20Z [1234] INFO [abc14] w3 line"
+        ])
+
+      windows = [
+        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:06Z")},
+        {dt("2026-01-15T12:00:10Z"), dt("2026-01-15T12:00:15Z")},
+        {dt("2026-01-15T12:00:18Z"), dt("2026-01-15T12:00:25Z")}
+      ]
+
+      [w1, w2, w3] = Logs.extract_windows(windows, path)
+
+      assert w1 =~ "w1 line"
+      assert w1 =~ "w1 line2"
+      assert w2 == ""
+      assert w3 =~ "w3 line"
     end
   end
 end
