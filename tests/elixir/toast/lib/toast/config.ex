@@ -377,7 +377,7 @@ defmodule Toast.Config do
   end
 
   defp default_work_dir do
-    ts = DateTime.utc_now(:second) |> DateTime.to_iso8601()
+    ts = DateTime.utc_now(:second) |> DateTime.to_iso8601() |> String.replace(":", "-")
     suffix = :crypto.strong_rand_bytes(2) |> Base.encode16()
     Path.join([System.tmp_dir!(), "toast", "#{ts}_#{suffix}"])
   end
