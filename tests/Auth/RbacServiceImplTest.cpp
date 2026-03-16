@@ -65,14 +65,17 @@ struct MockBackend : rbac::Backend {
 
 auto constexpr testToken = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.test";
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 TEST(RbacServiceImplTest, maySync_allow_returnsTrue) {
   auto mock = std::make_unique<MockBackend>();
   mock->nextEffect = rbac::Backend::Effect::Allow;
   rbac::ServiceImpl svc{std::move(mock)};
 
-  auto result = svc.maySync(rbac::Service::User{.jwtToken = testToken},
-                            rbac::Service::Permission::Read,
-                            rbac::Service::Category::Database{.name = "mydb"});
+  auto result =
+      svc.maySync(rbac::Service::User{.jwtToken = testToken},
+                  rbac::Service::Category::ReadDatabase{.name = "mydb"});
 
   ASSERT_TRUE(result.ok());
   EXPECT_TRUE(result.get());
@@ -84,8 +87,7 @@ TEST(RbacServiceImplTest, maySync_deny_returnsFalse) {
   rbac::ServiceImpl svc{std::move(mock)};
 
   auto result = svc.maySync(rbac::Service::User{.jwtToken = testToken},
-                            rbac::Service::Permission::Write,
-                            rbac::Service::Category::Collection{
+                            rbac::Service::Category::WriteCollection{
                                 .database = "mydb", .name = "vertices"});
 
   ASSERT_TRUE(result.ok());
@@ -98,48 +100,39 @@ TEST(RbacServiceImplTest, maySync_database_sends_single_item) {
   rbac::ServiceImpl svc{std::move(rawMock)};
 
   svc.maySync(rbac::Service::User{.jwtToken = testToken},
-              rbac::Service::Permission::Read,
-              rbac::Service::Category::Database{.name = "testdb"});
+              rbac::Service::Category::ReadDatabase{.name = "testdb"});
 
   ASSERT_EQ(mockPtr->lastItems.size(), 1);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadDatabase");
   EXPECT_EQ(mockPtr->lastItems[0].resource, "db:database:testdb");
 }
 
-TEST(RbacServiceImplTest, maySync_collection_sends_hierarchy) {
-  auto rawMock = std::make_unique<MockBackend>();
-  auto* mockPtr = rawMock.get();
-  rbac::ServiceImpl svc{std::move(rawMock)};
-
-  svc.maySync(
-      rbac::Service::User{.jwtToken = testToken},
-      rbac::Service::Permission::Read,
-      rbac::Service::Category::Collection{.database = "mydb", .name = "edges"});
-
-  ASSERT_EQ(mockPtr->lastItems.size(), 2);
-  EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadCollection");
-  EXPECT_EQ(mockPtr->lastItems[0].resource, "db:collection:mydb:edges");
-  EXPECT_EQ(mockPtr->lastItems[1].action, "db:ReadDatabase");
-  EXPECT_EQ(mockPtr->lastItems[1].resource, "db:database:mydb");
-}
-
-TEST(RbacServiceImplTest, maySync_documents_sends_full_hierarchy) {
+TEST(RbacServiceImplTest, maySync_collection_sends_single_item) {
   auto rawMock = std::make_unique<MockBackend>();
   auto* mockPtr = rawMock.get();
   rbac::ServiceImpl svc{std::move(rawMock)};
 
   svc.maySync(rbac::Service::User{.jwtToken = testToken},
-              rbac::Service::Permission::Write,
-              rbac::Service::Category::Documents{.database = "mydb",
-                                                 .collection = "vertices"});
+              rbac::Service::Category::ReadCollection{.database = "mydb",
+                                                      .name = "edges"});
 
-  ASSERT_EQ(mockPtr->lastItems.size(), 3);
+  ASSERT_EQ(mockPtr->lastItems.size(), 1);
+  EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadCollection");
+  EXPECT_EQ(mockPtr->lastItems[0].resource, "db:collection:mydb:edges");
+}
+
+TEST(RbacServiceImplTest, maySync_documents_sends_single_item) {
+  auto rawMock = std::make_unique<MockBackend>();
+  auto* mockPtr = rawMock.get();
+  rbac::ServiceImpl svc{std::move(rawMock)};
+
+  svc.maySync(rbac::Service::User{.jwtToken = testToken},
+              rbac::Service::Category::WriteDocuments{
+                  .database = "mydb", .collection = "vertices"});
+
+  ASSERT_EQ(mockPtr->lastItems.size(), 1);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:WriteDocuments");
   EXPECT_EQ(mockPtr->lastItems[0].resource, "db:collection:mydb:vertices");
-  EXPECT_EQ(mockPtr->lastItems[1].action, "db:WriteCollection");
-  EXPECT_EQ(mockPtr->lastItems[1].resource, "db:collection:mydb:vertices");
-  EXPECT_EQ(mockPtr->lastItems[2].action, "db:WriteDatabase");
-  EXPECT_EQ(mockPtr->lastItems[2].resource, "db:database:mydb");
 }
 
 TEST(RbacServiceImplTest, maySync_databases_sends_empty_resource) {
@@ -148,8 +141,7 @@ TEST(RbacServiceImplTest, maySync_databases_sends_empty_resource) {
   rbac::ServiceImpl svc{std::move(rawMock)};
 
   svc.maySync(rbac::Service::User{.jwtToken = testToken},
-              rbac::Service::Permission::Read,
-              rbac::Service::Category::Databases{});
+              rbac::Service::Category::ReadDatabases{});
 
   ASSERT_EQ(mockPtr->lastItems.size(), 1);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadDatabases");
@@ -162,8 +154,7 @@ TEST(RbacServiceImplTest, maySync_forwardsJwtTokenToBackend) {
   rbac::ServiceImpl svc{std::move(rawMock)};
 
   svc.maySync(rbac::Service::User{.jwtToken = testToken},
-              rbac::Service::Permission::Read,
-              rbac::Service::Category::Database{.name = "mydb"});
+              rbac::Service::Category::ReadDatabase{.name = "mydb"});
 
   EXPECT_EQ(mockPtr->lastJwtToken, testToken);
 }
@@ -185,49 +176,41 @@ TEST(RbacServiceImplTest, maySync_backendError_propagatesError) {
   rbac::ServiceImpl svc{std::make_unique<ErrorBackend>()};
 
   auto result = svc.maySync(rbac::Service::User{.jwtToken = testToken},
-                            rbac::Service::Permission::Read,
-                            rbac::Service::Category::Databases{});
+                            rbac::Service::Category::ReadDatabases{});
 
   EXPECT_FALSE(result.ok());
 }
 
-TEST(RbacServiceImplTest, may_async_collection_sends_hierarchy) {
+TEST(RbacServiceImplTest, may_async_collection_sends_single_item) {
   auto rawMock = std::make_unique<MockBackend>();
   auto* mockPtr = rawMock.get();
   rbac::ServiceImpl svc{std::move(rawMock)};
 
-  std::ignore = svc.may(
-      rbac::Service::User{.jwtToken = testToken},
-      rbac::Service::Permission::Read,
-      rbac::Service::Category::Collection{.database = "mydb", .name = "edges"});
+  std::ignore = svc.may(rbac::Service::User{.jwtToken = testToken},
+                        rbac::Service::Category::ReadCollection{
+                            .database = "mydb", .name = "edges"});
 
-  ASSERT_EQ(mockPtr->lastItems.size(), 2);
+  ASSERT_EQ(mockPtr->lastItems.size(), 1);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadCollection");
   EXPECT_EQ(mockPtr->lastItems[0].resource, "db:collection:mydb:edges");
-  EXPECT_EQ(mockPtr->lastItems[1].action, "db:ReadDatabase");
-  EXPECT_EQ(mockPtr->lastItems[1].resource, "db:database:mydb");
 }
 
-TEST(RbacServiceImplTest, mayAllSync_combines_hierarchies) {
+TEST(RbacServiceImplTest, mayAllSync_combines_categories) {
   auto rawMock = std::make_unique<MockBackend>();
   auto* mockPtr = rawMock.get();
   rbac::ServiceImpl svc{std::move(rawMock)};
 
   using Cat = rbac::Service::Category;
-  using Perm = rbac::Service::Permission;
-  svc.mayAllSync(
-      rbac::Service::User{.jwtToken = testToken},
-      {{Perm::Read, Cat::Documents{.database = "db", .collection = "col"}},
-       {Perm::Read, Cat::Database{.name = "db2"}}});
+  svc.mayAllSync(rbac::Service::User{.jwtToken = testToken},
+                 {Cat::ReadDocuments{.database = "db", .collection = "col"},
+                  Cat::ReadDatabase{.name = "db2"}});
 
-  // Documents hierarchy: 3 items + Database: 1 item = 4 total
-  ASSERT_EQ(mockPtr->lastItems.size(), 4);
+  // One item per category
+  ASSERT_EQ(mockPtr->lastItems.size(), 2);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadDocuments");
   EXPECT_EQ(mockPtr->lastItems[0].resource, "db:collection:db:col");
-  EXPECT_EQ(mockPtr->lastItems[1].action, "db:ReadCollection");
-  EXPECT_EQ(mockPtr->lastItems[1].resource, "db:collection:db:col");
-  EXPECT_EQ(mockPtr->lastItems[2].action, "db:ReadDatabase");
-  EXPECT_EQ(mockPtr->lastItems[2].resource, "db:database:db");
-  EXPECT_EQ(mockPtr->lastItems[3].action, "db:ReadDatabase");
-  EXPECT_EQ(mockPtr->lastItems[3].resource, "db:database:db2");
+  EXPECT_EQ(mockPtr->lastItems[1].action, "db:ReadDatabase");
+  EXPECT_EQ(mockPtr->lastItems[1].resource, "db:database:db2");
 }
+
+#pragma GCC diagnostic pop

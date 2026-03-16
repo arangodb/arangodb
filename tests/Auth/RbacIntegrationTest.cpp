@@ -191,8 +191,7 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_Allow) {
 
   auto result =
       service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Service::Permission::Read,
-                       rbac::Service::Category::Database{.name = "mydb"});
+                       rbac::Service::Category::ReadDatabase{.name = "mydb"});
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_TRUE(result.get());
@@ -217,8 +216,7 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_Deny) {
 
   auto result =
       service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Service::Permission::Read,
-                       rbac::Service::Category::Database{.name = "mydb"});
+                       rbac::Service::Category::ReadDatabase{.name = "mydb"});
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_FALSE(result.get());
@@ -230,8 +228,7 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_HttpServerError) {
 
   auto result =
       service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Service::Permission::Read,
-                       rbac::Service::Category::Database{.name = "mydb"});
+                       rbac::Service::Category::ReadDatabase{.name = "mydb"});
 
   EXPECT_FALSE(result.ok());
 }
@@ -242,8 +239,7 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_MalformedResponse) {
 
   auto result =
       service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Service::Permission::Read,
-                       rbac::Service::Category::Database{.name = "mydb"});
+                       rbac::Service::Category::ReadDatabase{.name = "mydb"});
 
   EXPECT_FALSE(result.ok());
 }
@@ -259,12 +255,9 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_AllAllow) {
   auto result = service->mayAllSync(
       rbac::Service::User{.jwtToken = "test.jwt.token"},
       {
-          {rbac::Service::Permission::Read,
-           rbac::Service::Category::Database{.name = "db1"}},
-          {rbac::Service::Permission::Write,
-           rbac::Service::Category::Database{.name = "db2"}},
-          {rbac::Service::Permission::Read,
-           rbac::Service::Category::Database{.name = "db3"}},
+          rbac::Service::Category::ReadDatabase{.name = "db1"},
+          rbac::Service::Category::WriteDatabase{.name = "db2"},
+          rbac::Service::Category::ReadDatabase{.name = "db3"},
       });
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
@@ -294,12 +287,9 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_AllDeny) {
   auto result = service->mayAllSync(
       rbac::Service::User{.jwtToken = "test.jwt.token"},
       {
-          {rbac::Service::Permission::Read,
-           rbac::Service::Category::Database{.name = "db1"}},
-          {rbac::Service::Permission::Write,
-           rbac::Service::Category::Database{.name = "db2"}},
-          {rbac::Service::Permission::Read,
-           rbac::Service::Category::Database{.name = "db3"}},
+          rbac::Service::Category::ReadDatabase{.name = "db1"},
+          rbac::Service::Category::WriteDatabase{.name = "db2"},
+          rbac::Service::Category::ReadDatabase{.name = "db3"},
       });
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
@@ -314,12 +304,9 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_OneDenied) {
   auto result = service->mayAllSync(
       rbac::Service::User{.jwtToken = "test.jwt.token"},
       {
-          {rbac::Service::Permission::Read,
-           rbac::Service::Category::Database{.name = "db1"}},
-          {rbac::Service::Permission::Write,
-           rbac::Service::Category::Database{.name = "db2"}},
-          {rbac::Service::Permission::Read,
-           rbac::Service::Category::Database{.name = "db3"}},
+          rbac::Service::Category::ReadDatabase{.name = "db1"},
+          rbac::Service::Category::WriteDatabase{.name = "db2"},
+          rbac::Service::Category::ReadDatabase{.name = "db3"},
       });
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
@@ -333,12 +320,9 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_HttpServerError) {
   auto result = service->mayAllSync(
       rbac::Service::User{.jwtToken = "test.jwt.token"},
       {
-          {rbac::Service::Permission::Read,
-           rbac::Service::Category::Database{.name = "db1"}},
-          {rbac::Service::Permission::Write,
-           rbac::Service::Category::Database{.name = "db2"}},
-          {rbac::Service::Permission::Read,
-           rbac::Service::Category::Database{.name = "db3"}},
+          rbac::Service::Category::ReadDatabase{.name = "db1"},
+          rbac::Service::Category::WriteDatabase{.name = "db2"},
+          rbac::Service::Category::ReadDatabase{.name = "db3"},
       });
 
   EXPECT_FALSE(result.ok());
