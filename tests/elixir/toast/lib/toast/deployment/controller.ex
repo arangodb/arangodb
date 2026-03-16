@@ -345,8 +345,12 @@ defmodule Toast.Deployment.Controller do
   end
 
   def handle_info({:server_unhealthy, server_id}, state) do
-    Logger.error("Server #{server_id} is unresponsive, killing process")
-    Helpers.stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
+    Logger.error("Server #{server_id} is unresponsive, sending SIGABRT for crash backtrace")
+
+    case state.servers[server_id] do
+      %{server_pid: pid} when pid != nil -> Toast.Process.ServerProcess.send_signal(pid, :sigabrt)
+      _ -> :ok
+    end
 
     state =
       Helpers.update_server(state, server_id, operational_state: :killed, expecting_exit: true)
