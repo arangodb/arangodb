@@ -47,6 +47,37 @@ defmodule ToastTest.Abort do
     :ok
   end
 
+  @doc "Register the currently running test process so it can be killed on abort."
+  @spec register_test_pid(pid()) :: :ok
+  def register_test_pid(pid) do
+    :ets.insert(@table, {:test_pid, pid})
+    :ok
+  catch
+    :error, :badarg -> :ok
+  end
+
+  @doc "Clear the registered test process."
+  @spec unregister_test_pid() :: :ok
+  def unregister_test_pid do
+    :ets.delete(@table, :test_pid)
+    :ok
+  catch
+    :error, :badarg -> :ok
+  end
+
+  @doc "Kill the currently registered test process, if any."
+  @spec kill_test_pid() :: :ok
+  def kill_test_pid do
+    case :ets.lookup(@table, :test_pid) do
+      [{:test_pid, pid}] -> Process.exit(pid, :kill)
+      [] -> :ok
+    end
+
+    :ok
+  catch
+    :error, :badarg -> :ok
+  end
+
   @doc "Returns the abort reason, or nil if not aborted."
   @spec reason() :: String.t() | {atom(), String.t()} | nil
   def reason do

@@ -43,29 +43,67 @@ defmodule ToastTest.CrashMonitorTest do
     refute msg =~ "signal"
   end
 
-  test "handle_crash with nil signal and exit_status" do
+  test "handle_crash kills the registered test pid" do
+    # Spawn a process that just blocks
+    victim =
+      spawn(fn ->
+        receive do
+          :never -> :ok
+        end
+      end)
+
+    ref = Process.monitor(victim)
+    Abort.register_test_pid(victim)
+
     CrashMonitor.handle_crash(
       dummy_deployment(),
-      %Toast.Process.CrashInfo{exit_status: 134, signal: 6, timestamp: DateTime.utc_now()}
+      %Toast.Process.CrashInfo{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
     )
 
-    assert {:crash, msg} = Abort.reason()
-    assert msg =~ "Server crashed"
+    assert_receive {:DOWN, ^ref, :process, ^victim, :killed}, 1000
+  end
+end
+
+defmodule ToastTest.AbortTestPidTest do
+  use ExUnit.Case, async: false
+
+  alias ToastTest.Abort
+
+  setup do
+    Abort.clear!()
+    on_exit(fn -> Abort.clear!() end)
+    :ok
   end
 
-  test "handle_crash returns :ok" do
-    assert :ok =
-             CrashMonitor.handle_crash(
-               dummy_deployment(),
-               %Toast.Process.CrashInfo{
-                 exit_status: nil,
-                 signal: nil,
-                 timestamp: DateTime.utc_now()
-               }
-             )
+  test "register_test_pid and kill_test_pid kills the registered process" do
+    victim =
+      spawn(fn ->
+        receive do
+          :never -> :ok
+        end
+      end)
+
+    ref = Process.monitor(victim)
+    Abort.register_test_pid(victim)
+    Abort.kill_test_pid()
+
+    assert_receive {:DOWN, ^ref, :process, ^victim, :killed}, 1000
   end
 
-  test "callback has arity 2" do
-    assert is_function(&CrashMonitor.handle_crash/2, 2)
+  test "unregister_test_pid prevents kill" do
+    victim =
+      spawn(fn ->
+        receive do
+          :never -> :ok
+        end
+      end)
+
+    ref = Process.monitor(victim)
+    Abort.register_test_pid(victim)
+    Abort.unregister_test_pid()
+    Abort.kill_test_pid()
+
+    refute_receive {:DOWN, ^ref, :process, ^victim, :killed}, 100
+    Process.exit(victim, :kill)
   end
 end

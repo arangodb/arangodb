@@ -873,7 +873,9 @@ defmodule ToastTest.Runner do
     timeout = get_timeout(config, test.tags)
     start_time = System.monotonic_time()
     {test_pid, test_ref} = spawn_test_monitor(config, test, parent_pid, context)
+    Abort.register_test_pid(test_pid)
     test = receive_test_reply(test, test_pid, test_ref, timeout, start_time)
+    Abort.unregister_test_pid()
     exec_on_exit(test, test_pid, timeout)
   end
 
@@ -935,6 +937,17 @@ defmodule ToastTest.Runner do
       {^test_pid, :test_finished, test} ->
         Process.demonitor(test_ref, [:flush])
         test
+
+      {:DOWN, ^test_ref, :process, ^test_pid, :killed} ->
+        elapsed_us = elapsed_us(start_time)
+
+        exception =
+          case Abort.reason() do
+            nil -> RuntimeError.exception("test process was killed")
+            reason -> RuntimeError.exception("test aborted: #{Abort.display_reason(reason)}")
+          end
+
+        %{test | state: failed(:error, exception, []), time: elapsed_us}
 
       {:DOWN, ^test_ref, :process, ^test_pid, error} ->
         elapsed_us = elapsed_us(start_time)
