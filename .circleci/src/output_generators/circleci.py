@@ -204,7 +204,7 @@ class CircleCIGenerator(OutputGenerator):
         preset = "enterprise-pr"
 
         if build_config.architecture == Architecture.AARCH64:
-            preset += "arm"
+            preset += "-arm"
 
         preset += build_config.build_variant.get_suffix()
 
