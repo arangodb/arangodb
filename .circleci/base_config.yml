@@ -82,7 +82,7 @@ parameters:
   # only used by the kafka driver tests
   kafkaHostList:
     type: string
-    default: "kafka-1:19092,kafka-2:29092,kafka-3:39092"
+    default: "localhost:19092,localhost:29092,localhost:39092"
 
 
 .shared-test-job-parameters: &shared-test-job-parameters
@@ -807,10 +807,10 @@ jobs:
           - KAFKA_CFG_NODE_ID: 1
           - KAFKA_CFG_PROCESS_ROLES: controller,broker
           - KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://0.0.0.0:19092,CONTROLLER://:9093
-          - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
+          - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093,2@localhost:9095,3@localhost:9097"
           - KAFKA_KRAFT_CLUSTER_ID: abcdefghijklmnopqrstuv
           - KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-          - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-1:9092,PLAINTEXT_HOST://kafka-1:19092"
+          - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,PLAINTEXT_HOST://localhost:19092"
           - KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
           - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
       - image: docker.io/bitnamilegacy/kafka:3.9
@@ -820,11 +820,11 @@ jobs:
           - ALLOW_PLAINTEXT_LISTENER: "yes"
           - KAFKA_CFG_NODE_ID: 2
           - KAFKA_CFG_PROCESS_ROLES: controller,broker
-          - KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://:9093
-          - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
+          - KAFKA_CFG_LISTENERS: PLAINTEXT://:9095,PLAINTEXT_HOST://0.0.0.0:29093,CONTROLLER://:9096
+          - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093,2@localhost:9095,3@localhost:9097"
           - KAFKA_KRAFT_CLUSTER_ID: abcdefghijklmnopqrstuv
           - KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-          - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-2:9092,PLAINTEXT_HOST://kafka-2:29092"
+          - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9095,PLAINTEXT_HOST://localhost:29096"
           - KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
           - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
       - image: docker.io/bitnamilegacy/kafka:3.9
@@ -835,7 +835,7 @@ jobs:
           - KAFKA_CFG_NODE_ID: 3
           - KAFKA_CFG_PROCESS_ROLES: controller,broker
           - KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://0.0.0.0:39092,CONTROLLER://:9093
-          - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
+          - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093,2@localhost:9095,3@localhost:9097"
           - KAFKA_KRAFT_CLUSTER_ID: abcdefghijklmnopqrstuv
           - KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
           - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-3:9092,PLAINTEXT_HOST://kafka-3:39092"
@@ -844,13 +844,13 @@ jobs:
       - image: docker.io/confluentinc/cp-schema-registry:7.5.2
         name: kafka-schema-registry
         environment:
-          - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka-1:19092,PLAINTEXT://kafka-2:29092,PLAINTEXT://kafka-3:39092
-          - SCHEMA_REGISTRY_HOST_NAME=kafka-schema-registry
+          - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://localhost:19092,PLAINTEXT://localhost:29092,PLAINTEXT://localhost:39092
+          - SCHEMA_REGISTRY_HOST_NAME=localhost
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     environment:
-      - KAFKA_HOST_LIST=kafka-1:19092,kafka-2:29092,kafka-3:39092
-      - KAFKA_SCHEMA_HOST=http://kafka-schema-registry:8081
+      - KAFKA_HOST_LIST=localhost:19092,localhost:29092,localhost:39092
+      - KAFKA_SCHEMA_HOST=http://localhost:8081
     steps:
       - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
