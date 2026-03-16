@@ -29,12 +29,9 @@
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
-#include "Basics/hashes.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
@@ -53,12 +50,10 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
-#include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBIterators.h"
@@ -72,7 +67,6 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -599,22 +593,26 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     inventoryLocker.unlock();
 
     // Step 4. fill index
+    // Vector index creation is handled by the VectorIndexBuildCoordinator,
+    // so we skip the filling here.
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
+    if (buildIdx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+      if (inBackground) {
+        {
+          RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+          _indexes.emplace(buildIdx);
+        }
 
-    if (inBackground) {
-      {
-        RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-        _indexes.emplace(buildIdx);
+        RocksDBFilePurgePreventer walKeeper(&engine);
+        res =
+            co_await buildIdx->fillIndexBackground(locker, std::move(progress));
+      } else {
+        res = buildIdx->fillIndexForeground(std::move(progress));
       }
-
-      RocksDBFilePurgePreventer walKeeper(&engine);
-      res = co_await buildIdx->fillIndexBackground(locker, std::move(progress));
-    } else {
-      res = buildIdx->fillIndexForeground(std::move(progress));
-    }
-    if (res.fail()) {
-      co_return res;
+      if (res.fail()) {
+        co_return res;
+      }
     }
 
     ADB_PROD_ASSERT(locker.isLocked())
