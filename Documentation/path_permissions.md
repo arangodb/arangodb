@@ -1254,8 +1254,9 @@ We should map the permissions in the following way to RBAC actions and resources
 | `db:ReadDatabase`             | `db:database:<name>`       | read access to a database (list collections, properties)                 |
 | `db:WriteDatabase`            | `db:database:<name>`       | change properties of a database                                          |
 | `db:ReadCollection`           | `db:collection:<db>:<coll>`| read collection meta data, including indexes                             |
-| `db:ReadDocuments`            | `db:collection:<db>:<coll>`| reading documents from a collection (also via view)                      |
 | `db:WriteCollection`          | `db:collection:<db>:<coll>`| modify collection meta data, including indexes                           |
+| `db:ReadDocuments`            | `db:collection:<db>:<coll>`| reading documents from a collection (also via view)                      |
+| `db:WriteDocuments`           | `db:collection:<db>:<coll>`| modify collection data                                                   |
 | `db:ReadView`                 | `db:view:<db>:<view>`      | read view metadata (document access via ReadDocuments)                   |
 | `db:WriteView`                | `db:view:<db>:<view>`      | modify view metadata                                                     |
 | `db:ReadAnalyzer`             | `db:analyzer:<db>:<name>`  | read analyzer metadata                                                   |
