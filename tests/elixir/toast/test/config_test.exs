@@ -7,6 +7,7 @@ defmodule Toast.ConfigTest do
     TOAST_BUILD_DIR
     TOAST_WORK_DIR
     TOAST_RESULT_DIR
+    TOAST_COREDUMP_DIR
     TOAST_DEPLOYMENT_MODE
     TOAST_SHOW_SERVER_LOGS
     TOAST_GLOBAL_TIMEOUT
@@ -501,6 +502,25 @@ defmodule Toast.ConfigTest do
       config = Config.load(active_sanitizers: MapSet.new(["asan"]))
 
       assert config.shutdown_timeout == 30_000 * 3
+    end
+  end
+
+  describe "TOAST_COREDUMP_DIR env var" do
+    test "reads coredump_dir from environment" do
+      System.put_env("TOAST_COREDUMP_DIR", "/custom/cores")
+
+      assert Config.load().coredump_dir == "/custom/cores"
+    end
+
+    test "defaults to nil when not set" do
+      assert Config.load().coredump_dir == nil
+    end
+
+    test "keyword override takes precedence" do
+      System.put_env("TOAST_COREDUMP_DIR", "/env/cores")
+
+      config = Config.load(coredump_dir: "/opt/cores")
+      assert config.coredump_dir == "/opt/cores"
     end
   end
 

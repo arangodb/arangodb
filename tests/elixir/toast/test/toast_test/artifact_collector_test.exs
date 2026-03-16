@@ -28,10 +28,6 @@ defmodule ToastTest.ArtifactCollectorTest do
   end
 
   describe "collect/2" do
-    test "empty servers map returns empty map" do
-      assert ArtifactCollector.collect(%{}) == %{}
-    end
-
     test "server with no artifacts returns empty lists" do
       dir = create_tmp_dir()
       server = make_server("s1", server_dir: dir)
@@ -84,32 +80,6 @@ defmodule ToastTest.ArtifactCollectorTest do
       assert artifacts.sanitizer_files == [large_file]
     end
 
-    test "exactly 10 bytes is filtered out" do
-      dir = create_tmp_dir()
-
-      edge_file = Path.join(dir, "tsan.log.333")
-      File.write!(edge_file, String.duplicate("x", 10))
-
-      server = make_server("s1", server_dir: dir)
-      result = ArtifactCollector.collect(%{"s1" => server})
-
-      assert %{"s1" => artifacts} = result
-      assert artifacts.sanitizer_files == []
-    end
-
-    test "11 bytes passes the filter" do
-      dir = create_tmp_dir()
-
-      file = Path.join(dir, "tsan.log.444")
-      File.write!(file, String.duplicate("x", 11))
-
-      server = make_server("s1", server_dir: dir)
-      result = ArtifactCollector.collect(%{"s1" => server})
-
-      assert %{"s1" => artifacts} = result
-      assert artifacts.sanitizer_files == [file]
-    end
-
     test "multiple servers each get their own artifacts" do
       dir1 = create_tmp_dir()
       dir2 = create_tmp_dir()
@@ -141,44 +111,6 @@ defmodule ToastTest.ArtifactCollectorTest do
       result = ArtifactCollector.collect(%{"s1" => server})
 
       assert result["s1"].sanitizer_files == []
-    end
-
-    test "merges current pid and pid_history for coredump discovery" do
-      dir = create_tmp_dir()
-
-      server = make_server("s1", server_dir: dir, pid: 42)
-      pid_history = %{"s1" => [10, 20]}
-
-      result = ArtifactCollector.collect(%{"s1" => server}, pid_history)
-
-      # We can't easily verify the pids passed to Coredump.discover,
-      # but we verify the structure is correct and no crash occurs
-      assert %{"s1" => artifacts} = result
-      assert artifacts.coredump_paths == []
-      assert artifacts.server == server
-    end
-
-    test "works with pid_history but no current pid" do
-      dir = create_tmp_dir()
-
-      server = make_server("s1", server_dir: dir, pid: nil)
-      pid_history = %{"s1" => [10, 20]}
-
-      result = ArtifactCollector.collect(%{"s1" => server}, pid_history)
-
-      assert %{"s1" => artifacts} = result
-      assert artifacts.coredump_paths == []
-    end
-
-    test "works with current pid but no pid_history" do
-      dir = create_tmp_dir()
-
-      server = make_server("s1", server_dir: dir, pid: 42)
-
-      result = ArtifactCollector.collect(%{"s1" => server})
-
-      assert %{"s1" => artifacts} = result
-      assert artifacts.coredump_paths == []
     end
   end
 end

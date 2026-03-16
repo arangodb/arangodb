@@ -5,7 +5,7 @@ defmodule ToastTest.PostExecSummaryTest do
 
   alias ToastTest.{SuiteResult, PostExecSummary}
 
-  defp suite_result(issues) do
+  defp suite_result(issues, opts \\ []) do
     %SuiteResult{
       suite: "smoke",
       started_at: ~U[2026-03-09 10:00:00Z],
@@ -13,7 +13,8 @@ defmodule ToastTest.PostExecSummaryTest do
       times_us: %{async: 0, load: 0, run: 300_000_000},
       modules: %{},
       issues: issues,
-      events: %{}
+      events: %{},
+      warnings: Keyword.get(opts, :warnings, [])
     }
   end
 
@@ -333,5 +334,22 @@ defmodule ToastTest.PostExecSummaryTest do
 
     assert test_output =~ "SomeModule"
     assert test_output =~ ~s(> "foo")
+  end
+
+  test "prints coredump file path for crash with coredump" do
+    output =
+      capture_io(fn -> PostExecSummary.print(suite_result([crash_issue_with_coredump()])) end)
+
+    assert output =~ "Coredump: /tmp/core.1234"
+  end
+
+  test "prints warnings section when warnings are present" do
+    warnings = ["Coredump discovery may not work: handler unknown"]
+
+    output =
+      capture_io(fn -> PostExecSummary.print(suite_result([], warnings: warnings)) end)
+
+    assert output =~ "WARNINGS"
+    assert output =~ "Coredump discovery may not work: handler unknown"
   end
 end

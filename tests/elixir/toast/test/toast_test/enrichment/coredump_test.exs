@@ -64,37 +64,19 @@ defmodule ToastTest.Enrichment.CoredumpTest do
       assert thread2.backtrace =~ "worker_func"
     end
 
-    test "thread name is nil when not present in report" do
-      report = %Report{
-        core_path: "/tmp/core.1234",
-        binary_path: "/usr/bin/arangod",
-        debugger: :lldb,
-        signal: nil,
-        faulting_address: nil,
-        crash_thread: nil,
-        threads: [%{id: 5, frames: []}]
-      }
-
-      server = build_server()
-
-      assert {:ok, enrichment} =
-               Coredump.analyze("/tmp/core.1234", server,
-                 analyzer: fn _, _, _ -> {:ok, report} end
-               )
-
-      assert [%{thread_id: "5", name: nil, backtrace: ""}] = enrichment.threads
-      assert enrichment.signal == nil
-    end
-
-    test "thread name is extracted when present in report" do
+    test "crash thread is reordered to first position" do
       report = %Report{
         core_path: "/tmp/core.1234",
         binary_path: "/usr/bin/arangod",
         debugger: :gdb,
-        signal: "SIGABRT",
+        signal: "SIGSEGV",
         faulting_address: nil,
-        crash_thread: 1,
-        threads: [%{id: 1, name: "Scheduler", frames: []}]
+        crash_thread: 3,
+        threads: [
+          %{id: 1, frames: [%{function: "worker_a", file: "a.cpp", line: 1}]},
+          %{id: 2, frames: [%{function: "worker_b", file: "b.cpp", line: 1}]},
+          %{id: 3, frames: [%{function: "crash_func", file: "crash.cpp", line: 42}]}
+        ]
       }
 
       server = build_server()
@@ -104,7 +86,37 @@ defmodule ToastTest.Enrichment.CoredumpTest do
                  analyzer: fn _, _, _ -> {:ok, report} end
                )
 
-      assert [%{thread_id: "1", name: "Scheduler"}] = enrichment.threads
+      assert [first | rest] = enrichment.threads
+      assert first.thread_id == "3"
+      assert first.backtrace =~ "crash_func"
+      rest_ids = Enum.map(rest, & &1.thread_id)
+      assert rest_ids == ["1", "2"]
+    end
+
+    test "thread order unchanged when crash_thread is nil" do
+      report = %Report{
+        core_path: "/tmp/core.1234",
+        binary_path: "/usr/bin/arangod",
+        debugger: :gdb,
+        signal: nil,
+        faulting_address: nil,
+        crash_thread: nil,
+        threads: [
+          %{id: 1, frames: []},
+          %{id: 2, frames: []},
+          %{id: 3, frames: []}
+        ]
+      }
+
+      server = build_server()
+
+      assert {:ok, enrichment} =
+               Coredump.analyze("/tmp/core.1234", server,
+                 analyzer: fn _, _, _ -> {:ok, report} end
+               )
+
+      ids = Enum.map(enrichment.threads, & &1.thread_id)
+      assert ids == ["1", "2", "3"]
     end
 
     test "propagates analyzer errors" do

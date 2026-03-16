@@ -86,7 +86,7 @@ defmodule Toast.Deployment.FactoryTest do
       config = make_config(build_dir, work_dir, show_server_logs: false)
 
       assert {:ok, spec} = Factory.build_single_server(config, "srv-log1", 8540)
-      assert has_flag_value?(spec.args, "--log.output", "+;all=error")
+      assert not Enum.any?(spec.args, &(&1 == "--log.output"))
     end
 
     test "show_server_logs true passes output through", %{tmp_dir: tmp_dir} do

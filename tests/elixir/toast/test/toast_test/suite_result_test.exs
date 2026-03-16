@@ -161,6 +161,21 @@ defmodule ToastTest.SuiteResultTest do
       assert result.events == events
     end
 
+    test "defaults warnings to empty list when not provided" do
+      test_data = build_test_data()
+      result = SuiteResult.build(test_data, [])
+
+      assert result.warnings == []
+    end
+
+    test "populates warnings when provided" do
+      test_data = build_test_data()
+      warnings = ["Coredump discovery may not work"]
+      result = SuiteResult.build(test_data, [], warnings: warnings)
+
+      assert result.warnings == warnings
+    end
+
     test "handles empty modules" do
       test_data = build_test_data(%{modules: %{}})
       result = SuiteResult.build(test_data, [])

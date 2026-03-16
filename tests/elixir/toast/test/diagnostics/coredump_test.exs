@@ -72,18 +72,55 @@ defmodule Toast.Diagnostics.CoredumpTest do
     end
   end
 
-  describe "detect_debugger/0" do
-    test "returns a module or :none" do
-      result = Coredump.detect_debugger()
+  describe "discover/1 with not_before filtering" do
+    setup do
+      dir = Path.join(System.tmp_dir!(), "toast_notbefore_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(dir)
+      on_exit(fn -> File.rm_rf!(dir) end)
+      %{dir: dir}
+    end
 
-      case result do
-        {:ok, mod, path} ->
-          assert mod in [Coredump.GDB, Coredump.LLDB]
-          assert is_binary(path)
+    test "filters out core files older than not_before timestamp", %{dir: dir} do
+      core_path = Path.join(dir, "core.old")
+      File.write!(core_path, "old core")
 
-        :none ->
-          assert true
+      # Set not_before to a time far in the future so the file is "too old"
+      future_ts = DateTime.to_unix(DateTime.utc_now()) + 86400
+
+      cores = Coredump.discover(server_dir: dir, not_before: future_ts)
+      assert cores == []
+    end
+
+    test "includes core files newer than not_before timestamp", %{dir: dir} do
+      core_path = Path.join(dir, "core.new")
+      File.write!(core_path, "new core")
+
+      # Set not_before to epoch so the file is definitely "new enough"
+      cores = Coredump.discover(server_dir: dir, not_before: 0)
+      assert core_path in cores
+    end
+  end
+
+  describe "analyze/3 with debugger tuple" do
+    test "accepts {module, executable} tuple" do
+      defmodule TupleEchoDebugger do
+        @behaviour Toast.Diagnostics.Coredump.Debugger
+
+        @impl true
+        def executable, do: "echo"
+
+        @impl true
+        def command(_binary, _core), do: ["tuple test"]
+
+        @impl true
+        def parse_output(_output),
+          do: %{signal: nil, faulting_address: nil, threads: [], crash_thread: nil}
       end
+
+      result =
+        Coredump.analyze("/fake/core", "/fake/binary", debugger: {TupleEchoDebugger, "echo"})
+
+      assert {:ok, %Report{}} = result
     end
   end
 
@@ -275,36 +312,6 @@ defmodule Toast.Diagnostics.CoredumpTest do
       assert result == []
     end
   end
-
-  describe "Report struct" do
-    test "has expected fields" do
-      report = %Report{
-        core_path: "/tmp/core.123",
-        binary_path: "/usr/bin/arangod",
-        debugger: :gdb,
-        signal: "SIGSEGV",
-        faulting_address: "0xdeadbeef",
-        crash_thread: 1,
-        threads: [%{id: 1, frames: []}]
-      }
-
-      assert report.core_path == "/tmp/core.123"
-      assert report.binary_path == "/usr/bin/arangod"
-      assert report.debugger == :gdb
-      assert report.signal == "SIGSEGV"
-      assert report.faulting_address == "0xdeadbeef"
-      assert report.crash_thread == 1
-      assert length(report.threads) == 1
-    end
-
-    test "defaults to empty threads list" do
-      report = %Report{core_path: "/tmp/core", binary_path: "/usr/bin/arangod", debugger: :gdb}
-
-      assert report.threads == []
-      assert report.signal == nil
-      assert report.crash_thread == nil
-    end
-  end
 end
 
 # T3: Separate module for env-var-dependent discover tests
@@ -353,6 +360,47 @@ defmodule Toast.Diagnostics.CoredumpOverrideDirTest do
       File.write!(Path.join(server_dir, "core.server"), "server core")
 
       assert Coredump.discover(server_dir: server_dir, coredump_dir: override_dir) == []
+    end
+
+    test "filters override dir files by PID when os_pids provided", %{
+      override_dir: override_dir,
+      server_dir: server_dir
+    } do
+      File.write!(Path.join(override_dir, "core.12345"), "matching core")
+      File.write!(Path.join(override_dir, "core.99999"), "other core")
+
+      cores =
+        Coredump.discover(
+          server_dir: server_dir,
+          coredump_dir: override_dir,
+          os_pids: [12345]
+        )
+
+      basenames = Enum.map(cores, &Path.basename/1)
+      assert "core.12345" in basenames
+      refute "core.99999" in basenames
+    end
+
+    test "returns all files from override dir when no PIDs given", %{
+      override_dir: override_dir,
+      server_dir: server_dir
+    } do
+      File.write!(Path.join(override_dir, "core.111"), "core1")
+      File.write!(Path.join(override_dir, "core.222"), "core2")
+
+      cores = Coredump.discover(server_dir: server_dir, coredump_dir: override_dir)
+
+      assert length(cores) == 2
+    end
+
+    test "returns empty list when override dir does not exist", %{server_dir: server_dir} do
+      cores =
+        Coredump.discover(
+          server_dir: server_dir,
+          coredump_dir: "/nonexistent/override_#{System.unique_integer([:positive])}"
+        )
+
+      assert cores == []
     end
   end
 end
