@@ -23,7 +23,6 @@
 #pragma once
 
 #include <atomic>
-#include <chrono>
 #include <memory>
 #include <type_traits>
 
@@ -35,7 +34,6 @@
 #include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "Transaction/Methods.h"
-#include "Metrics/Fwd.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -136,12 +134,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  void updateTrainingMetrics(VectorIndexTrainingState previous,
-                             VectorIndexTrainingState next) noexcept;
-
-  void registerMetrics();
-  void deregisterMetrics();
-
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
   bruteForceSearch(
       std::vector<float>& inputs, std::size_t topK, transaction::Methods* trx,
@@ -159,11 +151,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::int64_t _trainingThreshold{0};
   std::atomic<VectorIndexTrainingState> _trainingState{
       VectorIndexTrainingState::kUntrained};
-
-  metrics::Gauge<uint64_t>* _metricState{nullptr};
-  metrics::Gauge<double>* _metricTrainingDuration{nullptr};
-  metrics::Gauge<double>* _metricIngestingDuration{nullptr};
-  std::chrono::steady_clock::time_point _stateEnteredAt{};
 };
 
 }  // namespace arangodb
