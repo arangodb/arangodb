@@ -26,7 +26,6 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Indexes/VectorIndexDefinition.h"
-#include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 
@@ -119,21 +118,14 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
 /// Orchestrates the full build pipeline for a vector index: train the FAISS
 /// index from collection documents, apply the result, then bulk-ingest all
-/// vectors using RocksDBBuilderIndex for ingestion + WAL catchup.
-/// Does not access collection or index lookup; passes only a reference to
-/// RocksDBBuilderIndex which constructs from RocksDBVectorIndex&.
+/// vectors via the ingestVectors() pipeline.
 class VectorIndexBuildManager {
  public:
   explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
 
-  Result build(RocksDBBuilderIndex::Locker& locker,
-               std::stop_token stopToken = {});
   Result build(std::stop_token stopToken = {});
 
  private:
-  Result buildImpl(RocksDBBuilderIndex::Locker& locker, bool foreground,
-                   std::stop_token stopToken);
-
   RocksDBVectorIndex& _index;
   RocksDBEngine& _engine;
   rocksdb::DB* _rootDB;

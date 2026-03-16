@@ -23,7 +23,6 @@
 
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "Indexes/IndexFactory.h"
-#include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
@@ -568,35 +567,12 @@ VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuildManager::build(RocksDBBuilderIndex::Locker& locker,
-                                      std::stop_token stopToken) {
-  if (!_index.setTrainingState(VectorIndexTrainingState::kUntrained,
-                               VectorIndexTrainingState::kTraining)) {
-    return Result{TRI_ERROR_INTERNAL, "vector index is not in untrained state"};
-  }
-
-  return buildImpl(locker, /*foreground=*/true, std::move(stopToken));
-}
-
 Result VectorIndexBuildManager::build(std::stop_token stopToken) {
   if (!_index.setTrainingState(VectorIndexTrainingState::kUntrained,
                                VectorIndexTrainingState::kTraining)) {
     return Result{TRI_ERROR_INTERNAL, "vector index is not in untrained state"};
   }
 
-  RocksDBBuilderIndex::Locker locker(_rcoll);
-  if (!std::move(locker.lock()).waitAndGet()) {
-    _index.resetTrainingState();
-    return Result{TRI_ERROR_LOCK_TIMEOUT,
-                  "failed to acquire collection lock for vector index build"};
-  }
-
-  return buildImpl(locker, /*foreground=*/false, std::move(stopToken));
-}
-
-Result VectorIndexBuildManager::buildImpl(RocksDBBuilderIndex::Locker& locker,
-                                          bool foreground,
-                                          std::stop_token stopToken) {
   auto shouldAbort = [&]() -> bool {
     return stopToken.stop_requested() || _index.collection().deleted();
   };
@@ -648,23 +624,16 @@ Result VectorIndexBuildManager::buildImpl(RocksDBBuilderIndex::Locker& locker,
   LOG_TOPIC("e163b", INFO, Logger::ENGINES)
       << "[shard=" << _index.collection().name()
       << ", index=" << _index.id().id() << "] "
-      << "Training complete. Ingesting vectors via RocksDBBuilderIndex. Fast "
-         "path: "
-      << std::boolalpha << foreground;
+      << "Training complete. Ingesting vectors.";
 
   auto trainedData = serializeIndex(*faissIndex);
   _index.applyTrainingResult(std::move(faissIndex), std::move(trainedData));
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
                           VectorIndexTrainingState::kIngesting);
 
-  auto builder = std::make_shared<RocksDBBuilderIndex>(_index);
-
-  Result res;
-  if (foreground) {
-    res = builder->fillIndexForeground();
-  } else {
-    res = builder->fillIndexBackground(locker).waitAndGet();
-  }
+  std::unique_ptr<rocksdb::Iterator> it(_rootDB->NewIterator(ro, docCF));
+  it->Seek(_bounds.start());
+  Result res = ingestVectors(_index, _rootDB, std::move(it), stopToken);
 
   if (res.fail()) {
     LOG_TOPIC("e166b", ERR, Logger::ENGINES)

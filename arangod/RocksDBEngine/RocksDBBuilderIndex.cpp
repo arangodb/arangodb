@@ -24,8 +24,12 @@
 #include "RocksDBBuilderIndex.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Basics/files.h"
+#include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
@@ -46,10 +50,10 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "RocksDBVectorIndex.h"
-#include "RocksDBVectorIndexBuilder.h"
+#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -61,6 +65,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -165,16 +170,18 @@ Result fillIndexSingleThreaded(
         break;
       }
 
-      if (ridx.collection().deleted()) {
-        res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-        break;
-      }
       if (ridx.collection().vocbase().server().isStopping()) {
         res.reset(TRI_ERROR_SHUTTING_DOWN);
         break;
       }
       if (ridx.collection().vocbase().isDropped()) {
+        // database dropped
         res.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+        break;
+      }
+      if (ridx.collection().deleted()) {
+        // collection dropped
+        res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
         break;
       }
 
@@ -247,40 +254,11 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
   TRI_ASSERT(_wrapped);
 }
 
-RocksDBBuilderIndex::RocksDBBuilderIndex(RocksDBVectorIndex& vectorIndex)
-    : RocksDBIndex{vectorIndex.id(),
-                   vectorIndex.collection(),
-                   vectorIndex.name(),
-                   vectorIndex.fields(),
-                   vectorIndex.unique(),
-                   vectorIndex.sparse(),
-                   vectorIndex.columnFamily(),
-                   vectorIndex.objectId(),
-                   /*useCache*/ false,
-                   /*cacheManager*/ nullptr,
-                   static_cast<RocksDBEngine&>(
-                       vectorIndex.collection().vocbase().engine())},
-      _wrapped{},
-      _vectorIndex(&vectorIndex),
-      _docsProcessed{0},
-      _numDocsHint{static_cast<uint64_t>(vectorIndex.documentCount())},
-      _numThreads{2} {}
-
-RocksDBIndex* RocksDBBuilderIndex::getWrapped() noexcept {
-  return _vectorIndex != nullptr ? static_cast<RocksDBIndex*>(_vectorIndex)
-                                 : _wrapped.get();
-}
-RocksDBIndex const* RocksDBBuilderIndex::getWrapped() const noexcept {
-  return _vectorIndex != nullptr
-             ? static_cast<RocksDBIndex const*>(_vectorIndex)
-             : _wrapped.get();
-}
-
 /// @brief return a VelocyPack representation of the index
 void RocksDBBuilderIndex::toVelocyPack(
     VPackBuilder& builder, std::underlying_type<Serialize>::type flags) const {
   VPackBuilder inner;
-  getWrapped()->toVelocyPack(inner, flags);
+  _wrapped->toVelocyPack(inner, flags);
   TRI_ASSERT(inner.slice().isObject());
   builder.openObject();  // FIXME refactor RocksDBIndex::toVelocyPack !!
   builder.add(velocypack::ObjectIterator(inner.slice()));
@@ -368,16 +346,6 @@ static Result fillIndex(
       RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
-  if constexpr (foreground) {
-    if (ridx.type() == arangodb::Index::TRI_IDX_TYPE_VECTOR_INDEX) {
-      auto& vecIdx = dynamic_cast<RocksDBVectorIndex&>(ridx);
-      if (vecIdx.faissIndex() != nullptr) {
-        it->Seek(bounds.start());
-        return vector::ingestVectors(vecIdx, rootDB, std::move(it));
-      }
-    }
-  }
-
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 #ifdef USE_ENTERPRISE
   if (arangodb::rocksutils::rocksDBEndianness == RocksDBEndianness::Little &&
@@ -402,9 +370,10 @@ static Result fillIndex(
   return res;
 }
 
+
 Result RocksDBBuilderIndex::fillIndexForeground(
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
-  RocksDBIndex* internal = getWrapped();
+  RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
   rocksdb::Snapshot const* snap = nullptr;
@@ -486,17 +455,17 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       : _objectId(oid), _index(idx), _trx(trx), _methods(methods) {}
 
   bool Continue() override {
-    if (_index.collection().deleted()) {
-      tmpRes.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-      return false;
-    }
     if (_index.collection().vocbase().server().isStopping()) {
       tmpRes.reset(TRI_ERROR_SHUTTING_DOWN);
-      return false;
     }
     if (++_iterations % 128 == 0) {
+      // check every now and then if we can abort replaying
       if (_index.collection().vocbase().isDropped()) {
+        // database dropped
         tmpRes.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      } else if (_index.collection().deleted()) {
+        // collection dropped
+        tmpRes.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     }
     return tmpRes.ok();
@@ -674,9 +643,6 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   lowerBoundTracker.tick(startingFrom);
 
   LogicalCollection& coll = ridx.collection();
-  if (coll.deleted()) {
-    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-  }
   auto origin = transaction::OperationOriginREST{"building index"};
   trx::BuilderTrx trx(
       transaction::StandaloneContext::create(coll.vocbase(), origin), coll,
@@ -820,7 +786,7 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(locker.isLocked());
 
-  RocksDBIndex* internal = getWrapped();
+  RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
   RocksDBEngine& engine = _collection.vocbase().engine<RocksDBEngine>();
