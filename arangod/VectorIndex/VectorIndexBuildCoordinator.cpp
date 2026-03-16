@@ -44,13 +44,10 @@ VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
     : _dbFeature(dbFeature) {}
 
 void VectorIndexBuildCoordinator::start() {
-  _thread =
-      std::jthread([this](std::stop_token stopToken) { run(stopToken); });
+  _thread = std::jthread([this](std::stop_token stopToken) { run(stopToken); });
 }
 
-void VectorIndexBuildCoordinator::beginShutdown() {
-  _thread.request_stop();
-}
+void VectorIndexBuildCoordinator::beginShutdown() { _thread.request_stop(); }
 
 void VectorIndexBuildCoordinator::stop() {
   beginShutdown();
@@ -60,83 +57,103 @@ void VectorIndexBuildCoordinator::stop() {
   }
 }
 
+bool VectorIndexBuildCoordinator::shouldSkipRetry(
+    std::uint64_t objectId, std::int64_t currentDocCount) const {
+  auto it = _failedBuilds.find(objectId);
+  if (it == _failedBuilds.end()) {
+    return false;
+  }
+  auto const& info = it->second;
+  bool backoffElapsed =
+      std::chrono::steady_clock::now() - info.failedAt >= kRetryBackoff;
+  bool docCountChanged = currentDocCount != info.documentCount;
+  // Retry only if backoff elapsed AND document count changed.
+  return !(backoffElapsed && docCountChanged);
+}
+
+void VectorIndexBuildCoordinator::recordFailure(std::uint64_t objectId,
+                                                std::int64_t docCount) {
+  _failedBuilds[objectId] = {std::chrono::steady_clock::now(), docCount};
+}
+
+void VectorIndexBuildCoordinator::clearFailure(std::uint64_t objectId) {
+  _failedBuilds.erase(objectId);
+}
+
 void VectorIndexBuildCoordinator::run(std::stop_token stopToken) {
 #ifdef TRI_HAVE_SYS_PRCTL_H
   pthread_setname_np(pthread_self(), "VecIdxBuild");
 #endif
 
   while (!stopToken.stop_requested()) {
-    // Sleep between scans, checking stop frequently.
     auto const deadline = std::chrono::steady_clock::now() + kScanInterval;
     while (std::chrono::steady_clock::now() < deadline &&
            !stopToken.stop_requested()) {
       std::this_thread::sleep_for(kSleepGranularity);
     }
 
-    // Scan all databases/collections for untrained vector indexes.
     try {
-      _dbFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
-        if (stopToken.stop_requested()) {
-          return;
-        }
-
-        auto const collections = vocbase.collections(false);
-        for (auto const& coll : collections) {
-          auto const indexes = coll->getPhysical()->getReadyIndexes();
-          for (auto const& idx : indexes) {
-            if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
-              continue;
-            }
-            auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
-            if (vecIdx.trainingState() !=
-                VectorIndexTrainingState::kUntrained) {
-              continue;
-            }
-
-            auto const* rcoll = static_cast<RocksDBCollection*>(
-                coll->getPhysical());
-            auto numDocs =
-                static_cast<std::int64_t>(rcoll->meta().numberDocuments());
-            // In case of sparse indexes this is not enough, since they might not have enough vectors to train on.
-            // Therefore the training and building process will fail and we will retry them in 10min or maybe when the
-            // number of dcuments changes a "lot"
-            if (numDocs < vecIdx.trainingThreshold()) {
-              continue;
-            }
-
-            LOG_TOPIC("e171b", INFO, Logger::ENGINES)
-                << "[shard=" << vecIdx.collection().name()
-                << ", index=" << vecIdx.id().id()
-                << "] Training threshold reached ("
-                << vecIdx.trainingThreshold()
-                << " documents). Starting deferred training.";
-
-            try {
-              vector::VectorIndexBuildManager builder(vecIdx);
-              auto const res = builder.build(stopToken);
-              if (res.fail()) {
-                LOG_TOPIC("e164b", ERR, Logger::ENGINES)
-                    << "[index=" << vecIdx.id().id()
-                    << "] Vector build failed: " << res.errorMessage();
-              }
-            } catch (std::exception const& ex) {
-              LOG_TOPIC("e164c", ERR, Logger::ENGINES)
-                  << "[index=" << vecIdx.id().id()
-                  << "] Vector build exception: " << ex.what();
-            } catch (...) {
-              LOG_TOPIC("e164d", ERR, Logger::ENGINES)
-                  << "[index=" << vecIdx.id().id()
-                  << "] Vector build unknown exception";
-            }
-            return;
-          }
-        }
-      });
+      scanAndBuild(stopToken);
     } catch (std::exception const& ex) {
       LOG_TOPIC("e170b", WARN, Logger::ENGINES)
           << "VectorIndexBuildCoordinator scan error: " << ex.what();
     }
   }
+}
+
+void VectorIndexBuildCoordinator::scanAndBuild(
+    std::stop_token const& stopToken) {
+  _dbFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
+    if (stopToken.stop_requested()) {
+      return;
+    }
+
+    auto const collections = vocbase.collections(false);
+    for (auto const& coll : collections) {
+      auto const indexes = coll->getPhysical()->getReadyIndexes();
+      for (auto const& idx : indexes) {
+        if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+          continue;
+        }
+        auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
+        if (vecIdx.trainingState() != VectorIndexTrainingState::kUntrained) {
+          continue;
+        }
+
+        auto const* rcoll =
+            static_cast<RocksDBCollection*>(coll->getPhysical());
+        auto const numDocs =
+            static_cast<std::int64_t>(rcoll->meta().numberDocuments());
+        if (numDocs < vecIdx.trainingThreshold()) {
+          continue;
+        }
+
+        if (shouldSkipRetry(vecIdx.objectId(), numDocs)) {
+          continue;
+        }
+
+        LOG_TOPIC("e171b", INFO, Logger::ENGINES)
+            << "[shard=" << vecIdx.collection().name()
+            << ", index=" << vecIdx.id().id()
+            << "] Training threshold reached (" << vecIdx.trainingThreshold()
+            << " documents). Starting deferred training.";
+
+        vector::VectorIndexBuildManager builder(vecIdx);
+        if (auto const res = builder.build(stopToken); res.fail()) {
+          LOG_TOPIC("e164b", ERR, Logger::ENGINES)
+              << "[index=" << vecIdx.id().id()
+              << "] Vector build failed: " << res.errorMessage();
+          recordFailure(vecIdx.objectId(), numDocs);
+          continue;
+        }
+        clearFailure(vecIdx.objectId());
+
+        // Built one index — return to the scan loop so we sleep
+        // before starting the next one.
+        return;
+      }
+    }
+  });
 }
 
 }  // namespace arangodb

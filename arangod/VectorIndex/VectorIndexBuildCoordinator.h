@@ -24,8 +24,10 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <stop_token>
 #include <thread>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -37,6 +39,7 @@ class VectorIndexBuildCoordinator {
  public:
   static constexpr auto kScanInterval = std::chrono::seconds(5);
   static constexpr auto kSleepGranularity = std::chrono::milliseconds(100);
+  static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
   explicit VectorIndexBuildCoordinator(DatabaseFeature& dbFeature);
 
@@ -46,9 +49,23 @@ class VectorIndexBuildCoordinator {
 
  private:
   void run(std::stop_token stopToken);
+  void scanAndBuild(std::stop_token const& stopToken);
+
+  struct FailedBuildInfo {
+    std::chrono::steady_clock::time_point failedAt;
+    std::int64_t documentCount;
+  };
+
+  /// Returns true if a retry should be skipped for this index.
+  bool shouldSkipRetry(std::uint64_t objectId,
+                       std::int64_t currentDocCount) const;
+  void recordFailure(std::uint64_t objectId, std::int64_t docCount);
+
+  void clearFailure(std::uint64_t objectId);
 
   DatabaseFeature& _dbFeature;
   std::jthread _thread;
+  std::unordered_map<std::uint64_t, FailedBuildInfo> _failedBuilds;
 };
 
 }  // namespace arangodb
