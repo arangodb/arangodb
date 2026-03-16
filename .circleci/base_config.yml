@@ -869,8 +869,6 @@ jobs:
         type: string
       resource-class:
         type: string
-      arch:
-        type: string
       enterprise:
         type: string
       deployment:
