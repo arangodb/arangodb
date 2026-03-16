@@ -193,6 +193,15 @@
       "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode"
     },
     {
+      "name": "enterprise-pr-arm",
+      "inherits": [
+        "maintainer",
+        "enterprise-pr-non-maintainer",
+        "pr-arm"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode"
+    },
+    {
       "name": "community-pr-arm",
       "inherits": [
         "pr-arm",
@@ -328,6 +337,10 @@
     {
       "name": "enterprise-pr",
       "configurePreset": "enterprise-pr"
+    },
+    {
+      "name": "enerprise-pr-arm",
+      "configurePreset": "enterprise-pr-arm"
     },
     {
       "name": "enterprise-pr-no-v8",
