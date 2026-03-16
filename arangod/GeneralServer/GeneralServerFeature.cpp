@@ -71,7 +71,6 @@
 #include "RestHandler/RestDocumentStateHandler.h"
 #include "RestHandler/RestDumpHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
-#include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
 #include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestGraphHandler.h"
@@ -613,10 +612,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::GHARIAL_PATH,
                      RestHandlerCreator<RestGraphHandler>::createNoData, {1});
-
-  f.addPrefixHandler(RestVocbaseBaseHandler::ENDPOINT_PATH,
-                     RestHandlerCreator<RestEndpointHandler>::createNoData,
-                     {1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
                      RestHandlerCreator<RestImportHandler>::createNoData, {1});

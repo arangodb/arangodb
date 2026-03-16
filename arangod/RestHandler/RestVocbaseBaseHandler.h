@@ -82,9 +82,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // gharial graph api path
   static std::string const GHARIAL_PATH;
 
-  // endpoint path
-  static std::string const ENDPOINT_PATH;
-
   // document import path
   static std::string const IMPORT_PATH;
 
