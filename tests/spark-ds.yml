@@ -1,5 +1,5 @@
 jobProperties:
-    container_suffix: '-spark:'
+    container_suffix: '-java:'
     second_repo: git@github.com:arangodb/arangodb-spark-datasource.git
     branch: main
     init_command: ''

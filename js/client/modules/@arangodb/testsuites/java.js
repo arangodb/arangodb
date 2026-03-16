@@ -263,8 +263,8 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     let rx = /.*:\/\//gi;
     let args = [
       'test',
-      '-Pscala-2.12',
-      '-Pspark-3.5',
+      '-Pscala-2.13.18',
+      '-Pspark-4.1',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
       '-Dmaven.wagon.http.retryHandler.count=10',
