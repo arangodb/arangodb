@@ -33,6 +33,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include <omp.h>
+
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <pthread.h>
 #endif
@@ -41,7 +43,13 @@ namespace arangodb {
 
 VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
     DatabaseFeature& dbFeature)
-    : _dbFeature(dbFeature) {}
+    : _dbFeature(dbFeature) {
+  // Set OpenMP to use a reasonable number of threads for parallel index builds.
+  // Warning: OMP does not have a global thread limit so this is only per region
+  // in OpenMP semantics.
+  auto const numCores = omp_get_num_procs();
+  omp_set_teams_thread_limit(std::max(4, numCores / 4))
+}
 
 void VectorIndexBuildCoordinator::start() {
   _thread = std::jthread([this](std::stop_token stopToken) { run(stopToken); });
