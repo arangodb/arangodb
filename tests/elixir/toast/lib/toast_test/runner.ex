@@ -215,17 +215,7 @@ defmodule ToastTest.Runner do
     {stats, test_data} =
       mark_all_skipped_stats(test_modules, reason, global_opts, suite_module)
 
-    pid_history = ProcessHistory.pids_by_server()
-    crash_events = ProcessHistory.unexpected_crashes()
-    timeout_kills = ProcessHistory.timeout_kills()
-    artifacts = ToastTest.ArtifactCollector.collect(%{}, pid_history)
-
-    issues =
-      ToastTest.Attribution.run(test_data, artifacts, crash_events, timeout_kills: timeout_kills)
-
-    suite_result = SuiteResult.build(test_data, issues)
-    SuiteResult.write_all(suite_result, toast_config.result_dir)
-    print_post_exec_summary(suite_result)
+    suite_result = build_suite_result(%{}, test_data, toast_config)
 
     ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}
@@ -544,29 +534,59 @@ defmodule ToastTest.Runner do
     Logger.debug("Post-execution: stopping deployment")
     {servers, error} = stop_deployment(deployment)
     if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
-    pid_history = ProcessHistory.pids_by_server()
-    crash_events = ProcessHistory.unexpected_crashes()
-    timeout_kills = ProcessHistory.timeout_kills()
-    Logger.debug("Post-execution: collecting artifacts")
-    artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history)
 
-    Logger.debug("Post-execution: running attribution")
-
-    issues =
-      ToastTest.Attribution.run(test_data, artifacts, crash_events, timeout_kills: timeout_kills)
-
-    Logger.debug("Post-execution: building results (#{length(issues)} issues found)")
-    suite_result = SuiteResult.build(test_data, issues)
-    SuiteResult.write_all(suite_result, toast_config.result_dir)
-    Logger.debug("Post-execution: results written to #{toast_config.result_dir}")
-    print_post_exec_summary(suite_result)
-    suite_result
+    build_suite_result(servers, test_data, toast_config)
   end
 
   defp stop_deployment(deployment) do
     case Toast.Deployment.stop(deployment) do
       {:ok, info} -> {info.servers, info.error}
       {:error, _reason, info} -> {info.servers, info.error}
+    end
+  end
+
+  defp build_suite_result(servers, test_data, toast_config) do
+    pid_history = ProcessHistory.pids_by_server()
+    crash_events = ProcessHistory.unexpected_crashes()
+    timeout_kills = ProcessHistory.timeout_kills()
+
+    Logger.debug("Collecting artifacts")
+    artifact_opts = [coredump_dir: toast_config.coredump_dir, not_before: test_data.started_at]
+    artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history, artifact_opts)
+
+    Logger.debug("Running attribution")
+
+    issues =
+      ToastTest.Attribution.run(test_data, artifacts, crash_events,
+        timeout_kills: timeout_kills,
+        analyzer_opts: build_coredump_analyzer_opts(toast_config)
+      )
+
+    Logger.debug("Building results (#{length(issues)} issues found)")
+    warnings = coredump_warnings(crash_events, artifacts, toast_config)
+    suite_result = SuiteResult.build(test_data, issues, warnings: warnings)
+    SuiteResult.write_all(suite_result, toast_config.result_dir)
+    print_post_exec_summary(suite_result)
+    suite_result
+  end
+
+  defp coredump_warnings(crash_events, artifacts, toast_config) do
+    if crash_events != [] and not ToastTest.ArtifactCollector.has_coredumps?(artifacts) do
+      case Toast.Diagnostics.Coredump.coredump_discovery_warning(toast_config.coredump_dir) do
+        nil -> []
+        warning -> [warning]
+      end
+    else
+      []
+    end
+  end
+
+  defp build_coredump_analyzer_opts(toast_config) do
+    opts = [timeout: toast_config.coredump_timeout]
+
+    case Toast.Diagnostics.Coredump.resolve_debugger(toast_config.debugger) do
+      nil -> opts
+      debugger -> [{:debugger, debugger} | opts]
     end
   end
 

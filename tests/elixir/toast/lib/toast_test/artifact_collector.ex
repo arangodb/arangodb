@@ -20,35 +20,47 @@ defmodule ToastTest.ArtifactCollector do
 
   @min_sanitizer_bytes 10
 
-  @spec collect(%{String.t() => ServerInstance.t()}, map()) :: t()
-  def collect(servers, pid_history \\ %{}) do
+  @spec collect(%{String.t() => ServerInstance.t()}, map(), keyword()) :: t()
+  def collect(servers, pid_history \\ %{}, opts \\ []) do
     result =
       for {id, server} <- servers, server.server_dir != nil, into: %{} do
-        {id, collect_server_artifacts(server, Map.get(pid_history, id, []))}
+        {id, collect_server_artifacts(server, Map.get(pid_history, id, []), opts)}
       end
 
-    n_coredumps = result |> Map.values() |> Enum.map(&length(&1.coredump_paths)) |> Enum.sum()
-    n_sanitizer = result |> Map.values() |> Enum.map(&length(&1.sanitizer_files)) |> Enum.sum()
-
     Logger.debug(
-      "Artifacts: #{n_coredumps} coredump(s), #{n_sanitizer} sanitizer report(s) from #{map_size(servers)} server(s)"
+      "Artifacts: #{coredump_count(result)} coredump(s), #{sanitizer_count(result)} sanitizer report(s) from #{map_size(servers)} server(s)"
     )
 
     result
   end
 
-  defp collect_server_artifacts(server, historical_pids) do
+  @spec has_coredumps?(t()) :: boolean()
+  def has_coredumps?(artifacts), do: coredump_count(artifacts) > 0
+
+  defp coredump_count(artifacts) do
+    artifacts |> Map.values() |> Enum.map(&length(&1.coredump_paths)) |> Enum.sum()
+  end
+
+  defp sanitizer_count(artifacts) do
+    artifacts |> Map.values() |> Enum.map(&length(&1.sanitizer_files)) |> Enum.sum()
+  end
+
+  defp collect_server_artifacts(server, historical_pids, opts) do
     %{
       server: server,
-      coredump_paths: discover_coredumps(server, historical_pids),
+      coredump_paths: discover_coredumps(server, historical_pids, opts),
       sanitizer_files: discover_sanitizer_files(server.server_dir)
     }
   end
 
-  defp discover_coredumps(server, historical_pids) do
+  defp discover_coredumps(server, historical_pids, opts) do
     os_pids = merge_pids(server.pid, historical_pids)
+    Logger.debug("Discovering coredumps for server #{server.id} with PIDs #{inspect(os_pids)}")
 
-    Coredump.discover(server_dir: server.server_dir, os_pids: os_pids)
+    opts
+    |> Keyword.take([:coredump_dir, :not_before])
+    |> Keyword.merge(server_dir: server.server_dir, os_pids: os_pids)
+    |> Coredump.discover()
   end
 
   defp merge_pids(nil, historical), do: historical

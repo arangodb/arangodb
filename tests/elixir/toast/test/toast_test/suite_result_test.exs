@@ -89,7 +89,7 @@ defmodule ToastTest.SuiteResultTest do
     test_data = Keyword.get(opts, :test_data, build_test_data())
     issues = Keyword.get(opts, :issues, build_issues())
     events = Keyword.get(opts, :events, %{})
-    SuiteResult.build(test_data, issues, events)
+    SuiteResult.build(test_data, issues, events: events)
   end
 
   defp with_tmp_dir(fun) do

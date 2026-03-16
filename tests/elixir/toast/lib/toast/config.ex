@@ -33,6 +33,7 @@ defmodule Toast.Config do
           debugger: :gdb | :lldb | :auto | :none | nil,
           dump_agency_on_error: boolean(),
           coredump_timeout: pos_integer(),
+          coredump_dir: Path.t() | nil,
           ci: boolean()
         }
 
@@ -63,7 +64,8 @@ defmodule Toast.Config do
             api_version: nil,
             debugger: :auto,
             dump_agency_on_error: true,
-            coredump_timeout: 120_000,
+            coredump_timeout: 180_000,
+            coredump_dir: nil,
             ci: false
 
   @spec load() :: t()
@@ -114,7 +116,8 @@ defmodule Toast.Config do
       build_dir: build_dir,
       work_dir:
         opt_or(opts, :work_dir, env("TOAST_WORK_DIR"), local[:work_dir]) || default_work_dir(),
-      result_dir: opt_or(opts, :result_dir, env("TOAST_RESULT_DIR"), local[:result_dir])
+      result_dir: opt_or(opts, :result_dir, env("TOAST_RESULT_DIR"), local[:result_dir]),
+      coredump_dir: opt_or(opts, :coredump_dir, env("TOAST_COREDUMP_DIR"), local[:coredump_dir])
     ]
   end
 

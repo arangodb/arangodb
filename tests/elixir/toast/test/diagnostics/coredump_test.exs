@@ -77,8 +77,12 @@ defmodule Toast.Diagnostics.CoredumpTest do
       result = Coredump.detect_debugger()
 
       case result do
-        {:ok, mod} -> assert mod in [Coredump.GDB, Coredump.LLDB]
-        :none -> assert true
+        {:ok, mod, path} ->
+          assert mod in [Coredump.GDB, Coredump.LLDB]
+          assert is_binary(path)
+
+        :none ->
+          assert true
       end
     end
   end
@@ -304,12 +308,12 @@ defmodule Toast.Diagnostics.CoredumpTest do
 end
 
 # T3: Separate module for env-var-dependent discover tests
-defmodule Toast.Diagnostics.CoredumpEnvTest do
-  use ExUnit.Case, async: false
+defmodule Toast.Diagnostics.CoredumpOverrideDirTest do
+  use ExUnit.Case, async: true
 
   alias Toast.Diagnostics.Coredump
 
-  describe "discover/1 with TOAST_COREDUMP_DIR" do
+  describe "discover/1 with coredump_dir override" do
     setup do
       override_dir =
         Path.join(System.tmp_dir!(), "toast_override_core_#{System.unique_integer([:positive])}")
@@ -320,13 +324,7 @@ defmodule Toast.Diagnostics.CoredumpEnvTest do
       File.mkdir_p!(override_dir)
       File.mkdir_p!(server_dir)
 
-      saved = System.get_env("TOAST_COREDUMP_DIR")
-
       on_exit(fn ->
-        if saved,
-          do: System.put_env("TOAST_COREDUMP_DIR", saved),
-          else: System.delete_env("TOAST_COREDUMP_DIR")
-
         File.rm_rf!(override_dir)
         File.rm_rf!(server_dir)
       end)
@@ -341,9 +339,7 @@ defmodule Toast.Diagnostics.CoredumpEnvTest do
       File.write!(Path.join(override_dir, "core.override"), "override core")
       File.write!(Path.join(server_dir, "core.server"), "server core")
 
-      System.put_env("TOAST_COREDUMP_DIR", override_dir)
-
-      cores = Coredump.discover(server_dir: server_dir)
+      cores = Coredump.discover(server_dir: server_dir, coredump_dir: override_dir)
       basenames = Enum.map(cores, &Path.basename/1)
 
       assert "core.override" in basenames
@@ -356,9 +352,7 @@ defmodule Toast.Diagnostics.CoredumpEnvTest do
     } do
       File.write!(Path.join(server_dir, "core.server"), "server core")
 
-      System.put_env("TOAST_COREDUMP_DIR", override_dir)
-
-      assert Coredump.discover(server_dir: server_dir) == []
+      assert Coredump.discover(server_dir: server_dir, coredump_dir: override_dir) == []
     end
   end
 end

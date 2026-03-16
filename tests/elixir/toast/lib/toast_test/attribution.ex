@@ -56,13 +56,15 @@ defmodule ToastTest.Attribution do
   # --- Crashes ---
 
   defp crash_issues(crash_events, artifacts, windows, opts) do
+    analyzer_opts = Keyword.get(opts, :analyzer_opts, [])
+
     Enum.map(crash_events, fn %Toast.Process.CrashEvent{} = event ->
       {scope, confidence} = TimeWindows.attribute(event.crash_info.timestamp, windows)
       server_artifacts = Map.get(artifacts, event.server_id)
 
       detail =
         %{server: event.server_id, crash_info: event.crash_info}
-        |> enrich_coredumps(server_artifacts, opts)
+        |> enrich_coredumps(server_artifacts, analyzer_opts)
         |> enrich_logs(server_artifacts, event.crash_info.timestamp)
 
       %{type: :crash, scope: scope, confidence: confidence, detail: detail}
@@ -71,14 +73,16 @@ defmodule ToastTest.Attribution do
 
   # --- Coredump enrichment ---
 
-  defp enrich_coredumps(detail, nil, _opts), do: detail
-  defp enrich_coredumps(detail, %{coredump_paths: []}, _opts), do: detail
+  defp enrich_coredumps(detail, nil, _analyzer_opts), do: detail
+  defp enrich_coredumps(detail, %{coredump_paths: []}, _analyzer_opts), do: detail
 
-  defp enrich_coredumps(detail, server_artifacts, opts) do
-    analyzer_opts = build_analyzer_opts(opts)
+  defp enrich_coredumps(detail, server_artifacts, analyzer_opts) do
+    paths = server_artifacts.coredump_paths
+
+    Logger.info("Enriching #{length(paths)} coredump(s) for server #{detail.server}")
 
     coredumps =
-      Enum.flat_map(server_artifacts.coredump_paths, fn core_path ->
+      Enum.flat_map(paths, fn core_path ->
         analyze_coredump(core_path, server_artifacts.server, analyzer_opts)
       end)
 
@@ -88,17 +92,15 @@ defmodule ToastTest.Attribution do
   defp analyze_coredump(core_path, server, analyzer_opts) do
     case Enrichment.Coredump.analyze(core_path, server, analyzer_opts) do
       {:ok, result} ->
+        Logger.info("Coredump #{Path.basename(core_path)}: #{length(result.threads)} thread(s)")
         [%{path: core_path, signal: result.signal, threads: result.threads}]
 
-      {:error, _} ->
-        [%{path: core_path, signal: nil, threads: []}]
-    end
-  end
+      {:error, reason} ->
+        Logger.warning(
+          "Coredump #{Path.basename(core_path)}: analysis failed (#{inspect(reason)})"
+        )
 
-  defp build_analyzer_opts(opts) do
-    case Keyword.get(opts, :coredump_analyzer) do
-      nil -> []
-      analyzer -> [analyzer: analyzer]
+        [%{path: core_path, signal: nil, threads: []}]
     end
   end
 

@@ -12,9 +12,15 @@ defmodule ToastTest.PostExecSummary do
   @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :timeout]
 
   @spec print(SuiteResult.t()) :: :ok
-  def print(%SuiteResult{issues: []}), do: :ok
+  def print(%SuiteResult{issues: issues, warnings: warnings}) do
+    print_issues(issues)
+    print_warnings(warnings)
+    :ok
+  end
 
-  def print(%SuiteResult{issues: issues}) do
+  defp print_issues([]), do: :ok
+
+  defp print_issues(issues) do
     colors = IO.ANSI.enabled?()
     grouped = Enum.group_by(issues, & &1.type)
 
@@ -24,8 +30,20 @@ defmodule ToastTest.PostExecSummary do
       issues_of_type = Map.fetch!(grouped, type)
       print_section(type, issues_of_type, colors)
     end)
+  end
 
-    :ok
+  defp print_warnings([]), do: :ok
+
+  defp print_warnings(warnings) do
+    IO.puts("")
+    IO.puts(IO.ANSI.yellow() <> String.duplicate("!", 80) <> IO.ANSI.reset())
+    IO.puts(IO.ANSI.yellow() <> IO.ANSI.bright() <> " WARNINGS" <> IO.ANSI.reset())
+    IO.puts(IO.ANSI.yellow() <> String.duplicate("!", 80) <> IO.ANSI.reset())
+
+    for warning <- warnings do
+      IO.puts("")
+      IO.puts("  " <> IO.ANSI.yellow() <> warning <> IO.ANSI.reset())
+    end
   end
 
   defp print_section(type, issues, colors) do
@@ -161,6 +179,7 @@ defmodule ToastTest.PostExecSummary do
 
   defp print_crash_detail(%{coredumps: [coredump | _]} = detail, colors) do
     print_coredump_backtrace(coredump, colors)
+    print_coredump_path(coredump)
     print_log_path(detail)
   end
 
@@ -188,6 +207,12 @@ defmodule ToastTest.PostExecSummary do
         :ok
     end
   end
+
+  defp print_coredump_path(%{path: path}) when is_binary(path) do
+    IO.puts(IO.ANSI.format([:blue, "    Coredump: #{path}", :reset]))
+  end
+
+  defp print_coredump_path(_), do: :ok
 
   defp print_log_path(%{log_file: path}) when is_binary(path) do
     IO.puts(IO.ANSI.format([:blue, "    Log: #{path}", :reset]))

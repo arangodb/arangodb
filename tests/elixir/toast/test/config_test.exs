@@ -61,7 +61,7 @@ defmodule Toast.ConfigTest do
       assert config.api_version == nil
       assert config.debugger == :auto
       assert config.dump_agency_on_error == true
-      assert config.coredump_timeout == 120_000
+      assert config.coredump_timeout == 180_000
     end
 
     test "work_dir has unique default under tmp_dir" do
@@ -393,7 +393,7 @@ defmodule Toast.ConfigTest do
     end
 
     test "defaults to 120_000 when not set" do
-      assert Config.load().coredump_timeout == 120_000
+      assert Config.load().coredump_timeout == 180_000
     end
 
     test "keyword override" do

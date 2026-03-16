@@ -43,10 +43,21 @@ defmodule ToastTest.Enrichment.Coredump do
   end
 
   defp transform_report(report) do
-    %{
-      threads: Enum.map(report.threads, &transform_thread/1),
-      signal: report.signal
-    }
+    threads = Enum.map(report.threads, &transform_thread/1)
+
+    # Put the crash thread first so the summary prints the most relevant backtrace.
+    threads =
+      case report.crash_thread do
+        nil ->
+          threads
+
+        crash_id ->
+          crash_id_str = to_string(crash_id)
+          {crash, rest} = Enum.split_with(threads, &(&1.thread_id == crash_id_str))
+          crash ++ rest
+      end
+
+    %{threads: threads, signal: report.signal}
   end
 
   defp transform_thread(thread) do

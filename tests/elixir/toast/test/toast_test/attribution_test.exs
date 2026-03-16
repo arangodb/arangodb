@@ -191,7 +191,7 @@ defmodule ToastTest.AttributionTest do
           build_test_data(),
           artifacts,
           crash_events,
-          coredump_analyzer: fake_analyzer
+          analyzer_opts: [analyzer: fake_analyzer]
         )
 
       assert [issue] = issues
@@ -223,7 +223,7 @@ defmodule ToastTest.AttributionTest do
           build_test_data(),
           artifacts,
           crash_events,
-          coredump_analyzer: fn _, _, _ -> {:error, :no_debugger} end
+          analyzer_opts: [analyzer: fn _, _, _ -> {:error, :no_debugger} end]
         )
 
       assert [issue] = issues
@@ -269,7 +269,7 @@ defmodule ToastTest.AttributionTest do
           build_test_data(),
           artifacts,
           crash_events,
-          coredump_analyzer: fake_analyzer
+          analyzer_opts: [analyzer: fake_analyzer]
         )
 
       assert [issue] = issues
@@ -323,7 +323,7 @@ defmodule ToastTest.AttributionTest do
           build_test_data(),
           artifacts,
           crash_events,
-          coredump_analyzer: fake_analyzer
+          analyzer_opts: [analyzer: fake_analyzer]
         )
 
       assert [issue] = issues

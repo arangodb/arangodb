@@ -13,7 +13,8 @@ defmodule ToastTest.SuiteResult do
           },
           modules: %{module() => module_result()},
           issues: [issue()],
-          events: %{atom() => [map()]}
+          events: %{atom() => [map()]},
+          warnings: [String.t()]
         }
 
   @type module_result :: %{
@@ -52,11 +53,12 @@ defmodule ToastTest.SuiteResult do
     version: 1,
     modules: %{},
     issues: [],
-    events: %{}
+    events: %{},
+    warnings: []
   ]
 
-  @spec build(ToastTest.ResultCollector.test_data(), [issue()], %{atom() => [map()]}) :: t()
-  def build(test_data, issues, events \\ %{}) do
+  @spec build(ToastTest.ResultCollector.test_data(), [issue()], keyword()) :: t()
+  def build(test_data, issues, opts \\ []) do
     %__MODULE__{
       version: 1,
       suite: test_data.suite,
@@ -65,7 +67,8 @@ defmodule ToastTest.SuiteResult do
       times_us: test_data.times_us || %{async: nil, load: nil, run: 0},
       modules: test_data.modules,
       issues: issues,
-      events: events
+      events: Keyword.get(opts, :events, %{}),
+      warnings: Keyword.get(opts, :warnings, [])
     }
   end
 
