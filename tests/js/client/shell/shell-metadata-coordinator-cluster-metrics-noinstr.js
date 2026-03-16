@@ -25,6 +25,7 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
+const arango = arangodb.arango;
 const db = arangodb.db;
 const { getCoordinators, moveShard, getDBServers, eventuallyAssertMetric } = require("@arangodb/test-helper");
 
@@ -172,6 +173,10 @@ function metadataCoordinatorMetricsSuite() {
     },
 
     testMetricsBaseValues: function() {
+      // We need to reconnect to the system database to get the coordinators
+      // otherwise client might see stale cluster state carried over from
+      // the previous test in the CI bucket
+      arango.reconnect(arango.getEndpoint(), "_system", "root", "");
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
 
