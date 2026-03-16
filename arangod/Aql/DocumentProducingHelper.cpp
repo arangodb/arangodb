@@ -60,6 +60,11 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     context.incrScanned();
 
+    auto hasFilter = context.hasFilter();
+    LOG_DEVEL << "KKDBG: DPH:" << __LINE__ << ": context.hasFilter(): " << std::boolalpha << hasFilter <<
+      ", context.checkFilter(slice): " << std::boolalpha << (hasFilter ? context.checkFilter(slice) : 0) << ", slice: " <<
+      slice.toJson();
+
     if (context.hasFilter() && !context.checkFilter(slice)) {
       context.incrFiltered();
       // required as we point lookup the document to check the filter condition
@@ -125,6 +130,11 @@ IndexIterator::DocumentCallback aql::getCallback(
     }
 
     context.incrScanned();
+
+    auto hasFilter = context.hasFilter();
+    LOG_DEVEL << "KKDBG: DPH:" << __LINE__ << ": context.hasFilter(): " << std::boolalpha << hasFilter <<
+      ", context.checkFilter(slice): " << std::boolalpha << (hasFilter ? context.checkFilter(s) : 0) << ", slice: " <<
+      s.toJson();
 
     if (context.hasFilter() && !context.checkFilter(s)) {
       context.incrFiltered();
@@ -485,6 +495,9 @@ bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
   TRI_ASSERT(!_expressionContext->isLateMaterialized());
 #endif
 
+  auto json = slice.toJson();
+  LOG_DEVEL << "KKDBG: DocumentProducingFunctionContext::checkFilter: slice: " << json;
+
   auto& ctx = basics::downCast<DocumentExpressionContext>(*_expressionContext);
   ctx.setCurrentDocument(slice);
   return checkFilter(ctx);
@@ -541,6 +554,9 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context) {
+
+    LOG_DEVEL << "KKDBG: DPH:" << __LINE__ << ": context.hasFilter(): " << std::boolalpha << context.hasFilter();
+
   if (context.hasFilter()) {
     TRI_ASSERT(!context.getFilterProjections().empty());
     TRI_ASSERT(context.getFilterProjections().usesCoveringIndex())
@@ -560,6 +576,8 @@ IndexIterator::CoveringCallback aql::getCallback(
     }
 
     context.incrScanned();
+
+    LOG_DEVEL << "KKDBG: DPH:" << __LINE__ << ": context.hasFilter(): " << std::boolalpha << context.hasFilter();
 
     if (context.hasFilter() && !context.checkFilter(&covering)) {
       context.incrFiltered();

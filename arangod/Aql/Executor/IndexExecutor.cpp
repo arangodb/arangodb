@@ -127,6 +127,8 @@ IndexIterator::CoveringCallback getCallback(
 
     context.incrScanned();
 
+    LOG_DEVEL << "KKDBG: IndexExecutor.cpp:" << __LINE__ << ": context.hasFilter(): " << std::boolalpha << context.hasFilter();
+
     if (context.hasFilter() && !context.checkFilter(&covering)) {
       context.incrFiltered();
       return false;

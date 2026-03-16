@@ -1294,7 +1294,13 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     canUseForFilter &= canUseIndex.first;
     canUseForSort |= canUseIndex.second;
 
+    LOG_DEVEL << "KKDBG: getBestIndexHandlesForFilterCondition (original AST): " << (root ? AstNode::toString(root) : "nullptr");
     root->changeMember(i, specializedCondition);
+
+    LOG_DEVEL << "KKDBG: getBestIndexHandlesForFilterCondition (specializedCondition): " << 
+      (nullptr != specializedCondition ? AstNode::toString(specializedCondition) : "nullptr");
+
+    LOG_DEVEL << "KKDBG: getBestIndexHandlesForFilterCondition (AST after specializedCondition): " << (root ? AstNode::toString(root) : "nullptr");
   }
 
   if (canUseForFilter) {
