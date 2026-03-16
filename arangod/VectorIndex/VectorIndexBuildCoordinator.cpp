@@ -34,6 +34,7 @@
 #include "VocBase/vocbase.h"
 
 #include <omp.h>
+#include <unordered_set>
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <pthread.h>
@@ -69,7 +70,7 @@ void VectorIndexBuildCoordinator::stop() {
 
 bool VectorIndexBuildCoordinator::shouldSkipRetry(
     std::uint64_t objectId, std::int64_t currentDocCount) const {
-  auto it = _failedBuilds.find(objectId);
+  auto const it = _failedBuilds.find(objectId);
   if (it == _failedBuilds.end()) {
     return false;
   }
@@ -113,6 +114,10 @@ void VectorIndexBuildCoordinator::run(std::stop_token stopToken) {
 
 void VectorIndexBuildCoordinator::scanAndBuild(
     std::stop_token const& stopToken) {
+  // Collect objectIds seen this scan to prune stale entries from
+  // _failedBuilds (e.g. indexes that were dropped since the last scan).
+  std::unordered_set<std::uint64_t> seenObjectIds;
+
   _dbFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
     if (stopToken.stop_requested()) {
       return;
@@ -129,6 +134,8 @@ void VectorIndexBuildCoordinator::scanAndBuild(
         if (vecIdx.trainingState() != VectorIndexTrainingState::kUntrained) {
           continue;
         }
+
+        seenObjectIds.insert(vecIdx.objectId());
 
         auto const* rcoll =
             static_cast<RocksDBCollection*>(coll->getPhysical());
@@ -163,6 +170,11 @@ void VectorIndexBuildCoordinator::scanAndBuild(
         return;
       }
     }
+  });
+
+  // Prune failed build entries for indexes that no longer exist.
+  std::erase_if(_failedBuilds, [&](auto const& entry) {
+    return !seenObjectIds.contains(entry.first);
   });
 }
 

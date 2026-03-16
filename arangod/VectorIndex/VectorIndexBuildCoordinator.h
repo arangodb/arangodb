@@ -38,7 +38,7 @@ class DatabaseFeature;
 class VectorIndexBuildCoordinator {
  public:
   static constexpr auto kScanInterval = std::chrono::seconds(5);
-  static constexpr auto kSleepGranularity = std::chrono::milliseconds(100);
+  static constexpr auto kSleepGranularity = std::chrono::seconds(1);
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
   explicit VectorIndexBuildCoordinator(DatabaseFeature& dbFeature);
