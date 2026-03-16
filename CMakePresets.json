@@ -339,7 +339,7 @@
       "configurePreset": "enterprise-pr"
     },
     {
-      "name": "enerprise-pr-arm",
+      "name": "enterprise-pr-arm",
       "configurePreset": "enterprise-pr-arm"
     },
     {
