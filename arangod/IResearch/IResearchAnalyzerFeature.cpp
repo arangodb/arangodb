@@ -1142,9 +1142,9 @@ bool IResearchAnalyzerFeature::canUseVocbase(std::string_view vocbaseName,
   auto& ctx = ExecContext::current();
   auto const nameStr = static_cast<std::string>(vocbaseName);
   return ctx.canUseDatabase(nameStr, level) &&  // can use vocbase
-         ctx.canUseCollection(nameStr,
-                              arangodb::StaticStrings::AnalyzersCollection,
-                              level);  // can use analyzers
+         ctx.canUseCollectionData(nameStr,
+                                  arangodb::StaticStrings::AnalyzersCollection,
+                                  level);  // can use analyzers
 }
 
 bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
@@ -1171,7 +1171,7 @@ bool IResearchAnalyzerFeature::canUse(std::string_view name,
   auto const vocbaseName = static_cast<std::string>(split.first);
   return irs::IsNull(split.first)  // static analyzer (always allowed)
          || (ctx.canUseDatabase(vocbaseName, level)  // can use vocbase
-             && ctx.canUseCollection(
+             && ctx.canUseCollectionData(
                     vocbaseName, arangodb::StaticStrings::AnalyzersCollection,
                     level));  // can use analyzers
 }

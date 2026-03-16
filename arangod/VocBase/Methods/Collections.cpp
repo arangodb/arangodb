@@ -528,10 +528,11 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
       auto coll = ci.getCollectionNT(vocbase.name(), name);
       if (coll) {
         // check authentication after ensuring the collection exists
-        if (!ExecContext::current().canUseCollection(
+        if (!ExecContext::current().canUseCollectionMeta(
                 vocbase.name(), coll->name(), auth::Level::RO)) {
-          return Result(TRI_ERROR_FORBIDDEN,
-                        absl::StrCat("No access to collection '", name, "'"));
+          return Result(
+              TRI_ERROR_FORBIDDEN,
+              absl::StrCat("No access (meta data) to collection '", name, "'"));
         }
 
         ret = std::move(coll);
@@ -557,10 +558,11 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
 
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
-    if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(),
-                                                 auth::Level::RO)) {
-      return Result(TRI_ERROR_FORBIDDEN,
-                    absl::StrCat("No access to collection '", name, "'"));
+    if (!ExecContext::current().canUseCollectionMeta(
+            vocbase.name(), coll->name(), auth::Level::RO)) {
+      return Result(
+          TRI_ERROR_FORBIDDEN,
+          absl::StrCat("No access (meta data) to collection '", name, "'"));
     }
     try {
       ret = std::move(coll);
@@ -569,9 +571,9 @@ std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      return Result(
-          TRI_ERROR_INTERNAL,
-          "internal error during collection lookup - canUseCollection");
+      return Result(TRI_ERROR_INTERNAL,
+                    "internal error during collection lookup (meta data) - "
+                    "canUseCollectionMeta");
     }
 
     return Result();
@@ -975,11 +977,11 @@ futures::Future<Result> Collections::properties(Context& ctxt,
   auto coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
-  bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
+  bool canRead = exec.canUseCollectionMeta(coll->name(), auth::Level::RO);
   if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
-    co_return Result(
-        TRI_ERROR_FORBIDDEN,
-        absl::StrCat("cannot access collection '", coll->name(), "'"));
+    co_return Result(TRI_ERROR_FORBIDDEN,
+                     absl::StrCat("cannot access (meta data) collection '",
+                                  coll->name(), "'"));
   }
 
   std::unordered_set<std::string> ignoreKeys{StaticStrings::AllowUserKeys,
@@ -1028,10 +1030,14 @@ futures::Future<Result> Collections::updateProperties(
     LogicalCollection& collection, velocypack::Slice props,
     OperationOptions const& options) {
   ExecContext const& exec = ExecContext::current();
-  bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
+  bool canModify =
+      exec.canUseCollectionMeta(collection.name(), auth::Level::RW);
 
   if (!canModify || !exec.canUseDatabase(auth::Level::RW)) {
-    co_return TRI_ERROR_FORBIDDEN;
+    co_return {TRI_ERROR_FORBIDDEN,
+               absl::StrCat("insufficient write permissions to collection meta "
+                            "data for collection '",
+                            collection.name(), "'")};
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1152,8 +1158,11 @@ Result Collections::rename(LogicalCollection& collection,
 
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(auth::Level::RW) ||
-      !exec.canUseCollection(collection.name(), auth::Level::RW)) {
-    return {TRI_ERROR_FORBIDDEN};
+      !exec.canUseCollectionMeta(collection.name(), auth::Level::RW)) {
+    return {TRI_ERROR_FORBIDDEN,
+            absl::StrCat("insufficient write permissions to collection meta "
+                         "data for collection '",
+                         collection.name(), "'")};
   }
 
   std::string const oldName(collection.name());
@@ -1229,13 +1238,13 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(coll.vocbase().name(),
                            auth::Level::RW) ||  // vocbase modifiable
-      !exec.canUseCollection(coll.name(),
-                             auth::Level::RW)) {  // collection modifiable
+      !exec.canUseCollectionMeta(coll.name(),
+                                 auth::Level::RW)) {  // collection modifiable
     events::DropCollection(coll.vocbase().name(), coll.name(),
                            TRI_ERROR_FORBIDDEN);
     return arangodb::Result(  // result
         TRI_ERROR_FORBIDDEN,  // code
-        absl::StrCat("Insufficient rights to drop collection ",
+        absl::StrCat("Insufficient rights (meta data) to drop collection ",
                      coll.name())  // message
     );
   }
@@ -1329,8 +1338,12 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
 futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& coll) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
-    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
+  if (!exec.canUseCollectionData(coll.name(), auth::Level::RO)) {
+    return futures::makeFuture(Result(
+        TRI_ERROR_FORBIDDEN, absl::StrCat("insufficient read permissions "
+                                          "to collection data for "
+                                          "collection '",
+                                          coll.name(), "'")));
   }
 
   if (ServerState::instance()->isCoordinator()) {

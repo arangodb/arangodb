@@ -1250,13 +1250,11 @@ We should map the permissions in the following way to RBAC actions and resources
 
 | Action name                   | Resource pattern           | Meaning                                                                  |
 |-------------------------------|----------------------------|--------------------------------------------------------------------------|
-| `db:ReadDatabases`            | -                          | list databases                                                           |
 | `db:ReadDatabase`             | `db:database:<name>`       | read access to a database (list collections, properties)                 |
 | `db:WriteDatabase`            | `db:database:<name>`       | change properties of a database                                          |
 | `db:ReadCollection`           | `db:collection:<db>:<coll>`| read collection meta data, including indexes                             |
-| `db:WriteCollection`          | `db:collection:<db>:<coll>`| modify collection meta data, including indexes                           |
-| `db:ReadDocuments`            | `db:collection:<db>:<coll>`| reading documents from a collection (also via view)                      |
-| `db:WriteDocuments`           | `db:collection:<db>:<coll>`| modify collection data                                                   |
+| `db:ReadWriteCollection`      | `db:collection:<db>:<coll>`| modify collection meta data, including indexes                           |
+| `db:ReadWriteDocuments`       | `db:collection:<db>:<coll>`| modify collection data                                                   |
 | `db:ReadView`                 | `db:view:<db>:<view>`      | read view metadata (document access via ReadDocuments)                   |
 | `db:WriteView`                | `db:view:<db>:<view>`      | modify view metadata                                                     |
 | `db:ReadAnalyzer`             | `db:analyzer:<db>:<name>`  | read analyzer metadata                                                   |
@@ -1574,3 +1572,25 @@ In the following table we just put the above case or the action required.
 | POST        | `/cluster-callback`                           | `SUPERUSER`                   |
 | PUT         | `/_internal/traverser`                        | `db:ReadDocuments`            |
 | DELETE      | `/_internal/traverser`                        | `db:ReadDocuments`            |
+
+
+## Implementation plan
+
+We already have an RbacFeature which has the Service instantiated.
+It is available as a singleton, it can be used once RbacFeature::prepare is finished.
+
+The HTTP service is only started in GeneralServerFeature::start, so we are good.
+
+ 1. Split canUseCollection into canUseCollectionMeta and canUseCollectionData.
+ 2. Adjust all call sites.
+ 3. Split collectionAuthLevel into collectionAuthLevelMeta and collectionAuthLevelData.
+ 4. Adjust all call sites.
+ 5. Implement RBAC behaviour in `ExecContext`.
+ 5. Add an RBAC action argument to `isAdminUser`. Implement RBAC switch.
+ 6. Add an RBAC action argument to `canUseHardenedAPI`. Implement RBAC switch.
+ 7. Check all 250 permission checks.
+ 8. Add testing for non-RBAC behaviour for all 250 permission checks.
+ 9. Add testing for RBAC-behaviour for all 250 permission checks.
+ 10. Revisit critical things: jobs API
+ 11. Revisit user API in particular w.r.t. password change self.
+ 12. ???

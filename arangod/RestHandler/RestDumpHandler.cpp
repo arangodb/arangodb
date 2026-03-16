@@ -323,11 +323,12 @@ Result RestDumpHandler::validateRequest() {
                   _clusterInfo.getCollectionNameForShard(maybeShardID.get());
             }
           }
-          if (!ExecContext::current().canUseCollection(
+          if (!ExecContext::current().canUseCollectionData(
                   _request->databaseName(), collectionName, auth::Level::RO)) {
             return {TRI_ERROR_FORBIDDEN,
-                    absl::StrCat("insufficient permissions to access shard ",
-                                 it, " of collection ", collectionName)};
+                    absl::StrCat(
+                        "insufficient permissions to access (read data) shard ",
+                        it, " of collection ", collectionName)};
           }
         }
       }

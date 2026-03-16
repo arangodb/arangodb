@@ -150,9 +150,13 @@ static void JS_RecalculateCounts(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (!ExecContext::current().canUseCollection(collection->name(),
-                                               auth::Level::RW)) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  if (!ExecContext::current().canUseCollectionMeta(collection->name(),
+                                                   auth::Level::RW)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        absl::StrCat(
+            "insufficient permissions to modify collection (meta data) '",
+            collection->name(), "'"));
   }
 
   auto* physical = toRocksDBCollection(*collection);

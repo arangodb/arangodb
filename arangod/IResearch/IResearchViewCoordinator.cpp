@@ -184,10 +184,12 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     ExecContext const& exec = ExecContext::current();
     if (!exec.isSuperuser()) {
       for (auto& entry : _collections) {
-        if (!exec.canUseCollection(vocbase().name(),
-                                   entry.second->collectionName,
-                                   auth::Level::RO)) {
-          return {TRI_ERROR_FORBIDDEN};
+        if (!exec.canUseCollectionData(vocbase().name(),
+                                       entry.second->collectionName,
+                                       auth::Level::RO)) {
+          return {TRI_ERROR_FORBIDDEN,
+                  absl::StrCat("Need read (data) access to collection '",
+                               entry.second->collectionName, "'")};
         }
       }
     }
@@ -368,13 +370,14 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
         auto const& name = vocbase().name();
         auto collection = engine.getCollection(
             name, absl::AlphaNum{entry.first.id()}.Piece());
-        if (collection &&
-            !exec.canUseCollection(name, collection->name(), auth::Level::RO)) {
+        if (collection && !exec.canUseCollectionData(name, collection->name(),
+                                                     auth::Level::RO)) {
           return {
               TRI_ERROR_FORBIDDEN,
               absl::StrCat(
                   "while updating arangosearch definition, error: collection '",
-                  collection->name(), "' not authorized for read access")};
+                  collection->name(),
+                  "' not authorized for read (data) access")};
         }
       }
     }
@@ -471,9 +474,11 @@ Result IResearchViewCoordinator::dropImpl() {
       auto const& name = vocbase().name();
       auto collection =
           engine.getCollection(name, absl::AlphaNum{entry.id()}.Piece());
-      if (collection &&
-          !exec.canUseCollection(name, collection->name(), auth::Level::RO)) {
-        return {TRI_ERROR_FORBIDDEN};
+      if (collection && !exec.canUseCollectionData(name, collection->name(),
+                                                   auth::Level::RO)) {
+        return {TRI_ERROR_FORBIDDEN,
+                absl::StrCat("Need read (data) access to collection '",
+                             collection->name(), "'")};
       }
     }
   }
