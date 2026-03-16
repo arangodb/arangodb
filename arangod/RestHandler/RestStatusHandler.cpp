@@ -175,11 +175,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
         result.close();
       }
 
-      if (serverState->isCoordinator()) {
-        result.add("coordinator", VPackValue(VPackValueType::Object));
-        result.close();
-      }
-
       auto manager = AsyncAgencyCommManager::INSTANCE.get();
 
       if (manager != nullptr) {
