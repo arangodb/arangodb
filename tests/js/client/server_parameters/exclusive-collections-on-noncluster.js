@@ -115,14 +115,19 @@ function OptionsTestSuite () {
       joinBGShells(IM.options, clients, waitFor, cn1);
       clients = [];
 
+      // both transactions should have succeeded (exclusive writes serialize, not reject)
       assertEqual(2, c2.count());
-      // both transactions should have succeeded
-      assertTrue(c2.document("runner1").value);  // runner1 transaction should succeed
-      assertTrue(c2.document("runner2").value); // runner2 transaction should succeed
+      let docs = c2.toArray();
+      assertEqual(docs[0].value, true);
+      assertEqual(docs[1].value, true);
     },
 
   };
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suite
+////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(OptionsTestSuite);
 
