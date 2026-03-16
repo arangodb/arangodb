@@ -43,16 +43,18 @@ namespace arangodb {
 
 VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
     DatabaseFeature& dbFeature)
-    : _dbFeature(dbFeature) {
-  // Set OpenMP to use a reasonable number of threads for parallel index builds.
-  // Warning: OMP does not have a global thread limit so this is only per region
-  // in OpenMP semantics.
-  auto const numCores = omp_get_num_procs();
-  omp_set_teams_thread_limit(std::max(4, numCores / 4))
-}
+    : _dbFeature(dbFeature) {}
 
-void VectorIndexBuildCoordinator::start() {
-  _thread = std::jthread([this](std::stop_token stopToken) { run(stopToken); });
+void VectorIndexBuildCoordinator::start(std::uint32_t maxOmpThreads) {
+  _thread = std::jthread([this, maxOmpThreads](std::stop_token stopToken) {
+    // Set OpenMP thread limit on the worker thread (ICV is per-thread).
+    // If user didn't configure a value, default to max(4, numCores/4).
+    auto const numThreads = maxOmpThreads > 0
+                                ? static_cast<int>(maxOmpThreads)
+                                : std::max(4, omp_get_num_procs() / 4);
+    omp_set_num_threads(numThreads);
+    run(stopToken);
+  });
 }
 
 void VectorIndexBuildCoordinator::beginShutdown() { _thread.request_stop(); }

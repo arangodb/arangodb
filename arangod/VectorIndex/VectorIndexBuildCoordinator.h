@@ -43,7 +43,7 @@ class VectorIndexBuildCoordinator {
 
   explicit VectorIndexBuildCoordinator(DatabaseFeature& dbFeature);
 
-  void start();
+  void start(std::uint32_t maxOmpThreads);
   void beginShutdown();
   void stop();
 

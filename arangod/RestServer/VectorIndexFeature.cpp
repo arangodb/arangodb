@@ -56,6 +56,17 @@ Agents in a cluster as it has no effect on them other than that you need to
 leave the option enabled.)");
 
   options->addOldOption("--experimental-vector-index", "--vector-index");
+
+  options
+      ->addOption(
+          "--vector-index.max-threads",
+          "Maximum number of threads per parallel region for vector "
+          "index builds. 0 means use default: max(4, numCores/4).",
+          new options::UInt32Parameter(&_options.maxOmpThreads),
+          options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                             arangodb::options::Flags::OnDBServer,
+                             arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31209);
 }
 
 bool VectorIndexFeature::shouldRunBuildCoordinator() const {
@@ -67,7 +78,7 @@ void VectorIndexFeature::start() {
   if (!shouldRunBuildCoordinator()) {
     return;
   }
-  _coordinator.start();
+  _coordinator.start(_options.maxOmpThreads);
 }
 
 void VectorIndexFeature::beginShutdown() {
