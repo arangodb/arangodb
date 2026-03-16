@@ -986,7 +986,7 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
     };
 }
 
-function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
+function VectorIndexL2FilterStoredValuesIndexSelection() {
     let collection;
     let randomPoint;
     const dimension = 20;
@@ -1148,8 +1148,8 @@ jsunity.run(function VectorIndexL2FilterMultipleCollectionsUntrainedTestSuite() 
 jsunity.run(function VectorIndexL2FilterStoredValuesUntrainedTestSuite() {
     return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(false), '_untrained');
 });
-jsunity.run(function VectorIndexL2FilterStoredValuesIndexSelectionSuiteUntrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterStoredValuesIndexSelectionSuiteTestSuite(false), '_untrained');
+jsunity.run(function VectorIndexL2FilterStoredValuesIndexSelectionUntrainedTestSuite() {
+    return withSuffix(VectorIndexL2FilterStoredValuesIndexSelection(), '_untrained');
 });
 
 // Trained
@@ -1162,8 +1162,8 @@ jsunity.run(function VectorIndexL2FilterMultipleCollectionsTrainedTestSuite() {
 jsunity.run(function VectorIndexL2FilterStoredValuesTrainedTestSuite() {
     return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(true), '_trained');
 });
-jsunity.run(function VectorIndexL2FilterStoredValuesIndexSelectionSuiteUntrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterStoredValuesIndexSelectionSuiteTestSuite(false), '_trained');
+jsunity.run(function VectorIndexL2FilterStoredValuesIndexSelectionTrainedTestSuite() {
+    return withSuffix(VectorIndexL2FilterStoredValuesIndexSelection(), '_trained');
 });
 
 
