@@ -183,8 +183,9 @@ defmodule ToastTest.PostExecSummary do
     print_log_path(detail)
   end
 
-  defp print_crash_detail(%{logs: logs} = detail, _colors) when is_binary(logs) do
-    print_truncated(logs, @max_crash_log_lines, "    ")
+  defp print_crash_detail(%{crash_lines: crash_lines} = detail, _colors)
+       when is_binary(crash_lines) do
+    print_truncated(crash_lines, @max_crash_log_lines, "    ")
     print_log_path(detail)
   end
 

@@ -562,9 +562,16 @@ defmodule ToastTest.Runner do
         analyzer_opts: build_coredump_analyzer_opts(toast_config)
       )
 
+    Logger.debug("Collecting server logs")
+    windows = ToastTest.Attribution.TimeWindows.build(test_data)
+    server_logs = ToastTest.Attribution.ServerLogs.collect(issues, artifacts, windows)
+
     Logger.debug("Building results (#{length(issues)} issues found)")
     warnings = coredump_warnings(crash_events, artifacts, toast_config)
-    suite_result = SuiteResult.build(test_data, issues, warnings: warnings)
+
+    suite_result =
+      SuiteResult.build(test_data, issues, warnings: warnings, server_logs: server_logs)
+
     SuiteResult.write_all(suite_result, toast_config.result_dir)
     print_post_exec_summary(suite_result)
     suite_result

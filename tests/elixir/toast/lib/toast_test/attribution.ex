@@ -117,7 +117,7 @@ defmodule ToastTest.Attribution do
     # same log (e.g. from resilience tests) are expected and irrelevant.
     case Enrichment.Logs.extract_crash_lines(log_file) do
       "" -> detail
-      logs -> Map.put(detail, :logs, logs)
+      crash_lines -> Map.put(detail, :crash_lines, crash_lines)
     end
   end
 
@@ -166,7 +166,7 @@ defmodule ToastTest.Attribution do
         type: :sanitizer_report,
         scope: scope,
         confidence: confidence,
-        detail: %{server: server_id, report: result.content}
+        detail: %{server: server_id, report: result.content, timestamp: result.timestamp}
       }
     end
   end

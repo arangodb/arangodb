@@ -125,7 +125,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     [
       labeled("Server", detail[:server]),
       coredump_lines,
-      labeled("Logs", detail[:logs])
+      labeled("Crash Lines", detail[:crash_lines])
     ]
     |> List.flatten()
     |> Toast.Utils.compact_join("\n")

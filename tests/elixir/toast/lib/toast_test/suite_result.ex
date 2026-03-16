@@ -13,6 +13,7 @@ defmodule ToastTest.SuiteResult do
           },
           modules: %{module() => module_result()},
           issues: [issue()],
+          server_logs: %{String.t() => [{DateTime.t(), DateTime.t(), String.t()}]},
           events: %{atom() => [map()]},
           warnings: [String.t()]
         }
@@ -53,6 +54,7 @@ defmodule ToastTest.SuiteResult do
     version: 1,
     modules: %{},
     issues: [],
+    server_logs: %{},
     events: %{},
     warnings: []
   ]
@@ -67,6 +69,7 @@ defmodule ToastTest.SuiteResult do
       times_us: test_data.times_us || %{async: nil, load: nil, run: 0},
       modules: test_data.modules,
       issues: issues,
+      server_logs: Keyword.get(opts, :server_logs, %{}),
       events: Keyword.get(opts, :events, %{}),
       warnings: Keyword.get(opts, :warnings, [])
     }

@@ -108,7 +108,7 @@ defmodule ToastTest.PostExecSummaryTest do
       detail: %{
         server: "agent1",
         crash_info: crash_info(),
-        logs: build_log_lines(),
+        crash_lines: build_log_lines(),
         log_file: "/tmp/arangodb/agent1.log"
       }
     }
