@@ -272,7 +272,6 @@ class CircleCIGenerator(OutputGenerator):
                     "run-cppcheck": {
                         "name": "cppcheck",
                         "requires": [build_jobs[0]],
-                        "arch": build_config.architecture.value,
                         "resource-class": self.sizer.get_resource_class(
                             ResourceSize.XLARGE, build_config.architecture
                         ),
@@ -578,7 +577,6 @@ class CircleCIGenerator(OutputGenerator):
             "name": job_name,
             "suiteName": suite_name,
             "suites": suite_str,
-            "arch": build_config.architecture.value,
             "size": resource_class,
             "cluster": is_cluster,
             "requires": build_jobs,
@@ -672,7 +670,6 @@ class CircleCIGenerator(OutputGenerator):
             job_dict = {
                 "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
                 "suiteName": f"{deployment}-UI",
-                "arch": build_config.architecture.value,
                 "arangosh_args": "",
                 "deployment": "SG" if deployment == "single" else "CL",
                 "browser": "Remote_CHROME",
