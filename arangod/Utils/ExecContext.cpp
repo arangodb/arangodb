@@ -64,13 +64,14 @@ ExecContext::ExecContext(ConstructorToken, ExecContext::Type type,
                          auth::Level systemLevel, auth::Level dbLevel,
                          bool isAdminUser,
                          std::vector<std::string> const& roles,
-                         std::string const& jwtToken)
+                         std::string const& jwtToken, bool rbacEnabled)
     : _user(user),
       _database(database),
       _roles(roles),
       _jwtToken(jwtToken),
       _type(type),
       _isAdminUser(isAdminUser),
+      _rbacEnabled(rbacEnabled),
       _systemDbAuthLevel(systemLevel),
       _databaseAuthLevel(dbLevel) {
   TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
@@ -109,9 +110,10 @@ std::shared_ptr<ExecContext> ExecContext::create(std::string const& user,
     }
   }
 
-  return std::make_shared<ExecContext>(ExecContext::ConstructorToken{},
-                                       ExecContext::Type::Default, user, dbname,
-                                       sysLvl, dbLvl, isAdminUser);
+  bool rbacEnabled = !af->externalRBACservice().empty();
+  return std::make_shared<ExecContext>(
+      ExecContext::ConstructorToken{}, ExecContext::Type::Default, user, dbname,
+      sysLvl, dbLvl, isAdminUser, std::vector<std::string>{}, "", rbacEnabled);
 }
 
 bool ExecContext::canUseDatabase(std::string const& db,

@@ -39,10 +39,10 @@ namespace arangodb {
 VocbaseContext::VocbaseContext(ConstructorToken, GeneralRequest& req,
                                TRI_vocbase_t& vocbase, ExecContext::Type type,
                                auth::Level systemLevel, auth::Level dbLevel,
-                               bool isAdminUser)
+                               bool isAdminUser, bool rbacEnabled)
     : ExecContext(ExecContext::ConstructorToken{}, type, req.user(),
                   req.databaseName(), systemLevel, dbLevel, isAdminUser,
-                  req.roles(), req.jwtToken()),
+                  req.roles(), req.jwtToken(), rbacEnabled),
 #ifdef USE_ENTERPRISE
       _request(req),
 #endif
@@ -62,40 +62,41 @@ std::shared_ptr<VocbaseContext> VocbaseContext::create(GeneralRequest& req,
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!vocbase.isDangling());
 
+  AuthenticationFeature* auth = AuthenticationFeature::instance();
+  TRI_ASSERT(auth != nullptr);
+  bool rbacEnabled = !auth->externalRBACservice().empty();
+
   // superusers will have an empty username. This MUST be invalid
   // for users authenticating with name / password
   bool isSuperUser = req.authenticated() && req.user().empty() &&
                      req.authenticationMethod() == AuthenticationMethod::JWT;
   if (isSuperUser) {
-    return std::make_shared<VocbaseContext>(ConstructorToken{}, req, vocbase,
-                                            ExecContext::Type::Internal,
-                                            /*sysLevel*/ auth::Level::RW,
-                                            /*dbLevel*/ auth::Level::RW, true);
+    return std::make_shared<VocbaseContext>(
+        ConstructorToken{}, req, vocbase, ExecContext::Type::Internal,
+        /*sysLevel*/ auth::Level::RW,
+        /*dbLevel*/ auth::Level::RW, true, rbacEnabled);
   }
-
-  AuthenticationFeature* auth = AuthenticationFeature::instance();
-  TRI_ASSERT(auth != nullptr);
   if (!auth->isActive()) {
     if (ServerState::readOnly()) {
       // special read-only case
       return std::make_shared<VocbaseContext>(
           ConstructorToken{}, req, vocbase, ExecContext::Type::Internal,
           /*sysLevel*/ auth::Level::RO,
-          /*dbLevel*/ auth::Level::RO, true);
+          /*dbLevel*/ auth::Level::RO, true, rbacEnabled);
     }
-    return std::make_shared<VocbaseContext>(ConstructorToken{}, req, vocbase,
-                                            req.user().empty()
-                                                ? ExecContext::Type::Internal
-                                                : ExecContext::Type::Default,
-                                            /*sysLevel*/ auth::Level::RW,
-                                            /*dbLevel*/ auth::Level::RW, true);
+    return std::make_shared<VocbaseContext>(
+        ConstructorToken{}, req, vocbase,
+        req.user().empty() ? ExecContext::Type::Internal
+                           : ExecContext::Type::Default,
+        /*sysLevel*/ auth::Level::RW,
+        /*dbLevel*/ auth::Level::RW, true, rbacEnabled);
   }
 
   if (!req.authenticated()) {
     return std::make_shared<VocbaseContext>(
         ConstructorToken{}, req, vocbase, ExecContext::Type::Default,
         /*sysLevel*/ auth::Level::NONE,
-        /*dbLevel*/ auth::Level::NONE, false);
+        /*dbLevel*/ auth::Level::NONE, false, rbacEnabled);
   }
 
   if (req.user().empty()) {
@@ -127,10 +128,10 @@ std::shared_ptr<VocbaseContext> VocbaseContext::create(GeneralRequest& req,
                               true) == auth::Level::RW;
   }
 
-  return std::make_shared<VocbaseContext>(ConstructorToken{}, req, vocbase,
-                                          ExecContext::Type::Default,
-                                          /*sysLevel*/ sysLvl,
-                                          /*dbLevel*/ dbLvl, isAdminUser);
+  return std::make_shared<VocbaseContext>(
+      ConstructorToken{}, req, vocbase, ExecContext::Type::Default,
+      /*sysLevel*/ sysLvl,
+      /*dbLevel*/ dbLvl, isAdminUser, rbacEnabled);
 }
 
 void VocbaseContext::forceSuperuser() {

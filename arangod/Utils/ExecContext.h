@@ -52,7 +52,7 @@ class ExecContext : public RequestContext {
               std::string const& database, auth::Level systemLevel,
               auth::Level dbLevel, bool isAdminUser,
               std::vector<std::string> const& roles = {},
-              std::string const& jwtToken = "");
+              std::string const& jwtToken = "", bool rbacEnabled = false);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -94,6 +94,9 @@ class ExecContext : public RequestContext {
 
   /// @brief is allowed to manage users, create databases, ...
   bool isAdminUser() const noexcept { return _isAdminUser; }
+
+  /// @brief returns true if an external RBAC service is configured
+  bool rbacEnabled() const noexcept { return _rbacEnabled; }
 
   /// @brief tells you if this execution was canceled
   virtual bool isCanceled() const { return false; }
@@ -169,6 +172,8 @@ class ExecContext : public RequestContext {
   Type _type;
   /// Flag if admin user access (not regarding cluster RO mode)
   bool _isAdminUser;
+  /// Flag if external RBAC service is configured
+  bool _rbacEnabled;
   /// level of system database
   auth::Level _systemDbAuthLevel;
   /// level of current database
