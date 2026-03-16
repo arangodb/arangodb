@@ -22,6 +22,7 @@
 #include "VectorIndexFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "RestServer/DatabaseFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -57,16 +58,31 @@ leave the option enabled.)");
   options->addOldOption("--experimental-vector-index", "--vector-index");
 }
 
+bool VectorIndexFeature::shouldRunBuildCoordinator() const {
+  return isVectorIndexEnabled() && (ServerState::instance()->isDBServer() ||
+                                    ServerState::instance()->isSingleServer());
+}
+
 void VectorIndexFeature::start() {
-  if (!isVectorIndexEnabled()) {
+  if (!shouldRunBuildCoordinator()) {
     return;
   }
   _coordinator.start();
 }
 
-void VectorIndexFeature::beginShutdown() { _coordinator.beginShutdown(); }
+void VectorIndexFeature::beginShutdown() {
+  if (!shouldRunBuildCoordinator()) {
+    return;
+  }
+  _coordinator.beginShutdown();
+}
 
-void VectorIndexFeature::stop() { _coordinator.stop(); }
+void VectorIndexFeature::stop() {
+  if (!shouldRunBuildCoordinator()) {
+    return;
+  }
+  _coordinator.stop();
+}
 
 bool VectorIndexFeature::isVectorIndexEnabled() const {
   return _options.useVectorIndex;

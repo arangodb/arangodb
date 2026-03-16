@@ -48,6 +48,8 @@ class VectorIndexFeature final
   bool isVectorIndexEnabled() const;
 
  private:
+  bool shouldRunBuildCoordinator() const;
+
   VectorIndexFeatureOptions _options;
   VectorIndexBuildCoordinator _coordinator;
 };
