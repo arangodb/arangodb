@@ -528,6 +528,9 @@ jobs:
             tar -xJf /node_modules.tar.xz
             yarn install
             yarn build
+      - persist_to_workspace:
+          root: .
+          paths: js/apps/system/_admin/aardvark/APP/react/build
       - persist_to_workspace_s3:
           root: .
           paths: js/apps/system/_admin/aardvark/APP/react/build
@@ -656,6 +659,28 @@ jobs:
           steps:
             - store_artifacts:
                 path: build/bin/arango*
+            - persist_to_workspace:
+                root: .
+                paths: |
+                  VERSIONS
+                  ARANGO-VERSION
+                  build/compile_commands.json
+                  CMakePresets.json
+                  build/bin
+                  build/etc
+                  build/build_version.cc
+                  scripts/
+                  js/
+                  enterprise/js
+                  etc/
+                  tests/js
+                  enterprise/tests/js
+                  utils
+                  lib/iresearch/tests/resources
+                  3rdParty/rta-makedata
+                  tsan_arangodb_suppressions.txt
+                  ubsan_arangodb_suppressions.txt
+                  lsan_arangodb_suppressions.txt
             - persist_to_workspace_s3:
                 root: .
                 archive: cppcheck.tar.bz2
@@ -899,12 +924,6 @@ jobs:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - attach_workspace:
           at: work/ArangoDB
-      - persist_from_workspace_s3:
-          root: .
-          archive: binaries.tar.bz2
-      - persist_from_workspace_s3:
-          root: .
-          archive: frontend.tar.bz2
       - fetch-aux-binaries:
           arch: x64 # rta tests should only run on x64
           repo-path: work/ArangoDB
