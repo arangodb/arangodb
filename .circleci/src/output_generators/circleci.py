@@ -356,8 +356,9 @@ class CircleCIGenerator(OutputGenerator):
         """
         # Handle RTA UI tests specially - they generate multiple jobs
         if job.job_type == "run-rta-tests":
-            return []
-            # TODO RTA UI return self._create_rta_test_jobs(job, build_config, build_jobs)
+            # return []
+            # TODO RTA UI
+            return self._create_rta_test_jobs(job, build_config, build_jobs)
 
         result = []
         deployment_type = job.options.deployment_type
