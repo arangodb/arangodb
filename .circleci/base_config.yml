@@ -661,7 +661,7 @@ jobs:
                 path: build/bin/arango*
             - persist_to_workspace:
                 root: .
-                paths: |
+                paths:
                   - VERSIONS
                   - ARANGO-VERSION
                   - build/compile_commands.json
