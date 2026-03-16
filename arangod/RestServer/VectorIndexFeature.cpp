@@ -23,7 +23,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Parameters.h"
@@ -35,7 +35,7 @@ VectorIndexFeature::VectorIndexFeature(
     : ApplicationFeature{server, *this},
       _coordinator(server.getFeature<DatabaseFeature>()) {
   setOptional(false);
-  startsAfter<application_features::DatabaseFeaturePhase>();
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 }
 
 void VectorIndexFeature::collectOptions(
