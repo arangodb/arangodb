@@ -27,21 +27,14 @@
 const internal = require("internal");
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const helper = require("@arangodb/aql-helper");
 const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
-const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 
-const { versionHas } = require("@arangodb/test-helper");
-const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -417,8 +410,101 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     };
 }
 
+// COR-128 Fetching more documents then the internal batching limit
+function VectorIndexLargeLimitTestSuite() {
+    let collection;
+    let randomPoint;
+    const largeLimitDimension = 128;
+    const largeLimitNumberOfDocs = 4500;
+    const nLists = 32;
+    const seed = 98765432;
+
+    return {
+        setUpAll: function() {
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, {
+                numberOfShards: 3
+            });
+
+            let gen = randomNumberGeneratorFloat(seed);
+            const batchSize = 1000;
+            for (let batch = 0; batch < largeLimitNumberOfDocs; batch += batchSize) {
+                let docs = [];
+                const end = Math.min(batch + batchSize, largeLimitNumberOfDocs);
+                for (let i = batch; i < end; ++i) {
+                    const vector = Array.from({
+                        length: largeLimitDimension
+                    }, () => gen());
+                    if (i === 0) {
+                        randomPoint = vector;
+                    }
+                    docs.push({
+                        vector
+                    });
+                }
+                collection.insert(docs);
+            }
+
+            collection.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: largeLimitDimension,
+                    nLists: nLists,
+                },
+            });
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testFetchLargeNumberOfDocsWithMaxNProbe: function() {
+            const limits = [1500, 3000, 4000];
+            const bindVars = {
+                qp: randomPoint,
+            };
+
+            for (const limit of limits) {
+                const query =
+                    "FOR d IN " +
+                    collection.name() +
+                    " SORT APPROX_NEAR_L2(d.vector, @qp, " +
+                    "{nProbe: " + nLists + "}) " +
+                    "LIMIT " + limit + " RETURN d._key";
+
+                const options = {
+                    fullCount: true,
+                    count: true,
+                };
+
+                const queryResults = db._query(query, bindVars, options);
+                const results = queryResults.toArray();
+                assertEqual(limit, results.length,
+                    "Expected " + limit + " results");
+
+                const uniqueResults = new Set(results);
+                assertEqual(limit, uniqueResults.size,
+                    "All " + limit + " returned documents should be unique");
+
+                assertEqual(queryResults.count(), limit);
+
+                const stats = queryResults.getExtra().stats;
+                assertEqual(stats.fullCount, largeLimitNumberOfDocs);
+            }
+        },
+    };
+}
+
 jsunity.run(VectorIndexFullCountTestSuite);
 jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);
 jsunity.run(VectorIndexFullCountCollectionWithSmallAmountOfDocs);
+jsunity.run(VectorIndexLargeLimitTestSuite);
 
 return jsunity.done();
