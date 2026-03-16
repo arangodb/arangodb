@@ -292,8 +292,6 @@ commands:
         type: string
       sanitizer:
         type: string
-      arch:
-        type: string
     steps:
       - add_ssh_keys:
           fingerprints:
