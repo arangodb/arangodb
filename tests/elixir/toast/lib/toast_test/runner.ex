@@ -7,7 +7,7 @@ defmodule ToastTest.Runner do
   # SPDX-FileCopyrightText: 2012 Plataformatec
 
   alias ToastTest.ExUnitCompat, as: Compat
-  alias ToastTest.TestLifecycle
+  alias ToastTest.{Abort, TestLifecycle, ProcessHistory, SuiteResult}
 
   require Logger
 
@@ -58,7 +58,7 @@ defmodule ToastTest.Runner do
           keyword()
         ) :: map()
   def run_suites(suites, global_opts) do
-    ToastTest.Abort.clear!()
+    Abort.clear!()
     ToastTest.DeploymentRegistry.init()
     start_process_history()
     runner = self()
@@ -98,7 +98,7 @@ defmodule ToastTest.Runner do
           check_global_deadline!(global_deadline)
           {suite_module, test_modules, suite_opts} = normalize_suite_entry(suite_entry)
 
-          if ToastTest.Abort.reason() do
+          if Abort.reason() do
             Logger.info("Skipping suite #{inspect(suite_module)} (aborted)")
             {results, acc}
           else
@@ -210,15 +210,21 @@ defmodule ToastTest.Runner do
 
   defp handle_deployment_failure(suite_module, test_modules, reason, global_opts, toast_config) do
     Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
-    ToastTest.Abort.abort!({:deploy_failed, "Deployment failed: #{inspect(reason)}"})
+    Abort.abort!({:deploy_failed, "Deployment failed: #{inspect(reason)}"})
 
     {stats, test_data} =
       mark_all_skipped_stats(test_modules, reason, global_opts, suite_module)
 
-    timeout_kills = ToastTest.ProcessHistory.timeout_kills()
-    issues = ToastTest.Attribution.run(test_data, %{}, [], timeout_kills: timeout_kills)
-    suite_result = ToastTest.SuiteResult.build(test_data, issues)
-    ToastTest.SuiteResult.write_all(suite_result, toast_config.result_dir)
+    pid_history = ProcessHistory.pids_by_server()
+    crash_events = ProcessHistory.unexpected_crashes()
+    timeout_kills = ProcessHistory.timeout_kills()
+    artifacts = ToastTest.ArtifactCollector.collect(%{}, pid_history)
+
+    issues =
+      ToastTest.Attribution.run(test_data, artifacts, crash_events, timeout_kills: timeout_kills)
+
+    suite_result = SuiteResult.build(test_data, issues)
+    SuiteResult.write_all(suite_result, toast_config.result_dir)
     print_post_exec_summary(suite_result)
 
     ToastTest.StateCleanup.reset()
@@ -330,11 +336,11 @@ defmodule ToastTest.Runner do
       check_suite_deadline!(config)
 
       cond do
-        reason = ToastTest.Abort.reason() ->
+        reason = Abort.reason() ->
           emit_skipped_module(
             config,
             module,
-            ToastTest.Abort.prefix() <> ToastTest.Abort.display_reason(reason)
+            Abort.prefix() <> Abort.display_reason(reason)
           )
 
         max_failures_reached?(config) ->
@@ -407,7 +413,7 @@ defmodule ToastTest.Runner do
   defp build_deployment_opts(suite_config, global_opts) do
     base = [
       on_crash: &ToastTest.CrashMonitor.handle_crash/2,
-      on_event: &ToastTest.ProcessHistory.handle_event/1
+      on_event: &ProcessHistory.handle_event/1
     ]
 
     suite_args =
@@ -470,7 +476,7 @@ defmodule ToastTest.Runner do
     {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
     Compat.suite_started(manager, opts)
 
-    skip_reason = ToastTest.Abort.prefix() <> "Deployment failed: #{inspect(reason)}"
+    skip_reason = Abort.prefix() <> "Deployment failed: #{inspect(reason)}"
 
     for module <- test_modules do
       test_module = Compat.get_test_metadata(module)
@@ -538,9 +544,9 @@ defmodule ToastTest.Runner do
     Logger.debug("Post-execution: stopping deployment")
     {servers, error} = stop_deployment(deployment)
     if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
-    pid_history = ToastTest.ProcessHistory.pids_by_server()
-    crash_events = ToastTest.ProcessHistory.unexpected_crashes()
-    timeout_kills = ToastTest.ProcessHistory.timeout_kills()
+    pid_history = ProcessHistory.pids_by_server()
+    crash_events = ProcessHistory.unexpected_crashes()
+    timeout_kills = ProcessHistory.timeout_kills()
     Logger.debug("Post-execution: collecting artifacts")
     artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history)
 
@@ -550,8 +556,8 @@ defmodule ToastTest.Runner do
       ToastTest.Attribution.run(test_data, artifacts, crash_events, timeout_kills: timeout_kills)
 
     Logger.debug("Post-execution: building results (#{length(issues)} issues found)")
-    suite_result = ToastTest.SuiteResult.build(test_data, issues)
-    ToastTest.SuiteResult.write_all(suite_result, toast_config.result_dir)
+    suite_result = SuiteResult.build(test_data, issues)
+    SuiteResult.write_all(suite_result, toast_config.result_dir)
     Logger.debug("Post-execution: results written to #{toast_config.result_dir}")
     print_post_exec_summary(suite_result)
     suite_result
@@ -573,7 +579,7 @@ defmodule ToastTest.Runner do
   end
 
   defp start_process_history do
-    case ToastTest.ProcessHistory.start_link(name: ToastTest.ProcessHistory) do
+    case ProcessHistory.start_link(name: ProcessHistory) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
     end
@@ -624,7 +630,7 @@ defmodule ToastTest.Runner do
     {test_module, invalid_tests, finished_tests} =
       run_module_tests(config, test_module, to_run_tests)
 
-    if reason = ToastTest.Abort.reason() do
+    if reason = Abort.reason() do
       finish_aborted_module(config, test_module, invalid_tests, finished_tests, reason)
     else
       finish_pending_module(config, test_module, invalid_tests, finished_tests)
@@ -632,7 +638,7 @@ defmodule ToastTest.Runner do
   end
 
   defp finish_aborted_module(config, test_module, invalid_tests, finished_tests, reason) do
-    abort_msg = ToastTest.Abort.prefix() <> ToastTest.Abort.display_reason(reason)
+    abort_msg = Abort.prefix() <> Abort.display_reason(reason)
 
     for test <- invalid_tests do
       skipped = %{test | state: {:skipped, abort_msg}}
@@ -722,7 +728,7 @@ defmodule ToastTest.Runner do
 
     config
     |> run_setup_all(test_module, context, fn context ->
-      if max_failures_reached?(config) or ToastTest.Abort.reason(),
+      if max_failures_reached?(config) or Abort.reason(),
         do: {[], tests},
         else: run_tests(config, tests, test_module.parameters, context)
     end)
@@ -779,12 +785,12 @@ defmodule ToastTest.Runner do
 
     prev_test = List.first(acc)
 
-    if ToastTest.Abort.reason() do
+    if Abort.reason() do
       {acc, remaining}
     else
       case check_between_tests(config, prev_test) do
         {:error, reason} ->
-          ToastTest.Abort.abort!(reason)
+          Abort.abort!(reason)
           {acc, remaining}
 
         :ok ->
@@ -940,11 +946,11 @@ defmodule ToastTest.Runner do
   end
 
   defp exec_test_setup(%ExUnit.Test{module: module} = test, context) do
-    if reason = ToastTest.Abort.reason() do
+    if reason = Abort.reason() do
       {:skipped,
        %{
          test
-         | state: {:skipped, ToastTest.Abort.prefix() <> ToastTest.Abort.display_reason(reason)}
+         | state: {:skipped, Abort.prefix() <> Abort.display_reason(reason)}
        }}
     else
       {:ok, Compat.get_test_setup(module, context)}
@@ -1043,8 +1049,8 @@ defmodule ToastTest.Runner do
 
   defp abort_with_timeout(source, reason) do
     Logger.warning("#{reason} — aborting suite")
-    ToastTest.ProcessHistory.record_timeout_kill(source, reason, [])
-    ToastTest.Abort.abort!({:timeout, reason})
+    ProcessHistory.record_timeout_kill(source, reason, [])
+    Abort.abort!({:timeout, reason})
   end
 
   defp failed(:error, %ExUnit.MultiError{errors: errors}, _stack) do
