@@ -23,18 +23,24 @@
 
 #include <velocypack/SharedSlice.h>
 #include "Activities/GuardedActivity.h"
+#include "Aql/QueryOptions.h"
+#include "types.h"
 
 namespace arangodb::aql::query::activity {
 
 struct AQLQueryActivityData {
-  std::string queryString;
+  QueryId id;
   double startTime;
+  std::optional<std::string> queryString;
+  std::optional<velocypack::SharedSlice> options;
   std::optional<velocypack::SharedSlice> bindParameters;
 
   template<typename Inspector>
   inline friend auto inspect(Inspector& f, AQLQueryActivityData& d) {
-    return f.object(d).fields(f.field("queryString", d.queryString),  //
-                              f.field("startTime", d.startTime),      //
+    return f.object(d).fields(f.field("queryId", d.id),  //
+                              f.field("startTime", d.startTime),
+                              f.field("queryString", d.queryString),  //
+                              f.field("options", d.options),          //
                               f.field("bindParameters", d.bindParameters));
   }
 };
@@ -42,9 +48,21 @@ struct AQLQueryActivityData {
 struct AQLQueryActivity
     : activities::GuardedActivity<AQLQueryActivity, AQLQueryActivityData> {
   AQLQueryActivity(activities::ActivityId id, activities::ActivityHandle parent,
-                   AQLQueryActivityData data)
+                   QueryId queryId, double startTime, std::string queryString,
+                   QueryOptions& options, BindParameters& bindParameters)
       : activities::GuardedActivity<AQLQueryActivity, AQLQueryActivityData>(
-            id, parent, "AQLQuery", std::move(data)) {}
+            id, parent, "AQLQuery",
+            AQLQueryActivityData{
+                .id = queryId,
+                .startTime = startTime,
+                .queryString = queryString,
+                .options = std::invoke(
+                    [&options]() -> std::optional<velocypack::SharedSlice> {
+                      auto builder = VPackBuilder();
+                      options.toVelocyPack(builder, true);
+                      return builder.sharedSlice();
+                    }),
+                .bindParameters = bindParameters.builder()->sharedSlice()}) {}
   using Data = AQLQueryActivityData;
 };
 }  // namespace arangodb::aql::query::activity

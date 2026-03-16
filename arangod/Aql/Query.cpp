@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Query.h"
+#include <velocypack/Builder.h>
 #include <velocypack/SharedSlice.h>
 #include <unordered_map>
 
@@ -150,18 +151,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _allowDirtyReads(false),
       _queryKilled(false),
       _activity(activities::make<aql::query::activity::AQLQueryActivity>(
-          query::activity::AQLQueryActivityData{
-              .queryString = _queryString.string(),
-              .startTime = _startTime,
-              .bindParameters =
-                  std::invoke([&bindParameters]()
-                                  -> std::optional<velocypack::SharedSlice> {
-                    if (bindParameters == nullptr) {
-                      return std::nullopt;
-                    } else {
-                      return bindParameters->sharedSlice();
-                    }
-                  })})) {
+          _queryId, _startTime, _queryString.string(), _queryOptions,
+          _bindParameters)) {
   if (!_transactionContext) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "failed to create query transaction context");
@@ -748,17 +739,18 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 }
 
 namespace {
-// TODO With a few more changes i.a. to the streaming cursor, we should be able
+// TODO With a few more changes i.a. to the streaming cursor, we should be
+// able
 //      to move the WAITING/coro glue code into the engine instead.
 //      At some point we should be able to get rid of any connection between
-//      the RestHandler and the SharedQueryState, and move the SuspensionCounter
-//      from the RestHandler into the query.
+//      the RestHandler and the SharedQueryState, and move the
+//      SuspensionCounter from the RestHandler into the query.
 auto engineExecuteToCoro = [](SuspensionCounter& suspensionCounter,
                               auto&& engineExecute) {
   // Note that the function frame does not (generally) live as long as the
-  // coroutine returned by it, so it's not safe to refer to any local variables
-  // or parameters by reference, unless they are references (to something with
-  // an appropriate lifetime).
+  // coroutine returned by it, so it's not safe to refer to any local
+  // variables or parameters by reference, unless they are references (to
+  // something with an appropriate lifetime).
   using ReturnType =
       std::optional<std::tuple<ExecutorState, SharedAqlItemBlockPtr>>;
 
@@ -2275,7 +2267,6 @@ ExecutionEngine* Query::rootEngine() const {
 }
 
 namespace {
-
 futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto const& serverQueryIds = query.serverQueryIds();
@@ -2338,12 +2329,12 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   for (auto&& future : futureResponses) {
     if (query.queryApiSynchronicity() ==
         QueryContext::QueryApiSynchronicity::Synchronous) {
-      // The caller is waiting synchronously. Because of that, skipScheduler is
-      // set for the network requests sent here. Which means the network thread
-      // will resolve the promise(s) without going through the scheduler. We
-      // must avoid executing arbitrary code on the network thread, and
-      // therefore have to wait here before calling `.thenValue` or
-      // `co_await`ing the response-future. The caller will be waiting
+      // The caller is waiting synchronously. Because of that, skipScheduler
+      // is set for the network requests sent here. Which means the network
+      // thread will resolve the promise(s) without going through the
+      // scheduler. We must avoid executing arbitrary code on the network
+      // thread, and therefore have to wait here before calling `.thenValue`
+      // or `co_await`ing the response-future. The caller will be waiting
       // synchronously anyway.
       future.wait();
     }
