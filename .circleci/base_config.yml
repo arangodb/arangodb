@@ -889,7 +889,7 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
-          run-local: true
+          use-s3-workspace: false
 
   run-rta-tests:
     machine:
