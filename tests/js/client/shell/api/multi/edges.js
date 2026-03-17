@@ -38,13 +38,13 @@ const jsunity = require("jsunity");
 function error_handlingSuite () {
   let cn = "UnitTestsCollectionEdge";
   return {
-    setUp: function() {
+    setUpAll: function() {
       db._createEdgeCollection(cn);
     },
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
-    
+
     test_returns_an_error_if_vertex_identifier_is_missing: function() {
       let cmd = `/_api/edges/${cn}`;
       let doc = arango.GET_RAW(cmd);
