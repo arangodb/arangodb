@@ -29,11 +29,12 @@
 #include <velocypack/Builder.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -43,9 +44,7 @@
 #include "Transaction/V8Context.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
-#include "Utils/OperationOptions.h"
 #include "V8/JavaScriptSecurityContext.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -54,6 +53,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
@@ -61,28 +61,25 @@ using namespace arangodb::basics;
 // -----------------------------------------------------------------------------
 
 namespace {
-bool authorized(
-    std::pair<std::string, std::shared_ptr<arangodb::Task>> const& task) {
-  arangodb::ExecContext const& exec = arangodb::ExecContext::current();
+bool authorized(Task const& task) {
+  ExecContext const& exec = ExecContext::current();
   if (exec.isSuperuser()) {
     return true;
   }
 
-  return (task.first == exec.user());
+  return task.username() == exec.user();
 }
 }  // namespace
 
 namespace arangodb {
 
 std::mutex Task::_tasksLock;
-std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>>
-    Task::_tasks;
+std::unordered_map<std::string, std::shared_ptr<Task>> Task::_tasks;
 
-std::shared_ptr<Task> Task::createTask(std::string const& id,
-                                       std::string const& name,
-                                       TRI_vocbase_t* vocbase,
-                                       std::string const& command,
-                                       bool allowUseDatabase, ErrorCode& ec) {
+std::shared_ptr<Task> Task::createTask(
+    std::string const& id, std::string const& name,
+    std::shared_ptr<ExecContext const> execContext, TRI_vocbase_t* vocbase,
+    std::string const& command, bool allowUseDatabase, ErrorCode& ec) {
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
 
@@ -102,13 +99,12 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
                                    // DatabaseGuard constructor which on failure
                                    // would fail Task constructor
 
-  std::string const& user = ExecContext::current().user();
-  auto task =
-      std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
+  auto task = std::make_shared<Task>(id, name, std::move(execContext), *vocbase,
+                                     command, allowUseDatabase);
 
   std::lock_guard guard{_tasksLock};
 
-  if (!_tasks.try_emplace(id, user, task).second) {
+  if (!_tasks.try_emplace(id, task).second) {
     ec = TRI_ERROR_TASK_DUPLICATE_ID;
 
     return {nullptr};
@@ -128,12 +124,12 @@ ErrorCode Task::unregisterTask(std::string const& id, bool cancel) {
 
   auto itr = _tasks.find(id);
 
-  if (itr == _tasks.end() || !::authorized(itr->second)) {
+  if (itr == _tasks.end() || !::authorized(*itr->second)) {
     return TRI_ERROR_TASK_NOT_FOUND;
   }
 
   if (cancel) {
-    itr->second.second->cancel();
+    itr->second->cancel();
   }
 
   _tasks.erase(itr);
@@ -146,11 +142,11 @@ std::shared_ptr<VPackBuilder> Task::registeredTask(std::string const& id) {
 
   auto itr = _tasks.find(id);
 
-  if (itr == _tasks.end() || !::authorized(itr->second)) {
+  if (itr == _tasks.end() || !::authorized(*itr->second)) {
     return nullptr;
   }
 
-  return itr->second.second->toVelocyPack();
+  return itr->second->toVelocyPack();
 }
 
 std::shared_ptr<VPackBuilder> Task::registeredTasks() {
@@ -162,9 +158,9 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
     std::lock_guard guard{_tasksLock};
 
     for (auto& it : _tasks) {
-      if (::authorized(it.second)) {
+      if (::authorized(*it.second)) {
         VPackObjectBuilder b2(builder.get());
-        it.second.second->toVelocyPack(*builder);
+        it.second->toVelocyPack(*builder);
       }
     }
   } catch (...) {
@@ -178,7 +174,7 @@ void Task::shutdownTasks() {
   {
     std::lock_guard guard{_tasksLock};
     for (auto& it : _tasks) {
-      it.second.second->cancel();
+      it.second->cancel();
     }
   }
 
@@ -214,10 +210,10 @@ void Task::removeTasksForDatabase(std::string const& name) {
   std::lock_guard guard{_tasksLock};
 
   for (auto it = _tasks.begin(); it != _tasks.end(); /* no hoisting */) {
-    if (!(*it).second.second->databaseMatches(name)) {
+    if (!(*it).second->databaseMatches(name)) {
       ++it;
     } else {
-      auto task = (*it).second.second;
+      auto task = (*it).second;
       task->cancel();
       it = _tasks.erase(it);
     }
@@ -258,14 +254,17 @@ bool Task::databaseMatches(std::string const& name) const {
   return (_dbGuard->database().name() == name);
 }
 
-Task::Task(std::string const& id, std::string const& name,
-           TRI_vocbase_t& vocbase, std::string const& command,
-           bool allowUseDatabase)
-    : _id(id),
-      _name(name),
+std::string_view Task::username() const { return _execContext->user(); }
+
+Task::Task(std::string id, std::string name,
+           std::shared_ptr<ExecContext const> execContext,
+           TRI_vocbase_t& vocbase, std::string command, bool allowUseDatabase)
+    : _id(std::move(id)),
+      _name(std::move(name)),
+      _execContext(std::move(execContext)),
       _created(TRI_microtime()),
       _dbGuard(std::make_unique<DatabaseGuard>(vocbase)),
-      _command(command),
+      _command(std::move(command)),
       _allowUseDatabase(allowUseDatabase),
       _offset(0),
       _interval(0) {}
@@ -288,8 +287,6 @@ void Task::setParameter(
   _parameters = parameters;
 }
 
-void Task::setUser(std::string const& user) { _user = user; }
-
 std::function<void(bool cancelled)> Task::callbackFunction() {
   return [self = shared_from_this(), this](bool cancelled) {
     if (cancelled) {
@@ -299,7 +296,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
       if (itr != _tasks.end()) {
         // remove task from list of tasks if it is still active
-        if (this == (*itr).second.second.get()) {
+        if (this == (*itr).second.get()) {
           // still the same task. must remove from map
           _tasks.erase(itr);
         }
@@ -308,15 +305,8 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // get the permissions to be used by this task
-    bool allowContinue = true;
-    std::shared_ptr<ExecContext const> execContext;
-
-    if (!_user.empty()) {  // not superuser
-      auto& dbname = _dbGuard->database().name();
-
-      execContext = ExecContext::create(_user, dbname);
-      allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
-    }
+    auto const& dbname = _dbGuard->database().name();
+    bool allowContinue = _execContext->canUseDatabase(dbname, auth::Level::RW);
 
     // permissions might have changed since starting this task
     if (_dbGuard->database().server().isStopping() || !allowContinue) {
@@ -325,34 +315,34 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(
-        RequestLane::INTERNAL_LOW, [self, this, execContext] {
-          ExecContextScope scope(
-              _user.empty() ? ExecContext::superuserAsShared() : execContext);
-          work();
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this] {
+      ExecContextScope scope(_execContext);
+      work();
 
-          if (_periodic.load() && !_dbGuard->database().server().isStopping()) {
-            // requeue the task
-            bool queued = basics::function_utils::retryUntilTimeout(
-                [this]() -> bool { return queue(_interval); }, Logger::FIXME,
-                "queue task");
-            if (!queued) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(
-                  TRI_ERROR_QUEUE_FULL,
-                  "Failed to queue task for 5 minutes, gave up.");
-            }
-          } else {
-            // in case of one-off tasks or in case of a shutdown, simply
-            // remove the task from the list
-            Task::unregisterTask(_id, true);
-          }
-        });
+      if (_periodic.load() && !_dbGuard->database().server().isStopping()) {
+        // requeue the task
+        bool queued = basics::function_utils::retryUntilTimeout(
+            [this]() -> bool { return queue(_interval); }, Logger::FIXME,
+            "queue task");
+        if (!queued) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_QUEUE_FULL,
+              "Failed to queue task for 5 minutes, gave up.");
+        }
+      } else {
+        // in case of one-off tasks or in case of a shutdown, simply
+        // remove the task from the list
+        Task::unregisterTask(_id, true);
+      }
+    });
   };
 }
 
 void Task::start() {
-  ExecContext const& exec = ExecContext::current();
-  TRI_ASSERT(exec.isAdminUser() || (!_user.empty() && exec.user() == _user));
+  {
+    auto const& exec = ExecContext::current();
+    TRI_ASSERT(exec.isSuperuser() || _execContext->user() == exec.user());
+  }
 
   {
     std::lock_guard lock{_taskHandleMutex};
