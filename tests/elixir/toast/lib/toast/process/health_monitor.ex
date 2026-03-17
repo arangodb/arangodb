@@ -25,14 +25,14 @@ defmodule Toast.Process.HealthMonitor do
 
   defmodule State do
     @moduledoc false
-    @enforce_keys [:server_id, :endpoint, :listener]
+    @enforce_keys [:server_id, :endpoint, :listener, :interval, :max_failures]
     defstruct [
       :server_id,
       :endpoint,
       :listener,
+      :interval,
+      :max_failures,
       :timer_ref,
-      interval: 1_000,
-      max_failures: 3,
       consecutive_failures: 0,
       status: :healthy
     ]

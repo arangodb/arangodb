@@ -329,9 +329,7 @@ defmodule ToastTest.RunnerTest do
     %Deployment{
       id: "test-runner",
       mode: mode,
-      config: Config.load(),
-      controller: ctrl,
-      endpoint: "http://127.0.0.1:0"
+      controller: ctrl
     }
   end
 end

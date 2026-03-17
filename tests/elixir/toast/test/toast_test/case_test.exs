@@ -27,8 +27,6 @@ defmodule ToastTest.CaseContextTest do
     defaults = %{
       id: "test-1",
       mode: :single_server,
-      config: %Toast.Config{},
-      endpoint: "http://localhost:8529",
       controller: self()
     }
 
@@ -37,8 +35,6 @@ defmodule ToastTest.CaseContextTest do
     %Toast.Deployment{
       id: fields.id,
       mode: fields.mode,
-      config: fields.config,
-      endpoint: fields.endpoint,
       controller: fields.controller
     }
   end

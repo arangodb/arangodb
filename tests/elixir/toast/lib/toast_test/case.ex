@@ -54,10 +54,12 @@ defmodule ToastTest.Case do
     deployment = ToastTest.DeploymentRegistry.get(suite_key)
     extra_context = ToastTest.DeploymentRegistry.get_extra_context(suite_key)
 
+    endpoint = Toast.Deployment.default_endpoint(deployment)
+
     base = %{
       deployment: deployment,
-      endpoint: deployment.endpoint,
-      client: Toast.Client.new(deployment.endpoint, api_version: deployment.config.api_version)
+      endpoint: endpoint,
+      client: Toast.Client.new(endpoint, api_version: deployment.api_version)
     }
 
     Map.merge(base, extra_context)

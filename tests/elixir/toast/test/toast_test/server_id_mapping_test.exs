@@ -172,9 +172,7 @@ defmodule ToastTest.ServerIdMappingTest do
     %Deployment{
       id: "test-1",
       mode: :single_server,
-      config: Toast.Config.load(),
-      controller: ctrl,
-      endpoint: "http://localhost:8529"
+      controller: ctrl
     }
   end
 
@@ -182,9 +180,7 @@ defmodule ToastTest.ServerIdMappingTest do
     %Deployment{
       id: "test-cluster",
       mode: :cluster,
-      config: Toast.Config.load(),
-      controller: ctrl,
-      endpoint: "http://localhost:8529"
+      controller: ctrl
     }
   end
 

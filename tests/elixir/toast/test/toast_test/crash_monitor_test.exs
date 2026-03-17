@@ -9,19 +9,9 @@ defmodule ToastTest.CrashMonitorTest do
     :ok
   end
 
-  defp dummy_deployment do
-    %Toast.Deployment{
-      id: "test",
-      mode: :single_server,
-      config: Toast.Config.load(),
-      controller: self(),
-      endpoint: "http://127.0.0.1:0"
-    }
-  end
-
   test "handle_crash sets abort with signal and exit_status" do
     CrashMonitor.handle_crash(
-      dummy_deployment(),
+      "test-server",
       %Toast.Process.CrashInfo{signal: 11, exit_status: 139, timestamp: DateTime.utc_now()}
     )
 
@@ -33,7 +23,7 @@ defmodule ToastTest.CrashMonitorTest do
 
   test "handle_crash with only exit_status" do
     CrashMonitor.handle_crash(
-      dummy_deployment(),
+      "test-server",
       %Toast.Process.CrashInfo{exit_status: 1, signal: nil, timestamp: DateTime.utc_now()}
     )
 
@@ -56,7 +46,7 @@ defmodule ToastTest.CrashMonitorTest do
     Abort.register_test_pid(victim)
 
     CrashMonitor.handle_crash(
-      dummy_deployment(),
+      "test-server",
       %Toast.Process.CrashInfo{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
     )
 

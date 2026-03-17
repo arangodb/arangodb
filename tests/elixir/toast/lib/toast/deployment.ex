@@ -7,6 +7,20 @@ defmodule Toast.Deployment do
   alias Toast.Config
   alias Toast.Deployment.{Controller, ServerInstance}
 
+  defmodule ServerInfo do
+    @moduledoc "Static, immutable server info snapshot taken at deploy time."
+
+    @type t :: %__MODULE__{
+            id: String.t(),
+            role: Toast.Deployment.ServerInstance.role(),
+            port: non_neg_integer(),
+            endpoint: String.t()
+          }
+
+    @enforce_keys [:id, :role, :port, :endpoint]
+    defstruct [:id, :role, :port, :endpoint]
+  end
+
   @type mode :: :single_server | :cluster
 
   @typedoc """
@@ -26,13 +40,37 @@ defmodule Toast.Deployment do
   @type t :: %__MODULE__{
           id: String.t(),
           mode: mode(),
-          config: Config.t(),
           controller: pid(),
-          endpoint: String.t()
+          api_version: non_neg_integer() | String.t() | nil,
+          servers: %{String.t() => ServerInfo.t()}
         }
 
-  @enforce_keys [:id, :mode, :config, :controller, :endpoint]
-  defstruct [:id, :mode, :config, :controller, :endpoint]
+  @enforce_keys [:id, :mode, :controller]
+  defstruct [:id, :mode, :controller, :api_version, servers: %{}]
+
+  @doc """
+  Default endpoint for the deployment.
+
+  For single server: the server's endpoint.
+  For cluster: the first coordinator's endpoint (ordered by server ID).
+  """
+  @spec default_endpoint(t()) :: String.t() | nil
+  def default_endpoint(%__MODULE__{mode: :single_server, servers: servers}) do
+    case Map.values(servers) do
+      [server] -> server.endpoint
+      _ -> nil
+    end
+  end
+
+  def default_endpoint(%__MODULE__{mode: :cluster, servers: servers}) do
+    servers
+    |> Enum.filter(fn {_id, srv} -> srv.role == :coordinator end)
+    |> Enum.min_by(fn {id, _srv} -> id end, fn -> nil end)
+    |> case do
+      nil -> nil
+      {_id, server} -> server.endpoint
+    end
+  end
 
   @doc "Start a single-server deployment."
   @spec start_single_server(Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
@@ -76,9 +114,9 @@ defmodule Toast.Deployment do
        %__MODULE__{
          id: info.id,
          mode: mode,
-         config: config,
-         endpoint: info[:coordinator_endpoint] || info[:primary_endpoint] || "",
-         controller: pid
+         controller: pid,
+         api_version: config.api_version,
+         servers: build_server_infos(info)
        }}
     end
   end
@@ -111,11 +149,13 @@ defmodule Toast.Deployment do
   @spec stop(t(), keyword()) :: {:ok, map()} | {:error, term(), map()}
   def stop(%__MODULE__{controller: pid} = deployment, opts \\ []) do
     Logger.info("Stopping deployment #{deployment.id}")
-    timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
 
     shutdown_result =
       try do
-        Controller.shutdown(pid, timeout)
+        case Keyword.fetch(opts, :timeout) do
+          {:ok, timeout} -> Controller.shutdown(pid, timeout)
+          :error -> Controller.shutdown(pid)
+        end
       catch
         :exit, _ -> {:error, :controller_dead}
       end
@@ -175,26 +215,51 @@ defmodule Toast.Deployment do
     controller_call(deployment, {:get_servers, role}, [])
   end
 
-  @spec client(t(), String.t() | keyword()) :: {:ok, Client.t()} | {:error, term()}
+  @spec client(t(), String.t()) :: {:ok, Client.t()} | {:error, :not_found}
   def client(%__MODULE__{} = deployment, server_id) when is_binary(server_id) do
-    case server(deployment, server_id) do
-      {:ok, srv} -> {:ok, Client.new(srv.endpoint)}
-      {:error, _} = error -> error
+    case Map.fetch(deployment.servers, server_id) do
+      {:ok, srv} -> {:ok, build_client(deployment, srv)}
+      :error -> {:error, :not_found}
     end
   end
 
-  def client(%__MODULE__{} = deployment, opts) when is_list(opts) do
-    case Keyword.pop(opts, :role) do
-      {nil, _opts} ->
-        {:error, :invalid_target}
+  @doc "Like `client/2`, but raises on error."
+  @spec client!(t(), String.t()) :: Client.t()
+  def client!(%__MODULE__{} = deployment, server_id) when is_binary(server_id) do
+    case client(deployment, server_id) do
+      {:ok, c} ->
+        c
 
-      {role, opts} ->
-        index = Keyword.get(opts, :index, 0)
+      {:error, :not_found} ->
+        raise ArgumentError,
+              "server #{inspect(server_id)} not found in deployment #{deployment.id}"
+    end
+  end
 
-        case Enum.at(servers(deployment, role: role), index) do
-          nil -> {:error, :not_found}
-          srv -> {:ok, Client.new(srv.endpoint)}
-        end
+  @doc "Create a client for the `index`-th server with the given role (default: first)."
+  @spec client_for_role(t(), atom(), non_neg_integer()) ::
+          {:ok, Client.t()} | {:error, :not_found}
+  def client_for_role(%__MODULE__{} = deployment, role, index \\ 0) when is_atom(role) do
+    deployment.servers
+    |> Enum.filter(fn {_id, srv} -> srv.role == role end)
+    |> Enum.sort_by(fn {id, _srv} -> id end)
+    |> Enum.at(index)
+    |> case do
+      nil -> {:error, :not_found}
+      {_id, srv} -> {:ok, build_client(deployment, srv)}
+    end
+  end
+
+  @doc "Like `client_for_role/3`, but raises on error."
+  @spec client_for_role!(t(), atom(), non_neg_integer()) :: Client.t()
+  def client_for_role!(%__MODULE__{} = deployment, role, index \\ 0) when is_atom(role) do
+    case client_for_role(deployment, role, index) do
+      {:ok, c} ->
+        c
+
+      {:error, :not_found} ->
+        raise ArgumentError,
+              "no server with role #{inspect(role)} at index #{index} in deployment #{deployment.id}"
     end
   end
 
@@ -367,7 +432,23 @@ defmodule Toast.Deployment do
   defp format_test_context(%{name: name}), do: " after test \"#{name}\""
   defp format_test_context(_), do: ""
 
-  defp default_shutdown_timeout(%__MODULE__{config: config}), do: config.shutdown_timeout
+  defp build_server_infos(info) do
+    info
+    |> Map.get(:servers, %{})
+    |> Map.new(fn {id, server} ->
+      {id,
+       %ServerInfo{
+         id: server.id,
+         role: server.role,
+         port: server.port,
+         endpoint: server.endpoint
+       }}
+    end)
+  end
+
+  defp build_client(%__MODULE__{} = deployment, srv) do
+    Client.new(srv.endpoint, api_version: deployment.api_version)
+  end
 
   defp mode_module(:single_server), do: Controller.SingleServer
   defp mode_module(:cluster), do: Controller.Cluster

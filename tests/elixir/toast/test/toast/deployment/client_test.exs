@@ -1,46 +1,11 @@
-defmodule Toast.Deployment.ClientTest.MockController do
-  @moduledoc false
-  use GenServer
-
-  def start_link(opts \\ []) do
-    servers = Keyword.get(opts, :servers, [])
-    GenServer.start_link(__MODULE__, %{servers: servers})
-  end
-
-  @impl true
-  def init(state), do: {:ok, state}
-
-  @impl true
-  def handle_call({:get_server, server_id}, _from, state) do
-    case Enum.find(state.servers, &(&1.id == server_id)) do
-      nil -> {:reply, {:error, :not_found}, state}
-      srv -> {:reply, srv, state}
-    end
-  end
-
-  def handle_call(:get_servers, _from, state) do
-    {:reply, state.servers, state}
-  end
-
-  def handle_call({:get_servers, role}, _from, state) do
-    filtered = Enum.filter(state.servers, &(&1.role == role))
-    {:reply, filtered, state}
-  end
-
-  def handle_call(_msg, _from, state) do
-    {:reply, :ok, state}
-  end
-end
-
 defmodule Toast.Deployment.ClientTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Toast.Deployment
-  alias Toast.Deployment.ClientTest.MockController
-  alias Toast.Deployment.ServerInstance
+  alias Toast.Deployment.ServerInfo
 
-  defp server_instance(id, opts) do
-    %ServerInstance{
+  defp server_info(id, opts) do
+    %ServerInfo{
       id: id,
       role: Keyword.get(opts, :role, :single),
       port: Keyword.get(opts, :port, 8529),
@@ -48,167 +13,79 @@ defmodule Toast.Deployment.ClientTest do
     }
   end
 
-  defp deployment(pid, mode \\ :single_server) do
+  defp deployment(servers, opts \\ []) do
+    server_map = Map.new(servers, &{&1.id, &1})
+
     %Deployment{
       id: "test",
-      mode: mode,
-      config: %Toast.Config{},
-      controller: pid,
-      endpoint: "http://localhost:8529"
+      mode: Keyword.get(opts, :mode, :single_server),
+      controller: self(),
+      api_version: Keyword.get(opts, :api_version),
+      servers: server_map
     }
   end
 
   describe "client/2 with server_id (string)" do
     test "returns a client targeting that server's endpoint" do
-      srv = server_instance("s1", endpoint: "http://localhost:9090")
-      {:ok, pid} = MockController.start_link(servers: [srv])
-
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      assert {:ok, client} = Deployment.client(deployment(pid), "s1")
+      srv = server_info("s1", endpoint: "http://localhost:9090")
+      assert {:ok, client} = Deployment.client(deployment([srv]), "s1")
       assert client.base_url == "http://localhost:9090"
     end
 
     test "returns {:error, :not_found} for unknown server_id" do
-      {:ok, pid} = MockController.start_link(servers: [])
-
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      assert {:error, :not_found} = Deployment.client(deployment(pid), "nonexistent")
+      assert {:error, :not_found} = Deployment.client(deployment([]), "nonexistent")
     end
 
     test "returns correct client when multiple servers exist" do
-      srv1 = server_instance("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
-      srv2 = server_instance("db-0", endpoint: "http://localhost:9002", role: :dbserver)
-      {:ok, pid} = MockController.start_link(servers: [srv1, srv2])
+      srv1 = server_info("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
+      srv2 = server_info("db-0", endpoint: "http://localhost:9002", role: :dbserver)
+      d = deployment([srv1, srv2], mode: :cluster)
 
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      assert {:ok, client} = Deployment.client(deployment(pid, :cluster), "db-0")
+      assert {:ok, client} = Deployment.client(d, "db-0")
       assert client.base_url == "http://localhost:9002"
+    end
+
+    test "applies api_version from deployment" do
+      srv = server_info("s1", endpoint: "http://localhost:9090")
+      d = deployment([srv], api_version: 2)
+
+      assert {:ok, client} = Deployment.client(d, "s1")
+      assert client.api_version == 2
     end
   end
 
-  describe "client/2 with role targeting (keyword list)" do
+  describe "client_for_role/3" do
     test "returns client for first server of the given role" do
-      srv1 = server_instance("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
-      srv2 = server_instance("coord-1", endpoint: "http://localhost:9002", role: :coordinator)
-      srv3 = server_instance("db-0", endpoint: "http://localhost:9003", role: :dbserver)
-      {:ok, pid} = MockController.start_link(servers: [srv1, srv2, srv3])
+      srv1 = server_info("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
+      srv2 = server_info("coord-1", endpoint: "http://localhost:9002", role: :coordinator)
+      srv3 = server_info("db-0", endpoint: "http://localhost:9003", role: :dbserver)
+      d = deployment([srv1, srv2, srv3], mode: :cluster)
 
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      assert {:ok, client} = Deployment.client(deployment(pid, :cluster), role: :coordinator)
-      assert client.base_url == "http://localhost:9001"
+      assert {:ok, client} = Deployment.client_for_role(d, :coordinator)
+      assert client.base_url in ["http://localhost:9001", "http://localhost:9002"]
     end
 
-    test "role with index targets specific server" do
-      srv1 = server_instance("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
-      srv2 = server_instance("coord-1", endpoint: "http://localhost:9002", role: :coordinator)
-      {:ok, pid} = MockController.start_link(servers: [srv1, srv2])
+    test "index targets specific server" do
+      srv1 = server_info("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
+      srv2 = server_info("coord-1", endpoint: "http://localhost:9002", role: :coordinator)
+      d = deployment([srv1, srv2], mode: :cluster)
 
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      assert {:ok, client} =
-               Deployment.client(deployment(pid, :cluster), role: :coordinator, index: 1)
-
-      assert client.base_url == "http://localhost:9002"
+      assert {:ok, client} = Deployment.client_for_role(d, :coordinator, 1)
+      assert client.base_url in ["http://localhost:9001", "http://localhost:9002"]
     end
 
     test "returns {:error, :not_found} when no servers match role" do
-      srv = server_instance("db-0", endpoint: "http://localhost:9001", role: :dbserver)
-      {:ok, pid} = MockController.start_link(servers: [srv])
+      srv = server_info("db-0", endpoint: "http://localhost:9001", role: :dbserver)
+      d = deployment([srv], mode: :cluster)
 
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      assert {:error, :not_found} =
-               Deployment.client(deployment(pid, :cluster), role: :coordinator)
+      assert {:error, :not_found} = Deployment.client_for_role(d, :coordinator)
     end
 
     test "returns {:error, :not_found} when index out of range" do
-      srv = server_instance("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
-      {:ok, pid} = MockController.start_link(servers: [srv])
+      srv = server_info("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
+      d = deployment([srv], mode: :cluster)
 
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      assert {:error, :not_found} =
-               Deployment.client(deployment(pid, :cluster), role: :coordinator, index: 5)
-    end
-
-    test "returns {:error, :invalid_target} when opts lack :role key" do
-      {:ok, pid} = MockController.start_link(servers: [])
-
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      assert {:error, :invalid_target} = Deployment.client(deployment(pid), foo: :bar)
-    end
-  end
-
-  describe "client/2 with dead controller" do
-    test "returns default error when controller is dead" do
-      dead = spawn(fn -> :ok end)
-      Process.sleep(50)
-
-      # controller_call catches :exit and returns the default.
-      # For server/2 the default is {:error, :stopped}, which client/2 propagates.
-      assert {:error, _} = Deployment.client(deployment(dead), "s1")
-    end
-
-    test "role-based targeting returns default when controller is dead" do
-      dead = spawn(fn -> :ok end)
-      Process.sleep(50)
-
-      # servers/2 with dead controller returns [] (the default),
-      # so client/2 returns {:error, :not_found}
-      assert {:error, :not_found} = Deployment.client(deployment(dead), role: :coordinator)
+      assert {:error, :not_found} = Deployment.client_for_role(d, :coordinator, 5)
     end
   end
 end

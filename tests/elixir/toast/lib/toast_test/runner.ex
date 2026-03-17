@@ -532,14 +532,14 @@ defmodule ToastTest.Runner do
 
   defp post_execution(deployment, test_data, toast_config) do
     Logger.debug("Post-execution: stopping deployment")
-    {servers, error} = stop_deployment(deployment)
+    {servers, error} = stop_deployment(deployment, toast_config)
     if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
 
     build_suite_result(servers, test_data, toast_config)
   end
 
-  defp stop_deployment(deployment) do
-    case Toast.Deployment.stop(deployment) do
+  defp stop_deployment(deployment, toast_config) do
+    case Toast.Deployment.stop(deployment, timeout: toast_config.shutdown_timeout) do
       {:ok, info} -> {info.servers, info.error}
       {:error, _reason, info} -> {info.servers, info.error}
     end

@@ -32,9 +32,7 @@ defmodule Toast.Deployment.ServerControlTest do
     %Deployment{
       id: "test",
       mode: mode,
-      config: %Toast.Config{},
-      controller: pid,
-      endpoint: "http://localhost:1"
+      controller: pid
     }
   end
 

@@ -15,16 +15,17 @@ defmodule Toast.Deployment.IntegrationTest do
 
       assert %Toast.Deployment{} = deployment
       assert deployment.mode == :single_server
-      assert deployment.endpoint =~ ~r/^http:\/\/127\.0\.0\.1:\d+$/
+      endpoint = Toast.Deployment.default_endpoint(deployment)
+      assert endpoint =~ ~r/^http:\/\/127\.0\.0\.1:\d+$/
       assert is_pid(deployment.controller)
 
       assert {:ok, %{status: 200, body: body}} =
-               Req.get(deployment.endpoint <> "/_api/version", retry: false)
+               Req.get(endpoint <> "/_api/version", retry: false)
 
       assert body["server"] == "arango"
 
       assert {:ok, %{status: 201, body: cursor_body}} =
-               Req.post(deployment.endpoint <> "/_api/cursor",
+               Req.post(endpoint <> "/_api/cursor",
                  json: %{"query" => "RETURN 1"},
                  retry: false
                )
@@ -51,7 +52,9 @@ defmodule Toast.Deployment.IntegrationTest do
         Toast.Deployment.start_single_server(server_args: %{"server.authentication" => "false"})
 
       assert {:ok, %{status: 200}} =
-               Req.get(deployment.endpoint <> "/_api/version", retry: false)
+               Req.get(Toast.Deployment.default_endpoint(deployment) <> "/_api/version",
+                 retry: false
+               )
 
       assert {:ok, _stop_info} = Toast.Deployment.stop(deployment)
     end
@@ -64,16 +67,17 @@ defmodule Toast.Deployment.IntegrationTest do
 
       assert %Toast.Deployment{} = deployment
       assert deployment.mode == :cluster
-      assert deployment.endpoint =~ ~r/^http:\/\/127\.0\.0\.1:\d+$/
+      endpoint = Toast.Deployment.default_endpoint(deployment)
+      assert endpoint =~ ~r/^http:\/\/127\.0\.0\.1:\d+$/
       assert is_pid(deployment.controller)
 
       assert {:ok, %{status: 200, body: body}} =
-               Req.get(deployment.endpoint <> "/_api/version", retry: false)
+               Req.get(endpoint <> "/_api/version", retry: false)
 
       assert body["server"] == "arango"
 
       assert {:ok, %{status: 201, body: cursor_body}} =
-               Req.post(deployment.endpoint <> "/_api/cursor",
+               Req.post(endpoint <> "/_api/cursor",
                  json: %{"query" => "RETURN 1"},
                  retry: false
                )
