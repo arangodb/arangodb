@@ -246,12 +246,9 @@ void V8SecurityFeature::collectOptions(
 
 void V8SecurityFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
-  // TODO: This must not stay like this as renaming the arangod binary
-  // will break security defaults lol.
-  auto isTool = ArangoGlobalContext::CONTEXT->binaryName() != "arangod";
-
   {
-    if (isTool && _options.startupOptionsAllowList.empty()) {
+    if (_strictness == AllowListStrictness::NONSTRICT &&
+        _options.startupOptionsAllowList.empty()) {
       _options.startupOptionsAllowList.emplace_back(".*");
     }
 
@@ -264,7 +261,8 @@ void V8SecurityFeature::validateOptions(
   }
 
   {
-    if (isTool && _options.environmentVariablesAllowList.empty()) {
+    if (_strictness == AllowListStrictness::NONSTRICT &&
+        _options.environmentVariablesAllowList.empty()) {
       _options.environmentVariablesAllowList.emplace_back(".*");
     }
 
@@ -277,7 +275,8 @@ void V8SecurityFeature::validateOptions(
   }
 
   {
-    if (isTool && _options.endpointsAllowList.empty()) {
+    if (_strictness == AllowListStrictness::NONSTRICT &&
+        _options.endpointsAllowList.empty()) {
       _options.endpointsAllowList.emplace_back(".*");
     }
 
@@ -295,7 +294,8 @@ void V8SecurityFeature::validateOptions(
   }
 
   {
-    if (isTool && _options.filesAllowList.empty()) {
+    if (_strictness == AllowListStrictness::NONSTRICT &&
+        _options.filesAllowList.empty()) {
       _options.filesAllowList.emplace_back(".*");
     }
 

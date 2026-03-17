@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
     auto& v8ShellFeature =
         server.addFeature<V8ShellFeature>(context.binaryName());
     server.addFeature<LanguageFeature>();
-    server.addFeature<V8SecurityFeature>();
+    server.addFeature<V8SecurityFeature>(AllowListStrictness::NONSTRICT);
     server.addFeature<ProcessMonitoringFeature>(v8ShellFeature);
     server.addFeature<TempFeature>(context.binaryName());
 

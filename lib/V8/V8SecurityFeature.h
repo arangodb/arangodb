@@ -52,13 +52,19 @@ enum class FSAccessType { READ, WRITE };
 class TempFeature;
 class V8PlatformFeature;
 
+enum class AllowListStrictness {
+  STRICT,    // if an allowlist is empty, default to allow
+  NONSTRICT  // if an allowlist is empty, default to deny
+};
+
 class V8SecurityFeature final
     : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "V8Security"; }
 
-  explicit V8SecurityFeature(application_features::ApplicationServer& server)
-      : ApplicationFeature{server, *this} {
+  explicit V8SecurityFeature(application_features::ApplicationServer& server,
+                             AllowListStrictness strictness)
+      : ApplicationFeature{server, *this}, _strictness(strictness) {
     setOptional(false);
     startsAfter<TempFeature>();
     startsAfter<V8PlatformFeature>();
@@ -143,6 +149,8 @@ class V8SecurityFeature final
   std::unordered_set<std::string> _writeAllowListSet;
 
   std::string _filesAllowList;
+
+  AllowListStrictness _strictness;
 
   DenyAllow _startupOptions;
   DenyAllow _endpoints;
