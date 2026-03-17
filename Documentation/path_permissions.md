@@ -1246,6 +1246,34 @@ We should map the permissions in the following way to RBAC actions and resources
  - analyzers will use `db:ReadAnalyzer` and `db:WriteAnalyzer`
  
 
+### Migration philosophy
+ 
+Philosophy: "Keep the authorization in ´arangod` as much as possible
+as it is without RBAC, with the following modifications, if RBAC is
+enabled:
+
+ - Database and collection access is controlled by RBAC instead of the _users collection
+ - We split "Collection RW" into two separate authentication levels:
+   "Collection RW data" (which includes reading the collection meta
+   data and data!) and "Collection RW all" (which additionally includes
+   creating, dropping, and modifying the collection meta data)
+ - All places that previously required RW access to the `_system`
+   database are assigned to exactly one of the actions with the prefix
+   `db:Admin`
+ - Enabled RBAC implies `--server.harden`
+ - Every other change is an exception, which we (grudgingly) make because we
+   found some issue with the current system
+ - There is an additional action `db:UseApiVersion` to configure, which roles
+   are allowed to use which API versions (the API version is the resource)
+ 
+This philosophy helps in the following ways:
+ 
+ - simple to explain and document
+ - simple to implement (can keep at lot of code)
+ - simple to review (in particular w.r.t. same behaviour as before with RBAC disabled!)
+ - relatively simple to test (relatively few different cases)
+ 
+ 
 ### Complete list of RBAC actions and their resources in the Core DB
 
 | Action name                   | Resource pattern           | Meaning                                                                  |
@@ -1253,12 +1281,12 @@ We should map the permissions in the following way to RBAC actions and resources
 | `db:ReadDatabase`             | `db:database:<name>`       | read access to a database (list collections, properties)                 |
 | `db:WriteDatabase`            | `db:database:<name>`       | change properties of a database                                          |
 | `db:ReadCollection`           | `db:collection:<db>:<coll>`| read collection meta data, including indexes                             |
-| `db:ReadWriteCollection`      | `db:collection:<db>:<coll>`| modify collection meta data, including indexes                           |
-| `db:ReadWriteDocuments`       | `db:collection:<db>:<coll>`| modify collection data                                                   |
+| `db:ReadWriteDocuments`       | `db:collection:<db>:<coll>`| modify collection data, this includes `db:ReadCollection`                |
+| `db:ReadWriteCollection`      | `db:collection:<db>:<coll>`| modify collection data and meta data, including indexes                  |
 | `db:ReadView`                 | `db:view:<db>:<view>`      | read view metadata (document access via ReadDocuments)                   |
-| `db:WriteView`                | `db:view:<db>:<view>`      | modify view metadata                                                     |
+| `db:WriteView`                | `db:view:<db>:<view>`      | modify view metadata (includes creation and dropping)                    |
 | `db:ReadAnalyzer`             | `db:analyzer:<db>:<name>`  | read analyzer metadata                                                   |
-| `db:WriteAnalyzer`            | `db:analyzer:<db>:<name>`  | modify analyzer metadata                                                 |
+| `db:WriteAnalyzer`            | `db:analyzer:<db>:<name>`  | modify analyzer metadata (includes creation and dropping)                |
 | `db:UseApiVersion`            | `db:apiversion:vX`         | use API version (this is in addition to other perms)                     |
 | `db:AdminChangeDataDist`      | `db:collection:<db>:<coll> | moveShard, resignLeadership, cleanOutServer                              |
 | `db:AdminMonitoring`          | -                          | anything completely harmless like metrics, also support-info             |
@@ -1282,7 +1310,8 @@ We should map the permissions in the following way to RBAC actions and resources
 | `db:AdminTasks`               | -                          | everything with tasks                                                    |
 | `db:AdminReadUser`            | `db:user:<username>`       | read `_users` collection (via `/_api/user` API)                          |
 | `db:AdminWriteUser`           | `db:user:<username>`       | write `_users` collection (via `/_api/user` API) - password changes must |
-|                               |                            | be possible for user                                                     |
+|                               |                            | be possible for user, so everybody has `db:AdminWriteUser` implicitly    |
+|                               |                            | for themselves                                                           |
 | `db:AdminReadReplicatedLog`   | -                          | access to the replicated log read (Replication2)                         |
 | `db:AdminWriteReplicatedLog`  | -                          | access to the replicated log read (Replication2)                         |
 | `db:AdminWalAccess`           | -                          | this is read/write access to the WAL                                     |
