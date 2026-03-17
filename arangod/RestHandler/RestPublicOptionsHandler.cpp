@@ -48,7 +48,8 @@ futures::Future<futures::Unit> RestPublicOptionsHandler::executeAsync() {
 
   // available to any user with at least read access to the database
   if (ExecContext::isAuthEnabled() &&
-      !ExecContext::current().canUseDatabase(auth::Level::RO)) {
+      !ExecContext::current().canUseDatabase(request->databaseName(),
+                                             auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");
     co_return;

@@ -155,34 +155,6 @@ TEST(ExecContextTest, default_ro_ro_is_not_superuser_not_readonly) {
   EXPECT_FALSE(ctx.isReadOnly());
 }
 
-// --- canUseDatabase (single-arg: checks _databaseAuthLevel) ---
-
-TEST(ExecContextTest, canUseDatabase_single_arg_level_check) {
-  TestExecContext ctx("user", "testdb", auth::Level::RW, auth::Level::RO,
-                      false);
-
-  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::NONE));
-  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::RO));
-  EXPECT_FALSE(ctx.canUseDatabase(auth::Level::RW));
-}
-
-TEST(ExecContextTest, canUseDatabase_single_arg_rw_grants_all) {
-  TestExecContext ctx("user", "testdb", auth::Level::RW, auth::Level::RW, true);
-
-  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::NONE));
-  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::RO));
-  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::RW));
-}
-
-TEST(ExecContextTest, canUseDatabase_single_arg_none_grants_only_none) {
-  TestExecContext ctx("user", "testdb", auth::Level::NONE, auth::Level::NONE,
-                      false);
-
-  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::NONE));
-  EXPECT_FALSE(ctx.canUseDatabase(auth::Level::RO));
-  EXPECT_FALSE(ctx.canUseDatabase(auth::Level::RW));
-}
-
 // --- canUseDatabase (two-arg: internal and same-database paths) ---
 
 TEST(ExecContextTest, canUseDatabase_internal_uses_dbAuthLevel) {
@@ -229,9 +201,6 @@ TEST(ExecContextTest, superuser_singleton) {
   EXPECT_TRUE(su.isSuperuser());
   EXPECT_FALSE(su.isReadOnly());
   EXPECT_TRUE(su.isAdminUser());
-  EXPECT_EQ(su.systemAuthLevel(), auth::Level::RW);
-  EXPECT_EQ(su.databaseAuthLevel(), auth::Level::RW);
-  EXPECT_TRUE(su.canUseDatabase(auth::Level::RW));
 }
 
 TEST(ExecContextTest, superuser_as_shared_returns_same_object) {

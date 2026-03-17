@@ -53,7 +53,8 @@ RestStatus RestQueryPlanCacheHandler::execute() {
 }
 
 void RestQueryPlanCacheHandler::clearCache() {
-  if (!ExecContext::current().canUseDatabase(auth::Level::RW)) {
+  if (!ExecContext::current().canUseDatabase(_vocbase.name(),
+                                             auth::Level::RW)) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
         "not allowed to clear this database's query plan cache entries");
@@ -72,7 +73,8 @@ void RestQueryPlanCacheHandler::clearCache() {
 }
 
 void RestQueryPlanCacheHandler::readPlans() {
-  if (!ExecContext::current().canUseDatabase(auth::Level::RO)) {
+  if (!ExecContext::current().canUseDatabase(_vocbase.name(),
+                                             auth::Level::RO)) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
         "not allowed to retrieve this database's query plan cache entries");

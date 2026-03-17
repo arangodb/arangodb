@@ -2242,7 +2242,8 @@ static void JS_CollectionVocbase(
 
   // check authentication after ensuring the collection exists
   auto const& exec = ExecContext::current();
-  if (!exec.canUseCollection(collection->name(), auth::Level::RO)) {
+  if (!exec.canUseCollection(vocbase.name(), collection->name(),
+                             auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         absl::StrCat("No access to collection '",

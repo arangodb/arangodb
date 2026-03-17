@@ -822,7 +822,8 @@ Result RestReplicationHandler::testPermissions() {
           auto& exec = ExecContext::current();
           ExecContextSuperuserScope escope(exec.isAdminUser());
           if (!exec.isAdminUser() &&
-              !exec.canUseCollection(collectionName, auth::Level::RO)) {
+              !exec.canUseCollection(_vocbase.name(), collectionName,
+                                     auth::Level::RO)) {
             // not enough rights
             return Result(
                 TRI_ERROR_FORBIDDEN,
@@ -866,7 +867,7 @@ Result RestReplicationHandler::testPermissions() {
                 // 3.) Existing collection (ro database, rw collection)
                 // no overwrite. restoring into an existing collection
                 if (!exec.isAdminUser() &&
-                    !exec.canUseCollection(collectionName,
+                    !exec.canUseCollection(dbName, collectionName,
                                            auth::Level::RWDATA)) {
                   return Result(
                       TRI_ERROR_FORBIDDEN,

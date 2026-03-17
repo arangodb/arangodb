@@ -1220,7 +1220,8 @@ Result GraphOperations::checkEdgeDefinitionPermissions(
   setUnion(graphCollections, edgeDefinition.getTo());
   graphCollections.emplace(edgeDefinition.getName());
 
-  bool canUseDatabaseRW = execContext.canUseDatabase(auth::Level::RW);
+  bool canUseDatabaseRW =
+      execContext.canUseDatabase(databaseName, auth::Level::RW);
   for (auto const& col : graphCollections) {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.

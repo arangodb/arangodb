@@ -1321,11 +1321,12 @@ static void JS_QueryPlanCacheInvalidate(
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_PLAN_CACHE_INVALIDATE()");
   }
 
-  if (!ExecContext::current().canUseDatabase(auth::Level::RW)) {
+  auto& vocbase = GetContextVocBase(isolate);
+
+  if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  auto& vocbase = GetContextVocBase(isolate);
   vocbase.queryPlanCache().invalidateAll();
   TRI_V8_TRY_CATCH_END
 }
@@ -1339,20 +1340,20 @@ static void JS_QueryPlanCachePlans(
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_PLAN_CACHE_PLANS()");
   }
 
-  if (!ExecContext::current().canUseDatabase(auth::Level::RO)) {
+  auto& vocbase = GetContextVocBase(isolate);
+
+  if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  auto& vocbase = GetContextVocBase(isolate);
-
-  auto filter = [](aql::QueryPlanCache::Key const& key,
-                   aql::QueryPlanCache::Value const& value) -> bool {
+  auto filter = [&vocbase](aql::QueryPlanCache::Key const& key,
+                           aql::QueryPlanCache::Value const& value) -> bool {
     if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
       // check if non-superusers have at least read permissions on all
       // collections/views used in the query
       for (auto const& dataSource : value.dataSources) {
-        if (!ExecContext::current().canUseCollection(dataSource.second.name,
-                                                     auth::Level::RO)) {
+        if (!ExecContext::current().canUseCollection(
+                vocbase.name(), dataSource.second.name, auth::Level::RO)) {
           return false;
         }
       }

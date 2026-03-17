@@ -391,7 +391,7 @@ bool Query::tryLoadPlanFromCache() {
 
         if (!exec.isSuperuser()) {
           for (auto const& dataSource : cacheEntry->dataSources) {
-            if (!exec.canUseCollection(dataSource.second.name,
+            if (!exec.canUseCollection(_vocbase.name(), dataSource.second.name,
                                        dataSource.second.level)) {
               // cannot use query cache result because of permissions
               return false;
@@ -2856,7 +2856,7 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   }
 
 #if 0
-  // TODO: currently does not work in cluster, as stats in cluster are only 
+  // TODO: currently does not work in cluster, as stats in cluster are only
   // updated after the query is removed from the query list.
   // these attributes can be added once the issue is fixed in cluster.
   builder.add("writesExecuted", VPackValue(_execStats.writesExecuted));

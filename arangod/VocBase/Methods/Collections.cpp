@@ -975,7 +975,8 @@ futures::Future<Result> Collections::properties(Context& ctxt,
   auto coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
-  bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
+  bool canRead = exec.canUseCollection(coll->vocbase().name(), coll->name(),
+                                       auth::Level::RO);
   if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
     co_return Result(
         TRI_ERROR_FORBIDDEN,
@@ -1028,9 +1029,11 @@ futures::Future<Result> Collections::updateProperties(
     LogicalCollection& collection, velocypack::Slice props,
     OperationOptions const& options) {
   ExecContext const& exec = ExecContext::current();
-  bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
+  bool canModify = exec.canUseCollection(collection.vocbase().name(),
+                                         collection.name(), auth::Level::RW);
 
-  if (!canModify || !exec.canUseDatabase(auth::Level::RW)) {
+  if (!canModify ||
+      !exec.canUseDatabase(collection.vocbase().name(), auth::Level::RW)) {
     co_return {TRI_ERROR_FORBIDDEN,
                absl::StrCat("insufficient write permissions to collection meta "
                             "data for collection '",
@@ -1154,8 +1157,9 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(auth::Level::RW) ||
-      !exec.canUseCollection(collection.name(), auth::Level::RW)) {
+  if (!exec.canUseDatabase(collection.vocbase().name(), auth::Level::RW) ||
+      !exec.canUseCollection(collection.vocbase().name(), collection.name(),
+                             auth::Level::RW)) {
     return {TRI_ERROR_FORBIDDEN,
             absl::StrCat("insufficient write permissions to collection meta "
                          "data for collection '",
@@ -1235,7 +1239,7 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(coll.vocbase().name(),
                            auth::Level::RW) ||  // vocbase modifiable
-      !exec.canUseCollection(coll.name(),
+      !exec.canUseCollection(coll.vocbase().name(), coll.name(),
                              auth::Level::RW)) {  // collection modifiable
     events::DropCollection(coll.vocbase().name(), coll.name(),
                            TRI_ERROR_FORBIDDEN);
@@ -1335,7 +1339,8 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
 futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& coll) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
+  if (!exec.canUseCollection(coll.vocbase().name(), coll.name(),
+                             auth::Level::RO)) {
     return futures::makeFuture(Result(
         TRI_ERROR_FORBIDDEN, absl::StrCat("insufficient read permissions "
                                           "to collection data for "
