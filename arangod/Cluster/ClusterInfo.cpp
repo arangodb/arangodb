@@ -2848,13 +2848,12 @@ void ClusterInfo::updateMetadataMetricsFromPlan() {
     }
 
     // _shards does not contain the correct information
+    // Count shards once per logical collection (map has both name and id keys).
+    std::unordered_set<uint64_t> countedShardHashes;
     for (const auto& c : *collections) {
-      if (c.first.empty()) continue;
-      char ch = c.first[0];
-      if (ch < '0' || ch > '9') {
-        if (_shards.contains(c.first)) {
-          numShards += _shards[c.first]->size();
-        }
+      if (!_shards.contains(c.first)) continue;
+      if (countedShardHashes.insert(c.second.hash).second) {
+        numShards += _shards[c.first]->size();
       }
     }
   }
