@@ -33,10 +33,6 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
     -> std::vector<AuthorizationQuery> {
   return std::visit(
       overload{
-          [](Category::ReadDatabases const&)
-              -> std::vector<AuthorizationQuery> {
-            return {{"db:ReadDatabases", ""}};
-          },
           [](Category::ReadDatabase const& c)
               -> std::vector<AuthorizationQuery> {
             return {{"db:ReadDatabase", std::format("db:database:{}", c.name)}};
@@ -51,9 +47,14 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
             return {{"db:ReadCollection",
                      std::format("db:collection:{}:{}", c.database, c.name)}};
           },
-          [](Category::WriteCollection const& c)
+          [](Category::WriteCollectionData const& c)
               -> std::vector<AuthorizationQuery> {
-            return {{"db:WriteCollection",
+            return {{"db:WriteCollectionData",
+                     std::format("db:collection:{}:{}", c.database, c.name)}};
+          },
+          [](Category::WriteCollectionMeta const& c)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:WriteCollectionMeta",
                      std::format("db:collection:{}:{}", c.database, c.name)}};
           },
           [](Category::ReadView const& c) -> std::vector<AuthorizationQuery> {
@@ -73,18 +74,6 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
               -> std::vector<AuthorizationQuery> {
             return {{"db:WriteAnalyzer",
                      std::format("db:analyzer:{}:{}", c.database, c.name)}};
-          },
-          [](Category::ReadDocuments const& c)
-              -> std::vector<AuthorizationQuery> {
-            return {
-                {"db:ReadDocuments",
-                 std::format("db:collection:{}:{}", c.database, c.collection)}};
-          },
-          [](Category::WriteDocuments const& c)
-              -> std::vector<AuthorizationQuery> {
-            return {
-                {"db:WriteDocuments",
-                 std::format("db:collection:{}:{}", c.database, c.collection)}};
           },
           [](Category::UseApiVersion const& c)
               -> std::vector<AuthorizationQuery> {

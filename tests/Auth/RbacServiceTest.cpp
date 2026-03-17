@@ -54,14 +54,6 @@ struct MockService : rbac::Service {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-TEST(RbacServiceTest, ReadDatabases) {
-  MockService svc;
-  svc.maySync({}, Cat::ReadDatabases{});
-  ASSERT_EQ(svc.lastQueries.size(), 1);
-  EXPECT_EQ(svc.lastQueries[0].action, "db:ReadDatabases");
-  EXPECT_EQ(svc.lastQueries[0].resource, "");
-}
-
 TEST(RbacServiceTest, ReadDatabase) {
   MockService svc;
   svc.maySync({}, Cat::ReadDatabase{.name = "mydb"});
@@ -86,11 +78,21 @@ TEST(RbacServiceTest, ReadCollection) {
   EXPECT_EQ(svc.lastQueries[0].resource, "db:collection:mydb:vertices");
 }
 
-TEST(RbacServiceTest, WriteCollection) {
+TEST(RbacServiceTest, WriteCollectionData) {
   MockService svc;
-  svc.maySync({}, Cat::WriteCollection{.database = "mydb", .name = "vertices"});
+  svc.maySync({},
+              Cat::WriteCollectionData{.database = "mydb", .name = "vertices"});
   ASSERT_EQ(svc.lastQueries.size(), 1);
-  EXPECT_EQ(svc.lastQueries[0].action, "db:WriteCollection");
+  EXPECT_EQ(svc.lastQueries[0].action, "db:WriteCollectionData");
+  EXPECT_EQ(svc.lastQueries[0].resource, "db:collection:mydb:vertices");
+}
+
+TEST(RbacServiceTest, WriteCollectionMeta) {
+  MockService svc;
+  svc.maySync({},
+              Cat::WriteCollectionMeta{.database = "mydb", .name = "vertices"});
+  ASSERT_EQ(svc.lastQueries.size(), 1);
+  EXPECT_EQ(svc.lastQueries[0].action, "db:WriteCollectionMeta");
   EXPECT_EQ(svc.lastQueries[0].resource, "db:collection:mydb:vertices");
 }
 
@@ -124,24 +126,6 @@ TEST(RbacServiceTest, WriteAnalyzer) {
   ASSERT_EQ(svc.lastQueries.size(), 1);
   EXPECT_EQ(svc.lastQueries[0].action, "db:WriteAnalyzer");
   EXPECT_EQ(svc.lastQueries[0].resource, "db:analyzer:mydb:text_en");
-}
-
-TEST(RbacServiceTest, ReadDocuments) {
-  MockService svc;
-  svc.maySync({},
-              Cat::ReadDocuments{.database = "mydb", .collection = "edges"});
-  ASSERT_EQ(svc.lastQueries.size(), 1);
-  EXPECT_EQ(svc.lastQueries[0].action, "db:ReadDocuments");
-  EXPECT_EQ(svc.lastQueries[0].resource, "db:collection:mydb:edges");
-}
-
-TEST(RbacServiceTest, WriteDocuments) {
-  MockService svc;
-  svc.maySync({},
-              Cat::WriteDocuments{.database = "mydb", .collection = "edges"});
-  ASSERT_EQ(svc.lastQueries.size(), 1);
-  EXPECT_EQ(svc.lastQueries[0].action, "db:WriteDocuments");
-  EXPECT_EQ(svc.lastQueries[0].resource, "db:collection:mydb:edges");
 }
 
 TEST(RbacServiceTest, mayAllSync_combines_categories) {

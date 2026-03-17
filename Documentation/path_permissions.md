@@ -1254,13 +1254,18 @@ enabled:
 
  - Database and collection access is controlled by RBAC instead of the _users collection
  - We split "Collection RW" into two separate authentication levels:
-   "Collection RW data" (which includes reading the collection meta
-   data and data!) and "Collection RW all" (which additionally includes
+   "RW data" (which includes reading the co:llection meta
+   data and data!) and "RW all" (which additionally includes
    creating, dropping, and modifying the collection meta data)
+ - There are three RBAC actions for collections: `db:ReadCollection`, `db:WriteCollectionData`
+   and `db:WriteCollectionMeta`. To reach level `RO` for a collection, one
+   only needs "allow" for `db:ReadCollection`. To reach level `RW data` one
+   needs "allow" for `db:ReadCollection` and `db:WriteCollectionData`. To reach
+   level `RW all` one needs "allow" on all three actions.
  - All places that previously required RW access to the `_system`
    database are assigned to exactly one of the actions with the prefix
-   `db:Admin`
- - Enabled RBAC implies `--server.harden`
+   `db:Admin`, for which one needs "allow" to execute the operation.
+ - Enabled RBAC implies `--server.harden`.
  - Every other change is an exception, which we (grudgingly) make because we
    found some issue with the current system
  - There is an additional action `db:UseApiVersion` to configure, which roles
@@ -1272,6 +1277,8 @@ This philosophy helps in the following ways:
  - simple to implement (can keep at lot of code)
  - simple to review (in particular w.r.t. same behaviour as before with RBAC disabled!)
  - relatively simple to test (relatively few different cases)
+ - maintains the "spirit" of RBAC that a "deny" should trump any potentially
+   contradicting "allow" (which is why we cannot use OR conditions)
  
  
 ### Complete list of RBAC actions and their resources in the Core DB
@@ -1281,8 +1288,8 @@ This philosophy helps in the following ways:
 | `db:ReadDatabase`             | `db:database:<name>`       | read access to a database (list collections, properties)                 |
 | `db:WriteDatabase`            | `db:database:<name>`       | change properties of a database                                          |
 | `db:ReadCollection`           | `db:collection:<db>:<coll>`| read collection meta data, including indexes                             |
-| `db:ReadWriteDocuments`       | `db:collection:<db>:<coll>`| modify collection data, this includes `db:ReadCollection`                |
-| `db:ReadWriteCollection`      | `db:collection:<db>:<coll>`| modify collection data and meta data, including indexes                  |
+| `db:WriteCollectionData`      | `db:collection:<db>:<coll>`| modify collection data                                                   |
+| `db:WriteCollectionMeta`      | `db:collection:<db>:<coll>`| modify collection meta data, including indexes                           |
 | `db:ReadView`                 | `db:view:<db>:<view>`      | read view metadata (document access via ReadDocuments)                   |
 | `db:WriteView`                | `db:view:<db>:<view>`      | modify view metadata (includes creation and dropping)                    |
 | `db:ReadAnalyzer`             | `db:analyzer:<db>:<name>`  | read analyzer metadata                                                   |

@@ -40,7 +40,6 @@ struct Service {
   };
 
   struct Category {
-    struct ReadDatabases {};
     struct ReadDatabase {
       std::string name;
     };
@@ -51,7 +50,11 @@ struct Service {
       std::string database;
       std::string name;
     };
-    struct WriteCollection {
+    struct WriteCollectionData {
+      std::string database;
+      std::string name;
+    };
+    struct WriteCollectionMeta {
       std::string database;
       std::string name;
     };
@@ -70,14 +73,6 @@ struct Service {
     struct WriteAnalyzer {
       std::string database;
       std::string name;
-    };
-    struct ReadDocuments {
-      std::string database;
-      std::string collection;
-    };
-    struct WriteDocuments {
-      std::string database;
-      std::string collection;
     };
     struct UseApiVersion {
       std::string version;
@@ -123,17 +118,17 @@ struct Service {
     struct AdminReadAqlFunctions {};
     struct AdminWriteAqlFunctions {};
     using Any = std::variant<
-        ReadDatabases, ReadDatabase, WriteDatabase, ReadCollection,
-        WriteCollection, ReadView, WriteView, ReadAnalyzer, WriteAnalyzer,
-        ReadDocuments, WriteDocuments, UseApiVersion, AdminChangeDataDist,
-        AdminReadUser, AdminWriteUser, AdminMonitoring, AdminMonitoringInternal,
-        AdminCompaction, AdminAuthReload, AdminCrashHandler, AdminApiCalls,
-        AdminAqlQueries, AdminShutdown, AdminReadLogs, AdminSetLogLevel,
-        AdminOptions, AdminSupervisionState, AdminRemoveServer,
-        AdminClusterInfo, AdminMaintenance, AdminLicense, AdminBackup,
-        AdminJobs, AdminTasks, AdminReadReplicatedLog, AdminWriteReplicatedLog,
-        AdminWalAccess, AdminReadAgency, AdminReadOnlyMode, AdminFoxx,
-        AdminReadAqlFunctions, AdminWriteAqlFunctions>;
+        ReadDatabase, WriteDatabase, ReadCollection, WriteCollectionData,
+        WriteCollectionMeta, ReadView, WriteView, ReadAnalyzer, WriteAnalyzer,
+        UseApiVersion, AdminChangeDataDist, AdminReadUser, AdminWriteUser,
+        AdminMonitoring, AdminMonitoringInternal, AdminCompaction,
+        AdminAuthReload, AdminCrashHandler, AdminApiCalls, AdminAqlQueries,
+        AdminShutdown, AdminReadLogs, AdminSetLogLevel, AdminOptions,
+        AdminSupervisionState, AdminRemoveServer, AdminClusterInfo,
+        AdminMaintenance, AdminLicense, AdminBackup, AdminJobs, AdminTasks,
+        AdminReadReplicatedLog, AdminWriteReplicatedLog, AdminWalAccess,
+        AdminReadAgency, AdminReadOnlyMode, AdminFoxx, AdminReadAqlFunctions,
+        AdminWriteAqlFunctions>;
   };
 
   struct AuthorizationQuery {
