@@ -41,7 +41,7 @@ parameters:
     type: string
     default: tests.yml ui.yml
     description: Space separated list of YAML files with test definitions. Available files
-      arangojs.yml java.yml spark-datasource.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop-provider.yml
+      arangojs.yml java.yml spark-ds.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop.yml py-async.yml py.yml tests.yml
   config-definitions-branches:
     type: string
     default: ""

@@ -391,7 +391,7 @@ commands:
           path: ./work/
       - store_test_results:
           path: ./test-results/
-          
+
 jobs:
   minimal-checkout:
     docker:
