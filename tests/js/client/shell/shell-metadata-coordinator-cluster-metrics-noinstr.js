@@ -25,6 +25,7 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
+const arango = arangodb.arango;
 const db = arangodb.db;
 const { getCoordinators, moveShard, getDBServers, eventuallyAssertMetric } = require("@arangodb/test-helper");
 
@@ -162,6 +163,13 @@ function metadataCoordinatorMetricsSuite() {
 
 
   return {
+    setUpAll: function () {
+      const coordinators = getCoordinators();
+      if (coordinators.length > 0) {
+        arango.reconnect(coordinators[0].endpoint, "_system", "root", "");
+      }
+    },
+
     tearDown: function() {
       try {
         db._useDatabase("_system");
