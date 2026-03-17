@@ -558,8 +558,6 @@ ArangoDatabase.prototype._flushCache = function () {
 
       if (collOrView instanceof ArangoCollection ||
          collOrView instanceof ArangoView) {
-        // reset the collection status
-        collOrView._status = null;
         this[name] = undefined;
       }
     }
