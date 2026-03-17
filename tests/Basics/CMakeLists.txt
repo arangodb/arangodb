@@ -4,6 +4,7 @@ target_sources(arangodbtests
   ConversionsTest.cpp
   CsvTest.cpp
   datetime.cpp
+  DenyAllowTest.cpp
   FilesTest.cpp
   FpConvTest.cpp
   FutureSharedLockTest.cpp
