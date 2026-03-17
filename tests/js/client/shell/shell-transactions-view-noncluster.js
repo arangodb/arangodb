@@ -105,6 +105,8 @@ function TransactionsIResearchSuite() {
     },
 
     tearDownAll: function () {
+      try { db._dropView('UnitTestsView'); } catch (e) {}
+      try { db._dropView('searchAliasView'); } catch (e) {}
       analyzers.remove('myText', true);
     },
 
