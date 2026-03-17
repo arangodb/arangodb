@@ -40,12 +40,12 @@ function dealing_with_the_applierSuite () {
   let api = "/_api/replication";
 
   return {
-    setUp: function() {
+    setUpAll: function() {
       arango.PUT_RAW(api + "/applier-stop?global=true", "");
       arango.DELETE_RAW(api + "/applier-state?global=true", "");
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       arango.PUT_RAW(api + "/applier-stop?global=true", "");
       arango.DELETE_RAW(api + "/applier-state?global=true", "");
     },
@@ -934,9 +934,17 @@ function dealing_with_the_initial_dumpSuite () {
   let api = "/_api/replication";
   let batchId;
   return {
-    setUp: function() {
+    setUpAll: function() {
       db._drop("UnitTestsReplication");
       db._drop("UnitTestsReplication2");
+    },
+
+    tearDownAll: function() {
+      db._drop("UnitTestsReplication");
+      db._drop("UnitTestsReplication2");
+    },
+
+    setUp: function() {
       let doc = arango.POST_RAW(api + "/batch", "{}");
       assertEqual(doc.code, 200);
       batchId = doc.parsedBody['id'];
