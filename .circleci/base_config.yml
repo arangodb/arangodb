@@ -694,6 +694,7 @@ jobs:
                   CMakePresets.json
                   build/3rdParty/snowball/libstemmer/
                   build/compile_commands.json
+                  build/bin
                   build/build_version.cc
             - persist_workspace_to_s3:
                 # not there? install.tar.gz
@@ -894,7 +895,7 @@ jobs:
   run-rta-tests:
     machine:
       image: ubuntu-2204:current
-    resource_class: circleci-large
+    resource_class: large
     parameters:
       suiteName:
         type: string
