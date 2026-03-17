@@ -40,11 +40,11 @@ function error_handlingSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function() {
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
@@ -90,11 +90,11 @@ function deleting_documentsSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function() {
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
