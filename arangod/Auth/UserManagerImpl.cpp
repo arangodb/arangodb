@@ -955,7 +955,7 @@ Level UserManagerImpl::databaseAuthLevel(std::string const& user,
   return level;
 }
 
-Level UserManagerImpl::collectionAuthLevel(std::string_view user,
+Level UserManagerImpl::collectionAuthLevel(std::string const& user,
                                            std::string_view dbname,
                                            std::string_view coll,
                                            bool configured) {

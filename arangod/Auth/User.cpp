@@ -718,7 +718,8 @@ auth::Level auth::User::configuredCollectionAuthLevel(
 }
 
 auth::Level auth::User::databaseAuthLevel(std::string_view dbname) const {
-  auth::Level lvl = configuredDBAuthLevel(dbname);
+  auth::Level lvl = configuredDBAuthLevel(
+      std::string(dbname));  // FIXME: std::string-Wickelung
   if (lvl == auth::Level::UNDEFINED && dbname != "*") {
     // take best from wildcard or _system
     auto it = _dbAccess.find("*");
@@ -737,7 +738,7 @@ auth::Level auth::User::databaseAuthLevel(std::string_view dbname) const {
 }
 
 /// Find the access level for a collection. Will automatically try to fall back
-auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
+auth::Level auth::User::collectionAuthLevel(std::string_view dbname,
                                             std::string_view cname) const {
   if (cname.empty() || (dbname == "*" && cname != "*")) {
     return auth::Level::NONE;  // invalid collection names
@@ -762,7 +763,8 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   auth::Level lvl = auth::Level::NONE;
   if (dbname != "*") {
     // skip special rules for wildcard
-    auto it = _dbAccess.find(dbname);
+    auto it =
+        _dbAccess.find(std::string(dbname));  // FIXME: std::string-Wicklung
     if (it != _dbAccess.end()) {
       // Second try to find a specific grant
       auto pair = it->second._collectionAccess.find(cname);
