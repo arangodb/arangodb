@@ -41,17 +41,16 @@ let api = "/_api/collection";
 // reading all collections;
 ////////////////////////////////////////////////////////////////////////////////;
 function all_collectionsSuite () {
-  let cid;
   let cols = ["units", "employees", "locations" ];
   return {
-    setUp: function() {
+    setUpAll: function() {
       cols.forEach(cn => {
         db._drop(cn);
         db._create(cn);
       });
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       cols.forEach(cn => {
         db._drop(cn);
       });
@@ -65,8 +64,6 @@ function all_collectionsSuite () {
       assertEqual(doc.headers['content-type'], contentType);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
-
-      let collections = doc.parsedBody["result"];;
 
       let total = 0;
       let realCollections = [ ];
@@ -89,7 +86,6 @@ function all_collectionsSuite () {
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
 
-      let collections = doc.parsedBody["result"];
       let realCollections = [ ];
 
       let total = 0;
@@ -148,7 +144,7 @@ function error_handlingSuite () {
 
     test_creating_a_collection_with_a_duplicate_name: function() {
       let cn = "UnitTestsCollectionBasics";
-      let cid = db._create(cn);
+      db._create(cn);
 
       let cmd = api;
       let body = `{ \"name\" : \"${cn}\" }`;
@@ -195,12 +191,12 @@ function schema_validationSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function() {
       db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
@@ -294,12 +290,12 @@ function numeric_collection_id_rejectionSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function() {
       db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
@@ -362,12 +358,12 @@ function readingSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function() {
       db._drop(cn);
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
