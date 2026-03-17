@@ -27,7 +27,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const arango = arangodb.arango;
 const db = arangodb.db;
-const { getCoordinators, moveShard, getDBServers, eventuallyAssertMetric } = require("@arangodb/test-helper");
+const { getCoordinators, moveShard, getDBServers, eventuallyAssertMetric, getMetric } = require("@arangodb/test-helper");
 
 function metadataCoordinatorMetricsSuite() {
   'use strict';
@@ -161,15 +161,28 @@ function metadataCoordinatorMetricsSuite() {
       return docsToInsert;
     };
 
+      // Wait for coordinator metric to match API view (Plan vs Current can update at different times).
+      const waitForMetricsConsistent = function (endpoint, maxWaitSeconds) {
+        maxWaitSeconds = maxWaitSeconds || 30;
+        const deadline = Date.now() + maxWaitSeconds * 1000;
+        const internal = require("internal");
+        while (Date.now() < deadline) {
+          const fromApi = getTotalShardCount();
+          const fromMetric = getMetric(endpoint, totalNumberOfShardsMetric);
+          if (fromApi === fromMetric) {
+            return;
+          }
+          internal.wait(0.2);
+        }
+        const fromApi = getTotalShardCount();
+        const fromMetric = getMetric(endpoint, totalNumberOfShardsMetric);
+        assertTrue(
+          fromApi === fromMetric,
+          `Metrics did not converge: API total shards ${fromApi} vs metric ${fromMetric} (after ${maxWaitSeconds}s)`);
+      };
+
 
   return {
-    setUpAll: function () {
-      const coordinators = getCoordinators();
-      if (coordinators.length > 0) {
-        arango.reconnect(coordinators[0].endpoint, "_system", "root", "");
-      }
-    },
-
     tearDown: function() {
       try {
         db._useDatabase("_system");
@@ -182,6 +195,8 @@ function metadataCoordinatorMetricsSuite() {
     testMetricsBaseValues: function() {
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
+
+      waitForMetricsConsistent(coordinators[0].endpoint);
 
       // Compute expected base values from collection definitions
       const expectedLeaderShards = getLeaderShardCount();
@@ -206,6 +221,8 @@ function metadataCoordinatorMetricsSuite() {
       const expectedLeaderShards = getLeaderShardCount();
       const expectedTotalShards = getTotalShardCount();
       const expectedFollowerShards = getFollowerShardCount();
+
+      waitForMetricsConsistent(coordinators[0].endpoint);
 
       assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
                             expectedFollowerShards, 0, 0, 0);
@@ -252,6 +269,8 @@ function metadataCoordinatorMetricsSuite() {
       const expectedLeaderShards = getLeaderShardCount();
       const expectedTotalShards = getTotalShardCount();
       const expectedFollowerShards = getFollowerShardCount();
+
+      waitForMetricsConsistent(coordinators[0].endpoint);
 
       assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
         expectedFollowerShards, 0, 0, 0);
@@ -310,6 +329,9 @@ function metadataCoordinatorMetricsSuite() {
       const expectedTotalShards = getTotalShardCount();
       const expectedLeaderShards = getLeaderShardCount();
       const expectedFollowerShards = getFollowerShardCount();
+
+      waitForMetricsConsistent(coordinators[0].endpoint);
+
       assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
                             expectedFollowerShards, 0, 0, 0);
 
@@ -351,6 +373,8 @@ function metadataCoordinatorMetricsSuite() {
       const expectedTotal = getTotalShardCount();
       const expectedFollowers = getFollowerShardCount();
 
+      waitForMetricsConsistent(coordinators[0].endpoint);
+
       assertAllShardMetrics(coordinators[0].endpoint, expectedLeader, expectedTotal,
                             expectedFollowers, 0, 0, 0);
 
@@ -379,6 +403,8 @@ function metadataCoordinatorMetricsSuite() {
       const expectedLeader = getLeaderShardCount();
       const expectedTotal = getTotalShardCount();
       const expectedFollowers = getFollowerShardCount();
+
+      waitForMetricsConsistent(coordinators[0].endpoint);
 
       assertAllShardMetrics(coordinators[0].endpoint, expectedLeader, expectedTotal,
                             expectedFollowers, 0, 0, 0);
