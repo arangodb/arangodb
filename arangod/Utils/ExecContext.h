@@ -86,9 +86,6 @@ class ExecContext : public RequestContext {
     std::abort();  // TODO remove this method
   }
 
-  /// @brief returns true if an external RBAC service is configured
-  bool rbacEnabled() const noexcept { return _rbacEnabled; }
-
   /// @brief tells you if this execution was canceled
   virtual bool isCanceled() const { return false; }
 
@@ -131,8 +128,10 @@ class ExecContext : public RequestContext {
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseCollection(std::string_view db, std::string_view coll,
                         auth::Level requested) const {
-    return _authMode.getIAuth().canUse({Permission::DataSource{
-        .database = db, .name = coll, .level = requested}});
+    return _authMode.getIAuth().canUse(
+        {Permission::DataSource{.database = std::string(db),
+                                .name = std::string(coll),
+                                .level = requested}});
   }
 
   static std::shared_ptr<ExecContext const> set(
