@@ -1,12 +1,12 @@
 FROM public.ecr.aws/b0b8h2r4/test-ubuntu:latest
-MAINTAINER hackers@arangodb.com
- 
+LABEL org.opencontainers.image.authors=hackers@arango.ai
+
 ARG arch
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y openjdk-17-jdk-headless git netcat-traditional && \
+    apt-get install -y openjdk-21-jdk-headless git netcat-traditional && \
     apt-get upgrade -y && \
-    rm -rf /var/cache/apt/archives /var/lib/apt/lists /tmp/*gz
+    rm -rf /var/cache/apt/archives /var/lib/apt/lists
 
 RUN cd /tmp/ && \
     wget https://dlcdn.apache.org/maven/maven-3/3.9.14/binaries/apache-maven-3.9.14-bin.tar.gz && \
