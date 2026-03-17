@@ -31,7 +31,6 @@ const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
-let IM = global.instanceManager;
 
 let sgm;
 let satgm;

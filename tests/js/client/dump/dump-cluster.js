@@ -84,7 +84,6 @@ jsunity.run(function dump_cluster_testsuite() {
       // Magic Hint: Those tests are not supported in the specific environment.
       // The exclusion list is separately and manually maintained per test-suite.
       "testUsers"
-
     ].concat(enterpriseTests)
   );
 
