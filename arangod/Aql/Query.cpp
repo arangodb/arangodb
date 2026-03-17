@@ -992,7 +992,7 @@ futures::Future<futures::Unit> Query::execute(
           // create a query cache entry for later storage
           _cacheEntry = std::make_unique<QueryCacheResultEntry>(
               hash(), _queryString, queryResult.data, bindParametersAsBuilder(),
-              std::move(dataSources)  // query DataSources
+              std::move(dataSources), _vocbase.name()  // query DataSources
           );
         }
 
@@ -1255,7 +1255,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       // create a cache entry for later usage
       _cacheEntry = std::make_unique<QueryCacheResultEntry>(
           hash(), _queryString, builder, bindParametersAsBuilder(),
-          std::move(dataSources)  // query DataSources
+          std::move(dataSources), _vocbase.name()  // query DataSources
       );
     }
 

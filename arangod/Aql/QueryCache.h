@@ -66,7 +66,8 @@ struct QueryCacheResultEntry {
       uint64_t hash, QueryString const& queryString,
       std::shared_ptr<arangodb::velocypack::Builder> const& queryResult,
       std::shared_ptr<arangodb::velocypack::Builder> const& bindVars,
-      std::unordered_map<std::string, std::string>&& dataSources);
+      std::unordered_map<std::string, std::string>&& dataSources,
+      std::string_view databaseName);
 
   ~QueryCacheResultEntry() = default;
 
@@ -83,6 +84,7 @@ struct QueryCacheResultEntry {
   double _stamp;
   QueryCacheResultEntry* _prev;
   QueryCacheResultEntry* _next;
+  std::string _databaseName;
 
   void increaseHits() { _hits.fetch_add(1, std::memory_order_relaxed); }
   double executionTime() const;
