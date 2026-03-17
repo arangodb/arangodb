@@ -203,6 +203,9 @@ class CircleCIGenerator(OutputGenerator):
         """Create compilation job definition."""
         preset = "enterprise-pr"
 
+        if build_config.architecture == Architecture.AARCH64:
+            preset += "-arm"
+
         preset += build_config.build_variant.get_suffix()
 
         suffix = build_config.build_variant.get_suffix()
