@@ -928,7 +928,7 @@ bool UserManagerImpl::checkCredentials(std::string const& username,
   return authorized;
 }
 
-Level UserManagerImpl::databaseAuthLevel(std::string_view user,
+Level UserManagerImpl::databaseAuthLevel(std::string const& user,
                                          std::string_view dbname,
                                          bool configured) {
   if (dbname.empty()) {

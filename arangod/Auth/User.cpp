@@ -717,7 +717,7 @@ auth::Level auth::User::configuredCollectionAuthLevel(
   return auth::Level::UNDEFINED;
 }
 
-auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
+auth::Level auth::User::databaseAuthLevel(std::string_view dbname) const {
   auth::Level lvl = configuredDBAuthLevel(dbname);
   if (lvl == auth::Level::UNDEFINED && dbname != "*") {
     // take best from wildcard or _system
