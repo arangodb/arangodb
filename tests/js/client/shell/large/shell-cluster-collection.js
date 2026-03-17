@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false */
+/*jshint globalstrict:false, strict:false, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -740,12 +740,9 @@ function ClusterCollectionSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
-      try {
-        db._collection("1234");
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_HTTP_BAD_PARAMETER.code, err.errorNum);
-      }
+
+      // _collection() returns null for non-existent collections
+      assertNull(db._collection("123abc"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
