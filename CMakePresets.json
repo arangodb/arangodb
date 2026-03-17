@@ -199,7 +199,10 @@
         "tsan",
         "enterprise-pr-arm"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)",
+      "cacheVariables": {
+        "USE_LIBUNWIND": "On"
+      }
     },
     {
       "name": "enterprise-developer-alubsan",
@@ -223,7 +226,10 @@
         "alubsan",
         "enterprise-pr-arm"
       ],
-      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)",
+      "cacheVariables": {
+        "USE_LIBUNWIND": "On"
+      }
     },
     {
       "name": "enterprise-developer-coverage",
