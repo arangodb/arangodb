@@ -12,6 +12,8 @@ endif ()
 
 project(V8)
 
+include(ExternalProject)
+
 set(CMAKE_CXX_STANDARD 20)
 
 set(V8_DIR "${PROJECT_SOURCE_DIR}/${V8_SUB_DIR}")
