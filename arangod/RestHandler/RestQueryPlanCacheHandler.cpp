@@ -85,8 +85,8 @@ void RestQueryPlanCacheHandler::readPlans() {
       // check if non-superusers have at least read permissions on all
       // collections/views used in the query
       for (auto const& dataSource : value.dataSources) {
-        if (!ExecContext::current().canUseCollectionData(dataSource.second.name,
-                                                         auth::Level::RO)) {
+        if (!ExecContext::current().canUseCollection(dataSource.second.name,
+                                                     auth::Level::RO)) {
           return false;
         }
       }

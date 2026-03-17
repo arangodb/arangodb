@@ -844,13 +844,13 @@ Result IResearchLinkHelper::validateLinks(TRI_vocbase_t& vocbase,
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!ExecContext::current().canUseCollectionData(
+    if (!ExecContext::current().canUseCollection(
             vocbase.name(), collection->name(), auth::Level::RO)) {
       return {TRI_ERROR_FORBIDDEN,  // code
               absl::StrCat("while validating arangosearch link definition, "
                            "error: collection '",
                            collectionName.stringView(),
-                           "' not authorized for read (data) access")};
+                           "' not authorized for read access")};
     }
 
     IResearchLinkMeta meta;

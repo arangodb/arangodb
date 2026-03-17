@@ -97,12 +97,19 @@ static void AddAuthLevel(VPackBuilder& builder, auth::Level lvl) {
   if (lvl == auth::Level::RW) {
     builder.add("read", VPackValue(true));
     builder.add("write", VPackValue(true));
+    builder.add("writedata", VPackValue(true));
+  } else if (lvl == auth::Level::RWDATA) {
+    builder.add("read", VPackValue(true));
+    builder.add("write", VPackValue(false));
+    builder.add("writedata", VPackValue(true));
   } else if (lvl == auth::Level::RO) {
     builder.add("read", VPackValue(true));
     builder.add("write", VPackValue(false));
+    builder.add("writedata", VPackValue(false));
   } else if (lvl == auth::Level::NONE) {
     builder.add("read", VPackValue(false));
     builder.add("write", VPackValue(false));
+    builder.add("writedata", VPackValue(false));
   } else if (lvl == auth::Level::UNDEFINED) {
     builder.add("undefined", VPackValue(true));
   }
@@ -113,6 +120,10 @@ static auth::Level AuthLevelFromSlice(VPackSlice slice) {
   VPackSlice v = slice.get("write");
   if (v.isBool() && v.isTrue()) {
     return auth::Level::RW;
+  }
+  v = slice.get("writedata");
+  if (v.isBool() && v.isTrue()) {
+    return auth::Level::RWDATA;
   }
   v = slice.get("read");
   if (v.isBool() && v.isTrue()) {

@@ -391,8 +391,8 @@ bool Query::tryLoadPlanFromCache() {
 
         if (!exec.isSuperuser()) {
           for (auto const& dataSource : cacheEntry->dataSources) {
-            if (!exec.canUseCollectionData(dataSource.second.name,
-                                           dataSource.second.level)) {
+            if (!exec.canUseCollection(dataSource.second.name,
+                                       dataSource.second.level)) {
               // cannot use query cache result because of permissions
               return false;
             }

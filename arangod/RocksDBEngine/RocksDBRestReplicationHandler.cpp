@@ -746,12 +746,11 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-  if (!ExecContext::current().canUseCollectionData(_vocbase.name(), cname,
-                                                   auth::Level::RO)) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        absl::StrCat("insufficient permissions to read collection (data) '",
-                     cname, "'"));
+  if (!ExecContext::current().canUseCollection(_vocbase.name(), cname,
+                                               auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  absl::StrCat("insufficient permissions to read collection '",
+                               cname, "'"));
     return;
   }
 

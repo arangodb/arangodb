@@ -487,10 +487,8 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     auth::Level lvl = exec.databaseAuthLevel();
-    bool canModify =
-        exec.canUseCollectionMeta(collection.name(), auth::Level::RW);
-    bool canRead =
-        exec.canUseCollectionData(collection.name(), auth::Level::RO);
+    bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
+    bool canRead = exec.canUseCollection(collection.name(), auth::Level::RO);
     if ((create && (lvl != auth::Level::RW || !canModify)) ||
         (lvl == auth::Level::NONE || !canRead)) {
       ensureIndexResult = TRI_ERROR_FORBIDDEN;
@@ -755,14 +753,13 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     if (exec.databaseAuthLevel() != auth::Level::RW ||
-        !exec.canUseCollectionMeta(collection.name(), auth::Level::RW)) {
+        !exec.canUseCollection(collection.name(), auth::Level::RW)) {
       events::DropIndex(collection.vocbase().name(), collection.name(), "",
                         TRI_ERROR_FORBIDDEN);
-      co_return {
-          TRI_ERROR_FORBIDDEN,
-          absl::StrCat("insufficient permissions (meta data) to drop index "
-                       "on collection '",
-                       collection.name(), "'")};
+      co_return {TRI_ERROR_FORBIDDEN,
+                 absl::StrCat("insufficient permissions (meta data) to drop "
+                              "index on collection '",
+                              collection.name(), "'")};
     }
   }
 
@@ -786,13 +783,13 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     if (exec.databaseAuthLevel() != auth::Level::RW ||
-        !exec.canUseCollectionMeta(collection.name(), auth::Level::RW)) {
+        !exec.canUseCollection(collection.name(), auth::Level::RW)) {
       events::DropIndex(collection.vocbase().name(), collection.name(), "",
                         TRI_ERROR_FORBIDDEN);
-      co_return {TRI_ERROR_FORBIDDEN, absl::StrCat("insufficient permissions "
-                                                   "(meta data) to drop index "
-                                                   "on collection '",
-                                                   collection.name(), "'")};
+      co_return {TRI_ERROR_FORBIDDEN,
+                 absl::StrCat("insufficient permissions (meta data) to drop "
+                              "index on collection '",
+                              collection.name(), "'")};
     }
   }
 

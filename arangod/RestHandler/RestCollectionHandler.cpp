@@ -120,7 +120,7 @@ async<void> RestCollectionHandler::handleCommandGet() {
     for (auto const& collection :
          methods::Collections::getNotDeleted(_vocbase)) {
       TRI_ASSERT(collection);
-      bool const canUse = ExecContext::current().canUseCollectionMeta(
+      bool const canUse = ExecContext::current().canUseCollection(
           collection->name(), auth::Level::RO);
 
       if (canUse && (!excludeSystem || !collection->system())) {

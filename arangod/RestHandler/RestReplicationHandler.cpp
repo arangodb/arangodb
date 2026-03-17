@@ -822,12 +822,12 @@ Result RestReplicationHandler::testPermissions() {
           auto& exec = ExecContext::current();
           ExecContextSuperuserScope escope(exec.isAdminUser());
           if (!exec.isAdminUser() &&
-              !exec.canUseCollectionData(collectionName, auth::Level::RO)) {
+              !exec.canUseCollection(collectionName, auth::Level::RO)) {
             // not enough rights
-            return Result(TRI_ERROR_FORBIDDEN,
-                          absl::StrCat("insufficient permissions to access "
-                                       "(read data) collection '",
-                                       collectionName, "'"));
+            return Result(
+                TRI_ERROR_FORBIDDEN,
+                absl::StrCat("insufficient permissions to access collection '",
+                             collectionName, "'"));
           }
         } else {
           // not found, return 404
@@ -866,8 +866,8 @@ Result RestReplicationHandler::testPermissions() {
                 // 3.) Existing collection (ro database, rw collection)
                 // no overwrite. restoring into an existing collection
                 if (!exec.isAdminUser() &&
-                    !exec.canUseCollectionData(collectionName,
-                                               auth::Level::RW)) {
+                    !exec.canUseCollection(collectionName,
+                                           auth::Level::RWDATA)) {
                   return Result(
                       TRI_ERROR_FORBIDDEN,
                       absl::StrCat("insufficient permissions to access "
@@ -1023,7 +1023,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     if (!exec.isAdminUser() &&
-        !exec.canUseCollectionMeta(dbName, c->name(), auth::Level::RO)) {
+        !exec.canUseCollection(dbName, c->name(), auth::Level::RO)) {
       continue;
     }
 
@@ -3150,12 +3150,12 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-  if (!ExecContext::current().canUseCollectionData(_vocbase.name(), ctx.cname,
-                                                   auth::Level::RO)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  absl::StrCat("insufficient permissions to access (read data) "
-                               "collection '",
-                               ctx.cname, "'"));
+  if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname,
+                                               auth::Level::RO)) {
+    generateError(
+        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+        absl::StrCat("insufficient permissions to access collection '",
+                     ctx.cname, "'"));
     return false;
   }
 
