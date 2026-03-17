@@ -552,12 +552,8 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
       lvl = um->databaseAuthLevel(username, dbname, false);
     }
 
-    if (lvl == auth::Level::RO) {
-      TRI_V8_RETURN(TRI_V8_ASCII_STRING(isolate, "ro"));
-    } else if (lvl == auth::Level::RW) {
-      TRI_V8_RETURN(TRI_V8_ASCII_STRING(isolate, "rw"));
-    }
-    TRI_V8_RETURN(TRI_V8_ASCII_STRING(isolate, "none"));
+    TRI_V8_RETURN(
+        TRI_V8_ASCII_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)));
   } else {
     // return the current database permissions
     v8::Handle<v8::Object> result = v8::Object::New(isolate);

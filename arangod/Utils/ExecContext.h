@@ -132,16 +132,16 @@ class ExecContext : public RequestContext {
   bool canUseDatabase(std::string const& db, auth::Level requested) const;
 
   /// @brief returns auth level for user
-  auth::Level collectionAuthLevel(std::string const& dbname,
+  auth::Level collectionAuthLevel(std::string_view dbname,
                                   std::string_view collection) const;
 
   /// @brief returns true if auth levels is above or equal `requested`
-  bool canUseCollection(std::string const& collection,
+  bool canUseCollection(std::string_view collection,
                         auth::Level requested) const {
     return canUseCollection(_database, collection, requested);
   }
   /// @brief returns true if auth level is above or equal `requested`
-  bool canUseCollection(std::string const& db, std::string const& coll,
+  bool canUseCollection(std::string_view db, std::string_view coll,
                         auth::Level requested) const {
     return requested <= collectionAuthLevel(db, coll);
   }

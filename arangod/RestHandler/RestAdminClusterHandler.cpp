@@ -792,9 +792,9 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
     }
 
     auto const& exec = ExecContext::current();
-    bool canAccess = exec.isAdminUser() ||
-                     exec.collectionAuthLevel(ctx->database, ctx->collection) ==
-                         auth::Level::RW;
+    bool canAccess =
+        exec.isAdminUser() ||
+        exec.canUseCollection(ctx->database, ctx->collection, auth::Level::RW);
     if (!canAccess) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "insufficient permissions on database to move shard");

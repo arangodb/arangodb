@@ -712,10 +712,9 @@ Result TransactionState::checkCollectionPermission(
     return {};
   }
 
-  auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
+  auth::Level level = exec.collectionAuthLevel(_vocbase.name(), cname);
   TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
-
-  if (level == auth::Level::NONE) {
+  if (level < auth::Level::RO) {
     LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
         << "User " << exec.user() << " has collection auth::Level::NONE";
 
@@ -733,7 +732,7 @@ Result TransactionState::checkCollectionPermission(
   } else {
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
 
-    if (level == auth::Level::RO && collectionWillWrite) {
+    if (level < auth::Level::RWDATA && collectionWillWrite) {
       LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
           << "User " << exec.user() << " has no write right for collection "
           << cname;

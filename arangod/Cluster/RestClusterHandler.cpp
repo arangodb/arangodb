@@ -146,14 +146,8 @@ void RestClusterHandler::handleAgencyDump() {
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl;
-    if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
-                                                 true);
-    } else {
-      lvl = auth::Level::RW;
-    }
-    if (lvl < auth::Level::RW) {
+    auto const& exec = ExecContext::current();
+    if (!exec.isAdminUser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights to produce an agency dump");
       return;

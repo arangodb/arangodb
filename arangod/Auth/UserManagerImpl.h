@@ -83,11 +83,10 @@ class UserManagerImpl final : public UserManager {
   bool checkCredentials(std::string const& username, std::string const& token,
                         std::string& un) override;
 
-  Level databaseAuthLevel(std::string const& username,
-                          std::string const& dbname, bool configured) override;
-  Level collectionAuthLevel(std::string const& username,
-                            std::string const& dbname, std::string_view coll,
-                            bool configured) override;
+  Level databaseAuthLevel(std::string_view username, std::string_view dbname,
+                          bool configured) override;
+  Level collectionAuthLevel(std::string_view username, std::string_view dbname,
+                            std::string_view coll, bool configured) override;
 
   Result accessTokens(std::string const& user, velocypack::Builder&) override;
   Result deleteAccessToken(std::string const& user, uint64_t id) override;

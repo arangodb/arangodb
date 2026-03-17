@@ -928,8 +928,8 @@ bool UserManagerImpl::checkCredentials(std::string const& username,
   return authorized;
 }
 
-Level UserManagerImpl::databaseAuthLevel(std::string const& user,
-                                         std::string const& dbname,
+Level UserManagerImpl::databaseAuthLevel(std::string_view user,
+                                         std::string_view dbname,
                                          bool configured) {
   if (dbname.empty()) {
     return Level::NONE;
@@ -955,8 +955,8 @@ Level UserManagerImpl::databaseAuthLevel(std::string const& user,
   return level;
 }
 
-Level UserManagerImpl::collectionAuthLevel(std::string const& user,
-                                           std::string const& dbname,
+Level UserManagerImpl::collectionAuthLevel(std::string_view user,
+                                           std::string_view dbname,
                                            std::string_view coll,
                                            bool configured) {
   if (coll.empty()) {
