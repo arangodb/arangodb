@@ -115,7 +115,7 @@ uint64_t RestHandler::messageId() const {
 RequestLane RestHandler::determineRequestLane() {
   if (_lane == RequestLane::UNDEFINED) {
     bool found;
-    _request->header(StaticStrings::XArangoFrontend, found);  // TODO
+    _request->header(StaticStrings::XArangoFrontend, found);
 
     if (found) {
       _lane = RequestLane::CLIENT_UI;
