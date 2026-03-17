@@ -81,6 +81,7 @@ class ResourceSize(Enum):
     MEDIUM = "medium"
     MEDIUM_PLUS = "medium+"
     LARGE = "large"
+    LOCALLARGE = "locallarge"
     XLARGE = "xlarge"
     XXLARGE = "2xlarge"
 

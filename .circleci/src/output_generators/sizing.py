@@ -18,6 +18,7 @@ class ResourceSizer:
         ResourceSize.MEDIUM: "arangodb/amd-medium-arm64",
         ResourceSize.MEDIUM_PLUS: "arangodb/amd-large-arm64",
         ResourceSize.LARGE: "arangodb/amd-large-arm64",
+        ResourceSize.LOCALLARGE: "arm.large",
         ResourceSize.XLARGE: "arangodb/amd-xlarge-arm64",
         ResourceSize.XXLARGE: "arangodb/amd-2xlarge-arm64",
     }
@@ -27,6 +28,7 @@ class ResourceSizer:
         ResourceSize.MEDIUM: "arangodb/amd-medium-amd64",
         ResourceSize.MEDIUM_PLUS: "arangodb/amd-medium-amd64",
         ResourceSize.LARGE: "arangodb/amd-large-amd64",
+        ResourceSize.LOCALLARGE: "large",
         ResourceSize.XLARGE: "arangodb/amd-xlarge-amd64",
         ResourceSize.XXLARGE: "arangodb/amd-2xlarge-amd64",
     }
