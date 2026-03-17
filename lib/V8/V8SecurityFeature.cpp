@@ -36,6 +36,7 @@
 #include "V8/V8SecurityFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -58,25 +59,40 @@ using namespace arangodb::options;
 
 namespace {
 
-void testRegexPair(std::string const& allowList, std::string const& denyList,
-                   char const* optionName) {
-  try {
-    std::regex(allowList, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("ab6d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript." << optionName
-        << "-allowlist' is not a valid regular expression: " << ex.what();
-    FATAL_ERROR_EXIT();
-  }
+auto disjunctionOfRegexes(std::vector<std::string> values) -> std::string {
+  return "(" + arangodb::basics::StringUtils::join(values, '|') + ")";
+}
 
+auto disjunctionOfRegexes(std::unordered_set<std::string> values)
+    -> std::string {
+  auto ss = std::stringstream();
+
+  ss << "(" << *values.cbegin();
+  for (auto it = std::next(values.cbegin()); it != values.cend(); ++it) {
+    ss << *it << "|";
+  }
+  ss << ")";
+  return ss.str();
+}
+
+auto tryStringToRegex(std::string regexString, std::string optionName,
+                      std::string listName) -> std::regex {
   try {
-    std::regex(denyList, std::regex::nosubs | std::regex::ECMAScript);
+    return std::regex(regexString, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab2d5", FATAL, arangodb::Logger::FIXME)
-        << "value for '--javascript." << optionName
-        << "-denylist' is not a valid regular expression: " << ex.what();
+        << "value for '--javascript." << optionName << "-" << listName
+        << "' is not a valid regular expression: " << ex.what();
     FATAL_ERROR_EXIT();
   }
+}
+
+auto optionToRegex(std::vector<std::string> values, std::string optionName,
+                   std::string listName) -> std::optional<std::regex> {
+  if (values.empty()) {
+    return std::nullopt;
+  }
+  return tryStringToRegex(disjunctionOfRegexes(values), optionName, listName);
 }
 
 std::string canonicalpath(std::string const& path) {
@@ -86,84 +102,26 @@ std::string canonicalpath(std::string const& path) {
     return std::string(realPath.get());
   }
   // fallthrough intentional
+  // TODO: that's cool, mind telling me *why*
   return path;
 }
 
-void convertToSingleExpression(std::vector<std::string> const& values,
-                               std::string& targetRegex) {
-  if (values.empty()) {
-    return;
-  }
+// TODO: Fix this function, probably use std::filesystem::path
+auto canonicalPath(std::string path) -> std::string {
+  std::string result = TRI_ResolveSymbolicLink(path);
 
-  targetRegex = "(" + arangodb::basics::StringUtils::join(values, '|') + ")";
+  // make absolute
+  std::string cwd = FileUtils::currentDirectory().result();
+  path = TRI_GetAbsolutePath(result, cwd);
+
+  // TODO check this function, it seems odd
+  result = canonicalpath(std::move(path));
+  if (basics::FileUtils::isDirectory(path)) {
+    result += TRI_DIR_SEPARATOR_STR;
+  }
+  return result;
 }
 
-void convertToSingleExpression(std::unordered_set<std::string> const& values,
-                               std::string& targetRegex) {
-  // does not delete from the set
-  if (values.empty()) {
-    return;
-  }
-  auto last = *values.cbegin();
-
-  std::stringstream ss;
-  ss << "(";
-  for (auto it = std::next(values.cbegin()); it != values.cend(); ++it) {
-    ss << *it << "|";
-  }
-
-  ss << last;
-  ss << ")";
-  targetRegex = ss.str();
-}
-
-struct checkAllowDenyResult {
-  bool result;
-  bool allow;
-  bool deny;
-};
-
-checkAllowDenyResult checkAllowAndDenyList(std::string const& value,
-                                           bool hasAllowList,
-                                           std::regex const& allowList,
-                                           bool hasDenyList,
-                                           std::regex const& denyList) {
-  if (!hasAllowList && !hasDenyList) {
-    return {true, false, false};
-  }
-
-  if (!hasDenyList) {
-    // only have an allow list
-    bool allow = std::regex_search(value, allowList);
-    return {allow, allow, false};
-  }
-
-  if (!hasAllowList) {
-    // only have a deny list
-    bool deny = std::regex_search(value, denyList);
-    return {!deny, false, deny};
-  }
-
-  std::smatch allowResult{};
-  std::smatch denyResult{};
-  bool allow = std::regex_search(value, allowResult, allowList);
-  bool deny = std::regex_search(value, denyResult, denyList);
-
-  if (allow && !deny) {
-    // we only have an allow list hit => allow
-    return {true, allow, deny};
-  } else if (!allow && deny) {
-    // we only have a deny list hit => deny
-    return {false, allow, deny};
-  } else if (!allow && !deny) {
-    // we have neither an allow list nor a deny list hit => deny
-    return {false, allow, deny};
-  }
-
-  // longer match or deny list wins
-  bool allowLongerDeny = allowResult[0].length() > denyResult[0].length();
-  return {allowLongerDeny, allowLongerDeny, !allowLongerDeny};
-}
 }  // namespace
 
 void V8SecurityFeature::collectOptions(
@@ -288,72 +246,40 @@ void V8SecurityFeature::collectOptions(
 
 void V8SecurityFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
-  // check if the regular expressions compile properly
-
-  // Only do the hardening in `arangod`, not `arangosh` or other
-  // client toos:
-  bool isArangod = ArangoGlobalContext::CONTEXT->binaryName() == "arangod";
-
-  // startup options
-  if (isArangod && _options.startupOptionsAllowList.empty()) {
-    // If list is empty, put a pattern with only the empty string in
-    // there to have a sane default behaviour:
-    _options.startupOptionsAllowList.push_back("^$");
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // In maintainer mode, we add a few variables to the allow list,
-    // which we need in our own tests:
-    _options.startupOptionsAllowList.push_back("^database.directory$");
-#endif
+  {
+    // startup options
+    auto denyRegex = optionToRegex(_options.startupOptionsDenyList,
+                                   "startup-options", "deny");
+    auto allowRegex = optionToRegex(_options.startupOptionsAllowList,
+                                    "startup-options", "allow");
+    _startupOptions = DenyAllow(denyRegex, allowRegex);
   }
-  convertToSingleExpression(_options.startupOptionsAllowList,
-                            _startupOptionsAllowList);
-  convertToSingleExpression(_options.startupOptionsDenyList,
-                            _startupOptionsDenyList);
-  testRegexPair(_startupOptionsAllowList, _startupOptionsDenyList,
-                "startup-options");
 
-  // environment variables
-  if (isArangod && _options.environmentVariablesAllowList.empty()) {
-    // If list is empty, put a pattern with only the empty string in
-    // there to have a sane default behaviour:
-    _options.environmentVariablesAllowList.push_back("^$");
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // In maintainer mode, we add a few variables to the allow list,
-    // which we need in our own tests:
-    _options.environmentVariablesAllowList.push_back(
-        "^rocksdb-encryption-keyfolder$");
-#endif
+  {
+    // environment variables
+    auto denyRegex = optionToRegex(_options.environmentVariablesDenyList,
+                                   "environment-variables", "deny");
+    auto allowRegex = optionToRegex(_options.environmentVariablesAllowList,
+                                    "environment-variables", "allow");
+    _environmentVariables = DenyAllow(denyRegex, allowRegex);
   }
-  convertToSingleExpression(_options.environmentVariablesAllowList,
-                            _environmentVariablesAllowList);
-  convertToSingleExpression(_options.environmentVariablesDenyList,
-                            _environmentVariablesDenyList);
-  testRegexPair(_environmentVariablesAllowList, _environmentVariablesDenyList,
-                "environment-variables");
 
-  // endpoints
-  if (isArangod && _options.endpointsAllowList.empty()) {
-    // If list is empty, put a pattern with only the empty string in
-    // there to have a sane default behaviour:
-    _options.endpointsAllowList.push_back("^$");
+  {
+    // endpoints
+    auto denyRegex =
+        optionToRegex(_options.endpointsDenyList, "endpoints", "deny");
+    auto allowRegex =
+        optionToRegex(_options.endpointsAllowList, "endpoints", "allow");
+    _endpoints = DenyAllow(denyRegex, allowRegex);
   }
-  convertToSingleExpression(_options.endpointsAllowList, _endpointsAllowList);
-  convertToSingleExpression(_options.endpointsDenyList, _endpointsDenyList);
-  testRegexPair(_endpointsAllowList, _endpointsDenyList, "endpoints");
 
-  // file access
-  if (isArangod && _options.filesAllowList.empty()) {
-    // If list is empty, put a pattern which protects important Linux
-    // paths, note that some file access is needed for Foxx apps:
-    _options.filesAllowList.push_back(
-        absl::StrCat("^(?!(/bin/.*))(?!(/dev/.*))(?!(/etc/.*))(?!(/lib/.*))",
-                     "(?!(/lifecycle/.*))(?!(/media/.*))(?!(/mnt/.*))",
-                     "(?!(/opt/.*))(?!(/proc/.*))(?!(/root/.*))(?!(/run/.*))",
-                     "(?!(/sbin/.*))(?!(/secrets/.*))(?!(/srv/.*))",
-                     "(?!(/usr/.*))(?!(/var/.*)).+"));
+  {
+    // file access (a denylist for file access does not exist (yet))
+    auto denyRegex = std::nullopt;
+    auto allowRegex = optionToRegex(_options.filesAllowList, "files", "allow");
+
+    _files = DenyAllow(denyRegex, allowRegex);
   }
-  convertToSingleExpression(_options.filesAllowList, _filesAllowList);
-  testRegexPair(_filesAllowList, "", "files");
 }
 
 void V8SecurityFeature::prepare() {
@@ -366,25 +292,12 @@ void V8SecurityFeature::prepare() {
 void V8SecurityFeature::start() {
   // initialize regexes for filtering options. the regexes must have been
   // validated before
-  _startupOptionsAllowListRegex = std::regex(
-      _startupOptionsAllowList, std::regex::nosubs | std::regex::ECMAScript);
-  _startupOptionsDenyListRegex = std::regex(
-      _startupOptionsDenyList, std::regex::nosubs | std::regex::ECMAScript);
-
-  _environmentVariablesAllowListRegex =
-      std::regex(_environmentVariablesAllowList,
-                 std::regex::nosubs | std::regex::ECMAScript);
-  _environmentVariablesDenyListRegex =
-      std::regex(_environmentVariablesDenyList,
-                 std::regex::nosubs | std::regex::ECMAScript);
-
-  _endpointsAllowListRegex = std::regex(
-      _endpointsAllowList, std::regex::nosubs | std::regex::ECMAScript);
-  _endpointsDenyListRegex = std::regex(
-      _endpointsDenyList, std::regex::nosubs | std::regex::ECMAScript);
-
-  _filesAllowListRegex =
-      std::regex(_filesAllowList, std::regex::nosubs | std::regex::ECMAScript);
+  _startupOptions =
+      DenyAllow(_startupOptionsDenyList, _startupOptionsAllowList);
+  _environmentVariables =
+      DenyAllow(_environmentVariablesDenyList, _environmentVariablesAllowList);
+  _endpoints = DenyAllow(_endpointsDenyList, _endpointsAllowList);
+  _files = DenyAllow("", _filesAllowList);
 }
 
 void V8SecurityFeature::dumpAccessLists() const {
@@ -402,20 +315,21 @@ void V8SecurityFeature::dumpAccessLists() const {
       << ", internal endpoints deny list: " << _endpointsDenyList;
 }
 
+// TODO: this is still very ugly
 void V8SecurityFeature::addToInternalAllowList(std::string const& inItem,
                                                FSAccessType type) {
-  // This function is not efficient and we would not need the _readAllowList
-  // to be persistent. But the persistence will help in debugging and
-  // there are only a few items expected.
-  auto* set = &_readAllowListSet;
-  auto* expression = &_readAllowList;
-  auto* re = &_readAllowListRegex;
-
-  if (type == FSAccessType::WRITE) {
-    set = &_writeAllowListSet;
-    expression = &_writeAllowList;
-    re = &_writeAllowListRegex;
-  }
+  auto [set, expression, re] = std::invoke([this, &type]() {
+    switch (type) {
+      case FSAccessType::READ: {
+        return std::tuple(&_readAllowListSet, &_readAllowList,
+                          &_readAllowRegex);
+      }
+      case FSAccessType::WRITE: {
+        return std::tuple(&_writeAllowListSet, &_writeAllowList,
+                          &_writeAllowRegex);
+      }
+    }
+  });
 
   auto item = canonicalpath(inItem);
   if ((item.length() > 0) &&
@@ -425,7 +339,8 @@ void V8SecurityFeature::addToInternalAllowList(std::string const& inItem,
   auto path = "^" + arangodb::basics::StringUtils::escapeRegexParams(item);
   set->emplace(std::move(path));
   expression->clear();
-  convertToSingleExpression(*set, *expression);
+  *expression = disjunctionOfRegexes(*set);
+
   try {
     *re = std::regex(*expression, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
@@ -477,20 +392,26 @@ bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
 
 bool V8SecurityFeature::shouldExposeStartupOption(
     v8::Isolate* /*isolate*/, std::string const& name) const {
-  return checkAllowAndDenyList(name, !_startupOptionsAllowList.empty(),
-                               _startupOptionsAllowListRegex,
-                               !_startupOptionsDenyList.empty(),
-                               _startupOptionsDenyListRegex)
-      .result;
+  switch (_startupOptions.check(name)) {
+    case DenyAllowResult::ALLOWED:
+      return true;
+    case DenyAllowResult::DENIED:
+      return false;
+    default:
+      ADB_PROD_CRASH();
+  }
 }
 
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(
     v8::Isolate* /*isolate*/, std::string const& name) const {
-  return checkAllowAndDenyList(name, !_environmentVariablesAllowList.empty(),
-                               _environmentVariablesAllowListRegex,
-                               !_environmentVariablesDenyList.empty(),
-                               _environmentVariablesDenyListRegex)
-      .result;
+  switch (_environmentVariables.check(name)) {
+    case DenyAllowResult::ALLOWED:
+      return true;
+    case DenyAllowResult::DENIED:
+      return false;
+    default:
+      ADB_PROD_CRASH();
+  }
 }
 
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(
@@ -504,6 +425,14 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
     return true;
   }
 
+  auto endpointCheck = _endpoints.check(endpoint);
+  auto urlCheck = _endpoints.check(url);
+
+  return (endpointCheck == DenyAllowResult::ALLOWED) &&
+         (urlCheck == DenyAllowResult::ALLOWED);
+  // TODO: try to reconstruct the intent of this code.
+  // whats an endpoint, whats an url?
+#if 0
   auto endpointResult = checkAllowAndDenyList(
       endpoint, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
       !_endpointsDenyList.empty(), _endpointsDenyListRegex);
@@ -513,6 +442,7 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
       !_endpointsDenyList.empty(), _endpointsDenyListRegex);
 
   return endpointResult.result || (urlResult.result && !endpointResult.deny);
+#endif
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
@@ -525,10 +455,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
                                               char const* pathPtr,
                                               FSAccessType access) const {
-  if (_filesAllowList.empty()) {
-    return true;
-  }
-
+  // TODO: check what this means?
   // check security context first
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
@@ -539,30 +466,30 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     return true;  // context may read / write without restrictions
   }
 
-  std::string path = TRI_ResolveSymbolicLink(pathPtr);
+  auto canonicalisedPath = canonicalPath(pathPtr);
 
-  // make absolute
-  std::string cwd = FileUtils::currentDirectory().result();
-  path = TRI_GetAbsolutePath(path, cwd);
-
-  path = canonicalpath(std::move(path));
-  if (basics::FileUtils::isDirectory(path)) {
-    path += TRI_DIR_SEPARATOR_STR;
+  // TODO: check that this covers intent (and what the intent is, for that
+  // matter)
+  if (_readAllowRegex.has_value()) {
+    if (access == FSAccessType::READ &&
+        std::regex_search(canonicalisedPath, _readAllowRegex.value())) {
+      return true;
+    }
   }
 
-  if (access == FSAccessType::READ &&
-      std::regex_search(path, _readAllowListRegex)) {
-    // even in restricted contexts we may read module paths
-    return true;
+  if (_writeAllowRegex.has_value()) {
+    if (access == FSAccessType::WRITE &&
+        std::regex_search(canonicalisedPath, _writeAllowRegex.value())) {
+      return true;
+    }
   }
 
-  if (access == FSAccessType::WRITE &&
-      std::regex_search(path, _writeAllowListRegex)) {
-    // even in restricted contexts we may read module paths
-    return true;
+  switch (_files.check(canonicalisedPath)) {
+    case DenyAllowResult::ALLOWED:
+      return true;
+    case DenyAllowResult::DENIED:
+      return false;
+    default:
+      ADB_PROD_CRASH();
   }
-
-  return checkAllowAndDenyList(path, !_filesAllowList.empty(),
-                               _filesAllowListRegex, false, _filesAllowListRegex /*passed to match the signature but not used*/)
-      .result;
 }

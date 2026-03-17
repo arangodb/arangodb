@@ -24,12 +24,14 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <regex>
 #include <string>
 #include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "Basics/DenyAllow.h"
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeatureOptions.h"
 
@@ -115,14 +117,6 @@ class V8SecurityFeature final
  private:
   V8SecurityFeatureOptions _options;
 
-  std::string _readAllowList;
-  std::unordered_set<std::string> _readAllowListSet;
-  std::regex _readAllowListRegex;
-
-  std::string _writeAllowList;
-  std::unordered_set<std::string> _writeAllowListSet;
-  std::regex _writeAllowListRegex;
-
   // All the following options have allow lists and deny lists.
   // The allow list will take precedence over the deny list
   // Items is the corresponding Vector will be joined with
@@ -130,26 +124,36 @@ class V8SecurityFeature final
   // will be compiled into an std::regex.
 
   std::string _startupOptionsAllowList;
-  std::regex _startupOptionsAllowListRegex;
   std::string _startupOptionsDenyList;
-  std::regex _startupOptionsDenyListRegex;
 
   /// @brief regular expression string for forbidden IP address/host names
   /// to connect to via JS_Download/internal.download
   std::string _endpointsAllowList;
-  std::regex _endpointsAllowListRegex;
   std::string _endpointsDenyList;
-  std::regex _endpointsDenyListRegex;
 
   /// @brief regular expression string for environment variables filtering
   std::string _environmentVariablesAllowList;
-  std::regex _environmentVariablesAllowListRegex;
   std::string _environmentVariablesDenyList;
-  std::regex _environmentVariablesDenyListRegex;
 
   /// @brief variables for file access
+  std::string _readAllowList;
+  std::unordered_set<std::string> _readAllowListSet;
+
+  std::string _writeAllowList;
+  std::unordered_set<std::string> _writeAllowListSet;
+
   std::string _filesAllowList;
-  std::regex _filesAllowListRegex;
+
+  DenyAllow _startupOptions;
+  DenyAllow _endpoints;
+  DenyAllow _environmentVariables;
+
+  // Current sonderlocke :rolling-eyes:
+  // TODO: maybe remove sonderlocke?
+  std::optional<std::regex> _readAllowRegex{std::nullopt};
+  std::optional<std::regex> _writeAllowRegex{std::nullopt};
+
+  DenyAllow _files;
 };
 
 }  // namespace arangodb
