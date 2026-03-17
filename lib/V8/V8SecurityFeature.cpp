@@ -246,7 +246,15 @@ void V8SecurityFeature::collectOptions(
 
 void V8SecurityFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
+  // TODO: This must not stay like this as renaming the arangod binary
+  // will break security defaults lol.
+  auto isTool = ArangoGlobalContext::CONTEXT->binaryName() != "arangod";
+
   {
+    if (isTool && _options.startupOptionsAllowList.empty()) {
+      _options.startupOptionsAllowList.emplace_back(".*");
+    }
+
     // startup options
     auto denyRegex = optionToRegex(_options.startupOptionsDenyList,
                                    "startup-options", "deny");
@@ -256,6 +264,10 @@ void V8SecurityFeature::validateOptions(
   }
 
   {
+    if (isTool && _options.environmentVariablesAllowList.empty()) {
+      _options.environmentVariablesAllowList.emplace_back(".*");
+    }
+
     // environment variables
     auto denyRegex = optionToRegex(_options.environmentVariablesDenyList,
                                    "environment-variables", "deny");
@@ -265,18 +277,37 @@ void V8SecurityFeature::validateOptions(
   }
 
   {
+    if (isTool && _options.endpointsAllowList.empty()) {
+      _options.endpointsAllowList.emplace_back(".*");
+    }
+
     // endpoints
     auto denyRegex =
         optionToRegex(_options.endpointsDenyList, "endpoints", "deny");
-    auto allowRegex =
-        optionToRegex(_options.endpointsAllowList, "endpoints", "allow");
+    auto allowRegex = std::invoke([this]() {
+      if (ArangoGlobalContext::CONTEXT->binaryName() == "arangod") {
+        return optionToRegex(_options.endpointsAllowList, "endpoints", "allow");
+      } else {
+        return std::optional<std::regex>(std::regex(".*"));
+      }
+    });
     _endpoints = DenyAllow(denyRegex, allowRegex);
   }
 
   {
+    if (isTool && _options.filesAllowList.empty()) {
+      _options.filesAllowList.emplace_back(".*");
+    }
+
     // file access (a denylist for file access does not exist (yet))
     auto denyRegex = std::nullopt;
-    auto allowRegex = optionToRegex(_options.filesAllowList, "files", "allow");
+    auto allowRegex = std::invoke([this]() {
+      if (ArangoGlobalContext::CONTEXT->binaryName() == "arangod") {
+        return optionToRegex(_options.filesAllowList, "files", "allow");
+      } else {
+        return std::optional<std::regex>(std::regex(".*"));
+      }
+    });
 
     _files = DenyAllow(denyRegex, allowRegex);
   }
@@ -292,12 +323,13 @@ void V8SecurityFeature::prepare() {
 void V8SecurityFeature::start() {
   // initialize regexes for filtering options. the regexes must have been
   // validated before
-  _startupOptions =
-      DenyAllow(_startupOptionsDenyList, _startupOptionsAllowList);
-  _environmentVariables =
-      DenyAllow(_environmentVariablesDenyList, _environmentVariablesAllowList);
-  _endpoints = DenyAllow(_endpointsDenyList, _endpointsAllowList);
-  _files = DenyAllow("", _filesAllowList);
+  //  _startupOptions =
+  //     DenyAllow(_startupOptionsDenyList, _startupOptionsAllowList);
+  //_environmentVariables =
+  //     DenyAllow(_environmentVariablesDenyList,
+  //     _environmentVariablesAllowList);
+  //_endpoints = DenyAllow(_endpointsDenyList, _endpointsAllowList);
+  //_files = DenyAllow("", _filesAllowList);
 }
 
 void V8SecurityFeature::dumpAccessLists() const {
@@ -442,6 +474,8 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
       !_endpointsDenyList.empty(), _endpointsDenyListRegex);
 
   return endpointResult.result || (urlResult.result && !endpointResult.deny);
+  endpointCheck::ALLOWED || (urlCheck::ALLOWED && endpointCheck::ALLOWED)
+    (ec::ALLOWED || url::ALLOWED) && (ec::ALLOWED)
 #endif
 }
 
