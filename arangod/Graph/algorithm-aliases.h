@@ -105,6 +105,15 @@ template<class Provider>
 using WeightedKShortestPathsEnumerator =
     TwoSidedEnumeratorWithProviderWeighted<Provider>;
 
+template<class ProviderType>
+struct uses_unbatched_traversal_queue : std::false_type {};
+
+#ifdef USE_ENTERPRISE
+template<>
+struct uses_unbatched_traversal_queue<
+    enterprise::SmartGraphProvider<ClusterProviderStep>> : std::true_type {};
+#endif
+
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 struct BFSConfiguration {
@@ -115,8 +124,7 @@ struct BFSConfiguration {
   // need to be implemented
   // using Queue = FifoQueue<Step>;
   using Queue = typename std::conditional<
-      std::is_same_v<ProviderType,
-                     enterprise::SmartGraphProvider<ClusterProviderStep>>,
+      uses_unbatched_traversal_queue<ProviderType>::value,
       FifoQueue<Step>,
       CursorFifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
@@ -133,8 +141,7 @@ struct DFSConfiguration {
   // for that, SmartGraphProvider fns addExpansionIterator and
   // expandToNextBatch need to be implemented
   using Queue = typename std::conditional<
-      std::is_same_v<ProviderType,
-                     enterprise::SmartGraphProvider<ClusterProviderStep>>,
+      uses_unbatched_traversal_queue<ProviderType>::value,
       LifoQueue<Step>,
       CursorLifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
@@ -151,8 +158,7 @@ struct WeightedConfiguration {
   // for that, SmartGraphProvider fns addExpansionIterator and
   // expandToNextBatch need to be implemented
   using Queue = typename std::conditional<
-      std::is_same_v<ProviderType,
-                     enterprise::SmartGraphProvider<ClusterProviderStep>>,
+      uses_unbatched_traversal_queue<ProviderType>::value,
       WeightedQueue<Step>,
       CursorWeightedQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
