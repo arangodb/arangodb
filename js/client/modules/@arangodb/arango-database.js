@@ -331,7 +331,10 @@ ArangoDatabase.prototype._collections = function () {
     for (let i = 0;  i < collections.length;  ++i) {
       const col = collections[i];
       if (col.name === undefined || col.name === null) {
-        continue; // skip collection without name
+        throw new ArangoError({
+          errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+          errorMessage: "Invalid response from server: collection in list has no name"
+        });
       }
       let collection = new ArangoCollection(this, col);
       this[collection._name] = collection;
