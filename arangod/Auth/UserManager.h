@@ -104,9 +104,9 @@ class UserManager {
   virtual bool checkCredentials(std::string const& username,
                                 std::string const& token, std::string& un) = 0;
 
-  virtual Level databaseAuthLevel(std::string_view username,
+  virtual Level databaseAuthLevel(std::string const& username,
                                   std::string_view dbname, bool configured) = 0;
-  virtual Level collectionAuthLevel(std::string_view username,
+  virtual Level collectionAuthLevel(std::string const& username,
                                     std::string_view dbname,
                                     std::string_view coll, bool configured) = 0;
 
