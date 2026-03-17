@@ -27,6 +27,7 @@
 
 #include "Activities/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
@@ -70,8 +71,8 @@ constexpr std::string_view pathPrefixAdmin("/_admin/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
 
-VocbasePtr lookupDatabaseFromRequest(
-    application_features::ApplicationServer& server, GeneralRequest& req) {
+VocbasePtr lookupDatabaseFromRequest(DatabaseFeature& databaseFeature,
+                                     GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -79,14 +80,14 @@ VocbasePtr lookupDatabaseFromRequest(
     req.setDatabaseName(StaticStrings::SystemDatabase);
   }
 
-  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
   return databaseFeature.useDatabase(req.databaseName());
 }
 
 /// Set the appropriate requestContext
-bool resolveRequestContext(application_features::ApplicationServer& server,
-                           GeneralRequest& req) {
-  auto vocbase = lookupDatabaseFromRequest(server, req);
+bool resolveRequestContext(DatabaseFeature& databaseFeature,
+                           AuthenticationFeature& authenticationFeature,
+                           RbacFeature& rbacFeature, GeneralRequest& req) {
+  auto vocbase = lookupDatabaseFromRequest(databaseFeature, req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -96,7 +97,8 @@ bool resolveRequestContext(application_features::ApplicationServer& server,
   TRI_ASSERT(!vocbase->isDangling());
 
   // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
-  auto context = VocbaseContext::create(req, *vocbase.release());
+  auto context = VocbaseContext::create(authenticationFeature, rbacFeature, req,
+                                        *vocbase.release());
   if (!context) {
     return false;
   }
@@ -151,9 +153,12 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _apiRecordingFeature(server.server().getFeature<ApiRecordingFeature>()),
+      // TODO change the type of _auth from a pointer to a reference
+      _auth(&server.server().getFeature<AuthenticationFeature>()),
+      _databaseFeature(server.server().getFeature<DatabaseFeature>()),
+      _rbacFeature(server.server().getFeature<RbacFeature>()),
       _connectionInfo(std::move(info)),
       _connectionStatistics(acquireConnectionStatistics()),
-      _auth(AuthenticationFeature::instance()),
       _isUserRequest(true) {
   TRI_ASSERT(_auth != nullptr);
   _connectionStatistics.SET_START();
@@ -283,7 +288,7 @@ CommTask::Flow CommTask::prepareExecution(
   }
 
   // Step 3: Try to resolve vocbase and use
-  if (!::resolveRequestContext(_server.server(),
+  if (!::resolveRequestContext(_databaseFeature, *_auth, _rbacFeature,
                                req)) {  // false if db not found
     if (_auth->isActive()) {
       // prevent guessing database names (issue #5030)

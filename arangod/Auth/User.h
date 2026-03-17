@@ -27,8 +27,9 @@
 #include <set>
 
 #include "Auth/Common.h"
-#include "VocBase/Identifiers/RevisionId.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
+#include "Basics/TransparentStringHash.h"
+#include "VocBase/Identifiers/RevisionId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -90,19 +91,19 @@ class User {
                         std::string const& collection);
 
   // Resolve the access level for this database.
-  auth::Level configuredDBAuthLevel(std::string const& dbname) const;
+  auth::Level configuredDBAuthLevel(std::string_view dbname) const;
   // Resolve rights for the specified collection.
   auth::Level configuredCollectionAuthLevel(std::string const& dbname,
                                             std::string const& cname) const;
 
   // Resolve the access level for this database. Might fall back to
   // the special '*' entry if the specific database is not found
-  auth::Level databaseAuthLevel(std::string const& dbname) const;
+  auth::Level databaseAuthLevel(std::string_view dbname) const;
 
   // Resolve rights for the specified collection. Falls back to the
   // special '*' entry if either the database or collection is not
   // found.
-  auth::Level collectionAuthLevel(std::string const& dbname,
+  auth::Level collectionAuthLevel(std::string_view dbname,
                                   std::string_view cname) const;
 
   // Content of `userData` fields
@@ -163,7 +164,9 @@ class User {
   std::string _passwordMethod;
   std::string _passwordSalt;
   std::string _passwordHash;
-  std::unordered_map<std::string, DBAuthContext> _dbAccess;
+  std::unordered_map<std::string, DBAuthContext, basics::TransparentStringHash,
+                     std::equal_to<>>
+      _dbAccess;
 
   velocypack::Builder _userData;
   velocypack::Builder _configData;

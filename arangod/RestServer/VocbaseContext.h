@@ -35,11 +35,13 @@ namespace arangodb {
 /// @brief just also stores the context
 class VocbaseContext final : public arangodb::ExecContext {
  public:
-  ~VocbaseContext();
+  ~VocbaseContext() override;
 
-  static std::shared_ptr<VocbaseContext> create(GeneralRequest& req,
-                                                TRI_vocbase_t& vocbase);
-  TRI_vocbase_t& vocbase() const { return _vocbase; }
+  [[nodiscard]] static std::shared_ptr<VocbaseContext> create(
+      AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
+      GeneralRequest& req, TRI_vocbase_t& vocbase);
+
+  [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
 
   /// @brief upgrade to internal superuser
   void forceSuperuser();
@@ -48,11 +50,13 @@ class VocbaseContext final : public arangodb::ExecContext {
   void forceReadOnly();
 
 #ifdef USE_ENTERPRISE
-  std::string clientAddress() const override {
+  [[nodiscard]] std::string clientAddress() const override {
     return _request.connectionInfo().fullClient();
   }
-  std::string requestUrl() const override { return _request.fullUrl(); }
-  std::string authMethod() const override;
+  [[nodiscard]] std::string requestUrl() const override {
+    return _request.fullUrl();
+  }
+  [[nodiscard]] std::string authMethod() const override;
 #endif
 
   /// @brief tells you if this execution was canceled
@@ -72,12 +76,11 @@ class VocbaseContext final : public arangodb::ExecContext {
   /// should be used to indicate a canceled request / thread
   std::atomic<bool> _canceled;
 
-  class ConstructorToken {};
+  struct ConstructorToken {};
 
  public:
-  VocbaseContext(ConstructorToken, GeneralRequest& req, TRI_vocbase_t& vocbase,
-                 ExecContext::Type type, auth::Level systemLevel,
-                 auth::Level dbLevel, bool isAdminUser);
+  VocbaseContext(ConstructorToken, AuthMode, GeneralRequest& req,
+                 TRI_vocbase_t& vocbase);
   VocbaseContext(VocbaseContext const&) = delete;
   VocbaseContext& operator=(VocbaseContext const&) = delete;
 };

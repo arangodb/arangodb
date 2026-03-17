@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Auth/AuthMode.h"
 #include "Auth/Common.h"
 #include "Rest/RequestContext.h"
 
@@ -33,6 +34,8 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
+class AuthenticationFeature;
+class RbacFeature;
 
 /// Carries some information about the current
 /// context in which this thread is executed.
@@ -48,11 +51,7 @@ class ExecContext : public RequestContext {
   class ConstructorToken {};
 
  public:
-  ExecContext(ConstructorToken, ExecContext::Type type, std::string const& user,
-              std::string const& database, auth::Level systemLevel,
-              auth::Level dbLevel, bool isAdminUser,
-              std::vector<std::string> const& roles = {},
-              std::string const& jwtToken = "");
+  ExecContext(ConstructorToken, AuthMode authMode);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -73,56 +72,45 @@ class ExecContext : public RequestContext {
   static ExecContext const& superuser();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
-  /// @brief create user context
-  static std::shared_ptr<ExecContext> create(std::string const& user,
-                                             std::string const& db);
-
-  /// @brief an internal user is none / ro / rw for all collections / dbs
-  /// mainly used to override further permission resolution
-  bool isInternal() const noexcept { return _type == Type::Internal; }
-
-  /// @brief any internal operation is a superuser.
-  bool isSuperuser() const noexcept {
-    return isInternal() && _systemDbAuthLevel == auth::Level::RW &&
-           _databaseAuthLevel == auth::Level::RW;
+  bool isInternal() const noexcept {
+    std::abort();  // TODO remove this method
   }
 
-  /// @brief is this an internal read-only user
+  bool isSuperuser() const noexcept { return _authMode.isSuperuser(); }
+
   bool isReadOnly() const noexcept {
-    return isInternal() && _systemDbAuthLevel == auth::Level::RO;
+    std::abort();  // TODO remove this method
   }
 
-  /// @brief is allowed to manage users, create databases, ...
-  bool isAdminUser() const noexcept { return _isAdminUser; }
+  bool isAdminUser() const noexcept {
+    std::abort();  // TODO remove this method
+  }
 
   /// @brief tells you if this execution was canceled
   virtual bool isCanceled() const { return false; }
 
   /// @brief current user, may be empty for internal users
-  std::string const& user() const { return _user; }
+  std::string_view user() const { return _authMode.getIAuth().username(); }
 
-  /// @brief current database
-  std::string const& database() const { return _database; }
+  std::string const& database() const {
+    std::abort();  // TODO remove this method
+  }
 
-  /// @brief roles from JWT token (if authenticated via JWT)
-  std::vector<std::string> const& roles() const { return _roles; }
-
-  /// @brief JWT token string (if authenticated via JWT)
-  std::string const& jwtToken() const { return _jwtToken; }
-
-  /// @brief returns true if authenticated via JWT
-  bool hasJwtToken() const { return !_jwtToken.empty(); }
   /// @brief authentication level on _system. Always RW for superuser
-  auth::Level systemAuthLevel() const noexcept { return _systemDbAuthLevel; }
+  auth::Level systemAuthLevel() const noexcept {
+    std::abort();  // TODO remove this method
+  }
 
   /// @brief Authentication level on database selected in the current
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP
-  auth::Level databaseAuthLevel() const noexcept { return _databaseAuthLevel; }
+  auth::Level databaseAuthLevel() const noexcept {
+    std::abort();  // TODO remove this method
+  }
 
   /// @brief returns true if auth level is above or equal `requested`
-  bool canUseDatabase(auth::Level requested) const noexcept {
-    return requested <= _databaseAuthLevel;
+  [[deprecated]] bool canUseDatabase(auth::Level requested) const noexcept {
+    std::abort();  // TODO remove this method
   }
 
   /// @brief returns true if auth level is above or equal `requested`
@@ -133,46 +121,31 @@ class ExecContext : public RequestContext {
                                   std::string_view collection) const;
 
   /// @brief returns true if auth levels is above or equal `requested`
-  bool canUseCollection(std::string const& collection,
-                        auth::Level requested) const {
-    return canUseCollection(_database, collection, requested);
+  [[deprecated]] bool canUseCollection(std::string const& collection,
+                                       auth::Level requested) const {
+    std::abort();  // TODO remove this method
   }
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseCollection(std::string const& db, std::string const& coll,
                         auth::Level requested) const {
-    return requested <= collectionAuthLevel(db, coll);
+    return _authMode.getIAuth().canUse({Permission::DataSource{
+        .database = db, .name = coll, .level = requested}});
   }
 
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {
-    auto tmp = CURRENT;
-    CURRENT = ctx;
-    return tmp;
+    std::swap(CURRENT, ctx);
+    return ctx;
   }
 
 #ifdef USE_ENTERPRISE
-  virtual std::string clientAddress() const { return ""; }
-  virtual std::string requestUrl() const { return ""; }
-  virtual std::string authMethod() const { return ""; }
+  [[nodiscard]] virtual std::string clientAddress() const { return ""; }
+  [[nodiscard]] virtual std::string requestUrl() const { return ""; }
+  [[nodiscard]] virtual std::string authMethod() const { return ""; }
 #endif
 
  protected:
-  /// current user, may be empty for internal users
-  std::string const _user;
-  /// current database to use, superuser db is empty
-  std::string const _database;
-  /// roles from JWT token (if authenticated via JWT)
-  std::vector<std::string> const _roles;
-  /// JWT token string (if authenticated via JWT)
-  std::string const _jwtToken;
-
-  Type _type;
-  /// Flag if admin user access (not regarding cluster RO mode)
-  bool _isAdminUser;
-  /// level of system database
-  auth::Level _systemDbAuthLevel;
-  /// level of current database
-  auth::Level _databaseAuthLevel;
+  AuthMode _authMode;
 
  private:
   static std::shared_ptr<ExecContext const> const Superuser;

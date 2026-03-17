@@ -2,7 +2,9 @@ add_library(arangoserver STATIC
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Auth/AuthMode.cpp Auth/AuthMode.h
   Auth/Common.cpp
+  Auth/Permissions.cpp Auth/Permissions.h
   Auth/TokenCache.cpp
   Auth/User.cpp
   Auth/UserManagerImpl.cpp

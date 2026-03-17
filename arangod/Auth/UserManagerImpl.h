@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/TransparentStringHash.h"
 
 #include <thread>
 #include <velocypack/Builder.h>
@@ -45,21 +46,9 @@ class ReadLocker;
 
 namespace auth {
 
-// Allow lookups with other stringy-types
-struct StringHash {
-  using hash_type = std::hash<std::string_view>;
-  using is_transparent = void;
-
-  std::size_t operator()(const char* str) const { return hash_type{}(str); }
-  std::size_t operator()(std::string_view str) const {
-    return hash_type{}(str);
-  }
-  std::size_t operator()(std::string const& str) const {
-    return hash_type{}(str);
-  }
-};
 using UserMap =
-    std::unordered_map<std::string, User, StringHash, std::equal_to<>>;
+    std::unordered_map<std::string, User, basics::TransparentStringHash,
+                       std::equal_to<>>;
 
 class UserManagerImpl final : public UserManager {
  public:
@@ -99,11 +88,10 @@ class UserManagerImpl final : public UserManager {
   bool checkCredentials(std::string const& username, std::string const& token,
                         std::string& un) override;
 
-  Level databaseAuthLevel(std::string const& username,
-                          std::string const& dbname, bool configured) override;
-  Level collectionAuthLevel(std::string const& username,
-                            std::string const& dbname, std::string_view coll,
-                            bool configured) override;
+  Level databaseAuthLevel(std::string_view username, std::string_view dbname,
+                          bool configured) override;
+  Level collectionAuthLevel(std::string_view username, std::string_view dbname,
+                            std::string_view coll, bool configured) override;
 
   Result accessTokens(std::string const& user, velocypack::Builder&) override;
   Result deleteAccessToken(std::string const& user, uint64_t id) override;
