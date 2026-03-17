@@ -447,12 +447,7 @@ function VectorIndexLargeLimitTestSuite() {
                     {nProbe: ${nLists}})
                   LIMIT ${limit} RETURN d._key`;
 
-                const options = {
-                    fullCount: true,
-                    count: true,
-                };
-
-                const queryResults = db._query(query, {}, options);
+                const queryResults = db._query(query, {count: true}, {fullCount: true});
                 const results = queryResults.toArray();
                 assertEqual(limit, results.length,
                     "Expected " + limit + " results");
