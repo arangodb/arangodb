@@ -86,7 +86,7 @@ bool authorized(std::string const& user) {
   return (user == exec.user());
 }
 
-std::string currentUser() { return arangodb::ExecContext::current().user(); }
+auto currentUser() { return arangodb::ExecContext::current().user(); }
 
 bool extractCollections(VPackSlice collections, std::vector<std::string>& reads,
                         std::vector<std::string>& writes,
@@ -1452,8 +1452,8 @@ bool Manager::abortManagedTrx(
   return !toAbort.empty();
 }
 
-void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
-                           std::string const& username, bool fanout,
+void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
+                           std::string_view username, bool fanout,
                            bool details) const {
   TRI_ASSERT(!builder.isClosed());
 
@@ -1606,7 +1606,7 @@ History& Manager::history() noexcept {
 }
 #endif
 
-Result Manager::abortAllManagedWriteTrx(std::string const& username,
+Result Manager::abortAllManagedWriteTrx(std::string_view username,
                                         bool fanout) {
   LOG_TOPIC("bba16", INFO, Logger::QUERIES)
       << "aborting all " << (fanout ? "" : "local ") << "write transactions";

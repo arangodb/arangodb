@@ -208,14 +208,14 @@ class Manager final : public IManager {
       std::function<bool(TransactionState const&, std::string const&)>);
 
   /// @brief abort all managed write transactions
-  Result abortAllManagedWriteTrx(std::string const& username, bool fanout);
+  Result abortAllManagedWriteTrx(std::string_view username, bool fanout);
 
   /// @brief convert the list of running transactions to a VelocyPack array
   /// the array must be opened already.
   /// will use database and username to fan-out the request to the other
   /// coordinators in a cluster
   void toVelocyPack(arangodb::velocypack::Builder& builder,
-                    std::string const& database, std::string const& username,
+                    std::string_view database, std::string_view username,
                     bool fanout, bool details) const;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

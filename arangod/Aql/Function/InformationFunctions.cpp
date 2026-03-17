@@ -45,7 +45,7 @@ namespace arangodb::aql {
 /// @brief function CURRENT_USER
 AqlValue functions::CurrentUser(ExpressionContext*, AstNode const&,
                                 VPackFunctionParametersView parameters) {
-  std::string const& username = ExecContext::current().user();
+  auto username = ExecContext::current().user();
   if (username.empty()) {
     return AqlValue(AqlValueHintNull());
   }

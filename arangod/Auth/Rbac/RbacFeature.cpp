@@ -49,7 +49,7 @@ void RbacFeature::prepare() {
   auto* auth = AuthenticationFeature::instance();
   TRI_ASSERT(auth != nullptr);
 
-  auto endpoint = auth->externalRBACservice();
+  auto endpoint = auth->externalRbacService();
   if (endpoint.empty()) {
     LOG_TOPIC("5a0e2", DEBUG, Logger::AUTHORIZATION)
         << "External RBAC service not configured, RBAC is disabled";

@@ -202,7 +202,7 @@ endpoint. Requests with expiry times above this value will be rejected.)");
                   "Enable role-based access control (RBAC) and set the "
                   "external RBAC service endpoint. If the string is empty, "
                   "RBAC is disabled.",
-                  new StringParameter(&_options.externalRBACservice),
+                  new StringParameter(&_options.externalRbacService),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
@@ -356,9 +356,9 @@ void AuthenticationFeature::validateOptions(
   }
 
   // Validate RBAC service endpoint
-  if (!_options.externalRBACservice.empty() &&
-      !_options.externalRBACservice.starts_with("http://") &&
-      !_options.externalRBACservice.starts_with("https://")) {
+  if (!_options.externalRbacService.empty() &&
+      !_options.externalRbacService.starts_with("http://") &&
+      !_options.externalRbacService.starts_with("https://")) {
     LOG_TOPIC("1aaaf", FATAL, arangodb::Logger::AUTHENTICATION)
         << "--server.external-rbac-service must start with http:// or "
            "https://";
@@ -449,14 +449,18 @@ bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
   return _options.authenticationSystemOnly;
 }
 
-std::string_view AuthenticationFeature::externalRBACservice() const noexcept {
-  return _options.externalRBACservice;
+std::string_view AuthenticationFeature::externalRbacService() const noexcept {
+  return _options.externalRbacService;
+}
+
+bool AuthenticationFeature::rbacEnabled() const noexcept {
+  return !_options.externalRbacService.empty();
 }
 
 /// @return Cache to deal with authentication tokens
 auth::TokenCache& AuthenticationFeature::tokenCache() const noexcept {
   TRI_ASSERT(_authCache);
-  return *_authCache.get();
+  return *_authCache;
 }
 
 /// @brief user manager may be null on DBServers and Agency
