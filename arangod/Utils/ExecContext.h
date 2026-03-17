@@ -108,13 +108,6 @@ class ExecContext : public RequestContext {
     std::abort();  // TODO remove this method
   }
 
-/// @brief returns true if auth level is above or equal `requested`
-#if 0
-  [[deprecated]] bool canUseDatabase(auth::Level requested) const noexcept {
-    std::abort();  // TODO remove this method
-  }
-#endif
-
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(std::string const& db, auth::Level requested) const;
 
@@ -122,13 +115,6 @@ class ExecContext : public RequestContext {
   auth::Level collectionAuthLevel(std::string_view dbname,
                                   std::string_view collection) const;
 
-/// @brief returns true if auth levels is above or equal `requested`
-#if 0
-  [[deprecated]] bool canUseCollection(std::string const& collection,
-                                       auth::Level requested) const {
-    std::abort();  // TODO remove this method
-}
-#endif
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseCollection(std::string_view db, std::string_view coll,
                         auth::Level requested) const {
