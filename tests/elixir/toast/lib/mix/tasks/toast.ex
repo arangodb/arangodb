@@ -62,8 +62,6 @@ defmodule Mix.Tasks.Toast do
 
   @compile {:no_warn_undefined, [ExUnit, ExUnit.Filters]}
 
-  @preferred_cli_env :test
-
   @switches [
     # ExUnit options
     include: :keep,

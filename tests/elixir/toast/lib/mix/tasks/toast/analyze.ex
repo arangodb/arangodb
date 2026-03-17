@@ -22,8 +22,6 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   use Mix.Task
 
-  @preferred_cli_env :test
-
   @switches [
     result_dir: :string,
     color: :boolean,
