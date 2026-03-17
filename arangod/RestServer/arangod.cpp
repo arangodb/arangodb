@@ -92,7 +92,7 @@ void ArangodServer::addFeatures(
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(dataSourceRegistry);
   addFeature<activities::Feature>(dataSourceRegistry);
-  addFeature<AuthenticationFeature>();
+  auto& auth = addFeature<AuthenticationFeature>();
 
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
@@ -154,7 +154,7 @@ void ArangodServer::addFeatures(
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
   addFeature<RandomFeature>();
-  addFeature<RbacFeature>();
+  addFeature<RbacFeature>(auth);
   addFeature<ReplicationFeature>(metrics);
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);

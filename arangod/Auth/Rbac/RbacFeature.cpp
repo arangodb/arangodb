@@ -33,10 +33,10 @@
 
 namespace arangodb {
 
-std::atomic<RbacFeature*> RbacFeature::INSTANCE{nullptr};
-
-RbacFeature::RbacFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+RbacFeature::RbacFeature(application_features::ApplicationServer& server,
+                         AuthenticationFeature& authenticationFeature)
+    : application_features::ApplicationFeature{server, *this},
+      _authenticationFeature(authenticationFeature) {
   setOptional(true);
   startsAfter<NetworkFeature>();
   startsAfter<AuthenticationFeature>();
@@ -46,39 +46,41 @@ RbacFeature::RbacFeature(application_features::ApplicationServer& server)
 RbacFeature::~RbacFeature() = default;
 
 void RbacFeature::prepare() {
-  auto* auth = AuthenticationFeature::instance();
-  TRI_ASSERT(auth != nullptr);
-
-  auto endpoint = auth->externalRbacService();
-  if (endpoint.empty()) {
+  if (!rbacEnabled()) {
     LOG_TOPIC("5a0e2", DEBUG, Logger::AUTHORIZATION)
         << "External RBAC service not configured, RBAC is disabled";
-    INSTANCE.store(this, std::memory_order_release);
     return;
   }
 
   auto* pool = server().getFeature<NetworkFeature>().pool();
   TRI_ASSERT(pool != nullptr);
 
+  auto endpoint = _authenticationFeature.externalRbacService();
   auto backend =
       std::make_unique<rbac::BackendImpl>(*pool, std::string{endpoint});
   _service = std::make_unique<rbac::ServiceImpl>(std::move(backend));
 
   LOG_TOPIC("66f4a", INFO, Logger::AUTHORIZATION)
       << "External RBAC service enabled, endpoint: " << endpoint;
-
-  INSTANCE.store(this, std::memory_order_release);
 }
 
 void RbacFeature::unprepare() {
-  INSTANCE.store(nullptr, std::memory_order_release);
   _service.reset();
 }
 
-RbacFeature* RbacFeature::instance() noexcept {
-  return INSTANCE.load(std::memory_order_acquire);
+rbac::Service* RbacFeature::service() const noexcept {
+  // Assert the state, so there can be no confusion whether the service is
+  // nullptr because RBAC is disabled, or whether it just hasn't been created
+  // yet.
+  // Technically, it's also already available when PREPARED, but there's
+  // currently no need to use it before STARTED.
+  TRI_ASSERT(state() == State::STARTED);
+  TRI_ASSERT((_service == nullptr) == _authenticationFeature.rbacEnabled());
+  return _service.get();
 }
 
-rbac::Service* RbacFeature::service() const noexcept { return _service.get(); }
+bool RbacFeature::rbacEnabled() const noexcept {
+  return _authenticationFeature.rbacEnabled();
+}
 
 }  // namespace arangodb
