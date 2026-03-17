@@ -40,12 +40,12 @@ function dealing_with_documentSuite () {
   let cid;
   return {
 
-    setUp: function() {
+    setUpAll: function() {
       db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
