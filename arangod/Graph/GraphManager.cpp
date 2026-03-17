@@ -1116,7 +1116,7 @@ Result GraphManager::checkDropGraphPermissions(
   for (auto const& col :
        boost::join(followersToBeRemoved, leadersToBeRemoved)) {
     // We need RW to drop a collection.
-    if (!execContext.canUseCollection(col, auth::Level::RW)) {
+    if (!execContext.canUseCollection(databaseName, col, auth::Level::RW)) {
       LOG_TOPIC("96384", DEBUG, Logger::GRAPHS)
           << logprefix << "No write (metadata) access to " << databaseName
           << "." << col;
