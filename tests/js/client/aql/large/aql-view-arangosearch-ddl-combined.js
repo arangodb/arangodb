@@ -38,7 +38,7 @@ const {
   triggerMetrics,
 } = require('@arangodb/test-helper');
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
-const tasks = require('@arangodb/tasks');
+const ct = require('@arangodb/testutils/client-tools');
 const fs = require('fs');
 
 // define global collection which will be used across all testSuites. It will be dropped later
@@ -2282,7 +2282,6 @@ function IResearchFeatureDDLTestSuite2() {
       db._createDatabase(dbName);
     },
     tearDown: function () {
-      try { tasks.unregister(taskCreateLinkInBackground); } catch (e) { }
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
@@ -2291,7 +2290,6 @@ function IResearchFeatureDDLTestSuite2() {
     ////////////////////////////////////////////////////////////////////////////
     testCreateLinkInBackgroundMode: function () {
       const IM = global.instanceManager;
-      const ct = require('@arangodb/testutils/client-tools');
       const colName = 'TestCollection';
       const viewName = 'TestView';
       const initialCount = 500;
