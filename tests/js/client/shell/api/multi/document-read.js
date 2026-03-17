@@ -45,15 +45,13 @@ function error_handlingSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function() {
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
-
-
 
     test_returns_an_error_if_document_identifier_is_corrupted_with_empty_cid: function() {
       let cmd = "/_api/document//123456";
@@ -325,11 +323,11 @@ function checking_a_documentSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function() {
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
