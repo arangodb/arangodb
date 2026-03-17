@@ -115,7 +115,7 @@ parameters:
 
 
 commands:
-  persist_to_workspace_s3:
+  persist_workspace_to_s3:
     parameters:
       root:
         type: string
@@ -152,7 +152,7 @@ commands:
               "$TAR" \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_ID}/${ARCHIVE}"
 
-  persist_from_workspace_s3:
+  attach_workspace_from_s3:
     parameters:
       root:
         type: string
@@ -292,24 +292,28 @@ commands:
         type: string
       sanitizer:
         type: string
-      run-local:
+      use-s3-workspace:
         type: boolean
-        default: false
+        default: true
     steps:
       - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
-      - attach_workspace:
-          at: .
       - when:
           condition:
             not:
-              << parameters.run-local >>
+              << parameters.use-s3-workspace >>
           steps:
-            - persist_from_workspace_s3:
+            - attach_workspace:
+                at: .
+      - when:
+          condition:
+            << parameters.use-s3-workspace >>
+          steps:
+            - attach_workspace_from_s3:
                 root: .
                 archive: binaries.tar.bz2
-            - persist_from_workspace_s3:
+            - attach_workspace_from_s3:
                 root: .
                 archive: frontend.tar.bz2
       - run:
@@ -519,12 +523,9 @@ jobs:
             fi
 
   build-frontend:
-    parameters:
-      resource-class:
-        type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    resource_class: << parameters.resource-class >>
+    resource_class: arangodb/amd-large-amd64
     steps:
       - checkout-arangodb:
           with-submodules: false
@@ -539,7 +540,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths: js/apps/system/_admin/aardvark/APP/react/build
-      - persist_to_workspace_s3:
+      - persist_workspace_to_s3:
           root: .
           paths: js/apps/system/_admin/aardvark/APP/react/build
           archive: frontend.tar.bz2
@@ -672,11 +673,8 @@ jobs:
                 paths:
                   - VERSIONS
                   - ARANGO-VERSION
-                  - build/compile_commands.json
-                  - CMakePresets.json
                   - build/bin
                   - build/etc
-                  - build/build_version.cc
                   - scripts/
                   - js/
                   - enterprise/js
@@ -689,23 +687,23 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
-            - persist_to_workspace_s3:
+            - persist_workspace_to_s3:
                 root: .
                 archive: cppcheck.tar.bz2
                 paths: |
+                  CMakePresets.json
                   build/3rdParty/snowball/libstemmer/
-            - persist_to_workspace_s3:
+                  build/compile_commands.json
+                  build/build_version.cc
+            - persist_workspace_to_s3:
                 # not there? install.tar.gz
                 root: .
                 archive: binaries.tar.bz2
                 paths: |
                   VERSIONS
                   ARANGO-VERSION
-                  build/compile_commands.json
-                  CMakePresets.json
                   build/bin
                   build/etc
-                  build/build_version.cc
                   scripts/
                   js/
                   enterprise/js
@@ -995,26 +993,18 @@ jobs:
           path: ./test-results/
 
   run-cppcheck:
-    parameters:
-      resource-class:
-        type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    resource_class: << parameters.resource-class >>
+    resource_class: arangodb/amd-medium-amd64
     steps:
       - run:
           name: Prepare container
           command: |
             mkdir -p /root/workspace/
             mkdir -p /root/project/
-      - persist_from_workspace_s3:
-          root: /root/workspace/
-          archive: binaries.tar.bz2
-      - persist_from_workspace_s3:
+      - attach_workspace_from_s3:
           root: /root/workspace/
           archive: cppcheck.tar.bz2
-      - attach_workspace:
-          at: "/root/workspace/"
       - run:
           name: Print workspace size
           command: |

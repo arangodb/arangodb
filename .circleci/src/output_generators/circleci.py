@@ -232,12 +232,7 @@ class CircleCIGenerator(OutputGenerator):
         suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}-frontend"
 
-        return {"build-frontend": {
-            "name": name,
-            "resource-class": self.sizer.get_resource_class(
-                ResourceSize.XXLARGE, build_config.architecture
-            ),
-        }}
+        return {"build-frontend": {"name": name}}
 
     def _create_non_maintainer_build_job(
         self, build_config: BuildConfig
@@ -268,15 +263,7 @@ class CircleCIGenerator(OutputGenerator):
             and not build_config.build_variant.is_instrumented
         ):
             workflow["jobs"].append(
-                {
-                    "run-cppcheck": {
-                        "name": "cppcheck",
-                        "requires": [build_jobs[0]],
-                        "resource-class": self.sizer.get_resource_class(
-                            ResourceSize.XLARGE, build_config.architecture
-                        ),
-                    }
-                }
+                {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
 
         # Docker image creation
@@ -659,13 +646,10 @@ class CircleCIGenerator(OutputGenerator):
             rta_branch = job.repository.git_branch
 
         deployments = ["single", "cluster"]
+        sanitizer_suffix = build_config.build_variant.get_suffix()
 
         result_jobs = []
         for deployment in deployments:
-            is_cluster = deployment == "cluster"
-            sanitizer_suffix = build_config.build_variant.get_suffix()
-            size_override = self._get_size_override(job.name, build_config, is_cluster)
-            size = size_override or job.options.size or ResourceSize.SMALL
             job_dict = {
                 "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
                 "suiteName": f"{deployment}-UI",
@@ -673,9 +657,6 @@ class CircleCIGenerator(OutputGenerator):
                 "deployment": "SG" if deployment == "single" else "CL",
                 "browser": "Remote_CHROME",
                 "enterprise": "EP",
-                "resource-class": self.sizer.get_resource_class(
-                    size, build_config.architecture
-                ),
                 "filterStatement": ui_filter,
                 "requires": build_jobs,
                 "rta-branch": rta_branch,
