@@ -33,8 +33,6 @@
 
 namespace arangodb::auth {
 
-using UserMap = std::unordered_map<std::string, User>;
-
 // UserManager is the sole point of access for users and permissions
 // stored in `_system/_users`. The permissions are cached locally if possible,
 // to avoid unnecessary disk access. An instance of this should only
@@ -84,7 +82,7 @@ class UserManager {
                                 RetryOnConflict) = 0;
 
   // Update specific user
-  virtual Result updateUser(std::string const& user, UserCallback&&,
+  virtual Result updateUser(std::string_view user, UserCallback&&,
                             RetryOnConflict) = 0;
 
   // Access user without modifying it
@@ -126,16 +124,5 @@ class UserManager {
   // This will shut down the running thread on demand.
   // It should only be use when the UserManager is being destroyed.
   virtual void shutdown() = 0;
-
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  // Overwrite internally cached permissions, only use
-  // for testing purposes.
-  // This will assert that the underlying UpdateThread was started.
-  virtual void setAuthInfo(UserMap const& userEntryMap) = 0;
-
-  // Need this to find out if the loadFromDB was run and the internal version
-  // was updated
-  [[nodiscard]] virtual uint64_t internalVersion() const noexcept = 0;
-#endif  // ARANGODB_USE_GOOGLE_TESTS
 };
 }  // namespace arangodb::auth

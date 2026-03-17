@@ -45,6 +45,22 @@ class ReadLocker;
 
 namespace auth {
 
+// Allow lookups with other stringy-types
+struct StringHash {
+  using hash_type = std::hash<std::string_view>;
+  using is_transparent = void;
+
+  std::size_t operator()(const char* str) const { return hash_type{}(str); }
+  std::size_t operator()(std::string_view str) const {
+    return hash_type{}(str);
+  }
+  std::size_t operator()(std::string const& str) const {
+    return hash_type{}(str);
+  }
+};
+using UserMap =
+    std::unordered_map<std::string, User, StringHash, std::equal_to<>>;
+
 class UserManagerImpl final : public UserManager {
  public:
   explicit UserManagerImpl(application_features::ApplicationServer&);
@@ -68,7 +84,7 @@ class UserManagerImpl final : public UserManager {
   Result enumerateUsers(std::function<bool(User&)>&&,
                         RetryOnConflict retryOnConflict) override;
 
-  Result updateUser(std::string const& user, UserCallback&&,
+  Result updateUser(std::string_view user, UserCallback&&,
                     RetryOnConflict retryOnConflict) override;
 
   Result accessUser(std::string const& user, ConstUserCallback&&) override;
@@ -97,9 +113,14 @@ class UserManagerImpl final : public UserManager {
   void shutdown() override;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setAuthInfo(UserMap const& userEntryMap) override;
+  // Overwrite internally cached permissions, only use
+  // for testing purposes.
+  // This will assert that the underlying UpdateThread was started.
+  void setAuthInfo(UserMap const& userEntryMap);
 
-  [[nodiscard]] uint64_t internalVersion() const noexcept override;
+  // Need this to find out if the loadFromDB was run and the internal version
+  // was updated
+  [[nodiscard]] uint64_t internalVersion() const noexcept;
 #endif  // ARANGODB_USE_GOOGLE_TESTS
 
  private:

@@ -618,7 +618,7 @@ Result UserManagerImpl::enumerateUsers(std::function<bool(User&)>&& func,
   return res;
 }
 
-Result UserManagerImpl::updateUser(std::string const& name, UserCallback&& func,
+Result UserManagerImpl::updateUser(std::string_view name, UserCallback&& func,
                                    RetryOnConflict const retryOnConflict) {
   if (name.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
