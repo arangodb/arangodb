@@ -38,7 +38,6 @@
       "hidden": true,
       "name": "x86_64",
       "cacheVariables": {
-        "USE_LIBUNWIND": "On",
         "TARGET_ARCHITECTURE": "sandy-bridge"
       }
     },
@@ -46,7 +45,6 @@
       "hidden": true,
       "name": "arm",
       "cacheVariables": {
-        "USE_LIBUNWIND": "Off",
         "TARGET_ARCHITECTURE": "graviton1"
       }
     },
