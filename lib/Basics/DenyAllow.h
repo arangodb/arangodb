@@ -29,6 +29,9 @@ namespace arangodb {
 enum class DenyAllowResult { DENIED, ALLOWED };
 struct DenyAllow {
   DenyAllow() = default;
+  explicit DenyAllow(std::optional<std::regex> deny,
+                     std::optional<std::regex> allow)
+      : _deny(std::move(deny)), _allow(std::move(allow)) {}
   explicit DenyAllow(std::string denyList, std::string allowList) {
     auto constexpr regex_opts = std::regex::nosubs | std::regex::ECMAScript;
     if (!denyList.empty()) {
