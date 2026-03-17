@@ -132,22 +132,20 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.parsedBody, undefined);
     },
 
-    test_checks_whether_an_invalid_location_returns_status_202: function() {
+    test_checks_whether_an_invalid_location_returns_status_404: function() {
       let cmd = "/_api/not-existing";
       let doc = arango.GET_RAW(cmd, { "X-Arango-Async": "true" });
 
-      assertEqual(doc.code, 202);
-      assertFalse(doc.headers.hasOwnProperty("x-arango-async-id"));
-      assertEqual(doc.parsedBody, undefined);
+      // in 4.0, routing happens before async queuing — non-existent endpoints return 404
+      assertEqual(doc.code, 404);
     },
 
-    test_checks_whether_a_failing_action_returns_status_202: function() {
+    test_checks_whether_a_failing_action_returns_status_404: function() {
       let cmd = "/_api/notacursor";;
       let body = '{"query": "this is not a love song"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "true" });
-      assertEqual(doc.code, 202);
-      assertFalse(doc.headers.hasOwnProperty("x-arango-async-id"));
-      assertEqual(doc.parsedBody, undefined);
+      // in 4.0, routing happens before async queuing — non-existent endpoints return 404
+      assertEqual(doc.code, 404);
     },
 
     test_checks_the_responses_when_the_queue_fills_up: function() {

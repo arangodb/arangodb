@@ -105,7 +105,20 @@ function TransactionsIResearchSuite() {
     },
 
     tearDownAll: function () {
-      analyzers.remove('myText');
+      // drop views in case tearDown left them (e.g. after a test failure)
+      try { db._dropView('UnitTestsView'); } catch (e) {}
+      try { db._dropView('searchAliasView'); } catch (e) {}
+      // retry: cluster may need a moment to propagate view removal before the analyzer is released
+      let tries = 10;
+      while (tries-- > 0) {
+        try {
+          analyzers.remove('myText');
+          break;
+        } catch (e) {
+          if (tries === 0) { throw e; }
+          internal.sleep(1);
+        }
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////
