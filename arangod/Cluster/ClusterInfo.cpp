@@ -2849,8 +2849,12 @@ void ClusterInfo::updateMetadataMetricsFromPlan() {
 
     // _shards does not contain the correct information
     for (const auto& c : *collections) {
-      if (_shards.contains(c.first)) {
-        numShards += _shards[c.first]->size();
+      if (c.first.empty()) continue;
+      char ch = c.first[0];
+      if (ch < '0' || ch > '9') {
+        if (_shards.contains(c.first)) {
+          numShards += _shards[c.first]->size();
+        }
       }
     }
   }
