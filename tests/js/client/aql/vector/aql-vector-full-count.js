@@ -91,31 +91,24 @@ function VectorIndexFullCountTestSuite() {
         },
 
         testApproxL2WithFullCount: function() {
-            const query =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(@qp, d.vector) LIMIT 3 RETURN {k: d._key}";
+            const query = aql`
+              FOR d IN ${collection}
+              SORT APPROX_NEAR_L2(${randomPoint}, d.vector)
+              LIMIT 3 RETURN {k: d._key}`;
 
-            const bindVars = {
-                qp: randomPoint
-            };
             const options = {
                 fullCount: true,
             };
 
             const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                    options
-                })
+                ._createStatement(query, {}, options)
                 .explain().plan;
             const indexNodes = plan.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
             assertEqual(1, indexNodes.length);
 
-            const queryResults = db._query(query, bindVars, options);
+            const queryResults = db._query(query, {}, options);
             const results = queryResults.toArray();
             assertEqual(results.length, 3);
 
@@ -124,39 +117,32 @@ function VectorIndexFullCountTestSuite() {
         },
 
         testApproxL2SkippingWithFullCount: function() {
-            const queryWithSkip =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(@qp, d.vector) LIMIT 3, 5 RETURN {k: d._key}";
-            const queryWithoutSkip =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 8 RETURN {k: d._key}";
+            const queryWithSkip = aql`
+              FOR d IN ${collection}
+              SORT APPROX_NEAR_L2(${randomPoint}, d.vector)
+              LIMIT 3, 5 RETURN {k: d._key}`;
+            const queryWithoutSkip = aql`
+              FOR d IN ${collection}
+              SORT APPROX_NEAR_L2(d.vector, ${randomPoint})
+              LIMIT 8 RETURN {k: d._key}`;
 
-            const bindVars = {
-                qp: randomPoint
-            };
             const options = {
                 fullCount: true,
             };
 
             const planSkipped = db
-                ._createStatement({
-                    query: queryWithSkip,
-                    bindVars,
-                    options,
-                })
+                ._createStatement(queryWithSkip, {}, options)
                 .explain().plan;
             const indexNodes = planSkipped.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
             assertEqual(1, indexNodes.length);
 
-            const queryResultsWithSkip = db._query(queryWithSkip, bindVars, options);
+            const queryResultsWithSkip = db._query(queryWithSkip, {}, options);
             const resultsWithSkip = queryResultsWithSkip.toArray();
             const statsWithSkip = queryResultsWithSkip.getExtra().stats;
 
-            const queryResultsWithoutSkip = db._query(queryWithoutSkip, bindVars, options);
+            const queryResultsWithoutSkip = db._query(queryWithoutSkip, {}, options);
             const resultsWithoutSkip = queryResultsWithoutSkip.toArray();
             const statsWithoutSkip = queryResultsWithoutSkip.getExtra().stats;
 
@@ -284,33 +270,26 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
         },
 
         testApproxL2FullCountDoubleLoopMultipleNlists: function() {
-            const query = `
+            const query = aql`
                 FOR i in 0..3
-                    FOR d IN ${collection.name()}
-                    SORT APPROX_NEAR_L2(@qp, d.vector)
+                    FOR d IN ${collection}
+                    SORT APPROX_NEAR_L2(${randomPoint}, d.vector)
                 LIMIT 10
                 RETURN {k: d._key}
             `;
-            const bindVars = {
-                qp: randomPoint,
-            };
             const options = {
                 fullCount: true,
             };
 
             const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                    options
-                })
+                ._createStatement(query, {}, options)
                 .explain().plan;
             const indexNodes = plan.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
             assertEqual(1, indexNodes.length);
 
-            const queryResults = db._query(query, bindVars, options);
+            const queryResults = db._query(query, {}, options);
             const results = queryResults.toArray();
             assertEqual(results.length, 4);
 
@@ -371,36 +350,29 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
         },
 
         testApproxL2FullCountDoubleLoopSingleNList: function() {
-            const query = `
+            const query = aql`
                 FOR i in 0..4
-                    FOR d IN ${collection.name()}
-                    SORT APPROX_NEAR_L2(@qp, d.vector)
+                    FOR d IN ${collection}
+                    SORT APPROX_NEAR_L2(${randomPoint}, d.vector)
                 LIMIT 10
                 RETURN {k: d._key}
             `;
             // i=0    i=1    i=2    i=3    i=4
             // 1,2,3, 1,2,3, 1,2,3, 1|,2,3 1,2,3
             //                       ^ LIMIT 10
-            const bindVars = {
-                qp: randomPoint,
-            };
             const options = {
                 fullCount: true,
             };
 
             const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                    options
-                })
+                ._createStatement(query, {}, options)
                 .explain().plan;
             const indexNodes = plan.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
             assertEqual(1, indexNodes.length);
 
-            const queryResults = db._query(query, bindVars, options);
+            const queryResults = db._query(query, {}, options);
             const results = queryResults.toArray();
             assertEqual(results.length, 10);
 
@@ -467,24 +439,20 @@ function VectorIndexLargeLimitTestSuite() {
 
         testFetchLargeNumberOfDocsWithMaxNProbe: function() {
             const limits = [1500, 3000, 4000];
-            const bindVars = {
-                qp: randomPoint,
-            };
 
             for (const limit of limits) {
-                const query =
-                    "FOR d IN " +
-                    collection.name() +
-                    " SORT APPROX_NEAR_L2(d.vector, @qp, " +
-                    "{nProbe: " + nLists + "}) " +
-                    "LIMIT " + limit + " RETURN d._key";
+                const query = aql`
+                  FOR d IN ${collection}
+                  SORT APPROX_NEAR_L2(d.vector, ${randomPoint},
+                    {nProbe: ${nLists}})
+                  LIMIT ${limit} RETURN d._key`;
 
                 const options = {
                     fullCount: true,
                     count: true,
                 };
 
-                const queryResults = db._query(query, bindVars, options);
+                const queryResults = db._query(query, {}, options);
                 const results = queryResults.toArray();
                 assertEqual(limit, results.length,
                     "Expected " + limit + " results");
