@@ -36,7 +36,11 @@ defmodule ToastTest.Formatting do
   def colorize(text, color, %{colors_enabled: enabled}), do: colorize(text, color, enabled)
   def colorize(text, _color, false), do: text
 
-  def colorize(text, color, true) do
+  def colorize(text, color, true) when is_binary(text) or is_list(text) do
     IO.iodata_to_binary([ansi_code(color), text, IO.ANSI.reset()])
+  end
+
+  def colorize(text, color, true) do
+    Inspect.Algebra.concat([ansi_code(color), text, IO.ANSI.reset()])
   end
 end

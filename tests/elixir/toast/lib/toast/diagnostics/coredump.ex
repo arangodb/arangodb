@@ -350,14 +350,16 @@ defmodule Toast.Diagnostics.Coredump do
   def coredump_discovery_warning(dir) when not is_nil(dir), do: nil
 
   def coredump_discovery_warning(nil) do
-    with {:ok, pattern} <- File.read("/proc/sys/kernel/core_pattern"),
-         pattern = String.trim(pattern),
-         true <- String.starts_with?(pattern, "|"),
-         handler = pipe_handler_name(pattern),
-         false <- handler =~ "apport",
-         nil <- System.find_executable("coredumpctl") do
-      "Coredump discovery may not work: core_pattern pipes to unknown handler '#{handler}'. " <>
-        "Set TOAST_COREDUMP_DIR or --coredump-dir to the directory where your system stores core dumps."
+    with {:ok, raw} <- File.read("/proc/sys/kernel/core_pattern") do
+      pattern = String.trim(raw)
+      handler = pipe_handler_name(pattern)
+
+      if String.starts_with?(pattern, "|") and
+           not (handler =~ "apport") and
+           System.find_executable("coredumpctl") == nil do
+        "Coredump discovery may not work: core_pattern pipes to unknown handler '#{handler}'. " <>
+          "Set TOAST_COREDUMP_DIR or --coredump-dir to the directory where your system stores core dumps."
+      end
     else
       _ -> nil
     end

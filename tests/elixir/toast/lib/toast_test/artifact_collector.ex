@@ -38,11 +38,11 @@ defmodule ToastTest.ArtifactCollector do
   def has_coredumps?(artifacts), do: coredump_count(artifacts) > 0
 
   defp coredump_count(artifacts) do
-    artifacts |> Map.values() |> Enum.map(&length(&1.coredump_paths)) |> Enum.sum()
+    Enum.sum_by(Map.values(artifacts), &length(&1.coredump_paths))
   end
 
   defp sanitizer_count(artifacts) do
-    artifacts |> Map.values() |> Enum.map(&length(&1.sanitizer_files)) |> Enum.sum()
+    Enum.sum_by(Map.values(artifacts), &length(&1.sanitizer_files))
   end
 
   defp collect_server_artifacts(server, historical_pids, opts) do

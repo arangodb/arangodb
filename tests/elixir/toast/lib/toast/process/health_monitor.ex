@@ -23,6 +23,21 @@ defmodule Toast.Process.HealthMonitor do
   @default_max_failures 3
   @http_timeout 2_000
 
+  defmodule State do
+    @moduledoc false
+    @enforce_keys [:server_id, :endpoint, :listener]
+    defstruct [
+      :server_id,
+      :endpoint,
+      :listener,
+      :timer_ref,
+      interval: 1_000,
+      max_failures: 3,
+      consecutive_failures: 0,
+      status: :healthy
+    ]
+  end
+
   # --- Client API ---
 
   @spec start_link(keyword()) :: GenServer.on_start()
@@ -53,15 +68,12 @@ defmodule Toast.Process.HealthMonitor do
     interval = Keyword.get(opts, :interval, @default_interval)
     Logger.debug("#{server_id}: health monitor started (interval=#{interval}ms)")
 
-    state = %{
+    state = %State{
       server_id: server_id,
       endpoint: Keyword.fetch!(opts, :endpoint),
       listener: Keyword.fetch!(opts, :listener),
       interval: interval,
-      max_failures: Keyword.get(opts, :max_failures, @default_max_failures),
-      consecutive_failures: 0,
-      status: :healthy,
-      timer_ref: nil
+      max_failures: Keyword.get(opts, :max_failures, @default_max_failures)
     }
 
     {:ok, schedule_check(state)}

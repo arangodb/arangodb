@@ -2,7 +2,7 @@ defmodule ToastTest.CrashMonitor do
   @moduledoc "Default on_crash callback that aborts the test run when a server crashes unexpectedly."
 
   @spec handle_crash(String.t(), Toast.Process.CrashInfo.t()) :: :ok
-  def handle_crash(_server_id, %{signal: signal, exit_status: exit_status}) do
+  def handle_crash(_server_id, %Toast.Process.CrashInfo{signal: signal, exit_status: exit_status}) do
     message =
       [
         "Server crashed",
