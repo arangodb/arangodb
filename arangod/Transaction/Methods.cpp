@@ -1790,7 +1790,7 @@ Methods::Methods(std::shared_ptr<Context> ctx, Options const& options)
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
 
-  setUsername(ExecContext::current().user());
+  setUsername(std::string{ExecContext::current().user()});
 }
 
 Methods::Methods(std::shared_ptr<Context> ctx,

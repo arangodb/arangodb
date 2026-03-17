@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/TransparentStringHash.h"
 
 #include <thread>
 #include <velocypack/Builder.h>
@@ -44,6 +45,10 @@ class ReadLocker;
 }
 
 namespace auth {
+
+using UserMap =
+    std::unordered_map<std::string, User, basics::TransparentStringHash,
+                       std::equal_to<>>;
 
 class UserManagerImpl final : public UserManager {
  public:
@@ -68,7 +73,7 @@ class UserManagerImpl final : public UserManager {
   Result enumerateUsers(std::function<bool(User&)>&&,
                         RetryOnConflict retryOnConflict) override;
 
-  Result updateUser(std::string const& user, UserCallback&&,
+  Result updateUser(std::string_view user, UserCallback&&,
                     RetryOnConflict retryOnConflict) override;
 
   Result accessUser(std::string const& user, ConstUserCallback&&) override;
@@ -83,11 +88,10 @@ class UserManagerImpl final : public UserManager {
   bool checkCredentials(std::string const& username, std::string const& token,
                         std::string& un) override;
 
-  Level databaseAuthLevel(std::string const& username, std::string_view dbname,
+  Level databaseAuthLevel(std::string_view username, std::string_view dbname,
                           bool configured) override;
-  Level collectionAuthLevel(std::string const& username,
-                            std::string_view dbname, std::string_view coll,
-                            bool configured) override;
+  Level collectionAuthLevel(std::string_view username, std::string_view dbname,
+                            std::string_view coll, bool configured) override;
 
   Result accessTokens(std::string const& user, velocypack::Builder&) override;
   Result deleteAccessToken(std::string const& user, uint64_t id) override;
@@ -97,9 +101,14 @@ class UserManagerImpl final : public UserManager {
   void shutdown() override;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setAuthInfo(UserMap const& userEntryMap) override;
+  // Overwrite internally cached permissions, only use
+  // for testing purposes.
+  // This will assert that the underlying UpdateThread was started.
+  void setAuthInfo(UserMap const& userEntryMap);
 
-  [[nodiscard]] uint64_t internalVersion() const noexcept override;
+  // Need this to find out if the loadFromDB was run and the internal version
+  // was updated
+  [[nodiscard]] uint64_t internalVersion() const noexcept;
 #endif  // ARANGODB_USE_GOOGLE_TESTS
 
  private:

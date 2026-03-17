@@ -138,11 +138,11 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
   TRI_ASSERT(cursor->isUsed());
 
   CursorId id = cursor->id();
-  std::string user = ExecContext::current().user();
+  auto user = ExecContext::current().user();
 
   {
     std::lock_guard mutexLocker{_lock};
-    _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
+    _cursors.emplace(id, std::make_pair(cursor.get(), user));
   }
 
   increaseNumberOfCursorsMetric(1);

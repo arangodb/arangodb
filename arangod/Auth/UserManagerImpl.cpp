@@ -618,7 +618,7 @@ Result UserManagerImpl::enumerateUsers(std::function<bool(User&)>&& func,
   return res;
 }
 
-Result UserManagerImpl::updateUser(std::string const& name, UserCallback&& func,
+Result UserManagerImpl::updateUser(std::string_view name, UserCallback&& func,
                                    RetryOnConflict const retryOnConflict) {
   if (name.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
@@ -928,7 +928,7 @@ bool UserManagerImpl::checkCredentials(std::string const& username,
   return authorized;
 }
 
-Level UserManagerImpl::databaseAuthLevel(std::string const& user,
+Level UserManagerImpl::databaseAuthLevel(std::string_view user,
                                          std::string_view dbname,
                                          bool configured) {
   if (dbname.empty()) {
@@ -955,7 +955,7 @@ Level UserManagerImpl::databaseAuthLevel(std::string const& user,
   return level;
 }
 
-Level UserManagerImpl::collectionAuthLevel(std::string const& user,
+Level UserManagerImpl::collectionAuthLevel(std::string_view user,
                                            std::string_view dbname,
                                            std::string_view coll,
                                            bool configured) {

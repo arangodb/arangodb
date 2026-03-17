@@ -20,40 +20,6 @@
 ///
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
+#include "Permissions.h"
 
-#pragma once
-
-#include "ApplicationFeatures/ApplicationFeature.h"
-
-#include <atomic>
-#include <memory>
-
-namespace arangodb::rbac {
-struct Service;
-}
-
-namespace arangodb {
-class AuthenticationFeature;
-
-class RbacFeature final : public application_features::ApplicationFeature {
- public:
-  static constexpr auto name() noexcept -> std::string_view { return "Rbac"; }
-
-  explicit RbacFeature(application_features::ApplicationServer& server,
-                       AuthenticationFeature& authenticationFeature);
-  ~RbacFeature() override;
-
-  void prepare() override;
-  void unprepare() override;
-
-  /// @brief returns the rbac::Service, or nullptr if RBAC is not enabled
-  [[nodiscard]] auto service() const noexcept -> rbac::Service*;
-
-  [[nodiscard]] bool rbacEnabled() const noexcept;
-
- private:
-  AuthenticationFeature& _authenticationFeature;
-  std::unique_ptr<rbac::Service> _service;
-};
-
-}  // namespace arangodb
+namespace arangodb {}  // namespace arangodb

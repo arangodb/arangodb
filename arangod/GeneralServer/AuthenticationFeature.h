@@ -41,6 +41,9 @@ class UserManager;
 
 // TODO Should be renamed to AuthFeature, as it handles both authentication and
 //      authorization aspects.
+//      It also mixes server and client parts of authentication. E.g. the
+//      connection pool uses the TokenCache to get a JWT token when creating
+//      a connection.
 class AuthenticationFeature final
     : public application_features::ApplicationFeature {
  public:
@@ -63,7 +66,8 @@ class AuthenticationFeature final
 
   bool authenticationUnixSockets() const noexcept;
   bool authenticationSystemOnly() const noexcept;
-  std::string_view externalRBACservice() const noexcept;
+  std::string_view externalRbacService() const noexcept;
+  bool rbacEnabled() const noexcept;
 
   /// @return Cache to deal with authentication tokens
   auth::TokenCache& tokenCache() const noexcept;

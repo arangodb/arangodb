@@ -23,37 +23,24 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include <string>
+#include <string_view>
 
-#include <atomic>
-#include <memory>
+namespace arangodb::basics {
 
-namespace arangodb::rbac {
-struct Service;
-}
+// Allow lookups with other stringy-types (e.g. in std::unordered_map with
+// std::string keys)
+struct TransparentStringHash {
+  using hash_type = std::hash<std::string_view>;
+  using is_transparent = void;
 
-namespace arangodb {
-class AuthenticationFeature;
-
-class RbacFeature final : public application_features::ApplicationFeature {
- public:
-  static constexpr auto name() noexcept -> std::string_view { return "Rbac"; }
-
-  explicit RbacFeature(application_features::ApplicationServer& server,
-                       AuthenticationFeature& authenticationFeature);
-  ~RbacFeature() override;
-
-  void prepare() override;
-  void unprepare() override;
-
-  /// @brief returns the rbac::Service, or nullptr if RBAC is not enabled
-  [[nodiscard]] auto service() const noexcept -> rbac::Service*;
-
-  [[nodiscard]] bool rbacEnabled() const noexcept;
-
- private:
-  AuthenticationFeature& _authenticationFeature;
-  std::unique_ptr<rbac::Service> _service;
+  std::size_t operator()(const char* str) const { return hash_type{}(str); }
+  std::size_t operator()(std::string_view str) const {
+    return hash_type{}(str);
+  }
+  std::size_t operator()(std::string const& str) const {
+    return hash_type{}(str);
+  }
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::basics

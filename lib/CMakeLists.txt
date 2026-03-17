@@ -119,6 +119,7 @@ add_library(arango_basic_utils STATIC
         Basics/StringBuffer.cpp
         Basics/StringHeap.cpp
         Basics/StringUtils.cpp
+        Basics/TransparentStringHash.h
         Basics/Thread.cpp
         Basics/UnshackledMutex.cpp
         Basics/conversions.cpp

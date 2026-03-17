@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,36 +18,38 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include "Auth/Common.h"
+
 #include <string>
-#include <vector>
+#include <variant>
 
 namespace arangodb {
 
-// TODO Should be renamed to AuthOptions, as it contains both authentication and
-//      authorization options.
-struct AuthenticationOptions {
-  bool authenticationUnixSockets = true;
-  bool authenticationSystemOnly = true;
-  bool active = true;
-  std::string externalRbacService;  // empty string means deactivated RBAC
-  double authenticationTimeout = 0.0;
-  double sessionTimeout = 3600.0;        // 1 hour in seconds
-  double minimalJwtExpiryTime = 10.0;    // 10 seconds
-  double maximalJwtExpiryTime = 3600.0;  // 3600 seconds
+// TODO Use AccessLevel instead of auth::Level in these permissions!
+enum class AccessLevel { None = 0, Read, WriteData, WriteMeta };
 
-  std::string jwtSecretProgramOption;
-  std::string jwtSecretKeyfileProgramOption;
-  std::string jwtSecretFolderProgramOption;
-  bool jwtSecretIsES256 = false;  // true if the active secret uses ES256
+struct Permission {
+  struct Database {
+    std::string name;
+    auth::Level level;
+  };
+  struct DataSource {
+    std::string database;
+    std::string name;
+    auth::Level level;
+  };
+  struct Admin {
+    // TODO
+  };
 
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::vector<std::string> jwtPassiveSecrets;
-#endif
+  using Any = std::variant<Database, DataSource, Admin>;
+
+  Any permission;
 };
 
 }  // namespace arangodb

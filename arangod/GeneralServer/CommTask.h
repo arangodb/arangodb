@@ -42,10 +42,12 @@
 namespace arangodb {
 class ApiRecordingFeature;
 class AuthenticationFeature;
+class DatabaseFeature;
 class ConnectionStatistics;
 class GeneralRequest;
 class GeneralResponse;
 class GeneralServerFeature;
+class RbacFeature;
 class RequestStatistics;
 
 namespace rest {
@@ -171,11 +173,14 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   GeneralServer& _server;
   GeneralServerFeature& _generalServerFeature;
   ApiRecordingFeature& _apiRecordingFeature;
+  // TODO make this a reference
+  AuthenticationFeature* _auth;
+  DatabaseFeature& _databaseFeature;
+  RbacFeature& _rbacFeature;
   ConnectionInfo _connectionInfo;
 
   ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
-  AuthenticationFeature* _auth;
 
   // contains value of "x-arango-source"
   std::string _requestSource;

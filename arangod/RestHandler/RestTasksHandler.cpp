@@ -23,6 +23,9 @@
 
 #include "RestTasksHandler.h"
 
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Auth/Rbac/RbacFeature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/StaticStrings.h"
@@ -212,16 +215,20 @@ void RestTasksHandler::registerTask(bool byId) {
     }
   }
 
-  std::string runAsUser =
-      VelocyPackHelper::getStringValue(body, "runAsUser", "");
+  {
+    // This option is not documented, and never worked (or at least hasn't for
+    // at least 7 years). If it was set to any non-empty string except the
+    // current username, an error was generated.
+    // I've left this block here for backwards compatibility with that behavior,
+    // but deleted subsequent code.
+    std::string runAsUser =
+        VelocyPackHelper::getStringValue(body, "runAsUser", "");
 
-  // only the superroot is allowed to run tasks as an arbitrary user
-  if (runAsUser.empty()) {  // execute task as the same user
-    runAsUser = exec.user();
-  } else if (exec.user() != runAsUser) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  "cannot run task as a different user");
-    return;
+    if (!runAsUser.empty() && exec.user() != runAsUser) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "cannot run task as a different user");
+      return;
+    }
   }
 
   // extract the command
@@ -280,18 +287,14 @@ void RestTasksHandler::registerTask(bool byId) {
   command = absl::StrCat("(function (params) { ", command, " } )(params);");
 
   auto res = TRI_ERROR_NO_ERROR;
-  std::shared_ptr<Task> task =
-      Task::createTask(id, name, &_vocbase, command, isSystem, res);
+  auto task = Task::createTask(id, name, ExecContext::currentAsShared(),
+                               &_vocbase, command, isSystem, res);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(res);
     return;
   }
 
-  // set the user this will run as
-  if (!runAsUser.empty()) {
-    task->setUser(runAsUser);
-  }
   // set execution parameters
   task->setParameter(parameters);
 

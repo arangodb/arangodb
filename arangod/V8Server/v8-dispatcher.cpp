@@ -182,18 +182,23 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::string runAsUser;
-  if (TRI_HasProperty(context, isolate, obj, "runAsUser")) {
-    runAsUser = TRI_ObjectToString(
-        isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "runAsUser"))
-                     .FromMaybe(v8::Local<v8::Value>()));
-  }
+  {
+    // This option is not documented, and never worked (or at least hasn't for
+    // at least 7 years). If it was set to any non-empty string except the
+    // current username, an error was generated.
+    // I've left this block here for backwards compatibility with that behavior,
+    // but deleted subsequent code.
+    std::string runAsUser;
+    if (TRI_HasProperty(context, isolate, obj, "runAsUser")) {
+      runAsUser = TRI_ObjectToString(
+          isolate,
+          obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "runAsUser"))
+              .FromMaybe(v8::Local<v8::Value>()));
+    }
 
-  // only the superroot is allowed to run tasks as an arbitrary user
-  if (runAsUser.empty()) {  // execute task as the same user
-    runAsUser = ExecContext::current().user();
-  } else if (ExecContext::current().user() != runAsUser) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    if (!runAsUser.empty() && ExecContext::current().user() != runAsUser) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
   }
 
   // extract the command
@@ -235,17 +240,13 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   command = "(function (params) { " + command + " } )(params);";
 
   ErrorCode res = TRI_ERROR_NO_ERROR;
-  std::shared_ptr<Task> task =
-      Task::createTask(id, name, v8g->_vocbase, command, isSystem, res);
+  auto task = Task::createTask(id, name, ExecContext::currentAsShared(),
+                               v8g->_vocbase, command, isSystem, res);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  // set the user this will run as
-  if (!runAsUser.empty()) {
-    task->setUser(runAsUser);
-  }
   // set execution parameters
   task->setParameter(parameters);
 
@@ -346,7 +347,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "createQueue() needs db RW permissions");
   }
 
-  std::string const runAsUser = exec.user();
+  auto const runAsUser = exec.user();
   TRI_ASSERT(exec.isAdminUser() || !runAsUser.empty());
 
   std::string key = TRI_ObjectToString(isolate, args[0]);

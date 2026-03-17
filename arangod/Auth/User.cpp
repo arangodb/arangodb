@@ -694,7 +694,7 @@ bool auth::User::removeCollection(std::string const& dbname,
 }
 
 // Resolve the access level for this database.
-auth::Level auth::User::configuredDBAuthLevel(std::string const& dbname) const {
+auth::Level auth::User::configuredDBAuthLevel(std::string_view dbname) const {
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
     // found specific grant
@@ -718,8 +718,7 @@ auth::Level auth::User::configuredCollectionAuthLevel(
 }
 
 auth::Level auth::User::databaseAuthLevel(std::string_view dbname) const {
-  auth::Level lvl = configuredDBAuthLevel(
-      std::string(dbname));  // FIXME: std::string-Wickelung
+  auth::Level lvl = configuredDBAuthLevel(dbname);
   if (lvl == auth::Level::UNDEFINED && dbname != "*") {
     // take best from wildcard or _system
     auto it = _dbAccess.find("*");
