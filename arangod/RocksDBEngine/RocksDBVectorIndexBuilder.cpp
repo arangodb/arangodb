@@ -23,6 +23,8 @@
 
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "Indexes/IndexFactory.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
@@ -567,7 +569,10 @@ VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuildManager::build(std::stop_token stopToken) {
+Result VectorIndexBuildManager::build(
+    metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
+    metrics::Histogram<metrics::LogScale<double>>& ingestionDuration,
+    std::stop_token stopToken) {
   if (!_index.setTrainingState(VectorIndexTrainingState::kUntrained,
                                VectorIndexTrainingState::kTraining)) {
     return Result{TRI_ERROR_INTERNAL, "vector index is not in untrained state"};
@@ -595,6 +600,7 @@ Result VectorIndexBuildManager::build(std::stop_token stopToken) {
 
   std::shared_ptr<faiss::IndexIVF> faissIndex;
   constexpr int kMaxRetries = 10;
+  auto const trainStart = std::chrono::steady_clock::now();
   for (int retry = 0; retry < kMaxRetries; ++retry) {
     if (shouldAbort()) {
       _index.resetTrainingState();
@@ -615,6 +621,9 @@ Result VectorIndexBuildManager::build(std::stop_token stopToken) {
       std::this_thread::sleep_for(std::chrono::milliseconds(50 * (retry + 1)));
     }
   }
+  auto const trainEnd = std::chrono::steady_clock::now();
+  trainingDuration.count(
+      std::chrono::duration<double>(trainEnd - trainStart).count());
 
   if (shouldAbort()) {
     _index.resetTrainingState();
@@ -633,7 +642,9 @@ Result VectorIndexBuildManager::build(std::stop_token stopToken) {
 
   std::unique_ptr<rocksdb::Iterator> it(_rootDB->NewIterator(ro, docCF));
   it->Seek(_bounds.start());
+  auto const ingestStart = std::chrono::steady_clock::now();
   Result res = ingestVectors(_index, _rootDB, std::move(it), stopToken);
+  auto const ingestEnd = std::chrono::steady_clock::now();
 
   if (res.fail()) {
     LOG_TOPIC("e166b", ERR, Logger::ENGINES)
@@ -642,6 +653,8 @@ Result VectorIndexBuildManager::build(std::stop_token stopToken) {
         << "Vector ingestion failed: " << res.errorMessage();
     _index.resetTrainingState();
   } else {
+    ingestionDuration.count(
+        std::chrono::duration<double>(ingestEnd - ingestStart).count());
     LOG_TOPIC("e165b", INFO, Logger::ENGINES)
         << "[shard=" << _index.collection().name()
         << ", index=" << _index.id().id() << "] "

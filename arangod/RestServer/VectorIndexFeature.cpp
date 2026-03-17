@@ -24,6 +24,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Parameters.h"
@@ -33,7 +34,8 @@ namespace arangodb {
 VectorIndexFeature::VectorIndexFeature(
     application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this},
-      _coordinator(server.getFeature<DatabaseFeature>()) {
+      _coordinator(server.getFeature<DatabaseFeature>(),
+                   server.getFeature<metrics::MetricsFeature>()) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }

@@ -253,7 +253,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                    collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -288,7 +288,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -320,7 +320,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -339,6 +339,11 @@ function VectorIndexTestCreationWithVectors() {
             }
         },
 
+        // TODO(jbajic) What to do here, now that we ignore the possible errors during
+        // creation but only after the build thread picks up the building and creating
+        // of vector index. But now since we can create a vector index willy nilly and
+        // hope that the VectorIndexBuildCoordinator succeeds, the error reporting
+        // get very much delayed
         testCreatingVectorIndexWhenFieldNotPresent: function() {
             let gen = randomNumberGeneratorFloat(seed);
 
@@ -356,7 +361,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -392,7 +397,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -435,7 +440,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2_stored",
                     type: "vector",
                     inBackground: false,
@@ -538,10 +543,10 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
             assertEqual("vector", indexInfo.type);
             assertTrue(indexInfo.storedValues !== undefined, "storedValues should be defined");
             assertEqual(5, indexInfo.storedValues.length, "Should have 5 stored values");
-            
+
             const expectedStoredValues = ["name", "value", "category", "metadata", "description"];
             for (let i = 0; i < expectedStoredValues.length; i++) {
-                assertEqual(expectedStoredValues[i], indexInfo.storedValues[i], 
+                assertEqual(expectedStoredValues[i], indexInfo.storedValues[i],
                     `Stored value ${i} should match expected value`);
             }
         },
@@ -549,7 +554,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
         testInsertDocumentsWithStoredValues: function() {
             // Test inserting documents when index has storedValues
             const initialCount = collection.count();
-            
+
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
             for (let i = 0; i < 10; ++i) {
@@ -569,7 +574,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
                     description: `New document ${i}`
                 });
             }
-            
+
             const insertResult = collection.insert(docs);
             assertEqual(10, insertResult.length, "Should insert 10 documents");
             assertEqual(initialCount + 10, collection.count(), "Collection count should increase by 10");
@@ -578,7 +583,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
         testInsertDocumentsWithMissingStoredValues: function() {
             // Test inserting documents with missing storedValues fields
             const initialCount = collection.count();
-            
+
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
             for (let i = 0; i < 5; ++i) {
@@ -588,7 +593,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
                 // Missing storedValues fields
                 docs.push({vector});
             }
-            
+
             const insertResult = collection.insert(docs);
             assertEqual(5, insertResult.length, "Should insert 5 documents");
             assertEqual(initialCount + 5, collection.count(), "Collection count should increase by 5");
@@ -621,7 +626,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
             };
 
             collection.update(docToUpdate._key, updateData);
-            
+
             // Verify the update
             const updatedDoc = collection.document(docToUpdate._key);
             assertEqual("updated_name", updatedDoc.name);
@@ -647,7 +652,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
             };
 
             collection.replace(docToReplace._key, replaceData);
-            
+
             // Verify the replacement
             const replacedDoc = collection.document(docToReplace._key);
             assertEqual("replaced_name", replacedDoc.name);
@@ -662,7 +667,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
             const vector = Array.from({
                 length: dimension
             }, () => gen());
-            
+
             const testDoc = {
                 vector,
                 name: "test_types", // string
@@ -679,7 +684,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
             };
 
             const insertResult = collection.insert(testDoc);
-            
+
             // Verify the document was inserted correctly*/
             const insertedDoc = collection.document(insertResult._key);
             assertEqual("test_types", insertedDoc.name);
@@ -697,15 +702,15 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
             // Test that storedValues are properly serialized in index definition
             const indexes = collection.getIndexes();
             const vectorIndex = indexes.find(idx => idx.name === "vector_l2_stored");
-            
+
             assertTrue(vectorIndex !== undefined, "Vector index should exist");
             assertTrue(vectorIndex.storedValues !== undefined, "storedValues should be defined");
             assertEqual(5, vectorIndex.storedValues.length, "Should have 5 stored values");
-            
+
             // Verify the storedValues array contains the expected fields
             const expectedFields = ["name", "value", "category", "metadata", "description"];
             for (const field of expectedFields) {
-                assertTrue(vectorIndex.storedValues.includes(field), 
+                assertTrue(vectorIndex.storedValues.includes(field),
                     `storedValues should include field: ${field}`);
             }
         },

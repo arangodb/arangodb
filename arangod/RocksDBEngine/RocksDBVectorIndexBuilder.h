@@ -26,6 +26,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Indexes/VectorIndexDefinition.h"
+#include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 
@@ -123,7 +124,9 @@ class VectorIndexBuildManager {
  public:
   explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
 
-  Result build(std::stop_token stopToken = {});
+  Result build(metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
+               metrics::Histogram<metrics::LogScale<double>>& ingestionDuration,
+               std::stop_token stopToken = {});
 
  private:
   RocksDBVectorIndex& _index;

@@ -29,6 +29,8 @@
 #include <thread>
 #include <unordered_map>
 
+#include "Metrics/Fwd.h"
+
 namespace arangodb {
 
 class DatabaseFeature;
@@ -41,7 +43,8 @@ class VectorIndexBuildCoordinator {
   static constexpr auto kSleepGranularity = std::chrono::seconds(1);
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
-  explicit VectorIndexBuildCoordinator(DatabaseFeature& dbFeature);
+  explicit VectorIndexBuildCoordinator(DatabaseFeature& dbFeature,
+                                       metrics::MetricsFeature& metrics);
 
   void start(std::uint32_t maxOmpThreads);
   void beginShutdown();
@@ -66,6 +69,11 @@ class VectorIndexBuildCoordinator {
   DatabaseFeature& _dbFeature;
   std::jthread _thread;
   std::unordered_map<std::uint64_t, FailedBuildInfo> _failedBuilds;
+
+  metrics::Gauge<uint64_t>& _untrainedCount;
+  metrics::Gauge<uint64_t>& _trainingOngoingCount;
+  metrics::Histogram<metrics::LogScale<double>>& _trainingDuration;
+  metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
 };
 
 }  // namespace arangodb

@@ -25,6 +25,10 @@
 
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
@@ -36,6 +40,29 @@
 #include <omp.h>
 #include <unordered_set>
 
+DECLARE_GAUGE(arangodb_vector_index_untrained_count, uint64_t,
+              "Number of untrained vector indexes on this DBServer");
+DECLARE_GAUGE(arangodb_vector_index_training_ongoing_count, uint64_t,
+              "Number of vector index trainings currently ongoing");
+
+struct VectorTrainingDurationScale {
+  static arangodb::metrics::LogScale<double> scale() {
+    return {10.0, 0.0, 100000.0, 10};
+  }
+};
+DECLARE_HISTOGRAM(arangodb_vector_index_training_duration,
+                  VectorTrainingDurationScale,
+                  "Duration of vector index training [s]");
+
+struct VectorIngestionDurationScale {
+  static arangodb::metrics::LogScale<double> scale() {
+    return {10.0, 0.0, 100000.0, 10};
+  }
+};
+DECLARE_HISTOGRAM(arangodb_vector_index_ingestion_duration,
+                  VectorIngestionDurationScale,
+                  "Duration of vector index ingestion [s]");
+
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <pthread.h>
 #endif
@@ -43,8 +70,14 @@
 namespace arangodb {
 
 VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
-    DatabaseFeature& dbFeature)
-    : _dbFeature(dbFeature) {}
+    DatabaseFeature& dbFeature, metrics::MetricsFeature& metrics)
+    : _dbFeature(dbFeature),
+      _untrainedCount(metrics.add(arangodb_vector_index_untrained_count{})),
+      _trainingOngoingCount(
+          metrics.add(arangodb_vector_index_training_ongoing_count{})),
+      _trainingDuration(metrics.add(arangodb_vector_index_training_duration{})),
+      _ingestionDuration(
+          metrics.add(arangodb_vector_index_ingestion_duration{})) {}
 
 void VectorIndexBuildCoordinator::start(std::uint32_t maxOmpThreads) {
   _thread = std::jthread([this, maxOmpThreads](std::stop_token stopToken) {
@@ -117,6 +150,7 @@ void VectorIndexBuildCoordinator::scanAndBuild(
   // Collect objectIds seen this scan to prune stale entries from
   // _failedBuilds (e.g. indexes that were dropped since the last scan).
   std::unordered_set<std::uint64_t> seenObjectIds;
+  uint64_t untrainedCount = 0;
 
   _dbFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
     if (stopToken.stop_requested()) {
@@ -135,6 +169,7 @@ void VectorIndexBuildCoordinator::scanAndBuild(
           continue;
         }
 
+        ++untrainedCount;
         seenObjectIds.insert(vecIdx.objectId());
 
         auto const* rcoll =
@@ -155,8 +190,13 @@ void VectorIndexBuildCoordinator::scanAndBuild(
             << "] Training threshold reached (" << vecIdx.trainingThreshold()
             << " documents). Starting deferred training.";
 
+        _trainingOngoingCount.fetch_add(1);
         vector::VectorIndexBuildManager builder(vecIdx);
-        if (auto const res = builder.build(stopToken); res.fail()) {
+        auto const res =
+            builder.build(_trainingDuration, _ingestionDuration, stopToken);
+        _trainingOngoingCount.fetch_sub(1);
+
+        if (res.fail()) {
           LOG_TOPIC("e164b", ERR, Logger::ENGINES)
               << "[index=" << vecIdx.id().id()
               << "] Vector build failed: " << res.errorMessage();
@@ -167,10 +207,14 @@ void VectorIndexBuildCoordinator::scanAndBuild(
 
         // Built one index — return to the scan loop so we sleep
         // before starting the next one.
+        _untrainedCount.store(untrainedCount > 0 ? untrainedCount - 1 : 0,
+                              std::memory_order_relaxed);
         return;
       }
     }
   });
+
+  _untrainedCount.store(untrainedCount, std::memory_order_relaxed);
 
   // Prune failed build entries for indexes that no longer exist.
   std::erase_if(_failedBuilds, [&](auto const& entry) {
