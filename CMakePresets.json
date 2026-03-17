@@ -274,12 +274,20 @@
       "configurePreset": "enterprise-pr-tsan"
     },
     {
+      "name": "enterprise-pr-arm-tsan",
+      "configurePreset": "enterprise-pr-arm-tsan"
+    },
+    {
       "name": "enterprise-developer-alubsan",
       "configurePreset": "enterprise-developer-alubsan"
     },
     {
       "name": "enterprise-pr-alubsan",
       "configurePreset": "enterprise-pr-alubsan"
+    },
+    {
+      "name": "enterprise-pr-arm-alubsan",
+      "configurePreset": "enterprise-pr-arm-alubsan"
     },
     {
       "name": "enterprise-developer-coverage",
@@ -293,6 +301,10 @@
     },
     {
       "name": "enterprise-pr",
+      "configurePreset": "enterprise-pr"
+    },
+    {
+      "name": "enterprise-pr-arm",
       "configurePreset": "enterprise-pr"
     }
   ]
