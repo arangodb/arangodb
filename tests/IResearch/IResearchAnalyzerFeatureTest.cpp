@@ -460,14 +460,14 @@ class IResearchAnalyzerFeatureTest
     using namespace ::testing;
     EXPECT_CALL(*um, databaseAuthLevel)
         .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string const& dbname) {
+            [this](std::string const& username, std::string_view dbname) {
               auto const it = _userMap.find(username);
               EXPECT_NE(it, _userMap.end());
               return it->second.databaseAuthLevel(dbname);
             }));
     EXPECT_CALL(*um, collectionAuthLevel)
         .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
+                                                 std::string_view dbname,
                                                  std::string_view cname) {
           auto const it = _userMap.find(username);
           if (it == _userMap.end()) {

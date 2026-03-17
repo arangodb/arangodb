@@ -60,9 +60,9 @@ struct UserManagerMock : UserManager {
               (std::string const&, std::string const&, std::string&),
               (override));
   MOCK_METHOD(Level, databaseAuthLevel,
-              (std::string const&, std::string const&, bool), (override));
+              (std::string const&, std::string_view, bool), (override));
   MOCK_METHOD(Level, collectionAuthLevel,
-              (std::string const&, std::string const&, std::string_view, bool),
+              (std::string const&, std::string_view, std::string_view, bool),
               (override));
   MOCK_METHOD(Result, accessTokens, (std::string const&, velocypack::Builder&),
               (override));

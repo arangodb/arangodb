@@ -192,7 +192,7 @@ class V8ViewsTest
     EXPECT_CALL(*um, databaseAuthLevel)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string const& dbname) {
+            [this](std::string const& username, std::string_view dbname) {
               if (_userMap.empty()) {
                 return auth::Level::NONE;
               }

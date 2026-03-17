@@ -186,7 +186,7 @@ class IResearchViewTest
     using namespace ::testing;
     EXPECT_CALL(*um, collectionAuthLevel)
         .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
+                                                 std::string_view dbname,
                                                  std::string_view const cname) {
           auto const it = _userMap.find(username);
           if (it == _userMap.end()) {

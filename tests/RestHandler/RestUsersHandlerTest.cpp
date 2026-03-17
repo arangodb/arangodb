@@ -177,7 +177,7 @@ class RestUsersHandlerTest
     EXPECT_CALL(*um, collectionAuthLevel)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
+                                                 std::string_view dbname,
                                                  std::string_view cname) {
           auto const it = _userMap.find(username);
           EXPECT_NE(it, _userMap.end());
