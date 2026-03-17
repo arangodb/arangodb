@@ -47,7 +47,7 @@
       "name": "arm",
       "cacheVariables": {
         "USE_LIBUNWIND": "Off",
-        "TARGET_ARCHITECTURE": "gravitron1"
+        "TARGET_ARCHITECTURE": "graviton1"
       }
     },
     {
