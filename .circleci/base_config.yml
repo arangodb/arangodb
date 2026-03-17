@@ -894,12 +894,9 @@ jobs:
   run-rta-tests:
     machine:
       image: ubuntu-2204:current
-    resource_class: large
-    #resource_class: << parameters.resource-class >>
+    resource_class: circleci-large
     parameters:
       suiteName:
-        type: string
-      resource-class:
         type: string
       enterprise:
         type: string
