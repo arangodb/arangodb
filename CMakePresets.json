@@ -117,6 +117,7 @@
       "name": "enterprise",
       "inherits": "release-base",
       "displayName": "Build ArangoDB Enterprise Edition (Release Build)",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
       "cacheVariables": {
         "USE_ENTERPRISE": "On"
       }
