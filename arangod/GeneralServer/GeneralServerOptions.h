@@ -41,10 +41,8 @@ struct GeneralServerOptions {
   bool enableTelemetrics = true;
 #endif
   bool returnQueueTimeHeader = true;
-  bool permanentRootRedirect = true;
   uint64_t compressResponseThreshold = 0;
   std::vector<std::string> accessControlAllowOrigins;
-  std::string redirectRootTo = "/";
   std::string supportInfoApiPolicy = "admin";
   std::string optionsApiPolicy = "jwt";
   uint64_t numIoThreads;  // initialized in ctor

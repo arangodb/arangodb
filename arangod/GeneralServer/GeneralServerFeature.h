@@ -70,8 +70,6 @@ class GeneralServerFeature final
   bool returnQueueTimeHeader() const noexcept;
   std::vector<std::string> const& accessControlAllowOrigins() const;
   Result reloadTLS();
-  bool permanentRootRedirect() const noexcept;
-  std::string redirectRootTo() const;
   std::string const& supportInfoApiPolicy() const noexcept;
   std::string const& optionsApiPolicy() const noexcept;
   uint64_t compressResponseThreshold() const noexcept;

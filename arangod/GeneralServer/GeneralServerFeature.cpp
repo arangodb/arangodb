@@ -246,13 +246,6 @@ server automatically when the timeout is reached. A keep-alive-timeout value of
       new VectorParameter<StringParameter>(
           &_options.accessControlAllowOrigins));
 
-  options->addOption("--http.redirect-root-to", "Redirect of the root URL.",
-                     new StringParameter(&_options.redirectRootTo));
-
-  options->addOption("--http.permanently-redirect-root",
-                     "Whether to use a permanent or temporary redirect.",
-                     new BooleanParameter(&_options.permanentRootRedirect));
-
   options
       ->addOption("--http.return-queue-time-header",
                   "Whether to return the `x-arango-queue-time-seconds` header "
@@ -460,14 +453,6 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
     }
   }
   return res;
-}
-
-bool GeneralServerFeature::permanentRootRedirect() const noexcept {
-  return _options.permanentRootRedirect;
-}
-
-std::string GeneralServerFeature::redirectRootTo() const {
-  return _options.redirectRootTo;
 }
 
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {

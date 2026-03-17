@@ -204,4 +204,11 @@ void LegacyOptionsFeature::collectOptions(
   options->addObsoleteOption(
       "--web-interface.trusted-proxy",
       "The list of proxies to trust (can be IP or network)", true);
+
+  options->addObsoleteOption("--http.redirect-root-to",
+                             "Redirect of the root URL.", true);
+
+  options->addObsoleteOption(
+      "--http.permanently-redirect-root",
+      "Whether to use a permanent or temporary redirect.", true);
 }
