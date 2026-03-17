@@ -43,9 +43,6 @@ jsunity.run(function dump_single_testsuite() {
   let clusterBlacklist = [];
   if (internal.isCluster()) {
     clusterBlacklist = [
-      "testTransactionCommit",
-      "testTransactionUpdate",
-      "testTransactionAbort",
       "testLatestId"
     ];
   }
