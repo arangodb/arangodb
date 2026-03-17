@@ -93,7 +93,7 @@ macro(graviton3)
 endmacro()
 
 
-if (NOT TARGET_ARCHITECTURE OR TARGET_ARCHITECTURE STREQUAL "auto" OR TARGET_ARCHITECTURE STREQUAL "sandybridge" OR TARGET_ARCHITECTURE STREQUAL "sandy-bridge")
+if (NOT TARGET_ARCHITECTURE OR TARGET_ARCHITECTURE STREQUAL "auto" OR TARGET_ARCHITECTURE STREQUAL "sandybridge" OR TARGET_ARCHITECTURE STREQUAL "sandy-bridge" OR TARGET_ARCHITECTURE STREQUAL "graviton1")
   # It's our default mode. empty and auto and sandy-bridge for backward compatibility
   # TODO(MBkkt) iresearch now probably doesn't work without any host specific options, should be fixed?
   if (ARCH_AMD64)
