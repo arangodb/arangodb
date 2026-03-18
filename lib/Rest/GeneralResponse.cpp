@@ -393,7 +393,6 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_CURSOR_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_QUERY_GEO_INDEX_MISSING):
-    case static_cast<int>(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING):
     case static_cast<int>(TRI_ERROR_QUERY_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_USER_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_TRANSACTION_NOT_FOUND):
