@@ -43,6 +43,20 @@ function metadataCoordinatorMetricsSuite() {
   const shardFollowersOutOfSyncMetric = "arangodb_metadata_shard_followers_out_of_sync_number";
 
   // Helper: compute total shard count across all databases (shards * replicationFactor)
+  // const getTotalShardCount = function() {
+  //   const currentDb = db._name();
+  //   let count = 0;
+  //   db._useDatabase("_system");
+  //   db._databases().forEach((database) => {
+  //     db._useDatabase(database);
+  //     db._collections().forEach((col) => {
+  //       const props = col.properties();
+  //       count += props.numberOfShards * props.replicationFactor;
+  //     });
+  //   });
+  //   db._useDatabase(currentDb);
+  //   return count;
+  // };
   const getTotalShardCount = function() {
     const currentDb = db._name();
     let count = 0;
@@ -51,10 +65,13 @@ function metadataCoordinatorMetricsSuite() {
       db._useDatabase(database);
       db._collections().forEach((col) => {
         const props = col.properties();
-        count += props.numberOfShards * props.replicationFactor;
+        const shards = props.numberOfShards * props.replicationFactor;
+        require("internal").print(`DB: ${database}, Col: ${col.name()}, shards: ${props.numberOfShards}, RF: ${props.replicationFactor}, total: ${shards}`);
+        count += shards;
       });
     });
     db._useDatabase(currentDb);
+    require("internal").print(`getTotalShardCount result: ${count}`);
     return count;
   };
 
