@@ -592,6 +592,11 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // release inventory lock while we are filling the index
     inventoryLocker.unlock();
 
+    res = buildIdx->beforeCreate();
+    if (res.fail()) {
+      co_return res;
+    }
+
     // Step 4. fill index
     // Vector index creation is handled by the VectorIndexBuildCoordinator,
     // so we skip the filling here.

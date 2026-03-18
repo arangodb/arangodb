@@ -143,6 +143,10 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   }
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
+  /// @brief Validates existing documents before the index is persisted.
+  /// Creates a snapshot and iterator, then delegates to _wrapped->prepareIndex.
+  Result beforeCreate();
+
   /// @brief assumes an exclusive lock on the collection
   Result fillIndexForeground(
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);

@@ -114,6 +114,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   StoredValues const& storedValues() const override;
 
+  Result prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
+                      rocksdb::Slice upper, RocksDBMethods* methods) override;
+
   void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) override;
 

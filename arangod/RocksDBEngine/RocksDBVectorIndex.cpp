@@ -297,6 +297,30 @@ void RocksDBVectorIndex::resetTrainingState() noexcept {
                           std::memory_order_acq_rel);
 }
 
+Result RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
+                                        rocksdb::Slice upper,
+                                        RocksDBMethods* /*methods*/) {
+  std::vector<float> input;
+  input.reserve(_definition.dimension);
+
+  while (it->Valid() && it->key().compare(upper) < 0) {
+    auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
+    if (auto const res = vector::readDocumentVectorData(
+            doc, _fields, _definition.dimension, input);
+        res.fail()) {
+      if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
+        it->Next();
+        continue;
+      }
+      return res;
+    }
+    input.clear();
+    it->Next();
+  }
+
+  return {};
+}
+
 void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
                                         TRI_voc_tick_t tick,
                                         transaction::Methods* trx) {
