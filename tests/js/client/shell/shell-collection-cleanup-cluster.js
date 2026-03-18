@@ -89,6 +89,12 @@ function collectionCleanupSuite() {
     throw `Metric ${metricName} did not converge to ${expectedTotalShards} after 60s`;
   };
 
+  let printPlanCollections = function() {
+    let plan = AM.call("read", [["/arango/Plan/Collections/_system"]]);
+    require("internal").print("Plan collections in _system:", 
+      JSON.stringify(Object.keys(plan[0].arango.Plan.Collections._system), null, 2));
+  };
+
   return {
 
     testCollectionCreationAndCleanup: function() {
@@ -96,6 +102,10 @@ function collectionCleanupSuite() {
       // in creation, if the coordinator is rebooted.
 
       getCoordinatorRebootId();
+
+      // Capture baseline BEFORE injecting anything
+      const baselineShards = getMetric(getCoordinators()[0].endpoint, 
+                                       "arangodb_metadata_total_number_of_shards");
 
       let res = arango.PUT(maintenanceURL, '"on"');
       assertFalse(res.error);
@@ -130,7 +140,8 @@ function collectionCleanupSuite() {
         // wait until collection is removed from Plan
         waitForCollectionRemoval(collId);
         // Wait for coordinator's _shardsToPlanServers to be updated
-        waitForShardsRemovedFromMetric(6);
+        waitForShardsRemovedFromMetric(baselineShards);
+        printPlanCollections();
 
       } finally {
         arango.PUT(maintenanceURL, '"off"');
@@ -139,6 +150,10 @@ function collectionCleanupSuite() {
 
     testCollectionCreationNoCleanup: function() {
       getCoordinatorRebootId();
+
+      // Capture baseline BEFORE injecting anything
+      const baselineShards = getMetric(getCoordinators()[0].endpoint, 
+                                       "arangodb_metadata_total_number_of_shards");
     
       let res = arango.PUT(maintenanceURL, '"on"');
       assertFalse(res.error);
@@ -178,7 +193,8 @@ function collectionCleanupSuite() {
         arango.PUT(maintenanceURL, '"off"');
         waitForCollectionRemoval(collId);
         // Wait for coordinator's _shardsToPlanServers to be updated
-        waitForShardsRemovedFromMetric(6);
+        waitForShardsRemovedFromMetric(baselineShards);
+        printPlanCollections();
       }
     },
 
@@ -192,6 +208,10 @@ function collectionCleanupSuite() {
       }
 
       getCoordinatorRebootId();
+
+      // Capture baseline BEFORE injecting anything
+      const baselineShards = getMetric(getCoordinators()[0].endpoint, 
+                                       "arangodb_metadata_total_number_of_shards");
 
       let res = arango.PUT(maintenanceURL, '"on"');
       assertFalse(res.error);
@@ -283,7 +303,8 @@ function collectionCleanupSuite() {
         waitForCollectionRemoval(shadowCollId2);
         waitForCollectionRemoval(shadowCollId3);
         // Wait for coordinator's _shardsToPlanServers to be updated
-        waitForShardsRemovedFromMetric(6);
+        waitForShardsRemovedFromMetric(baselineShards);
+        printPlanCollections();
 
       } finally {
         arango.PUT(maintenanceURL, '"off"');
