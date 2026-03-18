@@ -113,7 +113,7 @@ function VectorIndexReplicationFailoverTest() {
 
             // Increase replicationFactor to 2
             collection.properties({replicationFactor: 2});
-            
+
             // Get the leader after sync
             waitForShardsInSync(collName, 120, 1);
             let shards = collection.shards(true);

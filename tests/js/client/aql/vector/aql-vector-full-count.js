@@ -238,7 +238,8 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 4;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = 12132390894;
 
     return {
@@ -292,6 +293,11 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
             if (ensureIndexSlot === numBatches) {
                 ensureIndex();
             }
+
+            assertTrue(
+                waitForIndexBuild(collection, "ready", 60),
+                "Expected index to become ready with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -324,7 +330,8 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
             assertEqual(results.length, 10);
 
             const stats = queryResults.getExtra().stats;
-            assertEqual(stats.fullCount, 16);
+            // 4 outer iterations (0..3) * numberOfDocs inner docs
+            assertEqual(stats.fullCount, numberOfDocs * 4);
         },
     };
 }
@@ -333,7 +340,8 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 3;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = 12132390894;
 
     return {
@@ -387,6 +395,11 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
             if (ensureIndexSlot === numBatches) {
                 ensureIndex();
             }
+
+            assertTrue(
+                waitForIndexBuild(collection, "ready", 60),
+                "Expected index to become ready with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -402,9 +415,7 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                 LIMIT 10
                 RETURN {k: d._key}
             `;
-            // i=0    i=1    i=2    i=3    i=4
-            // 1,2,3, 1,2,3, 1,2,3, 1|,2,3 1,2,3
-            //                       ^ LIMIT 10
+            // 5 outer iterations (0..4) * numberOfDocs inner docs
             const options = {
                 fullCount: true,
             };
@@ -422,7 +433,7 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
             assertEqual(results.length, 10);
 
             const stats = queryResults.getExtra().stats;
-            assertEqual(stats.fullCount, 15);
+            assertEqual(stats.fullCount, numberOfDocs * 5);
         },
     };
 }
@@ -475,6 +486,11 @@ function VectorIndexLargeLimitTestSuite() {
                     nLists: nLists,
                 },
             });
+
+            assertTrue(
+                waitForIndexBuild(collection, "ready", 120),
+                "Expected index to become ready with " + largeLimitNumberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {

@@ -43,9 +43,6 @@ const {
     waitForIndexBuild,
 } = require("@arangodb/testutils/vector-index-common");
 
-const {
-    versionHas
-} = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
@@ -441,20 +438,20 @@ function VectorIndexL2TestSuite() {
         testApproxL2Subquery: function() {
             const queries = [aql`
         FOR docOuter IN ${collection}
-        FILTER docOuter.nonVector < 10 
+        FILTER docOuter.nonVector < 10
         LET neighbours = (FOR docInner IN ${collection}
           LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
-          SORT dist 
-          LIMIT 5 
+          SORT dist
+          LIMIT 5
           RETURN { key: docInner._key, dist })
         RETURN { key: docOuter._key, neighbours }
         `, aql`
         FOR docOuter IN ${collection}
-        FILTER docOuter.nonVector < 10 
+        FILTER docOuter.nonVector < 10
         LET neighbours = (FOR docInner IN ${collection}
           LET dist = APPROX_NEAR_L2(docOuter.vector, docInner.vector)
-          SORT dist 
-          LIMIT 5 
+          SORT dist
+          LIMIT 5
           RETURN { key: docInner._key, dist })
         RETURN { key: docOuter._key, neighbours }
         `];
@@ -479,7 +476,7 @@ function VectorIndexL2TestSuite() {
         testApproxL2SubqueryWithSkipping: function() {
             const queryWithSkip = aql`
             FOR docOuter IN ${collection}
-            FILTER docOuter.nonVector < 10 
+            FILTER docOuter.nonVector < 10
             SORT docOuter.nonVector
             LET neighbours = (FOR docInner IN ${collection}
               LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
@@ -490,7 +487,7 @@ function VectorIndexL2TestSuite() {
 
             const queryWithoutSkip = aql`
               FOR docOuter IN ${collection}
-              FILTER docOuter.nonVector < 10 
+              FILTER docOuter.nonVector < 10
               SORT docOuter.nonVector
               LET neighbours = (FOR docInner IN ${collection}
                 LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
@@ -883,7 +880,8 @@ function MultipleVectorIndexesOnField() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 1000;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
 
     return {
@@ -912,13 +910,7 @@ function MultipleVectorIndexesOnField() {
                     fieldVec: vector
                 });
             }
-            const batchSize = 100;
-            const numBatches = Math.ceil(docs.length / batchSize);
-            for (let i = 0; i < numBatches; i++) {
-                const start = i * batchSize;
-                const end = Math.min(start + batchSize, docs.length);
-                collection.insert(docs.slice(start, end));
-            }
+            collection.insert(docs);
         },
 
         tearDown: function() {
@@ -949,6 +941,12 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+
+            assertTrue(
+                waitForIndexBuild(collection, "ready", 120),
+                "Expected all vector indexes to become ready"
+            );
+
             const query =
                 "FOR d IN " +
                 collection.name() +
@@ -998,6 +996,11 @@ function MultipleVectorIndexesOnField() {
                 },
             });
 
+            assertTrue(
+                waitForIndexBuild(collection, "ready", 120),
+                "Expected all vector indexes to become ready"
+            );
+
             const query =
                 "FOR d IN " +
                 collection.name() +
@@ -1044,6 +1047,11 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+
+            assertTrue(
+                waitForIndexBuild(collection, "ready", 120),
+                "Expected all vector indexes to become ready"
+            );
 
             const queries = [{
                 query: "FOR d IN " +

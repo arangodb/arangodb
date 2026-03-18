@@ -986,7 +986,8 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = 5229487420515249;
     const nProbeAndNlists = 10;
 
@@ -1060,10 +1061,14 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
                 makeVectorIndexDef("vector_winner", ["val", "category"], 5),
             ], seed);
 
-            print("Index creation order: " + JSON.stringify(indexDefs.map(d => d.name)));
             for (let def of indexDefs) {
                 collection.ensureIndex(def);
             }
+
+            assertTrue(
+                waitForIndexBuild(collection, "ready", 120),
+                "Expected all vector indexes to become ready"
+            );
         },
 
         tearDownAll: function() {
