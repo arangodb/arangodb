@@ -58,12 +58,6 @@ bool operator==(VPackSlice a, VPackSlice b) {
   return arangodb::velocypack::NormalizedCompare::equals(a, b);
 }
 
-static VPackBuffer<uint8_t> toBuffer(VPackString const& s) {
-  VPackBuffer<uint8_t> b;
-  b.append(s.getDataPtr(), s.slice().byteSize());
-  return b;
-}
-
 struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
   struct RequestPrototype {
     std::string endpoint;

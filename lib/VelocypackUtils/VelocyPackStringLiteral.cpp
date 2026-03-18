@@ -35,3 +35,11 @@ auto arangodb::velocypack::operator"" _vpack(const char* json, size_t size)
 
   return VPackString{parser.builder().slice()};
 }
+
+arangodb::velocypack::Buffer<uint8_t> arangodb::velocypack::toBuffer(
+    VPackString const& s) {
+  arangodb::velocypack::Buffer<uint8_t> b;
+  b.append(s.getDataPtr(), s.slice().byteSize());
+  return b;
+}
+
