@@ -47,10 +47,9 @@ defmodule Toast.Deployment.FailurePointTest do
     end
   end
 
-  defp deployment(pid, mode \\ :single_server) do
+  defp deployment(pid) do
     %Deployment{
       id: "test",
-      mode: mode,
       controller: pid
     }
   end

@@ -57,6 +57,7 @@ defmodule ToastTest.AttributionTest do
       log_file: log_file,
       launch_spec: %LaunchSpec{
         id: id,
+        role: :single,
         executable: "/usr/bin/arangod",
         args: [],
         env: [],

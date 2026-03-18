@@ -7,10 +7,10 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
 
   describe "status/1 with dead controller" do
     test "returns :stopped when controller process has died" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+      id = "test-status-dead-#{System.unique_integer([:positive])}"
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
 
-      deployment = make_deployment(pid, id: "test-status-dead")
+      deployment = make_deployment(pid, id: id)
 
       GenServer.stop(pid)
 

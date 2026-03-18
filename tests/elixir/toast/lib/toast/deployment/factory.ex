@@ -12,8 +12,11 @@ defmodule Toast.Deployment.Factory do
   defmodule LaunchSpec do
     @moduledoc "Server launch specification produced by Factory."
 
+    @type role :: :single | :agent | :dbserver | :coordinator
+
     @type t :: %__MODULE__{
             id: String.t(),
+            role: role(),
             executable: Path.t(),
             args: [String.t()],
             env: [{String.t(), String.t()}],
@@ -23,23 +26,40 @@ defmodule Toast.Deployment.Factory do
             log_file: Path.t()
           }
 
-    @enforce_keys [:id, :executable, :args, :env, :working_dir, :server_dir, :port, :log_file]
-    defstruct [:id, :executable, :args, :env, :working_dir, :server_dir, :port, :log_file]
+    @enforce_keys [
+      :id,
+      :role,
+      :executable,
+      :args,
+      :env,
+      :working_dir,
+      :server_dir,
+      :port,
+      :log_file
+    ]
+    defstruct [:id, :role, :executable, :args, :env, :working_dir, :server_dir, :port, :log_file]
   end
 
   @type launch_spec :: LaunchSpec.t()
 
-  @spec build_single_server(Config.t(), String.t(), pos_integer()) ::
-          {:ok, launch_spec()} | {:error, term()}
-  def build_single_server(config, server_id, port) do
-    with {:ok, executable} <- Filesystem.find_arangod(config.build_dir),
+  @spec build_single_server(Config.t(), String.t()) ::
+          {:ok, [launch_spec()]} | {:error, term()}
+  def build_single_server(config, server_id) do
+    with {:ok, port} <- PortAllocator.allocate(),
+         {:ok, executable} <- Filesystem.find_arangod(config.build_dir),
          {:ok, repo_root} <- Filesystem.find_repository_root(config.build_dir),
          {:ok, paths} <- Filesystem.create_server_dirs(config.work_dir, server_id) do
-      server_spec = %{role: :single, port: port, args: build_server_args(config)}
+      merged_args =
+        config
+        |> build_server_args()
+        |> Map.merge(role_config_args(config, :single))
+
+      server_spec = %{role: :single, port: port, args: merged_args}
       args = CommandBuilder.build_args(server_spec, paths, repo_root)
 
       spec = %LaunchSpec{
         id: server_id,
+        role: :single,
         executable: executable,
         args: args,
         env:
@@ -62,17 +82,11 @@ defmodule Toast.Deployment.Factory do
           "  args: #{Enum.join(args, " ")}"
       )
 
-      {:ok, spec}
+      {:ok, [spec]}
     end
   end
 
-  @type cluster_topology :: %{
-          agents: [launch_spec()],
-          dbservers: [launch_spec()],
-          coordinators: [launch_spec()]
-        }
-
-  @spec build_cluster(Config.t(), String.t()) :: {:ok, cluster_topology()} | {:error, term()}
+  @spec build_cluster(Config.t(), String.t()) :: {:ok, [launch_spec()]} | {:error, term()}
   def build_cluster(config, deployment_id) do
     total_count =
       config.cluster_agents + config.cluster_dbservers + config.cluster_coordinators
@@ -126,7 +140,7 @@ defmodule Toast.Deployment.Factory do
             "#{length(agents)} agents, #{length(dbservers)} dbservers, #{length(coordinators)} coordinators"
         )
 
-        {:ok, %{agents: agents, dbservers: dbservers, coordinators: coordinators}}
+        {:ok, agents ++ dbservers ++ coordinators}
       end
     end
   end
@@ -172,6 +186,7 @@ defmodule Toast.Deployment.Factory do
       {:ok,
        %LaunchSpec{
          id: server_id,
+         role: role,
          executable: executable,
          args: args,
          env:
@@ -218,6 +233,7 @@ defmodule Toast.Deployment.Factory do
   defp role_config_args(config, :coordinator), do: config.coordinator_args
   defp role_config_args(config, :dbserver), do: config.dbserver_args
   defp role_config_args(config, :agent), do: config.agent_args
+  defp role_config_args(_config, :single), do: %{}
 
   defp build_server_args(config) do
     base = config.server_args

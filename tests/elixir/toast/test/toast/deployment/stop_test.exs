@@ -43,11 +43,25 @@ defmodule Toast.Deployment.StopTest do
   alias Toast.Deployment
   alias Toast.Deployment.{ServerInstance, StopTest.MockController}
 
-  defp deployment(pid, mode \\ :single_server) do
+  defp deployment(pid) do
     %Deployment{
       id: "test-deploy",
-      mode: mode,
       controller: pid
+    }
+  end
+
+  defp cluster_deployment(pid) do
+    %Deployment{
+      id: "test-deploy",
+      controller: pid,
+      servers: %{
+        "coordinator-0" => %Toast.Deployment.ServerInfo{
+          id: "coordinator-0",
+          role: :coordinator,
+          port: 8529,
+          endpoint: "http://localhost:8529"
+        }
+      }
     }
   end
 
@@ -91,7 +105,7 @@ defmodule Toast.Deployment.StopTest do
           responses: %{shutdown: :ok, get_info: %{servers: servers, error: nil}}
         )
 
-      {:ok, stop_info} = Deployment.stop(deployment(pid, :cluster))
+      {:ok, stop_info} = Deployment.stop(deployment(pid))
 
       assert map_size(stop_info.servers) == 3
       assert stop_info.servers["agent-0"].role == :agent
@@ -173,7 +187,7 @@ defmodule Toast.Deployment.StopTest do
     test "returns {:error, :not_cluster}" do
       {:ok, pid} = MockController.start_link()
 
-      assert {:error, :not_cluster} = Deployment.dump_agency(deployment(pid, :single_server))
+      assert {:error, :not_cluster} = Deployment.dump_agency(deployment(pid))
 
       # Should not have called the controller at all
       assert MockController.calls(pid) == []
@@ -185,14 +199,14 @@ defmodule Toast.Deployment.StopTest do
       {:ok, pid} =
         MockController.start_link(responses: %{dump_agency: %{"agency_data" => "test"}})
 
-      assert :ok = Deployment.dump_agency(deployment(pid, :cluster))
+      assert :ok = Deployment.dump_agency(cluster_deployment(pid))
       assert [:dump_agency] = MockController.calls(pid)
     end
 
     test "passes timeout option" do
       {:ok, pid} = MockController.start_link()
 
-      Deployment.dump_agency(deployment(pid, :cluster), timeout: 90_000)
+      Deployment.dump_agency(cluster_deployment(pid), timeout: 90_000)
 
       # The timeout is passed to GenServer.call, not as part of the message,
       # so we just verify the call was made
@@ -203,7 +217,7 @@ defmodule Toast.Deployment.StopTest do
       dead = spawn(fn -> :ok end)
       Process.sleep(50)
 
-      assert {:error, _reason} = Deployment.dump_agency(deployment(dead, :cluster))
+      assert {:error, _reason} = Deployment.dump_agency(cluster_deployment(dead))
     end
   end
 end

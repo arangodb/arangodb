@@ -26,7 +26,7 @@ defmodule Toast.Deployment.FactoryTest do
     )
   end
 
-  describe "build_single_server/3" do
+  describe "build_single_server/2" do
     setup do
       tmp_dir =
         Path.join(System.tmp_dir!(), "toast_factory_test_#{System.unique_integer([:positive])}")
@@ -41,11 +41,12 @@ defmodule Toast.Deployment.FactoryTest do
       work_dir = Path.join(tmp_dir, "work")
       config = make_config(build_dir, work_dir)
 
-      assert {:ok, spec} = Factory.build_single_server(config, "srv1", 8529)
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv1")
 
       assert spec.id == "srv1"
+      assert spec.role == :single
       assert spec.executable == Path.join([build_dir, "bin", "arangod"])
-      assert spec.port == 8529
+      assert is_integer(spec.port) and spec.port > 0
       assert spec.env == []
       assert is_list(spec.args)
       assert spec.working_dir == repo_root
@@ -56,7 +57,7 @@ defmodule Toast.Deployment.FactoryTest do
       assert "--define" in spec.args
       assert "TOP_DIR=#{repo_root}" in spec.args
       assert "--server.endpoint" in spec.args
-      assert "tcp://0.0.0.0:8529" in spec.args
+      assert "tcp://0.0.0.0:#{spec.port}" in spec.args
     end
 
     test "creates data and app directories", %{tmp_dir: tmp_dir} do
@@ -64,7 +65,7 @@ defmodule Toast.Deployment.FactoryTest do
       work_dir = Path.join(tmp_dir, "work")
       config = make_config(build_dir, work_dir)
 
-      assert {:ok, _spec} = Factory.build_single_server(config, "srv2", 8530)
+      assert {:ok, [_spec]} = Factory.build_single_server(config, "srv2")
 
       assert File.dir?(Path.join([work_dir, "srv2", "data"]))
       assert File.dir?(Path.join([work_dir, "srv2", "apps"]))
@@ -76,7 +77,7 @@ defmodule Toast.Deployment.FactoryTest do
       work_dir = Path.join(tmp_dir, "work")
       config = make_config(empty_build, work_dir)
 
-      assert {:error, msg} = Factory.build_single_server(config, "srv3", 8531)
+      assert {:error, msg} = Factory.build_single_server(config, "srv3")
       assert msg =~ "arangod not found"
     end
 
@@ -85,7 +86,7 @@ defmodule Toast.Deployment.FactoryTest do
       work_dir = Path.join(tmp_dir, "work")
       config = make_config(build_dir, work_dir, show_server_logs: false)
 
-      assert {:ok, spec} = Factory.build_single_server(config, "srv-log1", 8540)
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-log1")
       assert not Enum.any?(spec.args, &(&1 == "--log.output"))
     end
 
@@ -94,7 +95,7 @@ defmodule Toast.Deployment.FactoryTest do
       work_dir = Path.join(tmp_dir, "work")
       config = make_config(build_dir, work_dir, show_server_logs: true)
 
-      assert {:ok, spec} = Factory.build_single_server(config, "srv-log2", 8541)
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-log2")
       assert has_flag_value?(spec.args, "--log.output", "+")
     end
 
@@ -108,7 +109,7 @@ defmodule Toast.Deployment.FactoryTest do
           server_args: %{"log.output" => "custom", "extra" => "val"}
         )
 
-      assert {:ok, spec} = Factory.build_single_server(config, "srv-custom", 8542)
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-custom")
       assert has_flag_value?(spec.args, "--log.output", "custom")
       assert has_flag_value?(spec.args, "--extra", "val")
     end
@@ -124,7 +125,7 @@ defmodule Toast.Deployment.FactoryTest do
       %{tmp_dir: tmp_dir}
     end
 
-    test "returns correct topology structure", %{tmp_dir: tmp_dir} do
+    test "returns flat list ordered by deploy order", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
       work_dir = Path.join(tmp_dir, "work")
 
@@ -135,11 +136,25 @@ defmodule Toast.Deployment.FactoryTest do
           cluster_coordinators: 1
         )
 
-      assert {:ok, topology} = Factory.build_cluster(config, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
 
-      assert length(topology.agents) == 3
-      assert length(topology.dbservers) == 3
-      assert length(topology.coordinators) == 1
+      assert length(specs) == 7
+
+      agents = Enum.filter(specs, &(&1.role == :agent))
+      dbservers = Enum.filter(specs, &(&1.role == :dbserver))
+      coordinators = Enum.filter(specs, &(&1.role == :coordinator))
+
+      assert length(agents) == 3
+      assert length(dbservers) == 3
+      assert length(coordinators) == 1
+
+      # Agents come first, then dbservers, then coordinators
+      agent_indices = Enum.map(agents, &Enum.find_index(specs, fn s -> s.id == &1.id end))
+      dbserver_indices = Enum.map(dbservers, &Enum.find_index(specs, fn s -> s.id == &1.id end))
+      coord_indices = Enum.map(coordinators, &Enum.find_index(specs, fn s -> s.id == &1.id end))
+
+      assert Enum.max(agent_indices) < Enum.min(dbserver_indices)
+      assert Enum.max(dbserver_indices) < Enum.min(coord_indices)
     end
 
     test "server IDs follow naming convention", %{tmp_dir: tmp_dir} do
@@ -153,12 +168,16 @@ defmodule Toast.Deployment.FactoryTest do
           cluster_coordinators: 1
         )
 
-      assert {:ok, topology} = Factory.build_cluster(config, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
 
-      agent_ids = Enum.map(topology.agents, & &1.id)
+      agents = Enum.filter(specs, &(&1.role == :agent))
+      dbservers = Enum.filter(specs, &(&1.role == :dbserver))
+      coordinators = Enum.filter(specs, &(&1.role == :coordinator))
+
+      agent_ids = Enum.map(agents, & &1.id)
       assert agent_ids == ["test-cluster-agent-0", "test-cluster-agent-1", "test-cluster-agent-2"]
 
-      dbserver_ids = Enum.map(topology.dbservers, & &1.id)
+      dbserver_ids = Enum.map(dbservers, & &1.id)
 
       assert dbserver_ids == [
                "test-cluster-dbserver-0",
@@ -166,7 +185,7 @@ defmodule Toast.Deployment.FactoryTest do
                "test-cluster-dbserver-2"
              ]
 
-      coordinator_ids = Enum.map(topology.coordinators, & &1.id)
+      coordinator_ids = Enum.map(coordinators, & &1.id)
       assert coordinator_ids == ["test-cluster-coordinator-0"]
     end
 
@@ -181,11 +200,12 @@ defmodule Toast.Deployment.FactoryTest do
           cluster_coordinators: 1
         )
 
-      assert {:ok, topology} = Factory.build_cluster(config, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
 
-      agent_ports = Enum.map(topology.agents, & &1.port)
+      agents = Enum.filter(specs, &(&1.role == :agent))
+      agent_ports = Enum.map(agents, & &1.port)
 
-      for {agent, port} <- Enum.zip(topology.agents, agent_ports) do
+      for {agent, port} <- Enum.zip(agents, agent_ports) do
         args = agent.args
 
         assert "--agency.activate" in args
@@ -196,7 +216,6 @@ defmodule Toast.Deployment.FactoryTest do
         assert "--agency.my-address" in args
         assert "tcp://127.0.0.1:#{port}" in args
 
-        # Each agent endpoint should appear once (3 agents = 3 --agency.endpoint entries)
         endpoint_count =
           args
           |> Enum.chunk_every(2, 1, :discard)
@@ -217,9 +236,11 @@ defmodule Toast.Deployment.FactoryTest do
           cluster_coordinators: 1
         )
 
-      assert {:ok, topology} = Factory.build_cluster(config, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
 
-      for dbserver <- topology.dbservers do
+      dbservers = Enum.filter(specs, &(&1.role == :dbserver))
+
+      for dbserver <- dbservers do
         args = dbserver.args
 
         assert "--cluster.my-role" in args
@@ -227,7 +248,6 @@ defmodule Toast.Deployment.FactoryTest do
         assert "--cluster.my-address" in args
         assert "tcp://127.0.0.1:#{dbserver.port}" in args
 
-        # All agency endpoints should be passed (3 agents = 3 entries)
         endpoint_count =
           args
           |> Enum.chunk_every(2, 1, :discard)
@@ -248,9 +268,11 @@ defmodule Toast.Deployment.FactoryTest do
           cluster_coordinators: 1
         )
 
-      assert {:ok, topology} = Factory.build_cluster(config, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
 
-      for coordinator <- topology.coordinators do
+      coordinators = Enum.filter(specs, &(&1.role == :coordinator))
+
+      for coordinator <- coordinators do
         args = coordinator.args
 
         assert "--cluster.my-role" in args
@@ -273,13 +295,9 @@ defmodule Toast.Deployment.FactoryTest do
           cluster_coordinators: 1
         )
 
-      assert {:ok, topology} = Factory.build_cluster(config, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
 
-      all_ports =
-        Enum.map(topology.agents, & &1.port) ++
-          Enum.map(topology.dbservers, & &1.port) ++
-          Enum.map(topology.coordinators, & &1.port)
-
+      all_ports = Enum.map(specs, & &1.port)
       assert length(all_ports) == length(Enum.uniq(all_ports))
     end
 
@@ -294,12 +312,28 @@ defmodule Toast.Deployment.FactoryTest do
           cluster_coordinators: 1
         )
 
-      assert {:ok, topology} = Factory.build_cluster(config, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
 
-      all_specs = topology.agents ++ topology.dbservers ++ topology.coordinators
-
-      for spec <- all_specs do
+      for spec <- specs do
         assert spec.working_dir == repo_root
+      end
+    end
+
+    test "all specs have correct role field", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      work_dir = Path.join(tmp_dir, "work")
+
+      config =
+        make_config(build_dir, work_dir,
+          cluster_agents: 3,
+          cluster_dbservers: 3,
+          cluster_coordinators: 1
+        )
+
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
+
+      for spec <- specs do
+        assert spec.role in [:agent, :dbserver, :coordinator]
       end
     end
 

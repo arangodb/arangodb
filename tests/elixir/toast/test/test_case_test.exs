@@ -64,7 +64,6 @@ defmodule ToastTest.CaseTest do
   defp fake_deployment(overrides \\ %{}) do
     defaults = %{
       id: "test-1",
-      mode: :single_server,
       controller: self()
     }
 
@@ -72,7 +71,6 @@ defmodule ToastTest.CaseTest do
 
     %Toast.Deployment{
       id: fields.id,
-      mode: fields.mode,
       controller: fields.controller
     }
   end

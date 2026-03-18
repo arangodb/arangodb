@@ -86,21 +86,21 @@ defmodule ToastTest.RunnerTest do
     test "check_health returns :ok for :ready status" do
       {:ok, ctrl} =
         Controller.start_link(
-          mode: Controller.SingleServer,
-          config: Config.load()
+          config: Config.load(),
+          id: "runner-test-#{System.unique_integer([:positive])}"
         )
 
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
 
-      deployment = mock_deployment(ctrl, :single_server)
+      deployment = mock_deployment(ctrl)
       assert Deployment.check_health(deployment) == :ok
     end
 
     test "check_health returns error for :degraded status" do
       {:ok, ctrl} =
         Controller.start_link(
-          mode: Controller.SingleServer,
-          config: Config.load()
+          config: Config.load(),
+          id: "runner-test-#{System.unique_integer([:positive])}"
         )
 
       :sys.replace_state(ctrl, fn state ->
@@ -116,7 +116,7 @@ defmodule ToastTest.RunnerTest do
         %{state | status: :degraded, servers: %{id => server}}
       end)
 
-      deployment = mock_deployment(ctrl, :single_server)
+      deployment = mock_deployment(ctrl)
       assert {:error, msg} = Deployment.check_health(deployment)
       assert msg =~ "degraded"
     end
@@ -124,8 +124,8 @@ defmodule ToastTest.RunnerTest do
     test "check_health returns error for :failed status" do
       {:ok, ctrl} =
         Controller.start_link(
-          mode: Controller.SingleServer,
-          config: Config.load()
+          config: Config.load(),
+          id: "runner-test-#{System.unique_integer([:positive])}"
         )
 
       crash_info = %CrashInfo{
@@ -134,10 +134,22 @@ defmodule ToastTest.RunnerTest do
         timestamp: DateTime.utc_now()
       }
 
+      :sys.replace_state(ctrl, fn state ->
+        %{
+          state
+          | servers: %{
+              "test-server" => %Toast.Deployment.ServerInstance{
+                id: "test-server",
+                role: :single
+              }
+            }
+        }
+      end)
+
       send(ctrl, {:server_crashed, "test-server", crash_info})
       :sys.get_state(ctrl)
 
-      deployment = mock_deployment(ctrl, :single_server)
+      deployment = mock_deployment(ctrl)
       assert {:error, msg} = Deployment.check_health(deployment)
       assert msg =~ "crashed" or msg =~ "failed"
     end
@@ -145,11 +157,11 @@ defmodule ToastTest.RunnerTest do
     test "check_health returns error for :stopped status" do
       {:ok, ctrl} =
         Controller.start_link(
-          mode: Controller.SingleServer,
-          config: Config.load()
+          config: Config.load(),
+          id: "runner-test-#{System.unique_integer([:positive])}"
         )
 
-      deployment = mock_deployment(ctrl, :single_server)
+      deployment = mock_deployment(ctrl)
       # Controller starts in :stopped status
       assert {:error, msg} = Deployment.check_health(deployment)
       assert msg =~ "not ready"
@@ -325,10 +337,9 @@ defmodule ToastTest.RunnerTest do
     end
   end
 
-  defp mock_deployment(ctrl, mode) do
+  defp mock_deployment(ctrl) do
     %Deployment{
       id: "test-runner",
-      mode: mode,
       controller: ctrl
     }
   end

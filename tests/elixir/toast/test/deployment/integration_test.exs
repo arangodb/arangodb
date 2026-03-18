@@ -14,7 +14,7 @@ defmodule Toast.Deployment.IntegrationTest do
       {:ok, deployment} = Toast.Deployment.start_single_server()
 
       assert %Toast.Deployment{} = deployment
-      assert deployment.mode == :single_server
+      refute Toast.Deployment.cluster?(deployment)
       endpoint = Toast.Deployment.default_endpoint(deployment)
       assert endpoint =~ ~r/^http:\/\/127\.0\.0\.1:\d+$/
       assert is_pid(deployment.controller)
@@ -66,7 +66,7 @@ defmodule Toast.Deployment.IntegrationTest do
       {:ok, deployment} = Toast.Deployment.start_cluster(startup_timeout: 120_000)
 
       assert %Toast.Deployment{} = deployment
-      assert deployment.mode == :cluster
+      assert Toast.Deployment.cluster?(deployment)
       endpoint = Toast.Deployment.default_endpoint(deployment)
       assert endpoint =~ ~r/^http:\/\/127\.0\.0\.1:\d+$/
       assert is_pid(deployment.controller)

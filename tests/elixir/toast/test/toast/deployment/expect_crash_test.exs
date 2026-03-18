@@ -43,14 +43,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
   alias Toast.Config
   alias Toast.Deployment
-  alias Toast.Deployment.Controller
+  alias Toast.Deployment.{Controller, ServerInstance}
   alias Toast.Deployment.ExpectCrashTest.MockController
   alias Toast.Process.CrashInfo
 
-  defp deployment(pid, mode \\ :single_server) do
+  defp deployment(pid) do
     %Deployment{
       id: "test",
-      mode: mode,
       controller: pid
     }
   end
@@ -202,8 +201,8 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
       {:ok, ctrl} =
         Controller.start_link(
-          mode: Controller.SingleServer,
-          config: config
+          config: config,
+          id: "expect-crash-#{System.unique_integer([:positive])}"
         )
 
       on_exit(fn ->
@@ -214,8 +213,8 @@ defmodule Toast.Deployment.ExpectCrashTest do
         end
       end)
 
-      # Set status to :ready so suspend_health_monitor is valid
-      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+      # Set status to :ready and inject a server
+      inject_single_server(ctrl)
 
       # Expect crash with a very short timeout
       :ok = GenServer.call(ctrl, {:expect_crash, state_server_id(ctrl), 50})
@@ -237,8 +236,8 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
       {:ok, ctrl} =
         Controller.start_link(
-          mode: Controller.SingleServer,
-          config: config
+          config: config,
+          id: "expect-crash-#{System.unique_integer([:positive])}"
         )
 
       on_exit(fn ->
@@ -249,7 +248,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
         end
       end)
 
-      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+      inject_single_server(ctrl)
 
       server_id = state_server_id(ctrl)
 
@@ -270,8 +269,8 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
       {:ok, ctrl} =
         Controller.start_link(
-          mode: Controller.SingleServer,
-          config: config
+          config: config,
+          id: "expect-crash-#{System.unique_integer([:positive])}"
         )
 
       on_exit(fn ->
@@ -282,7 +281,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
         end
       end)
 
-      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+      inject_single_server(ctrl)
 
       server_id = state_server_id(ctrl)
 
@@ -302,8 +301,8 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
       {:ok, ctrl} =
         Controller.start_link(
-          mode: Controller.SingleServer,
-          config: config
+          config: config,
+          id: "expect-crash-#{System.unique_integer([:positive])}"
         )
 
       on_exit(fn ->
@@ -314,7 +313,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
         end
       end)
 
-      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+      inject_single_server(ctrl)
 
       server_id = state_server_id(ctrl)
       :ok = GenServer.call(ctrl, {:expect_crash, server_id, 5_000})
@@ -338,7 +337,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
   end
 
-  describe "mode independence" do
+  describe "expect_crash with different server IDs" do
     setup do
       {:ok, pid} = MockController.start_link()
 
@@ -353,18 +352,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
       %{pid: pid}
     end
 
-    test "expect_crash works for single_server mode", %{pid: pid} do
-      assert :ok = Deployment.expect_crash(deployment(pid, :single_server), "s1")
-      assert [{:expect_crash, "s1", 30_000}] = MockController.calls(pid)
-    end
-
-    test "expect_crash works for cluster mode", %{pid: pid} do
-      assert :ok = Deployment.expect_crash(deployment(pid, :cluster), "dbserver-0")
+    test "expect_crash works for any server ID", %{pid: pid} do
+      assert :ok = Deployment.expect_crash(deployment(pid), "dbserver-0")
       assert [{:expect_crash, "dbserver-0", 30_000}] = MockController.calls(pid)
     end
 
-    test "verify_crash works for cluster mode", %{pid: pid} do
-      assert {:ok, _} = Deployment.verify_crash(deployment(pid, :cluster), "dbserver-0")
+    test "verify_crash works for any server ID", %{pid: pid} do
+      assert {:ok, _} = Deployment.verify_crash(deployment(pid), "dbserver-0")
       assert [{:verify_crash, "dbserver-0", 5_000}] = MockController.calls(pid)
     end
   end
@@ -372,5 +366,12 @@ defmodule Toast.Deployment.ExpectCrashTest do
   defp state_server_id(ctrl) do
     state = :sys.get_state(ctrl)
     state.id
+  end
+
+  defp inject_single_server(ctrl) do
+    :sys.replace_state(ctrl, fn state ->
+      server = %ServerInstance{id: state.id, role: :single}
+      %{state | status: :ready, servers: Map.put_new(state.servers, state.id, server)}
+    end)
   end
 end

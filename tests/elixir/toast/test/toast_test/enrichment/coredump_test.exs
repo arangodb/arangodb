@@ -10,6 +10,7 @@ defmodule ToastTest.Enrichment.CoredumpTest do
       role: :single,
       launch_spec: %Toast.Deployment.Factory.LaunchSpec{
         id: "single1",
+        role: :single,
         executable: executable,
         args: [],
         env: [],

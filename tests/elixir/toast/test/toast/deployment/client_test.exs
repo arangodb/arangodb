@@ -18,7 +18,6 @@ defmodule Toast.Deployment.ClientTest do
 
     %Deployment{
       id: "test",
-      mode: Keyword.get(opts, :mode, :single_server),
       controller: self(),
       api_version: Keyword.get(opts, :api_version),
       servers: server_map
@@ -39,7 +38,7 @@ defmodule Toast.Deployment.ClientTest do
     test "returns correct client when multiple servers exist" do
       srv1 = server_info("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
       srv2 = server_info("db-0", endpoint: "http://localhost:9002", role: :dbserver)
-      d = deployment([srv1, srv2], mode: :cluster)
+      d = deployment([srv1, srv2])
 
       assert {:ok, client} = Deployment.client(d, "db-0")
       assert client.base_url == "http://localhost:9002"
@@ -59,7 +58,7 @@ defmodule Toast.Deployment.ClientTest do
       srv1 = server_info("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
       srv2 = server_info("coord-1", endpoint: "http://localhost:9002", role: :coordinator)
       srv3 = server_info("db-0", endpoint: "http://localhost:9003", role: :dbserver)
-      d = deployment([srv1, srv2, srv3], mode: :cluster)
+      d = deployment([srv1, srv2, srv3])
 
       assert {:ok, client} = Deployment.client_for_role(d, :coordinator)
       assert client.base_url in ["http://localhost:9001", "http://localhost:9002"]
@@ -68,7 +67,7 @@ defmodule Toast.Deployment.ClientTest do
     test "index targets specific server" do
       srv1 = server_info("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
       srv2 = server_info("coord-1", endpoint: "http://localhost:9002", role: :coordinator)
-      d = deployment([srv1, srv2], mode: :cluster)
+      d = deployment([srv1, srv2])
 
       assert {:ok, client} = Deployment.client_for_role(d, :coordinator, 1)
       assert client.base_url in ["http://localhost:9001", "http://localhost:9002"]
@@ -76,14 +75,14 @@ defmodule Toast.Deployment.ClientTest do
 
     test "returns {:error, :not_found} when no servers match role" do
       srv = server_info("db-0", endpoint: "http://localhost:9001", role: :dbserver)
-      d = deployment([srv], mode: :cluster)
+      d = deployment([srv])
 
       assert {:error, :not_found} = Deployment.client_for_role(d, :coordinator)
     end
 
     test "returns {:error, :not_found} when index out of range" do
       srv = server_info("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
-      d = deployment([srv], mode: :cluster)
+      d = deployment([srv])
 
       assert {:error, :not_found} = Deployment.client_for_role(d, :coordinator, 5)
     end

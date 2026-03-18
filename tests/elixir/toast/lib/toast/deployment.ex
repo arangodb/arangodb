@@ -39,36 +39,31 @@ defmodule Toast.Deployment do
 
   @type t :: %__MODULE__{
           id: String.t(),
-          mode: mode(),
           controller: pid(),
           api_version: non_neg_integer() | String.t() | nil,
           servers: %{String.t() => ServerInfo.t()}
         }
 
-  @enforce_keys [:id, :mode, :controller]
-  defstruct [:id, :mode, :controller, :api_version, servers: %{}]
+  @enforce_keys [:id, :controller]
+  defstruct [:id, :controller, :api_version, servers: %{}]
 
-  @doc """
-  Default endpoint for the deployment.
-
-  For single server: the server's endpoint.
-  For cluster: the first coordinator's endpoint (ordered by server ID).
-  """
-  @spec default_endpoint(t()) :: String.t() | nil
-  def default_endpoint(%__MODULE__{mode: :single_server, servers: servers}) do
-    case Map.values(servers) do
-      [server] -> server.endpoint
-      _ -> nil
-    end
+  @doc "Returns true if this is a cluster deployment."
+  @spec cluster?(t()) :: boolean()
+  def cluster?(%__MODULE__{servers: servers}) do
+    Enum.any?(servers, fn {_id, srv} -> srv.role in [:agent, :dbserver, :coordinator] end)
   end
 
-  def default_endpoint(%__MODULE__{mode: :cluster, servers: servers}) do
+  @doc """
+  Default endpoint for the deployment — the first coordinator or single server, ordered by ID.
+  """
+  @spec default_endpoint(t()) :: String.t() | nil
+  def default_endpoint(%__MODULE__{servers: servers}) do
     servers
-    |> Enum.filter(fn {_id, srv} -> srv.role == :coordinator end)
-    |> Enum.min_by(fn {id, _srv} -> id end, fn -> nil end)
+    |> Enum.filter(fn {_id, srv} -> srv.role in [:coordinator, :single] end)
+    |> Enum.sort_by(fn {id, _} -> id end)
     |> case do
-      nil -> nil
-      {_id, server} -> server.endpoint
+      [{_id, srv} | _] -> srv.endpoint
+      [] -> nil
     end
   end
 
@@ -97,29 +92,37 @@ defmodule Toast.Deployment do
 
   defp do_start(mode, config, opts) do
     Logger.info("Starting #{mode} deployment (work_dir=#{config.work_dir})")
+    id = Keyword.get_lazy(opts, :id, fn -> generate_id(mode) end)
 
-    controller_opts =
-      [
-        mode: mode_module(mode),
-        config: config,
-        on_crash: Keyword.get(opts, :on_crash),
-        on_event: Keyword.get(opts, :on_event)
-      ] ++ Keyword.take(opts, [:id])
-
-    with {:ok, pid} <- Toast.Deployment.Supervisor.start_controller(controller_opts),
-         :ok <- Controller.deploy(pid, config.startup_timeout) do
+    with {:ok, specs} <- build_specs(mode, config, id),
+         {:ok, pid} <-
+           Toast.Deployment.Supervisor.start_controller(
+             config: config,
+             id: id,
+             on_crash: Keyword.get(opts, :on_crash),
+             on_event: Keyword.get(opts, :on_event)
+           ),
+         :ok <- Controller.deploy(pid, specs, config.startup_timeout) do
       info = Controller.get_info(pid)
 
       {:ok,
        %__MODULE__{
          id: info.id,
-         mode: mode,
          controller: pid,
          api_version: config.api_version,
          servers: build_server_infos(info)
        }}
     end
   end
+
+  defp build_specs(:single_server, config, id),
+    do: Toast.Deployment.Factory.build_single_server(config, id)
+
+  defp build_specs(:cluster, config, id),
+    do: Toast.Deployment.Factory.build_cluster(config, id)
+
+  defp generate_id(:single_server), do: "toast-#{System.unique_integer([:positive])}"
+  defp generate_id(:cluster), do: "toast-cluster-#{System.unique_integer([:positive])}"
 
   @doc """
   Abort all running deployments by sending SIGABRT to every server.
@@ -173,18 +176,18 @@ defmodule Toast.Deployment do
   @spec dump_agency(t(), keyword()) :: :ok | {:error, term()}
   def dump_agency(deployment, opts \\ [])
 
-  def dump_agency(%__MODULE__{mode: :single_server}, _opts) do
-    {:error, :not_cluster}
-  end
+  def dump_agency(%__MODULE__{} = deployment, opts) do
+    if cluster?(deployment) do
+      timeout = Keyword.get(opts, :timeout, 60_000)
 
-  def dump_agency(%__MODULE__{mode: :cluster, controller: pid}, opts) do
-    timeout = Keyword.get(opts, :timeout, 60_000)
-
-    try do
-      Controller.dump_agency(pid, timeout)
-      :ok
-    catch
-      :exit, _ -> {:error, :controller_dead}
+      try do
+        Controller.dump_agency(deployment.controller, timeout)
+        :ok
+      catch
+        :exit, _ -> {:error, :controller_dead}
+      end
+    else
+      {:error, :not_cluster}
     end
   end
 
@@ -265,24 +268,28 @@ defmodule Toast.Deployment do
 
   @doc "Get the cluster-internal ID for a toast server ID."
   @spec cluster_id(t(), String.t()) :: {:ok, String.t()} | {:error, :not_found | :not_cluster}
-  def cluster_id(%__MODULE__{mode: :cluster} = deployment, toast_id) do
-    controller_call(deployment, {:cluster_id, toast_id}, {:error, :not_found})
+  def cluster_id(%__MODULE__{} = deployment, toast_id) do
+    if cluster?(deployment) do
+      controller_call(deployment, {:cluster_id, toast_id}, {:error, :not_found})
+    else
+      {:error, :not_cluster}
+    end
   end
-
-  def cluster_id(%__MODULE__{}, _toast_id), do: {:error, :not_cluster}
 
   @doc "Get server info by cluster-internal ID."
   @spec server_by_cluster_id(t(), String.t()) ::
           {:ok, ServerInstance.t()} | {:error, :not_found | :not_cluster}
-  def server_by_cluster_id(%__MODULE__{mode: :cluster} = deployment, cluster_internal_id) do
-    controller_call(
-      deployment,
-      {:server_by_cluster_id, cluster_internal_id},
-      {:error, :not_found}
-    )
+  def server_by_cluster_id(%__MODULE__{} = deployment, cluster_internal_id) do
+    if cluster?(deployment) do
+      controller_call(
+        deployment,
+        {:server_by_cluster_id, cluster_internal_id},
+        {:error, :not_found}
+      )
+    else
+      {:error, :not_cluster}
+    end
   end
-
-  def server_by_cluster_id(%__MODULE__{}, _cluster_internal_id), do: {:error, :not_cluster}
 
   @doc "Get the deployment error if crashed. Returns nil if healthy."
   @spec deployment_error(t()) :: Controller.deployment_error()
@@ -449,9 +456,6 @@ defmodule Toast.Deployment do
   defp build_client(%__MODULE__{} = deployment, srv) do
     Client.new(srv.endpoint, api_version: deployment.api_version)
   end
-
-  defp mode_module(:single_server), do: Controller.SingleServer
-  defp mode_module(:cluster), do: Controller.Cluster
 
   defp controller_call(%__MODULE__{controller: pid}, function, default) do
     GenServer.call(pid, function)

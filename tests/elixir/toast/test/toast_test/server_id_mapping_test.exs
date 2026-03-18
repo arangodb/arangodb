@@ -16,8 +16,10 @@ defmodule ToastTest.ServerIdMappingTest do
 
   describe "cluster_id happy path" do
     setup do
+      id = "cluster-id-#{System.unique_integer([:positive])}"
+
       {:ok, ctrl} =
-        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
+        Controller.start_link(config: Toast.Config.load(), id: id)
 
       inject_cluster_state(ctrl, %{
         servers: %{
@@ -70,8 +72,10 @@ defmodule ToastTest.ServerIdMappingTest do
 
   describe "server_by_cluster_id happy path" do
     setup do
+      id = "server-by-cid-#{System.unique_integer([:positive])}"
+
       {:ok, ctrl} =
-        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
+        Controller.start_link(config: Toast.Config.load(), id: id)
 
       inject_cluster_state(ctrl, %{
         servers: %{
@@ -118,8 +122,10 @@ defmodule ToastTest.ServerIdMappingTest do
 
   describe "cluster_id_mapping populated after server injection" do
     test "mapping reflects all servers in the cluster" do
+      id = "cluster-mapping-#{System.unique_integer([:positive])}"
+
       {:ok, ctrl} =
-        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
+        Controller.start_link(config: Toast.Config.load(), id: id)
 
       on_exit(fn ->
         try do
@@ -171,34 +177,36 @@ defmodule ToastTest.ServerIdMappingTest do
   defp single_server_deployment(ctrl) do
     %Deployment{
       id: "test-1",
-      mode: :single_server,
-      controller: ctrl
+      controller: ctrl,
+      servers: %{
+        "single" => %Toast.Deployment.ServerInfo{
+          id: "single",
+          role: :single,
+          port: 8529,
+          endpoint: "http://localhost:8529"
+        }
+      }
     }
   end
 
   defp cluster_deployment(ctrl) do
     %Deployment{
       id: "test-cluster",
-      mode: :cluster,
-      controller: ctrl
+      controller: ctrl,
+      servers: %{
+        "coordinator-0" => %Toast.Deployment.ServerInfo{
+          id: "coordinator-0",
+          role: :coordinator,
+          port: 8529,
+          endpoint: "http://localhost:8529"
+        }
+      }
     }
   end
 
   defp inject_cluster_state(ctrl, %{servers: servers, cluster_id_mapping: mapping}) do
     :sys.replace_state(ctrl, fn state ->
-      agents = for {id, s} <- servers, s.role == :agent, do: id
-      dbservers = for {id, s} <- servers, s.role == :dbserver, do: id
-      coordinators = for {id, s} <- servers, s.role == :coordinator, do: id
-
-      mode_state = %{
-        state.mode_state
-        | agents: agents,
-          dbservers: dbservers,
-          coordinators: coordinators,
-          cluster_id_mapping: mapping
-      }
-
-      %{state | servers: servers, mode_state: mode_state, status: :ready}
+      %{state | servers: servers, cluster_id_mapping: mapping, status: :ready}
     end)
   end
 end

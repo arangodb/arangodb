@@ -1,7 +1,7 @@
 defmodule Toast.Deployment.CrashAbortTest do
   use ExUnit.Case, async: false
 
-  alias Toast.Deployment.Controller
+  alias Toast.Deployment.{Controller, ServerInstance}
   alias Toast.Process.ServerProcess
 
   import Toast.DeploymentTestHelpers, only: [make_deployment: 1, make_deployment: 2]
@@ -10,8 +10,14 @@ defmodule Toast.Deployment.CrashAbortTest do
 
   describe "crash status propagation" do
     test "controller status becomes :failed after crash message" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+      id = "crash-prop-#{System.unique_integer([:positive])}"
+
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+
+      # Inject a server so the crash handler can find it
+      :sys.replace_state(pid, fn state ->
+        %{state | servers: %{"test-server" => %ServerInstance{id: "test-server", role: :single}}}
+      end)
 
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
@@ -28,10 +34,15 @@ defmodule Toast.Deployment.CrashAbortTest do
     end
 
     test "Deployment.status/1 returns :failed for crashed deployment" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+      id = "crash-deploy-#{System.unique_integer([:positive])}"
+
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
 
       deployment = make_deployment(pid)
+
+      :sys.replace_state(pid, fn state ->
+        %{state | servers: %{"test-server" => %ServerInstance{id: "test-server", role: :single}}}
+      end)
 
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 134,
@@ -46,25 +57,32 @@ defmodule Toast.Deployment.CrashAbortTest do
     end
 
     test "Deployment.status/1 returns :stopped when controller is dead" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+      id = "crash-dead-#{System.unique_integer([:positive])}"
 
-      deployment = make_deployment(pid, id: "test-dead")
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+
+      deployment = make_deployment(pid, id: id)
       GenServer.stop(pid)
       assert Toast.Deployment.status(deployment) == :stopped
     end
 
     test "Deployment.deployment_error/1 returns nil for healthy controller" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+      id = "crash-healthy-#{System.unique_integer([:positive])}"
 
-      deployment = make_deployment(pid, id: "test-healthy")
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+
+      deployment = make_deployment(pid, id: id)
       assert Toast.Deployment.deployment_error(deployment) == nil
     end
 
     test "Deployment.deployment_error/1 returns crash details" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+      id = "crash-details-#{System.unique_integer([:positive])}"
+
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+
+      :sys.replace_state(pid, fn state ->
+        %{state | servers: %{"test-server" => %ServerInstance{id: "test-server", role: :single}}}
+      end)
 
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
@@ -75,7 +93,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       send(pid, {:server_crashed, "test-server", crash_info})
       :sys.get_state(pid)
 
-      deployment = make_deployment(pid, id: "test-crash-info")
+      deployment = make_deployment(pid, id: id)
 
       assert {:server_crashed, "test-server", ^crash_info} =
                Toast.Deployment.deployment_error(deployment)
@@ -84,8 +102,18 @@ defmodule Toast.Deployment.CrashAbortTest do
 
   describe "full crash chain with fake server" do
     test "ServerProcess crash propagates to Controller" do
-      {:ok, controller_pid} =
-        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+      id = "crash-chain-#{System.unique_integer([:positive])}"
+
+      {:ok, controller_pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+
+      :sys.replace_state(controller_pid, fn state ->
+        %{
+          state
+          | servers: %{
+              "crash-chain-test" => %ServerInstance{id: "crash-chain-test", role: :single}
+            }
+        }
+      end)
 
       {:ok, server_pid} =
         Toast.Process.Supervisor.start_server(
@@ -108,8 +136,13 @@ defmodule Toast.Deployment.CrashAbortTest do
 
   describe "cluster crash propagation" do
     test "Controller (cluster) status becomes :failed after crash message" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
+      id = "cluster-crash-#{System.unique_integer([:positive])}"
+
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+
+      :sys.replace_state(pid, fn state ->
+        %{state | servers: %{"dbserver-1" => %ServerInstance{id: "dbserver-1", role: :dbserver}}}
+      end)
 
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
@@ -126,10 +159,15 @@ defmodule Toast.Deployment.CrashAbortTest do
     end
 
     test "Deployment.status/1 returns :failed for cluster deployment with crashed server" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
+      id = "cluster-crash-deploy-#{System.unique_integer([:positive])}"
 
-      deployment = make_deployment(pid, id: "test-cluster", mode: :cluster)
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+
+      deployment = make_deployment(pid, id: id)
+
+      :sys.replace_state(pid, fn state ->
+        %{state | servers: %{"agent-1" => %ServerInstance{id: "agent-1", role: :agent}}}
+      end)
 
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
@@ -144,10 +182,15 @@ defmodule Toast.Deployment.CrashAbortTest do
     end
 
     test "Deployment.deployment_error/1 returns cluster crash details with server_id" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
+      id = "cluster-crash-error-#{System.unique_integer([:positive])}"
 
-      deployment = make_deployment(pid, id: "test-cluster-crash", mode: :cluster)
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+
+      deployment = make_deployment(pid, id: id)
+
+      :sys.replace_state(pid, fn state ->
+        %{state | servers: %{"agent-1" => %ServerInstance{id: "agent-1", role: :agent}}}
+      end)
 
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
@@ -163,10 +206,11 @@ defmodule Toast.Deployment.CrashAbortTest do
     end
 
     test "Deployment.deployment_error/1 returns nil for healthy cluster controller" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
+      id = "cluster-healthy-#{System.unique_integer([:positive])}"
 
-      deployment = make_deployment(pid, id: "test-cluster-healthy", mode: :cluster)
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+
+      deployment = make_deployment(pid, id: id)
       assert Toast.Deployment.deployment_error(deployment) == nil
     end
   end
@@ -176,12 +220,18 @@ defmodule Toast.Deployment.CrashAbortTest do
       test_pid = self()
       on_crash = fn _server_id, crash_info -> send(test_pid, {:crash_callback, crash_info}) end
 
+      id = "on-crash-#{System.unique_integer([:positive])}"
+
       {:ok, pid} =
         Controller.start_link(
-          mode: Controller.SingleServer,
           config: Toast.Config.load(),
+          id: id,
           on_crash: on_crash
         )
+
+      :sys.replace_state(pid, fn state ->
+        %{state | servers: %{"test-server" => %ServerInstance{id: "test-server", role: :single}}}
+      end)
 
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
@@ -200,12 +250,18 @@ defmodule Toast.Deployment.CrashAbortTest do
       test_pid = self()
       on_event = fn event -> send(test_pid, {:event, event}) end
 
+      id = "on-event-#{System.unique_integer([:positive])}"
+
       {:ok, pid} =
         Controller.start_link(
-          mode: Controller.SingleServer,
           config: Toast.Config.load(),
+          id: id,
           on_event: on_event
         )
+
+      :sys.replace_state(pid, fn state ->
+        %{state | servers: %{"test-server" => %ServerInstance{id: "test-server", role: :single}}}
+      end)
 
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
