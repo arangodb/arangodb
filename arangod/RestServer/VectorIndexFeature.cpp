@@ -22,6 +22,7 @@
 #include "VectorIndexFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Metrics/MetricsFeature.h"
@@ -35,6 +36,7 @@ VectorIndexFeature::VectorIndexFeature(
     application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this},
       _coordinator(server.getFeature<DatabaseFeature>(),
+                   server.getFeature<MaintenanceFeature>(),
                    server.getFeature<metrics::MetricsFeature>()) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();

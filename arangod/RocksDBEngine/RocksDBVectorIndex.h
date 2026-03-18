@@ -51,7 +51,7 @@ namespace arangodb {
 using VectorIndexLabelId = faiss::idx_t;
 
 enum class VectorIndexTrainingState : std::uint8_t {
-  kUntrained,
+  kUnusable,
   kTraining,
   kIngesting,
   kReady
@@ -150,7 +150,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::int64_t _trainingThreshold{0};
   std::atomic<VectorIndexTrainingState> _trainingState{
-      VectorIndexTrainingState::kUntrained};
+      VectorIndexTrainingState::kUnusable};
 };
 
 }  // namespace arangodb

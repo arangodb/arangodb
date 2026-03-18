@@ -23,6 +23,7 @@
 
 #include "RocksDBBuilderIndex.h"
 
+#include "Indexes/Index.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -31,6 +32,8 @@
 #include "Basics/files.h"
 #include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
@@ -347,6 +350,17 @@ static Result fillIndex(
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
+
+  if (ridx.type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    auto& vecIdx = static_cast<RocksDBVectorIndex&>(ridx);
+    it->Seek(bounds.start());
+    auto res = vector::ingestVectors(vecIdx, rootDB, std::move(it));
+    if (res.ok()) {
+      res = trx.commit();
+    }
+    return res;
+  }
+
 #ifdef USE_ENTERPRISE
   if (arangodb::rocksutils::rocksDBEndianness == RocksDBEndianness::Little &&
       numThreads > 1) {
@@ -369,7 +383,6 @@ static Result fillIndex(
 #endif
   return res;
 }
-
 
 Result RocksDBBuilderIndex::fillIndexForeground(
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {

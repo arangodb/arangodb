@@ -81,8 +81,8 @@ static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
 std::string_view trainingStateToString(
     VectorIndexTrainingState const state) noexcept {
   switch (state) {
-    case VectorIndexTrainingState::kUntrained:
-      return "untrained";
+    case VectorIndexTrainingState::kUnusable:
+      return "unusable";
     case VectorIndexTrainingState::kTraining:
       return "training";
     case VectorIndexTrainingState::kIngesting:
@@ -108,6 +108,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
   if (auto data = info.get("trainedData"); !data.isNone()) {
+    LOG_DEVEL << ADB_HERE
+              << " Trained vector index found, restoring from trained data.";
     velocypack::deserialize(data, _trainedData);
     _faissIndex =
         vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
@@ -117,9 +119,10 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
 
-    setTrainingState(VectorIndexTrainingState::kUntrained,
+    setTrainingState(VectorIndexTrainingState::kUnusable,
                      VectorIndexTrainingState::kReady);
   }
+  LOG_DEVEL << ADB_HERE << " No trained data found using defaults.";
 
   // Below 1000 documents training is not worth the effort nor having a index
   // 39 is the minimum number of documents to train the vector index, but that
@@ -285,7 +288,7 @@ bool RocksDBVectorIndex::setTrainingState(
 }
 
 void RocksDBVectorIndex::resetTrainingState() noexcept {
-  _trainingState.exchange(VectorIndexTrainingState::kUntrained,
+  _trainingState.exchange(VectorIndexTrainingState::kUnusable,
                           std::memory_order_acq_rel);
 }
 
@@ -319,7 +322,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   // During kIngesting we're in fillIndexBackground and must perform the
   // actual insert.
   if (const auto state = _trainingState.load();
-      state == VectorIndexTrainingState::kUntrained ||
+      state == VectorIndexTrainingState::kUnusable ||
       state == VectorIndexTrainingState::kTraining) {
     return {};
   }
@@ -380,7 +383,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   }
 
   if (auto const state = _trainingState.load();
-      state == VectorIndexTrainingState::kUntrained ||
+      state == VectorIndexTrainingState::kUnusable ||
       state == VectorIndexTrainingState::kTraining) {
     return {};
   }

@@ -28,8 +28,8 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -217,6 +217,72 @@ async<void> RestIndexHandler::getIndexes() {
       // all indexes we already reported:
       containers::FlatHashSet<std::string> covered;
 
+      // Fetch per-shard index data from Current for vector index
+      // state enrichment.
+      // TODO (jbajic): This is a bit unfortunate, but we currently have no
+      // better
+      auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+      std::shared_ptr<CollectionInfoCurrent> collCurrent;
+      try {
+        collCurrent = ci.getCollectionCurrent(
+            _vocbase.name(), std::to_string(coll->planId().id()));
+      } catch (...) {
+        // Best effort — if Current is not available, we skip shard
+        // state enrichment.
+      }
+
+      auto const shardIds = coll->shardIds();
+
+      // Helper: for a given bare index id (no collection prefix),
+      // add a "shards" object with per-shard training state and
+      // error info from CollectionInfoCurrent.
+      auto addVectorShardStates = [&](VPackBuilder& builder,
+                                      std::string_view bareIndexId) {
+        if (!collCurrent || !shardIds) {
+          return;
+        }
+        builder.add(VPackValue("shards"));
+        VPackObjectBuilder shardsObj(&builder);
+        for (auto const& [shardId, servers] : *shardIds) {
+          VPackSlice shardIndexes = collCurrent->getIndexes(shardId);
+          std::string state = "unknown";
+          std::string error;
+          if (shardIndexes.isArray()) {
+            for (auto const& idx : VPackArrayIterator(shardIndexes)) {
+              if (!idx.isObject()) {
+                continue;
+              }
+              auto idSlice = idx.get("id");
+              if (!idSlice.isString()) {
+                continue;
+              }
+              if (idSlice.stringView() == bareIndexId) {
+                // Check if this is an error entry.
+                if (auto errSlice = idx.get(StaticStrings::Error);
+                    errSlice.isBoolean() && errSlice.getBoolean()) {
+                  auto msgSlice = idx.get(StaticStrings::ErrorMessage);
+                  if (msgSlice.isString()) {
+                    error = msgSlice.copyString();
+                  }
+                }
+                if (auto tsSlice = idx.get("trainingState");
+                    tsSlice.isString()) {
+                  state = tsSlice.copyString();
+                }
+                break;
+              }
+            }
+          }
+          std::string shardName = static_cast<std::string>(shardId);
+          builder.add(VPackValue(shardName));
+          {
+            VPackObjectBuilder shardEntry(&builder);
+            builder.add("state", VPackValue(state));
+            builder.add("error", VPackValue(error));
+          }
+        }
+      };
+
       tmp.add(VPackValue("indexes"));
 
       {
@@ -224,13 +290,24 @@ async<void> RestIndexHandler::getIndexes() {
         // first return all ready indexes from the `LogicalCollection` object.
         for (auto pi : VPackArrayIterator(indexes.slice())) {
           std::string_view iid = pi.get("id").stringView();
-          tmp.add(pi);
 
-          // note this index as already covered
-          if (auto pos = iid.find('/'); pos != std::string::npos) {
-            iid = iid.substr(pos + 1);
+          // Strip collection prefix to get bare index id.
+          std::string_view bareId = iid;
+          if (auto pos = bareId.find('/'); pos != std::string::npos) {
+            bareId = bareId.substr(pos + 1);
           }
-          covered.emplace(iid);
+
+          // For vector indexes, enrich with per-shard training states.
+          auto typeSlice = pi.get("type");
+          if (typeSlice.isString() && typeSlice.stringView() == "vector") {
+            VPackObjectBuilder o(&tmp);
+            tmp.add(VPackObjectIterator(pi, true));
+            addVectorShardStates(tmp, bareId);
+          } else {
+            tmp.add(pi);
+          }
+
+          covered.emplace(bareId);
         }
         // now return all indexes which are currently being built:
         for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
@@ -330,6 +407,12 @@ async<void> RestIndexHandler::getIndexes() {
             // when isBackground is false, in which case no progress
             // is reported by design.
             tmp.add("progress", VPackValue(progress / shards->size()));
+          }
+
+          // For in-progress vector indexes, also add per-shard states.
+          if (auto typeSlice = pi.get("type");
+              typeSlice.isString() && typeSlice.stringView() == "vector") {
+            addVectorShardStates(tmp, iid);
           }
         }
       }

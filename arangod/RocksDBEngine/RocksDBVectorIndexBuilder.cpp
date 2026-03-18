@@ -25,6 +25,7 @@
 #include "Indexes/IndexFactory.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
@@ -570,10 +571,11 @@ VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
       _bounds(_rcoll->bounds()) {}
 
 Result VectorIndexBuildManager::build(
+    std::shared_ptr<RocksDBIndex> indexPtr,
     metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
     metrics::Histogram<metrics::LogScale<double>>& ingestionDuration,
     std::stop_token stopToken) {
-  if (!_index.setTrainingState(VectorIndexTrainingState::kUntrained,
+  if (!_index.setTrainingState(VectorIndexTrainingState::kUnusable,
                                VectorIndexTrainingState::kTraining)) {
     return Result{TRI_ERROR_INTERNAL, "vector index is not in untrained state"};
   }
@@ -598,29 +600,14 @@ Result VectorIndexBuildManager::build(
                              _index.fields(), _index.collection().name(),
                              _index.id().id());
 
-  std::shared_ptr<faiss::IndexIVF> faissIndex;
-  constexpr int kMaxRetries = 10;
   auto const trainStart = std::chrono::steady_clock::now();
-  for (int retry = 0; retry < kMaxRetries; ++retry) {
-    if (shouldAbort()) {
-      _index.resetTrainingState();
-      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-    }
-    std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
-    trainIt->Seek(_bounds.start());
-    try {
-      faissIndex = trainer.train(*trainIt, upper, stopToken);
-      break;
-    } catch (basics::Exception const& ex) {
-      bool noDocsForTraining =
-          ex.code() == TRI_ERROR_NOT_IMPLEMENTED &&
-          ex.message().find("documents must be present") != std::string::npos;
-      if (!noDocsForTraining || retry == kMaxRetries - 1) {
-        throw;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(50 * (retry + 1)));
-    }
+  if (shouldAbort()) {
+    _index.resetTrainingState();
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
+  std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
+  trainIt->Seek(_bounds.start());
+  auto faissIndex = trainer.train(*trainIt, upper, stopToken);
   auto const trainEnd = std::chrono::steady_clock::now();
   trainingDuration.count(
       std::chrono::duration<double>(trainEnd - trainStart).count());
@@ -640,10 +627,11 @@ Result VectorIndexBuildManager::build(
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
                           VectorIndexTrainingState::kIngesting);
 
-  std::unique_ptr<rocksdb::Iterator> it(_rootDB->NewIterator(ro, docCF));
-  it->Seek(_bounds.start());
+  auto numDocs = _rcoll->meta().numberDocuments();
+  RocksDBBuilderIndex builderIdx(std::move(indexPtr), numDocs,
+                                 /*parallelism*/ 1);
   auto const ingestStart = std::chrono::steady_clock::now();
-  Result res = ingestVectors(_index, _rootDB, std::move(it), stopToken);
+  Result res = builderIdx.fillIndexForeground();
   auto const ingestEnd = std::chrono::steady_clock::now();
 
   if (res.fail()) {

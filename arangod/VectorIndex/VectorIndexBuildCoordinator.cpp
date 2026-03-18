@@ -23,6 +23,8 @@
 
 #include "VectorIndex/VectorIndexBuildCoordinator.h"
 
+#include "Basics/StaticStrings.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
@@ -31,6 +33,9 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -70,8 +75,10 @@ DECLARE_HISTOGRAM(arangodb_vector_index_ingestion_duration,
 namespace arangodb {
 
 VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
-    DatabaseFeature& dbFeature, metrics::MetricsFeature& metrics)
+    DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
+    metrics::MetricsFeature& metrics)
     : _dbFeature(dbFeature),
+      _maintenance(maintenance),
       _untrainedCount(metrics.add(arangodb_vector_index_untrained_count{})),
       _trainingOngoingCount(
           metrics.add(arangodb_vector_index_training_ongoing_count{})),
@@ -165,7 +172,7 @@ void VectorIndexBuildCoordinator::scanAndBuild(
           continue;
         }
         auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
-        if (vecIdx.trainingState() != VectorIndexTrainingState::kUntrained) {
+        if (vecIdx.trainingState() != VectorIndexTrainingState::kUnusable) {
           continue;
         }
 
@@ -191,9 +198,10 @@ void VectorIndexBuildCoordinator::scanAndBuild(
             << " documents). Starting deferred training.";
 
         _trainingOngoingCount.fetch_add(1);
+        auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
         vector::VectorIndexBuildManager builder(vecIdx);
-        auto const res =
-            builder.build(_trainingDuration, _ingestionDuration, stopToken);
+        auto const res = builder.build(std::move(indexPtr), _trainingDuration,
+                                       _ingestionDuration, stopToken);
         _trainingOngoingCount.fetch_sub(1);
 
         if (res.fail()) {
@@ -201,7 +209,55 @@ void VectorIndexBuildCoordinator::scanAndBuild(
               << "[index=" << vecIdx.id().id()
               << "] Vector build failed: " << res.errorMessage();
           recordFailure(vecIdx.objectId(), numDocs);
+
+          // Report the error via MaintenanceFeature so it flows to the
+          // agency Current section and becomes visible on the Coordinator.
+          auto const& database = vocbase.name();
+          auto const collection = std::to_string(coll->planId().id());
+          auto const& shard = coll->name();
+          auto const indexId = std::to_string(vecIdx.id().id());
+
+          VPackBuilder eb;
+          {
+            VPackObjectBuilder o(&eb);
+            eb.add(StaticStrings::Error, VPackValue(true));
+            eb.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
+            eb.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
+            eb.add("id", VPackValue(indexId));
+          }
+          _maintenance.storeIndexError(database, collection, shard, indexId,
+                                       eb.steal());
+
           continue;
+        }
+
+        // Build succeeded — persist the trained data to RocksDB so it
+        // survives a restart.
+        {
+          auto& engine = vocbase.engine<RocksDBEngine>();
+          auto builder = coll->toVelocyPackIgnore(
+              {"path", "statusString"},
+              LogicalDataSource::Serialization::PersistenceWithInProgress);
+          auto persistRes = engine.writeCreateCollectionMarker(
+              vocbase.id(), coll->id(), builder.slice(),
+              RocksDBLogValue::Empty());
+          if (persistRes.fail()) {
+            LOG_TOPIC("e172b", WARN, Logger::ENGINES)
+                << "[shard=" << coll->name() << ", index=" << vecIdx.id().id()
+                << "] Failed to persist trained vector index: "
+                << persistRes.errorMessage();
+          }
+        }
+
+        // Clear any previous error for this index.
+        {
+          // TODO: Is this ok, calling maintance from here, is there an issue
+          // with locking in maintance and in here?
+          auto const& database = vocbase.name();
+          auto const collection = std::to_string(coll->planId().id());
+          auto const& shard = coll->name();
+          auto const indexId = std::to_string(vecIdx.id().id());
+          _maintenance.clearIndexError(database, collection, shard, indexId);
         }
         clearFailure(vecIdx.objectId());
 

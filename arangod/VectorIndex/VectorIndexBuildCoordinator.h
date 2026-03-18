@@ -34,6 +34,7 @@
 namespace arangodb {
 
 class DatabaseFeature;
+class MaintenanceFeature;
 
 /// Single background thread that periodically scans for untrained vector
 /// indexes and builds them one at a time. The same thread scans and builds.
@@ -44,6 +45,7 @@ class VectorIndexBuildCoordinator {
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
   explicit VectorIndexBuildCoordinator(DatabaseFeature& dbFeature,
+                                       MaintenanceFeature& maintenance,
                                        metrics::MetricsFeature& metrics);
 
   void start(std::uint32_t maxOmpThreads);
@@ -67,6 +69,7 @@ class VectorIndexBuildCoordinator {
   void clearFailure(std::uint64_t objectId);
 
   DatabaseFeature& _dbFeature;
+  MaintenanceFeature& _maintenance;
   std::jthread _thread;
   std::unordered_map<std::uint64_t, FailedBuildInfo> _failedBuilds;
 

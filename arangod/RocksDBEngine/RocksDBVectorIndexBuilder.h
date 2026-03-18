@@ -47,6 +47,7 @@ class DB;
 
 namespace arangodb {
 class Index;
+class RocksDBIndex;
 class RocksDBVectorIndex;
 class RocksDBEngine;
 }  // namespace arangodb
@@ -124,7 +125,8 @@ class VectorIndexBuildManager {
  public:
   explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
 
-  Result build(metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
+  Result build(std::shared_ptr<RocksDBIndex> indexPtr,
+               metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
                metrics::Histogram<metrics::LogScale<double>>& ingestionDuration,
                std::stop_token stopToken = {});
 
