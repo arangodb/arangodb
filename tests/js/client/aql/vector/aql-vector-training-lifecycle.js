@@ -85,7 +85,7 @@ function VectorIndexTrainingLifecycleSuite() {
 
         testIndexStartsUntrained: function () {
             const idx = collection.indexes().find(i => i.name === "vec_l2");
-            assertFalse(idx.isTrained, "Index should be untrained on empty collection");
+            assertFalse(idx.isTrained, "Index should be unusable on empty collection");
         },
 
         testQueryFailsWhenUntrained: function () {
@@ -93,8 +93,8 @@ function VectorIndexTrainingLifecycleSuite() {
             collection.insert(generateDocs(gen, 500));
 
             assertTrue(
-                waitForState(collection, "untrained", 5),
-                "Index should remain untrained with only 500 docs"
+                waitForState(collection, "unusable", 5),
+                "Index should remain unusable with only 500 docs"
             );
 
             const queryPoint = Array.from({length: dimension}, () => gen());
@@ -121,15 +121,15 @@ function VectorIndexTrainingLifecycleSuite() {
             assertEqual(500, collection.count());
 
             assertTrue(
-                waitForState(collection, "untrained", 5),
-                "Index should remain untrained with only 500 docs (threshold ~1000)"
+                waitForState(collection, "unusable", 5),
+                "Index should remain unusable with only 500 docs (threshold ~1000)"
             );
         },
 
         testTrainingTriggeredAfterThreshold: function () {
             assertFalse(
                 collection.indexes().find(i => i.name === "vec_l2").isTrained,
-                "Index should start untrained"
+                "Index should start unusable"
             );
 
             let gen = randomNumberGeneratorFloat(seed);
@@ -203,8 +203,8 @@ function VectorIndexTrainingLifecycleSuite() {
             assertEqual(100, collection.count());
 
             assertTrue(
-                waitForState(collection, "untrained", 5),
-                "Index should remain untrained after truncate + 100 docs " +
+                waitForState(collection, "unusable", 5),
+                "Index should remain unusable after truncate + 100 docs " +
                 "(total seen 1000 but only 100 exist)"
             );
         },
@@ -238,8 +238,8 @@ function VectorIndexTrainingLifecycleSuite() {
             assertEqual(100, collection.count());
 
             assertTrue(
-                waitForState(collection, "untrained", 10),
-                "Index should be untrained after range-delete truncate + 100 docs"
+                waitForState(collection, "unusable", 10),
+                "Index should be unusable after range-delete truncate + 100 docs"
             );
         },
     };

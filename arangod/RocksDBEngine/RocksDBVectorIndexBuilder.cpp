@@ -577,7 +577,7 @@ Result VectorIndexBuildManager::build(
     std::stop_token stopToken) {
   if (!_index.setTrainingState(VectorIndexTrainingState::kUnusable,
                                VectorIndexTrainingState::kTraining)) {
-    return Result{TRI_ERROR_INTERNAL, "vector index is not in untrained state"};
+    return Result{TRI_ERROR_INTERNAL, "vector index is not in unusable state"};
   }
 
   auto shouldAbort = [&]() -> bool {

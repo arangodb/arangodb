@@ -232,7 +232,7 @@ const sleepIntervalSec = 0.1;
  * Waits until the named vector index on the collection reaches the given training state.
  * @param {ArangoCollection} collection - collection that has the vector index
  * @param {string} indexName - name of the vector index to wait for
- * @param {string} state - desired training state: "ready" or "untrained"
+ * @param {string} state - desired training state: "ready" or "unusable"
  * @param {number} timeoutSec - max time to wait in seconds
  * @returns {boolean} true if the vector index reached the state within the timeout
  */
@@ -268,7 +268,7 @@ function waitForAllVectorIndexesTrainingState(collection, trainingState, timeout
  * the given training state by querying each DB server via the HTTP API (no reconnect).
  * @param {ArangoDatabase} db - database (e.g. internal.db)
  * @param {ArangoCollection} collection - collection that has vector index(es)
- * @param {string} trainingState - desired training state: "ready" or "untrained"
+ * @param {string} trainingState - desired training state: "ready" or "unusable"
  * @param {number} timeoutSec - max time to wait in seconds
  * @returns {boolean} true if all vector indexes on all shards reached the state within the timeout
  */
@@ -374,7 +374,7 @@ function insertDocsAndEnsureIndex({collection, docs, seed, ensureIndex,
  * state, handling both cluster and single-server modes.
  *
  * @param {ArangoCollection} collection
- * @param {string} expectedState - "ready" or "untrained"
+ * @param {string} expectedState - "ready" or "unusable"
  * @param {number} [timeoutSec=60]
  * @returns {boolean}
  */

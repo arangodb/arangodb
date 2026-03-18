@@ -101,11 +101,11 @@ function VectorIndexBuildMetricsSuite() {
         params: {metric: "l2", dimension, nLists: 1},
       });
 
-      // With no documents, the index should remain untrained.
+      // With no documents, the index should remain unusable.
       // The build coordinator scans every ~5 seconds, so wait a bit.
       assertTrue(
-          waitForState(collection, "untrained", 10),
-          "Index should remain untrained with no documents"
+          waitForState(collection, "unusable", 10),
+          "Index should remain unusable with no documents"
       );
 
       // The untrained gauge should reflect at least 1 untrained index.

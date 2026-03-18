@@ -117,7 +117,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     setTrainingState(VectorIndexTrainingState::kUnusable,
                      VectorIndexTrainingState::kReady);
   }
-  LOG_DEVEL << ADB_HERE << " No trained data found using defaults.";
 
   // Below 1000 documents training is not worth the effort nor having a index
   // 39 is the minimum number of documents to train the vector index, but that
