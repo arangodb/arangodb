@@ -166,6 +166,10 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
+  if (inputRange.hasDataRow() || hasResults()) {
+    return {ExecutorState::HASMORE, {}, {}};
+  }
+
   return {inputRange.upstreamState(), {}, /*output.getClientCall()*/ {}};
 }
 
