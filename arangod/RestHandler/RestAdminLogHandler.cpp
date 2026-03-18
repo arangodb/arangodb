@@ -24,6 +24,7 @@
 #include "RestAdminLogHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
@@ -72,7 +73,8 @@ arangodb::Result RestAdminLogHandler::verifyPermitted() {
                               "you need super user rights for log operations");
     }  // if
   } else {
-    if (!ExecContext::current().isAdminUser()) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminReadLogs{})) {
       return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
                               "you need admin rights for log operations");
     }  // if

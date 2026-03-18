@@ -1431,7 +1431,7 @@ In the following table we just put the above case or the action required.
 | POST        | `/_admin/cluster/resignLeadership`            | `db:AdminChangeDataDist`      |
 | POST        | `/_admin/cluster/moveShard`                   | `db:AdminChangeDataDist`      |
 | POST        | `/_admin/cluster/cancelJob`                   | `db:AdminChangeDataDist`      |
-| GET         | `/_admin/cluster/queryJobStatus`              | `db:AdminChangeDataDist`      |
+| GET         | `/_admin/cluster/queryJobStatus`              | `db:AdminMaintenance`         |
 | POST        | `/_admin/cluster/removeServer`                | `db:AdminRemoveServer`        |
 | GET         | `/_admin/cluster/shardDistribution`           | `db:AdminClusterInfo`         |
 | GET         | `/_admin/cluster/collectionShardDistribution` | `db:AdminClusterInfo`         |

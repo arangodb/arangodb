@@ -23,6 +23,7 @@
 
 #include "RestHandler/RestDocumentStateHandler.h"
 
+#include "Auth/Rbac/Actions.h"
 #include "Basics/ResultT.h"
 #include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -69,7 +70,8 @@ RestDocumentStateHandler::RestDocumentStateHandler(
 }
 
 RestStatus RestDocumentStateHandler::execute() {
-  if (!ExecContext::current().isAdminUser()) {
+  if (!ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
   }

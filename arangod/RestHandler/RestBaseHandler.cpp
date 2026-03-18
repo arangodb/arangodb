@@ -23,6 +23,7 @@
 
 #include "RestBaseHandler.h"
 
+#include "Auth/Rbac/Actions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
@@ -47,28 +48,13 @@ RestBaseHandler::RestBaseHandler(
     GeneralResponse* response)
     : RestHandler(server, request, response), _potentialDirtyReads(false) {}
 
-bool RestBaseHandler::isAdminUser() const {
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  }
-  return ExecContext::current().isAdminUser();
-}
-
-bool RestBaseHandler::isSelfUser(std::string const& user) const {
+bool RestBaseHandler::canAccessUser(
+    std::string const& user,
+    arangodb::rbac::Category::Any const& rbacAction) const {
   if (_request->authenticated() && user == _request->user()) {
     return true;
   }
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  }
-  return false;
-}
-
-bool RestBaseHandler::canAccessUser(std::string const& user) const {
-  if (_request->authenticated() && user == _request->user()) {
-    return true;
-  }
-  return isAdminUser();
+  return ExecContext::current().isAdminUser(rbacAction);
 }
 
 // parses the body as VelocyPack

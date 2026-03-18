@@ -155,6 +155,10 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
               -> std::vector<AuthorizationQuery> {
             return {{"db:AdminMaintenance", ""}};
           },
+          [](Category::AdminRebalance const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminRebalance", ""}};
+          },
           [](Category::AdminLicense const&) -> std::vector<AuthorizationQuery> {
             return {{"db:AdminLicense", ""}};
           },
@@ -209,8 +213,7 @@ auto Service::may(User user, Category::Any const& category) noexcept
 }
 
 auto Service::maySync(Service::User user,
-                      Service::Category::Any const& category) noexcept
-    -> ResultT<bool> {
+                      Category::Any const& category) noexcept -> ResultT<bool> {
   auto queries = toAuthorizationQueries(category);
   return maySyncImpl(std::move(user), std::move(queries));
 }

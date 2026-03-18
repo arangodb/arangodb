@@ -38,6 +38,7 @@
 #include "velocypack/Iterator.h"
 #include "Inspection/VPack.h"
 
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/ResultT.h"
 #include "Replication2/Methods.h"
@@ -104,7 +105,8 @@ static void JS_GetReplicatedLog(
   }
 
   auto id = LogId{TRI_ObjectToUInt64(isolate, args[0], true)};
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -123,7 +125,8 @@ static void JS_CreateReplicatedLog(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, std::string("Creating replicated log forbidden"));
   }
@@ -156,7 +159,8 @@ static void JS_Id(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -174,7 +178,8 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -220,7 +225,8 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -271,7 +277,8 @@ static void JS_Ping(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -310,7 +317,8 @@ static void JS_MultiInsert(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -367,7 +375,8 @@ static void JS_Status(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -391,7 +400,8 @@ static void JS_GlobalStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -429,7 +439,8 @@ static void JS_Head(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -464,7 +475,8 @@ static void JS_Tail(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -499,7 +511,8 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -538,7 +551,8 @@ static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -577,7 +591,8 @@ static void JS_At(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -610,7 +625,8 @@ static void JS_Release(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");
@@ -638,7 +654,8 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
-  if (!arangodb::ExecContext::current().isAdminUser()) {
+  if (!arangodb::ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("No access to replicated log '") + to_string(id) + "'");

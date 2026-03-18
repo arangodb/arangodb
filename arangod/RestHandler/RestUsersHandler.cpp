@@ -24,6 +24,7 @@
 #include "RestUsersHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -124,7 +125,8 @@ void RestUsersHandler::generateUserResult(rest::ResponseCode code,
 RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (isAdminUser()) {
+    if (ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminReadUser{""})) {
       VPackBuilder users = um->allUsers();
       generateOk(ResponseCode::OK, users.slice());
     } else {
@@ -132,7 +134,8 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
     }
   } else if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (canAccessUser(user)) {
+    if (canAccessUser(
+            user, arangodb::rbac::Category::AdminReadUser{std::string(user)})) {
       VPackBuilder doc = um->serializeUser(user);
       generateUserResult(ResponseCode::OK, doc);
     } else {
@@ -140,7 +143,8 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
     }
   } else {
     std::string const& user = suffixes[0];
-    if (!canAccessUser(user)) {
+    if (!canAccessUser(
+            user, arangodb::rbac::Category::AdminReadUser{std::string(user)})) {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
       return RestStatus::DONE;
     }
@@ -313,7 +317,8 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
 
   if (suffixes.empty()) {
     // create a new user
-    if (isAdminUser()) {
+    if (ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminWriteUser{""})) {
       VPackSlice s = body.get("user");
       std::string user = s.isString() ? s.copyString() : "";
       // create user
@@ -360,7 +365,8 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
   if (suffixes.size() == 1) {
     // replace existing user
     std::string const& user = suffixes[0];
-    if (!canAccessUser(user)) {
+    if (!canAccessUser(user, arangodb::rbac::Category::AdminWriteUser{
+                                 std::string(user)})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
@@ -381,7 +387,9 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!isAdminUser()) {
+      if (!ExecContext::current().isAdminUser(
+              arangodb::rbac::Category::AdminWriteUser{
+                  std::string(suffixes[0])})) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
 
         return RestStatus::DONE;
@@ -434,7 +442,8 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // update internal config data, used in the admin dashboard
-      if (!canAccessUser(name)) {
+      if (!canAccessUser(name, arangodb::rbac::Category::AdminWriteUser{
+                                   std::string(name)})) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
@@ -496,7 +505,8 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
 
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (canAccessUser(user)) {
+    if (canAccessUser(user, arangodb::rbac::Category::AdminWriteUser{
+                                std::string(user)})) {
       // update a user
       Result r = StoreUser(um, 2, user, body);
       if (r.ok()) {
@@ -518,7 +528,9 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() == 1) {
-    if (!isAdminUser()) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminWriteUser{
+                std::string(suffixes[0])})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
@@ -536,7 +548,9 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
     }
   } else if (suffixes.size() == 2) {
     std::string const& user = suffixes[0];
-    if (suffixes[1] == "config" && canAccessUser(user)) {
+    if (suffixes[1] == "config" &&
+        canAccessUser(user, arangodb::rbac::Category::AdminWriteUser{
+                                std::string(user)})) {
       Result r = um->updateUser(
           user,
           [&](auth::User& u) {
@@ -560,7 +574,9 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!isAdminUser()) {
+      if (!ExecContext::current().isAdminUser(
+              arangodb::rbac::Category::AdminWriteUser{
+                  std::string(suffixes[0])})) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
 
         return RestStatus::DONE;
@@ -601,7 +617,8 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // remove internal config data, used in the WebUI
-      if (canAccessUser(user)) {
+      if (canAccessUser(user, arangodb::rbac::Category::AdminWriteUser{
+                                  std::string(user)})) {
         std::string const& key = suffixes[2];
         Result r = um->updateUser(
             user,

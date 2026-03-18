@@ -24,6 +24,7 @@
 #include "RestAuthReloadHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -41,7 +42,8 @@ RestAuthReloadHandler::RestAuthReloadHandler(
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAuthReloadHandler::execute() {
-  if (!ExecContext::current().isAdminUser()) {
+  if (!ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminAuthReload{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
   }

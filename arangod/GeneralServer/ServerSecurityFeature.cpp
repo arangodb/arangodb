@@ -23,6 +23,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Auth/Rbac/Actions.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -91,12 +92,13 @@ bool ServerSecurityFeature::isRestApiHardened() const noexcept {
   return _options.hardenedRestApi;
 }
 
-bool ServerSecurityFeature::canAccessHardenedApi() const noexcept {
+bool ServerSecurityFeature::canAccessHardenedApi(
+    arangodb::rbac::Category::Any const& action) const noexcept {
   bool allowAccess = !isRestApiHardened();
 
   if (!allowAccess) {
     ExecContext const& exec = ExecContext::current();
-    if (exec.isAdminUser()) {
+    if (exec.isAdminUser(action)) {
       // also allow access if there is not authentication
       // enabled or when the user is an administrator
       allowAccess = true;

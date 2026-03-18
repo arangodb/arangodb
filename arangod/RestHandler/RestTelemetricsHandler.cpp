@@ -24,6 +24,7 @@
 #include "RestTelemetricsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Utils/ExecContext.h"
@@ -143,7 +144,9 @@ RestStatus RestTelemetricsHandler::execute() {
     }
   }
 
-  if (apiPolicy == "admin" && !ExecContext::current().isAdminUser()) {
+  if (apiPolicy == "admin" &&
+      !ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminMonitoringInternal{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");
     return RestStatus::DONE;

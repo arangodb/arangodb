@@ -25,6 +25,7 @@
 #include "RocksDBRestReplicationHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -262,7 +263,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
   auto chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+      arangodb::rbac::Category::AdminReadReplicatedLog{}));
 
   // extract collection
   DataSourceId cid = DataSourceId::none();
@@ -424,7 +426,8 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true,
                             builder);
   } else {
-    ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+    ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+        arangodb::rbac::Category::AdminReadReplicatedLog{}));
     if (collection.empty()) {
       // all collections in database
       res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false,
@@ -480,7 +483,8 @@ RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   }
 
   // to is ignored because the snapshot time is the latest point in time
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+      arangodb::rbac::Category::AdminReadReplicatedLog{}));
 
   // get batchId from url parameters
   uint64_t batchId = _request->parsedValue("batchId", uint64_t(0));
@@ -744,7 +748,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << ctx->id() << "'";
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+      arangodb::rbac::Category::AdminReadReplicatedLog{}));
 
   if (!ExecContext::current().canUseCollection(_vocbase.name(), cname,
                                                auth::Level::RO)) {

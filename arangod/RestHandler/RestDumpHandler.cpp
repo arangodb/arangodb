@@ -25,6 +25,7 @@
 
 #include "Activities/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -165,8 +166,10 @@ void RestDumpHandler::handleCommandDumpStart() {
 
   // adjust permissions in single server case, so that the behavior
   // is identical to non-parallel dumps
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
-                                   ServerState::instance()->isSingleServer());
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminWalAccess{}) &&
+      ServerState::instance()->isSingleServer());
 
   auto guard =
       _dumpManager->createContext(std::move(opts), user, database, useVPack);
@@ -304,7 +307,8 @@ Result RestDumpHandler::validateRequest() {
         // make this version of dump compatible with the previous version of
         // arangodump. the previous version assumed that as long as you are
         // an admin user, you can dump every collection
-        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminWalAccess{}));
 
         // validate permissions for all participating shards
         RocksDBDumpContextOptions opts;

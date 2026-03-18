@@ -25,6 +25,7 @@
 #include <velocypack/Builder.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Inspection/VPack.h"
 #include "RestServer/CrashHandlerFeature.h"
 #include "Utils/ExecContext.h"
@@ -39,7 +40,8 @@ RestCrashHandler::RestCrashHandler(
 
 futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   // Require admin access
-  if (!ExecContext::current().isAdminUser()) {
+  if (!ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminCrashHandler{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "you need admin rights for crash management operations");
     co_return;

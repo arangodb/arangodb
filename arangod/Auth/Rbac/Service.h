@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Async/async.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/ResultT.h"
 
 #include <string>
@@ -37,98 +38,6 @@ struct Service {
 
   struct User {
     std::string jwtToken;
-  };
-
-  struct Category {
-    struct ReadDatabase {
-      std::string name;
-    };
-    struct WriteDatabase {
-      std::string name;
-    };
-    struct ReadCollection {
-      std::string database;
-      std::string name;
-    };
-    struct WriteCollectionData {
-      std::string database;
-      std::string name;
-    };
-    struct WriteCollectionMeta {
-      std::string database;
-      std::string name;
-    };
-    struct ReadView {
-      std::string database;
-      std::string name;
-    };
-    struct WriteView {
-      std::string database;
-      std::string name;
-    };
-    struct ReadAnalyzer {
-      std::string database;
-      std::string name;
-    };
-    struct WriteAnalyzer {
-      std::string database;
-      std::string name;
-    };
-    struct UseApiVersion {
-      std::string version;
-    };
-    // Admin actions with a collection resource:
-    struct AdminChangeDataDist {
-      std::string database;
-      std::string collection;
-    };
-    // Admin actions with a user resource:
-    struct AdminReadUser {
-      std::string username;
-    };
-    struct AdminWriteUser {
-      std::string username;
-    };
-    // Admin actions without a resource:
-    struct AdminMonitoring {};
-    struct AdminMonitoringInternal {};
-    struct AdminCompaction {};
-    struct AdminAuthReload {};
-    struct AdminCrashHandler {};
-    struct AdminApiCalls {};
-    struct AdminAqlQueries {};
-    struct AdminShutdown {};
-    struct AdminReadLogs {};
-    struct AdminSetLogLevel {};
-    struct AdminOptions {};
-    struct AdminSupervisionState {};
-    struct AdminRemoveServer {};
-    struct AdminClusterInfo {};
-    struct AdminMaintenance {};
-    struct AdminLicense {};
-    struct AdminBackup {};
-    struct AdminJobs {};
-    struct AdminTasks {};
-    struct AdminReadReplicatedLog {};
-    struct AdminWriteReplicatedLog {};
-    struct AdminWalAccess {};
-    struct AdminReadAgency {};
-    struct AdminReadOnlyMode {};
-    struct AdminFoxx {};
-    struct AdminReadAqlFunctions {};
-    struct AdminWriteAqlFunctions {};
-    using Any = std::variant<
-        ReadDatabase, WriteDatabase, ReadCollection, WriteCollectionData,
-        WriteCollectionMeta, ReadView, WriteView, ReadAnalyzer, WriteAnalyzer,
-        UseApiVersion, AdminChangeDataDist, AdminReadUser, AdminWriteUser,
-        AdminMonitoring, AdminMonitoringInternal, AdminCompaction,
-        AdminAuthReload, AdminCrashHandler, AdminApiCalls, AdminAqlQueries,
-        AdminShutdown, AdminReadLogs, AdminSetLogLevel, AdminOptions,
-        AdminSupervisionState, AdminRemoveServer, AdminClusterInfo,
-        AdminMaintenance, AdminLicense, AdminBackup, AdminJobs, AdminTasks,
-        AdminReadReplicatedLog, AdminWriteReplicatedLog, AdminWalAccess,
-        AdminReadAgency, AdminReadOnlyMode, AdminFoxx, AdminReadAqlFunctions,
-        AdminWriteAqlFunctions>;
   };
 
   struct AuthorizationQuery {

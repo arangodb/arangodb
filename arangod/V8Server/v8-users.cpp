@@ -27,6 +27,7 @@
 
 #include "v8-users.h"
 
+#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -89,12 +90,17 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static bool IsAdminUser() { return ExecContext::current().isAdminUser(); }
+static bool IsAdminUser() {
+  return ExecContext::current().isAdminUser(
+      arangodb::rbac::Category::AdminWriteUser{""});
+}
 
 /// check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
   auto const& exec = ExecContext::current();
-  return exec.isAdminUser() || exec.user() == user;
+  return exec.isAdminUser(
+             arangodb::rbac::Category::AdminReadUser{std::string(user)}) ||
+         exec.user() == user;
 }
 
 void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {

@@ -25,6 +25,7 @@
 
 #include "Auth/AuthMode.h"
 #include "Auth/Common.h"
+#include "Auth/Rbac/Actions.h"
 #include "Rest/RequestContext.h"
 
 #include <memory>
@@ -82,7 +83,8 @@ class ExecContext : public RequestContext {
     std::abort();  // TODO remove this method
   }
 
-  bool isAdminUser() const noexcept {
+  bool isAdminUser(
+      arangodb::rbac::Category::Any const& rbacAction) const noexcept {
     std::abort();  // TODO remove this method
   }
 

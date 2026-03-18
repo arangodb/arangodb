@@ -27,6 +27,7 @@
 #include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/License/LicenseFeature.h"
 #endif
@@ -91,7 +92,8 @@ arangodb::Result RestLicenseHandler::verifyPermitted() {
           "you need super user rights for license operations");
     }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminLicense{})) {
       return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
                               "you need admin rights for license operations");
     }

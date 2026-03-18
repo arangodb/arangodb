@@ -26,6 +26,7 @@
 #include "Actions/RestActionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Handler.h"
+#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -330,7 +331,8 @@ void RestAdminServerHandler::handleApiCalls() {
       return;
     }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminApiCalls{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "You need admin rights for recording API operations");
       return;
@@ -385,7 +387,8 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
       return;
     }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminAqlQueries{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights for recording API operations");
       return;

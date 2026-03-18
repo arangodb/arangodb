@@ -73,9 +73,8 @@ TEST(RbacServiceImplTest, maySync_allow_returnsTrue) {
   mock->nextEffect = rbac::Backend::Effect::Allow;
   rbac::ServiceImpl svc{std::move(mock)};
 
-  auto result =
-      svc.maySync(rbac::Service::User{.jwtToken = testToken},
-                  rbac::Service::Category::ReadDatabase{.name = "mydb"});
+  auto result = svc.maySync(rbac::Service::User{.jwtToken = testToken},
+                            rbac::Category::ReadDatabase{.name = "mydb"});
 
   ASSERT_TRUE(result.ok());
   EXPECT_TRUE(result.get());
@@ -87,7 +86,7 @@ TEST(RbacServiceImplTest, maySync_deny_returnsFalse) {
   rbac::ServiceImpl svc{std::move(mock)};
 
   auto result = svc.maySync(rbac::Service::User{.jwtToken = testToken},
-                            rbac::Service::Category::WriteCollectionData{
+                            rbac::Category::WriteCollectionData{
                                 .database = "mydb", .name = "vertices"});
 
   ASSERT_TRUE(result.ok());
@@ -100,7 +99,7 @@ TEST(RbacServiceImplTest, maySync_database_sends_single_item) {
   rbac::ServiceImpl svc{std::move(rawMock)};
 
   svc.maySync(rbac::Service::User{.jwtToken = testToken},
-              rbac::Service::Category::ReadDatabase{.name = "testdb"});
+              rbac::Category::ReadDatabase{.name = "testdb"});
 
   ASSERT_EQ(mockPtr->lastItems.size(), 1);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadDatabase");
@@ -112,9 +111,9 @@ TEST(RbacServiceImplTest, maySync_collection_sends_single_item) {
   auto* mockPtr = rawMock.get();
   rbac::ServiceImpl svc{std::move(rawMock)};
 
-  svc.maySync(rbac::Service::User{.jwtToken = testToken},
-              rbac::Service::Category::ReadCollection{.database = "mydb",
-                                                      .name = "edges"});
+  svc.maySync(
+      rbac::Service::User{.jwtToken = testToken},
+      rbac::Category::ReadCollection{.database = "mydb", .name = "edges"});
 
   ASSERT_EQ(mockPtr->lastItems.size(), 1);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadCollection");
@@ -127,7 +126,7 @@ TEST(RbacServiceImplTest, maySync_forwardsJwtTokenToBackend) {
   rbac::ServiceImpl svc{std::move(rawMock)};
 
   svc.maySync(rbac::Service::User{.jwtToken = testToken},
-              rbac::Service::Category::ReadDatabase{.name = "mydb"});
+              rbac::Category::ReadDatabase{.name = "mydb"});
 
   EXPECT_EQ(mockPtr->lastJwtToken, testToken);
 }
@@ -148,9 +147,8 @@ TEST(RbacServiceImplTest, maySync_backendError_propagatesError) {
 
   rbac::ServiceImpl svc{std::make_unique<ErrorBackend>()};
 
-  auto result =
-      svc.maySync(rbac::Service::User{.jwtToken = testToken},
-                  rbac::Service::Category::ReadDatabase{.name = "mydb"});
+  auto result = svc.maySync(rbac::Service::User{.jwtToken = testToken},
+                            rbac::Category::ReadDatabase{.name = "mydb"});
 
   EXPECT_FALSE(result.ok());
 }
@@ -160,9 +158,9 @@ TEST(RbacServiceImplTest, may_async_collection_sends_single_item) {
   auto* mockPtr = rawMock.get();
   rbac::ServiceImpl svc{std::move(rawMock)};
 
-  std::ignore = svc.may(rbac::Service::User{.jwtToken = testToken},
-                        rbac::Service::Category::ReadCollection{
-                            .database = "mydb", .name = "edges"});
+  std::ignore = svc.may(
+      rbac::Service::User{.jwtToken = testToken},
+      rbac::Category::ReadCollection{.database = "mydb", .name = "edges"});
 
   ASSERT_EQ(mockPtr->lastItems.size(), 1);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadCollection");

@@ -1154,12 +1154,6 @@ bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
 
 bool IResearchAnalyzerFeature::canUse(std::string_view name,
                                       auth::Level const& level) {
-  auto& ctx = ExecContext::current();
-
-  if (ctx.isAdminUser()) {
-    return true;  // authentication not enabled
-  }
-
   auto& staticAnalyzers = getStaticAnalyzers();
 
   if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
@@ -1169,6 +1163,7 @@ bool IResearchAnalyzerFeature::canUse(std::string_view name,
 
   auto split = splitAnalyzerName(name);
   auto const vocbaseName = static_cast<std::string>(split.first);
+  auto& ctx = ExecContext::current();
   return irs::IsNull(split.first)  // static analyzer (always allowed)
          || (ctx.canUseDatabase(vocbaseName, level)  // can use vocbase
              && ctx.canUseCollection(

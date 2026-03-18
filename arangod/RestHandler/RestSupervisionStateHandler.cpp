@@ -27,6 +27,7 @@
 
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
@@ -47,7 +48,8 @@ RestSupervisionStateHandler::RestSupervisionStateHandler(
     : RestVocbaseBaseHandler(server, request, response) {}
 
 futures::Future<futures::Unit> RestSupervisionStateHandler::executeAsync() {
-  if (!ExecContext::current().isAdminUser()) {
+  if (!ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminSupervisionState{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
   }

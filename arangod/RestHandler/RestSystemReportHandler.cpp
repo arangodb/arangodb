@@ -26,6 +26,7 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/HttpRequest.h"
@@ -77,11 +78,12 @@ std::string exec(std::string const& cmd) {
 }
 }  // namespace
 
-bool RestSystemReportHandler::isAdminUser() const {
+bool RestSystemReportHandler::isAdminUser(
+    arangodb::rbac::Category::Any const& rbacAction) const {
   if (!ExecContext::isAuthEnabled()) {
     return true;
   } else {
-    return ExecContext::current().isAdminUser();
+    return ExecContext::current().isAdminUser(rbacAction);
   }
 }
 

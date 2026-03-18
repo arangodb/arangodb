@@ -191,7 +191,7 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_Allow) {
 
   auto result =
       service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Service::Category::ReadDatabase{.name = "mydb"});
+                       rbac::Category::ReadDatabase{.name = "mydb"});
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_TRUE(result.get());
@@ -216,7 +216,7 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_Deny) {
 
   auto result =
       service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Service::Category::ReadDatabase{.name = "mydb"});
+                       rbac::Category::ReadDatabase{.name = "mydb"});
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_FALSE(result.get());
@@ -228,7 +228,7 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_HttpServerError) {
 
   auto result =
       service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Service::Category::ReadDatabase{.name = "mydb"});
+                       rbac::Category::ReadDatabase{.name = "mydb"});
 
   EXPECT_FALSE(result.ok());
 }
@@ -239,7 +239,7 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_MalformedResponse) {
 
   auto result =
       service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Service::Category::ReadDatabase{.name = "mydb"});
+                       rbac::Category::ReadDatabase{.name = "mydb"});
 
   EXPECT_FALSE(result.ok());
 }
@@ -252,13 +252,13 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_AllAllow) {
   _smocker->addMock(kEvaluateTokenManyPath, 200, buildAllowResponse(3));
   auto service = makeService();
 
-  auto result = service->mayAllSync(
-      rbac::Service::User{.jwtToken = "test.jwt.token"},
-      {
-          rbac::Service::Category::ReadDatabase{.name = "db1"},
-          rbac::Service::Category::WriteDatabase{.name = "db2"},
-          rbac::Service::Category::ReadDatabase{.name = "db3"},
-      });
+  auto result =
+      service->mayAllSync(rbac::Service::User{.jwtToken = "test.jwt.token"},
+                          {
+                              rbac::Category::ReadDatabase{.name = "db1"},
+                              rbac::Category::WriteDatabase{.name = "db2"},
+                              rbac::Category::ReadDatabase{.name = "db3"},
+                          });
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_TRUE(result.get());
@@ -284,13 +284,13 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_AllDeny) {
   _smocker->addMock(kEvaluateTokenManyPath, 200, buildDenyResponse(3));
   auto service = makeService();
 
-  auto result = service->mayAllSync(
-      rbac::Service::User{.jwtToken = "test.jwt.token"},
-      {
-          rbac::Service::Category::ReadDatabase{.name = "db1"},
-          rbac::Service::Category::WriteDatabase{.name = "db2"},
-          rbac::Service::Category::ReadDatabase{.name = "db3"},
-      });
+  auto result =
+      service->mayAllSync(rbac::Service::User{.jwtToken = "test.jwt.token"},
+                          {
+                              rbac::Category::ReadDatabase{.name = "db1"},
+                              rbac::Category::WriteDatabase{.name = "db2"},
+                              rbac::Category::ReadDatabase{.name = "db3"},
+                          });
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_FALSE(result.get());
@@ -301,13 +301,13 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_OneDenied) {
                     buildMixedResponse({"Allow", "Deny", "Allow"}));
   auto service = makeService();
 
-  auto result = service->mayAllSync(
-      rbac::Service::User{.jwtToken = "test.jwt.token"},
-      {
-          rbac::Service::Category::ReadDatabase{.name = "db1"},
-          rbac::Service::Category::WriteDatabase{.name = "db2"},
-          rbac::Service::Category::ReadDatabase{.name = "db3"},
-      });
+  auto result =
+      service->mayAllSync(rbac::Service::User{.jwtToken = "test.jwt.token"},
+                          {
+                              rbac::Category::ReadDatabase{.name = "db1"},
+                              rbac::Category::WriteDatabase{.name = "db2"},
+                              rbac::Category::ReadDatabase{.name = "db3"},
+                          });
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_FALSE(result.get());
@@ -317,13 +317,13 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_HttpServerError) {
   _smocker->addMock(kEvaluateTokenManyPath, 500, R"({"error":"internal"})");
   auto service = makeService();
 
-  auto result = service->mayAllSync(
-      rbac::Service::User{.jwtToken = "test.jwt.token"},
-      {
-          rbac::Service::Category::ReadDatabase{.name = "db1"},
-          rbac::Service::Category::WriteDatabase{.name = "db2"},
-          rbac::Service::Category::ReadDatabase{.name = "db3"},
-      });
+  auto result =
+      service->mayAllSync(rbac::Service::User{.jwtToken = "test.jwt.token"},
+                          {
+                              rbac::Category::ReadDatabase{.name = "db1"},
+                              rbac::Category::WriteDatabase{.name = "db2"},
+                              rbac::Category::ReadDatabase{.name = "db3"},
+                          });
 
   EXPECT_FALSE(result.ok());
 }

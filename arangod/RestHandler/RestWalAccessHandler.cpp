@@ -24,6 +24,7 @@
 #include "RestWalAccessHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -191,7 +192,7 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (!_context.isAdminUser()) {
+  if (!_context.isAdminUser(arangodb::rbac::Category::AdminWalAccess{})) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
@@ -313,7 +314,8 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+      arangodb::rbac::Category::AdminWalAccess{}));
 
   bool found = false;
   size_t chunkSize = 1024 * 1024;

@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -136,7 +137,9 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
     -> futures::Future<ResultT<bool>> {
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+      (ExecContext::current().isAdminUser(
+           arangodb::rbac::Category::AdminWriteReplicatedLog{}) &&
+       !ServerState::readOnly()));
 
   std::shared_ptr<LogicalCollection> col;
   auto lookupResult = methods::Collections::lookup(vocbase, name, col);
@@ -820,8 +823,10 @@ Result RestReplicationHandler::testPermissions() {
 
         if (!collectionName.empty()) {
           auto& exec = ExecContext::current();
-          ExecContextSuperuserScope escope(exec.isAdminUser());
-          if (!exec.isAdminUser() &&
+          ExecContextSuperuserScope escope(exec.isAdminUser(
+              arangodb::rbac::Category::AdminReadReplicatedLog{}));
+          if (!exec.isAdminUser(
+                  arangodb::rbac::Category::AdminReadReplicatedLog{}) &&
               !exec.canUseCollection(_vocbase.name(), collectionName,
                                      auth::Level::RO)) {
             // not enough rights
@@ -853,20 +858,23 @@ Result RestReplicationHandler::testPermissions() {
                   _request->value("overwrite");
 
               auto& exec = ExecContext::current();
-              ExecContextSuperuserScope escope(exec.isAdminUser());
+              ExecContextSuperuserScope escope(exec.isAdminUser(
+                  arangodb::rbac::Category::AdminWriteReplicatedLog{}));
 
               if (overwriteCollection == "true" ||
                   vocbase->lookupCollection(collectionName) == nullptr) {
                 // 1.) re-create collection, means: overwrite=true (rw database)
                 // OR 2.) not existing, new collection (rw database)
-                if (!exec.isAdminUser() &&
+                if (!exec.isAdminUser(
+                        arangodb::rbac::Category::AdminWriteReplicatedLog{}) &&
                     !exec.canUseDatabase(dbName, auth::Level::RW)) {
                   return Result(TRI_ERROR_FORBIDDEN);
                 }
               } else {
                 // 3.) Existing collection (ro database, rw collection)
                 // no overwrite. restoring into an existing collection
-                if (!exec.isAdminUser() &&
+                if (!exec.isAdminUser(
+                        arangodb::rbac::Category::AdminWriteReplicatedLog{}) &&
                     !exec.canUseCollection(dbName, collectionName,
                                            auth::Level::RWDATA)) {
                   return Result(
@@ -945,7 +953,8 @@ void RestReplicationHandler::handleCommandMakeFollower() {
   configuration.validate();
 
   // allow access to _users if appropriate
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+      arangodb::rbac::Category::AdminWriteReplicatedLog{}));
 
   // forget about any existing replication applier configuration
   applier->forget();
@@ -1019,11 +1028,12 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   vocbase.reset();
 
   auto& exec = ExecContext::current();
-  ExecContextSuperuserScope escope(exec.isAdminUser());
+  ExecContextSuperuserScope escope(
+      exec.isAdminUser(arangodb::rbac::Category::AdminReadReplicatedLog{}));
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
-    if (!exec.isAdminUser() &&
+    if (!exec.isAdminUser(arangodb::rbac::Category::AdminReadReplicatedLog{}) &&
         !exec.canUseCollection(dbName, c->name(), auth::Level::RO)) {
       continue;
     }
@@ -1316,7 +1326,9 @@ futures::Future<Result> RestReplicationHandler::processRestoreData(
 
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+      (ExecContext::current().isAdminUser(
+           arangodb::rbac::Category::AdminWriteReplicatedLog{}) &&
+       !ServerState::readOnly()));
 
   if (colName == StaticStrings::UsersCollection) {
     // We need to handle the _users in a special way
@@ -1861,7 +1873,9 @@ Result RestReplicationHandler::processRestoreIndexes(
 
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+      (ExecContext::current().isAdminUser(
+           arangodb::rbac::Category::AdminWriteReplicatedLog{}) &&
+       !ServerState::readOnly()));
 
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
@@ -3149,7 +3163,8 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
   LOG_TOPIC("6e075", TRACE, arangodb::Logger::REPLICATION)
       << "requested revision tree for collection '" << ctx.cname << "'";
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+      arangodb::rbac::Category::AdminWriteReplicatedLog{}));
 
   if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname,
                                                auth::Level::RO)) {

@@ -28,7 +28,7 @@
 
 using namespace arangodb;
 
-using Cat = rbac::Service::Category;
+using Cat = rbac::Category;
 using AQ = rbac::Service::AuthorizationQuery;
 
 namespace {
