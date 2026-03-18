@@ -280,8 +280,8 @@ build using the officially supported version of the Clang compiler
 
 For a debug build, you can use the `community-developer` preset instead.
 
-The default target CPU architecture is `sandybridge` for the x86-64 platform and
-`graviton1` for 64-bit ARM chips. You can specify a different architecture to
+The default target CPU architecture is `haswell` for the x86-64 platform and
+`graviton2` for 64-bit ARM chips. You can specify a different architecture to
 enable more optimizations or to limit the compiler to the available instructions
 for a particular architecture:
 
