@@ -945,21 +945,17 @@ function BaseTestConfig () {
           assertTrue(replication.applier.state().state.running);
 
           connectToLeader();
-          try {
-            clients[0].status = internal.statusExternal(clients[0].pid);
-            if (clients[0].status.status !== "RUNNING") {
-              throw new Error("done");
-            }
+          ct.run.joinFinishedBGShells(IM.options, clients);
+          if (!clients[0].done) {
             connectToFollower();
             return 'wait';
-          } catch (err) {
-            // background shell is done. we're done
-            state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
-            state.checksum = collectionChecksum(cn);
-            state.count = collectionCount(cn);
-            assertEqual(20, state.count);
-            connectToFollower();
           }
+          // background shell is done. we're done
+          state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(20, state.count);
+          connectToFollower();
         },
 
         function (state) {
@@ -1016,33 +1012,30 @@ function BaseTestConfig () {
           assertFalse(replication.applier.state().state.running);
 
           connectToLeader();
-          try {
-            clients[0].status = internal.statusExternal(clients[0].pid);
-            if (clients[0].status.status !== "RUNNING") {
-              throw new Error("done");
-            }
+          ct.run.joinFinishedBGShells(IM.options, clients);
+          if (!clients[0].done) {
             connectToFollower();
             replication.applier.start();
             assertTrue(replication.applier.state().state.running);
             return 'wait';
-          } catch (err) {
-            // background shell is done. we're done
-            state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
-            state.checksum = collectionChecksum(cn);
-            state.count = collectionCount(cn);
-            assertEqual(20, state.count);
-            connectToFollower();
-            replication.applier.start();
-            assertTrue(replication.applier.state().state.running);
           }
+          // background shell is done. we're done
+          state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(20, state.count);
+          connectToFollower();
+          replication.applier.start();
+          assertTrue(replication.applier.state().state.running);
         },
 
         function (state) {
           assertEqual(state.count, collectionCount(cn));
         }
       );
+      ct.run.joinForceBGShells(IM.options, clients);
     },
-    
+
     testSearchAliasWithLinks: function () {
       connectToLeader();
       const idxName = "inverted_idx";
