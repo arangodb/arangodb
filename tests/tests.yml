@@ -476,7 +476,6 @@
       priority: 1000
       parallelity: 3
       buckets: 2
-      size: large
       type: single
 
 - server_parameters:
