@@ -57,6 +57,8 @@ enum class VectorIndexTrainingState : std::uint8_t {
   kReady
 };
 
+std::string_view trainingStateToString(VectorIndexTrainingState state) noexcept;
+
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
   RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,

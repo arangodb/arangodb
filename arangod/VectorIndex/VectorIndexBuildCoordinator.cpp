@@ -224,6 +224,8 @@ void VectorIndexBuildCoordinator::scanAndBuild(
             eb.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
             eb.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
             eb.add("id", VPackValue(indexId));
+            eb.add("trainingState",
+                   VPackValue(trainingStateToString(vecIdx.trainingState())));
           }
           _maintenance.storeIndexError(database, collection, shard, indexId,
                                        eb.steal());
