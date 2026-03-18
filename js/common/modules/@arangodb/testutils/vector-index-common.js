@@ -382,13 +382,36 @@ function waitForIndexBuild(collection, expectedState, timeoutSec = 60) {
     const internal = require("internal");
     if (internal.isCluster()) {
         const db = internal.db;
-        return waitForAllVectorIndexesTrainingStateOnDBServers(
-            db, collection, expectedState, timeoutSec);
+        if (!waitForAllVectorIndexesTrainingStateOnDBServers(
+                db, collection, expectedState, timeoutSec)) {
+            return false;
+        }
+        // DBServers report the desired state, but the coordinator may still
+        // have stale ClusterInfo data. Wait for the coordinator to catch up.
+        return waitForAllVectorIndexesTrainingState(
+            collection, expectedState, timeoutSec);
     }
     return waitForAllVectorIndexesTrainingState(
         collection, expectedState, timeoutSec);
 }
 
+/**
+ * Generates simple documents each containing a random vector field.
+ *
+ * @param {function} gen - random float generator (e.g. from randomNumberGeneratorFloat)
+ * @param {number} count - number of documents to generate
+ * @param {number} dimension - vector dimension
+ * @returns {Array} array of {vector: [...]} documents
+ */
+function generateDocs(gen, count, dimension) {
+    const docs = [];
+    for (let i = 0; i < count; ++i) {
+        docs.push({vector: Array.from({length: dimension}, () => gen())});
+    }
+    return docs;
+}
+
+exports.generateDocs = generateDocs;
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
 exports.waitForVectorIndexState = waitForVectorIndexState;

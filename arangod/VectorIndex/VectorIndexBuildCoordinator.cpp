@@ -157,7 +157,7 @@ void VectorIndexBuildCoordinator::scanAndBuild(
   // Collect objectIds seen this scan to prune stale entries from
   // _failedBuilds (e.g. indexes that were dropped since the last scan).
   std::unordered_set<std::uint64_t> seenObjectIds;
-  uint64_t untrainedCount = 0;
+  uint64_t unusableIndexesCount = 0;
 
   _dbFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
     if (stopToken.stop_requested()) {
@@ -166,6 +166,12 @@ void VectorIndexBuildCoordinator::scanAndBuild(
 
     auto const collections = vocbase.collections(false);
     for (auto const& coll : collections) {
+      // Only count and build indexes on leader shards — follower shards
+      // replicate the trained state from the leader.
+      if (!coll->isLeadingShard()) {
+        continue;
+      }
+
       auto const indexes = coll->getPhysical()->getReadyIndexes();
       for (auto const& idx : indexes) {
         if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
@@ -176,7 +182,7 @@ void VectorIndexBuildCoordinator::scanAndBuild(
           continue;
         }
 
-        ++untrainedCount;
+        ++unusableIndexesCount;
         seenObjectIds.insert(vecIdx.objectId());
 
         auto const* rcoll =
@@ -265,14 +271,15 @@ void VectorIndexBuildCoordinator::scanAndBuild(
 
         // Built one index — return to the scan loop so we sleep
         // before starting the next one.
-        _untrainedCount.store(untrainedCount > 0 ? untrainedCount - 1 : 0,
-                              std::memory_order_relaxed);
+        _untrainedCount.store(
+            unusableIndexesCount > 0 ? unusableIndexesCount - 1 : 0,
+            std::memory_order_relaxed);
         return;
       }
     }
   });
 
-  _untrainedCount.store(untrainedCount, std::memory_order_relaxed);
+  _untrainedCount.store(unusableIndexesCount, std::memory_order_relaxed);
 
   // Prune failed build entries for indexes that no longer exist.
   std::erase_if(_failedBuilds, [&](auto const& entry) {
