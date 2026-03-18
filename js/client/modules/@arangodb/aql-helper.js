@@ -479,6 +479,7 @@ function sanitizeStats (stats) {
   delete stats.intermediateCommits;
   delete stats.seeks;
   delete stats.documentLookups;
+  delete stats.searchParallelism;
   return stats;
 }
 

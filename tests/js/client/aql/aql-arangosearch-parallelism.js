@@ -80,7 +80,7 @@ function parallelism() {
       db._drop(collName);
     },
 
-    testNoSortWithoutFiltersExact() {
+    testParallelism() {
       let res = db._query(`FOR d IN ${viewName} SEARCH LIKE(d.name, "%9%") OPTIONS { parallelism: 5 } RETURN d`);
       let extra = res.getExtra();
       assertTrue(extra["stats"].hasOwnProperty("searchParallelism"));
