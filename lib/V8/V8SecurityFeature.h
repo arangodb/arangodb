@@ -53,8 +53,8 @@ class TempFeature;
 class V8PlatformFeature;
 
 enum class AllowListStrictness {
-  STRICT,    // if an allowlist is empty, default to allow
-  NONSTRICT  // if an allowlist is empty, default to deny
+  STRICT,    // if an allowlist is empty, default to deny
+  NONSTRICT  // if an allowlist is empty, default to allow
 };
 
 class V8SecurityFeature final
