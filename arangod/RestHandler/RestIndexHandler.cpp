@@ -265,7 +265,7 @@ async<void> RestIndexHandler::getIndexes() {
                     error = msgSlice.copyString();
                   }
                 }
-                if (auto tsSlice = idx.get("trainingState");
+                if (auto tsSlice = idx.get(StaticStrings::IndexTrainingState);
                     tsSlice.isString()) {
                   state = tsSlice.copyString();
                 }
@@ -277,7 +277,7 @@ async<void> RestIndexHandler::getIndexes() {
           builder.add(VPackValue(shardName));
           {
             VPackObjectBuilder shardEntry(&builder);
-            builder.add("state", VPackValue(state));
+            builder.add(StaticStrings::IndexTrainingState, VPackValue(state));
             builder.add("error", VPackValue(error));
           }
         }

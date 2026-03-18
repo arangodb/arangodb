@@ -25,6 +25,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
@@ -166,9 +167,7 @@ void VectorIndexBuildCoordinator::scanAndBuild(
 
     auto const collections = vocbase.collections(false);
     for (auto const& coll : collections) {
-      // Only count and build indexes on leader shards — follower shards
-      // replicate the trained state from the leader.
-      if (!coll->isLeadingShard()) {
+      if (ServerState::instance()->isDBServer() && !coll->isLeadingShard()) {
         continue;
       }
 
@@ -230,7 +229,7 @@ void VectorIndexBuildCoordinator::scanAndBuild(
             eb.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
             eb.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
             eb.add("id", VPackValue(indexId));
-            eb.add("trainingState",
+            eb.add(StaticStrings::IndexTrainingState,
                    VPackValue(trainingStateToString(vecIdx.trainingState())));
           }
           _maintenance.storeIndexError(database, collection, shard, indexId,

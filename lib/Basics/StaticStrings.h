@@ -152,6 +152,7 @@ class StaticStrings {
   static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
   static std::string_view constexpr IndexLookahead{"lookahead"};
   static std::string const IndexCreationError;  // index failed to create
+  static std::string_view constexpr IndexTrainingState{"trainingState"};
 
   // static index names
   static std::string const IndexNameEdge;

@@ -512,7 +512,7 @@ bool ClusterIndex::isVectorIndexReady() const noexcept {
     return false;
   }
   auto const info = _info.slice();
-  auto const trainingState = info.get("trainingState");
+  auto const trainingState = info.get(StaticStrings::IndexTrainingState);
   LOG_TOPIC("a7f2c", DEBUG, Logger::ENGINES)
       << "ClusterIndex::isVectorIndexReady() trainingState="
       << (trainingState.isString() ? trainingState.stringView() : "N/A")

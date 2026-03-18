@@ -171,7 +171,7 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.close();
   }
 
-  builder.add("trainingState",
+  builder.add(StaticStrings::IndexTrainingState,
               VPackValue(trainingStateToString(_trainingState)));
 
   if (_trainingState.load() == VectorIndexTrainingState::kReady &&
