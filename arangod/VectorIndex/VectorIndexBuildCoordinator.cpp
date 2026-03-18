@@ -46,8 +46,8 @@
 #include <omp.h>
 #include <unordered_set>
 
-DECLARE_GAUGE(arangodb_vector_index_untrained_count, uint64_t,
-              "Number of untrained vector indexes on this DBServer");
+DECLARE_GAUGE(arangodb_vector_index_unusable_count, uint64_t,
+              "Number of unusable vector indexes on this DBServer");
 DECLARE_GAUGE(arangodb_vector_index_training_ongoing_count, uint64_t,
               "Number of vector index trainings currently ongoing");
 
@@ -80,7 +80,7 @@ VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
     metrics::MetricsFeature& metrics)
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
-      _untrainedCount(metrics.add(arangodb_vector_index_untrained_count{})),
+      _untrainedCount(metrics.add(arangodb_vector_index_unusable_count{})),
       _trainingOngoingCount(
           metrics.add(arangodb_vector_index_training_ongoing_count{})),
       _trainingDuration(metrics.add(arangodb_vector_index_training_duration{})),

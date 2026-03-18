@@ -1,0 +1,15 @@
+name: arangodb_vector_index_training_ongoing_count
+introducedIn: "3.12.9"
+help: |
+  Number of vector index trainings currently ongoing.
+unit: number
+type: gauge
+category: VectorIndex
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Current number of vector index training operations in progress on
+  this DBServer. The value increases when a training phase starts and
+  decreases when it completes or fails. Only counts the leaders.

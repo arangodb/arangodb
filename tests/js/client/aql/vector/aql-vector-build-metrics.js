@@ -47,7 +47,7 @@ const dimension = 100;
 const numberOfShards = 3;
 const replicationFactor = 2;
 
-const metricUnusableCount = "arangodb_vector_index_untrained_count";
+const metricUnusableCount = "arangodb_vector_index_unusable_count";
 const metricTrainingOngoingCount = "arangodb_vector_index_training_ongoing_count";
 const metricTrainingDurationCount = "arangodb_vector_index_training_duration_count";
 const metricIngestionDurationCount = "arangodb_vector_index_ingestion_duration_count";
