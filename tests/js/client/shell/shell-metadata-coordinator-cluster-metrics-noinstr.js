@@ -196,6 +196,9 @@ function metadataCoordinatorMetricsSuite() {
     },
 
     testMetricsBaseValues: function() {
+      db._useDatabase("_system");
+      require("internal").print("collections:", db._collections().map(c => c.name()));
+
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
 
