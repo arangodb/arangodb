@@ -96,6 +96,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
+  bool isVectorIndexReady() const noexcept override;
+
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector);
 
@@ -136,15 +138,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
-  bruteForceSearch(
-      std::vector<float>& inputs, std::size_t topK, transaction::Methods* trx,
-      aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
-      aql::QueryContext* queryContext,
-      std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
-          filterVarsToRegs,
-      aql::Variable const* documentVariable);
-
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   TrainedData _trainedData;

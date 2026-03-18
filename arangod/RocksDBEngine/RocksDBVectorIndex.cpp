@@ -27,6 +27,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <functional>
 #include <cstring>
 
@@ -51,18 +52,12 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
-#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
-#include "Aql/AqlFunctionsInternalCache.h"
-#include "Aql/ExecutorExpressionContext.h"
-#include "Aql/DocumentExpressionContext.h"
 #include <rocksdb/db.h>
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
-#include "faiss/utils/Heap.h"
 
 namespace arangodb {
 
@@ -207,9 +202,14 @@ RocksDBVectorIndex::readBatch(
     faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
   }
 
-  if (_trainingState != VectorIndexTrainingState::kReady) {
-    return bruteForceSearch(inputs, topK, trx, filterExpression, inputRow,
-                            &queryContext, &filterVarsToRegs, documentVariable);
+  if (auto const state = _trainingState.load();
+      state != VectorIndexTrainingState::kReady) {
+    // This should never happen — the optimizer should not use
+    // EnumerateNearVectorNode when the vector index is not ready.
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+        std::format("vector index is in state '{}', expected 'ready'",
+                    trainingStateToString(state)));
   }
   TRI_ASSERT(_faissIndex != nullptr);
 
@@ -252,6 +252,11 @@ RocksDBVectorIndex::readBatch(
   }
 
   return {std::move(labels), std::move(distances)};
+}
+
+bool RocksDBVectorIndex::isVectorIndexReady() const noexcept {
+  return _trainingState.load(std::memory_order_acquire) ==
+         VectorIndexTrainingState::kReady;
 }
 
 Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
@@ -419,98 +424,6 @@ bool RocksDBVectorIndex::hasStoredValues() const noexcept {
 
 StoredValues const& RocksDBVectorIndex::storedValues() const {
   return _storedValues;
-}
-
-std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
-RocksDBVectorIndex::bruteForceSearch(
-    std::vector<float>& inputs, std::size_t topK, transaction::Methods* trx,
-    aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
-    aql::QueryContext* queryContext,
-    std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
-        filterVarsToRegs,
-    aql::Variable const* documentVariable) {
-  auto const dim = _definition.dimension;
-  bool const isDescending =
-      _definition.metric == SimilarityMetric::kCosine ||
-      _definition.metric == SimilarityMetric::kInnerProduct;
-
-  std::vector<faiss::idx_t> labels(topK, -1);
-  // Initialize heap: max-heap for L2 (keep smallest distances),
-  // min-heap for IP/cosine (keep largest inner products)
-  auto const minValue = std::invoke([&]() {
-    if (isDescending) {
-      return -std::numeric_limits<float>::max();
-    } else {
-      return std::numeric_limits<float>::max();
-    }
-  });
-  std::vector<float> distances(topK, minValue);
-
-  auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
-  aql::AqlFunctionsInternalCache aqlFunctionsInternalCache;
-  iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
-                         velocypack::Slice docSlice) -> bool {
-    std::vector<float> vec;
-    vec.reserve(dim);
-    if (readDocumentVectorData(docSlice, vec).fail()) {
-      return true;
-    }
-
-    if (filterExpression != nullptr) {
-      TRI_ASSERT(queryContext != nullptr);
-      TRI_ASSERT(filterVarsToRegs != nullptr);
-      TRI_ASSERT(inputRow != nullptr);
-
-      aql::GenericDocumentExpressionContext ctx(
-          *trx, *queryContext, aqlFunctionsInternalCache, *filterVarsToRegs,
-          *inputRow, documentVariable);
-      ctx.setCurrentDocument(docSlice);
-
-      bool mustDestroy{false};
-      aql::AqlValue expressionEvaluation =
-          filterExpression->execute(&ctx, mustDestroy);
-      aql::AqlValueGuard const guard(expressionEvaluation, mustDestroy);
-      if (!expressionEvaluation.toBoolean()) {
-        return true;
-      }
-    }
-
-    if (_definition.metric == SimilarityMetric::kCosine) {
-      faiss::fvec_renorm_L2(dim, 1, vec.data());
-    }
-
-    auto const id = static_cast<faiss::idx_t>(docId.id());
-
-    if (isDescending) {
-      float dist = faiss::fvec_inner_product(inputs.data(), vec.data(), dim);
-      if (dist > distances[0]) {
-        faiss::minheap_replace_top(topK, distances.data(), labels.data(), dist,
-                                   id);
-      }
-    } else {
-      float dist = faiss::fvec_L2sqr(inputs.data(), vec.data(), dim);
-      if (dist < distances[0]) {
-        faiss::maxheap_replace_top(topK, distances.data(), labels.data(), dist,
-                                   id);
-      }
-    }
-    return true;
-  });
-
-  // Reorder heap so results are sorted
-  if (isDescending) {
-    faiss::minheap_reorder(topK, distances.data(), labels.data());
-  } else {
-    faiss::maxheap_reorder(topK, distances.data(), labels.data());
-  }
-
-  // L2: fvec_L2sqr returns squared distances, take sqrt
-  if (_definition.metric == SimilarityMetric::kL2) {
-    std::ranges::transform(distances, distances.begin(),
-                           [](float d) { return std::sqrt(d); });
-  }
-
-  return {std::move(labels), std::move(distances)};
 }
 
 }  // namespace arangodb
