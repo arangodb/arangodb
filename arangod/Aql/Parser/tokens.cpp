@@ -1327,7 +1327,7 @@ class Parser;
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/grammar.hpp"
+#include "Aql/Parser/grammar.hpp"
 #include "Aql/Functions.h"
 #include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
