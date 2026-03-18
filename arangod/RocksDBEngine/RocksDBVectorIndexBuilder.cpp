@@ -464,7 +464,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         encoded->codes = std::move(flat_codes);
         encoded->storedValues = std::move(item->storedValues);
 
-        LOG_TOPIC("e167m", INFO, Logger::ENGINES)
+        LOG_TOPIC("e168b", INFO, Logger::ENGINES)
             << "[shard=" << shardName << ", index=" << indexId << "] "
             << "ENCODE encoded " << encoded->docIds.size()
             << " vectors, code size: " << code_size;
