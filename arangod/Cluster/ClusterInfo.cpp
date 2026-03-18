@@ -6406,18 +6406,6 @@ void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
     auto const plannedN = (plannedServersPtr ? plannedServersPtr->size() : 0);
     totalShards += plannedN;
 
-    std::string colName = "unknown";
-    std::string dbName = "unknown";
-    if (auto it = _shardToName.find(shardId); it != _shardToName.end()) {
-        colName = it->second;
-    }
-    if (auto it = _shardToDb.find(shardId); it != _shardToDb.end()) {
-        dbName = it->second;
-    }
-    LOG_DEVEL << "updateCoordinatorCurrentShardMetrics: shardId=" << shardId
-              << " plannedN=" << plannedN << " colName=" << colName
-              << " dbName=" << dbName;
-
     // Lookup current
     auto cit = _shardsToCurrentServers.find(shardId);
     auto const& serversPtr =
@@ -6494,8 +6482,6 @@ void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
     }
   }
 
-  LOG_DEVEL << "updateCoordinatorCurrentShardMetrics: totalShards=" << totalShards;
-  
   _metadataMetrics->totalNumberOfShards.store(totalShards,
                                               std::memory_order_relaxed);
   _metadataMetrics->numberFollowerShards.store(totalFollowers,

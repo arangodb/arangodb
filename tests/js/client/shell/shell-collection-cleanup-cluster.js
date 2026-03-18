@@ -123,19 +123,16 @@ function collectionCleanupSuite() {
     },
 
     testCollectionCreationNoCleanup: function() {
-      // The supervision in the agency should not cleanup a collection
-      // which had errors in creation, if the coordinator is still there.
-
       getCoordinatorRebootId();
-
+    
       let res = arango.PUT(maintenanceURL, '"on"');
       assertFalse(res.error);
-
+    
+      // Declare outside try so finally can access them
+      let collId = "999998";
+      let planKey = `/arango/Plan/Collections/_system/${collId}`;
+    
       try {
-        let collId = "999998";
-        let planKey = `/arango/Plan/Collections/_system/${collId}`;
-
-        // Create a broken collection in the Plan with current reboot ID
         let body = {"/arango/Plan/Version": {op: "increment"}};
         body[planKey] = {
           op: "set",
@@ -145,33 +142,26 @@ function collectionCleanupSuite() {
             type: 2,
             replicationFactor: 2,
             numberOfShards: 1,
-            shards: {
-              "s999998": ["PRMR-00000000"]
-            },
+            shards: { "s999998": ["PRMR-00000000"] },
             coordinator: coordinatorId,
-            coordinatorRebootId: coordinatorRebootId,  // current reboot ID
+            coordinatorRebootId: coordinatorRebootId,
             isBuilding: true
           }
         };
         AM.call("write", [[body]]);
-
+    
         res = arango.PUT(maintenanceURL, '"off"');
         assertFalse(res.error);
-
-        // verify collection stays in Plan
+    
         waitForCollectionStaysInPlan(collId);
-
-        // Clean up
-        res = arango.PUT(maintenanceURL, '"on"');
-        assertFalse(res.error);
+    
+      } finally {
+        arango.PUT(maintenanceURL, '"on"');
         let deleteBody = {"/arango/Plan/Version": {op: "increment"}};
         deleteBody[planKey] = {op: "delete"};
         AM.call("write", [[deleteBody]]);
-        res = arango.PUT(maintenanceURL, '"off"');
-        assertFalse(res.error);
-
-      } finally {
         arango.PUT(maintenanceURL, '"off"');
+        waitForCollectionRemoval(collId);
       }
     },
 
