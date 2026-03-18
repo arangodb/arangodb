@@ -129,26 +129,12 @@ class V8SecurityFeature final
   // an logical OR to the final expression. That in turn
   // will be compiled into an std::regex.
 
-  std::string _startupOptionsAllowList;
-  std::string _startupOptionsDenyList;
-
-  /// @brief regular expression string for forbidden IP address/host names
-  /// to connect to via JS_Download/internal.download
-  std::string _endpointsAllowList;
-  std::string _endpointsDenyList;
-
-  /// @brief regular expression string for environment variables filtering
-  std::string _environmentVariablesAllowList;
-  std::string _environmentVariablesDenyList;
-
   /// @brief variables for file access
   std::string _readAllowList;
   std::unordered_set<std::string> _readAllowListSet;
 
   std::string _writeAllowList;
   std::unordered_set<std::string> _writeAllowListSet;
-
-  std::string _filesAllowList;
 
   AllowListStrictness _strictness;
 

@@ -309,31 +309,23 @@ void V8SecurityFeature::prepare() {
   TRI_ASSERT(!_readAllowList.empty());
 }
 
-void V8SecurityFeature::start() {
-  // initialize regexes for filtering options. the regexes must have been
-  // validated before
-  //  _startupOptions =
-  //     DenyAllow(_startupOptionsDenyList, _startupOptionsAllowList);
-  //_environmentVariables =
-  //     DenyAllow(_environmentVariablesDenyList,
-  //     _environmentVariablesAllowList);
-  //_endpoints = DenyAllow(_endpointsDenyList, _endpointsAllowList);
-  //_files = DenyAllow("", _filesAllowList);
-}
+void V8SecurityFeature::start() {}
 
 void V8SecurityFeature::dumpAccessLists() const {
   LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY)
-      << "files allowed by user:" << _filesAllowList
+      << "files allowed by user:" << _options.filesAllowList
       << ", internal read allow list:" << _readAllowList
       << ", internal write allow list:" << _writeAllowList
-      << ", internal startup options allow list:" << _startupOptionsAllowList
-      << ", internal startup options deny list: " << _startupOptionsDenyList
+      << ", internal startup options allow list:"
+      << _options.startupOptionsAllowList
+      << ", internal startup options deny list: "
+      << _options.startupOptionsDenyList
       << ", internal environment variable allow list:"
-      << _environmentVariablesAllowList
+      << _options.environmentVariablesAllowList
       << ", internal environment variables deny list: "
-      << _environmentVariablesDenyList
-      << ", internal endpoints allow list:" << _endpointsAllowList
-      << ", internal endpoints deny list: " << _endpointsDenyList;
+      << _options.environmentVariablesDenyList
+      << ", internal endpoints allow list:" << _options.endpointsAllowList
+      << ", internal endpoints deny list: " << _options.endpointsDenyList;
 }
 
 // TODO: this is still very ugly
