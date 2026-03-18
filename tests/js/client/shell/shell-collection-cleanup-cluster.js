@@ -28,7 +28,7 @@ const jsunity = require('jsunity');
 const IM = global.instanceManager;
 const AM = IM.agencyMgr;
 
-let { getServersByType, isEnterprise } = require('@arangodb/test-helper');
+let { getServersByType, isEnterprise, getCoordinators, getMetric } = require('@arangodb/test-helper');
 
 const wait = require("internal").wait;
 
@@ -76,6 +76,19 @@ function collectionCleanupSuite() {
     // All good, collection still there
   };
 
+  let waitForShardsRemovedFromMetric = function(expectedTotalShards) {
+    const coordinators = getCoordinators();
+    const metricName = "arangodb_metadata_total_number_of_shards";
+    for (let i = 0; i < 60; ++i) {
+      wait(1);
+      let value = getMetric(coordinators[0].endpoint, metricName);
+      if (value === expectedTotalShards) {
+        return;
+      }
+    }
+    throw `Metric ${metricName} did not converge to ${expectedTotalShards} after 60s`;
+  };
+
   return {
 
     testCollectionCreationAndCleanup: function() {
@@ -116,6 +129,8 @@ function collectionCleanupSuite() {
 
         // wait until collection is removed from Plan
         waitForCollectionRemoval(collId);
+        // Wait for coordinator's _shardsToPlanServers to be updated
+        waitForShardsRemovedFromMetric(6);
 
       } finally {
         arango.PUT(maintenanceURL, '"off"');
@@ -162,6 +177,8 @@ function collectionCleanupSuite() {
         AM.call("write", [[deleteBody]]);
         arango.PUT(maintenanceURL, '"off"');
         waitForCollectionRemoval(collId);
+        // Wait for coordinator's _shardsToPlanServers to be updated
+        waitForShardsRemovedFromMetric(6);
       }
     },
 
@@ -265,6 +282,8 @@ function collectionCleanupSuite() {
         waitForCollectionRemoval(shadowCollId1);
         waitForCollectionRemoval(shadowCollId2);
         waitForCollectionRemoval(shadowCollId3);
+        // Wait for coordinator's _shardsToPlanServers to be updated
+        waitForShardsRemovedFromMetric(6);
 
       } finally {
         arango.PUT(maintenanceURL, '"off"');
