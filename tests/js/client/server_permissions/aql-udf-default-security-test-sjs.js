@@ -22,14 +22,6 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
-const internal = require("internal");
-const errors = internal.errors;
-const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
-const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
-
 if (getOptions === true) {
   return {
     'javascript.startup-options-denylist': [],
@@ -42,7 +34,13 @@ if (getOptions === true) {
   };
 }
 
-
+const internal = require("internal");
+const errors = internal.errors;
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const assertQueryError = helper.assertQueryError;
+const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 function ahuacatlUDFSecurityDefaultsTestSuite () {
   const aqlfunctions = require("@arangodb/aql/functions");
@@ -149,11 +147,6 @@ function ahuacatlUDFSecurityDefaultsTestSuite () {
   };
 }
 
-// TODO: these are the tests that should test the *default* settings
-// of arangod; to not break any other tests we currently set the
-// allowed paths/environmentvariabls/startupoptions/filepaths to .*
-// for testing.
-//
-// jsunity.run(ahuacatlUDFSecurityDefaultsTestSuite);
+jsunity.run(ahuacatlUDFSecurityDefaultsTestSuite);
 
 return jsunity.done();
