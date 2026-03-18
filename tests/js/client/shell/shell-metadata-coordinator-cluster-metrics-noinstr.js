@@ -196,8 +196,26 @@ function metadataCoordinatorMetricsSuite() {
     },
 
     testMetricsBaseValues: function() {
+      // DEBUG START
+      const internal = require("internal");
+      
+      // 1. What db._collections() returns per database
       db._useDatabase("_system");
-      require("internal").print("collections:", db._collections().map(c => c.name()));
+      internal.print("_system collections:", JSON.stringify(db._collections().map(c => c.name())));
+      
+      // 2. What the agency Plan says (source of truth for the C++ metric)
+      const shardDist = arango.GET("/_admin/cluster/shardDistribution");
+      internal.print("shard distribution:", JSON.stringify(shardDist, null, 2));
+      
+      // 3. Raw Plan collections from agency
+      const planCols = arango.GET("/_api/cluster/inventory");
+      internal.print("cluster inventory:", JSON.stringify(planCols, null, 2));
+      
+      // 4. All databases visible to _system
+      internal.print("databases:", JSON.stringify(db._databases()));
+      
+      // 5. Current endpoint
+      internal.print("current endpoint:", arango.getEndpoint());
 
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
