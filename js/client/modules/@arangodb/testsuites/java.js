@@ -146,6 +146,13 @@ arangodb.acquireHostList=true
     if (rc.exit !== 0) {
       status = false;
     }
+    let txtfile = fs.join(cwd, "test-functional/target/unicode_names.txt");
+    if (fs.exists(txtfile)) {
+      print(`copying ${txtfile}`);
+      fs.copyFile(txtfile, this.instanceManager.rootDir);
+    } else {
+      print(`${txtfile} not found!`);
+    }
     this.getAllureResults(testResultsDir, results, status, 'javadriver');
     return results;
   }
