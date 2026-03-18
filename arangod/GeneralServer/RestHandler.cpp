@@ -701,8 +701,9 @@ bool RestHandler::isAllowedHttpMethod(
 // checks if collection name is a numeric collection id (= all chars are digits)
 // and generates an error if so
 bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
-  if (cname.empty()) return false;
-  if (cname.front() < '0' || cname.front() > '9') return false;  // early exit
+  if (cname.empty() || cname.front() < '0' || cname.front() > '9') {
+    return false;  // early exit
+  }
   if (std::all_of(cname.begin(), cname.end(),
                   [](unsigned char c) { return c >= '0' && c <= '9'; })) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
