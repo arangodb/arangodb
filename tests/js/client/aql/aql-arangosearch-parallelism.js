@@ -34,6 +34,12 @@ function parallelism() {
     const viewName = 'testView';
   return {
     setUpAll: function () {
+      if (internal.isCluster()) {
+        // currently does not work in cluster, as stats in cluster are only
+        // updated after the query is removed from the query list.
+        return;
+      }
+
       db._dropView(viewName);
       db._drop(collName);
       let c = db._create(collName);
@@ -76,11 +82,22 @@ function parallelism() {
     },
 
     tearDownAll: function () {
+      if (internal.isCluster()) {
+        // currently does not work in cluster, as stats in cluster are only
+        // updated after the query is removed from the query list.
+        return;
+      }
       db._dropView(viewName);
       db._drop(collName);
     },
 
     testParallelism() {
+      if (internal.isCluster()) {
+        // currently does not work in cluster, as stats in cluster are only
+        // updated after the query is removed from the query list.
+        return;
+      }
+
       let res = db._query(`FOR d IN ${viewName} SEARCH LIKE(d.name, "%9%") OPTIONS { parallelism: 5 } RETURN d`);
       let extra = res.getExtra();
       assertTrue(extra["stats"].hasOwnProperty("searchParallelism"));
