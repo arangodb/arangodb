@@ -264,11 +264,11 @@ function dealing_with_the_applier_interfaceSuite () {
 ////////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_loggerSuite () {
   return {
-    setUpAll: function() {
+    setUp: function() {
       db._drop("UnitTestsReplication");
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop("UnitTestsReplication");
     },
 
@@ -415,17 +415,9 @@ function dealing_with_batches_and_logger_stateSuite () {
 function dealing_with_the_initial_dump_interfaceSuite () {
   let batchId;
   return {
-    setUpAll: function() {
-      db._drop("UnitTestsReplication");
-      db._drop("UnitTestsReplication2");
-    },
-
-    tearDownAll: function() {
-      db._drop("UnitTestsReplication");
-      db._drop("UnitTestsReplication2");
-    },
-
     setUp: function() {
+      db._drop("UnitTestsReplication");
+      db._drop("UnitTestsReplication2");
       let doc = arango.POST_RAW(api + "/batch", {});
       assertEqual(doc.code, 200);
       batchId = doc.parsedBody['id'];
@@ -1105,12 +1097,12 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 function dealing_with_general_functionSuite () {
   let api = "/_db/UnitTestDB/_api/replication";
   return {
-    setUpAll: function() {
+    setUp: function() {
       let res = db._createDatabase("UnitTestDB");;
       assertTrue(res);
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       let res = db._dropDatabase("UnitTestDB");;
       assertTrue(res);
     },
@@ -1130,14 +1122,14 @@ function dealing_with_general_functionSuite () {
 function dealing_with_the_applierSuite () {
   let api = "/_db/UnitTestDB/_api/replication";
   return {
-    setUpAll: function() {
+    setUp: function() {
       let res = db._createDatabase("UnitTestDB");;
       assertTrue(res);
       arango.PUT_RAW(api + "/applier-stop", "");
       arango.DELETE_RAW(api + "/applier-state", "");
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       let res = db._dropDatabase("UnitTestDB");;
       assertTrue(res);
       arango.PUT_RAW(api + "/applier-stop", "");
@@ -1343,7 +1335,7 @@ function dealing_with_the_applierSuite () {
 ////////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_logger_Suite () {
   return {
-    setUpAll: function() {
+    setUp: function() {
       db._drop("UnitTestsReplication");
       let res = db._createDatabase("UnitTestDB");;
       assertTrue(res);
@@ -1351,7 +1343,7 @@ function dealing_with_the_logger_Suite () {
       arango.DELETE_RAW(api + "/applier-state", "");
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       let res = db._dropDatabase("UnitTestDB");;
       assertTrue(res);
       arango.PUT_RAW(api + "/applier-stop", "");
@@ -1393,19 +1385,8 @@ function dealing_with_the_logger_Suite () {
 function dealing_with_the_initial_dumSuite () {
   let batchId;
   return {
-    setUpAll: function() {
-      db._createDatabase("UnitTestDB");
-    },
-
-    tearDownAll: function() {
-      arango.DELETE_RAW(api + `/batch/${batchId}`, "");
-      db._drop("UnitTestsReplication", "UnitTestDB");
-      db._drop("UnitTestsReplication2", "UnitTestDB");
-      db._useDatabase("_system");
-      db._dropDatabase("UnitTestDB");
-    },
-
     setUp: function() {
+      db._createDatabase("UnitTestDB");
       let doc = arango.POST_RAW(api + "/batch", "{}");
       assertEqual(doc.code, 200);
       batchId = doc.parsedBody['id'];
@@ -1416,6 +1397,8 @@ function dealing_with_the_initial_dumSuite () {
       arango.DELETE_RAW(api + `/batch/${batchId}`, "");
       db._drop("UnitTestsReplication", "UnitTestDB");
       db._drop("UnitTestsReplication2", "UnitTestDB");
+      db._useDatabase("_system");
+      db._dropDatabase("UnitTestDB");
     },
 
     ////////////////////////////////////////////////////////////////////////////////;
