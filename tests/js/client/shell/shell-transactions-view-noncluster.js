@@ -87,11 +87,7 @@ function TransactionsIResearchSuite() {
 
     tearDown: function () {
       // we need try...catch here because at least one test drops the collection itself!
-      try {
-        c.unload();
-        c.drop();
-      } catch (err) {
-      }
+      try { c.drop(); } catch (err) {}
       c = null;
       if (view) {
         view.drop();
@@ -107,7 +103,7 @@ function TransactionsIResearchSuite() {
     tearDownAll: function () {
       try { db._dropView('UnitTestsView'); } catch (e) {}
       try { db._dropView('searchAliasView'); } catch (e) {}
-      analyzers.remove('myText', true);
+      analyzers.remove('myText');
     },
 
     ////////////////////////////////////////////////////////////////////////////
