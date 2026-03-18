@@ -25,16 +25,6 @@ set(AMD64_V2 -mcx16 -msahf -mpopcnt -msse3 -msse4.1 -msse4.2 -mssse3 -mpclmul -m
 set(AMD64_V3 -mavx2 -mbmi -mbmi2 -mf16c -mfma -mlzcnt -mmovbe)
 set(AMD64_V4 -mavx512f -mavx512bw -mavx512cd -mavx512dq -mavx512vl -mavx512vbmi -mavx512vbmi2)
 
-macro(sandybridge)
-  message(STATUS "Optimize for sandybridge")
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    list(APPEND ARCHITECTURE_OPTIMIZATIONS /arch:AVX)
-  else ()
-    list(APPEND ARCHITECTURE_OPTIMIZATIONS ${AMD64_V1})
-    list(APPEND ARCHITECTURE_OPTIMIZATIONS ${AMD64_V2})
-  endif ()
-endmacro()
-
 macro(haswell)
   message(STATUS "Optimize for haswell")
   if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
@@ -59,21 +49,9 @@ macro(icelake)
 endmacro()
 
 
-# Simplified for servers we need to support only AWS Graviton, Ampere Altra, Apple M1
+# Simplified for servers we need to support only AWS Graviton 2, Ampere Altra, Apple M1
 # https://github.com/aws/aws-graviton-getting-started
 # https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html#AArch64-Options
-macro(graviton1)
-  message(STATUS "Optimize for graviton1")
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    list(APPEND ARCHITECTURE_OPTIMIZATIONS /arch:armv8.0)
-  else ()
-    # little-endian enabled by default, but only if target is not something like aarch64_be
-    # so force to generate little-endian code, because it's simpler and less error-prone
-    # "fp simd" are included to armv8-a
-    list(APPEND ARCHITECTURE_OPTIMIZATIONS -mlittle-endian -march=armv8-a+crc+crypto)
-  endif ()
-endmacro()
-
 macro(graviton2)
   message(STATUS "Optimize for graviton2")
   if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
@@ -93,16 +71,8 @@ macro(graviton3)
 endmacro()
 
 
-if (NOT TARGET_ARCHITECTURE OR TARGET_ARCHITECTURE STREQUAL "auto" OR TARGET_ARCHITECTURE STREQUAL "sandybridge" OR TARGET_ARCHITECTURE STREQUAL "sandy-bridge" OR TARGET_ARCHITECTURE STREQUAL "graviton1")
-  # It's our default mode. empty and auto and sandy-bridge for backward compatibility
-  # TODO(MBkkt) iresearch now probably doesn't work without any host specific options, should be fixed?
-  if (ARCH_AMD64)
-    # We use sandybridge instead of westmere because it's more easy for MSVC, in general difference only in avx and xsave
-    sandybridge()
-  elseif (ARCH_AARCH64)
-    graviton1()
-  endif ()
-elseif (TARGET_ARCHITECTURE STREQUAL "haswell")
+if (NOT TARGET_ARCHITECTURE OR TARGET_ARCHITECTURE STREQUAL "auto" OR TARGET_ARCHITECTURE STREQUAL "haswell" OR TARGET_ARCHITECTURE STREQUAL "graviton2")
+  # It's our default mode. Empty, auto, haswell and graviton2 for backward compatibility.
   if (ARCH_AMD64)
     haswell()
   elseif (ARCH_AARCH64)
