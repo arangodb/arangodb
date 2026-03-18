@@ -228,106 +228,30 @@ function createVectorGenerator(options) {
 
 const sleepIntervalSec = 0.1;
 
-/**
- * Waits until the named vector index on the collection reaches the given training state.
- * @param {ArangoCollection} collection - collection that has the vector index
- * @param {string} indexName - name of the vector index to wait for
- * @param {string} state - desired training state: "ready" or "unusable"
- * @param {number} timeoutSec - max time to wait in seconds
- * @returns {boolean} true if the vector index reached the state within the timeout
- */
-function waitForVectorIndexState(collection, indexName, state, timeoutSec = 20) {
-    const internal = require("internal");
-    const iterations = Math.floor(timeoutSec / sleepIntervalSec);
-    for (let i = 0; i < iterations; i++) {
-        const idx = collection.indexes().find(
-            ix => ix.type === 'vector' && ix.name === indexName);
-        if (idx && idx.trainingState === state) {
-            return true;
-        }
-        internal.sleep(sleepIntervalSec);
+// Checks whether the given vector indexes match the expected state.
+// If indexName is provided, only that index is checked; otherwise all vector indexes.
+function vectorIndexesMatchState(indexes, state, indexName) {
+    const vectorIndexes = indexes.filter(idx => idx.type === 'vector');
+    if (indexName !== undefined) {
+        const idx = vectorIndexes.find(ix => ix.name === indexName);
+        return idx !== undefined && idx.trainingState === state;
     }
-    return false;
+    return vectorIndexes.length > 0 &&
+        vectorIndexes.every(idx => idx.trainingState === state);
 }
 
-function waitForAllVectorIndexesTrainingState(collection, trainingState, timeoutSec = 20) {
+// Waits until vector index(es) on the collection reach the given state.
+// In cluster mode, uses collection.indexes(true, true) to get per-shard
+// state from the coordinator's cluster-wide knowledge.
+// If indexName is provided, only that single index is checked.
+function waitForState(collection, state, timeoutSec, indexName) {
     const internal = require("internal");
+    const isCluster = internal.isCluster();
     const iterations = Math.floor(timeoutSec / sleepIntervalSec);
     for (let i = 0; i < iterations; i++) {
-        const vectorIndexes = collection.indexes().filter(idx => idx.type === 'vector');
-        if (vectorIndexes.length > 0 && vectorIndexes.every(idx => idx.trainingState === trainingState)) {
-            return true;
-        }
-        internal.sleep(sleepIntervalSec);
-    }
-    return false;
-}
-
-/**
- * In cluster mode: waits until all vector indexes on all DB servers (shards) reach
- * the given training state by querying each DB server via the HTTP API (no reconnect).
- * @param {ArangoDatabase} db - database (e.g. internal.db)
- * @param {ArangoCollection} collection - collection that has vector index(es)
- * @param {string} trainingState - desired training state: "ready" or "unusable"
- * @param {number} timeoutSec - max time to wait in seconds
- * @returns {boolean} true if all vector indexes on all shards reached the state within the timeout
- */
-function waitForAllVectorIndexesTrainingStateOnDBServers(db, collection, trainingState, timeoutSec = 20) {
-    const internal = require("internal");
-    const request = require("@arangodb/request");
-    const testHelper = require("@arangodb/test-helper");
-    const getEndpointById = testHelper.getEndpointById;
-
-    const dbName = db._name();
-    const shardMap = collection.shards(true);
-    if (!shardMap || Object.keys(shardMap).length === 0) {
-        return false;
-    }
-
-    const serverToShards = {};
-    for (const [shard, servers] of Object.entries(shardMap)) {
-        const primaryId = servers[0];
-        if (!serverToShards[primaryId]) {
-            serverToShards[primaryId] = [];
-        }
-        serverToShards[primaryId].push(shard);
-    }
-
-    const indexApiPath = "/_db/" + encodeURIComponent(dbName) + "/_api/index";
-
-    const iterations = Math.floor(timeoutSec / sleepIntervalSec);
-    for (let iter = 0; iter < iterations; iter++) {
-        let allMatch = true;
-        for (const [serverId, shards] of Object.entries(serverToShards)) {
-            const baseUrl = getEndpointById(serverId);
-            if (!baseUrl) {
-                allMatch = false;
-                break;
-            }
-            for (const shardName of shards) {
-                const url = baseUrl + indexApiPath + "?collection=" + encodeURIComponent(shardName);
-                let res;
-                try {
-                    res = request({ method: "GET", url });
-                } catch (e) {
-                    allMatch = false;
-                    break;
-                }
-                if (res.status !== 200 || !res.json || !res.json.indexes) {
-                    allMatch = false;
-                    break;
-                }
-                const vectorIndexes = res.json.indexes.filter(idx => idx.type === 'vector');
-                if (vectorIndexes.length === 0 || !vectorIndexes.every(idx => idx.trainingState === trainingState)) {
-                    allMatch = false;
-                    break;
-                }
-            }
-            if (!allMatch) {
-                break;
-            }
-        }
-        if (allMatch) {
+        // In cluster mode, pass (true, true) to get per-shard index details.
+        const indexes = isCluster ? collection.indexes(true, true) : collection.indexes();
+        if (vectorIndexesMatchState(indexes, state, indexName)) {
             return true;
         }
         internal.sleep(sleepIntervalSec);
@@ -370,29 +294,30 @@ function insertDocsAndEnsureIndex({collection, docs, seed, ensureIndex,
 }
 
 /**
- * Waits until all vector indexes on the collection reach the expected training
- * state, handling both cluster and single-server modes.
+ * Waits until a single named vector index on the collection reaches the
+ * expected training state. Handles both cluster and single-server modes.
  *
  * @param {ArangoCollection} collection
- * @param {string} expectedState - "ready" or "unusable"
+ * @param {string} indexName - name of the vector index to wait for
+ * @param {string} expectedState - ready, training, ingesting, ready
  * @param {number} [timeoutSec=60]
  * @returns {boolean}
  */
-function waitForIndexBuild(collection, expectedState, timeoutSec = 60) {
-    const internal = require("internal");
-    if (internal.isCluster()) {
-        const db = internal.db;
-        if (!waitForAllVectorIndexesTrainingStateOnDBServers(
-                db, collection, expectedState, timeoutSec)) {
-            return false;
-        }
-        // DBServers report the desired state, but the coordinator may still
-        // have stale ClusterInfo data. Wait for the coordinator to catch up.
-        return waitForAllVectorIndexesTrainingState(
-            collection, expectedState, timeoutSec);
-    }
-    return waitForAllVectorIndexesTrainingState(
-        collection, expectedState, timeoutSec);
+function waitForVectorIndexState(collection, indexName, expectedState, timeoutSec = 60) {
+    return waitForState(collection, expectedState, timeoutSec, indexName);
+}
+
+/**
+ * Waits until all vector indexes on the collection reach the expected training
+ * state. Handles both cluster and single-server modes.
+ *
+ * @param {ArangoCollection} collection
+ * @param {string} expectedState - ready, training, ingesting, ready
+ * @param {number} [timeoutSec=60]
+ * @returns {boolean}
+ */
+function waitForAllVectorIndexesState(collection, expectedState, timeoutSec = 60) {
+    return waitForState(collection, expectedState, timeoutSec);
 }
 
 /**
@@ -415,7 +340,5 @@ exports.generateDocs = generateDocs;
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
 exports.waitForVectorIndexState = waitForVectorIndexState;
-exports.waitForAllVectorIndexesTrainingState = waitForAllVectorIndexesTrainingState;
-exports.waitForAllVectorIndexesTrainingStateOnDBServers = waitForAllVectorIndexesTrainingStateOnDBServers;
+exports.waitForAllVectorIndexesState = waitForAllVectorIndexesState;
 exports.insertDocsAndEnsureIndex = insertDocsAndEnsureIndex;
-exports.waitForIndexBuild = waitForIndexBuild;
