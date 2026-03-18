@@ -81,12 +81,15 @@ function collectionCleanupSuite() {
     const metricName = "arangodb_metadata_total_number_of_shards";
     for (let i = 0; i < 60; ++i) {
       wait(1);
-      let value = getMetric(coordinators[0].endpoint, metricName);
-      if (value === expectedTotalShards) {
+      let allConverged = coordinators.every(coord => {
+        let value = getMetric(coord.endpoint, metricName);
+        return value === expectedTotalShards;
+      });
+      if (allConverged) {
         return;
       }
     }
-    throw `Metric ${metricName} did not converge to ${expectedTotalShards} after 60s`;
+    throw `Metric ${metricName} did not converge to ${expectedTotalShards} on all coordinators after 60s`;
   };
 
   let printPlanCollections = function() {
