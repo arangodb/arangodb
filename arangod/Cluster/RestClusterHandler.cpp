@@ -151,8 +151,9 @@ void RestClusterHandler::handleAgencyDump() {
   if (af->isActive() && !_request->user().empty()) {
     auto const& exec = ExecContext::current();
     if (!exec.isAdminUser(arangodb::rbac::Category::AdminReadAgency{})) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency dump");
+      generateError(
+          rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+          "you need AdminReadAgency rights to produce an agency dump");
       return;
     }
   }
@@ -171,16 +172,10 @@ void RestClusterHandler::handleAgencyDump() {
 void RestClusterHandler::handleAgencyCache() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl;
-    if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
-                                                 true);
-    } else {
-      lvl = auth::Level::RW;
-    }
-    if (lvl < auth::Level::RW) {
+    auto const& exec = ExecContext::current();
+    if (!exec.isAdminUser(arangodb::rbac::Category::AdminReadAgency{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency cache dump");
+                    "you need AdminReadAgency rights to read the agency cache");
       return;
     }
   }
