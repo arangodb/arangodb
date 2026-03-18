@@ -452,7 +452,8 @@ class Index {
 
   /// @brief Returns true if the vector index is trained and ready for queries.
   /// Default returns false. Overridden only by vector index implementations.
-  // TODO(jbajic): This is a bit unfortunate, but we currently have no better way to
+  // TODO(jbajic): This is a bit unfortunate, but we currently have no better
+  // way to
   virtual bool isVectorIndexReady() const noexcept;
 
   virtual StoredValues const& storedValues() const;
