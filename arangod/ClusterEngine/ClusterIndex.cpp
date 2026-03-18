@@ -26,6 +26,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterIndex.h"
 #include "Indexes/Index.h"
@@ -511,13 +513,54 @@ bool ClusterIndex::isVectorIndexReady() const noexcept {
   if (_indexType != TRI_IDX_TYPE_VECTOR_INDEX) {
     return false;
   }
-  auto const info = _info.slice();
-  auto const trainingState = info.get(StaticStrings::IndexTrainingState);
-  LOG_TOPIC("a7f2c", DEBUG, Logger::ENGINES)
-      << "ClusterIndex::isVectorIndexReady() trainingState="
-      << (trainingState.isString() ? trainingState.stringView() : "N/A")
-      << " full info=" << info.toJson();
-  return trainingState.isString() && trainingState.stringView() == "ready";
+  try {
+    auto& ci = _collection.vocbase()
+                   .server()
+                   .getFeature<ClusterFeature>()
+                   .clusterInfo();
+    auto collCurrent =
+        ci.getCollectionCurrent(_collection.vocbase().name(),
+                                std::to_string(_collection.planId().id()));
+    auto shardIds = _collection.shardIds();
+    if (!collCurrent || !shardIds) {
+      return false;
+    }
+
+    auto const bareIndexId = std::to_string(_iid.id());
+    for (auto const& [shardId, servers] : *shardIds) {
+      VPackSlice shardIndexes = collCurrent->getIndexes(shardId);
+      if (!shardIndexes.isArray()) {
+        return false;
+      }
+      bool found = false;
+      for (auto const& idx : VPackArrayIterator(shardIndexes)) {
+        if (!idx.isObject()) {
+          continue;
+        }
+        auto idSlice = idx.get("id");
+        if (idSlice.isString() && idSlice.stringView() == bareIndexId) {
+          auto tsSlice = idx.get(StaticStrings::IndexTrainingState);
+          if (!tsSlice.isString() || tsSlice.stringView() != "ready") {
+            LOG_TOPIC("a7f2c", DEBUG, Logger::CLUSTER)
+                << "ClusterIndex::isVectorIndexReady() shard=" << shardId
+                << " trainingState="
+                << (tsSlice.isString() ? tsSlice.stringView() : "N/A");
+            return false;
+          }
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // Shard has no entry for this index in Current yet.
+        return false;
+      }
+    }
+    return true;
+  } catch (...) {
+    // Data not available if not ready DB servers will reject
+    return true;
+  }
 }
 
 UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {
