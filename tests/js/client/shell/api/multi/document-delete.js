@@ -38,6 +38,7 @@ const jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
   let cn = "UnitTestsCollectionBasics";
+  let cid;
   return {
     setUpAll: function() {
       cid = db._create(cn);
