@@ -42,14 +42,15 @@ struct DenyAllow {
     }
   }
 
+  // TODO: I am serverely uneasy with "search" instead of match.
   auto check(std::string v) const -> DenyAllowResult {
     if (_deny.has_value()) {
-      if (std::regex_match(v, _deny.value())) {
+      if (std::regex_search(v, _deny.value())) {
         return DenyAllowResult::DENIED;
       }
     }
     if (_allow.has_value()) {
-      if (std::regex_match(v, _allow.value())) {
+      if (std::regex_search(v, _allow.value())) {
         return DenyAllowResult::ALLOWED;
       }
     }

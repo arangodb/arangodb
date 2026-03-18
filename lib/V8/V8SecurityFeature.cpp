@@ -69,7 +69,7 @@ auto disjunctionOfRegexes(std::unordered_set<std::string> values)
 
   ss << "(" << *values.cbegin();
   for (auto it = std::next(values.cbegin()); it != values.cend(); ++it) {
-    ss << *it << "|";
+    ss << "|" << *it;
   }
   ss << ")";
   return ss.str();
@@ -283,13 +283,8 @@ void V8SecurityFeature::validateOptions(
     // endpoints
     auto denyRegex =
         optionToRegex(_options.endpointsDenyList, "endpoints", "deny");
-    auto allowRegex = std::invoke([this]() {
-      if (ArangoGlobalContext::CONTEXT->binaryName() == "arangod") {
-        return optionToRegex(_options.endpointsAllowList, "endpoints", "allow");
-      } else {
-        return std::optional<std::regex>(std::regex(".*"));
-      }
-    });
+    auto allowRegex =
+        optionToRegex(_options.endpointsAllowList, "endpoints", "allow");
     _endpoints = DenyAllow(denyRegex, allowRegex);
   }
 
@@ -301,13 +296,7 @@ void V8SecurityFeature::validateOptions(
 
     // file access (a denylist for file access does not exist (yet))
     auto denyRegex = std::nullopt;
-    auto allowRegex = std::invoke([this]() {
-      if (ArangoGlobalContext::CONTEXT->binaryName() == "arangod") {
-        return optionToRegex(_options.filesAllowList, "files", "allow");
-      } else {
-        return std::optional<std::regex>(std::regex(".*"));
-      }
-    });
+    auto allowRegex = optionToRegex(_options.filesAllowList, "files", "allow");
 
     _files = DenyAllow(denyRegex, allowRegex);
   }
@@ -519,10 +508,12 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
   }
 
   switch (_files.check(canonicalisedPath)) {
-    case DenyAllowResult::ALLOWED:
+    case DenyAllowResult::ALLOWED: {
       return true;
-    case DenyAllowResult::DENIED:
+    }
+    case DenyAllowResult::DENIED: {
       return false;
+    }
     default:
       ADB_PROD_CRASH();
   }
