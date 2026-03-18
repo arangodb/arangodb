@@ -228,28 +228,43 @@ function createVectorGenerator(options) {
 
 const sleepIntervalSec = 0.1;
 
+// Checks whether a single vector index has the expected training state.
+// Single server: the index has a top-level `trainingState` field.
+// Cluster: the index has a `shards` object where each shard has a `trainingState` field.
+function indexMatchesState(idx, state) {
+    if (idx.trainingState !== undefined) {
+        // Single server: top-level trainingState.
+        return idx.trainingState === state;
+    }
+    if (idx.shards !== undefined) {
+        // Cluster: every shard must match.
+        const shardEntries = Object.values(idx.shards);
+        return shardEntries.length > 0 &&
+            shardEntries.every(s => s.trainingState === state);
+    }
+    return false;
+}
+
 // Checks whether the given vector indexes match the expected state.
 // If indexName is provided, only that index is checked; otherwise all vector indexes.
 function vectorIndexesMatchState(indexes, state, indexName) {
     const vectorIndexes = indexes.filter(idx => idx.type === 'vector');
     if (indexName !== undefined) {
         const idx = vectorIndexes.find(ix => ix.name === indexName);
-        return idx !== undefined && idx.trainingState === state;
+        return idx !== undefined && indexMatchesState(idx, state);
     }
     return vectorIndexes.length > 0 &&
-        vectorIndexes.every(idx => idx.trainingState === state);
+        vectorIndexes.every(idx => indexMatchesState(idx, state));
 }
 
 // Waits until vector index(es) on the collection reach the given state.
-// In cluster mode, uses collection.indexes(true, true) to get per-shard
-// state from the coordinator's cluster-wide knowledge.
+// Uses collection.indexes(true, true) to include per-shard details in cluster mode.
 // If indexName is provided, only that single index is checked.
 function waitForState(collection, state, timeoutSec, indexName) {
     const internal = require("internal");
     const isCluster = internal.isCluster();
     const iterations = Math.floor(timeoutSec / sleepIntervalSec);
     for (let i = 0; i < iterations; i++) {
-        // In cluster mode, pass (true, true) to get per-shard index details.
         const indexes = isCluster ? collection.indexes(true, true) : collection.indexes();
         if (vectorIndexesMatchState(indexes, state, indexName)) {
             return true;

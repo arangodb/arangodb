@@ -33,7 +33,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
   generateDocs,
-  waitForIndexBuild,
+  waitForAllVectorIndexesState,
 } = require("@arangodb/testutils/vector-index-common");
 const {
   getMetricSingle,
@@ -70,7 +70,7 @@ function VectorIndexBuildMetricsSuite() {
       db._useDatabase("_system");
       db._createDatabase(dbName);
       db._useDatabase(dbName);
-      collection = db._create(collName, {numberOfShards: numberOfShards, replicationFactor: replicationFactor});
+      collection = db._create(collName, {numberOfShards, replicationFactor});
     },
 
     tearDown: function () {
@@ -78,7 +78,7 @@ function VectorIndexBuildMetricsSuite() {
       db._dropDatabase(dbName);
     },
 
-    testUnusableCountIncreases: function () {
+    testUnusableCount: function () {
       collection.ensureIndex({
         name: "vec_l2",
         type: "vector",
@@ -90,7 +90,7 @@ function VectorIndexBuildMetricsSuite() {
       // With no documents, the index should remain unusable.
       // The build coordinator scans every ~5 seconds, so wait a bit.
       assertTrue(
-          waitForIndexBuild(collection, "unusable", 10),
+          waitForAllVectorIndexesState(collection, "unusable", 10),
           "Index should remain unusable with no documents"
       );
 
@@ -112,6 +112,7 @@ function VectorIndexBuildMetricsSuite() {
     },
 
     testMetricsAfterSuccessfulBuild: function () {
+      let newCollection =
       collection.ensureIndex({
         name: "vec_l2",
         type: "vector",
@@ -120,24 +121,22 @@ function VectorIndexBuildMetricsSuite() {
         params: {metric: "l2", dimension, nLists: 1},
       });
 
-      // Record initial histogram _count values before training.
+      // Initial metrics
       let initialTrainingCount = getMetricValue(metricTrainingDurationCount);
       let initialIngestionCount = getMetricValue(metricIngestionDurationCount);
 
-      // Insert enough documents to trigger training.
       let gen = randomNumberGeneratorFloat(seed);
       const insertCount = 1500 * insertCountFactor;
       collection.insert(generateDocs(gen, insertCount, dimension));
       assertEqual(insertCount, collection.count());
 
-      // Wait for training to complete.
+      // Wait for vec idx to be built
       assertTrue(
-          waitForIndexBuild(collection, "ready", 120),
+          waitForAllVectorIndexesState(collection, "ready", 120),
           "Index should become trained after " + insertCount + " docs"
       );
 
-      // After training, the ongoing count should be back to 0.
-      // Give the scan loop a moment to update.
+      // Chek metrics for both
       let ongoingCount = 0;
       for (let i = 0; i < 30; ++i) {
         internal.wait(1);
