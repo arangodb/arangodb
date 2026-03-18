@@ -426,10 +426,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_not_found) {
       "http+tcp://10.0.0.3:8529",
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
@@ -466,10 +466,10 @@ TEST_F(AsyncAgencyCommTest,
       "http+tcp://10.0.0.3:8529",
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
@@ -499,10 +499,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_found) {
       "http+tcp://10.0.0.3:8529",
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 32);
@@ -539,10 +539,10 @@ TEST_F(AsyncAgencyCommTest,
       "http+tcp://10.0.0.3:8529",
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
@@ -579,10 +579,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_service_unavailable) {
       "http+tcp://10.0.0.3:8529",
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
@@ -638,9 +638,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_write_no_cids_timeout) {
       "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager)
-                    .sendWriteTransaction(10s, toBuffer(R"=([[{"a":12}, {}]])="_vpack))
-                    .waitAndGet();
+  auto result =
+      AsyncAgencyComm(manager)
+          .sendWriteTransaction(10s, toBuffer(R"=([[{"a":12}, {}]])="_vpack))
+          .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::RequestTimeout);
 
   compareEndpoints(manager.endpoints(),
