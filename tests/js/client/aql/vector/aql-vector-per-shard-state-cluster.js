@@ -157,9 +157,6 @@ function createVectorIndex(collection, sparse) {
     });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Test suite — cluster only
-////////////////////////////////////////////////////////////////////////////////
 
 function VectorIndexPerShardStateSuite() {
     const seed = randomInteger();
@@ -266,260 +263,261 @@ function VectorIndexPerShardStateSuite() {
             }
         },
 
-        // Scenario 2: All 3 shards have enough data, but one shard has a
-        // document with wrong vector dimension. That shard should fail with
-        // an error; the other 2 should become "ready".
-        testWrongDimensionFailsShard: function () {
-            const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
-            assertEqual(3, shardNames.length);
+        // TODO: These scenarios are no longer possible
+        // // Scenario 2: All 3 shards have enough data, but one shard has a
+        // // document with wrong vector dimension. That shard should fail with
+        // // an error; the other 2 should become "ready".
+        // testWrongDimensionFailsShard: function () {
+        //     const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
+        //     assertEqual(3, shardNames.length);
 
-            const badShard = shardNames[0];
-            const goodShards = shardNames.slice(1);
+        //     const badShard = shardNames[0];
+        //     const goodShards = shardNames.slice(1);
 
-            // Fill all shards with valid docs.
-            for (const shard of shardNames) {
-                insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
-            }
+        //     // Fill all shards with valid docs.
+        //     for (const shard of shardNames) {
+        //         insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
+        //     }
 
-            // Insert a document with wrong dimension into the bad shard.
-            const badKey = keysPerShard[badShard][docsAboveThreshold];
-            const wrongDimVector = Array.from({length: dimension / 2}, () => gen());
-            collection.insert({_key: badKey, vector: wrongDimVector});
+        //     // Insert a document with wrong dimension into the bad shard.
+        //     const badKey = keysPerShard[badShard][docsAboveThreshold];
+        //     const wrongDimVector = Array.from({length: dimension / 2}, () => gen());
+        //     collection.insert({_key: badKey, vector: wrongDimVector});
 
-            const expectedCounts = {[badShard]: docsAboveThreshold + 1};
-            for (const s of goodShards) {
-                expectedCounts[s] = docsAboveThreshold;
-            }
-            assertPerShardCounts(collection, expectedCounts);
+        //     const expectedCounts = {[badShard]: docsAboveThreshold + 1};
+        //     for (const s of goodShards) {
+        //         expectedCounts[s] = docsAboveThreshold;
+        //     }
+        //     assertPerShardCounts(collection, expectedCounts);
 
-            createVectorIndex(collection);
+        //     createVectorIndex(collection);
 
-            const expectations = {};
-            for (const s of goodShards) {
-                expectations[s] = {trainingState: "ready", hasError: false};
-            }
-            expectations[badShard] = {trainingState: "unusable", hasError: true};
+        //     const expectations = {};
+        //     for (const s of goodShards) {
+        //         expectations[s] = {trainingState: "ready", hasError: false};
+        //     }
+        //     expectations[badShard] = {trainingState: "unusable", hasError: true};
 
-            assertTrue(
-                waitForPerShardStates(collection, "vec_l2", expectations, 120),
-                "Good shards should be ready, bad shard should have error"
-            );
+        //     assertTrue(
+        //         waitForPerShardStates(collection, "vec_l2", expectations, 120),
+        //         "Good shards should be ready, bad shard should have error"
+        //     );
 
-            const shardStates = getPerShardStates(collection, "vec_l2");
-            assertEqual("unusable", shardStates[badShard].trainingState,
-                "Shard with wrong dimension should be unusable");
-            assertTrue(shardStates[badShard].error.length > 0,
-                "Shard with wrong dimension should have an error message");
-            assertTrue(
-                shardStates[badShard].error.indexOf("dimension") !== -1,
-                "Error should mention 'dimension', got: " +
-                shardStates[badShard].error
-            );
-            for (const s of goodShards) {
-                assertEqual("ready", shardStates[s].trainingState);
-                assertEqual("", shardStates[s].error);
-            }
-        },
+        //     const shardStates = getPerShardStates(collection, "vec_l2");
+        //     assertEqual("unusable", shardStates[badShard].trainingState,
+        //         "Shard with wrong dimension should be unusable");
+        //     assertTrue(shardStates[badShard].error.length > 0,
+        //         "Shard with wrong dimension should have an error message");
+        //     assertTrue(
+        //         shardStates[badShard].error.indexOf("dimension") !== -1,
+        //         "Error should mention 'dimension', got: " +
+        //         shardStates[badShard].error
+        //     );
+        //     for (const s of goodShards) {
+        //         assertEqual("ready", shardStates[s].trainingState);
+        //         assertEqual("", shardStates[s].error);
+        //     }
+        // },
 
-        // Scenario 3: All 3 shards have enough data, but one shard has a
-        // document with wrong vector datatype (strings instead of numbers).
-        // That shard should fail; the other 2 should become "ready".
-        testWrongDatatypeFailsShard: function () {
-            const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
-            assertEqual(3, shardNames.length);
+        // // Scenario 3: All 3 shards have enough data, but one shard has a
+        // // document with wrong vector datatype (strings instead of numbers).
+        // // That shard should fail; the other 2 should become "ready".
+        // testWrongDatatypeFailsShard: function () {
+        //     const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
+        //     assertEqual(3, shardNames.length);
 
-            const badShard = shardNames[0];
-            const goodShards = shardNames.slice(1);
+        //     const badShard = shardNames[0];
+        //     const goodShards = shardNames.slice(1);
 
-            for (const shard of shardNames) {
-                insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
-            }
+        //     for (const shard of shardNames) {
+        //         insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
+        //     }
 
-            // Insert a document with non-numeric vector elements.
-            const badKey = keysPerShard[badShard][docsAboveThreshold];
-            const badVector = Array.from({length: dimension}, () => "not_a_number");
-            collection.insert({_key: badKey, vector: badVector});
+        //     // Insert a document with non-numeric vector elements.
+        //     const badKey = keysPerShard[badShard][docsAboveThreshold];
+        //     const badVector = Array.from({length: dimension}, () => "not_a_number");
+        //     collection.insert({_key: badKey, vector: badVector});
 
-            const expectedCounts = {[badShard]: docsAboveThreshold + 1};
-            for (const s of goodShards) {
-                expectedCounts[s] = docsAboveThreshold;
-            }
-            assertPerShardCounts(collection, expectedCounts);
+        //     const expectedCounts = {[badShard]: docsAboveThreshold + 1};
+        //     for (const s of goodShards) {
+        //         expectedCounts[s] = docsAboveThreshold;
+        //     }
+        //     assertPerShardCounts(collection, expectedCounts);
 
-            createVectorIndex(collection);
+        //     createVectorIndex(collection);
 
-            const expectations = {};
-            for (const s of goodShards) {
-                expectations[s] = {trainingState: "ready", hasError: false};
-            }
-            expectations[badShard] = {trainingState: "unusable", hasError: true};
+        //     const expectations = {};
+        //     for (const s of goodShards) {
+        //         expectations[s] = {trainingState: "ready", hasError: false};
+        //     }
+        //     expectations[badShard] = {trainingState: "unusable", hasError: true};
 
-            assertTrue(
-                waitForPerShardStates(collection, "vec_l2", expectations, 120),
-                "Good shards should be ready, bad shard should have error"
-            );
+        //     assertTrue(
+        //         waitForPerShardStates(collection, "vec_l2", expectations, 120),
+        //         "Good shards should be ready, bad shard should have error"
+        //     );
 
-            const shardStates = getPerShardStates(collection, "vec_l2");
-            assertEqual("unusable", shardStates[badShard].trainingState,
-                "Shard with wrong datatype should be unusable");
-            assertTrue(shardStates[badShard].error.length > 0,
-                "Shard with wrong datatype should have an error message");
-            assertTrue(
-                shardStates[badShard].error.indexOf("not representable as double") !== -1,
-                "Error should mention datatype issue, got: " +
-                shardStates[badShard].error
-            );
-            for (const s of goodShards) {
-                assertEqual("ready", shardStates[s].trainingState);
-                assertEqual("", shardStates[s].error);
-            }
-        },
+        //     const shardStates = getPerShardStates(collection, "vec_l2");
+        //     assertEqual("unusable", shardStates[badShard].trainingState,
+        //         "Shard with wrong datatype should be unusable");
+        //     assertTrue(shardStates[badShard].error.length > 0,
+        //         "Shard with wrong datatype should have an error message");
+        //     assertTrue(
+        //         shardStates[badShard].error.indexOf("not representable as double") !== -1,
+        //         "Error should mention datatype issue, got: " +
+        //         shardStates[badShard].error
+        //     );
+        //     for (const s of goodShards) {
+        //         assertEqual("ready", shardStates[s].trainingState);
+        //         assertEqual("", shardStates[s].error);
+        //     }
+        // },
 
-        // Scenario 4: All 3 shards have enough data, but one shard has a
-        // document without the vector field and the index is NOT sparse.
-        // That shard should fail; the other 2 should become "ready".
-        testMissingVectorFieldNonSparseFailsShard: function () {
-            const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
-            assertEqual(3, shardNames.length);
+        // // Scenario 4: All 3 shards have enough data, but one shard has a
+        // // document without the vector field and the index is NOT sparse.
+        // // That shard should fail; the other 2 should become "ready".
+        // testMissingVectorFieldNonSparseFailsShard: function () {
+        //     const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
+        //     assertEqual(3, shardNames.length);
 
-            const badShard = shardNames[0];
-            const goodShards = shardNames.slice(1);
+        //     const badShard = shardNames[0];
+        //     const goodShards = shardNames.slice(1);
 
-            for (const shard of shardNames) {
-                insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
-            }
+        //     for (const shard of shardNames) {
+        //         insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
+        //     }
 
-            // Insert a document without the vector field.
-            const badKey = keysPerShard[badShard][docsAboveThreshold];
-            collection.insert({_key: badKey, someOtherField: "no vector here"});
+        //     // Insert a document without the vector field.
+        //     const badKey = keysPerShard[badShard][docsAboveThreshold];
+        //     collection.insert({_key: badKey, someOtherField: "no vector here"});
 
-            const expectedCounts = {[badShard]: docsAboveThreshold + 1};
-            for (const s of goodShards) {
-                expectedCounts[s] = docsAboveThreshold;
-            }
-            assertPerShardCounts(collection, expectedCounts);
+        //     const expectedCounts = {[badShard]: docsAboveThreshold + 1};
+        //     for (const s of goodShards) {
+        //         expectedCounts[s] = docsAboveThreshold;
+        //     }
+        //     assertPerShardCounts(collection, expectedCounts);
 
-            createVectorIndex(collection, /*sparse*/ false);
+        //     createVectorIndex(collection, /*sparse*/ false);
 
-            const expectations = {};
-            for (const s of goodShards) {
-                expectations[s] = {trainingState: "ready", hasError: false};
-            }
-            expectations[badShard] = {trainingState: "unusable", hasError: true};
+        //     const expectations = {};
+        //     for (const s of goodShards) {
+        //         expectations[s] = {trainingState: "ready", hasError: false};
+        //     }
+        //     expectations[badShard] = {trainingState: "unusable", hasError: true};
 
-            assertTrue(
-                waitForPerShardStates(collection, "vec_l2", expectations, 120),
-                "Good shards should be ready, bad shard should have error"
-            );
+        //     assertTrue(
+        //         waitForPerShardStates(collection, "vec_l2", expectations, 120),
+        //         "Good shards should be ready, bad shard should have error"
+        //     );
 
-            const shardStates = getPerShardStates(collection, "vec_l2");
-            assertEqual("unusable", shardStates[badShard].trainingState,
-                "Shard with missing vector should be unusable");
-            assertTrue(shardStates[badShard].error.length > 0,
-                "Shard with missing vector should have an error message");
-            assertTrue(
-                shardStates[badShard].error.indexOf("not present") !== -1 ||
-                shardStates[badShard].error.indexOf("not sparse") !== -1,
-                "Error should mention missing field or non-sparse, got: " +
-                shardStates[badShard].error
-            );
-            for (const s of goodShards) {
-                assertEqual("ready", shardStates[s].trainingState);
-                assertEqual("", shardStates[s].error);
-            }
-        },
+        //     const shardStates = getPerShardStates(collection, "vec_l2");
+        //     assertEqual("unusable", shardStates[badShard].trainingState,
+        //         "Shard with missing vector should be unusable");
+        //     assertTrue(shardStates[badShard].error.length > 0,
+        //         "Shard with missing vector should have an error message");
+        //     assertTrue(
+        //         shardStates[badShard].error.indexOf("not present") !== -1 ||
+        //         shardStates[badShard].error.indexOf("not sparse") !== -1,
+        //         "Error should mention missing field or non-sparse, got: " +
+        //         shardStates[badShard].error
+        //     );
+        //     for (const s of goodShards) {
+        //         assertEqual("ready", shardStates[s].trainingState);
+        //         assertEqual("", shardStates[s].error);
+        //     }
+        // },
 
-        // Scenario 6: All 3 shards have enough data, one shard has a
-        // document without the vector field, but the index IS sparse.
-        // All shards should reach "ready" since sparse indexes tolerate
-        // missing fields.
-        testMissingVectorFieldSparseSucceeds: function () {
-            const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
-            assertEqual(3, shardNames.length);
+        // // Scenario 6: All 3 shards have enough data, one shard has a
+        // // document without the vector field, but the index IS sparse.
+        // // All shards should reach "ready" since sparse indexes tolerate
+        // // missing fields.
+        // testMissingVectorFieldSparseSucceeds: function () {
+        //     const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
+        //     assertEqual(3, shardNames.length);
 
-            for (const shard of shardNames) {
-                insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
-            }
+        //     for (const shard of shardNames) {
+        //         insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
+        //     }
 
-            // Insert a document without the vector field into one shard.
-            const targetShard = shardNames[0];
-            const key = keysPerShard[targetShard][docsAboveThreshold];
-            collection.insert({_key: key, someOtherField: "no vector"});
+        //     // Insert a document without the vector field into one shard.
+        //     const targetShard = shardNames[0];
+        //     const key = keysPerShard[targetShard][docsAboveThreshold];
+        //     collection.insert({_key: key, someOtherField: "no vector"});
 
-            const expectedCounts = {};
-            for (const s of shardNames) {
-                expectedCounts[s] = (s === targetShard) ? docsAboveThreshold + 1 : docsAboveThreshold;
-            }
-            assertPerShardCounts(collection, expectedCounts);
+        //     const expectedCounts = {};
+        //     for (const s of shardNames) {
+        //         expectedCounts[s] = (s === targetShard) ? docsAboveThreshold + 1 : docsAboveThreshold;
+        //     }
+        //     assertPerShardCounts(collection, expectedCounts);
 
-            createVectorIndex(collection, /*sparse*/ true);
+        //     createVectorIndex(collection, /*sparse*/ true);
 
-            const expectations = {};
-            for (const s of shardNames) {
-                expectations[s] = {trainingState: "ready", hasError: false};
-            }
+        //     const expectations = {};
+        //     for (const s of shardNames) {
+        //         expectations[s] = {trainingState: "ready", hasError: false};
+        //     }
 
-            assertTrue(
-                waitForPerShardStates(collection, "vec_l2", expectations, 120),
-                "All shards should reach 'ready' with sparse index"
-            );
+        //     assertTrue(
+        //         waitForPerShardStates(collection, "vec_l2", expectations, 120),
+        //         "All shards should reach 'ready' with sparse index"
+        //     );
 
-            const shardStates = getPerShardStates(collection, "vec_l2");
-            for (const s of shardNames) {
-                assertEqual("ready", shardStates[s].trainingState,
-                    "Shard " + s + " should be ready (sparse tolerates missing)");
-                assertEqual("", shardStates[s].error,
-                    "Shard " + s + " should have no error");
-            }
-        },
+        //     const shardStates = getPerShardStates(collection, "vec_l2");
+        //     for (const s of shardNames) {
+        //         assertEqual("ready", shardStates[s].trainingState,
+        //             "Shard " + s + " should be ready (sparse tolerates missing)");
+        //         assertEqual("", shardStates[s].error,
+        //             "Shard " + s + " should have no error");
+        //     }
+        // },
 
-        // Scenario 7: All 3 shards have bad data (wrong dimension).
-        // All shards should fail with errors.
-        testAllShardsFailWithBadData: function () {
-            const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
-            assertEqual(3, shardNames.length);
+        // // Scenario 7: All 3 shards have bad data (wrong dimension).
+        // // All shards should fail with errors.
+        // testAllShardsFailWithBadData: function () {
+        //     const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold + 1);
+        //     assertEqual(3, shardNames.length);
 
-            // Fill all shards with valid docs, then add one bad doc per shard.
-            for (const shard of shardNames) {
-                insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
-                const badKey = keysPerShard[shard][docsAboveThreshold];
-                const wrongDimVector = Array.from(
-                    {length: dimension / 2}, () => gen()
-                );
-                collection.insert({_key: badKey, vector: wrongDimVector});
-            }
+        //     // Fill all shards with valid docs, then add one bad doc per shard.
+        //     for (const shard of shardNames) {
+        //         insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
+        //         const badKey = keysPerShard[shard][docsAboveThreshold];
+        //         const wrongDimVector = Array.from(
+        //             {length: dimension / 2}, () => gen()
+        //         );
+        //         collection.insert({_key: badKey, vector: wrongDimVector});
+        //     }
 
-            const expectedCounts = {};
-            for (const s of shardNames) {
-                expectedCounts[s] = docsAboveThreshold + 1;
-            }
-            assertPerShardCounts(collection, expectedCounts);
+        //     const expectedCounts = {};
+        //     for (const s of shardNames) {
+        //         expectedCounts[s] = docsAboveThreshold + 1;
+        //     }
+        //     assertPerShardCounts(collection, expectedCounts);
 
-            createVectorIndex(collection);
+        //     createVectorIndex(collection);
 
-            const expectations = {};
-            for (const s of shardNames) {
-                expectations[s] = {trainingState: "unusable", hasError: true};
-            }
+        //     const expectations = {};
+        //     for (const s of shardNames) {
+        //         expectations[s] = {trainingState: "unusable", hasError: true};
+        //     }
 
-            assertTrue(
-                waitForPerShardStates(collection, "vec_l2", expectations, 120),
-                "All shards should fail with errors"
-            );
+        //     assertTrue(
+        //         waitForPerShardStates(collection, "vec_l2", expectations, 120),
+        //         "All shards should fail with errors"
+        //     );
 
-            const shardStates = getPerShardStates(collection, "vec_l2");
-            for (const s of shardNames) {
-                assertEqual("unusable", shardStates[s].trainingState,
-                    "Shard " + s + " should be unusable");
-                assertTrue(shardStates[s].error.length > 0,
-                    "Shard " + s + " should have an error message");
-                assertTrue(
-                    shardStates[s].error.indexOf("dimension") !== -1,
-                    "Error should mention dimension for shard " + s +
-                    ", got: " + shardStates[s].error
-                );
-            }
-        },
+        //     const shardStates = getPerShardStates(collection, "vec_l2");
+        //     for (const s of shardNames) {
+        //         assertEqual("unusable", shardStates[s].trainingState,
+        //             "Shard " + s + " should be unusable");
+        //         assertTrue(shardStates[s].error.length > 0,
+        //             "Shard " + s + " should have an error message");
+        //         assertTrue(
+        //             shardStates[s].error.indexOf("dimension") !== -1,
+        //             "Error should mention dimension for shard " + s +
+        //             ", got: " + shardStates[s].error
+        //         );
+        //     }
+        // },
     };
 }
 

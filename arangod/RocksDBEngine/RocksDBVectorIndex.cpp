@@ -339,7 +339,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
-    // We ignore the documents without the embedding field if the index is
+    // ignore the documents without the embedding field if the index is
     // sparse
     if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
       return {};
