@@ -173,12 +173,12 @@ function error_handlingSuite () {
 function known_collection_identifier__waitForSync_EQ_trueSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    setUpAll: function() {
+    setUp: function() {
       db._drop(cn);
       db._create(cn, { waitForSync: true } );
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 
@@ -585,12 +585,12 @@ function known_collection_identifier__waitForSync_EQ_trueSuite () {
 function known_collection_identifier__waitForSync_EQ_falseSuite () {
   let cn = "UnitTestsCollectionUnsynced";
   return {
-    setUpAll: function() {
+    setUp: function() {
       db._drop(cn);
       db._create(cn);
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 
@@ -818,12 +818,12 @@ function known_collection_identifier__waitForSync_EQ_falseSuite () {
 function known_collection_nameSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    setUpAll: function() {
+    setUp: function() {
       db._drop(cn);
       db._create(cn, { waitForSync: true});
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 
@@ -899,7 +899,7 @@ function known_collection_nameSuite () {
 function unknown_collection_nameSuite () {
   let cn = `UnitTestsCollectionNamed${internal.time()}`;
   return {
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 
@@ -925,12 +925,12 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
   let cn = "UnitTestsCollectionUnsynced";
   let cid;
   return {
-    setUpAll: function() {
+    setUp: function() {
       db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 

@@ -43,14 +43,14 @@ let api = "/_api/collection";
 function all_collectionsSuite () {
   let cols = ["units", "employees", "locations" ];
   return {
-    setUpAll: function() {
+    setUp: function() {
       cols.forEach(cn => {
         db._drop(cn);
         db._create(cn);
       });
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       cols.forEach(cn => {
         db._drop(cn);
       });
@@ -191,12 +191,12 @@ function schema_validationSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUpAll: function() {
+    setUp: function() {
       db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 
@@ -290,12 +290,12 @@ function numeric_collection_id_rejectionSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUpAll: function() {
+    setUp: function() {
       db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 
@@ -358,12 +358,12 @@ function readingSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUpAll: function() {
+    setUp: function() {
       db._drop(cn);
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 

@@ -87,11 +87,11 @@ function reading_a_documentSuite () {
   let reStart = new RegExp('^' + cn + '/');
   let cid;
   return {
-    setUpAll: function() {
+    setUp: function() {
       cid = db._create(cn, { waitForSync: true } );
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 
@@ -323,11 +323,11 @@ function checking_a_documentSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUpAll: function() {
+    setUp: function() {
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 

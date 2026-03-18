@@ -38,7 +38,6 @@ const jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
   let cn = "UnitTestsCollectionBasics";
-  let cid;
   return {
     setUpAll: function() {
       cid = db._create(cn);
@@ -90,11 +89,11 @@ function deleting_documentsSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUpAll: function() {
+    setUp: function() {
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 

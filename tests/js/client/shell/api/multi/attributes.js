@@ -38,11 +38,11 @@ function dealing_with_attribute_nameSuite () {
   let cn = "UnitTestsCollectionAttributes";
   return {
 
-    setUpAll: function() {
+    setUp: function() {
       db._create(cn, { waitForSync: true });
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cn);
     },
 
