@@ -40,7 +40,7 @@ const {
     createVectorGenerator,
     DistanceFunctions,
     insertDocsAndEnsureIndex,
-    waitForIndexBuild,
+    waitForAllVectorIndexesState,
 } = require("@arangodb/testutils/vector-index-common");
 
 const isCluster = require("internal").isCluster();
@@ -102,7 +102,7 @@ function VectorIndexL2TestSuite() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 10),
+                waitForAllVectorIndexesState(collection, "ready", 10),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -578,7 +578,7 @@ function VectorIndexCosineTestSuite() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, "ready", 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -764,7 +764,7 @@ function VectorIndexInnerProductTestSuite() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, "ready", 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -943,7 +943,7 @@ function MultipleVectorIndexesOnField() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, "ready", 120),
                 "Expected all vector indexes to become ready"
             );
 
@@ -997,7 +997,7 @@ function MultipleVectorIndexesOnField() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, "ready", 120),
                 "Expected all vector indexes to become ready"
             );
 
@@ -1049,7 +1049,7 @@ function MultipleVectorIndexesOnField() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, "ready", 120),
                 "Expected all vector indexes to become ready"
             );
 

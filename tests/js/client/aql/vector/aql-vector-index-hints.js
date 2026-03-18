@@ -33,7 +33,7 @@ const {
   randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
-  waitForIndexBuild,
+  waitForAllVectorIndexesState,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -118,12 +118,12 @@ function VectorIndexHintsSuite() {
         // In cluster, wait for each index build to complete before creating
         // the next one to avoid lock contention between build threads.
         if (isCluster) {
-          assertTrue(waitForIndexBuild(collection, state, indexTimeoutSec),
+          assertTrue(waitForAllVectorIndexesState(collection, state, indexTimeoutSec),
             "Expected indexes to become " + state);
         }
       }
       if (!isCluster) {
-        assertTrue(waitForIndexBuild(collection, state, indexTimeoutSec),
+        assertTrue(waitForAllVectorIndexesState(collection, state, indexTimeoutSec),
           "Expected indexes to become " + state);
       }
     },

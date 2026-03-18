@@ -33,7 +33,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,
-    waitForIndexBuild,
+    waitForAllVectorIndexesState,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -99,7 +99,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, "ready", 120),
                 "Expected index to become ready with " + insertedDocsCount + " docs"
             );
         },
@@ -523,7 +523,7 @@ function VectorIndexStoredValuesTestSuite() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, "ready", 120),
                 "Expected index to become ready with " + insertedDocsCount + " docs"
             );
         },

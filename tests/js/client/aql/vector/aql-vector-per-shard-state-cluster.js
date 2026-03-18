@@ -94,7 +94,6 @@ function insertDocsForShard(collection, keys, count, gen) {
 }
 
 /// Queries per-shard state for a vector index from the coordinator response.
-/// Returns {shardName: {state: "...", error: "..."}, ...} or null.
 function getPerShardStates(collection, indexName) {
     const idx = collection.indexes(true, true).find(i => i.name === indexName);
     if (!idx || !idx.shards) {
@@ -104,7 +103,6 @@ function getPerShardStates(collection, indexName) {
 }
 
 /// Waits until per-shard vector index states match expectations.
-/// `expectations` is {shardName: {state: "ready"}, ...}.
 /// A shard matches if its `state` equals the expected state.
 /// If `expectError` is provided, also checks that the error field is non-empty.
 /// Returns true on success, false on timeout.
@@ -119,7 +117,7 @@ function waitForPerShardStates(collection, indexName, expectations, timeoutSec) 
         for (const [shard, expected] of Object.entries(expectations)) {
             const actual = shardStates[shard];
             print(`Acutal state: ${JSON.stringify(actual)}, expected: ${JSON.stringify(expected)}`);
-            if(actual.state !== expected.state) {
+            if(actual.trainingState !== expected.trainingState) {
                 allMatch = false;
                 break;
             }
@@ -204,7 +202,7 @@ function VectorIndexPerShardStateSuite() {
 
             const expectations = {};
             for (const s of shardNames) {
-                expectations[s] = {state: "ready", hasError: false};
+                expectations[s] = {trainingState: "ready", hasError: false};
             }
 
             assertTrue(
@@ -214,7 +212,7 @@ function VectorIndexPerShardStateSuite() {
 
             const shardStates = getPerShardStates(collection, "vec_l2");
             for (const s of shardNames) {
-                assertEqual("ready", shardStates[s].state,
+                assertEqual("ready", shardStates[s].trainingState,
                     "Shard " + s + " should be ready");
                 assertEqual("", shardStates[s].error,
                     "Shard " + s + " should have no error");
@@ -246,9 +244,9 @@ function VectorIndexPerShardStateSuite() {
 
             const expectations = {};
             for (const s of fullShards) {
-                expectations[s] = {state: "ready", hasError: false};
+                expectations[s] = {trainingState: "ready", hasError: false};
             }
-            expectations[starvedShard] = {state: "unusable", hasError: false};
+            expectations[starvedShard] = {trainingState: "unusable", hasError: false};
 
             assertTrue(
                 waitForPerShardStates(collection, "vec_l2", expectations, 120),
@@ -256,12 +254,12 @@ function VectorIndexPerShardStateSuite() {
             );
 
             const shardStates = getPerShardStates(collection, "vec_l2");
-            assertEqual("unusable", shardStates[starvedShard].state,
+            assertEqual("unusable", shardStates[starvedShard].trainingState,
                 "Starved shard should remain unusable");
             assertEqual("", shardStates[starvedShard].error,
                 "Starved shard should have no error");
             for (const s of fullShards) {
-                assertEqual("ready", shardStates[s].state,
+                assertEqual("ready", shardStates[s].trainingState,
                     "Full shard " + s + " should be ready");
                 assertEqual("", shardStates[s].error,
                     "Full shard " + s + " should have no error");
@@ -298,9 +296,9 @@ function VectorIndexPerShardStateSuite() {
 
             const expectations = {};
             for (const s of goodShards) {
-                expectations[s] = {state: "ready", hasError: false};
+                expectations[s] = {trainingState: "ready", hasError: false};
             }
-            expectations[badShard] = {state: "unusable", hasError: true};
+            expectations[badShard] = {trainingState: "unusable", hasError: true};
 
             assertTrue(
                 waitForPerShardStates(collection, "vec_l2", expectations, 120),
@@ -308,7 +306,7 @@ function VectorIndexPerShardStateSuite() {
             );
 
             const shardStates = getPerShardStates(collection, "vec_l2");
-            assertEqual("unusable", shardStates[badShard].state,
+            assertEqual("unusable", shardStates[badShard].trainingState,
                 "Shard with wrong dimension should be unusable");
             assertTrue(shardStates[badShard].error.length > 0,
                 "Shard with wrong dimension should have an error message");
@@ -318,7 +316,7 @@ function VectorIndexPerShardStateSuite() {
                 shardStates[badShard].error
             );
             for (const s of goodShards) {
-                assertEqual("ready", shardStates[s].state);
+                assertEqual("ready", shardStates[s].trainingState);
                 assertEqual("", shardStates[s].error);
             }
         },
@@ -352,9 +350,9 @@ function VectorIndexPerShardStateSuite() {
 
             const expectations = {};
             for (const s of goodShards) {
-                expectations[s] = {state: "ready", hasError: false};
+                expectations[s] = {trainingState: "ready", hasError: false};
             }
-            expectations[badShard] = {state: "unusable", hasError: true};
+            expectations[badShard] = {trainingState: "unusable", hasError: true};
 
             assertTrue(
                 waitForPerShardStates(collection, "vec_l2", expectations, 120),
@@ -362,7 +360,7 @@ function VectorIndexPerShardStateSuite() {
             );
 
             const shardStates = getPerShardStates(collection, "vec_l2");
-            assertEqual("unusable", shardStates[badShard].state,
+            assertEqual("unusable", shardStates[badShard].trainingState,
                 "Shard with wrong datatype should be unusable");
             assertTrue(shardStates[badShard].error.length > 0,
                 "Shard with wrong datatype should have an error message");
@@ -372,7 +370,7 @@ function VectorIndexPerShardStateSuite() {
                 shardStates[badShard].error
             );
             for (const s of goodShards) {
-                assertEqual("ready", shardStates[s].state);
+                assertEqual("ready", shardStates[s].trainingState);
                 assertEqual("", shardStates[s].error);
             }
         },
@@ -405,9 +403,9 @@ function VectorIndexPerShardStateSuite() {
 
             const expectations = {};
             for (const s of goodShards) {
-                expectations[s] = {state: "ready", hasError: false};
+                expectations[s] = {trainingState: "ready", hasError: false};
             }
-            expectations[badShard] = {state: "unusable", hasError: true};
+            expectations[badShard] = {trainingState: "unusable", hasError: true};
 
             assertTrue(
                 waitForPerShardStates(collection, "vec_l2", expectations, 120),
@@ -415,7 +413,7 @@ function VectorIndexPerShardStateSuite() {
             );
 
             const shardStates = getPerShardStates(collection, "vec_l2");
-            assertEqual("unusable", shardStates[badShard].state,
+            assertEqual("unusable", shardStates[badShard].trainingState,
                 "Shard with missing vector should be unusable");
             assertTrue(shardStates[badShard].error.length > 0,
                 "Shard with missing vector should have an error message");
@@ -426,7 +424,7 @@ function VectorIndexPerShardStateSuite() {
                 shardStates[badShard].error
             );
             for (const s of goodShards) {
-                assertEqual("ready", shardStates[s].state);
+                assertEqual("ready", shardStates[s].trainingState);
                 assertEqual("", shardStates[s].error);
             }
         },
@@ -458,7 +456,7 @@ function VectorIndexPerShardStateSuite() {
 
             const expectations = {};
             for (const s of shardNames) {
-                expectations[s] = {state: "ready", hasError: false};
+                expectations[s] = {trainingState: "ready", hasError: false};
             }
 
             assertTrue(
@@ -468,7 +466,7 @@ function VectorIndexPerShardStateSuite() {
 
             const shardStates = getPerShardStates(collection, "vec_l2");
             for (const s of shardNames) {
-                assertEqual("ready", shardStates[s].state,
+                assertEqual("ready", shardStates[s].trainingState,
                     "Shard " + s + " should be ready (sparse tolerates missing)");
                 assertEqual("", shardStates[s].error,
                     "Shard " + s + " should have no error");
@@ -501,7 +499,7 @@ function VectorIndexPerShardStateSuite() {
 
             const expectations = {};
             for (const s of shardNames) {
-                expectations[s] = {state: "unusable", hasError: true};
+                expectations[s] = {trainingState: "unusable", hasError: true};
             }
 
             assertTrue(
@@ -511,7 +509,7 @@ function VectorIndexPerShardStateSuite() {
 
             const shardStates = getPerShardStates(collection, "vec_l2");
             for (const s of shardNames) {
-                assertEqual("unusable", shardStates[s].state,
+                assertEqual("unusable", shardStates[s].trainingState,
                     "Shard " + s + " should be unusable");
                 assertTrue(shardStates[s].error.length > 0,
                     "Shard " + s + " should have an error message");

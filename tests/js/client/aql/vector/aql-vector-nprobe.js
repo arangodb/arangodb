@@ -32,7 +32,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,
-    waitForIndexBuild,
+    waitForAllVectorIndexesState,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
@@ -90,7 +90,7 @@ function VectorIndexL2NprobeTestSuite() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, "ready", 60),
                 "Expected vector index to become trained"
             );
         },

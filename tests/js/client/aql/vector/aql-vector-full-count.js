@@ -34,7 +34,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,
-    waitForIndexBuild,
+    waitForAllVectorIndexesState,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -95,7 +95,7 @@ function VectorIndexFullCountTestSuite() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, "ready", 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -295,7 +295,7 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
             }
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, "ready", 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -397,7 +397,7 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
             }
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, "ready", 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -488,7 +488,7 @@ function VectorIndexLargeLimitTestSuite() {
             });
 
             assertTrue(
-                waitForIndexBuild(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, "ready", 120),
                 "Expected index to become ready with " + largeLimitNumberOfDocs + " docs"
             );
         },
