@@ -1,5 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* Raised minimal CPU architecture to Haswell-like (x86-64) and graviton2-like
+  (aarch64).
+
 * Legacy geo index types `geo1` and `geo2` are no longer supported. Existing
   indexes of these types are automatically dropped during database upgrade.
 
@@ -11,15 +15,17 @@
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
 
-* Remove `GET /_admin/statistics`, `GET /_admin/statistics-description`, and cluster endpoints
-  `/_admin/cluster/nodeStatistics` and `/_admin/cluster/statistics`.
+* Remove `GET /_admin/statistics`, `GET /_admin/statistics-description`, and
+  cluster endpoints `/_admin/cluster/nodeStatistics` and
+  `/_admin/cluster/statistics`.
   
 * COR-198: Removed the overwrite query option for insert operations in favor of
   using overwriteMode
 
 * Existing `hash` and `skiplist` indexes are automatically converted to
   `persistent` during database upgrade. Converted indexes are renamed by
-  appending `_migrated` to their name (e.g. `myIndex` becomes `myIndex_migrated`).
+  appending `_migrated` to their name (e.g. `myIndex` becomes
+  `myIndex_migrated`).
 
 * Removed deprecated logger-follow API endpoint.
 
@@ -232,6 +238,7 @@
 * Let's note the removals we do in 4.0 here.
 
 * Remove FoxxMaster code.
+
 
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
