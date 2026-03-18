@@ -519,6 +519,21 @@ async<void> RestIndexHandler::createIndex() {
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
+  // In version 4.*, we only want to reject creation of geo1/geo2 when requested
+  // from a client. On the other hand, DBServers want to stay compatible with
+  // legacy geo1/geo2 indexes because of potential Plan vs Current mismatch.
+  if (ServerState::instance()->isSingleServer() ||
+      ServerState::instance()->isCoordinator()) {
+    VPackSlice typeSlice = indexInfo.slice().get(StaticStrings::IndexType);
+    if (typeSlice.isString() &&
+        (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "Index types 'geo1' and 'geo2' are no longer supported. "
+                    "Please use 'geo' instead.");
+      co_return;
+    }
+  }
+
   Result result;
   try {
     arangodb::velocypack::Builder response;
