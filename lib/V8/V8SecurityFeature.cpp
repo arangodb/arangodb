@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
 #include <iterator>
 #include <map>
 #include <sstream>
@@ -95,30 +96,14 @@ auto optionToRegex(std::vector<std::string> values, std::string optionName,
   return tryStringToRegex(disjunctionOfRegexes(values), optionName, listName);
 }
 
-std::string canonicalpath(std::string const& path) {
-  auto realPath = std::unique_ptr<char, void (*)(void*)>(
-      ::realpath(path.c_str(), nullptr), &free);
-  if (realPath) {
-    return std::string(realPath.get());
-  }
-  // fallthrough intentional
-  // TODO: that's cool, mind telling me *why*
-  return path;
-}
-
-// TODO: Fix this function, probably use std::filesystem::path
 auto canonicalPath(std::string path) -> std::string {
-  std::string result = TRI_ResolveSymbolicLink(path);
+  auto result = std::filesystem::path(path);
 
-  // make absolute
-  std::string cwd = FileUtils::currentDirectory().result();
-  path = TRI_GetAbsolutePath(result, cwd);
-
-  // TODO check this function, it seems odd
-  result = canonicalpath(std::move(path));
-  if (basics::FileUtils::isDirectory(path)) {
-    result += TRI_DIR_SEPARATOR_STR;
+  if (result.is_relative()) {
+    result = std::filesystem::absolute(result);
   }
+
+  result = std::filesystem::weakly_canonical(std::move(result));
   return result;
 }
 
@@ -328,7 +313,6 @@ void V8SecurityFeature::dumpAccessLists() const {
       << ", internal endpoints deny list: " << _options.endpointsDenyList;
 }
 
-// TODO: this is still very ugly
 void V8SecurityFeature::addToInternalAllowList(std::string const& inItem,
                                                FSAccessType type) {
   auto [set, expression, re] = std::invoke([this, &type]() {
@@ -344,12 +328,10 @@ void V8SecurityFeature::addToInternalAllowList(std::string const& inItem,
     }
   });
 
-  auto item = canonicalpath(inItem);
-  if ((item.length() > 0) &&
-      (item[item.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
-    item += TRI_DIR_SEPARATOR_STR;
-  }
-  auto path = "^" + arangodb::basics::StringUtils::escapeRegexParams(item);
+  auto item = std::filesystem::weakly_canonical(inItem);
+
+  auto path =
+      "^" + arangodb::basics::StringUtils::escapeRegexParams(std::string(item));
   set->emplace(std::move(path));
   expression->clear();
   *expression = disjunctionOfRegexes(*set);
@@ -438,26 +420,15 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
     return true;
   }
 
+  // This looks redundant, and it might well be, alas it is
+  // unclear at the poitn of patching this code what constitutes
+  // an endpoint and what constitutes a url.
+  // for what it's worth, all tests pass.
   auto endpointCheck = _endpoints.check(endpoint);
   auto urlCheck = _endpoints.check(url);
 
   return (endpointCheck == DenyAllowResult::ALLOWED) &&
          (urlCheck == DenyAllowResult::ALLOWED);
-  // TODO: try to reconstruct the intent of this code.
-  // whats an endpoint, whats an url?
-#if 0
-  auto endpointResult = checkAllowAndDenyList(
-      endpoint, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
-      !_endpointsDenyList.empty(), _endpointsDenyListRegex);
-
-  auto urlResult = checkAllowAndDenyList(
-      url, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
-      !_endpointsDenyList.empty(), _endpointsDenyListRegex);
-
-  return endpointResult.result || (urlResult.result && !endpointResult.deny);
-  endpointCheck::ALLOWED || (urlCheck::ALLOWED && endpointCheck::ALLOWED)
-    (ec::ALLOWED || url::ALLOWED) && (ec::ALLOWED)
-#endif
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
@@ -470,21 +441,20 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
                                               char const* pathPtr,
                                               FSAccessType access) const {
-  // TODO: check what this means?
   // check security context first
-  TRI_GET_GLOBALS();
+  TRI_GET_GLOBALS();  // this assigns v8g to a pointer to the current
+                      // security context
   TRI_ASSERT(v8g != nullptr);
 
+  // context may read / write without restrictions
   auto const& sec = v8g->_securityContext;
   if ((access == FSAccessType::READ && sec.canReadFs()) ||
       (access == FSAccessType::WRITE && sec.canWriteFs())) {
-    return true;  // context may read / write without restrictions
+    return true;
   }
 
   auto canonicalisedPath = canonicalPath(pathPtr);
 
-  // TODO: check that this covers intent (and what the intent is, for that
-  // matter)
   if (_readAllowRegex.has_value()) {
     if (access == FSAccessType::READ &&
         std::regex_search(canonicalisedPath, _readAllowRegex.value())) {
