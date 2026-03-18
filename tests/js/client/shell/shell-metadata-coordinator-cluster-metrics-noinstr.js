@@ -196,27 +196,6 @@ function metadataCoordinatorMetricsSuite() {
     },
 
     testMetricsBaseValues: function() {
-      // DEBUG START
-      const internal = require("internal");
-      
-      // 1. What db._collections() returns per database
-      db._useDatabase("_system");
-      internal.print("_system collections:", JSON.stringify(db._collections().map(c => c.name())));
-      
-      // 2. What the agency Plan says (source of truth for the C++ metric)
-      const shardDist = arango.GET("/_admin/cluster/shardDistribution");
-      internal.print("shard distribution:", JSON.stringify(shardDist, null, 2));
-      
-      // 3. Raw Plan collections from agency
-      const planCols = arango.GET("/_api/cluster/inventory");
-      internal.print("cluster inventory:", JSON.stringify(planCols, null, 2));
-      
-      // 4. All databases visible to _system
-      internal.print("databases:", JSON.stringify(db._databases()));
-      
-      // 5. Current endpoint
-      internal.print("current endpoint:", arango.getEndpoint());
-
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
 
@@ -224,10 +203,24 @@ function metadataCoordinatorMetricsSuite() {
       const expectedLeaderShards = getLeaderShardCount();
       const expectedTotalShards = getTotalShardCount();
       const expectedFollowerShards = getFollowerShardCount();
+      
+      // Print agency state before asserting
+      const agencyPlan = arango.POST("/_api/agency/read", [["/arango/Plan/Collections"]]);
+      require("internal").print("agency plan collections:", JSON.stringify(agencyPlan, null, 2));
 
       // In a healthy baseline state, no shards should be out of sync
-      assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
-                            expectedFollowerShards, 0, 0, 0);
+      try {
+          assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
+                                expectedFollowerShards, 0, 0, 0);
+      } catch (e) {
+          const expectedLeaderShards2 = getLeaderShardCount();
+          require("internal").print("leader shards:", expectedLeaderShards2);
+          const expectedTotalShards2 = getTotalShardCount();
+          require("internal").print("total shards:", expectedTotalShards2);
+          const expectedFollowerShards2 = getFollowerShardCount();
+          require("internal").print("follower shards:", expectedFollowerShards2);
+          throw e;
+      }
     },
 
     testShardOutOfSyncMetricChange: function () {
