@@ -1831,28 +1831,13 @@ global.DEFINE_MODULE('internal', (function () {
   // / @brief _PRINT
   // //////////////////////////////////////////////////////////////////////////////
 
-  global._PRINT = function _PRINT () {
-    var output = require('internal').output;
+  global._PRINT = function _PRINT (context) {
     var printRecursive = require('internal').printRecursive;
 
-    var context = {
-      customInspect: false, // Don't call _PRINT (recursively)
-      emit: printShell.emit,
-      level: 0,
-      limitString: printShell.limitString,
-      names: [],
-      output: '',
-      path: '~',
-      prettyPrint: usePrettyPrint,
-      seen: [],
-      showFunction: false,
-      useColor: useColor,
-      useToString: true
-    };
+    context.seen = [];
+    context.customInspect = false; // Don't call _PRINT (recursively)
 
     printRecursive(global, context);
-
-    output(context.output);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
