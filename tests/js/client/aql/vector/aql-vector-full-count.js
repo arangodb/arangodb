@@ -35,7 +35,6 @@ const {
 const {
     insertDocsAndEnsureIndex,
     waitForIndexBuild,
-    withSuffix,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -46,12 +45,12 @@ const collName = "vectorColl";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexFullCountTestSuite(expectedTrained) {
+function VectorIndexFullCountTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? 3 : 1;
-    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = 12132390894;
     const nLists = 10;
 
@@ -95,10 +94,9 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
                 }),
             });
 
-            const expectedState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, expectedState, expectedTrained ? 60 : 5),
-                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection, "ready", 60),
+                "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
 
@@ -512,18 +510,7 @@ function VectorIndexLargeLimitTestSuite() {
     };
 }
 
-// Untrained (brute-force)
-jsunity.run(function VectorIndexFullCountUntrainedTestSuite() {
-    return withSuffix(VectorIndexFullCountTestSuite(false), '_untrained');
-});
-
-// Trained
-jsunity.run(function VectorIndexFullCountTrainedTestSuite() {
-    return withSuffix(VectorIndexFullCountTestSuite(true), '_trained');
-});
-
-
-
+jsunity.run(VectorIndexFullCountTestSuite);
 jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);
 jsunity.run(VectorIndexFullCountCollectionWithSmallAmountOfDocs);
 jsunity.run(VectorIndexLargeLimitTestSuite);

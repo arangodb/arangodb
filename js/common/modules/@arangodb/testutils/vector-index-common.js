@@ -88,10 +88,10 @@ const DistanceFunctions = {
     }
 };
 
-// When similarity scores/distances are too close to each other,  
-// vector search results can become non-deterministic due to floating-point 
-// precision issues. This causes test failures where document ordering 
-// changes between test runs. We ensure minimum distance separation between 
+// When similarity scores/distances are too close to each other,
+// vector search results can become non-deterministic due to floating-point
+// precision issues. This causes test failures where document ordering
+// changes between test runs. We ensure minimum distance separation between
 // vectors' distances function values from the query point to guarantee deterministic results.
 function createVectorGenerator(options) {
     const {
@@ -113,7 +113,7 @@ function createVectorGenerator(options) {
     const gen = randomGenerator(seed);
 
     function findProximity(targetDistance) {
-        return distancesFromRandomPoint.some(existingDistance => 
+        return distancesFromRandomPoint.some(existingDistance =>
             Math.abs(existingDistance - targetDistance) <= floatEpsilon
         );
     }
@@ -224,18 +224,6 @@ function createVectorGenerator(options) {
         getDimension: () => dimension,
         getFloatEpsilon: () => floatEpsilon
     };
-}
-
-function withSuffix(suite, suffix) {
-    const result = {};
-    for (const [key, value] of Object.entries(suite)) {
-        if (key.startsWith('test')) {
-            result[key + suffix] = value;
-        } else {
-            result[key] = value;
-        }
-    }
-    return result;
 }
 
 const sleepIntervalSec = 0.1;
@@ -408,4 +396,3 @@ exports.waitForAllVectorIndexesTrainingState = waitForAllVectorIndexesTrainingSt
 exports.waitForAllVectorIndexesTrainingStateOnDBServers = waitForAllVectorIndexesTrainingStateOnDBServers;
 exports.insertDocsAndEnsureIndex = insertDocsAndEnsureIndex;
 exports.waitForIndexBuild = waitForIndexBuild;
-exports.withSuffix = withSuffix;

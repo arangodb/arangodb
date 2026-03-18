@@ -39,7 +39,6 @@ const {
 const {
     insertDocsAndEnsureIndex,
     waitForIndexBuild,
-    withSuffix,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
@@ -103,12 +102,12 @@ const verifyPlan = function(query, bindVars, numberOfCalculationNodes) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexL2FilterTestSuite(expectedTrained) {
+function VectorIndexL2FilterTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 20;
     const numberOfDocsFactor = isCluster ? 3 : 1;
-    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
@@ -172,10 +171,9 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
                 }),
             });
 
-            const expectedState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, expectedState, expectedTrained ? 60 : 5),
-                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection, "ready", 60),
+                "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
 
@@ -633,13 +631,13 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
     };
 }
 
-function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
+function VectorIndexL2FilterTestMultipleCollectionsSuite() {
     let collection1;
     let collection2;
     let randomPoint;
     const dimension = 20;
     const numberOfDocsFactor = isCluster ? 3 : 1;
-    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
     const col2 = "col2";
@@ -706,10 +704,9 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
             if (ensureIndexSlot === numBatches) {
                 ensureIndex();
             }
-            const expectedState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection1, expectedState, expectedTrained ? 60 : 5),
-                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection1, "ready", 60),
+                "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
 
@@ -758,12 +755,12 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
     };
 }
 
-function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
+function VectorIndexL2FilterStoredValuesTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 20;
     const numberOfDocsFactor = isCluster ? 3 : 1;
-    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
@@ -819,10 +816,9 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
                 }),
             });
 
-            const expectedState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, expectedState, expectedTrained ? 60 : 5),
-                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection, "ready", 60),
+                "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
 
@@ -1138,32 +1134,17 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
     };
 }
 
-// Untrained (brute-force)
-jsunity.run(function VectorIndexL2FilterUntrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterTestSuite(false), '_untrained');
+jsunity.run(function VectorIndexL2FilterTestSuiteRunner() {
+    return VectorIndexL2FilterTestSuite();
 });
-jsunity.run(function VectorIndexL2FilterMultipleCollectionsUntrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(false), '_untrained');
+jsunity.run(function VectorIndexL2FilterMultipleCollectionsTestSuiteRunner() {
+    return VectorIndexL2FilterTestMultipleCollectionsSuite();
 });
-jsunity.run(function VectorIndexL2FilterStoredValuesUntrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(false), '_untrained');
+jsunity.run(function VectorIndexL2FilterStoredValuesTestSuiteRunner() {
+    return VectorIndexL2FilterStoredValuesTestSuite();
 });
-jsunity.run(function VectorIndexL2FilterStoredValuesIndexSelectionUntrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterStoredValuesIndexSelection(), '_untrained');
-});
-
-// Trained
-jsunity.run(function VectorIndexL2FilterTrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterTestSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexL2FilterMultipleCollectionsTrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexL2FilterStoredValuesTrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexL2FilterStoredValuesIndexSelectionTrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterStoredValuesIndexSelection(), '_trained');
+jsunity.run(function VectorIndexL2FilterStoredValuesIndexSelectionTestSuiteRunner() {
+    return VectorIndexL2FilterStoredValuesIndexSelection();
 });
 
 

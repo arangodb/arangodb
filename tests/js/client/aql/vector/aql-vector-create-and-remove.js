@@ -34,7 +34,6 @@ const {
 const {
     insertDocsAndEnsureIndex,
     waitForIndexBuild,
-    withSuffix,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -47,13 +46,13 @@ const collName = "coll";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
+function VectorIndexCreateAndRemoveTestSuite() {
     let collection;
     const dimension = 500;
     const seed = 12132390894;
     let randomPoint;
     const insertedDocsCountFactor = isCluster ? 3 : 1;
-    const insertedDocsCount = expectedTrained ? 1500 * insertedDocsCountFactor : 100;
+    const insertedDocsCount = 1500 * insertedDocsCountFactor;
     let insertedDocs = [];
 
     return {
@@ -99,10 +98,9 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
 
-            const expectedState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, expectedState, expectedTrained ? 120 : 5),
-                "Expected index to become " + expectedState + " with " + insertedDocsCount + " docs"
+                waitForIndexBuild(collection, "ready", 120),
+                "Expected index to become ready with " + insertedDocsCount + " docs"
             );
         },
 
@@ -461,13 +459,13 @@ function VectorIndexTestCreationWithVectors() {
 }
 
 
-function VectorIndexStoredValuesTestSuite(expectedTrained) {
+function VectorIndexStoredValuesTestSuite() {
     let collection;
     const dimension = 128;
     const seed = 123456789;
     let randomPoint;
     const insertedDocsCountFactor = isCluster ? 3 : 1;
-    const insertedDocsCount = expectedTrained ? 1500 * insertedDocsCountFactor : 50;
+    const insertedDocsCount = 1500 * insertedDocsCountFactor;
     let insertedDocs = [];
 
     return {
@@ -524,10 +522,9 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
 
-            const expectedState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, expectedState, expectedTrained ? 120 : 5),
-                "Expected index to become " + expectedState + " with " + insertedDocsCount + " docs"
+                waitForIndexBuild(collection, "ready", 120),
+                "Expected index to become ready with " + insertedDocsCount + " docs"
             );
         },
 
@@ -718,21 +715,8 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
 }
 
 
-// Untrained (brute-force)
-jsunity.run(function VectorIndexCreateAndRemoveUntrainedTestSuite() {
-    return withSuffix(VectorIndexCreateAndRemoveTestSuite(false), '_untrained');
-});
-jsunity.run(function VectorIndexStoredValuesUntrainedTestSuite() {
-    return withSuffix(VectorIndexStoredValuesTestSuite(false), '_untrained');
-});
-
-// Trained (FAISS IVF)
-jsunity.run(function VectorIndexCreateAndRemoveTrainedTestSuite() {
-    return withSuffix(VectorIndexCreateAndRemoveTestSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexStoredValuesTrainedTestSuite() {
-    return withSuffix(VectorIndexStoredValuesTestSuite(true), '_trained');
-});
+jsunity.run(VectorIndexCreateAndRemoveTestSuite);
+jsunity.run(VectorIndexStoredValuesTestSuite);
 
 jsunity.run(VectorIndexTestCreationWithVectors);
 

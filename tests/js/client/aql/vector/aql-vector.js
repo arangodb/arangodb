@@ -41,7 +41,6 @@ const {
     DistanceFunctions,
     insertDocsAndEnsureIndex,
     waitForIndexBuild,
-    withSuffix,
 } = require("@arangodb/testutils/vector-index-common");
 
 const {
@@ -55,12 +54,12 @@ const collName = "vectorColl";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexL2TestSuite(expectedTrained) {
+function VectorIndexL2TestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? 3 : 1;
-    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -105,10 +104,9 @@ function VectorIndexL2TestSuite(expectedTrained) {
                 }),
             });
 
-            const trainingState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, trainingState, expectedTrained ? 10 : 5),
-                "Expected index to become " + trainingState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection, "ready", 10),
+                "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
 
@@ -533,12 +531,12 @@ function VectorIndexL2TestSuite(expectedTrained) {
 }
 
 
-function VectorIndexCosineTestSuite(expectedTrained) {
+function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? 3 : 1;
-    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -582,10 +580,9 @@ function VectorIndexCosineTestSuite(expectedTrained) {
                 }),
             });
 
-            const trainingState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, trainingState, expectedTrained ? 60 : 5),
-                "Expected index to become " + trainingState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection, "ready", 60),
+                "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
 
@@ -720,12 +717,12 @@ function VectorIndexCosineTestSuite(expectedTrained) {
     };
 }
 
-function VectorIndexInnerProductTestSuite(expectedTrained) {
+function VectorIndexInnerProductTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? 3 : 1;
-    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -769,10 +766,9 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
                 }),
             });
 
-            const trainingState = expectedTrained ? "ready" : "untrained";
             assertTrue(
-                waitForIndexBuild(collection, trainingState, expectedTrained ? 60 : 5),
-                "Expected index to become " + trainingState + " with " + numberOfDocs + " docs"
+                waitForIndexBuild(collection, "ready", 60),
+                "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
 
@@ -1089,27 +1085,9 @@ function MultipleVectorIndexesOnField() {
     };
 }
 
-// Run with trained index
-jsunity.run(function VectorIndexL2TrainedTestSuite() {
-    return withSuffix(VectorIndexL2TestSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexCosineTrainedTestSuite() {
-    return withSuffix(VectorIndexCosineTestSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
-    return withSuffix(VectorIndexInnerProductTestSuite(true), '_trained');
-});
-
-// Run with untrained index
-jsunity.run(function VectorIndexL2UntrainedTestSuite() {
-    return withSuffix(VectorIndexL2TestSuite(false), '_untrained');
-});
-jsunity.run(function VectorIndexCosineUntrainedTestSuite() {
-    return withSuffix(VectorIndexCosineTestSuite(false), '_untrained');
-});
-jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
-    return withSuffix(VectorIndexInnerProductTestSuite(false), '_untrained');
-});
+jsunity.run(VectorIndexL2TestSuite);
+jsunity.run(VectorIndexCosineTestSuite);
+jsunity.run(VectorIndexInnerProductTestSuite);
 
 jsunity.run(MultipleVectorIndexesOnField);
 

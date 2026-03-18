@@ -34,7 +34,6 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
   waitForIndexBuild,
-  withSuffix,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -59,12 +58,12 @@ function getVectorIndexName(query, bindVars = {}) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test suite for vector index hints
 ////////////////////////////////////////////////////////////////////////////////
-function VectorIndexHintsSuite(expectedTrained) {
+function VectorIndexHintsSuite() {
   let collection;
   let randomPoint;
   const dimension = 128;
   const numberOfDocsFactor = isCluster ? 3 : 1;
-  const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
+  const numberOfDocs = 1500 * numberOfDocsFactor;
   const seed = randomInteger();
 
   return {
@@ -105,8 +104,8 @@ function VectorIndexHintsSuite(expectedTrained) {
         collection.insert(docs.slice(start, end));
       }
 
-      const state = expectedTrained ? "ready" : "untrained";
-      const indexTimeoutSec = expectedTrained ? (isCluster ? 120 : 60) : 5;
+      const state = "ready";
+      const indexTimeoutSec = isCluster ? 120 : 60;
 
       const indexes = [
         {name: "vector_l2", fields: ["vector"], params: {metric: "l2", dimension, nLists: 5}},
@@ -251,14 +250,6 @@ function VectorIndexHintsSuite(expectedTrained) {
   };
 }
 
-// Untrained (brute-force)
-// jsunity.run(function VectorIndexHintsUntrainedSuite() {
-//     return withSuffix(VectorIndexHintsSuite(false), '_untrained');
-// });
-
-// Trained
-jsunity.run(function VectorIndexHintsTrainedSuite() {
-    return withSuffix(VectorIndexHintsSuite(true), '_trained');
-});
+jsunity.run(VectorIndexHintsSuite);
 
 return jsunity.done();

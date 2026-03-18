@@ -88,6 +88,33 @@ function VectorIndexTrainingLifecycleSuite() {
             assertFalse(idx.isTrained, "Index should be untrained on empty collection");
         },
 
+        testQueryFailsWhenUntrained: function () {
+            let gen = randomNumberGeneratorFloat(seed);
+            collection.insert(generateDocs(gen, 500));
+
+            assertTrue(
+                waitForState(collection, "untrained", 5),
+                "Index should remain untrained with only 500 docs"
+            );
+
+            const queryPoint = Array.from({length: dimension}, () => gen());
+            try {
+                db._query(
+                    "FOR d IN " + collection.name() +
+                    " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d",
+                    {qp: queryPoint}
+                ).toArray();
+                fail("Query on untrained vector index should have thrown");
+            } catch (e) {
+                assertTrue(
+                    e.errorNum === 1555 || e.errorNum === 1554,
+                    "Expected error 1555 (vector index not ready) or " +
+                    "1554 (vector search not applied), got: " + e.errorNum +
+                    " - " + e.errorMessage
+                );
+            }
+        },
+
         testStaysUntrainedBelowThreshold: function () {
             let gen = randomNumberGeneratorFloat(seed);
             collection.insert(generateDocs(gen, 500));
