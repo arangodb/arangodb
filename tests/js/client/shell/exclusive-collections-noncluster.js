@@ -79,7 +79,7 @@ function ExclusiveSuite () {
           collections: { write: ["${cn1}", "${cn2}"] }
         });
         // signal that BG transaction is open so main knows to start
-        db["${cn2}"].insert({ _key: "runner1_trx_open", value: true });
+        db["${cn1}"].insert({ _key: "runner1_trx_open", value: true });
         try {
           for (let i = 0; i < 10000; ++i) {
             trx.collection("${cn1}").update("XXX", { name: "runner1" });
@@ -97,7 +97,7 @@ function ExclusiveSuite () {
         require("internal").sleep(0.02);
       }
       // wait until BG has opened its transaction before we open ours
-      while (!db[cn2].exists("runner1_trx_open")) {
+      while (!db[cn1].exists("runner1_trx_open")) {
         require("internal").sleep(0.02);
       }
 
