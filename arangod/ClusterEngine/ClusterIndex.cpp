@@ -507,6 +507,19 @@ Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
   return Index::StreamSupportResult::makeUnsupported();
 }
 
+bool ClusterIndex::isVectorIndexReady() const noexcept {
+  if (_indexType != TRI_IDX_TYPE_VECTOR_INDEX) {
+    return false;
+  }
+  auto const info = _info.slice();
+  auto const trainingState = info.get("trainingState");
+  LOG_TOPIC("a7f2c", DEBUG, Logger::ENGINES)
+      << "ClusterIndex::isVectorIndexReady() trainingState="
+      << (trainingState.isString() ? trainingState.stringView() : "N/A")
+      << " full info=" << info.toJson();
+  return trainingState.isString() && trainingState.stringView() == "ready";
+}
+
 UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {
   TRI_ASSERT(_vectorIndexDefinition != nullptr);
   if (!_vectorIndexDefinition) {
