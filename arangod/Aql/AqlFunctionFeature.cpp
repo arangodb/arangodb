@@ -563,6 +563,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   // optimizer with collection-/index-based subqueries. it is
   // marked as deterministic and cacheable here as it is just
   // a placeholder for collection/index accesses nowaways.
+  // TODO(listunov): Can I remove this as it is `NotImplemented` anyway?
   add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
 

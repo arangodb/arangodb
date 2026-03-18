@@ -99,7 +99,8 @@ struct OptimizerRule {
 
     // "Pass 1": moving nodes "up" (potentially outside loops):
     // ========================================================
-    replaceNearWithinFulltext,
+    // TODO, deprecate or remove? Are the values important?
+    deprecated_replaceNearWithinFulltext,
 
     inlineSubqueriesRule,
 

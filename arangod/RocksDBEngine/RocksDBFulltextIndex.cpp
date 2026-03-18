@@ -543,6 +543,7 @@ std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
   size_t numMembers = args->numMembers();
   TRI_ASSERT(numMembers == 3 || numMembers == 4);
 
+  // TODO(listunov): what is this ?
   aql::AstNode const* queryNode = args->getMember(2);
   if (queryNode->type != aql::NODE_TYPE_VALUE ||
       queryNode->value.type != aql::VALUE_TYPE_STRING) {
