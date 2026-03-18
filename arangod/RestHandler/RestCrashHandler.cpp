@@ -38,6 +38,7 @@ RestCrashHandler::RestCrashHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/crashes (prefix)
 futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   // Require admin access
   if (!ExecContext::current().isAdminUser(

@@ -43,6 +43,7 @@ RestActionHandler::RestActionHandler(ApplicationServer& server,
       _action(TRI_LookupActionVocBase(request)),
       _data(nullptr) {}
 
+// Mounted at / (prefix, catchall)
 RestStatus RestActionHandler::execute() {
   // need an action
   if (_action == nullptr) {

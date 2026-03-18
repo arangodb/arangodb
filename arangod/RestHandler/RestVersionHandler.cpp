@@ -129,6 +129,7 @@ void RestVersionHandler::getVersion(
   result.close();
 }
 
+// Mounted at /_api/version (exact) and /_admin/version (exact)
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
 

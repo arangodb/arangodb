@@ -62,6 +62,7 @@ RestDumpHandler::RestDumpHandler(
 }
 
 // main function that dispatches the different routes and commands
+// Mounted at /_api/dump (prefix)
 RestStatus RestDumpHandler::execute() {
   if (!ServerState::instance()->isDBServer() &&
       !ServerState::instance()->isSingleServer()) {

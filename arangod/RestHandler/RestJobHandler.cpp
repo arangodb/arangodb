@@ -46,6 +46,7 @@ RestJobHandler::RestJobHandler(application_features::ApplicationServer& server,
   TRI_ASSERT(jobManager != nullptr);
 }
 
+// Mounted at /_api/job (prefix) and /_admin/job (prefix)
 RestStatus RestJobHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

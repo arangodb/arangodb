@@ -47,6 +47,7 @@ ClusterRestWalHandler::ClusterRestWalHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/wal (prefix, cluster engine)
 RestStatus ClusterRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {

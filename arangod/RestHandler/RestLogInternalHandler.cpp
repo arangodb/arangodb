@@ -39,6 +39,8 @@ RestLogInternalHandler::RestLogInternalHandler(
     : RestVocbaseBaseHandler(server, req, resp) {}
 RestLogInternalHandler::~RestLogInternalHandler() = default;
 
+// Mounted at /_api/log-internal (prefix, only when replication2 is enabled and
+// in cluster mode)
 auto RestLogInternalHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
   if (!ExecContext::current().isSuperuser()) {

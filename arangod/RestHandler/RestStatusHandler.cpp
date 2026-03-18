@@ -65,6 +65,7 @@ RestStatusHandler::RestStatusHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/status (exact)
 RestStatus RestStatusHandler::execute() {
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();

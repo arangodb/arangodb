@@ -39,6 +39,7 @@ RestEngineHandler::RestEngineHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_api/engine (prefix)
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

@@ -35,6 +35,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
     : RestVocbaseBaseHandler(server, request, response),
       _feature(server.getFeature<Feature>()) {}
 
+// Mounted at /_admin/async-registry (prefix)
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (!ExecContext::current().isAdminUser(
           arangodb::rbac::Category::AdminMonitoringInternal{})) {

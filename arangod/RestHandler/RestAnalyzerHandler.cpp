@@ -202,6 +202,7 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   );
 }
 
+// Mounted at /_api/analyzer (prefix)
 arangodb::RestStatus RestAnalyzerHandler::execute() {
   if (!_request) {
     generateError(arangodb::rest::ResponseCode::METHOD_NOT_ALLOWED,

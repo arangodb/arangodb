@@ -41,6 +41,7 @@ RestSupportInfoHandler::RestSupportInfoHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/support-info (exact)
 RestStatus RestSupportInfoHandler::execute() {
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
   auto const& apiPolicy = gs.supportInfoApiPolicy();

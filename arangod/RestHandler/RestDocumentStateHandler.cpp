@@ -69,6 +69,8 @@ RestDocumentStateHandler::RestDocumentStateHandler(
   _options.customTypeHandler = _customTypeHandler.get();
 }
 
+// Mounted at /_api/document-state (prefix, only when replication2 is enabled
+// and in cluster mode)
 RestStatus RestDocumentStateHandler::execute() {
   if (!ExecContext::current().isAdminUser(
           arangodb::rbac::Category::AdminReadReplicatedLog{})) {

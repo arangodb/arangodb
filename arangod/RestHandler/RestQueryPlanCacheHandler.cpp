@@ -31,6 +31,7 @@ RestQueryPlanCacheHandler::RestQueryPlanCacheHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/query-plan-cache (prefix)
 RestStatus RestQueryPlanCacheHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

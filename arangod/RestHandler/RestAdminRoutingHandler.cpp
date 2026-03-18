@@ -35,6 +35,7 @@ RestAdminRoutingHandler::RestAdminRoutingHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/routing (prefix, requires V8)
 RestStatus RestAdminRoutingHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,

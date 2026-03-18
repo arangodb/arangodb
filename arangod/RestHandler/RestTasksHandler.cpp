@@ -53,6 +53,7 @@ RestTasksHandler::RestTasksHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/tasks (prefix, requires V8)
 RestStatus RestTasksHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,

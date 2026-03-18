@@ -80,6 +80,7 @@ RequestLane RestCollectionHandler::lane() const {
   return RequestLane::CLIENT_SLOW;
 }
 
+// Mounted at /_api/collection (prefix)
 futures::Future<futures::Unit> RestCollectionHandler::executeAsync() {
   switch (_request->requestType()) {
     case rest::RequestType::GET:

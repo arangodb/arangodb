@@ -45,6 +45,7 @@ RestShutdownHandler::RestShutdownHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/shutdown (prefix)
 RestStatus RestShutdownHandler::execute() {
   if (_request->requestType() != rest::RequestType::DELETE_REQ &&
       _request->requestType() != rest::RequestType::GET) {

@@ -42,6 +42,8 @@ RestAdminStatisticsHandler::RestAdminStatisticsHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/statistics (exact) and /_admin/statistics-description
+// (exact)
 RestStatus RestAdminStatisticsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,

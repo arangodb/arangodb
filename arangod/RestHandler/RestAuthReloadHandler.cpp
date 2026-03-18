@@ -41,6 +41,7 @@ RestAuthReloadHandler::RestAuthReloadHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/auth/reload (exact)
 RestStatus RestAuthReloadHandler::execute() {
   if (!ExecContext::current().isAdminUser(
           arangodb::rbac::Category::AdminAuthReload{})) {

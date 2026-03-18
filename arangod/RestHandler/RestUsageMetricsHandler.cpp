@@ -44,6 +44,7 @@ RestUsageMetricsHandler::RestUsageMetricsHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/usage-metrics (prefix)
 auto RestUsageMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto& security = server().getFeature<ServerSecurityFeature>();
 

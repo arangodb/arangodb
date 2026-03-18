@@ -184,6 +184,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   return true;
 }
 
+// Mounted at /_api/wal (prefix)
 RestStatus RestWalAccessHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,

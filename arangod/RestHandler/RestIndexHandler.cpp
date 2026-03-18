@@ -61,6 +61,7 @@ RestIndexHandler::RestIndexHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/index (prefix)
 futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
   // extract the request type
   rest::RequestType const type = _request->requestType();

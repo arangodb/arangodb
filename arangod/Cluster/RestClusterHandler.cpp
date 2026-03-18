@@ -54,6 +54,7 @@ RestClusterHandler::RestClusterHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_api/cluster (prefix, only when cluster is enabled)
 RestStatus RestClusterHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty()) {

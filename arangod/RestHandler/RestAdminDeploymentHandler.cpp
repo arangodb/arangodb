@@ -46,6 +46,7 @@ RestAdminDeploymentHandler::RestAdminDeploymentHandler(
 
 std::string const RestAdminDeploymentHandler::Id = "id";
 
+// Mounted at /_admin/deployment (prefix)
 auto RestAdminDeploymentHandler::executeAsync()
     -> futures::Future<futures::Unit> {
   if (!ServerState::instance()->isCoordinator() &&

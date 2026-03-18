@@ -42,6 +42,8 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
     GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(server, request, response, queryRegistry) {}
 
+// Mounted at /_api/simple/all, /_api/simple/all-keys and
+// /_api/simple/by-example (prefix)
 auto RestSimpleQueryHandler::executeAsync() -> futures::Future<futures::Unit> {
   // extract the sub-request type
   auto const type = _request->requestType();

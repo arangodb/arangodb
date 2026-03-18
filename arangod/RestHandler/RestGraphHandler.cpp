@@ -50,6 +50,7 @@ RestGraphHandler::RestGraphHandler(
     : RestVocbaseBaseHandler(server, request, response),
       _graphManager(_vocbase, transaction::OperationOriginREST{::moduleName}) {}
 
+// Mounted at /_api/gharial (prefix)
 auto RestGraphHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto res = co_await executeGharial();
   if (res.fail()) {

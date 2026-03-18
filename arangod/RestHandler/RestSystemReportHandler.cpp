@@ -87,6 +87,7 @@ bool RestSystemReportHandler::isAdminUser(
   }
 }
 
+// Mounted at /_admin/system-report (exact)
 RestStatus RestSystemReportHandler::execute() {
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();

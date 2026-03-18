@@ -45,6 +45,7 @@ RestAccessTokenHandler::RestAccessTokenHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/token (prefix)
 RestStatus RestAccessTokenHandler::execute() {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {

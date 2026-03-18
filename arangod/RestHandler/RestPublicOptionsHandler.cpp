@@ -38,6 +38,7 @@ RestPublicOptionsHandler::RestPublicOptionsHandler(
     GeneralResponse* response)
     : RestOptionsBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/options-public (exact)
 futures::Future<futures::Unit> RestPublicOptionsHandler::executeAsync() {
   if (_request->requestType() != rest::RequestType::GET) {
     // only HTTP GET allowed

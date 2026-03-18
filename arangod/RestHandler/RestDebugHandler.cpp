@@ -36,6 +36,8 @@ RestDebugHandler::RestDebugHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/debug (prefix, only when ARANGODB_ENABLE_FAILURE_TESTS is
+// defined)
 RestStatus RestDebugHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

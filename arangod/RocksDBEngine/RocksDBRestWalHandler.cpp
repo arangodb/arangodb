@@ -47,6 +47,7 @@ RocksDBRestWalHandler::RocksDBRestWalHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/wal (prefix, RocksDB engine)
 RestStatus RocksDBRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {

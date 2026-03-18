@@ -123,6 +123,7 @@ RestTelemetricsHandler::RestTelemetricsHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/telemetrics (exact)
 RestStatus RestTelemetricsHandler::execute() {
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
   if (!gs.isTelemetricsEnabled()) {

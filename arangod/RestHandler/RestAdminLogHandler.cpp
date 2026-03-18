@@ -83,6 +83,7 @@ arangodb::Result RestAdminLogHandler::verifyPermitted() {
   return arangodb::Result();
 }
 
+// Mounted at /_admin/log (prefix)
 auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto result = verifyPermitted();
   if (!result.ok()) {

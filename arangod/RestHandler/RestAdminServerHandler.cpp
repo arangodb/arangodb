@@ -53,6 +53,7 @@ RestAdminServerHandler::RestAdminServerHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/server (prefix)
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() == 1 && suffixes[0] == "mode") {

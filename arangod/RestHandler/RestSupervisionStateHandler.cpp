@@ -47,6 +47,7 @@ RestSupervisionStateHandler::RestSupervisionStateHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/supervisionState (exact)
 futures::Future<futures::Unit> RestSupervisionStateHandler::executeAsync() {
   if (!ExecContext::current().isAdminUser(
           arangodb::rbac::Category::AdminSupervisionState{})) {

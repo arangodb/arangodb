@@ -358,6 +358,7 @@ std::string const RestAdminClusterHandler::VPackSortMigrationMigrate =
     "migrate";
 std::string const RestAdminClusterHandler::VPackSortMigrationStatus = "status";
 
+// Mounted at /_admin/cluster (prefix)
 auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
   // here we first do a glboal check, which is based on the setting in startup
   // option

@@ -46,6 +46,8 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
+// Mounted at /_api/log (prefix, only when replication2 is enabled and in
+// cluster mode)
 auto RestLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
   if (!ExecContext::current().isAdminUser(

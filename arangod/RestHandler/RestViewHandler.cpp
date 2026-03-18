@@ -121,6 +121,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   generateOk(rest::ResponseCode::OK, builder);
 }
 
+// Mounted at /_api/view (prefix)
 RestStatus RestViewHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

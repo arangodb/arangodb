@@ -41,6 +41,7 @@ RestCompactHandler::RestCompactHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/compact (exact)
 RestStatus RestCompactHandler::execute() {
   if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,

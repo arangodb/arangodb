@@ -54,6 +54,7 @@ RestImportHandler::RestImportHandler(
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}
 
+// Mounted at /_api/import (prefix)
 auto RestImportHandler::executeAsync() -> futures::Future<futures::Unit> {
   // set default value for onDuplicate
   _onDuplicateAction = DUPLICATE_ERROR;

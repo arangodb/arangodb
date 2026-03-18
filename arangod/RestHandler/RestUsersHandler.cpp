@@ -84,6 +84,7 @@ RestUsersHandler::RestUsersHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_api/user (prefix)
 RestStatus RestUsersHandler::execute() {
   RequestType const type = _request->requestType();
   AuthenticationFeature* af = AuthenticationFeature::instance();

@@ -45,6 +45,7 @@ RestLicenseHandler::RestLicenseHandler(
     : RestBaseHandler(server, request, response) {}
 
 #ifndef USE_ENTERPRISE
+// Mounted at /_admin/license (prefix)
 RestStatus RestLicenseHandler::execute() {
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
