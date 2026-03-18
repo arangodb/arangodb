@@ -42,4 +42,3 @@ arangodb::velocypack::Buffer<uint8_t> arangodb::velocypack::toBuffer(
   b.append(s.getDataPtr(), s.slice().byteSize());
   return b;
 }
-
