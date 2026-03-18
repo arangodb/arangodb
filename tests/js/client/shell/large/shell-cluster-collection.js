@@ -735,13 +735,12 @@ function ClusterCollectionSuite () {
 
     testCreateIllegalName1 : function () {
       try {
-        db._create("1234");
+        db._create("123abc");
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
 
-      // _collection() returns null for non-existent collections
       assertNull(db._collection("123abc"));
     },
 
@@ -777,6 +776,8 @@ function ClusterCollectionSuite () {
 
       assertNull(db._collection("_foo"));
     },
+
+    
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test create
