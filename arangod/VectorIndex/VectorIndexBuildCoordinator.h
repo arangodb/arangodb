@@ -48,7 +48,7 @@ class VectorIndexBuildCoordinator {
                                        MaintenanceFeature& maintenance,
                                        metrics::MetricsFeature& metrics);
 
-  void start(std::uint32_t maxOmpThreads);
+  void start();
   void beginShutdown();
   void stop();
 

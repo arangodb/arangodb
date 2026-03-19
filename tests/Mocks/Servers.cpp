@@ -187,7 +187,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true,
                                          std::span<const std::type_index>{});
-  server.addFeature<ViewTypesFeature>(false);  // true ??
+  server.addFeature<ViewTypesFeature>(false);    // true ??
   server.addFeature<MaintenanceFeature>(false);  // do not start the thread
   server.addFeature<VectorIndexFeature>(true);
 

@@ -43,7 +43,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
-#include <omp.h>
 #include <unordered_set>
 
 DECLARE_GAUGE(arangodb_vector_index_unusable, uint64_t,
@@ -87,16 +86,8 @@ VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
       _ingestionDuration(
           metrics.add(arangodb_vector_index_ingestion_duration{})) {}
 
-void VectorIndexBuildCoordinator::start(std::uint32_t maxOmpThreads) {
-  _thread = std::jthread([this, maxOmpThreads](std::stop_token stopToken) {
-    // Set OpenMP thread limit on the worker thread (ICV is per-thread).
-    // If user didn't configure a value, default to max(4, numCores/4).
-    auto const numThreads = maxOmpThreads > 0
-                                ? static_cast<int>(maxOmpThreads)
-                                : std::max(4, omp_get_num_procs() / 4);
-    omp_set_num_threads(numThreads);
-    run(stopToken);
-  });
+void VectorIndexBuildCoordinator::start() {
+  _thread = std::jthread([this](std::stop_token stopToken) { run(stopToken); });
 }
 
 void VectorIndexBuildCoordinator::beginShutdown() { _thread.request_stop(); }

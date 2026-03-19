@@ -22,13 +22,10 @@
 
 #pragma once
 
-#include <cstdint>
-
 namespace arangodb {
 
 struct VectorIndexFeatureOptions {
   bool useVectorIndex = false;
-  std::uint32_t maxOmpThreads = 0;  // 0 means use default: max(4, numCores/4)
 };
 
 }  // namespace arangodb
