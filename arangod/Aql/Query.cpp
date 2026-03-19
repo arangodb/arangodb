@@ -150,7 +150,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _registeredQueryInTrx(false),
       _allowDirtyReads(false),
       _queryKilled(false),
-      _activity(activities::make<aql::query::activity::AQLQueryActivity>(
+      _activity(activities::make<aql::query_activity::AQLQueryActivity>(
           _queryId, _startTime, _queryString.string(), _queryOptions,
           _bindParameters)) {
   if (!_transactionContext) {

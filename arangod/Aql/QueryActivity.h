@@ -26,7 +26,11 @@
 #include "Aql/QueryOptions.h"
 #include "types.h"
 
-namespace arangodb::aql::query::activity {
+// TODO: note that this *should* be namespace arangodb::aql::query::activity ;
+// this is currently impossible because some parts of the code use using
+// namespace arangodb::aql, even in headers. this breaks because boost uses the
+// term query and breaks.
+namespace arangodb::aql::query_activity {
 
 struct AQLQueryActivityData {
   QueryId id;
@@ -65,4 +69,4 @@ struct AQLQueryActivity
                 .bindParameters = bindParameters.builder()->sharedSlice()}) {}
   using Data = AQLQueryActivityData;
 };
-}  // namespace arangodb::aql::query::activity
+}  // namespace arangodb::aql::query_activity
