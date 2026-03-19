@@ -25,9 +25,8 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const arango = arangodb.arango;
 const db = arangodb.db;
-const { getCoordinators, moveShard, getDBServers, eventuallyAssertMetric, getMetric } = require("@arangodb/test-helper");
+const { getCoordinators, moveShard, getDBServers, eventuallyAssertMetric } = require("@arangodb/test-helper");
 
 function metadataCoordinatorMetricsSuite() {
   'use strict';
@@ -43,20 +42,6 @@ function metadataCoordinatorMetricsSuite() {
   const shardFollowersOutOfSyncMetric = "arangodb_metadata_shard_followers_out_of_sync_number";
 
   // Helper: compute total shard count across all databases (shards * replicationFactor)
-  // const getTotalShardCount = function() {
-  //   const currentDb = db._name();
-  //   let count = 0;
-  //   db._useDatabase("_system");
-  //   db._databases().forEach((database) => {
-  //     db._useDatabase(database);
-  //     db._collections().forEach((col) => {
-  //       const props = col.properties();
-  //       count += props.numberOfShards * props.replicationFactor;
-  //     });
-  //   });
-  //   db._useDatabase(currentDb);
-  //   return count;
-  // };
   const getTotalShardCount = function() {
     const currentDb = db._name();
     let count = 0;
@@ -65,13 +50,10 @@ function metadataCoordinatorMetricsSuite() {
       db._useDatabase(database);
       db._collections().forEach((col) => {
         const props = col.properties();
-        const shards = props.numberOfShards * props.replicationFactor;
-        require("internal").print(`DB: ${database}, Col: ${col.name()}, shards: ${props.numberOfShards}, RF: ${props.replicationFactor}, total: ${shards}`);
-        count += shards;
+        count += props.numberOfShards * props.replicationFactor;
       });
     });
     db._useDatabase(currentDb);
-    require("internal").print(`getTotalShardCount result: ${count}`);
     return count;
   };
 
@@ -178,14 +160,8 @@ function metadataCoordinatorMetricsSuite() {
       return docsToInsert;
     };
 
-  return {
-    setUp: function () {
-      const coordinators = getCoordinators();
-      if (coordinators.length > 0) {
-        arango.reconnect(coordinators[0].endpoint, "_system", "root", "");
-      }
-    },
 
+  return {
     tearDown: function() {
       try {
         db._useDatabase("_system");
@@ -203,24 +179,10 @@ function metadataCoordinatorMetricsSuite() {
       const expectedLeaderShards = getLeaderShardCount();
       const expectedTotalShards = getTotalShardCount();
       const expectedFollowerShards = getFollowerShardCount();
-      
-      // Print agency state before asserting
-      const agencyPlan = arango.POST("/_api/agency/read", [["/arango/Plan/Collections"]]);
-      require("internal").print("agency plan collections:", JSON.stringify(agencyPlan, null, 2));
 
       // In a healthy baseline state, no shards should be out of sync
-      try {
-          assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
-                                expectedFollowerShards, 0, 0, 0);
-      } catch (e) {
-          const expectedLeaderShards2 = getLeaderShardCount();
-          require("internal").print("leader shards:", expectedLeaderShards2);
-          const expectedTotalShards2 = getTotalShardCount();
-          require("internal").print("total shards:", expectedTotalShards2);
-          const expectedFollowerShards2 = getFollowerShardCount();
-          require("internal").print("follower shards:", expectedFollowerShards2);
-          throw e;
-      }
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
+                            expectedFollowerShards, 0, 0, 0);
     },
 
     testShardOutOfSyncMetricChange: function () {
@@ -340,7 +302,6 @@ function metadataCoordinatorMetricsSuite() {
       const expectedTotalShards = getTotalShardCount();
       const expectedLeaderShards = getLeaderShardCount();
       const expectedFollowerShards = getFollowerShardCount();
-
       assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
                             expectedFollowerShards, 0, 0, 0);
 
