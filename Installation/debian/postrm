@@ -38,9 +38,7 @@ fi
 rm -rf /usr/share/arangodb3/js.old
 
 if [ purge = "$1" ]; then
-	rm -rf /usr/share/arangodb3/js/apps
 	rm -rf /var/log/arangodb3
 	rm -rf /var/lib/arangodb3
-	rm -rf /var/lib/arangodb3-apps 
 	rm -rf /var/run/arangodb
 fi
