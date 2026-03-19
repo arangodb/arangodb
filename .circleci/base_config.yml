@@ -542,7 +542,6 @@ jobs:
             find build/ -iname *.a -delete || true
             find build/ -iname *.o -delete || true
             find build/ -iname *.o.d -delete || true
-            rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
       - run:
           name: List build artifacts
           command: |
@@ -574,6 +573,7 @@ jobs:
                   - enterprise/js
                   - etc/
                   - tests/js
+                  - tests/fixtures
                   - enterprise/tests/js
                   - utils
                   - lib/iresearch/tests/resources

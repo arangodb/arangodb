@@ -64,7 +64,7 @@ function legacyOptimizerRuleTestSuite() {
     assertEqual(rn.length, 1, query.string + " Has IndexNode");
     assertEqual(rn[0].indexes.length, 1);
     var indexType = rn[0].indexes[0].type;
-    assertTrue(indexType === "geo1" || indexType === "geo2" || indexType === "geo");
+    assertTrue(indexType === "geo");
   };
   var isNodeType = function(node, type, query) {
     assertEqual(node.type, type, query.string + " check whether this node is of type " + type);
@@ -96,9 +96,9 @@ function legacyOptimizerRuleTestSuite() {
 
         internal.db._drop(colName);
         geocol = internal.db._create(colName);
-        geocol.ensureIndex({type:"geo2", fields:["lat","lon"]});
-        geocol.ensureIndex({type:"geo1", fields:["geo"]});
-        geocol.ensureIndex({type:"geo2", fields:["loca.tion.lat","loca.tion.lon"]});
+        geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
+        geocol.ensureIndex({type:"geo", fields:["geo"]});
+        geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});
         var lat, lon;
         let docs = [];
         for (lat=-40; lat <=40 ; ++lat) {
@@ -259,7 +259,7 @@ function legacyGeoVariationsTestSuite() {
     assertEqual(rn.length, 1);
     assertEqual(rn[0].indexes.length, 1);
     var indexType = rn[0].indexes[0].type;
-    assertTrue(indexType === "geo1" || indexType === "geo2" || indexType === "geo");
+    assertTrue(indexType === "geo");
   };
 
   return {
@@ -267,7 +267,7 @@ function legacyGeoVariationsTestSuite() {
     setUpAll : function () {
       internal.db._drop(colName);
       geocol = internal.db._create(colName);
-      geocol.ensureIndex({ type:"geo1", fields: ["location"] });
+      geocol.ensureIndex({ type:"geo", fields: ["location"] });
       let documents = [
         {"_key":"1138","_id":"test/1138","_rev":"_WjFfhsm---","location":[11,0]},
         {"_key":"1232","_id":"test/1232","_rev":"_WjFgKfC---","location":[0,0]},
