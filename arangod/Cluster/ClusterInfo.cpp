@@ -1640,46 +1640,56 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       }
     }
 
-    // Also clean up shards for isBuilding collections that were previously
-    // tracked in _collectionNameBlockers but are now gone from the Plan.
-    // These were never added to _newPlannedCollections so the loop above
-    // misses them, leaving stale entries in newShardsToPlanServers.
+    // Clean up shards for dropped isBuilding collections. They are not in
+    // _newPlannedCollections (building not finished), so the loop above only
+    // removes shards for fully planned collections. Erase their shards here to
+    // avoid stale entries in newShardsToPlanServers.
     if (auto np = newPlan.find(databaseName); np != newPlan.end()) {
-      auto nps = np->second->slice()[0];
-      READ_LOCKER(guard, _planProt.lock);
-      if (auto oldPlanIt = _plan.find(databaseName); oldPlanIt != _plan.end()) {
-          auto oldCollectionsPath = std::vector<std::string_view>{
+      auto const& nps = np->second->slice()[0];
+      std::vector<ShardID> shardsToErase;
+      {
+        READ_LOCKER(guard, _planProt.lock);
+        auto const oldPlanIt = _plan.find(databaseName);
+        if (oldPlanIt != _plan.end()) {
+          auto const oldCollectionsPath = std::vector<std::string_view>{
               AgencyCommHelper::path(), "Plan", "Collections", databaseName};
-          auto oldCollectionsSlice = oldPlanIt->second->slice()[0];
+          auto const oldCollectionsSlice = oldPlanIt->second->slice()[0];
           if (oldCollectionsSlice.hasKey(oldCollectionsPath)) {
-              for (auto colPair : VPackObjectIterator(
-                      oldCollectionsSlice.get(oldCollectionsPath))) {
-                  // Only process isBuilding collections
-                  if (!basics::VelocyPackHelper::getBooleanValue(
-                          colPair.value, StaticStrings::AttrIsBuilding, false)) {
-                      continue;
-                  }
-                  auto const colId = colPair.key.copyString();
-                  collectionsPath.push_back(colId);
-                  if (!nps.hasKey(collectionsPath)) {  // isBuilding collection gone
-                      if (auto shardsSlice = colPair.value.get("shards");
-                          shardsSlice.isObject()) {
-                          for (auto sh : VPackObjectIterator(shardsSlice)) {
-                              ShardID sId{sh.key.copyString()};
-                              newShardsToPlanServers.erase(sId);
-                              newShardToName.erase(sId);
-                              newShardToDb.erase(sId);
-                              newShardToShardGroupLeader.erase(sId);
-                              newShardGroups.erase(sId);
-                          }
-                      }
-                  }
-                  collectionsPath.pop_back();
+            for (auto colPair : VPackObjectIterator(
+                    oldCollectionsSlice.get(oldCollectionsPath))) {
+              if (!basics::VelocyPackHelper::getBooleanValue(
+                      colPair.value, StaticStrings::AttrIsBuilding, false)) {
+                continue;
               }
+              auto const colId = colPair.key.copyString();
+              // Use full path to check if collection is still in new plan.
+              // nps is the root of the merged plan tree (with "Plan" at top),
+              // so collection IDs are not direct keys — we need the full path.
+              collectionsPath.push_back(colId);
+              bool const stillExists = nps.hasKey(collectionsPath);
+              collectionsPath.pop_back();
+              if (stillExists) {
+                continue;  // still in new plan, nothing to clean up
+              }
+              if (auto shardsSlice = colPair.value.get("shards");
+                  shardsSlice.isObject()) {
+                for (auto sh : VPackObjectIterator(shardsSlice)) {
+                  shardsToErase.emplace_back(sh.key.copyString());
+                }
+              }
+            }
           }
+        }
+      }
+      for (auto const& sId : shardsToErase) {
+        newShardsToPlanServers.erase(sId);
+        newShardToName.erase(sId);
+        newShardToDb.erase(sId);
+        newShardToShardGroupLeader.erase(sId);
+        newShardGroups.erase(sId);
       }
     }
-
+    
     for (auto collectionPairSlice :
          velocypack::ObjectIterator(collectionsSlice)) {
       auto collectionSlice = collectionPairSlice.value;
