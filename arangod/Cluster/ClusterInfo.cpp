@@ -1656,7 +1656,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
           auto const oldCollectionsSlice = oldPlanIt->second->slice()[0];
           if (oldCollectionsSlice.hasKey(oldCollectionsPath)) {
             for (auto colPair : VPackObjectIterator(
-                    oldCollectionsSlice.get(oldCollectionsPath))) {
+                     oldCollectionsSlice.get(oldCollectionsPath))) {
               if (!basics::VelocyPackHelper::getBooleanValue(
                       colPair.value, StaticStrings::AttrIsBuilding, false)) {
                 continue;
@@ -1689,7 +1689,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         newShardGroups.erase(sId);
       }
     }
-    
+
     for (auto collectionPairSlice :
          velocypack::ObjectIterator(collectionsSlice)) {
       auto collectionSlice = collectionPairSlice.value;
