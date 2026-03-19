@@ -191,20 +191,12 @@ void RestAdminServerHandler::handleMode() {
   if (requestType == rest::RequestType::GET) {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    if (af->isActive() && !_request->user().empty()) {
-      auth::Level lvl;
-      if (af->userManager() != nullptr) {
-        lvl = af->userManager()->databaseAuthLevel(
-            _request->user(), StaticStrings::SystemDatabase,
-            /*configured*/ true);
-      } else {
-        lvl = auth::Level::RW;
-      }
-      if (lvl < auth::Level::RW) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-        return;
-      }
+    if (ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminMaintenance{})) {
+      generateError(
+          rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+          "You need AdminMaintenance rights for changing the server mode");
+      return;
     }
 
     bool parseSuccess = false;
@@ -247,7 +239,6 @@ void RestAdminServerHandler::handleMode() {
       return;
     }
     writeModeResult(ServerState::readOnly());
-
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);

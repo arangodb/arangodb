@@ -66,11 +66,6 @@ struct Category {
   struct UseApiVersion {
     std::string version;
   };
-  // Admin actions with a collection resource:
-  struct AdminChangeDataDist {
-    std::string database;
-    std::string collection;
-  };
   // Admin actions with a user resource:
   struct AdminReadUser {
     std::string username;
@@ -79,6 +74,7 @@ struct Category {
     std::string username;
   };
   // Admin actions without a resource:
+  struct AdminMoveShards {};
   struct AdminMonitoring {};
   struct AdminMonitoringInternal {};
   struct AdminCompaction {};
@@ -110,7 +106,7 @@ struct Category {
   using Any = std::variant<
       ReadDatabase, WriteDatabase, ReadCollection, WriteCollectionData,
       WriteCollectionMeta, ReadView, WriteView, ReadAnalyzer, WriteAnalyzer,
-      UseApiVersion, AdminChangeDataDist, AdminReadUser, AdminWriteUser,
+      UseApiVersion, AdminMoveShards, AdminReadUser, AdminWriteUser,
       AdminMonitoring, AdminMonitoringInternal, AdminCompaction,
       AdminAuthReload, AdminCrashHandler, AdminApiCalls, AdminAqlQueries,
       AdminShutdown, AdminReadLogs, AdminSetLogLevel, AdminOptions,

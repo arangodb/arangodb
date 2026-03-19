@@ -168,8 +168,7 @@ void RestDumpHandler::handleCommandDumpStart() {
   // adjust permissions in single server case, so that the behavior
   // is identical to non-parallel dumps
   ExecContextSuperuserScope escope(
-      ExecContext::current().isAdminUser(
-          arangodb::rbac::Category::AdminWalAccess{}) &&
+      ExecContext::current().canUseDatabase("_system", auth::Level::RW) &&
       ServerState::instance()->isSingleServer());
 
   auto guard =

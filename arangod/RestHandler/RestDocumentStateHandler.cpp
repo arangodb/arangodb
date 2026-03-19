@@ -72,10 +72,21 @@ RestDocumentStateHandler::RestDocumentStateHandler(
 // Mounted at /_api/document-state (prefix, only when replication2 is enabled
 // and in cluster mode)
 RestStatus RestDocumentStateHandler::execute() {
-  if (!ExecContext::current().isAdminUser(
-          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+  auto const type = _request->requestType();
+  if (type == RequestType::GET) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminReadReplicatedLog{})) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "need ReadReplicatedLog rights to perform this operation");
+      return RestStatus::DONE;
+    }
+  } else {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "need WriteReplicatedLog rights to perform this operation");
+      return RestStatus::DONE;
+    }
   }
 
   auto methods = replication2::DocumentStateMethods::createInstance(_vocbase);

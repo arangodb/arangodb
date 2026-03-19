@@ -80,12 +80,6 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
             return {{"db:UseApiVersion",
                      std::format("db:apiversion:{}", c.version)}};
           },
-          [](Category::AdminChangeDataDist const& c)
-              -> std::vector<AuthorizationQuery> {
-            return {
-                {"db:AdminChangeDataDist",
-                 std::format("db:collection:{}:{}", c.database, c.collection)}};
-          },
           [](Category::AdminReadUser const& c)
               -> std::vector<AuthorizationQuery> {
             return {
@@ -95,6 +89,10 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
               -> std::vector<AuthorizationQuery> {
             return {
                 {"db:AdminWriteUser", std::format("db:user:{}", c.username)}};
+          },
+          [](Category::AdminMoveShards const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminMoveShards", ""}};
           },
           [](Category::AdminMonitoring const&)
               -> std::vector<AuthorizationQuery> {

@@ -193,11 +193,6 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (!_context.isAdminUser(arangodb::rbac::Category::AdminWalAccess{})) {
-    generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-    return RestStatus::DONE;
-  }
-
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     generateError(

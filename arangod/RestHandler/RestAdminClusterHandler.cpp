@@ -797,8 +797,7 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
 
     auto const& exec = ExecContext::current();
     bool canAccess =
-        exec.isAdminUser(arangodb::rbac::Category::AdminChangeDataDist{
-            ctx->database, ctx->collection}) ||
+        exec.isAdminUser(arangodb::rbac::Category::AdminMoveShards{}) ||
         exec.canUseCollection(ctx->database, ctx->collection, auth::Level::RW);
     if (!canAccess) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
@@ -980,7 +979,7 @@ async<void> RestAdminClusterHandler::handlePostMoveShard(
 
 async<void> RestAdminClusterHandler::handleQueryJobStatus() {
   if (!ExecContext::current().isAdminUser(
-          arangodb::rbac::Category::AdminMaintenance{})) {
+          arangodb::rbac::Category::AdminMoveShards{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
   }
@@ -1059,7 +1058,7 @@ async<void> RestAdminClusterHandler::handleQueryJobStatus() {
 
 async<void> RestAdminClusterHandler::handleCancelJob() {
   if (!ExecContext::current().isAdminUser(
-          arangodb::rbac::Category::AdminMaintenance{})) {
+          arangodb::rbac::Category::AdminMoveShards{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
   }
@@ -2065,6 +2064,7 @@ async<void> RestAdminClusterHandler::handleNumberOfServers() {
   // GET requests are allowed for everyone, unless --server.harden is used.
   // in this case admin privileges are required.
   // PUT requests always require admin privileges
+  // with RBAC, db:AdminMaintenance is needed for PUT
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
   bool const needsAdminPrivileges =
