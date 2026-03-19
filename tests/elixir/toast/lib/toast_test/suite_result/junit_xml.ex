@@ -1,7 +1,7 @@
 defmodule ToastTest.SuiteResult.JUnitXML do
   @moduledoc false
 
-  alias ToastTest.SuiteResult
+  alias ToastTest.{IssueFormatting, SuiteResult}
 
   @spec write(SuiteResult.t(), Path.t()) :: :ok
   def write(%SuiteResult{} = result, result_dir) do
@@ -15,17 +15,21 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     total = length(tests)
     failures = Enum.count(tests, &(&1.outcome == :failed))
     skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded]))
-    errors = Enum.count(tests, &(&1.outcome == :invalid))
     time = format_duration(result.times_us.run)
 
     failure_index = build_failure_index(result.issues)
+    issue_index = build_issue_index(result.issues)
+
+    errors =
+      Enum.count(tests, &(&1.outcome == :invalid)) +
+        count_infra_errors(tests, issue_index)
 
     suites =
       result.modules
       |> Enum.sort_by(fn {mod, _} -> Atom.to_string(mod) end)
-      |> Enum.map_join("\n", &render_testsuite(&1, failure_index))
+      |> Enum.map_join("\n", &render_testsuite(&1, failure_index, issue_index))
 
-    system_err = render_system_err(result.issues)
+    system_err = render_system_err(Map.get(issue_index, :suite, []))
 
     [
       ~s(<?xml version="1.0" encoding="UTF-8"?>),
@@ -45,103 +49,224 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     end
   end
 
-  defp render_testsuite({module, %{tests: tests}}, failure_index) do
+  # Groups non-test-failure issues by their attributed scope.
+  defp build_issue_index(issues) do
+    issues
+    |> Enum.reject(&(&1.type == :test_failure))
+    |> Enum.group_by(& &1.scope)
+  end
+
+  defp render_testsuite({module, %{tests: tests}}, failure_index, issue_index) do
     name = Atom.to_string(module)
     total = length(tests)
     failures = Enum.count(tests, &(&1.outcome == :failed))
-    errors = Enum.count(tests, &(&1.outcome == :invalid))
     skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded]))
+
+    errors =
+      Enum.count(tests, &(&1.outcome == :invalid)) +
+        count_infra_errors(tests, module, issue_index)
+
     time = tests |> Enum.map(& &1.duration_us) |> Enum.sum() |> format_duration()
 
-    cases = Enum.map_join(tests, "\n", &render_testcase(&1, module, failure_index))
+    cases = Enum.map_join(tests, "\n", &render_testcase(&1, module, failure_index, issue_index))
+    module_err = render_system_err(Map.get(issue_index, {:module, module}, []), "    ")
 
     [
       ~s(  <testsuite name="#{xml_escape(name)}" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
       cases,
+      module_err,
       ~s(  </testsuite>)
     ]
+    |> Enum.reject(&(&1 == ""))
     |> Enum.join("\n")
   end
 
-  defp render_testcase(test, module, failure_index) do
+  defp render_testcase(test, module, failure_index, issue_index) do
     name = xml_escape(Atom.to_string(test.name))
     cn = xml_escape(Atom.to_string(module))
     time = format_duration(test.duration_us)
+    test_issues = Map.get(issue_index, {:test, module, test.name}, [])
+    infra_errors = render_infra_errors(test.outcome, test_issues)
 
-    case test.outcome do
-      :passed ->
+    children =
+      case test.outcome do
+        :passed ->
+          infra_errors
+
+        :failed ->
+          [render_failure(module, test.name, failure_index, test_issues) | infra_errors]
+
+        :invalid ->
+          ["      <error/>"]
+
+        outcome when outcome in [:skipped, :excluded] ->
+          ["      <skipped/>" | infra_errors]
+      end
+
+    render_testcase_element(name, cn, time, children)
+  end
+
+  # Tests that are already :invalid have their own <error/>.
+  # For all others, infrastructure issues produce a single <error> element
+  # (JUnit XML schema allows at most one per testcase).
+  defp render_infra_errors(:invalid, _issues), do: []
+  defp render_infra_errors(_outcome, []), do: []
+
+  defp render_infra_errors(_outcome, issues) do
+    message =
+      issues
+      |> Enum.map(&issue_type_label/1)
+      |> Enum.join(", ")
+
+    details =
+      issues
+      |> Enum.map(&render_issue_detail/1)
+      |> Enum.reject(&is_nil/1)
+
+    case details do
+      [] ->
+        [~s(      <error message="#{xml_escape(message)}"/>)]
+
+      parts ->
+        body = Enum.join(parts, "\n\n")
+
+        [
+          ~s(      <error message="#{xml_escape(message)}"><![CDATA[#{escape_cdata(body)}]]></error>)
+        ]
+    end
+  end
+
+  defp issue_type_label(%{type: :crash}), do: "crash"
+
+  defp issue_type_label(%{type: :sanitizer_report, detail: %{kind: kind}}) when is_binary(kind),
+    do: "sanitizer report: #{kind}"
+
+  defp issue_type_label(%{type: :sanitizer_report}), do: "sanitizer report"
+  defp issue_type_label(%{type: :timeout}), do: "timeout"
+  defp issue_type_label(%{type: type}), do: Atom.to_string(type)
+
+  # Counts tests with infrastructure issues that wouldn't otherwise show as errors.
+  defp count_infra_errors(tests, module \\ nil, issue_index)
+
+  defp count_infra_errors(tests, nil, issue_index) do
+    Enum.count(tests, fn test ->
+      test.outcome not in [:failed, :invalid] and
+        Map.has_key?(issue_index, {:test, test.module, test.name})
+    end)
+  end
+
+  defp count_infra_errors(tests, module, issue_index) do
+    Enum.count(tests, fn test ->
+      test.outcome not in [:failed, :invalid] and
+        Map.has_key?(issue_index, {:test, module, test.name})
+    end)
+  end
+
+  defp render_testcase_element(name, cn, time, children) do
+    case Enum.reject(children, &(&1 == "")) do
+      [] ->
         ~s(    <testcase name="#{name}" classname="#{cn}" time="#{time}"/>)
 
-      :failed ->
-        child = render_failure(module, test.name, failure_index)
+      parts ->
+        inner = Enum.join(parts, "\n")
 
-        ~s(    <testcase name="#{name}" classname="#{cn}" time="#{time}">\n#{child}\n    </testcase>)
-
-      :invalid ->
-        ~s(    <testcase name="#{name}" classname="#{cn}" time="#{time}">\n      <error/>\n    </testcase>)
-
-      outcome when outcome in [:skipped, :excluded] ->
-        ~s(    <testcase name="#{name}" classname="#{cn}" time="#{time}">\n      <skipped/>\n    </testcase>)
+        ~s(    <testcase name="#{name}" classname="#{cn}" time="#{time}">\n#{inner}\n    </testcase>)
     end
   end
 
-  defp render_failure(module, test_name, failure_index) do
+  defp render_failure(module, test_name, failure_index, issues) do
     case Map.get(failure_index, {module, test_name}) do
-      %{detail: %{test: %{state: {:failed, failures}}}} ->
-        render_failure_details(failures)
+      %{detail: %{test: %ExUnit.Test{state: {:failed, failures}} = test}} ->
+        message_attr = failure_message_attr(failures)
+        body = format_failure_body(test, failures, issues)
+        render_failure_element(message_attr, body)
 
       _ ->
-        ~s(      <failure/>)
+        render_failure_element("", infra_issue_note(issues))
     end
   end
 
-  defp render_failure_details([{:error, %{message: message}, _stack} | _]) do
-    ~s(      <failure message="#{xml_escape(message)}"/>)
+  defp failure_message_attr([{:error, %{message: msg}, _} | _]),
+    do: ~s( message="#{xml_escape(msg)}")
+
+  defp failure_message_attr(_), do: ""
+
+  defp format_failure_body(test, failures, issues) do
+    formatted =
+      ExUnit.Formatter.format_test_failure(test, failures, 0, :infinity, &plain_formatter_cb/2)
+      |> strip_ansi()
+
+    case issues do
+      [] -> formatted
+      _ -> formatted <> "\n\n" <> infra_issue_note(issues)
+    end
   end
 
-  defp render_failure_details(_), do: ~s(      <failure/>)
+  defp render_failure_element(_message_attr, "") do
+    ~s(      <failure/>)
+  end
 
-  defp render_system_err(issues) do
-    crash_parts =
-      for %{type: :crash, detail: detail} <- issues do
-        render_crash_detail(detail)
-      end
+  defp render_failure_element(message_attr, body) do
+    ~s(      <failure#{message_attr}><![CDATA[#{escape_cdata(body)}]]></failure>)
+  end
 
-    sanitizer_parts =
-      for %{type: :sanitizer_report, detail: detail} <- issues do
-        [labeled("Server", detail[:server]), detail[:report]]
-        |> Toast.Utils.compact_join("\n")
-      end
+  # Plain-text formatter callback — reduces ANSI output from ExUnit.Formatter.
+  # strip_ansi/1 handles any remaining escape codes that ExUnit emits directly.
+  defp plain_formatter_cb(:diff_enabled?, _default), do: false
+  defp plain_formatter_cb(_, msg), do: msg
 
-    case crash_parts ++ sanitizer_parts do
+  defp strip_ansi(text) do
+    String.replace(text, ~r/\e\[[0-9;]*m/, "")
+  end
+
+  defp infra_issue_note([]), do: ""
+
+  defp infra_issue_note(issues) do
+    header = "Additional infrastructure issues:"
+
+    items =
+      Enum.map(issues, fn issue ->
+        label = issue_type_label(issue)
+        server = issue.detail[:server]
+        if server, do: "- #{label} (#{server})", else: "- #{label}"
+      end)
+
+    Enum.join([header | items], "\n")
+  end
+
+  # --- system-err rendering (for module/suite-scoped issues) ---
+
+  defp render_system_err(issues, indent \\ "")
+
+  defp render_system_err([], _indent), do: ""
+
+  defp render_system_err(issues, indent) do
+    parts = Enum.map(issues, &render_issue_detail/1)
+
+    case Enum.reject(parts, &is_nil/1) do
       [] -> ""
-      parts -> wrap_cdata("system-err", Enum.join(parts, "\n\n"))
+      non_empty -> indent <> wrap_cdata("system-err", Enum.join(non_empty, "\n\n"))
     end
   end
 
-  defp render_crash_detail(detail) do
-    coredump_lines = Enum.map(detail[:coredumps] || [], &format_coredump/1)
+  # Issue detail rendering — delegates to shared IssueFormatting.
+  defp render_issue_detail(%{type: :sanitizer_report} = issue),
+    do: IssueFormatting.format_sanitizer(issue)
 
-    [
-      labeled("Server", detail[:server]),
-      coredump_lines,
-      labeled("Crash Lines", detail[:crash_lines])
-    ]
-    |> List.flatten()
-    |> Toast.Utils.compact_join("\n")
-  end
+  defp render_issue_detail(%{type: :crash} = issue),
+    do: IssueFormatting.format_crash(issue)
 
-  defp format_coredump(%{path: path, signal: signal}) when is_binary(signal),
-    do: "Coredump: #{path}, Signal: #{signal}"
+  defp render_issue_detail(%{type: :timeout} = issue),
+    do: IssueFormatting.format_timeout(issue)
 
-  defp format_coredump(%{path: path}), do: "Coredump: #{path}"
+  defp render_issue_detail(_), do: nil
 
-  defp labeled(_label, nil), do: nil
-  defp labeled(label, value), do: "#{label}: #{value}"
+  # --- XML helpers ---
+
+  defp escape_cdata(text), do: String.replace(text, "]]>", "]]]]><![CDATA[>")
 
   defp wrap_cdata(tag, content) do
-    escaped = String.replace(content, "]]>", "]]]]><![CDATA[>")
-    ~s(<#{tag}><![CDATA[#{escaped}]]></#{tag}>)
+    ~s(<#{tag}><![CDATA[#{escape_cdata(content)}]]></#{tag}>)
   end
 
   defp format_duration(us) do

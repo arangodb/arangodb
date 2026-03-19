@@ -166,7 +166,12 @@ defmodule ToastTest.Attribution do
         type: :sanitizer_report,
         scope: scope,
         confidence: confidence,
-        detail: %{server: server_id, report: result.content, timestamp: result.timestamp}
+        detail: %{
+          server: server_id,
+          report: result.content,
+          timestamp: result.timestamp,
+          kind: result.kind
+        }
       }
     end
   end

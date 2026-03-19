@@ -23,17 +23,19 @@ defmodule ToastTest.Enrichment.SanitizerTest do
       assert {:ok, result} = Sanitizer.read(path)
       assert result.content == content
       assert result.type == :alubsan
+      assert result.kind == "heap-buffer-overflow"
       assert %DateTime{} = result.timestamp
     end
 
     test "reads tsan log file", %{tmp_dir: dir} do
       path = Path.join(dir, "tsan.log.67890")
-      content = "WARNING: ThreadSanitizer: data race"
+      content = "WARNING: ThreadSanitizer: data race (pid=16449)"
       File.write!(path, content)
 
       assert {:ok, result} = Sanitizer.read(path)
       assert result.content == content
       assert result.type == :tsan
+      assert result.kind == "data race"
     end
 
     test "returns unknown type for unrecognized filename", %{tmp_dir: dir} do
@@ -42,6 +44,7 @@ defmodule ToastTest.Enrichment.SanitizerTest do
 
       assert {:ok, result} = Sanitizer.read(path)
       assert result.type == :unknown
+      assert result.kind == nil
     end
 
     test "returns error for nonexistent file" do

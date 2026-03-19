@@ -3,11 +3,7 @@ defmodule ToastTest.PostExecSummary do
 
   import ToastTest.Formatting
 
-  alias ToastTest.SuiteResult
-
-  @max_sanitizer_lines 15
-  @max_backtrace_frames 20
-  @max_crash_log_lines 15
+  alias ToastTest.{IssueFormatting, SuiteResult}
 
   @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :timeout]
 
@@ -85,10 +81,10 @@ defmodule ToastTest.PostExecSummary do
   # --- Sanitizer reports ---
 
   defp print_issue(:sanitizer_report, issue, counter, colors) do
-    %{scope: scope, detail: %{server: server, report: report}} = issue
+    %{scope: scope, detail: %{server: server}} = issue
 
     print_attribution(scope, server, colors)
-    print_truncated(report, @max_sanitizer_lines, "    ")
+    print_indented(IssueFormatting.format_sanitizer(issue), "    ")
 
     counter + 1
   end
@@ -111,7 +107,7 @@ defmodule ToastTest.PostExecSummary do
   defp print_issue(:timeout, issue, counter, colors) do
     %{detail: %{source: source, reason: reason, servers: servers}} = issue
 
-    label = timeout_source_label(source)
+    label = IssueFormatting.timeout_source_label(source)
     IO.puts("\n  #{colorize("[#{label}] #{reason}", :red, colors)}")
 
     if servers != [] do
@@ -136,126 +132,56 @@ defmodule ToastTest.PostExecSummary do
     counter + 1
   end
 
-  defp timeout_source_label(:startup_timeout), do: "Startup Timeout"
-  defp timeout_source_label(:shutdown_timeout), do: "Shutdown Timeout"
-  defp timeout_source_label(:test_timeout), do: "Test Timeout"
-  defp timeout_source_label(:global_timeout), do: "Global Timeout"
-  defp timeout_source_label(other), do: "Timeout: #{other}"
-
   # --- Crash details ---
 
-  defp print_crash_info(%{server: server, crash_info: info}, colors) do
-    parts =
-      [
-        format_pid(info.os_pid),
-        format_signal(info.signal),
-        format_exit_status(info.exit_status),
-        format_timestamp(info.timestamp)
-      ]
-      |> Toast.Utils.compact()
-
-    IO.puts("    #{colorize("#{server}: #{Enum.join(parts, "  ")}", :red, colors)}")
+  defp print_crash_info(%{crash_info: _} = detail, colors) do
+    case IssueFormatting.format_crash_info(detail) do
+      nil -> :ok
+      text -> IO.puts("    #{colorize(text, :red, colors)}")
+    end
   end
 
   defp print_crash_info(_detail, _colors), do: :ok
 
-  defp format_pid(nil), do: nil
-  defp format_pid(pid), do: "PID #{pid}"
-
-  defp format_signal(nil), do: nil
-
-  defp format_signal(sig) do
-    case :exec.signal(sig) do
-      name when is_atom(name) -> "signal: #{name |> Atom.to_string() |> String.upcase()} (#{sig})"
-      _ -> "signal: #{sig}"
-    end
-  end
-
-  defp format_exit_status(nil), do: nil
-  defp format_exit_status(status), do: "exit_status: #{status}"
-
-  defp format_timestamp(%DateTime{} = ts), do: "at: #{DateTime.to_iso8601(ts)}"
-  defp format_timestamp(_), do: nil
-
+  # Prefer the crash log output over the coredump backtrace — the log
+  # captures the original CPU context from the signal handler, which may
+  # differ from the coredump (see killProcess / SA_RESETHAND re-raise).
   defp print_crash_detail(%{crash_lines: crash_lines} = detail, _colors)
        when is_binary(crash_lines) do
-    # Prefer the crash log output over the coredump backtrace — the log
-    # captures the original CPU context from the signal handler, which may
-    # differ from the coredump (see killProcess / SA_RESETHAND re-raise).
-    print_truncated(crash_lines, @max_crash_log_lines, "    ")
-    print_first_coredump_path(detail)
-    print_log_path(detail)
+    IssueFormatting.format_crash_detail(detail)
+    |> print_indented("    ")
   end
 
-  defp print_crash_detail(%{coredumps: [coredump | _]} = detail, colors) do
-    print_coredump_backtrace(coredump, colors)
-    print_coredump_path(coredump)
-    print_log_path(detail)
+  defp print_crash_detail(%{coredumps: [_ | _]} = detail, _colors) do
+    IssueFormatting.format_crash_detail(detail)
+    |> print_indented("    ")
   end
 
   defp print_crash_detail(detail, colors) do
     IO.puts("    #{colorize("No crash details available.", :faint, colors)}")
-    print_log_path(detail)
-  end
 
-  defp print_coredump_backtrace(coredump, _colors) do
-    case coredump.threads do
-      [thread | _] ->
-        lines = String.split(thread.backtrace, "\n")
-        shown = Enum.take(lines, @max_backtrace_frames)
-        Enum.each(shown, &IO.puts("    #{&1}"))
-
-        remaining = length(lines) - length(shown)
-        if remaining > 0, do: IO.puts("    ...")
-
-      _ ->
-        :ok
+    case IssueFormatting.format_log_path(detail) do
+      nil -> :ok
+      text -> IO.puts(IO.ANSI.format([:blue, "    #{text}", :reset]))
     end
-  end
-
-  defp print_coredump_path(%{path: path}) when is_binary(path) do
-    IO.puts(IO.ANSI.format([:blue, "    Coredump: #{path}", :reset]))
-  end
-
-  defp print_coredump_path(_), do: :ok
-
-  defp print_first_coredump_path(%{coredumps: [%{path: path} | _]}) when is_binary(path) do
-    IO.puts(IO.ANSI.format([:blue, "    Coredump: #{path}", :reset]))
-  end
-
-  defp print_first_coredump_path(_), do: :ok
-
-  defp print_log_path(%{log_file: path}) when is_binary(path) do
-    IO.puts(IO.ANSI.format([:blue, "    Log: #{path}", :reset]))
-  end
-
-  defp print_log_path(_), do: :ok
-
-  # --- Shared truncation ---
-
-  defp print_truncated(text, max_lines, prefix) do
-    lines = String.split(text, "\n")
-    shown = Enum.take(lines, max_lines)
-    Enum.each(shown, &IO.puts("#{prefix}#{&1}"))
-
-    remaining = length(lines) - length(shown)
-    if remaining > 0, do: IO.puts("#{prefix}... (#{remaining} more lines)")
   end
 
   # --- Attribution ---
 
   defp print_attribution(scope, server, colors) do
-    case format_scope(scope) do
+    case IssueFormatting.format_scope(scope) do
       nil -> IO.puts("\n  #{colorize(server, :cyan, colors)}")
       label -> IO.puts("\n  #{colorize(server, :cyan, colors)} \u2014 #{label}")
     end
   end
 
-  defp format_scope(:suite), do: nil
-  defp format_scope({:module, mod}), do: inspect(mod)
+  # --- Helpers ---
 
-  defp format_scope({:test, mod, name}) do
-    short_name = name |> to_string() |> String.replace_prefix("test ", "")
-    "#{inspect(mod)} > \"#{short_name}\""
+  defp print_indented(nil, _prefix), do: :ok
+
+  defp print_indented(text, prefix) do
+    text
+    |> String.split("\n")
+    |> Enum.each(&IO.puts("#{prefix}#{&1}"))
   end
 end

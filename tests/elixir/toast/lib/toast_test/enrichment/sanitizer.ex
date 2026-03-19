@@ -6,10 +6,18 @@ defmodule ToastTest.Enrichment.Sanitizer do
   modification time as a timestamp for attribution.
   """
 
-  @type result :: %{content: String.t(), timestamp: DateTime.t(), type: atom()}
+  @type result :: %{
+          content: String.t(),
+          timestamp: DateTime.t(),
+          type: atom(),
+          kind: String.t() | nil
+        }
 
   @doc """
-  Read a sanitizer log file and return its content, timestamp, and type.
+  Read a sanitizer log file and return its content, timestamp, type, and kind.
+
+  The `kind` is extracted from the first warning/error line in the report
+  (e.g., "data race", "heap-buffer-overflow", "use-after-free").
   """
   @spec read(Path.t()) :: {:ok, result()} | {:error, term()}
   def read(path) do
@@ -19,7 +27,8 @@ defmodule ToastTest.Enrichment.Sanitizer do
        %{
          content: content,
          timestamp: timestamp,
-         type: detect_type(path)
+         type: detect_type(path),
+         kind: detect_kind(content)
        }}
     end
   end
@@ -58,6 +67,15 @@ defmodule ToastTest.Enrichment.Sanitizer do
     case File.stat(path, time: :posix) do
       {:ok, stat} -> {:ok, DateTime.from_unix!(stat.mtime)}
       error -> error
+    end
+  end
+
+  @kind_pattern ~r/(?:WARNING|ERROR): \w+Sanitizer: (.+?)(?:\s*\(|$)/m
+
+  defp detect_kind(content) do
+    case Regex.run(@kind_pattern, content) do
+      [_, kind] -> kind
+      _ -> nil
     end
   end
 
