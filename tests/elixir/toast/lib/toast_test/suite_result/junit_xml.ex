@@ -27,13 +27,13 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     suites =
       result.modules
       |> Enum.sort_by(fn {mod, _} -> Atom.to_string(mod) end)
-      |> Enum.map_join("\n", &render_testsuite(&1, failure_index, issue_index))
+      |> Enum.map_join("\n", &render_testsuite(&1, result.suite, failure_index, issue_index))
 
     system_err = render_system_err(Map.get(issue_index, :suite, []))
 
     [
       ~s(<?xml version="1.0" encoding="UTF-8"?>),
-      ~s(<testsuites name="toast" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
+      ~s(<testsuites name="#{xml_escape(result.suite)}" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
       suites,
       system_err,
       ~s(</testsuites>)
@@ -56,7 +56,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     |> Enum.group_by(& &1.scope)
   end
 
-  defp render_testsuite({module, %{tests: tests}}, failure_index, issue_index) do
+  defp render_testsuite({module, %{tests: tests}}, suite, failure_index, issue_index) do
     name = Atom.to_string(module)
     total = length(tests)
     failures = Enum.count(tests, &(&1.outcome == :failed))
@@ -68,7 +68,9 @@ defmodule ToastTest.SuiteResult.JUnitXML do
 
     time = tests |> Enum.map(& &1.duration_us) |> Enum.sum() |> format_duration()
 
-    cases = Enum.map_join(tests, "\n", &render_testcase(&1, module, failure_index, issue_index))
+    cases =
+      Enum.map_join(tests, "\n", &render_testcase(&1, module, suite, failure_index, issue_index))
+
     module_err = render_system_err(Map.get(issue_index, {:module, module}, []), "    ")
 
     [
@@ -81,9 +83,9 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     |> Enum.join("\n")
   end
 
-  defp render_testcase(test, module, failure_index, issue_index) do
+  defp render_testcase(test, module, suite, failure_index, issue_index) do
     name = xml_escape(Atom.to_string(test.name))
-    cn = xml_escape(Atom.to_string(module))
+    cn = xml_escape("#{suite}::#{module}")
     time = format_duration(test.duration_us)
     test_issues = Map.get(issue_index, {:test, module, test.name}, [])
     infra_errors = render_infra_errors(test.outcome, test_issues)

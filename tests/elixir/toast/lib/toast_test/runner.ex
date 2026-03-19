@@ -144,15 +144,17 @@ defmodule ToastTest.Runner do
     timeout_factor = Keyword.get(global_opts, :timeout_factor, 1)
     suite_deadline = compute_suite_deadline(suite_timeout, global_deadline)
 
+    validate_no_async!(test_modules)
+
+    mode = resolve_deployment_mode(config, global_opts)
+
     suite_run = %ToastTest.SuiteRun{
       suite_module: suite_module,
+      deployment_mode: mode,
       suite_deadline: suite_deadline,
       timeout_factor: timeout_factor
     }
 
-    validate_no_async!(test_modules)
-
-    mode = resolve_deployment_mode(config, global_opts)
     Logger.info("Running suite #{inspect(suite_module)} (mode=#{mode})")
     deployment_opts = build_deployment_opts(config, global_opts)
     toast_config = Toast.Config.load(deployment_opts)
@@ -172,7 +174,14 @@ defmodule ToastTest.Runner do
         )
 
       {:error, reason} ->
-        handle_deployment_failure(suite_module, test_modules, reason, global_opts, toast_config)
+        handle_deployment_failure(
+          suite_module,
+          test_modules,
+          reason,
+          global_opts,
+          toast_config,
+          mode
+        )
     end
   end
 
@@ -199,7 +208,13 @@ defmodule ToastTest.Runner do
           result
 
         {:error, reason} ->
-          mark_all_errored_stats(test_modules, reason, global_opts, suite_module)
+          mark_all_errored_stats(
+            test_modules,
+            reason,
+            global_opts,
+            suite_module,
+            suite_run.deployment_mode
+          )
       end
 
     suite_result = post_execution(deployment, test_data, toast_config)
@@ -208,12 +223,19 @@ defmodule ToastTest.Runner do
     %{stats: stats, suite_result: suite_result}
   end
 
-  defp handle_deployment_failure(suite_module, test_modules, reason, global_opts, toast_config) do
+  defp handle_deployment_failure(
+         suite_module,
+         test_modules,
+         reason,
+         global_opts,
+         toast_config,
+         mode
+       ) do
     Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
     Abort.abort!({:deploy_failed, "Deployment failed: #{inspect(reason)}"})
 
     {stats, test_data} =
-      mark_all_skipped_stats(test_modules, reason, global_opts, suite_module)
+      mark_all_skipped_stats(test_modules, reason, global_opts, suite_module, mode)
 
     suite_result = build_suite_result(%{}, test_data, toast_config)
 
@@ -223,7 +245,7 @@ defmodule ToastTest.Runner do
 
   defp run_suite_tests(suite_run, test_modules, global_opts, suite_opts) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
-    suite_name = derive_suite_name(suite_run.suite_module)
+    suite_name = derive_suite_name(suite_run.suite_module, suite_run.deployment_mode)
     {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
 
     config =
@@ -460,9 +482,9 @@ defmodule ToastTest.Runner do
     }
   end
 
-  defp mark_all_skipped_stats(test_modules, reason, global_opts, suite_module) do
+  defp mark_all_skipped_stats(test_modules, reason, global_opts, suite_module, mode) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
-    suite_name = derive_suite_name(suite_module)
+    suite_name = derive_suite_name(suite_module, mode)
     {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
     Compat.suite_started(manager, opts)
 
@@ -493,9 +515,9 @@ defmodule ToastTest.Runner do
     {stats, test_data}
   end
 
-  defp mark_all_errored_stats(test_modules, reason, global_opts, suite_module) do
+  defp mark_all_errored_stats(test_modules, reason, global_opts, suite_module, mode) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
-    suite_name = derive_suite_name(suite_module)
+    suite_name = derive_suite_name(suite_module, mode)
     {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
     Compat.suite_started(manager, opts)
 
@@ -601,8 +623,9 @@ defmodule ToastTest.Runner do
     ToastTest.PostExecSummary.print(suite_result)
   end
 
-  defp derive_suite_name(suite_module) do
-    suite_module |> Module.split() |> Enum.map_join("_", &Macro.underscore/1)
+  defp derive_suite_name(suite_module, deployment_mode) do
+    base = suite_module |> Module.split() |> Enum.map_join("_", &Macro.underscore/1)
+    "#{base}.#{deployment_mode}"
   end
 
   defp start_process_history do
