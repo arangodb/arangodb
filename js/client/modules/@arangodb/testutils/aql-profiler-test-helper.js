@@ -261,6 +261,7 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
     'seeks',
     'scannedFull',
     'scannedIndex',
+    'searchParallelism',
     'cursorsCreated',
     'cursorsRearmed',
     'cacheHits',
