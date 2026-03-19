@@ -137,6 +137,7 @@ function rtaMakeCheckDataSuite() {
     testMakeDataLeader: function () {
       IM.endpoint = IM.arangods[0].endpoint;
       runRTAMakeCheckData(0, "creating data on leader");
+      checkReplicationCatchup();
     },
     testCheckDataLeader: function () {
       IM.endpoint = IM.arangods[0].endpoint;
