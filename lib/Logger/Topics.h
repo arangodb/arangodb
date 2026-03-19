@@ -251,14 +251,14 @@ struct HotBackup {
 
 using TopicList = meta::TypeList<
     topic::Agency, topic::Agencycomm, topic::Agencystore, topic::Aql,
-    topic::Authentication, topic::Authorization, topic::Backup, topic::Bench,
+    topic::Authentication, topic::Authorization, topic::Backup,
     topic::Cache, topic::Cluster, topic::Communication, topic::Config,
     topic::Crash, topic::Development, topic::Dump, topic::Engines, topic::Fixme,
     topic::Flush, topic::Graphs, topic::Heartbeat, topic::Httpclient,
     topic::License, topic::Maintenance, topic::Memory, topic::Queries,
     topic::Replication, topic::Replication2, topic::ReplicatedState,
     topic::ReplicatedWal, topic::Requests, topic::Restore, topic::Rocksdb,
-    topic::Security, topic::Ssl, topic::Startup, topic::Statistics,
+    topic::Ssl, topic::Startup, topic::Statistics,
     topic::Supervision, topic::Syscall, topic::Threads, topic::Trx, topic::Ttl,
     topic::Validation, topic::V8, topic::Views, topic::Deprecation,
     topic::ArangoSearch, topic::LibIResearch
