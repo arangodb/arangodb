@@ -37,6 +37,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const { executeExternalAndWaitWithSanitizer, dumpUtils } = require('@arangodb/test-helper');
+const { waitForAllVectorIndexesState } = require('@arangodb/testutils/vector-index-common');
 
 
 function restoreIntegrationVectorSuite() {
@@ -118,6 +119,12 @@ function restoreIntegrationVectorSuite() {
       assertEqual(["vector"], indexes[1].fields);
       assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
+
+      // wait for vector index to be trained before querying
+      assertTrue(
+        waitForAllVectorIndexesState(c, "ready", 60),
+        "Expected vector index to become ready"
+      );
 
       // test if the vector index works
       for (let i = 0; i < 100; ++i) {
