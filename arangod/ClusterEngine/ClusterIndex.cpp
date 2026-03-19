@@ -558,7 +558,10 @@ bool ClusterIndex::isVectorIndexReady() const noexcept {
     }
     return true;
   } catch (...) {
-    // Data not available if not ready DB servers will reject
+    // Data not available here, lets be optimistic and send the request anyway,
+    // if not ready DB servers will reject
+    LOG_TOPIC("b3c7a", WARN, Logger::CLUSTER)
+        << "failed to determine vector index readiness, assuming ready";
     return true;
   }
 }
