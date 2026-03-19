@@ -113,7 +113,6 @@ LogTopic Logger::AQL(logger::topic::Aql{});
 LogTopic Logger::AUTHENTICATION(logger::topic::Authentication{});
 LogTopic Logger::AUTHORIZATION(logger::topic::Authorization{});
 LogTopic Logger::BACKUP(logger::topic::Backup{});
-LogTopic Logger::BENCH(logger::topic::Bench{});
 LogTopic Logger::CACHE(logger::topic::Cache{});
 LogTopic Logger::CLUSTER(logger::topic::Cluster{});
 LogTopic Logger::COMMUNICATION(logger::topic::Communication{});

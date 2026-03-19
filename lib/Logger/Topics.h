@@ -58,10 +58,6 @@ struct Backup {
   static constexpr std::string_view name = "backup";
   static constexpr LogLevel defaultLevel = LogLevel::DEFAULT;
 };
-struct Bench {
-  static constexpr std::string_view name = "bench";
-  static constexpr LogLevel defaultLevel = LogLevel::DEFAULT;
-};
 struct Cache {
   static constexpr std::string_view name = "cache";
   static constexpr LogLevel defaultLevel = LogLevel::INFO;
