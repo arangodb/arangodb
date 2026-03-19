@@ -171,10 +171,11 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.close();
   }
 
+  auto const trainingState = _trainingState.load();
   builder.add(StaticStrings::IndexTrainingState,
-              VPackValue(trainingStateToString(_trainingState)));
+              VPackValue(trainingStateToString(trainingState)));
 
-  if (_trainingState.load() == VectorIndexTrainingState::kReady &&
+  if (trainingState == VectorIndexTrainingState::kReady &&
       Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
     builder.add(VPackValue("trainedData"));
