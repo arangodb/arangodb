@@ -265,8 +265,11 @@ ArangoCollection.prototype._help = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.name = function () {
-  if (this._name === null) {
-    this.refresh();
+  if (this._name === null || this._name === undefined) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+      errorMessage: "Collection name is not set"
+    });
   }
 
   return this._name;
@@ -278,8 +281,10 @@ ArangoCollection.prototype.name = function () {
 
 ArangoCollection.prototype.status = function () {
   if (this._status === null) {
-    this._status = null;
-    this.refresh();
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+      errorMessage: "Collection status is not set"
+    });
   }
 
   // save original status
@@ -292,7 +297,10 @@ ArangoCollection.prototype.status = function () {
 
 ArangoCollection.prototype.type = function () {
   if (this._type === null) {
-    this.refresh();
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+      errorMessage: "Collection type is not set"
+    });
   }
 
   return this._type;
@@ -485,8 +493,6 @@ ArangoCollection.prototype.truncate = function (options) {
   url = appendBoolParameter(url, 'compact', options.compact);
   let requestResult = this._database._connection.PUT(url, null, headers);
   arangosh.checkRequestResult(requestResult);
-  // invalidate cache
-  this._status = null;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -497,8 +503,6 @@ ArangoCollection.prototype.compact = function () {
   let requestResult = this._database._connection.PUT(this._baseurl('compact'), null);
 
   arangosh.checkRequestResult(requestResult);
-  // invalidate cache
-  this._status = null;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -512,21 +516,7 @@ ArangoCollection.prototype.rename = function (name) {
 
   delete this._database[this._name];
   this._database[name] = this;
-  this._status = null;
-  this._name = null;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief refreshes a collection status and name
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.refresh = function () {
-  let requestResult = this._database._connection.GET(this._database._collectionurl(this._id));
-  arangosh.checkRequestResult(requestResult);
-
-  this._name = requestResult.name;
-  this._status = requestResult.status;
-  this._type = requestResult.type;
+  this._name = name;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1322,7 +1312,6 @@ ArangoCollection.prototype.updateByExample = function (example,
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.loadIndexesIntoMemory = function () {
-  this._status = null;
   let requestResult = this._database._connection.PUT(this._baseurl('loadIndexesIntoMemory'), null);
   arangosh.checkRequestResult(requestResult);
   return { result: true };

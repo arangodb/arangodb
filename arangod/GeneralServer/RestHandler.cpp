@@ -53,6 +53,7 @@
 #include <absl/strings/str_cat.h>
 #include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
+#include <cstdint>
 #include <unordered_map>
 
 using namespace arangodb;
@@ -685,6 +686,22 @@ bool RestHandler::isAllowedHttpMethod(
   }
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return false;
+}
+
+// checks if collection name is a numeric collection id (= all chars are digits)
+// and generates an error if so
+bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
+  if (cname.empty() || cname.front() < '0' || cname.front() > '9') {
+    return false;  // early exit
+  }
+  if (std::all_of(cname.begin(), cname.end(),
+                  [](unsigned char c) { return c >= '0' && c <= '9'; })) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Numeric collection IDs are not allowed; please use the "
+                  "collection name instead");
+    return true;
+  }
   return false;
 }
 
