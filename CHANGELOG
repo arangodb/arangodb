@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-283: Removed remainded active failover references.
+
 * Raised minimal CPU architecture to Haswell-like (x86-64) and graviton2-like
   (aarch64).
 
