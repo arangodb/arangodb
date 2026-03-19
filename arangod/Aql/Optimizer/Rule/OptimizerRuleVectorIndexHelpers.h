@@ -55,9 +55,10 @@ inline bool checkAscendingMatchesMetric(
     case SimilarityMetric::kCosine:
     case SimilarityMetric::kInnerProduct:
       return !ascending;
-    default:
-      TRI_ASSERT(false);
   }
+  // Not possible we handle all cases
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unknown similarity metric for vector index");
 }
 
 inline bool isCompatibleVectorIndex(std::shared_ptr<Index> const& candidate,
