@@ -522,7 +522,7 @@ jobs:
   build-frontend:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    resource_class: arangodb/amd-large-amd64
+    resource_class: arangodb/large-amd64
     steps:
       - checkout-arangodb:
           with-submodules: false
@@ -989,7 +989,7 @@ jobs:
   run-cppcheck:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    resource_class: arangodb/amd-medium-amd64
+    resource_class: arangodb/medium-amd64
     steps:
       - run:
           name: Prepare container

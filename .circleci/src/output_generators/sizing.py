@@ -14,23 +14,23 @@ class ResourceSizer:
 
     # Resource class mappings by architecture
     AARCH64_SIZES: Dict[ResourceSize, str] = {
-        ResourceSize.SMALL: "arangodb/amd-medium-arm64",
-        ResourceSize.MEDIUM: "arangodb/amd-medium-arm64",
-        ResourceSize.MEDIUM_PLUS: "arangodb/amd-large-arm64",
-        ResourceSize.LARGE: "arangodb/amd-large-arm64",
+        ResourceSize.SMALL: "arangodb/medium-arm64",
+        ResourceSize.MEDIUM: "arangodb/medium-arm64",
+        ResourceSize.MEDIUM_PLUS: "arangodb/large-arm64",
+        ResourceSize.LARGE: "arangodb/large-arm64",
         ResourceSize.CIRCLECI_LARGE: "arm.large",
-        ResourceSize.XLARGE: "arangodb/amd-xlarge-arm64",
-        ResourceSize.XXLARGE: "arangodb/amd-2xlarge-arm64",
+        ResourceSize.XLARGE: "arangodb/xlarge-arm64",
+        ResourceSize.XXLARGE: "arangodb/2xlarge-arm64",
     }
 
     X86_SIZES: Dict[ResourceSize, str] = {
-        ResourceSize.SMALL: "arangodb/amd-small-amd64",
-        ResourceSize.MEDIUM: "arangodb/amd-medium-amd64",
-        ResourceSize.MEDIUM_PLUS: "arangodb/amd-medium-amd64",
-        ResourceSize.LARGE: "arangodb/amd-large-amd64",
+        ResourceSize.SMALL: "arangodb/small-amd64",
+        ResourceSize.MEDIUM: "arangodb/medium-amd64",
+        ResourceSize.MEDIUM_PLUS: "arangodb/medium-amd64",
+        ResourceSize.LARGE: "arangodb/large-amd64",
         ResourceSize.CIRCLECI_LARGE: "large",
-        ResourceSize.XLARGE: "arangodb/amd-xlarge-amd64",
-        ResourceSize.XXLARGE: "arangodb/amd-2xlarge-amd64",
+        ResourceSize.XLARGE: "arangodb/xlarge-amd64",
+        ResourceSize.XXLARGE: "arangodb/2xlarge-amd64",
     }
 
     @classmethod
