@@ -258,8 +258,6 @@ void VectorIndexBuildCoordinator::scanAndBuild(
 
         // Clear any previous error for this index.
         {
-          // TODO: Is this ok, calling maintance from here, is there an issue
-          // with locking in maintance and in here?
           auto const& database = vocbase.name();
           auto const collection = std::to_string(coll->planId().id());
           auto const& shard = coll->name();
