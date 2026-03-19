@@ -40,6 +40,14 @@
   const LOADING = [];
   const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
   const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
+  const MODULE_NOT_FOUND_ERROR = internal.errors.ERROR_MODULE_NOT_FOUND || {
+    code: 3100,
+    message: 'cannot locate module'
+  };
+  const MODULE_FAILURE_ERROR = internal.errors.ERROR_MODULE_FAILURE || {
+    code: 3103,
+    message: 'failed to invoke module'
+  };
 
   const GLOBAL_PATHS = [];
   const ROOT_PATH = fs.normalize(fs.makeAbsolute(internal.startupPath));
@@ -435,8 +443,8 @@
       dbModule = Module._resolveDbModule(match[3]);
       if (!dbModule) {
         throw new internal.ArangoError({
-          errorNum: internal.errors.ERROR_MODULE_NOT_FOUND.code,
-          errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message
+          errorNum: MODULE_NOT_FOUND_ERROR.code,
+          errorMessage: MODULE_NOT_FOUND_ERROR.message
             + '\nFile: ' + request
         });
       }
@@ -524,8 +532,8 @@
     var filename = Module._findPath(request, paths);
     if (!filename) {
       throw new internal.ArangoError({
-        errorNum: internal.errors.ERROR_MODULE_NOT_FOUND.code,
-        errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message
+        errorNum: MODULE_NOT_FOUND_ERROR.code,
+        errorMessage: MODULE_NOT_FOUND_ERROR.message
           + '\nFile: ' + request
       });
     }
@@ -544,8 +552,8 @@
     try {
       Module._extensions[extension](this, filename);
     } catch (e) {
-      if (e.errorNum !== internal.errors.ERROR_MODULE_FAILURE.code) {
-        let msg = internal.errors.ERROR_MODULE_FAILURE.message;
+      if (e.errorNum !== MODULE_FAILURE_ERROR.code) {
+        let msg = MODULE_FAILURE_ERROR.message;
         msg += `\nFile: ${e.fileName || filename}`;
         if (e.lineNumber !== undefined) {
           msg += `\nLine: ${e.lineNumber}`;
@@ -556,7 +564,7 @@
         msg += `\nReason: ${e.stack || e}`;
         throw Object.assign(
           new internal.ArangoError({
-            errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
+            errorNum: MODULE_FAILURE_ERROR.code,
             errorMessage: msg
           }),
           {cause: e}
