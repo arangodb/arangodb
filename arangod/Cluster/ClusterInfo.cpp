@@ -1643,7 +1643,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     // Clean up shards for dropped isBuilding collections. They are not in
     // _newPlannedCollections (building not finished), so the loop above only
     // removes shards for fully planned collections. Erase their shards here to
-    // avoid stale entries in newShardsToPlanServers, which will be swapped with 
+    // avoid stale entries in newShardsToPlanServers, which will be swapped with
     // _shardsToPlanServers in the end of this function.
     if (auto np = newPlan.find(databaseName); np != newPlan.end()) {
       auto const& nps = np->second->slice()[0];
