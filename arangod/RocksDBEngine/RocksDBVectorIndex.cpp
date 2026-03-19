@@ -103,8 +103,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
   if (auto data = info.get("trainedData"); !data.isNone()) {
-    LOG_DEVEL << ADB_HERE
-              << " Trained vector index found, restoring from trained data.";
     velocypack::deserialize(data, _trainedData);
     _faissIndex =
         vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);

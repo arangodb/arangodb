@@ -534,7 +534,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
     }
   };
 
-  LOG_TOPIC("71c45", INFO, Logger::FIXME)
+  LOG_TOPIC("71c45", INFO, Logger::ENGINES)
       << "[shard=" << shardName << ", index=" << indexId << "] "
       << "Ingesting vectors into index on a fast path. Threads: num-readers="
       << numReaders << " num-encoders=" << numEncoders
@@ -547,7 +547,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   threads.clear();
 
   if (firstError.ok()) {
-    LOG_TOPIC("41658", INFO, Logger::FIXME)
+    LOG_TOPIC("41658", INFO, Logger::ENGINES)
         << "[shard=" << shardName << ", index=" << indexId << "] "
         << "Ingestion done. Encoded " << countDocuments << " vectors in "
         << countBatches
@@ -555,7 +555,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
         << " " << counters.writeConsumeBlocked;
   } else {
-    LOG_TOPIC("96a80", ERR, Logger::FIXME)
+    LOG_TOPIC("96a80", ERR, Logger::ENGINES)
         << "[shard=" << shardName << ", index=" << indexId << "] "
         << "Ingestion failed: " << firstError;
   }
