@@ -1042,9 +1042,11 @@ void Condition::collectOverlappingMembers(
     ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
     AstNode const* otherAndNode, containers::HashSet<size_t>& toRemove,
     Index const* index, /* may be nullptr */
-    bool isPathCondition) {
-  bool const isFromTraverser{index == nullptr};
+    bool isFromTraverser, bool isPathCondition) {
   bool const isSparse = (index != nullptr && index->sparse());
+
+  //  for expressions like arr[offset], arr[offset].field, etc.
+  bool allowIndexedAccessInArray{isFromTraverser || index != nullptr};
 
   std::pair<Variable const*, std::vector<basics::AttributeName>> result;
 
@@ -1056,7 +1058,7 @@ void Condition::collectOverlappingMembers(
 
     // We can enter here only if we have index node, therefore we know that we
     // are not dealing with the Traversal Node
-    if (isSparse && allowOps && !isFromTraverser &&
+    if (isSparse && allowOps && index && !isFromTraverser &&
         (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
          operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
       // look   for != null   and   > null
@@ -1070,7 +1072,8 @@ void Condition::collectOverlappingMembers(
       ::clearAttributeAccess(result);
 
       if (rhs->isNullValue() &&
-          lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+          lhs->isAttributeAccessForVariable(result,
+                                            allowIndexedAccessInArray) &&
           result.first == variable) {
         auto const mayRemoveIndexNonNullAttribute = [&] {
           if (auto ty = index->type();
@@ -1114,15 +1117,17 @@ void Condition::collectOverlappingMembers(
       rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
+          (allowIndexedAccessInArray && lhs->type == NODE_TYPE_EXPANSION)) {
         ::clearAttributeAccess(result);
 
-        if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+        if (lhs->isAttributeAccessForVariable(result,
+                                              allowIndexedAccessInArray) &&
             result.first == variable) {
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_LEFT, nullptr);
 
-          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
+          if (canRemove(plan, current, otherAndNode,
+                        allowIndexedAccessInArray)) {
             toRemove.emplace(i);
           }
         }
@@ -1132,12 +1137,14 @@ void Condition::collectOverlappingMembers(
           rhs->type == NODE_TYPE_EXPANSION) {
         ::clearAttributeAccess(result);
 
-        if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+        if (rhs->isAttributeAccessForVariable(result,
+                                              allowIndexedAccessInArray) &&
             result.first == variable) {
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_RIGHT, nullptr);
 
-          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
+          if (canRemove(plan, current, otherAndNode,
+                        allowIndexedAccessInArray)) {
             toRemove.emplace(i);
           }
         }
@@ -1203,8 +1210,9 @@ AstNode* Condition::removeCondition(ExecutionPlan const* plan,
   TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
   containers::HashSet<size_t> toRemove;
+  bool isFromTraverser{index == nullptr};
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove,
-                            index, isPathCondition);
+                            index, isFromTraverser, isPathCondition);
 
   if (toRemove.empty()) {
     return _root;
@@ -1802,7 +1810,8 @@ void Condition::validateAst(AstNode const* node, int level) {
 
 /// @brief checks if the current condition is covered by the other
 bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
-                          aql::AstNode const* andNode, bool isFromTraverser) {
+                          aql::AstNode const* andNode,
+                          bool allowArrayExpansion) {
   TRI_ASSERT(andNode != nullptr);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
@@ -1832,15 +1841,15 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
       auto operand = andNode->getMemberUnchecked(i);
 
       if (operand->isComparisonOperator() ||
-          (isFromTraverser && operand->isArrayComparisonOperator())) {
+          (allowArrayExpansion && operand->isArrayComparisonOperator())) {
         auto lhs = operand->getMember(0);
         auto rhs = operand->getMember(1);
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-            (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
+            (allowArrayExpansion && lhs->type == NODE_TYPE_EXPANSION)) {
           ::clearAttributeAccess(result);
 
-          if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+          if (lhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
               result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
@@ -1866,7 +1875,7 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
             rhs->type == NODE_TYPE_EXPANSION) {
           ::clearAttributeAccess(result);
 
-          if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+          if (rhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
               result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
