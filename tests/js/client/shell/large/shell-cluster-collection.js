@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false */
+/*jshint globalstrict:false, strict:false, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -328,7 +328,6 @@ function ClusterCollectionSuite () {
       var cn = "example", id = "1234567890";
 
       db._drop(cn);
-      db._drop(id);
       try {
         var c1 = db._create(cn, {id: id});
 
@@ -736,13 +735,13 @@ function ClusterCollectionSuite () {
 
     testCreateIllegalName1 : function () {
       try {
-        db._create("1234");
+        db._create("123abc");
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
 
-      assertNull(db._collection("1234"));
+      assertNull(db._collection("123abc"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -777,6 +776,8 @@ function ClusterCollectionSuite () {
 
       assertNull(db._collection("_foo"));
     },
+
+    
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test create

@@ -328,7 +328,14 @@ ArangoDatabase.prototype._collections = function () {
 
     // add all collections to object
     for (let i = 0;  i < collections.length;  ++i) {
-      let collection = new ArangoCollection(this, collections[i]);
+      const col = collections[i];
+      if (col.name === undefined || col.name === null) {
+        throw new ArangoError({
+          errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+          errorMessage: "Invalid response from server: collection in list has no name"
+        });
+      }
+      let collection = new ArangoCollection(this, col);
       this[collection._name] = collection;
       result.push(collection);
     }
@@ -346,15 +353,15 @@ ArangoDatabase.prototype._collections = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return a single collection, identified by its id or name
+// / @brief return a single collection, identified by its name; id is not allowed
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._collection = function (id) {
-  if (typeof id !== 'number' &&
-      this.hasOwnProperty(id) && this[id] && this[id] instanceof ArangoCollection) {
-    return this[id];
+ArangoDatabase.prototype._collection = function (cname) {
+  if (typeof cname !== 'number' &&
+      this.hasOwnProperty(cname) && this[cname] && this[cname] instanceof ArangoCollection) {
+    return this[cname];
   }
-  let requestResult = this._connection.GET(this._collectionurl(id));
+  let requestResult = this._connection.GET(this._collectionurl(cname));
 
   // return null in case of not found
   if (requestResult !== null
@@ -553,8 +560,6 @@ ArangoDatabase.prototype._flushCache = function () {
 
       if (collOrView instanceof ArangoCollection ||
          collOrView instanceof ArangoView) {
-        // reset the collection status
-        collOrView._status = null;
         this[name] = undefined;
       }
     }

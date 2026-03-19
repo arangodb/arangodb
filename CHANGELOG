@@ -1,20 +1,23 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-134: Remove JS remaining transactions, use streaming transactions
+  as replacement.
+
+* No longer support `/_api/collection?collection=<collection-name>`,
+  `/_api/document/<collection-id>`, and `/_api/collection/<collection-id>`.
+
 * Raised minimal CPU architecture to Haswell-like (x86-64) and graviton2-like
   (aarch64).
 
 * Legacy geo index types `geo1` and `geo2` are no longer supported. Existing
   indexes of these types are automatically dropped during database upgrade.
 
-* COR-134: Remove JS remaining transactions, use streaming transactions
-  as replacement.
-
 * Updated ArangoDB Starter to v0.20.0-preview-4.
 
 * Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
   dependencies.
-
+  
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
 
