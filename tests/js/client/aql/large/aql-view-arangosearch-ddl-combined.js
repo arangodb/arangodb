@@ -2307,7 +2307,6 @@ function IResearchFeatureDDLTestSuite2() {
       let bgJob = ct.run.launchPlainSnippetInBG(`
         var fs = require('fs');
         var db = require('internal').db;
-        var db = require('internal').db;
         let trx = db._createTransaction({collections: { write: ["${colName}"]}});
         var c = trx.collection("${colName}");
         fs.write("${markerFileName}", "TEST");
