@@ -38,6 +38,7 @@
 #include <thread>
 
 #include "Assertions/Assert.h"
+#include "Basics/debugging.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
@@ -631,6 +632,11 @@ Result VectorIndexBuildManager::build(
 
   std::unique_ptr<rocksdb::Iterator> ingestIt(_rootDB->NewIterator(ro, docCF));
   ingestIt->Seek(_bounds.start());
+
+  TRI_IF_FAILURE("RocksDBVectorIndex::buildWrongDimension") {
+    _index.resetTrainingState();
+    return Result{TRI_ERROR_DEBUG};
+  }
 
   Result res = ingestVectors(_index, _rootDB, std::move(ingestIt), stopToken);
   auto const ingestEnd = std::chrono::steady_clock::now();
