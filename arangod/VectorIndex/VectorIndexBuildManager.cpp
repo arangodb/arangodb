@@ -115,7 +115,7 @@ bool VectorIndexBuildManager::shouldSkipRetry(
 }
 
 void VectorIndexBuildManager::recordFailure(std::uint64_t objectId,
-                                                std::int64_t docCount) {
+                                            std::int64_t docCount) {
   _failedBuilds[objectId] = {std::chrono::steady_clock::now(), docCount};
 }
 
@@ -144,8 +144,7 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
   }
 }
 
-void VectorIndexBuildManager::scanAndBuild(
-    std::stop_token const& stopToken) {
+void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
   // Collect objectIds seen this scan to prune stale entries from
   // _failedBuilds (e.g. indexes that were dropped since the last scan).
   std::unordered_set<std::uint64_t> seenObjectIds;

@@ -45,8 +45,8 @@ class VectorIndexBuildManager {
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
   explicit VectorIndexBuildManager(DatabaseFeature& dbFeature,
-                                       MaintenanceFeature& maintenance,
-                                       metrics::MetricsFeature& metrics);
+                                   MaintenanceFeature& maintenance,
+                                   metrics::MetricsFeature& metrics);
 
   void start();
   void beginShutdown();
