@@ -168,7 +168,8 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
+bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
+    ReadContext& ctx, IResearchViewStats& stats) {
   TRI_ASSERT(this->_filter != nullptr);
   size_t const count = this->_reader->size();
   bool gotData = false;
@@ -306,6 +307,16 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
         gotData |= r.get();
       }
     }();
+
+    // We start with 1 thread per segment (reader) and as we're done reading
+    // through the whole segment, we'll have fewer readers for subsequent
+    // iterations. The total thread count will further reduce with each
+    // iteration giving false notion of the parallelism achieved. Hence, we do
+    // not update parallelism in the stats if the current thread count stands
+    // lower than the previous.
+    auto threadCount{static_cast<uint64_t>(results.size()) + 1};
+    if (threadCount > stats.getParallelism()) stats.setParallelism(threadCount);
+
     results.clear();
   }
   // shrink to actual size so we can emit rows as usual
