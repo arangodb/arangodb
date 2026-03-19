@@ -38,13 +38,13 @@ class MaintenanceFeature;
 
 /// Single background thread that periodically scans for untrained vector
 /// indexes and builds them one at a time. The same thread scans and builds.
-class VectorIndexBuildCoordinator {
+class VectorIndexBuildManager {
  public:
   static constexpr auto kScanInterval = std::chrono::seconds(5);
   static constexpr auto kSleepGranularity = std::chrono::seconds(1);
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
-  explicit VectorIndexBuildCoordinator(DatabaseFeature& dbFeature,
+  explicit VectorIndexBuildManager(DatabaseFeature& dbFeature,
                                        MaintenanceFeature& maintenance,
                                        metrics::MetricsFeature& metrics);
 

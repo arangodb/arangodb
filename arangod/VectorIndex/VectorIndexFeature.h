@@ -25,8 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "VectorIndex/VectorIndexBuildCoordinator.h"
-#include "RestServer/VectorIndexFeatureOptions.h"
+#include "VectorIndex/VectorIndexBuildManager.h"
+#include "VectorIndex/VectorIndexFeatureOptions.h"
 
 namespace arangodb {
 
@@ -51,7 +51,7 @@ class VectorIndexFeature final
   bool shouldRunBuildCoordinator() const;
 
   VectorIndexFeatureOptions _options;
-  VectorIndexBuildCoordinator _coordinator;
+  VectorIndexBuildManager _coordinator;
 };
 
 }  // namespace arangodb

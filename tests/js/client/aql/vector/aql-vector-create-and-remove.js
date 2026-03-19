@@ -341,7 +341,7 @@ function VectorIndexTestCreationWithVectors() {
         // TODO(jbajic) What to do here, now that we ignore the possible errors during
         // creation but only after the build thread picks up the building and creating
         // of vector index. But now since we can create a vector index willy nilly and
-        // hope that the VectorIndexBuildCoordinator succeeds, the error reporting
+        // hope that the VectorIndexBuildManager succeeds, the error reporting
         // get very much delayed
         testCreatingVectorIndexWhenFieldNotPresent: function() {
             let gen = randomNumberGeneratorFloat(seed);

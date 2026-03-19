@@ -156,8 +156,8 @@ add_library(arangoserver STATIC
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
-  RestServer/VectorIndexFeature.cpp
-  VectorIndex/VectorIndexBuildCoordinator.cpp
+  VectorIndex/VectorIndexFeature.cpp
+  VectorIndex/VectorIndexBuildManager.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   Sharding/ShardDistributionReporter.cpp

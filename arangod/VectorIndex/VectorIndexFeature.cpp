@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/MaintenanceFeature.h"

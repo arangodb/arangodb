@@ -21,7 +21,7 @@
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndex/VectorIndexBuildCoordinator.h"
+#include "VectorIndex/VectorIndexBuildManager.h"
 
 #include "Basics/StaticStrings.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -74,7 +74,7 @@ DECLARE_HISTOGRAM(arangodb_vector_index_ingestion_duration,
 
 namespace arangodb {
 
-VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
+VectorIndexBuildManager::VectorIndexBuildManager(
     DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
     metrics::MetricsFeature& metrics)
     : _dbFeature(dbFeature),
@@ -86,13 +86,13 @@ VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
       _ingestionDuration(
           metrics.add(arangodb_vector_index_ingestion_duration{})) {}
 
-void VectorIndexBuildCoordinator::start() {
+void VectorIndexBuildManager::start() {
   _thread = std::jthread([this](std::stop_token stopToken) { run(stopToken); });
 }
 
-void VectorIndexBuildCoordinator::beginShutdown() { _thread.request_stop(); }
+void VectorIndexBuildManager::beginShutdown() { _thread.request_stop(); }
 
-void VectorIndexBuildCoordinator::stop() {
+void VectorIndexBuildManager::stop() {
   beginShutdown();
 
   if (_thread.joinable()) {
@@ -100,7 +100,7 @@ void VectorIndexBuildCoordinator::stop() {
   }
 }
 
-bool VectorIndexBuildCoordinator::shouldSkipRetry(
+bool VectorIndexBuildManager::shouldSkipRetry(
     std::uint64_t objectId, std::int64_t currentDocCount) const {
   auto const it = _failedBuilds.find(objectId);
   if (it == _failedBuilds.end()) {
@@ -114,16 +114,16 @@ bool VectorIndexBuildCoordinator::shouldSkipRetry(
   return !(backoffElapsed && docCountChanged);
 }
 
-void VectorIndexBuildCoordinator::recordFailure(std::uint64_t objectId,
+void VectorIndexBuildManager::recordFailure(std::uint64_t objectId,
                                                 std::int64_t docCount) {
   _failedBuilds[objectId] = {std::chrono::steady_clock::now(), docCount};
 }
 
-void VectorIndexBuildCoordinator::clearFailure(std::uint64_t objectId) {
+void VectorIndexBuildManager::clearFailure(std::uint64_t objectId) {
   _failedBuilds.erase(objectId);
 }
 
-void VectorIndexBuildCoordinator::run(std::stop_token stopToken) {
+void VectorIndexBuildManager::run(std::stop_token stopToken) {
 #ifdef TRI_HAVE_SYS_PRCTL_H
   pthread_setname_np(pthread_self(), "VecIdxBuild");
 #endif
@@ -139,12 +139,12 @@ void VectorIndexBuildCoordinator::run(std::stop_token stopToken) {
       scanAndBuild(stopToken);
     } catch (std::exception const& ex) {
       LOG_TOPIC("e170b", WARN, Logger::ENGINES)
-          << "VectorIndexBuildCoordinator scan error: " << ex.what();
+          << "VectorIndexBuildManager scan error: " << ex.what();
     }
   }
 }
 
-void VectorIndexBuildCoordinator::scanAndBuild(
+void VectorIndexBuildManager::scanAndBuild(
     std::stop_token const& stopToken) {
   // Collect objectIds seen this scan to prune stale entries from
   // _failedBuilds (e.g. indexes that were dropped since the last scan).

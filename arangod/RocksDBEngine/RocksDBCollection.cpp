@@ -598,7 +598,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     }
 
     // Step 4. fill index
-    // Vector index creation is handled by the VectorIndexBuildCoordinator,
+    // Vector index creation is handled by the VectorIndexBuildManager,
     // so we skip the filling here.
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
