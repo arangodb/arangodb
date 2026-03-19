@@ -73,7 +73,7 @@ defmodule Toast.Config do
 
   @spec load(keyword()) :: t()
   def load(opts) do
-    local = load_local_config()
+    local = load_local_config(Keyword.get(opts, :local_config_dir))
     {build_dir, sanitizer_override, active_sanitizers, factor} = resolve_sanitizer(opts, local)
 
     build_config(opts, local, build_dir, sanitizer_override, active_sanitizers, factor)
@@ -285,11 +285,11 @@ defmodule Toast.Config do
     end
   end
 
-  defp load_local_config do
+  defp load_local_config(dir) do
     if System.get_env("TOAST_CI") == "true" do
       %{}
     else
-      read_local_config_file()
+      read_local_config_file(dir || File.cwd!())
     end
   rescue
     error ->
@@ -297,8 +297,8 @@ defmodule Toast.Config do
       %{}
   end
 
-  defp read_local_config_file do
-    path = Path.join(File.cwd!(), ".toast.local.exs")
+  defp read_local_config_file(dir) do
+    path = Path.join(dir, ".toast.local.exs")
 
     if File.exists?(path) do
       {config_map, _bindings} = Code.eval_file(path)

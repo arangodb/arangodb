@@ -28,13 +28,21 @@ defmodule Toast.ConfigTest do
     TOAST_CI
   )
 
+  @empty_config_dir Path.join(
+                      System.tmp_dir!(),
+                      "toast_config_test_empty_#{System.unique_integer([:positive])}"
+                    )
+
   setup do
     saved = Map.new(@env_vars, fn var -> {var, System.get_env(var)} end)
+    File.mkdir_p!(@empty_config_dir)
 
     on_exit(fn ->
       for {var, val} <- saved do
         if val, do: System.put_env(var, val), else: System.delete_env(var)
       end
+
+      File.rm_rf!(@empty_config_dir)
     end)
 
     clear_env_vars()
@@ -45,9 +53,15 @@ defmodule Toast.ConfigTest do
     Enum.each(@env_vars, &System.delete_env/1)
   end
 
+  # Wraps Config.load to isolate from the real .toast.local.exs.
+  # Tests in the ".toast.local.exs" describe block use their own temp dir.
+  defp load(opts \\ []) do
+    Config.load(Keyword.put_new(opts, :local_config_dir, @empty_config_dir))
+  end
+
   describe "defaults" do
     test "returns struct with expected defaults" do
-      config = Config.load()
+      config = load()
 
       assert %Config{} = config
       assert config.build_dir == nil
@@ -66,7 +80,7 @@ defmodule Toast.ConfigTest do
     end
 
     test "work_dir has unique default under tmp_dir" do
-      config = Config.load()
+      config = load()
 
       assert String.starts_with?(config.work_dir, System.tmp_dir!())
       assert config.work_dir =~ ~r/toast\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z_[0-9A-F]{4}$/
@@ -77,7 +91,7 @@ defmodule Toast.ConfigTest do
     test "reads build_dir from environment" do
       System.put_env("TOAST_BUILD_DIR", "/custom/build")
 
-      assert Config.load().build_dir == "/custom/build"
+      assert load().build_dir == "/custom/build"
     end
   end
 
@@ -85,7 +99,7 @@ defmodule Toast.ConfigTest do
     test "reads work_dir from environment" do
       System.put_env("TOAST_WORK_DIR", "/custom/work")
 
-      assert Config.load().work_dir == "/custom/work"
+      assert load().work_dir == "/custom/work"
     end
   end
 
@@ -93,17 +107,17 @@ defmodule Toast.ConfigTest do
     test "cluster string maps to :cluster atom" do
       System.put_env("TOAST_DEPLOYMENT_MODE", "cluster")
 
-      assert Config.load().deployment_mode == :cluster
+      assert load().deployment_mode == :cluster
     end
 
     test "other values default to :single_server" do
       System.put_env("TOAST_DEPLOYMENT_MODE", "something_else")
 
-      assert Config.load().deployment_mode == :single_server
+      assert load().deployment_mode == :single_server
     end
 
     test "nil defaults to :single_server" do
-      assert Config.load().deployment_mode == :single_server
+      assert load().deployment_mode == :single_server
     end
   end
 
@@ -111,17 +125,17 @@ defmodule Toast.ConfigTest do
     test "true string maps to true" do
       System.put_env("TOAST_SHOW_SERVER_LOGS", "true")
 
-      assert Config.load().show_server_logs == true
+      assert load().show_server_logs == true
     end
 
     test "other values default to false" do
       System.put_env("TOAST_SHOW_SERVER_LOGS", "false")
 
-      assert Config.load().show_server_logs == false
+      assert load().show_server_logs == false
     end
 
     test "nil defaults to false" do
-      assert Config.load().show_server_logs == false
+      assert load().show_server_logs == false
     end
   end
 
@@ -129,7 +143,7 @@ defmodule Toast.ConfigTest do
     test "parses integer from string" do
       System.put_env("TOAST_GLOBAL_TIMEOUT", "7200000")
 
-      assert Config.load().global_timeout == 7_200_000
+      assert load().global_timeout == 7_200_000
     end
   end
 
@@ -137,7 +151,7 @@ defmodule Toast.ConfigTest do
     test "parses integer from string" do
       System.put_env("TOAST_TEST_TIMEOUT", "600000")
 
-      assert Config.load().test_timeout == 600_000
+      assert load().test_timeout == 600_000
     end
   end
 
@@ -145,7 +159,7 @@ defmodule Toast.ConfigTest do
     test "parses integer from string" do
       System.put_env("TOAST_STARTUP_TIMEOUT", "120000")
 
-      assert Config.load().startup_timeout == 120_000
+      assert load().startup_timeout == 120_000
     end
   end
 
@@ -160,7 +174,7 @@ defmodule Toast.ConfigTest do
       System.put_env("TOAST_TEST_TIMEOUT", "600000")
 
       config =
-        Config.load(
+        load(
           build_dir: "/opt/build",
           work_dir: "/opt/work",
           deployment_mode: :single_server,
@@ -185,7 +199,7 @@ defmodule Toast.ConfigTest do
       System.put_env("TOAST_STARTUP_TIMEOUT", "0")
 
       assert_raise ArgumentError, ~r/must be a positive integer/, fn ->
-        Config.load()
+        load()
       end
     end
 
@@ -193,7 +207,7 @@ defmodule Toast.ConfigTest do
       System.put_env("TOAST_CLUSTER_AGENTS", "-1")
 
       assert_raise ArgumentError, ~r/must be a positive integer/, fn ->
-        Config.load()
+        load()
       end
     end
 
@@ -201,7 +215,7 @@ defmodule Toast.ConfigTest do
       System.put_env("TOAST_STARTUP_TIMEOUT", "abc")
 
       assert_raise ArgumentError, fn ->
-        Config.load()
+        load()
       end
     end
   end
@@ -209,13 +223,13 @@ defmodule Toast.ConfigTest do
   describe "server_args" do
     test "passes through from opts" do
       args = %{"log.level" => "debug"}
-      config = Config.load(server_args: args)
+      config = load(server_args: args)
 
       assert config.server_args == %{"log.level" => "debug"}
     end
 
     test "role-specific args default to empty maps" do
-      config = Config.load()
+      config = load()
 
       assert config.coordinator_args == %{}
       assert config.dbserver_args == %{}
@@ -224,7 +238,7 @@ defmodule Toast.ConfigTest do
 
     test "role-specific args pass through from opts" do
       config =
-        Config.load(
+        load(
           coordinator_args: %{"query.memory-limit" => "1073741824"},
           dbserver_args: %{"rocksdb.block-cache-size" => "536870912"},
           agent_args: %{"agency.compaction-step-size" => "1000"}
@@ -238,13 +252,13 @@ defmodule Toast.ConfigTest do
 
   describe "timeout_factor" do
     test "defaults to 1 without sanitizer" do
-      config = Config.load()
+      config = load()
 
       assert config.timeout_factor == 1
     end
 
     test "auto-detects factor 3 when sanitizer is present" do
-      config = Config.load(active_sanitizers: MapSet.new(["tsan"]))
+      config = load(active_sanitizers: MapSet.new(["tsan"]))
 
       assert config.timeout_factor == 3
       assert config.test_timeout == 300_000 * 3
@@ -256,14 +270,14 @@ defmodule Toast.ConfigTest do
     test "TOAST_TIMEOUT_FACTOR env var overrides auto-detection" do
       System.put_env("TOAST_TIMEOUT_FACTOR", "2")
 
-      config = Config.load(active_sanitizers: MapSet.new(["tsan"]))
+      config = load(active_sanitizers: MapSet.new(["tsan"]))
 
       assert config.timeout_factor == 2
       assert config.test_timeout == 300_000 * 2
     end
 
     test "keyword override takes precedence" do
-      config = Config.load(timeout_factor: 5, active_sanitizers: MapSet.new(["tsan"]))
+      config = load(timeout_factor: 5, active_sanitizers: MapSet.new(["tsan"]))
 
       assert config.timeout_factor == 5
       assert config.test_timeout == 300_000 * 5
@@ -272,7 +286,7 @@ defmodule Toast.ConfigTest do
     test "factor multiplies explicitly set timeouts" do
       System.put_env("TOAST_TEST_TIMEOUT", "600000")
 
-      config = Config.load(active_sanitizers: MapSet.new(["alubsan"]))
+      config = load(active_sanitizers: MapSet.new(["alubsan"]))
 
       assert config.timeout_factor == 3
       assert config.test_timeout == 600_000 * 3
@@ -281,7 +295,7 @@ defmodule Toast.ConfigTest do
 
   describe "cluster fields" do
     test "defaults" do
-      config = Config.load()
+      config = load()
 
       assert config.cluster_agents == 3
       assert config.cluster_dbservers == 3
@@ -295,7 +309,7 @@ defmodule Toast.ConfigTest do
       System.put_env("TOAST_CLUSTER_COORDINATORS", "3")
       System.put_env("TOAST_CLUSTER_REPLICATION_FACTOR", "4")
 
-      config = Config.load()
+      config = load()
 
       assert config.cluster_agents == 5
       assert config.cluster_dbservers == 2
@@ -304,7 +318,7 @@ defmodule Toast.ConfigTest do
     end
 
     test "keyword overrides" do
-      config = Config.load(cluster_agents: 10, cluster_dbservers: 5)
+      config = load(cluster_agents: 10, cluster_dbservers: 5)
 
       assert config.cluster_agents == 10
       assert config.cluster_dbservers == 5
@@ -314,21 +328,21 @@ defmodule Toast.ConfigTest do
   describe "TOAST_API_VERSION env var" do
     test "parses integer version" do
       System.put_env("TOAST_API_VERSION", "2")
-      assert Config.load().api_version == 2
+      assert load().api_version == 2
     end
 
     test "keeps string version" do
       System.put_env("TOAST_API_VERSION", "2.0")
-      assert Config.load().api_version == "2.0"
+      assert load().api_version == "2.0"
     end
 
     test "nil defaults to nil" do
-      assert Config.load().api_version == nil
+      assert load().api_version == nil
     end
 
     test "keyword override" do
       System.put_env("TOAST_API_VERSION", "2")
-      config = Config.load(api_version: 3)
+      config = load(api_version: 3)
       assert config.api_version == 3
     end
   end
@@ -336,31 +350,31 @@ defmodule Toast.ConfigTest do
   describe "TOAST_DEBUGGER env var" do
     test "gdb string maps to :gdb atom" do
       System.put_env("TOAST_DEBUGGER", "gdb")
-      assert Config.load().debugger == :gdb
+      assert load().debugger == :gdb
     end
 
     test "lldb string maps to :lldb atom" do
       System.put_env("TOAST_DEBUGGER", "lldb")
-      assert Config.load().debugger == :lldb
+      assert load().debugger == :lldb
     end
 
     test "auto string maps to :auto atom" do
       System.put_env("TOAST_DEBUGGER", "auto")
-      assert Config.load().debugger == :auto
+      assert load().debugger == :auto
     end
 
     test "unrecognized values fall back to default :auto" do
       System.put_env("TOAST_DEBUGGER", "something")
-      assert Config.load().debugger == :auto
+      assert load().debugger == :auto
     end
 
     test "defaults to :auto" do
-      assert Config.load().debugger == :auto
+      assert load().debugger == :auto
     end
 
     test "keyword override" do
       System.put_env("TOAST_DEBUGGER", "gdb")
-      config = Config.load(debugger: :lldb)
+      config = load(debugger: :lldb)
       assert config.debugger == :lldb
     end
   end
@@ -368,21 +382,21 @@ defmodule Toast.ConfigTest do
   describe "TOAST_DUMP_AGENCY env var" do
     test "true string sets dump_agency_on_error to true" do
       System.put_env("TOAST_DUMP_AGENCY", "true")
-      assert Config.load().dump_agency_on_error == true
+      assert load().dump_agency_on_error == true
     end
 
     test "false string sets dump_agency_on_error to false" do
       System.put_env("TOAST_DUMP_AGENCY", "false")
-      assert Config.load().dump_agency_on_error == false
+      assert load().dump_agency_on_error == false
     end
 
     test "defaults to true when not set" do
-      assert Config.load().dump_agency_on_error == true
+      assert load().dump_agency_on_error == true
     end
 
     test "keyword override" do
       System.put_env("TOAST_DUMP_AGENCY", "true")
-      config = Config.load(dump_agency_on_error: false)
+      config = load(dump_agency_on_error: false)
       assert config.dump_agency_on_error == false
     end
   end
@@ -390,100 +404,102 @@ defmodule Toast.ConfigTest do
   describe "TOAST_COREDUMP_TIMEOUT env var" do
     test "parses integer from string" do
       System.put_env("TOAST_COREDUMP_TIMEOUT", "60000")
-      assert Config.load().coredump_timeout == 60_000
+      assert load().coredump_timeout == 60_000
     end
 
     test "defaults to 120_000 when not set" do
-      assert Config.load().coredump_timeout == 180_000
+      assert load().coredump_timeout == 180_000
     end
 
     test "keyword override" do
       System.put_env("TOAST_COREDUMP_TIMEOUT", "60000")
-      config = Config.load(coredump_timeout: 30_000)
+      config = load(coredump_timeout: 30_000)
       assert config.coredump_timeout == 30_000
     end
   end
 
   describe ".toast.local.exs" do
     setup do
-      path = Path.join(File.cwd!(), ".toast.local.exs")
-      on_exit(fn -> File.rm(path) end)
-      {:ok, local_path: path}
+      dir = Path.join(System.tmp_dir!(), "config_test_#{:erlang.unique_integer([:positive])}")
+      File.mkdir_p!(dir)
+      path = Path.join(dir, ".toast.local.exs")
+      on_exit(fn -> File.rm_rf!(dir) end)
+      {:ok, dir: dir, local_path: path}
     end
 
-    test "reads config from .toast.local.exs when present", %{local_path: path} do
+    test "reads config from .toast.local.exs when present", %{dir: dir, local_path: path} do
       File.write!(path, "%{build_dir: \"/local/build\"}")
 
-      config = Config.load()
+      config = load(local_config_dir: dir)
       assert config.build_dir == "/local/build"
     end
 
-    test "env vars take precedence over .toast.local.exs", %{local_path: path} do
+    test "env vars take precedence over .toast.local.exs", %{dir: dir, local_path: path} do
       File.write!(path, "%{build_dir: \"/local/build\"}")
       System.put_env("TOAST_BUILD_DIR", "/env/build")
 
-      config = Config.load()
+      config = load(local_config_dir: dir)
       assert config.build_dir == "/env/build"
     end
 
-    test "keyword opts take precedence over .toast.local.exs", %{local_path: path} do
+    test "keyword opts take precedence over .toast.local.exs", %{dir: dir, local_path: path} do
       File.write!(path, "%{build_dir: \"/local/build\"}")
 
-      config = Config.load(build_dir: "/keyword/build")
+      config = load(build_dir: "/keyword/build", local_config_dir: dir)
       assert config.build_dir == "/keyword/build"
     end
 
-    test "ignored when absent" do
-      config = Config.load()
+    test "ignored when absent", %{dir: dir} do
+      config = load(local_config_dir: dir)
       assert config.build_dir == nil
     end
 
-    test "skipped when TOAST_CI=true", %{local_path: path} do
+    test "skipped when TOAST_CI=true", %{dir: dir, local_path: path} do
       File.write!(path, "%{build_dir: \"/local/build\"}")
       System.put_env("TOAST_CI", "true")
 
-      config = Config.load()
+      config = load(local_config_dir: dir)
       assert config.build_dir == nil
     end
 
-    # T13: dump_agency_on_error from local config
-    test "reads dump_agency_on_error from .toast.local.exs", %{local_path: path} do
+    test "reads dump_agency_on_error from .toast.local.exs", %{dir: dir, local_path: path} do
       File.write!(path, "%{dump_agency_on_error: false}")
 
-      config = Config.load()
+      config = load(local_config_dir: dir)
       assert config.dump_agency_on_error == false
     end
 
-    # T13: coredump_timeout from local config
-    test "reads coredump_timeout from .toast.local.exs", %{local_path: path} do
+    test "reads coredump_timeout from .toast.local.exs", %{dir: dir, local_path: path} do
       File.write!(path, "%{coredump_timeout: 60000}")
 
-      config = Config.load()
+      config = load(local_config_dir: dir)
       assert config.coredump_timeout == 60_000
     end
 
-    # T13: debugger from local config
-    test "reads debugger from .toast.local.exs", %{local_path: path} do
+    test "reads debugger from .toast.local.exs", %{dir: dir, local_path: path} do
       File.write!(path, "%{debugger: :gdb}")
 
-      config = Config.load()
+      config = load(local_config_dir: dir)
       assert config.debugger == :gdb
     end
 
-    test "env vars take precedence over .toast.local.exs for new keys", %{local_path: path} do
+    test "env vars take precedence over .toast.local.exs for new keys", %{
+      dir: dir,
+      local_path: path
+    } do
       File.write!(path, "%{dump_agency_on_error: false, coredump_timeout: 60000}")
       System.put_env("TOAST_DUMP_AGENCY", "true")
       System.put_env("TOAST_COREDUMP_TIMEOUT", "90000")
 
-      config = Config.load()
+      config = load(local_config_dir: dir)
       assert config.dump_agency_on_error == true
       assert config.coredump_timeout == 90_000
     end
 
-    test "invalid syntax logs warning and returns defaults", %{local_path: path} do
+    test "invalid syntax logs warning and returns defaults", %{dir: dir, local_path: path} do
       File.write!(path, "this is not valid elixir {{{")
 
-      config = Config.load()
+      config = load(local_config_dir: dir)
       assert config.build_dir == nil
       assert config.deployment_mode == :single_server
     end
@@ -493,13 +509,13 @@ defmodule Toast.ConfigTest do
     test "parses integer from string" do
       System.put_env("TOAST_SHUTDOWN_TIMEOUT", "90000")
 
-      assert Config.load().shutdown_timeout == 90_000
+      assert load().shutdown_timeout == 90_000
     end
 
     test "factor is applied to shutdown_timeout" do
       System.put_env("TOAST_SHUTDOWN_TIMEOUT", "30000")
 
-      config = Config.load(active_sanitizers: MapSet.new(["asan"]))
+      config = load(active_sanitizers: MapSet.new(["asan"]))
 
       assert config.shutdown_timeout == 30_000 * 3
     end
@@ -509,17 +525,17 @@ defmodule Toast.ConfigTest do
     test "reads coredump_dir from environment" do
       System.put_env("TOAST_COREDUMP_DIR", "/custom/cores")
 
-      assert Config.load().coredump_dir == "/custom/cores"
+      assert load().coredump_dir == "/custom/cores"
     end
 
     test "defaults to nil when not set" do
-      assert Config.load().coredump_dir == nil
+      assert load().coredump_dir == nil
     end
 
     test "keyword override takes precedence" do
       System.put_env("TOAST_COREDUMP_DIR", "/env/cores")
 
-      config = Config.load(coredump_dir: "/opt/cores")
+      config = load(coredump_dir: "/opt/cores")
       assert config.coredump_dir == "/opt/cores"
     end
   end
@@ -528,17 +544,17 @@ defmodule Toast.ConfigTest do
     test "reads result_dir from environment" do
       System.put_env("TOAST_RESULT_DIR", "/custom/results")
 
-      assert Config.load().result_dir == "/custom/results"
+      assert load().result_dir == "/custom/results"
     end
 
     test "defaults to toast-results when not set" do
-      assert Config.load().result_dir == "toast-results"
+      assert load().result_dir == "toast-results"
     end
 
     test "keyword override takes precedence" do
       System.put_env("TOAST_RESULT_DIR", "/env/results")
 
-      config = Config.load(result_dir: "/opt/results")
+      config = load(result_dir: "/opt/results")
       assert config.result_dir == "/opt/results"
     end
   end
