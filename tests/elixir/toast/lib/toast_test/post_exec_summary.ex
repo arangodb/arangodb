@@ -177,15 +177,19 @@ defmodule ToastTest.PostExecSummary do
   defp format_timestamp(%DateTime{} = ts), do: "at: #{DateTime.to_iso8601(ts)}"
   defp format_timestamp(_), do: nil
 
-  defp print_crash_detail(%{coredumps: [coredump | _]} = detail, colors) do
-    print_coredump_backtrace(coredump, colors)
-    print_coredump_path(coredump)
+  defp print_crash_detail(%{crash_lines: crash_lines} = detail, _colors)
+       when is_binary(crash_lines) do
+    # Prefer the crash log output over the coredump backtrace — the log
+    # captures the original CPU context from the signal handler, which may
+    # differ from the coredump (see killProcess / SA_RESETHAND re-raise).
+    print_truncated(crash_lines, @max_crash_log_lines, "    ")
+    print_first_coredump_path(detail)
     print_log_path(detail)
   end
 
-  defp print_crash_detail(%{crash_lines: crash_lines} = detail, _colors)
-       when is_binary(crash_lines) do
-    print_truncated(crash_lines, @max_crash_log_lines, "    ")
+  defp print_crash_detail(%{coredumps: [coredump | _]} = detail, colors) do
+    print_coredump_backtrace(coredump, colors)
+    print_coredump_path(coredump)
     print_log_path(detail)
   end
 
@@ -214,6 +218,12 @@ defmodule ToastTest.PostExecSummary do
   end
 
   defp print_coredump_path(_), do: :ok
+
+  defp print_first_coredump_path(%{coredumps: [%{path: path} | _]}) when is_binary(path) do
+    IO.puts(IO.ANSI.format([:blue, "    Coredump: #{path}", :reset]))
+  end
+
+  defp print_first_coredump_path(_), do: :ok
 
   defp print_log_path(%{log_file: path}) when is_binary(path) do
     IO.puts(IO.ANSI.format([:blue, "    Log: #{path}", :reset]))

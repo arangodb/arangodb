@@ -343,6 +343,24 @@ defmodule ToastTest.PostExecSummaryTest do
     assert output =~ "Coredump: /tmp/core.1234"
   end
 
+  test "prefers crash log over coredump backtrace when both are present" do
+    issue = %{
+      crash_issue_with_coredump()
+      | detail: Map.put(crash_issue_with_coredump().detail, :crash_lines, build_log_lines())
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+
+    # Crash log output should be shown (not the coredump backtrace)
+    assert output =~ "caught signal 11"
+    assert output =~ "Backtrace of thread 30"
+    refute output =~ "#0 foo() at foo.cpp:1"
+
+    # But coredump path should still be printed for reference
+    assert output =~ "Coredump: /tmp/core.1234"
+    assert output =~ "Log: /tmp/arangodb/agent1.log"
+  end
+
   test "prints warnings section when warnings are present" do
     warnings = ["Coredump discovery may not work: handler unknown"]
 
