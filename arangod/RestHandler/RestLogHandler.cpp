@@ -50,10 +50,18 @@ using namespace arangodb::replication2;
 // cluster mode)
 auto RestLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
-  if (!ExecContext::current().isAdminUser(
-          arangodb::rbac::Category::AdminReadReplicatedLog{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    co_return;
+  if (_request->requestType() == RequestType::GET) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminReadReplicatedLog{})) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      co_return;
+    }
+  } else {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      co_return;
+    }
   }
 
   auto methods = ReplicatedLogMethods::createInstance(_vocbase);

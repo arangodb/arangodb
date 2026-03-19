@@ -1641,9 +1641,11 @@ Admin*       - with RBAC, one needs that action, without RBAC, one needs RW on _
 HARD         - without RBAC, one needs RW on _system (with RBAC, --server.hardened is always on)
                (if Admin* and HARD are written, then AUTHEN holds when --server.hardened is off without RBAC)
 DB RW        - Read/write auth level for the database
+DB RO        - At least read-only auth level for the database
 COLL RO      - At least Read auth level for the collection
 `_system` RW - Read/write auth level for _system database
 ?/S/A        - API is switchable between off, superuser and admin access, additionally, an Admin* is specified
+S/A          - API is switchable between superuser and admin access, additionally, an Admin* is specified
 
 
 | Method | Path                                                         | RestHandler           | Authorization    | Comments                      | Changes to before RBAC |
@@ -1721,9 +1723,9 @@ COLL RO      - At least Read auth level for the collection
 | DELETE | `/_admin/log/entries`                                        | RestAdminLogHandler   | ?/S/A AdminSetLogLevel |                               |                        |
 | DELETE | `/_admin/log/level`                                          | RestAdminLogHandler   | ?/S/A AdminSetLogLevel |                               |                        |
 | GET    | `/_admin/metrics`                                            |                       |                  |                               |                        |
-| GET    | `/_admin/options`                                            |                       |                  |                               |                        |
-| GET    | `/_admin/options-description`                                |                       |                  |                               |                        |
-| GET    | `/_admin/options-public`                                     |                       |                  |                               |                        |
+| GET    | `/_admin/options`                                            | RestOptionsHandler    | S/A AdminOptions |                               |                        |
+| GET    | `/_admin/options-description`                                | RestOptionsHandler    | S/A AdminOptions |                               |                        |
+| GET    | `/_admin/options-public`                                     | RestOptionsHandler    | AUTHEN + DB RO   | NON_STANDARD                  |                        |
 | POST   | `/_admin/routing/reload`                                     |                       |                  | (V8 required)                 |                        |
 | GET    | `/_admin/server/api-calls`                                   | RestAdminServerHandler| ?/S/A AdminApiCalls |                               |                        |
 | GET    | `/_admin/server/aql-queries`                                 | RestAdminServerHandler| ?/S/A AdminAqlQueries |                           |                        |
@@ -1870,7 +1872,9 @@ COLL RO      - At least Read auth level for the collection
 | DELETE | `/_api/job/expired`                                          |                       |                  |                               |                        |
 | DELETE | `/_api/job/{id}`                                             |                       |                  |                               |                        |
 | GET    | `/_api/key-generators`                                       |                       |                  |                               |                        |
-| GET    | `/_api/log`                                                  |                       |                  | (replication2 + cluster only) |                        |
+| GET    | `/_api/log`                                                  | RestLogHandler        | AdminReadReplicatedLog | (replication2 + cluster only) |                        |
+| POST   | `/_api/log`                                                  | RestLogHandler        | AdminWriteReplicatedLog | (replication2 + cluster only) |                        |
+| DELETE | `/_api/log`                                                  | RestLogHandler        | AdminWriteReplicatedLog | (replication2 + cluster only) |                        |
 | GET    | `/_api/log-internal`                                         |                       |                  | (replication2 + cluster only) |                        |
 | GET    | `/_api/query`                                                |                       |                  |                               |                        |
 | GET    | `/_api/query/registry`                                       |                       |                  |                               |                        |
@@ -1884,44 +1888,44 @@ COLL RO      - At least Read auth level for the collection
 | PUT    | `/_api/query-cache/properties`                               |                       |                  |                               |                        |
 | DELETE | `/_api/query-plan-cache`                                     |                       |                  |                               |                        |
 | GET    | `/_api/query-plan-cache`                                     |                       |                  |                               |                        |
-| DELETE | `/_api/replication/applier-state`                            |                       |                  |                               |                        |
-| GET    | `/_api/replication/applier-config`                           |                       |                  |                               |                        |
-| GET    | `/_api/replication/applier-state`                            |                       |                  |                               |                        |
-| GET    | `/_api/replication/applier-state-all`                        |                       |                  |                               |                        |
-| PUT    | `/_api/replication/applier-config`                           |                       |                  |                               |                        |
-| PUT    | `/_api/replication/applier-start`                            |                       |                  |                               |                        |
-| PUT    | `/_api/replication/applier-stop`                             |                       |                  |                               |                        |
-| POST   | `/_api/replication/batch`                                    |                       |                  |                               |                        |
-| PUT    | `/_api/replication/batch`                                    |                       |                  |                               |                        |
-| GET    | `/_api/replication/clusterInventory`                         |                       |                  |                               |                        |
-| GET    | `/_api/replication/dump`                                     |                       |                  |                               |                        |
-| DELETE | `/_api/replication/holdReadLockCollection`                   |                       |                  |                               |                        |
-| POST   | `/_api/replication/holdReadLockCollection`                   |                       |                  |                               |                        |
-| GET    | `/_api/replication/inventory`                                |                       |                  |                               |                        |
-| DELETE | `/_api/replication/keys`                                     |                       |                  |                               |                        |
-| DELETE | `/_api/replication/keys/{id}`                                |                       |                  |                               |                        |
-| GET    | `/_api/replication/keys/{id}`                                |                       |                  |                               |                        |
-| POST   | `/_api/replication/keys`                                     |                       |                  |                               |                        |
-| PUT    | `/_api/replication/keys/{id}`                                |                       |                  |                               |                        |
-| GET    | `/_api/replication/logger-first-tick`                        |                       |                  |                               |                        |
-| GET    | `/_api/replication/logger-follow`                            |                       |                  |                               |                        |
-| PUT    | `/_api/replication/logger-follow`                            |                       |                  |                               |                        |
-| GET    | `/_api/replication/logger-state`                             |                       |                  |                               |                        |
-| GET    | `/_api/replication/logger-tick-ranges`                       |                       |                  |                               |                        |
-| PUT    | `/_api/replication/make-follower`                            |                       |                  |                               |                        |
-| PUT    | `/_api/replication/addFollower`                              |                       |                  |                               |                        |
-| PUT    | `/_api/replication/removeFollower`                           |                       |                  |                               |                        |
-| PUT    | `/_api/replication/restore-collection`                       |                       |                  |                               |                        |
-| PUT    | `/_api/replication/restore-data`                             |                       |                  |                               |                        |
-| PUT    | `/_api/replication/restore-indexes`                          |                       |                  |                               |                        |
-| PUT    | `/_api/replication/restore-view`                             |                       |                  |                               |                        |
-| GET    | `/_api/replication/revisions/tree`                           |                       |                  |                               |                        |
-| POST   | `/_api/replication/revisions/tree`                           |                       |                  |                               |                        |
-| PUT    | `/_api/replication/revisions/documents`                      |                       |                  |                               |                        |
-| PUT    | `/_api/replication/revisions/ranges`                         |                       |                  |                               |                        |
-| GET    | `/_api/replication/server-id`                                |                       |                  |                               |                        |
-| PUT    | `/_api/replication/set-the-leader`                           |                       |                  |                               |                        |
-| PUT    | `/_api/replication/sync`                                     |                       |                  |                               |                        |
+| DELETE | `/_api/replication/applier-state`                            | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/applier-config`                           | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/applier-state`                            | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/applier-state-all`                        | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/applier-config`                           | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/applier-start`                            | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/applier-stop`                             | RestReplicationHandler|                  |                               |                        |
+| POST   | `/_api/replication/batch`                                    | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/batch`                                    | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/clusterInventory`                         | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/dump`                                     | RestReplicationHandler|                  |                               |                        |
+| DELETE | `/_api/replication/holdReadLockCollection`                   | RestReplicationHandler|                  |                               |                        |
+| POST   | `/_api/replication/holdReadLockCollection`                   | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/inventory`                                | RestReplicationHandler|                  |                               |                        |
+| DELETE | `/_api/replication/keys`                                     | RestReplicationHandler|                  |                               |                        |
+| DELETE | `/_api/replication/keys/{id}`                                | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/keys/{id}`                                | RestReplicationHandler|                  |                               |                        |
+| POST   | `/_api/replication/keys`                                     | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/keys/{id}`                                | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/logger-first-tick`                        | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/logger-follow`                            | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/logger-follow`                            | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/logger-state`                             | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/logger-tick-ranges`                       | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/make-follower`                            | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/addFollower`                              | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/removeFollower`                           | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/restore-collection`                       | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/restore-data`                             | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/restore-indexes`                          | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/restore-view`                             | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/revisions/tree`                           | RestReplicationHandler|                  |                               |                        |
+| POST   | `/_api/replication/revisions/tree`                           | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/revisions/documents`                      | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/revisions/ranges`                         | RestReplicationHandler|                  |                               |                        |
+| GET    | `/_api/replication/server-id`                                | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/set-the-leader`                           | RestReplicationHandler|                  |                               |                        |
+| PUT    | `/_api/replication/sync`                                     | RestReplicationHandler|                  |                               |                        |
 | PUT    | `/_api/simple/all`                                           |                       |                  |                               |                        |
 | PUT    | `/_api/simple/all-keys`                                      |                       |                  |                               |                        |
 | PUT    | `/_api/simple/by-example`                                    |                       |                  |                               |                        |
