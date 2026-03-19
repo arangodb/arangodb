@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Changed the remaining two uses of the log topics BENCH and SECURITY and
+  removed these log topics.
+
 * No longer support `/_api/collection?collection=<collection-name>`, 
   `/_api/document/<collection-id>`, and `/_api/collection/<collection-id>`.
 
