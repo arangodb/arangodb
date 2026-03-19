@@ -199,7 +199,6 @@ class Logger {
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
-  static LogTopic SECURITY;
   static LogTopic SSL;
   static LogTopic STARTUP;
   static LogTopic STATISTICS;

@@ -154,10 +154,6 @@ struct Rocksdb {
   static constexpr std::string_view name = "rocksdb";
   static constexpr LogLevel defaultLevel = LogLevel::WARN;
 };
-struct Security {
-  static constexpr std::string_view name = "security";
-  static constexpr LogLevel defaultLevel = LogLevel::INFO;
-};
 struct Ssl {
   static constexpr std::string_view name = "ssl";
   static constexpr LogLevel defaultLevel = LogLevel::WARN;

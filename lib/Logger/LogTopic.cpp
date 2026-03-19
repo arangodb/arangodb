@@ -137,7 +137,6 @@ LogTopic Logger::REPLICATED_WAL(logger::topic::ReplicatedWal{});
 LogTopic Logger::REQUESTS(logger::topic::Requests{});
 LogTopic Logger::RESTORE(logger::topic::Restore{});
 LogTopic Logger::ROCKSDB(logger::topic::Rocksdb{});
-LogTopic Logger::SECURITY(logger::topic::Security{});
 LogTopic Logger::SSL(logger::topic::Ssl{});
 LogTopic Logger::STARTUP(logger::topic::Startup{});
 LogTopic Logger::STATISTICS(logger::topic::Statistics{});
