@@ -108,7 +108,7 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
       generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,
-                    "This endpoint has been removed. Use GET "
+                    "This endpoint has been removed. Please use GET "
                     "`/_admin/log/entries` instead.");
     } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
       co_await reportLogs();
@@ -326,7 +326,7 @@ auto RestAdminLogHandler::reportLogs() -> async<void> {
   }
 
   result.close();  // messages
-  result.close();
+  result.close();  // result
 
   generateResult(rest::ResponseCode::OK, result.slice());
   co_return;
