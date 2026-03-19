@@ -29,6 +29,13 @@ const {
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 
+const VectorIndexTrainingState = Object.freeze({
+    kUnusable: "unusable",
+    kTraining: "training",
+    kIngesting: "ingesting",
+    kReady: "ready",
+});
+
 const DistanceFunctions = {
     cosineSimilarity: function(vec1, vec2) {
         if (vec1.length !== vec2.length) {
@@ -354,6 +361,7 @@ function generateDocs(gen, count, dimension) {
 exports.generateDocs = generateDocs;
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
+exports.VectorIndexTrainingState = VectorIndexTrainingState;
 exports.waitForVectorIndexState = waitForVectorIndexState;
 exports.waitForAllVectorIndexesState = waitForAllVectorIndexesState;
 exports.insertDocsAndEnsureIndex = insertDocsAndEnsureIndex;

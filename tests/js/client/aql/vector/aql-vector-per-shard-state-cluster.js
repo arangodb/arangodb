@@ -31,6 +31,9 @@ const {
     randomNumberGeneratorFloat,
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    VectorIndexTrainingState,
+} = require("@arangodb/testutils/vector-index-common");
 const dbName = "vectorPerShardStateDB";
 const dimension = 100;
 const nLists = 1;
@@ -199,7 +202,7 @@ function VectorIndexPerShardStateSuite() {
 
             const expectations = {};
             for (const s of shardNames) {
-                expectations[s] = {trainingState: "ready", hasError: false};
+                expectations[s] = {trainingState: VectorIndexTrainingState.kReady, hasError: false};
             }
 
             assertTrue(
@@ -209,7 +212,7 @@ function VectorIndexPerShardStateSuite() {
 
             const shardStates = getPerShardStates(collection, "vec_l2");
             for (const s of shardNames) {
-                assertEqual("ready", shardStates[s].trainingState,
+                assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
                     "Shard " + s + " should be ready");
                 assertEqual("", shardStates[s].error,
                     "Shard " + s + " should have no error");
@@ -241,9 +244,9 @@ function VectorIndexPerShardStateSuite() {
 
             const expectations = {};
             for (const s of fullShards) {
-                expectations[s] = {trainingState: "ready", hasError: false};
+                expectations[s] = {trainingState: VectorIndexTrainingState.kReady, hasError: false};
             }
-            expectations[starvedShard] = {trainingState: "unusable", hasError: false};
+            expectations[starvedShard] = {trainingState: VectorIndexTrainingState.kUnusable, hasError: false};
 
             assertTrue(
                 waitForPerShardStates(collection, "vec_l2", expectations, 120),
@@ -251,12 +254,12 @@ function VectorIndexPerShardStateSuite() {
             );
 
             const shardStates = getPerShardStates(collection, "vec_l2");
-            assertEqual("unusable", shardStates[starvedShard].trainingState,
+            assertEqual(VectorIndexTrainingState.kUnusable, shardStates[starvedShard].trainingState,
                 "Starved shard should remain unusable");
             assertEqual("", shardStates[starvedShard].error,
                 "Starved shard should have no error");
             for (const s of fullShards) {
-                assertEqual("ready", shardStates[s].trainingState,
+                assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
                     "Full shard " + s + " should be ready");
                 assertEqual("", shardStates[s].error,
                     "Full shard " + s + " should have no error");

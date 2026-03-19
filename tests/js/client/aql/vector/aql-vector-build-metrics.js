@@ -34,6 +34,7 @@ const {
 const {
   generateDocs,
   waitForAllVectorIndexesState,
+  VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
 const {
   getMetricSingle,
@@ -90,7 +91,7 @@ function VectorIndexBuildMetricsSuite() {
       // With no documents, the index should remain unusable.
       // The build coordinator scans every ~5 seconds, so wait a bit.
       assertTrue(
-          waitForAllVectorIndexesState(collection, "unusable", 10),
+          waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kUnusable, 10),
           "Index should remain unusable with no documents"
       );
 
@@ -132,7 +133,7 @@ function VectorIndexBuildMetricsSuite() {
 
       // Wait for vec idx to be built
       assertTrue(
-          waitForAllVectorIndexesState(collection, "ready", 120),
+          waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
           "Index should become trained after " + insertCount + " docs"
       );
 

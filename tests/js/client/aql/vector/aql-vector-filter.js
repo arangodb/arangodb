@@ -39,6 +39,7 @@ const {
 const {
     insertDocsAndEnsureIndex,
     waitForAllVectorIndexesState,
+    VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
@@ -172,7 +173,7 @@ function VectorIndexL2FilterTestSuite() {
             });
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -705,7 +706,7 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
                 ensureIndex();
             }
             assertTrue(
-                waitForAllVectorIndexesState(collection1, "ready", 60),
+                waitForAllVectorIndexesState(collection1, VectorIndexTrainingState.kReady, 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -817,7 +818,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
             });
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -1066,7 +1067,7 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
             }
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
                 "Expected all vector indexes to become ready"
             );
         },

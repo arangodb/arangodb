@@ -41,6 +41,7 @@ const {
     DistanceFunctions,
     insertDocsAndEnsureIndex,
     waitForAllVectorIndexesState,
+    VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
 
 const isCluster = require("internal").isCluster();
@@ -102,7 +103,7 @@ function VectorIndexL2TestSuite() {
             });
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, "ready", 10),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 10),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -578,7 +579,7 @@ function VectorIndexCosineTestSuite() {
             });
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -764,7 +765,7 @@ function VectorIndexInnerProductTestSuite() {
             });
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, "ready", 60),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
@@ -943,7 +944,7 @@ function MultipleVectorIndexesOnField() {
             });
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
                 "Expected all vector indexes to become ready"
             );
 
@@ -997,7 +998,7 @@ function MultipleVectorIndexesOnField() {
             });
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
                 "Expected all vector indexes to become ready"
             );
 
@@ -1049,7 +1050,7 @@ function MultipleVectorIndexesOnField() {
             });
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, "ready", 120),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
                 "Expected all vector indexes to become ready"
             );
 

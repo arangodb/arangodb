@@ -34,6 +34,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
   waitForAllVectorIndexesState,
+  VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -104,7 +105,7 @@ function VectorIndexHintsSuite() {
         collection.insert(docs.slice(start, end));
       }
 
-      const state = "ready";
+      const state = VectorIndexTrainingState.kReady;
       const indexTimeoutSec = isCluster ? 120 : 60;
 
       const indexes = [
