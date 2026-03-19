@@ -104,6 +104,9 @@ auto canonicalPath(std::string path) -> std::string {
   }
 
   result = std::filesystem::weakly_canonical(std::move(result));
+  if (std::filesystem::is_directory(result)) {
+    result /= "";
+  }
   return result;
 }
 
@@ -411,7 +414,7 @@ bool V8SecurityFeature::shouldExposeEnvironmentVariable(
 
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(
     v8::Isolate* isolate, std::string const& endpoint,
-    std::string const& url) const {
+    std::string const& originalEndpoint) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   if (v8g->_securityContext.isInternal()) {
@@ -420,15 +423,14 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
     return true;
   }
 
-  // This looks redundant, and it might well be, alas it is
-  // unclear at the poitn of patching this code what constitutes
-  // an endpoint and what constitutes a url.
-  // for what it's worth, all tests pass.
+  // The distinction between endpoint and originalEndpoint is used
+  // in the context of redirects in JS_download: if accessing the original
+  // endpoint redirects, we check every redirect for permission too
   auto endpointCheck = _endpoints.check(endpoint);
-  auto urlCheck = _endpoints.check(url);
+  auto originalEndpointCheck = _endpoints.check(originalEndpoint);
 
   return (endpointCheck == DenyAllowResult::ALLOWED) &&
-         (urlCheck == DenyAllowResult::ALLOWED);
+         (originalEndpointCheck == DenyAllowResult::ALLOWED);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
