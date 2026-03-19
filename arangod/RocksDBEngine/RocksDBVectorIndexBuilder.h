@@ -106,7 +106,7 @@ class VectorIndexTrainer {
   UserVectorIndexDefinition const& _definition;
   bool _isSparse;
   std::vector<std::vector<basics::AttributeName>> const& _fields;
-  std::string_view _shardName;
+  std::string _shardName;
   std::uint64_t _indexId;
 };
 
