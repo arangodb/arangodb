@@ -1643,7 +1643,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     // Clean up shards for dropped isBuilding collections. They are not in
     // _newPlannedCollections (building not finished), so the loop above only
     // removes shards for fully planned collections. Erase their shards here to
-    // avoid stale entries in newShardsToPlanServers.
+    // avoid stale entries in newShardsToPlanServers, which will be swapped with 
+    // _shardsToPlanServers in the end of this function.
     if (auto np = newPlan.find(databaseName); np != newPlan.end()) {
       auto const& nps = np->second->slice()[0];
       std::vector<ShardID> shardsToErase;
@@ -1662,9 +1663,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
                 continue;
               }
               auto const colId = colPair.key.copyString();
-              // Use full path to check if collection is still in new plan.
-              // nps is the root of the merged plan tree (with "Plan" at top),
-              // so collection IDs are not direct keys — we need the full path.
               collectionsPath.push_back(colId);
               bool const stillExists = nps.hasKey(collectionsPath);
               collectionsPath.pop_back();
