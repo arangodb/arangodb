@@ -137,7 +137,7 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 
 std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
     AqlCall::Limit toSkip) noexcept {
-  auto skipped = 0;
+  std::uint64_t skipped = 0;
 
   while (skipped < toSkip && _currentProcessedResultCount < _labels.size()) {
     // there are no results anymore for this input, so we can skip to next input
