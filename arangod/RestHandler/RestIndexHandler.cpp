@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
+#include "Cluster/Utils/VectorIndexShardStates.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
@@ -233,53 +234,21 @@ async<void> RestIndexHandler::getIndexes() {
 
       auto const shardIds = coll->shardIds();
 
-      // Helper: for a given bare index id (no collection prefix),
-      // add a "shards" object with per-shard training state and
-      // error info from CollectionInfoCurrent.
       auto addVectorShardStates = [&](VPackBuilder& builder,
                                       std::string_view bareIndexId) {
         if (!collCurrent || !shardIds) {
           return;
         }
+        auto states =
+            getVectorIndexShardStates(*collCurrent, *shardIds, bareIndexId);
         builder.add(VPackValue("shards"));
         VPackObjectBuilder shardsObj(&builder);
-        for (auto const& [shardId, servers] : *shardIds) {
-          VPackSlice shardIndexes = collCurrent->getIndexes(shardId);
-          std::string state = "unknown";
-          std::string error;
-          if (shardIndexes.isArray()) {
-            for (auto const& idx : VPackArrayIterator(shardIndexes)) {
-              if (!idx.isObject()) {
-                continue;
-              }
-              auto idSlice = idx.get("id");
-              if (!idSlice.isString()) {
-                continue;
-              }
-              if (idSlice.stringView() == bareIndexId) {
-                // Check if this is an error entry.
-                if (auto errSlice = idx.get(StaticStrings::Error);
-                    errSlice.isBoolean() && errSlice.getBoolean()) {
-                  auto msgSlice = idx.get(StaticStrings::ErrorMessage);
-                  if (msgSlice.isString()) {
-                    error = msgSlice.copyString();
-                  }
-                }
-                if (auto tsSlice = idx.get(StaticStrings::IndexTrainingState);
-                    tsSlice.isString()) {
-                  state = tsSlice.copyString();
-                }
-                break;
-              }
-            }
-          }
-          std::string shardName = static_cast<std::string>(shardId);
-          builder.add(VPackValue(shardName));
-          {
-            VPackObjectBuilder shardEntry(&builder);
-            builder.add(StaticStrings::IndexTrainingState, VPackValue(state));
-            builder.add("error", VPackValue(error));
-          }
+        for (auto const& [shardId, shardState] : states) {
+          builder.add(VPackValue(static_cast<std::string>(shardId)));
+          VPackObjectBuilder shardEntry(&builder);
+          builder.add(StaticStrings::IndexTrainingState,
+                      VPackValue(shardState.trainingState));
+          builder.add("error", VPackValue(shardState.error));
         }
       };
 

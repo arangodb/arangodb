@@ -28,6 +28,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
+#include "Cluster/Utils/VectorIndexShardStates.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterIndex.h"
 #include "Indexes/Index.h"
@@ -509,7 +510,6 @@ Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
   return Index::StreamSupportResult::makeUnsupported();
 }
 
-// TODO(jbajic): Is there a bettter way?
 bool ClusterIndex::isVectorIndexReady() const noexcept {
   if (_indexType != TRI_IDX_TYPE_VECTOR_INDEX) {
     return false;
@@ -528,32 +528,14 @@ bool ClusterIndex::isVectorIndexReady() const noexcept {
     }
 
     auto const bareIndexId = std::to_string(_iid.id());
-    for (auto const& [shardId, servers] : *shardIds) {
-      VPackSlice shardIndexes = collCurrent->getIndexes(shardId);
-      if (!shardIndexes.isArray()) {
-        return false;
-      }
-      bool found = false;
-      for (auto const& idx : VPackArrayIterator(shardIndexes)) {
-        if (!idx.isObject()) {
-          continue;
-        }
-        auto idSlice = idx.get("id");
-        if (idSlice.isString() && idSlice.stringView() == bareIndexId) {
-          auto tsSlice = idx.get(StaticStrings::IndexTrainingState);
-          if (!tsSlice.isString() || tsSlice.stringView() != "ready") {
-            LOG_TOPIC("a7f2c", DEBUG, Logger::CLUSTER)
-                << "ClusterIndex::isVectorIndexReady() shard=" << shardId
-                << " trainingState="
-                << (tsSlice.isString() ? tsSlice.stringView() : "N/A");
-            return false;
-          }
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        // Shard has no entry for this index in Current yet.
+    auto states =
+        getVectorIndexShardStates(*collCurrent, *shardIds, bareIndexId);
+
+    for (auto const& [shardId, shardState] : states) {
+      if (shardState.trainingState != StaticStrings::IndexTrainingStateReady) {
+        LOG_TOPIC("a7f2c", DEBUG, Logger::CLUSTER)
+            << "ClusterIndex::isVectorIndexReady() shard=" << shardId
+            << " trainingState=" << shardState.trainingState;
         return false;
       }
     }
