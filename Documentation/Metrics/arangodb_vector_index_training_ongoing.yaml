@@ -1,4 +1,4 @@
-name: arangodb_vector_index_training_ongoing_count
+name: arangodb_vector_index_training_ongoing
 introducedIn: "3.12.9"
 help: |
   Number of vector index trainings currently ongoing.
