@@ -1,6 +1,8 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Fixed a bug in arangosh that made it quit when entering `global`.
+
 * COR-324, github issue #21782: Added information to query extra output
   about parallelism achieved in SEARCH queries.
 
