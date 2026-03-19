@@ -36,6 +36,10 @@ const {
 const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    VectorIndexTrainingState,
+    waitForVectorIndexState,
+} = require("@arangodb/testutils/vector-index-common");
 
 const dbName = "vectorReplicationDb";
 const collName = "vectorReplicationColl";
@@ -131,6 +135,13 @@ function VectorIndexReplicationFailoverTest() {
             try {
                 // Wait for failover and shards to stabilize
                 waitForShardsInSync(collName, 120, 1);
+
+                // Verify vector index is trained on the new leader
+                assertTrue(
+                    waitForVectorIndexState(collection, "vec_idx",
+                                            VectorIndexTrainingState.kReady, 120),
+                    "vec_idx should be ready after failover"
+                );
 
                 // Query the vector index on the new leader (former follower)
                 let resultsAfter = db._query(vectorQuery).toArray();

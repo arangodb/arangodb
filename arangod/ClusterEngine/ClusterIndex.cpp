@@ -509,6 +509,7 @@ Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
   return Index::StreamSupportResult::makeUnsupported();
 }
 
+// TODO(jbajic): Is there a bettter way?
 bool ClusterIndex::isVectorIndexReady() const noexcept {
   if (_indexType != TRI_IDX_TYPE_VECTOR_INDEX) {
     return false;
