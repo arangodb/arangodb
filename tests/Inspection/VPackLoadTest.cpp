@@ -1765,6 +1765,16 @@ TEST_F(VPackLoadInspectorTest,
   EXPECT_EQ("Object invariant failed", result.error());
 }
 
+TEST_F(VPackLoadInspectorTest, load_std_filesystem_path) {
+  builder.add(VPackValue("/foo/bar"));
+  VPackLoadInspector inspector{builder};
+
+  std::filesystem::path o;
+  auto result = inspector.apply(o);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(o, "/foo/bar");
+}
+
 TEST(VPackLoadInspectorContext, deserialize_with_context) {
   struct Context {
     int defaultInt;
