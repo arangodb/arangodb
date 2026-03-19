@@ -256,9 +256,8 @@ defmodule Mix.Tasks.Toast do
           {mod, Path.dirname(source)}
         end
 
-      {:error, errors, _} ->
-        Logger.error("Failed to compile suite #{suite_file}: #{inspect(errors)}")
-        []
+      {:error, _errors, _} ->
+        Mix.raise("Failed to compile suite #{suite_file}")
     end
   end
 
@@ -269,7 +268,7 @@ defmodule Mix.Tasks.Toast do
   defp compile_helpers(helpers) do
     case Kernel.ParallelCompiler.compile(helpers, return_diagnostics: true) do
       {:ok, _, _} -> :ok
-      {:error, errors, _} -> Logger.error("Failed to compile helpers: #{inspect(errors)}")
+      {:error, _errors, _} -> Mix.raise("Failed to compile test helpers")
     end
   end
 
@@ -285,9 +284,8 @@ defmodule Mix.Tasks.Toast do
 
         {modules, orphans}
 
-      {:error, errors, _} ->
-        Logger.error("Failed to load test files: #{inspect(errors)}")
-        {[], []}
+      {:error, _errors, _} ->
+        Mix.raise("Failed to compile test files in #{suite_dir}")
     end
   end
 
