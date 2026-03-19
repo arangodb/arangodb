@@ -198,7 +198,8 @@ LocalDocumentId IResearchViewMergeExecutor<ExecutionTraits>::readPK(
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
+bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(
+    ReadContext& ctx, IResearchViewStats&) {
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost =

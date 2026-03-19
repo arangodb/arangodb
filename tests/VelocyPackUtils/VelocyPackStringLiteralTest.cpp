@@ -17,19 +17,36 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "gtest/gtest.h"
 
-#include <velocypack/Buffer.h>
-#include <velocypack/String.h>
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
-namespace arangodb::velocypack {
+using namespace arangodb::velocypack;
 
-auto operator""_vpack(const char* json, size_t) -> VPackString;
+TEST(VelocyPackStringLiteralTest, empty_raw_string) {
+  // R"=()="_vpack gives content ")\"" (invalid JSON). Use minimal valid JSON
+  // with delimiter '=': empty array R"=([])="_vpack.
+  auto t = R"=([])="_vpack;
+  EXPECT_FALSE(t.slice().isIllegal());
+  EXPECT_TRUE(t.slice().isArray());
+  EXPECT_EQ(t.slice().length(), 0u);
+  auto buf = toBuffer(t);
+  EXPECT_GE(buf.size(), 1u);
+}
 
-Buffer<uint8_t> toBuffer(VPackString const& s);
+TEST(VelocyPackStringLiteralTest, empty_array) {
+  auto t = R"=([])="_vpack;
+  ASSERT_TRUE(t.slice().isArray());
+}
 
-}  // namespace arangodb::velocypack
+TEST(VelocyPackStringLiteralTest, array_one_two_three) {
+  auto t = R"=([1,2,3])="_vpack;
+  ASSERT_TRUE(t.slice().isArray());
+  ASSERT_EQ(t.slice().length(), 3u);
+  ASSERT_EQ(t.slice().at(0).getNumber<int64_t>(), 1);
+  ASSERT_EQ(t.slice().at(1).getNumber<int64_t>(), 2);
+  ASSERT_EQ(t.slice().at(2).getNumber<int64_t>(), 3);
+}

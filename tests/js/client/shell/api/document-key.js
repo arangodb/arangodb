@@ -53,7 +53,7 @@ function testing_keysSuite () {
     },
 
     test_returns_an_error_if__key_is_null: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "_key" : null };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -65,7 +65,7 @@ function testing_keysSuite () {
     },
 
     test_returns_an_error_if__key_is_a_bool: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "_key" : true };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -77,7 +77,7 @@ function testing_keysSuite () {
     },
 
     test_returns_an_error_if__key_is_a_number_1: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "_key" : 12 };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -89,7 +89,7 @@ function testing_keysSuite () {
     },
 
     test_returns_an_error_if__key_is_a_number_2: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "_key" : 12.554 };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -101,7 +101,7 @@ function testing_keysSuite () {
     },
 
     test_returns_an_error_if__key_is_a_list: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "_key" : [ ] };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -113,7 +113,7 @@ function testing_keysSuite () {
     },
 
     test_returns_an_error_if__key_is_an_object: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "_key" : { } };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -125,7 +125,7 @@ function testing_keysSuite () {
     },
 
     test_returns_an_error_if__key_is_empty_string: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "_key" : "" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -137,7 +137,7 @@ function testing_keysSuite () {
     },
 
     test_returns_an_error_if__key_contains_invalid_characters: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
 
       let keys = [
         " ",
@@ -178,7 +178,7 @@ function testing_keysSuite () {
     },
 
     test_test_valid_key_values: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
 
       let keys = [
         "0",
@@ -273,7 +273,7 @@ function testing_keysSuite () {
     },
 
     test_test_duplicate_key_values: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
 
       // prefill collection;
       let keys = [

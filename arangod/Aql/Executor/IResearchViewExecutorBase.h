@@ -553,14 +553,18 @@ class IResearchViewExecutorInfos {
 class IResearchViewStats {
  public:
   void incrScanned() noexcept { ++_scannedIndex; }
-  void incrScanned(size_t value) noexcept { _scannedIndex += value; }
+  void incrScanned(uint64_t value) noexcept { _scannedIndex += value; }
+  void setParallelism(uint64_t parallelism) { _parallelism = parallelism; }
+  uint64_t getParallelism() const noexcept { return _parallelism; }
   void operator+=(IResearchViewStats const& stats) {
     _scannedIndex += stats._scannedIndex;
+    _parallelism = std::max(_parallelism, stats._parallelism);
   }
-  size_t getScanned() const noexcept { return _scannedIndex; }
+  uint64_t getScanned() const noexcept { return _scannedIndex; }
 
  private:
-  size_t _scannedIndex{};
+  uint64_t _scannedIndex{};
+  uint64_t _parallelism{1};
 };
 
 ExecutionStats& operator+=(ExecutionStats& executionStats,

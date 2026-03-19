@@ -292,6 +292,7 @@ add_executable(arangodbtests
 
 add_subdirectory(Basics)
 add_subdirectory(Inspection)
+add_subdirectory(VelocyPackUtils)
 
 # This is the default from the Jenkins setup
 add_test(NAME arangodbtests
