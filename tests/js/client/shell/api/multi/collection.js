@@ -43,14 +43,14 @@ let api = "/_api/collection";
 function all_collectionsSuite () {
   let cols = ["units", "employees", "locations" ];
   return {
-    setUp: function() {
+    setUpAll: function () {
       cols.forEach(cn => {
         db._drop(cn);
         db._create(cn);
       });
     },
 
-    tearDown: function() {
+    tearDownAll: function () {
       cols.forEach(cn => {
         db._drop(cn);
       });
@@ -145,16 +145,19 @@ function error_handlingSuite () {
     test_creating_a_collection_with_a_duplicate_name: function() {
       let cn = "UnitTestsCollectionBasics";
       db._create(cn);
+      try {
+        let cmd = api;
+        let body = `{ \"name\" : \"${cn}\" }`;
+        let doc = arango.POST_RAW(cmd, body);
 
-      let cmd = api;
-      let body = `{ \"name\" : \"${cn}\" }`;
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, 409);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 409);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DUPLICATE_NAME.code);
+        assertEqual(doc.code, 409);
+        assertEqual(doc.headers['content-type'], contentType);
+        assertTrue(doc.parsedBody['error']);
+        assertEqual(doc.parsedBody['code'], 409);
+        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DUPLICATE_NAME.code);
+      } finally {
+        db._drop(cn);
+      }
     },
 
     test_creating_a_collection_with_an_illegal_body: function() {
@@ -290,12 +293,12 @@ function numeric_collection_id_rejectionSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function () {
       db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function () {
       db._drop(cn);
     },
 

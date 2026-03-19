@@ -87,12 +87,16 @@ function reading_a_documentSuite () {
   let reStart = new RegExp('^' + cn + '/');
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function () {
       cid = db._create(cn, { waitForSync: true } );
     },
 
-    tearDown: function() {
+    tearDownAll: function () {
       db._drop(cn);
+    },
+
+    tearDown: function () {
+      db._truncate(cn);
     },
 
     test_create_a_document_and_read_it: function() {
@@ -323,12 +327,16 @@ function checking_a_documentSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function () {
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDownAll: function () {
       db._drop(cn);
+    },
+
+    tearDown: function () {
+      db._truncate(cn);
     },
 
     test_create_a_document_and_check_to_read_it: function() {
