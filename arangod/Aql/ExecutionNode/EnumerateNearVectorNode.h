@@ -79,6 +79,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   transaction::Methods::IndexHandle const& index() const { return _index; }
 
+  void setIndex(transaction::Methods::IndexHandle indexHandle);
+
   bool isAscending() const noexcept;
 
   void setFilterExpression(Expression* filterExpression);

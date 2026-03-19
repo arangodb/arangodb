@@ -26,29 +26,17 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Parser.h>
 #include "Agency/TransactionBuilder.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 using namespace arangodb::agency;
-
-namespace {
-std::shared_ptr<VPackBuilder> vpackFromJsonString(char const* c) {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  VPackParser parser(&options);
-  parser.parse(c);
-  return parser.steal();
-}
-
-auto operator"" _vpack(const char* json, size_t) {
-  return vpackFromJsonString(json);
-}
-}  // namespace
+using namespace arangodb::velocypack;
 
 TEST(TransactionBuilderTest, read_transaction) {
   VPackBuilder builder;
   envelope::into_builder(builder).read().key("a").end().done();
 
   auto expected = R"=([["a"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }
 
 TEST(TransactionBuilderTest, read_transaction_multiple) {
@@ -62,7 +50,7 @@ TEST(TransactionBuilderTest, read_transaction_multiple) {
       .done();
 
   auto expected = R"=([["a", "b", "c"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }
 
 TEST(TransactionBuilderTest, write_transaction) {
@@ -71,7 +59,7 @@ TEST(TransactionBuilderTest, write_transaction) {
 
   auto expected =
       R"=([[{"a":{"op":"set", "new": 12}}, {}, "client-id"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }
 
 TEST(TransactionBuilderTest, write_transaction_emplace) {
@@ -85,7 +73,7 @@ TEST(TransactionBuilderTest, write_transaction_emplace) {
       .done();
 
   auto expected = R"=([[{"a":{"foo":"bar"}}, {}, "client-id"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }
 
 TEST(TransactionBuilderTest, write_transaction_multi) {
@@ -99,7 +87,7 @@ TEST(TransactionBuilderTest, write_transaction_multi) {
 
   auto expected =
       R"=([[{"a":{"op":"set", "new": 12}, "b":{"op":"increment", "delta":1}}, {}, "client-id"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }
 
 TEST(TransactionBuilderTest, write_transaction_inc) {
@@ -108,7 +96,7 @@ TEST(TransactionBuilderTest, write_transaction_inc) {
 
   auto expected =
       R"=([[{"b":{"op":"increment", "delta":5}}, {}, "client-id"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }
 
 TEST(TransactionBuilderTest, write_transaction_remove) {
@@ -116,7 +104,7 @@ TEST(TransactionBuilderTest, write_transaction_remove) {
   envelope::into_builder(builder).write().remove("c").end("client-id").done();
 
   auto expected = R"=([[{"c":{"op":"delete"}}, {}, "client-id"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }
 
 TEST(TransactionBuilderTest, write_transaction_precs) {
@@ -131,7 +119,7 @@ TEST(TransactionBuilderTest, write_transaction_precs) {
 
   auto expected =
       R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}}, "client-id"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }
 
 TEST(TransactionBuilderTest, write_transaction_precs_multi) {
@@ -147,7 +135,7 @@ TEST(TransactionBuilderTest, write_transaction_precs_multi) {
 
   auto expected =
       R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}, "c":{"old": 12}}, "client-id"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }
 
 TEST(TransactionBuilderTest, multi_envelope) {
@@ -166,5 +154,5 @@ TEST(TransactionBuilderTest, multi_envelope) {
 
   auto expected =
       R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}, "c":{"old": 12}}, "client-id"], ["a"]])="_vpack;
-  ASSERT_EQ(builder.toJson(), expected->toJson());
+  ASSERT_EQ(builder.toJson(), expected.toJson());
 }

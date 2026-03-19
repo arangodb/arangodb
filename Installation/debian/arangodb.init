@@ -7,7 +7,7 @@
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: arangodb
-# Description:       arango database server 
+# Description:       arango database server
 ### END INIT INFO
 
 . /lib/lsb/init-functions
@@ -31,7 +31,6 @@ start () {
 
     ( cd /var/log/arangodb3 && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
     ( cd /var/lib/arangodb3 && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
-    ( cd /var/lib/arangodb3-apps && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
     ( cd $PIDDIR && chown arangodb:arangodb . && chmod 755 . ) || exit 1
 
     local current=/var/tmp/arangod
@@ -126,7 +125,7 @@ case "$1" in
     start --upgrade
     exit $?
     ;;
-  
+
   reload-log)
     log_daemon_msg "Re-Opening Logfiles $DESC" "$NAME"
 

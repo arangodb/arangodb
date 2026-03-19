@@ -29,7 +29,6 @@ start() {
   [ -d $PIDDIR ] || mkdir $PIDDIR || ar_ferr "failed to create $PIDDIR"
 
   ( cd /var/lib/arangodb3 && chown -R arangodb:arangodb . && chmod 700 .) || ar_ferr "failed to set permissions on /var/lib/arangodb3"
-  ( cd /var/lib/arangodb3-apps && chown -R arangodb:arangodb . && chmod 700 .) || ar_ferr "failed to set permissions on /var/lib/arangodb3-apps"
   ( cd $PIDDIR && chown arangodb:arangodb . && chmod 700 .) || ar_ferr "failed to set permissions on $PIDDIR"
 
   local current=/var/tmp/arangod
