@@ -46,9 +46,9 @@
 #include <omp.h>
 #include <unordered_set>
 
-DECLARE_GAUGE(arangodb_vector_index_unusable_count, uint64_t,
+DECLARE_GAUGE(arangodb_vector_index_unusable, uint64_t,
               "Number of unusable vector indexes on this DBServer");
-DECLARE_GAUGE(arangodb_vector_index_training_ongoing_count, uint64_t,
+DECLARE_GAUGE(arangodb_vector_index_training_ongoing, uint64_t,
               "Number of vector index trainings currently ongoing");
 
 struct VectorTrainingDurationScale {
@@ -80,9 +80,9 @@ VectorIndexBuildCoordinator::VectorIndexBuildCoordinator(
     metrics::MetricsFeature& metrics)
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
-      _untrainedCount(metrics.add(arangodb_vector_index_unusable_count{})),
+      _untrainedCount(metrics.add(arangodb_vector_index_unusable{})),
       _trainingOngoingCount(
-          metrics.add(arangodb_vector_index_training_ongoing_count{})),
+          metrics.add(arangodb_vector_index_training_ongoing{})),
       _trainingDuration(metrics.add(arangodb_vector_index_training_duration{})),
       _ingestionDuration(
           metrics.add(arangodb_vector_index_ingestion_duration{})) {}
@@ -238,21 +238,30 @@ void VectorIndexBuildCoordinator::scanAndBuild(
           continue;
         }
 
-        // Build succeeded — persist the trained data to RocksDB so it
-        // survives a restart.
+        // Persist the trained data to RocksDB so it survives a restart.
+        // Mirrors the persistence step in RocksDBCollection::createIndex.
         {
           auto& engine = vocbase.engine<RocksDBEngine>();
-          auto builder = coll->toVelocyPackIgnore(
-              {"path", "statusString"},
-              LogicalDataSource::Serialization::PersistenceWithInProgress);
-          auto persistRes = engine.writeCreateCollectionMarker(
-              vocbase.id(), coll->id(), builder.slice(),
-              RocksDBLogValue::Empty());
-          if (persistRes.fail()) {
-            LOG_TOPIC("e172b", WARN, Logger::ENGINES)
-                << "[shard=" << coll->name() << ", index=" << vecIdx.id().id()
-                << "] Failed to persist trained vector index: "
-                << persistRes.errorMessage();
+          // Step 6. persist in rocksdb
+          if (!engine.inRecovery()) {
+            // write new collection marker
+            auto builder = coll->toVelocyPackIgnore(
+                {"path", "statusString"},
+                LogicalDataSource::Serialization::PersistenceWithInProgress);
+            VPackBuilder indexInfo;
+            vecIdx.toVelocyPack(indexInfo,
+                                Index::makeFlags(Index::Serialize::Internals));
+            auto const res = engine.writeCreateCollectionMarker(
+                vocbase.id(), coll->id(), builder.slice(),
+                RocksDBLogValue::IndexCreate(vocbase.id(), coll->id(),
+                                             indexInfo.slice()));
+
+            if (res.fail()) {
+              LOG_TOPIC("e172b", WARN, Logger::ENGINES)
+                  << "[shard=" << coll->name() << ", index=" << vecIdx.id().id()
+                  << "] Failed to persist trained vector index: "
+                  << res.errorMessage();
+            }
           }
         }
 

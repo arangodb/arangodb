@@ -627,11 +627,12 @@ Result VectorIndexBuildManager::build(
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
                           VectorIndexTrainingState::kIngesting);
 
-  auto numDocs = _rcoll->meta().numberDocuments();
-  RocksDBBuilderIndex builderIdx(std::move(indexPtr), numDocs,
-                                 /*parallelism*/ 1);
   auto const ingestStart = std::chrono::steady_clock::now();
-  Result res = builderIdx.fillIndexForeground();
+
+  std::unique_ptr<rocksdb::Iterator> ingestIt(_rootDB->NewIterator(ro, docCF));
+  ingestIt->Seek(_bounds.start());
+
+  Result res = ingestVectors(_index, _rootDB, std::move(ingestIt), stopToken);
   auto const ingestEnd = std::chrono::steady_clock::now();
 
   if (res.fail()) {
