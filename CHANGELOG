@@ -3,6 +3,8 @@
 * Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
   `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
 
+* COR-330: Removed APIs associated with foxx.
+
 * COR-283: Removed remainded active failover references.
 
 * Remove 30xx FOXX error codes
