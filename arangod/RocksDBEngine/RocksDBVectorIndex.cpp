@@ -77,13 +77,13 @@ std::string_view trainingStateToString(
     VectorIndexTrainingState const state) noexcept {
   switch (state) {
     case VectorIndexTrainingState::kUnusable:
-      return "unusable";
+      return StaticStrings::IndexTrainingStateUnusable;
     case VectorIndexTrainingState::kTraining:
-      return "training";
+      return StaticStrings::IndexTrainingStateTraining;
     case VectorIndexTrainingState::kIngesting:
-      return "ingesting";
+      return StaticStrings::IndexTrainingStateIngesting;
     case VectorIndexTrainingState::kReady:
-      return "ready";
+      return StaticStrings::IndexTrainingStateReady;
   }
 }
 
