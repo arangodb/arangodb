@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-214: Removed deprecated async Leader/Follower replication endpoints.
+
 * No longer support `/_api/collection?collection=<collection-name>`, 
   `/_api/document/<collection-id>`, and `/_api/collection/<collection-id>`.
 
