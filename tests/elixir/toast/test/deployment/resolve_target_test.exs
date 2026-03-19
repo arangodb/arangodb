@@ -54,25 +54,25 @@ defmodule Toast.Deployment.ResolveTargetTest do
     end
   end
 
-  describe "Controller (cluster) cluster_id target" do
+  describe "Controller (cluster) arango_id target" do
     setup [:start_cluster_with_servers]
 
-    test "known cluster_id resolves to correct server", %{ctrl: ctrl} do
-      inject_cluster_id_mapping(ctrl, %{
+    test "known arango_id resolves to correct server", %{ctrl: ctrl} do
+      inject_arango_ids(ctrl, %{
         "dbserver-0" => "PRMR-abc123",
         "dbserver-1" => "PRMR-def456"
       })
 
       set_operational_state(ctrl, "dbserver-0", :paused)
 
-      result = Controller.stop_server(ctrl, cluster_id: "PRMR-abc123")
+      result = Controller.stop_server(ctrl, arango_id: "PRMR-abc123")
       assert {:error, {:unexpected_state, :paused}} = result
     end
 
-    test "unknown cluster_id returns :not_found", %{ctrl: ctrl} do
-      inject_cluster_id_mapping(ctrl, %{"dbserver-0" => "PRMR-abc123"})
+    test "unknown arango_id returns :not_found", %{ctrl: ctrl} do
+      inject_arango_ids(ctrl, %{"dbserver-0" => "PRMR-abc123"})
 
-      result = Controller.stop_server(ctrl, cluster_id: "PRMR-unknown")
+      result = Controller.stop_server(ctrl, arango_id: "PRMR-unknown")
       assert {:error, :not_found} = result
     end
   end
@@ -292,9 +292,15 @@ defmodule Toast.Deployment.ResolveTargetTest do
     %{ctrl: ctrl}
   end
 
-  defp inject_cluster_id_mapping(ctrl, mapping) do
+  defp inject_arango_ids(ctrl, mapping) do
     :sys.replace_state(ctrl, fn state ->
-      %{state | cluster_id_mapping: mapping}
+      servers =
+        Map.new(state.servers, fn {id, server} ->
+          arango_id = Map.get(mapping, id)
+          {id, %{server | arango_id: arango_id}}
+        end)
+
+      %{state | servers: servers}
     end)
   end
 

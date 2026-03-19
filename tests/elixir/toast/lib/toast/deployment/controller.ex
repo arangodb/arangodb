@@ -37,7 +37,6 @@ defmodule Toast.Deployment.Controller do
       status: :stopped,
       servers: %{},
       expected_crashes: %{},
-      cluster_id_mapping: %{},
       agency_dump: nil
     ]
 
@@ -50,7 +49,6 @@ defmodule Toast.Deployment.Controller do
             status: Toast.Deployment.Controller.status(),
             servers: %{optional(String.t()) => Toast.Deployment.ServerInstance.t()},
             expected_crashes: map(),
-            cluster_id_mapping: %{optional(String.t()) => String.t()},
             agency_dump: term()
           }
   end
@@ -247,31 +245,6 @@ defmodule Toast.Deployment.Controller do
     agents = get_living_agents(state)
     dump = AgencyDump.capture(agents: agents)
     {:reply, dump, %{state | agency_dump: dump}}
-  end
-
-  def handle_call({:cluster_id, toast_id}, _from, state) do
-    result =
-      case Map.fetch(state.cluster_id_mapping, toast_id) do
-        {:ok, _} = ok -> ok
-        :error -> {:error, :not_found}
-      end
-
-    {:reply, result, state}
-  end
-
-  def handle_call({:server_by_cluster_id, cluster_internal_id}, _from, state) do
-    result =
-      with {toast_id, _} <-
-             Enum.find(state.cluster_id_mapping, fn {_id, cid} ->
-               cid == cluster_internal_id
-             end),
-           %ServerInstance{} = server <- Map.get(state.servers, toast_id) do
-        {:ok, server}
-      else
-        _ -> {:error, :not_found}
-      end
-
-    {:reply, result, state}
   end
 
   @impl true
@@ -597,7 +570,7 @@ defmodule Toast.Deployment.Controller do
   defp post_deploy(state) do
     case endpoints_for_role(state, :coordinator) do
       [] -> state
-      [endpoint | _] -> fetch_cluster_id_mapping(state, endpoint)
+      [endpoint | _] -> fetch_arango_ids(state, endpoint)
     end
   end
 
@@ -832,18 +805,10 @@ defmodule Toast.Deployment.Controller do
     end
   end
 
-  defp resolve_target(state, cluster_id: cluster_internal_id)
-       when is_binary(cluster_internal_id) do
-    case Enum.find(state.cluster_id_mapping, fn {_toast_id, cid} ->
-           cid == cluster_internal_id
-         end) do
-      {toast_id, _} ->
-        if Map.has_key?(state.servers, toast_id),
-          do: {:ok, [toast_id]},
-          else: {:error, :not_found}
-
-      nil ->
-        {:error, :not_found}
+  defp resolve_target(state, arango_id: arango_id) when is_binary(arango_id) do
+    case Enum.find(state.servers, fn {_id, s} -> s.arango_id == arango_id end) do
+      {toast_id, _} -> {:ok, [toast_id]}
+      nil -> {:error, :not_found}
     end
   end
 
@@ -857,46 +822,51 @@ defmodule Toast.Deployment.Controller do
       status: state.status,
       servers: state.servers,
       error: state.error,
-      agency_dump: state.agency_dump,
-      cluster_id_mapping: state.cluster_id_mapping
+      agency_dump: state.agency_dump
     }
   end
 
   # --- Cluster-specific helpers ---
 
-  defp fetch_cluster_id_mapping(state, endpoint) do
+  defp fetch_arango_ids(state, endpoint) do
     url = "#{endpoint}/_admin/cluster/health"
 
     case Req.get(url) do
       {:ok, %{status: 200, body: body}} ->
-        mapping = build_id_mapping(state, Map.get(body, "Health", %{}))
-        %{state | cluster_id_mapping: mapping}
+        apply_arango_id_mapping(state, Map.get(body, "Health", %{}))
 
       other ->
-        Logger.warning("Failed to fetch cluster health for ID mapping: #{inspect(other)}")
+        Logger.warning("Failed to fetch cluster health for arango ID mapping: #{inspect(other)}")
         state
     end
   rescue
     e ->
-      Logger.warning("Failed to fetch cluster ID mapping: #{Exception.message(e)}")
+      Logger.warning("Failed to fetch arango ID mapping: #{Exception.message(e)}")
       state
   end
 
-  defp build_id_mapping(state, health) do
-    Enum.reduce(health, %{}, fn {cluster_id, info}, acc ->
-      short_name = Map.get(info, "ShortName", "")
-
-      case find_toast_id_by_short_name(state, short_name) do
+  defp apply_arango_id_mapping(state, health) do
+    Enum.reduce(health, state, fn {arango_id, info}, acc ->
+      case find_toast_id_by_endpoint(acc, Map.get(info, "Endpoint", "")) do
         nil -> acc
-        toast_id -> Map.put(acc, toast_id, cluster_id)
+        toast_id -> update_server(acc, toast_id, arango_id: arango_id)
       end
     end)
   end
 
-  defp find_toast_id_by_short_name(state, short_name) do
-    Enum.find_value(state.servers, fn {toast_id, server} ->
-      if server.id == short_name or toast_id == short_name, do: toast_id
-    end)
+  defp find_toast_id_by_endpoint(state, endpoint) do
+    with {:ok, port} <- extract_port(endpoint) do
+      Enum.find_value(state.servers, fn {toast_id, server} ->
+        if server.port == port, do: toast_id
+      end)
+    end
+  end
+
+  defp extract_port(endpoint) do
+    case URI.parse(endpoint) do
+      %URI{port: port} when is_integer(port) -> {:ok, port}
+      _ -> :error
+    end
   end
 
   defp get_living_agents(state) do

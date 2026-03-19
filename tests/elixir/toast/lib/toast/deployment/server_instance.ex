@@ -16,7 +16,8 @@ defmodule Toast.Deployment.ServerInstance do
           health_monitor: pid() | nil,
           operational_state: operational_state() | nil,
           expecting_exit: boolean(),
-          launch_spec: Toast.Deployment.Factory.LaunchSpec.t() | nil
+          launch_spec: Toast.Deployment.Factory.LaunchSpec.t() | nil,
+          arango_id: String.t() | nil
         }
 
   @enforce_keys [:id, :role]
@@ -32,6 +33,7 @@ defmodule Toast.Deployment.ServerInstance do
     :health_monitor,
     :operational_state,
     :launch_spec,
+    :arango_id,
     expecting_exit: false
   ]
 

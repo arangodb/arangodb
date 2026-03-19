@@ -9,7 +9,8 @@ defmodule Toast.Deployment.ClientTest do
       id: id,
       role: Keyword.get(opts, :role, :single),
       port: Keyword.get(opts, :port, 8529),
-      endpoint: Keyword.get(opts, :endpoint, "http://localhost:8529")
+      endpoint: Keyword.get(opts, :endpoint, "http://localhost:8529"),
+      arango_id: Keyword.get(opts, :arango_id)
     }
   end
 
@@ -85,6 +86,162 @@ defmodule Toast.Deployment.ClientTest do
       d = deployment([srv])
 
       assert {:error, :not_found} = Deployment.client_for_role(d, :coordinator, 5)
+    end
+  end
+
+  describe "client_for_arango_id/2" do
+    test "returns client for server matching arango_id" do
+      srv =
+        server_info("db-0",
+          endpoint: "http://localhost:9001",
+          role: :dbserver,
+          arango_id: "PRMR-abc123"
+        )
+
+      d = deployment([srv])
+
+      assert {:ok, client} = Deployment.client_for_arango_id(d, "PRMR-abc123")
+      assert client.base_url == "http://localhost:9001"
+    end
+
+    test "returns {:error, :not_found} for unknown arango_id" do
+      srv =
+        server_info("db-0",
+          endpoint: "http://localhost:9001",
+          role: :dbserver,
+          arango_id: "PRMR-abc123"
+        )
+
+      d = deployment([srv])
+
+      assert {:error, :not_found} = Deployment.client_for_arango_id(d, "PRMR-unknown")
+    end
+
+    test "returns {:error, :not_found} when no servers have arango_ids" do
+      srv = server_info("db-0", endpoint: "http://localhost:9001", role: :dbserver)
+      d = deployment([srv])
+
+      assert {:error, :not_found} = Deployment.client_for_arango_id(d, "PRMR-abc123")
+    end
+
+    test "applies api_version from deployment" do
+      srv =
+        server_info("db-0",
+          endpoint: "http://localhost:9001",
+          role: :dbserver,
+          arango_id: "PRMR-abc123"
+        )
+
+      d = deployment([srv], api_version: 2)
+
+      assert {:ok, client} = Deployment.client_for_arango_id(d, "PRMR-abc123")
+      assert client.api_version == 2
+    end
+
+    test "selects correct server among multiple" do
+      srv1 =
+        server_info("db-0",
+          endpoint: "http://localhost:9001",
+          role: :dbserver,
+          arango_id: "PRMR-aaa"
+        )
+
+      srv2 =
+        server_info("db-1",
+          endpoint: "http://localhost:9002",
+          role: :dbserver,
+          arango_id: "PRMR-bbb"
+        )
+
+      d = deployment([srv1, srv2])
+
+      assert {:ok, client} = Deployment.client_for_arango_id(d, "PRMR-bbb")
+      assert client.base_url == "http://localhost:9002"
+    end
+  end
+
+  describe "client_for_arango_id!/2" do
+    test "returns client for matching arango_id" do
+      srv =
+        server_info("db-0",
+          endpoint: "http://localhost:9001",
+          role: :dbserver,
+          arango_id: "PRMR-abc123"
+        )
+
+      d = deployment([srv])
+
+      client = Deployment.client_for_arango_id!(d, "PRMR-abc123")
+      assert client.base_url == "http://localhost:9001"
+    end
+
+    test "raises ArgumentError for unknown arango_id" do
+      d = deployment([])
+
+      assert_raise ArgumentError, ~r/no server with arango_id/, fn ->
+        Deployment.client_for_arango_id!(d, "PRMR-unknown")
+      end
+    end
+  end
+
+  describe "cluster?/1" do
+    test "returns false for single server deployment" do
+      srv = server_info("single", role: :single)
+      refute Deployment.cluster?(deployment([srv]))
+    end
+
+    test "returns true when servers include coordinator" do
+      srv = server_info("coord-0", role: :coordinator)
+      assert Deployment.cluster?(deployment([srv]))
+    end
+
+    test "returns true when servers include dbserver" do
+      srv = server_info("db-0", role: :dbserver)
+      assert Deployment.cluster?(deployment([srv]))
+    end
+
+    test "returns true when servers include agent" do
+      srv = server_info("agent-0", role: :agent)
+      assert Deployment.cluster?(deployment([srv]))
+    end
+
+    test "returns false for empty deployment" do
+      refute Deployment.cluster?(deployment([]))
+    end
+  end
+
+  describe "default_endpoint/1" do
+    test "returns single server endpoint" do
+      srv = server_info("single", endpoint: "http://localhost:8529", role: :single)
+      assert Deployment.default_endpoint(deployment([srv])) == "http://localhost:8529"
+    end
+
+    test "returns first coordinator endpoint ordered by ID" do
+      srv1 =
+        server_info("coord-1", endpoint: "http://localhost:9002", role: :coordinator)
+
+      srv2 =
+        server_info("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
+
+      assert Deployment.default_endpoint(deployment([srv1, srv2])) == "http://localhost:9001"
+    end
+
+    test "ignores dbserver and agent roles" do
+      db = server_info("db-0", endpoint: "http://localhost:9001", role: :dbserver)
+      agent = server_info("agent-0", endpoint: "http://localhost:9002", role: :agent)
+      coord = server_info("coord-0", endpoint: "http://localhost:9003", role: :coordinator)
+
+      assert Deployment.default_endpoint(deployment([db, agent, coord])) ==
+               "http://localhost:9003"
+    end
+
+    test "returns nil when no coordinator or single server exists" do
+      db = server_info("db-0", endpoint: "http://localhost:9001", role: :dbserver)
+      assert Deployment.default_endpoint(deployment([db])) == nil
+    end
+
+    test "returns nil for empty deployment" do
+      assert Deployment.default_endpoint(deployment([])) == nil
     end
   end
 end

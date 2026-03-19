@@ -14,11 +14,12 @@ defmodule Toast.Deployment do
             id: String.t(),
             role: Toast.Deployment.ServerInstance.role(),
             port: non_neg_integer(),
-            endpoint: String.t()
+            endpoint: String.t(),
+            arango_id: String.t() | nil
           }
 
     @enforce_keys [:id, :role, :port, :endpoint]
-    defstruct [:id, :role, :port, :endpoint]
+    defstruct [:id, :role, :port, :endpoint, :arango_id]
   end
 
   @type mode :: :single_server | :cluster
@@ -29,13 +30,13 @@ defmodule Toast.Deployment do
   - `"server-id"` — direct server ID string (e.g., `"single"`, `"dbserver-0"`)
   - `[role: :dbserver]` — all servers with that role
   - `[role: :coordinator, index: 0]` — specific server by role and index
-  - `[cluster_id: "PRMR-abc"]` — server by cluster-internal ID
+  - `[arango_id: "PRMR-abc"]` — server by ArangoDB-assigned internal ID
   """
   @type server_target ::
           String.t()
           | [role: atom()]
           | [role: atom(), index: non_neg_integer()]
-          | [cluster_id: String.t()]
+          | [arango_id: String.t()]
 
   @type t :: %__MODULE__{
           id: String.t(),
@@ -266,28 +267,43 @@ defmodule Toast.Deployment do
     end
   end
 
-  @doc "Get the cluster-internal ID for a toast server ID."
-  @spec cluster_id(t(), String.t()) :: {:ok, String.t()} | {:error, :not_found | :not_cluster}
-  def cluster_id(%__MODULE__{} = deployment, toast_id) do
-    if cluster?(deployment) do
-      controller_call(deployment, {:cluster_id, toast_id}, {:error, :not_found})
-    else
-      {:error, :not_cluster}
+  @doc "Get the ArangoDB-assigned internal ID for a toast server ID."
+  @spec arango_id(t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}
+  def arango_id(%__MODULE__{servers: servers}, toast_id) do
+    case Map.fetch(servers, toast_id) do
+      {:ok, %{arango_id: id}} when id != nil -> {:ok, id}
+      _ -> {:error, :not_found}
     end
   end
 
-  @doc "Get server info by cluster-internal ID."
-  @spec server_by_cluster_id(t(), String.t()) ::
-          {:ok, ServerInstance.t()} | {:error, :not_found | :not_cluster}
-  def server_by_cluster_id(%__MODULE__{} = deployment, cluster_internal_id) do
-    if cluster?(deployment) do
-      controller_call(
-        deployment,
-        {:server_by_cluster_id, cluster_internal_id},
-        {:error, :not_found}
-      )
-    else
-      {:error, :not_cluster}
+  @doc "Get server info by ArangoDB-assigned internal ID."
+  @spec server_by_arango_id(t(), String.t()) :: {:ok, ServerInfo.t()} | {:error, :not_found}
+  def server_by_arango_id(%__MODULE__{servers: servers}, arango_id) do
+    case Enum.find(servers, fn {_, s} -> s.arango_id == arango_id end) do
+      {_, server} -> {:ok, server}
+      nil -> {:error, :not_found}
+    end
+  end
+
+  @doc "Create a client for the server with the given ArangoDB-assigned internal ID."
+  @spec client_for_arango_id(t(), String.t()) :: {:ok, Client.t()} | {:error, :not_found}
+  def client_for_arango_id(%__MODULE__{} = deployment, arango_id) when is_binary(arango_id) do
+    case server_by_arango_id(deployment, arango_id) do
+      {:ok, srv} -> {:ok, build_client(deployment, srv)}
+      {:error, _} = err -> err
+    end
+  end
+
+  @doc "Like `client_for_arango_id/2`, but raises on error."
+  @spec client_for_arango_id!(t(), String.t()) :: Client.t()
+  def client_for_arango_id!(%__MODULE__{} = deployment, arango_id) when is_binary(arango_id) do
+    case client_for_arango_id(deployment, arango_id) do
+      {:ok, c} ->
+        c
+
+      {:error, :not_found} ->
+        raise ArgumentError,
+              "no server with arango_id #{inspect(arango_id)} in deployment #{deployment.id}"
     end
   end
 
@@ -448,7 +464,8 @@ defmodule Toast.Deployment do
          id: server.id,
          role: server.role,
          port: server.port,
-         endpoint: server.endpoint
+         endpoint: server.endpoint,
+         arango_id: server.arango_id
        }}
     end)
   end
