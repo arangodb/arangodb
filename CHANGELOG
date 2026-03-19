@@ -12,6 +12,9 @@
   `arangodb_vector_index_training_ongoing`, `arangodb_vector_index_training_duration`,
   and `arangodb_vector_index_ingestion_duration`.
 
+* COR-324, github issue #21782: Added information to query extra output
+  about parallelism achieved in SEARCH queries.
+
 * COR-328: Fixed incomplete results in vector search queries when LIMIT exceeded the
   internal batch size.
 
