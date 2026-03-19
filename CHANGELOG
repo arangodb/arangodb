@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
+  dependencies.
+  
 * Changed the remaining two uses of the log topics BENCH and SECURITY and
   removed these log topics.
 
@@ -15,9 +18,6 @@
 
 * Updated ArangoDB Starter to v0.20.0-preview-4.
 
-* Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
-  dependencies.
-  
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
 
