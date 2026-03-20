@@ -25,6 +25,7 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -90,18 +91,17 @@ class VectorIndexTrainer {
   ///  3. Load training vectors from the iterator
   ///  4. Train the FAISS index
   ///  5. Serialize the trained index data
-  std::shared_ptr<faiss::IndexIVF> train(rocksdb::Iterator& it,
-                                         rocksdb::Slice upper,
-                                         std::stop_token stopToken = {}) const;
+  ResultT<std::shared_ptr<faiss::IndexIVF>> train(
+      rocksdb::Iterator& it, rocksdb::Slice upper,
+      std::stop_token stopToken = {}) const;
 
  private:
   /// Collect training vectors from the iterator.
   /// Reads up to maxVectors documents, extracts vector data, applies cosine
   /// normalization if needed, and returns the flat training buffer.
-  std::vector<float> collectTrainingDataset(rocksdb::Iterator& it,
-                                            rocksdb::Slice upper,
-                                            std::int64_t maxVectors,
-                                            std::stop_token stopToken) const;
+  ResultT<std::vector<float>> collectTrainingDataset(
+      rocksdb::Iterator& it, rocksdb::Slice upper, std::int64_t maxVectors,
+      std::stop_token stopToken) const;
 
   UserVectorIndexDefinition const& _definition;
   bool _isSparse;

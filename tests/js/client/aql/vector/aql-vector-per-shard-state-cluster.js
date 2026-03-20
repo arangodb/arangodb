@@ -97,6 +97,22 @@ function insertDocsForShard(collection, keys, count, gen) {
     }
 }
 
+/// Inserts `count` docs without the vector field using pre-computed keys for a
+/// specific shard.
+function insertDocsWithoutVectorForShard(collection, keys, count) {
+    assertTrue(keys.length >= count,
+        "Not enough keys for shard, need " + count + " have " + keys.length);
+    const batchSize = 500;
+    for (let i = 0; i < count; i += batchSize) {
+        const size = Math.min(batchSize, count - i);
+        const docs = [];
+        for (let j = 0; j < size; ++j) {
+            docs.push({_key: keys[i + j], value: j});
+        }
+        collection.insert(docs);
+    }
+}
+
 /// Queries per-shard state for a vector index from the coordinator response.
 function getPerShardStates(collection, indexName) {
     const idx = collection.indexes(true, true).find(i => i.name === indexName);
@@ -259,6 +275,60 @@ function VectorIndexPerShardStateSuite() {
                 "Starved shard should remain unusable");
             assertEqual("", shardStates[starvedShard].error,
                 "Starved shard should have no error");
+            for (const s of fullShards) {
+                assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
+                    "Full shard " + s + " should be ready");
+                assertEqual("", shardStates[s].error,
+                    "Full shard " + s + " should have no error");
+            }
+        },
+
+        // Sparse index: all shards exceed the training threshold by total
+        // doc count, but one shard has no documents with the vector field.
+        // Training still starts on that shard (threshold is based on total
+        // doc count) but fails because there are no vectors to train on.
+        testSparseIndexShardWithoutVectorFieldFails: function () {
+            const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold);
+            assertEqual(3, shardNames.length);
+
+            const emptyVectorShard = shardNames[0];
+            const fullShards = shardNames.slice(1);
+
+            // Insert docs without the vector field on one shard.
+            insertDocsWithoutVectorForShard(
+                collection, keysPerShard[emptyVectorShard], docsAboveThreshold);
+            // Insert docs with vectors on the remaining shards.
+            for (const shard of fullShards) {
+                insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
+            }
+
+            const expectedCounts = {[emptyVectorShard]: docsAboveThreshold};
+            for (const s of fullShards) {
+                expectedCounts[s] = docsAboveThreshold;
+            }
+            assertPerShardCounts(collection, expectedCounts);
+
+            createVectorIndex(collection, /*sparse*/ true);
+
+            const expectations = {};
+            for (const s of fullShards) {
+                expectations[s] = {trainingState: VectorIndexTrainingState.kReady, hasError: false};
+            }
+            expectations[emptyVectorShard] = {
+                trainingState: VectorIndexTrainingState.kUnusable, hasError: true
+            };
+
+            assertTrue(
+                waitForPerShardStates(collection, "vec_l2", expectations, 120),
+                "Full shards should be ready, shard without vectors should be unusable with error"
+            );
+
+            const shardStates = getPerShardStates(collection, "vec_l2");
+            assertEqual(VectorIndexTrainingState.kUnusable,
+                shardStates[emptyVectorShard].trainingState,
+                "Shard without vector field docs should be unusable");
+            assertTrue(shardStates[emptyVectorShard].error.length > 0,
+                "Shard without vector field docs should have an error");
             for (const s of fullShards) {
                 assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
                     "Full shard " + s + " should be ready");

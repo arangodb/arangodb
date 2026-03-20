@@ -197,7 +197,7 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex() const {
   }
 }
 
-std::vector<float> VectorIndexTrainer::collectTrainingDataset(
+ResultT<std::vector<float>> VectorIndexTrainer::collectTrainingDataset(
     rocksdb::Iterator& it, rocksdb::Slice upper, std::int64_t maxVectors,
     std::stop_token stopToken) const {
   std::vector<float> trainingData;
@@ -212,8 +212,8 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
 
   while (counter < maxVectors && it.Valid()) {
     if (counter % 1000 == 0 && stopToken.stop_requested()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     "vector training aborted");
+      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                    "vector training aborted"};
     }
     TRI_ASSERT(it.key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it.value().data()));
@@ -224,12 +224,12 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
         it.Next();
         continue;
       }
-      THROW_ARANGO_EXCEPTION_MESSAGE(
+      return Result{
           res.errorNumber(),
           std::format(
               "failed to read document vector data, "
               "embeddings are in a wrong format and index is not sparse: {}",
-              res.errorMessage()));
+              res.errorMessage())};
     }
 
     trainingData.insert(trainingData.end(), input.begin(), input.end());
@@ -244,34 +244,37 @@ std::vector<float> VectorIndexTrainer::collectTrainingDataset(
   }
 
   if (trainingData.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "For the vector index to be created documents "
-        "must be present in the respective collection for the training "
-        "process.");
+    return Result{TRI_ERROR_NOT_IMPLEMENTED,
+                  "For the vector index to be created documents "
+                  "must be present in the respective collection for the "
+                  "training process."};
   }
 
   return trainingData;
 }
 
-std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::train(
+ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
     rocksdb::Iterator& it, rocksdb::Slice upper,
     std::stop_token stopToken) const {
   auto faissIndex = createFaissIndex();
 
   std::int64_t trainingDataSize =
       faissIndex->cp.max_points_per_centroid * _definition.nLists;
-  auto const trainingData =
+  auto trainingData =
       collectTrainingDataset(it, upper, trainingDataSize, stopToken);
-  auto numVectors =
-      static_cast<std::int64_t>(trainingData.size() / _definition.dimension);
+  if (trainingData.fail()) {
+    return std::move(trainingData).result();
+  }
+
+  auto numVectors = static_cast<std::int64_t>(trainingData.get().size() /
+                                              _definition.dimension);
 
   LOG_TOPIC("a162b", INFO, Logger::ENGINES)
       << "[shard=" << _shardName << ", index=" << _indexId << "] "
       << "Loaded " << numVectors << " vectors. Start training process on "
       << _definition.nLists << " centroids.";
 
-  faissIndex->train(numVectors, trainingData.data());
+  faissIndex->train(numVectors, trainingData.get().data());
 
   LOG_TOPIC("a160b", INFO, Logger::ENGINES)
       << "[shard=" << _shardName << ", index=" << _indexId << "] "
@@ -609,8 +612,13 @@ Result VectorIndexBuildManager::build(
   }
   std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
   trainIt->Seek(_bounds.start());
-  auto faissIndex = trainer.train(*trainIt, upper, stopToken);
+  auto faissIndexResult = trainer.train(*trainIt, upper, stopToken);
   auto const trainEnd = std::chrono::steady_clock::now();
+  if (faissIndexResult.fail()) {
+    _index.resetTrainingState();
+    return std::move(faissIndexResult).result();
+  }
+  auto faissIndex = std::move(faissIndexResult).get();
   trainingDuration.count(
       std::chrono::duration<double>(trainEnd - trainStart).count());
 
