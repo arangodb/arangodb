@@ -48,6 +48,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <algorithm>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -56,6 +57,63 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::futures;
 using namespace arangodb::rest;
+
+namespace {
+
+// Enrich vector indexes in the given array with a top-level trainingState
+// and per-shard states from Current. Non-vector indexes are passed through
+// unchanged.
+VPackBuilder enrichVectorIndexes(
+    VPackSlice indexes,
+    std::shared_ptr<CollectionInfoCurrent> const& collCurrent,
+    std::shared_ptr<ShardMap const> const& shardIds) {
+  VPackBuilder result;
+  {
+    VPackArrayBuilder guard(&result);
+    for (auto pi : VPackArrayIterator(indexes)) {
+      auto typeSlice = pi.get("type");
+      if (typeSlice.isString() && typeSlice.stringView() == "vector" &&
+          collCurrent && shardIds) {
+        std::string_view iid = pi.get("id").stringView();
+        std::string_view bareId = iid;
+        if (auto pos = bareId.find('/'); pos != std::string::npos) {
+          bareId = bareId.substr(pos + 1);
+        }
+
+        auto states =
+            getVectorIndexShardStates(*collCurrent, *shardIds, bareId);
+
+        std::string_view aggregateState =
+            std::ranges::all_of(states,
+                                [](auto const& entry) {
+                                  return entry.second.trainingState == "ready";
+                                })
+                ? "ready"
+                : "training";
+
+        VPackObjectBuilder o(&result);
+        result.add(VPackObjectIterator(pi, true));
+        result.add(StaticStrings::IndexTrainingState,
+                   VPackValue(aggregateState));
+
+        result.add(VPackValue("shards"));
+        VPackObjectBuilder shardsObj(&result);
+        for (auto const& [shardId, shardState] : states) {
+          result.add(VPackValue(static_cast<std::string>(shardId)));
+          VPackObjectBuilder shardEntry(&result);
+          result.add(StaticStrings::IndexTrainingState,
+                     VPackValue(shardState.trainingState));
+          result.add("error", VPackValue(shardState.error));
+        }
+      } else {
+        result.add(pi);
+      }
+    }
+  }
+  return result;
+}
+
+}  // namespace
 
 RestIndexHandler::RestIndexHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
@@ -155,11 +213,34 @@ async<void> RestIndexHandler::getIndexes() {
 
       TRI_ASSERT(indexes.slice().isArray());
 
-      tmp.add("indexes", indexes.slice());
-      tmp.add("identifiers", VPackValue(VPackValueType::Object));
-      for (auto index : VPackArrayIterator(indexes.slice())) {
-        VPackSlice id = index.get("id");
-        tmp.add(id.stringView(), index);
+      if (ServerState::instance()->isCoordinator()) {
+        // On a Coordinator, enrich vector indexes with per-shard
+        // training state from Current.
+        auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+        std::shared_ptr<CollectionInfoCurrent> collCurrent;
+        try {
+          collCurrent = ci.getCollectionCurrent(
+              _vocbase.name(), std::to_string(coll->planId().id()));
+        } catch (...) {
+        }
+        auto const shardIds = coll->shardIds();
+
+        auto enriched =
+            enrichVectorIndexes(indexes.slice(), collCurrent, shardIds);
+
+        tmp.add("indexes", enriched.slice());
+        tmp.add("identifiers", VPackValue(VPackValueType::Object));
+        for (auto index : VPackArrayIterator(enriched.slice())) {
+          VPackSlice id = index.get("id");
+          tmp.add(id.stringView(), index);
+        }
+      } else {
+        tmp.add("indexes", indexes.slice());
+        tmp.add("identifiers", VPackValue(VPackValueType::Object));
+        for (auto index : VPackArrayIterator(indexes.slice())) {
+          VPackSlice id = index.get("id");
+          tmp.add(id.stringView(), index);
+        }
       }
     } else {
       // more complicated case: we need to also return all indexes that
@@ -220,8 +301,6 @@ async<void> RestIndexHandler::getIndexes() {
 
       // Fetch per-shard index data from Current for vector index
       // state enrichment.
-      // TODO (jbajic): This is a bit unfortunate, but we currently have no
-      // better
       auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
       std::shared_ptr<CollectionInfoCurrent> collCurrent;
       try {
@@ -233,31 +312,15 @@ async<void> RestIndexHandler::getIndexes() {
       }
 
       auto const shardIds = coll->shardIds();
-
-      auto addVectorShardStates = [&](VPackBuilder& builder,
-                                      std::string_view bareIndexId) {
-        if (!collCurrent || !shardIds) {
-          return;
-        }
-        auto states =
-            getVectorIndexShardStates(*collCurrent, *shardIds, bareIndexId);
-        builder.add(VPackValue("shards"));
-        VPackObjectBuilder shardsObj(&builder);
-        for (auto const& [shardId, shardState] : states) {
-          builder.add(VPackValue(static_cast<std::string>(shardId)));
-          VPackObjectBuilder shardEntry(&builder);
-          builder.add(StaticStrings::IndexTrainingState,
-                      VPackValue(shardState.trainingState));
-          builder.add("error", VPackValue(shardState.error));
-        }
-      };
+      auto enriched =
+          enrichVectorIndexes(indexes.slice(), collCurrent, shardIds);
 
       tmp.add(VPackValue("indexes"));
 
       {
         VPackArrayBuilder guard(&tmp);
         // first return all ready indexes from the `LogicalCollection` object.
-        for (auto pi : VPackArrayIterator(indexes.slice())) {
+        for (auto pi : VPackArrayIterator(enriched.slice())) {
           std::string_view iid = pi.get("id").stringView();
 
           // Strip collection prefix to get bare index id.
@@ -266,16 +329,7 @@ async<void> RestIndexHandler::getIndexes() {
             bareId = bareId.substr(pos + 1);
           }
 
-          // For vector indexes, enrich with per-shard training states.
-          auto typeSlice = pi.get("type");
-          if (typeSlice.isString() && typeSlice.stringView() == "vector") {
-            VPackObjectBuilder o(&tmp);
-            tmp.add(VPackObjectIterator(pi, true));
-            addVectorShardStates(tmp, bareId);
-          } else {
-            tmp.add(pi);
-          }
-
+          tmp.add(pi);
           covered.emplace(bareId);
         }
         // now return all indexes which are currently being built:
@@ -380,8 +434,29 @@ async<void> RestIndexHandler::getIndexes() {
 
           // For in-progress vector indexes, also add per-shard states.
           if (auto typeSlice = pi.get("type");
-              typeSlice.isString() && typeSlice.stringView() == "vector") {
-            addVectorShardStates(tmp, iid);
+              typeSlice.isString() && typeSlice.stringView() == "vector" &&
+              collCurrent && shardIds) {
+            auto states =
+                getVectorIndexShardStates(*collCurrent, *shardIds, iid);
+            std::string_view aggregateState =
+                std::ranges::all_of(states,
+                                    [](auto const& entry) {
+                                      return entry.second.trainingState ==
+                                             "ready";
+                                    })
+                    ? "ready"
+                    : "training";
+            tmp.add(StaticStrings::IndexTrainingState,
+                    VPackValue(aggregateState));
+            tmp.add(VPackValue("shards"));
+            VPackObjectBuilder shardsObj(&tmp);
+            for (auto const& [shardId, shardState] : states) {
+              tmp.add(VPackValue(static_cast<std::string>(shardId)));
+              VPackObjectBuilder shardEntry(&tmp);
+              tmp.add(StaticStrings::IndexTrainingState,
+                      VPackValue(shardState.trainingState));
+              tmp.add("error", VPackValue(shardState.error));
+            }
           }
         }
       }
