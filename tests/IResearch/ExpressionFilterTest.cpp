@@ -62,6 +62,7 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
@@ -251,6 +252,8 @@ struct IResearchExpressionFilterTest
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                           false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
+                          false);
+    features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
                           false);
     features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
                           false);

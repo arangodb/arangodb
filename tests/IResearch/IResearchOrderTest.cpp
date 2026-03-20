@@ -47,6 +47,7 @@
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "RestServer/arangod.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
@@ -311,6 +312,8 @@ class IResearchOrderTest
                           false);  // required for IResearchFeature
     features.emplace_back(
         server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
+                          false);
     features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
                           false);
     {
