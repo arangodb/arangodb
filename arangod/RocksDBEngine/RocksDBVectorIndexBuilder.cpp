@@ -23,6 +23,7 @@
 
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "Indexes/IndexFactory.h"
+#include "Inspection/VPack.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
@@ -624,6 +625,28 @@ Result VectorIndexBuildManager::build(
       << "Training complete. Ingesting vectors.";
 
   auto trainedData = serializeIndex(*faissIndex);
+
+  // Persist trained data to the vector CF so it survives restarts.
+  {
+    velocypack::Builder builder;
+    velocypack::serialize(builder, trainedData);
+
+    RocksDBKey key;
+    key.constructVectorIndexTrainedData(_index.objectId());
+    auto value = RocksDBValue::VectorIndexValue(builder.slice());
+
+    auto* vectorCF = RocksDBColumnFamilyManager::get(
+        RocksDBColumnFamilyManager::Family::VectorIndex);
+    rocksdb::WriteOptions wo;
+    auto status = _rootDB->Put(wo, vectorCF, key.string(), value.string());
+    if (!status.ok()) {
+      _index.resetTrainingState();
+      return Result{
+          TRI_ERROR_INTERNAL,
+          std::string{"Failed to persist trained data: "} + status.ToString()};
+    }
+  }
+
   _index.applyTrainingResult(std::move(faissIndex), std::move(trainedData));
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
                           VectorIndexTrainingState::kIngesting);

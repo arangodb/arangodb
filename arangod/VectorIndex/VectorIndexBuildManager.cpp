@@ -34,9 +34,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -226,33 +224,6 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
                                        eb.steal());
 
           continue;
-        }
-
-        // Persist the trained data to RocksDB so it survives a restart.
-        // Mirrors the persistence step in RocksDBCollection::createIndex.
-        {
-          auto& engine = vocbase.engine<RocksDBEngine>();
-          // Step 6. persist in rocksdb
-          if (!engine.inRecovery()) {
-            // write new collection marker
-            auto builder = coll->toVelocyPackIgnore(
-                {"path", "statusString"},
-                LogicalDataSource::Serialization::PersistenceWithInProgress);
-            VPackBuilder indexInfo;
-            vecIdx.toVelocyPack(indexInfo,
-                                Index::makeFlags(Index::Serialize::Internals));
-            auto const res = engine.writeCreateCollectionMarker(
-                vocbase.id(), coll->id(), builder.slice(),
-                RocksDBLogValue::IndexCreate(vocbase.id(), coll->id(),
-                                             indexInfo.slice()));
-
-            if (res.fail()) {
-              LOG_TOPIC("e172b", WARN, Logger::ENGINES)
-                  << "[shard=" << coll->name() << ", index=" << vecIdx.id().id()
-                  << "] Failed to persist trained vector index: "
-                  << res.errorMessage();
-            }
-          }
         }
 
         // Clear any previous error for this index.

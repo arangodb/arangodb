@@ -102,8 +102,10 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                              /*allowExpansion*/ false)) {
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
-  if (auto data = info.get("trainedData"); !data.isNone()) {
-    velocypack::deserialize(data, _trainedData);
+
+  _trainedData = loadTrainedData(info);
+
+  if (!_trainedData.codeData.empty()) {
     _faissIndex =
         vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
 
@@ -123,6 +125,27 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 }
 
 RocksDBVectorIndex::~RocksDBVectorIndex() = default;
+
+TrainedData RocksDBVectorIndex::loadTrainedData(velocypack::Slice info) const {
+  RocksDBKey key;
+  key.constructVectorIndexTrainedData(objectId());
+
+  std::string raw;
+  rocksdb::ReadOptions ro;
+  auto status = _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw);
+
+  TrainedData result;
+  if (status.ok()) {
+    auto slice =
+        velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
+    velocypack::deserialize(slice, result);
+  } else if (auto data = info.get("trainedData"); !data.isNone()) {
+    // Backwards compatibility: load from definitions CF for pre-migration
+    // indexes.
+    velocypack::deserialize(data, result);
+  }
+  return result;
+}
 
 /// @brief Test if this index matches the definition
 bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
@@ -172,13 +195,6 @@ void RocksDBVectorIndex::toVelocyPack(
   auto const trainingState = _trainingState.load();
   builder.add(StaticStrings::IndexTrainingState,
               VPackValue(trainingStateToString(trainingState)));
-
-  if (trainingState == VectorIndexTrainingState::kReady &&
-      Index::hasFlag(flags, Index::Serialize::Internals) &&
-      !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
-    builder.add(VPackValue("trainedData"));
-    velocypack::serialize(builder, _trainedData);
-  }
 }
 
 std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>

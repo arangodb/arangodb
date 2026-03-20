@@ -141,6 +141,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
+  TrainedData loadTrainedData(velocypack::Slice info) const;
+
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   TrainedData _trainedData;
