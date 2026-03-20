@@ -1189,19 +1189,8 @@ ArangoDatabase.prototype._useDatabase = function (name) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief lists all endpoints
+// / @brief execute a transaction
 // //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._endpoints = function () {
-  let requestResult = this._connection.GET('/_api/endpoint');
-  if (requestResult !== null && requestResult.error === true) {
-    throw new ArangoError(requestResult);
-  }
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
 
 ArangoDatabase.prototype._executeTransaction = function (data) {
   throw new ArangoError({
