@@ -73,7 +73,8 @@ class VectorIndexTrainer {
   VectorIndexTrainer(
       UserVectorIndexDefinition const& definition, bool isSparse,
       std::vector<std::vector<basics::AttributeName>> const& fields,
-      std::string_view shardName, std::uint64_t indexId);
+      std::string_view shardName, std::uint64_t indexId,
+      std::int64_t trainingThreshold);
 
   /// Restore a FAISS IndexIVF from previously serialized trained data.
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
@@ -108,6 +109,7 @@ class VectorIndexTrainer {
   std::vector<std::vector<basics::AttributeName>> const& _fields;
   std::string _shardName;
   std::uint64_t _indexId;
+  std::int64_t _trainingThreshold;
 };
 
 /// Bulk-ingest all vectors from a document iterator into a trained vector

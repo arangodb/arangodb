@@ -146,12 +146,14 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::restoreFromTrainedData(
 VectorIndexTrainer::VectorIndexTrainer(
     UserVectorIndexDefinition const& definition, bool isSparse,
     std::vector<std::vector<basics::AttributeName>> const& fields,
-    std::string_view shardName, std::uint64_t indexId)
+    std::string_view shardName, std::uint64_t indexId,
+    std::int64_t trainingThreshold)
     : _definition(definition),
       _isSparse(isSparse),
       _fields(fields),
       _shardName(shardName),
-      _indexId(indexId) {}
+      _indexId(indexId),
+      _trainingThreshold(trainingThreshold) {}
 
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex() const {
   if (_definition.factory) {
@@ -260,6 +262,11 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
 
   std::int64_t trainingDataSize =
       faissIndex->cp.max_points_per_centroid * _definition.nLists;
+  // For sparse indexes, collect at least trainingThreshold vectors so we can
+  // verify that enough vector-bearing documents exist.
+  if (_isSparse) {
+    trainingDataSize = std::max(trainingDataSize, _trainingThreshold);
+  }
   auto trainingData =
       collectTrainingDataset(it, upper, trainingDataSize, stopToken);
   if (trainingData.fail()) {
@@ -268,6 +275,14 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
 
   auto numVectors = static_cast<std::int64_t>(trainingData.get().size() /
                                               _definition.dimension);
+
+  if (_isSparse && numVectors < _trainingThreshold) {
+    return Result{TRI_ERROR_NOT_IMPLEMENTED,
+                  std::format("Sparse vector index requires at least {} "
+                              "documents with the vector field for training, "
+                              "but only {} were found.",
+                              _trainingThreshold, numVectors)};
+  }
 
   LOG_TOPIC("a162b", INFO, Logger::ENGINES)
       << "[shard=" << _shardName << ", index=" << _indexId << "] "
@@ -603,7 +618,7 @@ Result VectorIndexBuildManager::build(
       RocksDBColumnFamilyManager::Family::Documents);
   VectorIndexTrainer trainer(_index.getDefinition(), _index.sparse(),
                              _index.fields(), _index.collection().name(),
-                             _index.id().id());
+                             _index.id().id(), _index.trainingThreshold());
 
   auto const trainStart = std::chrono::steady_clock::now();
   if (shouldAbort()) {
