@@ -35,9 +35,9 @@ namespace arangodb {
 VectorIndexFeature::VectorIndexFeature(
     application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this},
-      _coordinator(server.getFeature<DatabaseFeature>(),
-                   server.getFeature<MaintenanceFeature>(),
-                   server.getFeature<metrics::MetricsFeature>()) {
+      _buildManager(server.getFeature<DatabaseFeature>(),
+                    server.getFeature<MaintenanceFeature>(),
+                    server.getFeature<metrics::MetricsFeature>()) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -71,21 +71,21 @@ void VectorIndexFeature::start() {
   if (!shouldRunBuildManager()) {
     return;
   }
-  _coordinator.start();
+  _buildManager.start();
 }
 
 void VectorIndexFeature::beginShutdown() {
   if (!shouldRunBuildManager()) {
     return;
   }
-  _coordinator.beginShutdown();
+  _buildManager.beginShutdown();
 }
 
 void VectorIndexFeature::stop() {
   if (!shouldRunBuildManager()) {
     return;
   }
-  _coordinator.stop();
+  _buildManager.stop();
 }
 
 bool VectorIndexFeature::isVectorIndexEnabled() const {
