@@ -136,7 +136,6 @@ function waitForPerShardStates(collection, indexName, expectations, timeoutSec) 
         let allMatch = true;
         for (const [shard, expected] of Object.entries(expectations)) {
             const actual = shardStates[shard];
-            print(`Acutal state: ${JSON.stringify(actual)}, expected: ${JSON.stringify(expected)}`);
             if(actual.trainingState !== expected.trainingState) {
                 allMatch = false;
                 break;
