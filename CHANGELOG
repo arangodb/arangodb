@@ -1,6 +1,8 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Fix an issue when removing documents while using sparse vector index.
+
 * Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 
 * Fixed a bug in arangosh that made it quit when entering `global`.
