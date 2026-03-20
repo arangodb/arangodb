@@ -224,8 +224,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
           VPackBuilder eb;
           {
             VPackObjectBuilder o(&eb);
-            for (auto const& it :
-                 VPackObjectIterator(indexBuilder.slice())) {
+            for (auto const& it : VPackObjectIterator(indexBuilder.slice())) {
               eb.add(it.key.stringView(), it.value);
             }
             eb.add(StaticStrings::Error, VPackValue(true));
