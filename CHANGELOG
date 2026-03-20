@@ -1,5 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
+
 * Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
   `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
 
