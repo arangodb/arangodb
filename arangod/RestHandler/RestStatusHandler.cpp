@@ -136,9 +136,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
                VPackValue(serverState->isStartupOrMaintenance()));
     result.add("role",
                VPackValue(ServerState::roleToString(serverState->getRole())));
-    result.add(
-        "writeOpsEnabled",
-        VPackValue(!serverState->readOnly()));  // to be deprecated - 3.3 compat
     result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!isStartup && !serverState->isSingleServer()) {
