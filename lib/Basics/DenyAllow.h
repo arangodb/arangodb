@@ -42,7 +42,11 @@ struct DenyAllow {
     }
   }
 
-  // TODO: I am serverely uneasy with "search" instead of match.
+  // TODO: I am serverely uneasy with the use of regular expressions
+  // for allowlists for paths, startup options, environment variables,
+  // COR-349 asks the question whether regular expressions are the correct
+  // tool for the job and if so to refactor this code (and if not to replace
+  // it).
   auto check(std::string v) const -> DenyAllowResult {
     if (_deny.has_value()) {
       if (std::regex_search(v, _deny.value())) {

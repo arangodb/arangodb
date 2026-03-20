@@ -141,8 +141,8 @@ class V8SecurityFeature final
   DenyAllow _endpoints;
   DenyAllow _environmentVariables;
 
-  // Current sonderlocke :rolling-eyes:
-  // TODO: maybe remove sonderlocke?
+  // TODO: COR-348, replace internal allow regexes by a simpler
+  // construct
   std::optional<std::regex> _readAllowRegex{std::nullopt};
   std::optional<std::regex> _writeAllowRegex{std::nullopt};
 
