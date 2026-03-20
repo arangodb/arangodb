@@ -309,8 +309,8 @@ auto RestAdminLogHandler::reportLogs() -> async<void> {
   result.add("total", VPackValue(entries.size()));
 
   result.add("messages", VPackValue(VPackValueType::Array));
-  for (size_t i = start; i < entries.size(); ++i) {
-    if (i - start >= size) {
+  for (size_t i = beginIndex; i < entries.size(); ++i) {
+    if (i - beginIndex >= size) {
       // produced enough results
       break;
     }
