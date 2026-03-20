@@ -73,7 +73,6 @@ class V8SecurityFeature final
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
   void dumpAccessLists() const;
 
   /// @brief tests if in the current security context it is allowed to

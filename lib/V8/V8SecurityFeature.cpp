@@ -297,8 +297,6 @@ void V8SecurityFeature::prepare() {
   TRI_ASSERT(!_readAllowList.empty());
 }
 
-void V8SecurityFeature::start() {}
-
 void V8SecurityFeature::dumpAccessLists() const {
   LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY)
       << "files allowed by user:" << _options.filesAllowList
