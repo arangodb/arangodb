@@ -62,27 +62,27 @@ leave the option enabled.)");
   options->addOldOption("--experimental-vector-index", "--vector-index");
 }
 
-bool VectorIndexFeature::shouldRunBuildCoordinator() const {
+bool VectorIndexFeature::shouldRunBuildManager() const {
   return isVectorIndexEnabled() && (ServerState::instance()->isDBServer() ||
                                     ServerState::instance()->isSingleServer());
 }
 
 void VectorIndexFeature::start() {
-  if (!shouldRunBuildCoordinator()) {
+  if (!shouldRunBuildManager()) {
     return;
   }
   _coordinator.start();
 }
 
 void VectorIndexFeature::beginShutdown() {
-  if (!shouldRunBuildCoordinator()) {
+  if (!shouldRunBuildManager()) {
     return;
   }
   _coordinator.beginShutdown();
 }
 
 void VectorIndexFeature::stop() {
-  if (!shouldRunBuildCoordinator()) {
+  if (!shouldRunBuildManager()) {
     return;
   }
   _coordinator.stop();

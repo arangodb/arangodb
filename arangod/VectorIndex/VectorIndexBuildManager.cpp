@@ -157,10 +157,6 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
 
     auto const collections = vocbase.collections(false);
     for (auto const& coll : collections) {
-      if (ServerState::instance()->isDBServer() && !coll->isLeadingShard()) {
-        continue;
-      }
-
       auto const indexes = coll->getPhysical()->getReadyIndexes();
       for (auto const& idx : indexes) {
         if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {

@@ -39,6 +39,7 @@ const {
 const {
     VectorIndexTrainingState,
     waitForVectorIndexState,
+    insertDocsAndEnsureIndex,
 } = require("@arangodb/testutils/vector-index-common");
 
 const dbName = "vectorReplicationDb";
@@ -48,7 +49,9 @@ const collName = "vectorReplicationColl";
 // COR-255 vector replication not working
 function VectorIndexReplicationFailoverTest() {
     const dimension = 4;
-    const numberOfDocs = 10;
+    // Training threshold is max(nLists * 39, 1000) = 1000 with nLists=2.
+    // Use 1200 to comfortably exceed the threshold on the follower.
+    const numberOfDocs = 1200;
     const seed = 42;
     const nLists = 2;
 
@@ -76,33 +79,26 @@ function VectorIndexReplicationFailoverTest() {
                 const vector = Array.from({length: dimension}, () => gen());
                 docs.push({vec: vector, value: i});
             }
-            const batchSize = 100;
-            const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
-
-            const ensureIndex = () => collection.ensureIndex({
-                name: "vec_idx",
-                type: "vector",
-                fields: ["vec"],
-                params: {
-                    dimension: dimension,
-                    metric: "l2",
-                    nLists: nLists,
-                }
+            insertDocsAndEnsureIndex({
+                collection,
+                docs,
+                seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vec_idx",
+                    type: "vector",
+                    fields: ["vec"],
+                    params: {
+                        dimension: dimension,
+                        metric: "l2",
+                        nLists: nLists,
+                    }
+                }),
             });
-
-            for (let i = 0; i < numBatches; i++) {
-                if (i === ensureIndexSlot) {
-                    ensureIndex();
-                }
-                const start = i * batchSize;
-                const end = Math.min(start + batchSize, docs.length);
-                collection.insert(docs.slice(start, end));
-            }
-            if (ensureIndexSlot === numBatches) {
-                ensureIndex();
-            }
             assertEqual(collection.count(), numberOfDocs);
+            assertTrue(
+                waitForVectorIndexState(collection, "vec_idx", VectorIndexTrainingState.kReady, 120),
+                "Expected index to become ready with " + numberOfDocs + " docs"
+            );
 
             // Verify vector search works on the leader
             const queryVector = Array.from({length: dimension}, () => gen());
