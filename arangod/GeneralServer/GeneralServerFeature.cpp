@@ -246,13 +246,6 @@ server automatically when the timeout is reached. A keep-alive-timeout value of
       new VectorParameter<StringParameter>(
           &_options.accessControlAllowOrigins));
 
-  options->addOption("--http.redirect-root-to", "Redirect of the root URL.",
-                     new StringParameter(&_options.redirectRootTo));
-
-  options->addOption("--http.permanently-redirect-root",
-                     "Whether to use a permanent or temporary redirect.",
-                     new BooleanParameter(&_options.permanentRootRedirect));
-
   options
       ->addOption("--http.return-queue-time-header",
                   "Whether to return the `x-arango-queue-time-seconds` header "
@@ -286,30 +279,6 @@ Using the value 0 disables the automatic response compression.")");
                   "server startup.",
                   new BooleanParameter(&_options.allowEarlyConnections))
       .setIntroducedIn(31000);
-
-  options->addOldOption("frontend.proxy-request-check",
-                        "web-interface.proxy-request-check");
-
-  options->addOption("--web-interface.proxy-request-check",
-                     "Enable proxy request checking.",
-                     new BooleanParameter(&_options.proxyCheck),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options->addOldOption("frontend.trusted-proxy",
-                        "web-interface.trusted-proxy");
-
-  options->addOption(
-      "--web-interface.trusted-proxy",
-      "The list of proxies to trust (can be IP or network). Make "
-      "sure `--web-interface.proxy-request-check` is enabled.",
-      new VectorParameter<StringParameter>(&_options.trustedProxies),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   options->addOption(
@@ -466,16 +435,8 @@ bool GeneralServerFeature::handleContentEncodingForUnauthenticatedRequests()
   return _options.handleContentEncodingForUnauthenticatedRequests;
 }
 
-bool GeneralServerFeature::proxyCheck() const noexcept {
-  return _options.proxyCheck;
-}
-
 bool GeneralServerFeature::returnQueueTimeHeader() const noexcept {
   return _options.returnQueueTimeHeader;
-}
-
-std::vector<std::string> GeneralServerFeature::trustedProxies() const {
-  return _options.trustedProxies;
 }
 
 std::vector<std::string> const&
@@ -492,14 +453,6 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
     }
   }
   return res;
-}
-
-bool GeneralServerFeature::permanentRootRedirect() const noexcept {
-  return _options.permanentRootRedirect;
-}
-
-std::string GeneralServerFeature::redirectRootTo() const {
-  return _options.redirectRootTo;
 }
 
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {

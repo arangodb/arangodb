@@ -67,7 +67,7 @@ function dealing_with_collectionsSuite () {
 
       // create a new document;
       let body = { "test" : 1 };
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
 
       // fetch checksum again;
       doc = arango.GET_RAW(cmd);
@@ -86,7 +86,7 @@ function dealing_with_collectionsSuite () {
       assertNotEqual(c2, c1);
 
       // create another document;
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
 
       // fetch checksum again;
       doc = arango.GET_RAW(cmd);
