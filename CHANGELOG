@@ -3,6 +3,8 @@
 
 * COR-283: Removed remainded active failover references.
 
+* Remove 30xx FOXX error codes
+
 * Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
   dependencies.
 
