@@ -27,6 +27,7 @@
 
 #include "Aql/OptimizerRulesFeature.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "IResearch/common.h"
 #include "Metrics/ClusterMetricsFeature.h"
@@ -90,8 +91,10 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
   features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
                         true);  // required for IResearchAnalyzerFeature
+  features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
+                        false);
   features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                        true);  // required for IResearchAnalyzerFeature
+                        true);
 
   for (auto& f : features) {
     f.first.prepare();
