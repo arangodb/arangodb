@@ -999,12 +999,12 @@ class instanceManager {
             haveMaintainance = false;
             this._setMaintenance(false);
           }
+          if (role === instanceRole.agent) {
+            print("running agency health check");
+            this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
+          }
         }
       });
-      if (role === instanceRole.agent) {
-        print("running agency health check");
-        this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
-      }
     });
   }
   // //////////////////////////////////////////////////////////////////////////////
