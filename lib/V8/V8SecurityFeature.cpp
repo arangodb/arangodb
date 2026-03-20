@@ -39,6 +39,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Assertions/ProdAssert.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/DenyAllow.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -388,26 +389,12 @@ bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
 
 bool V8SecurityFeature::shouldExposeStartupOption(
     v8::Isolate* /*isolate*/, std::string const& name) const {
-  switch (_startupOptions.check(name)) {
-    case DenyAllowResult::ALLOWED:
-      return true;
-    case DenyAllowResult::DENIED:
-      return false;
-    default:
-      ADB_PROD_CRASH();
-  }
+  return _startupOptions.check(name) == DenyAllowResult::ALLOWED;
 }
 
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(
     v8::Isolate* /*isolate*/, std::string const& name) const {
-  switch (_environmentVariables.check(name)) {
-    case DenyAllowResult::ALLOWED:
-      return true;
-    case DenyAllowResult::DENIED:
-      return false;
-    default:
-      ADB_PROD_CRASH();
-  }
+  return _environmentVariables.check(name) == DenyAllowResult::ALLOWED;
 }
 
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(
@@ -469,14 +456,5 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     }
   }
 
-  switch (_files.check(canonicalisedPath)) {
-    case DenyAllowResult::ALLOWED: {
-      return true;
-    }
-    case DenyAllowResult::DENIED: {
-      return false;
-    }
-    default:
-      ADB_PROD_CRASH();
-  }
+  return _files.check(canonicalisedPath) == DenyAllowResult::ALLOWED;
 }
