@@ -67,11 +67,6 @@ RestStatus ClusterRestWalHandler::execute() {
       flush();
       return RestStatus::DONE;
     }
-  } else if (operation == "properties") {
-    if (type == rest::RequestType::GET || type == rest::RequestType::PUT) {
-      properties();
-      return RestStatus::DONE;
-    }
   } else if (operation == "wait_for_estimator_sync") {
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
     if (!ExecContext::current().isSuperuser()) {
@@ -102,12 +97,6 @@ RestStatus ClusterRestWalHandler::execute() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
-}
-
-void ClusterRestWalHandler::properties() {
-  // not supported on rocksdb
-  generateResult(rest::ResponseCode::NOT_IMPLEMENTED,
-                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void ClusterRestWalHandler::flush() {
