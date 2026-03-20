@@ -1,5 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
+  `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
 
 * COR-283: Removed remainded active failover references.
 
