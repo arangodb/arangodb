@@ -30,6 +30,7 @@
 #include <chrono>
 #include <stdexcept>
 #include <thread>
+#include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -108,7 +109,10 @@ void DaemonFeature::validateOptions(
 
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();
-  std::string absoluteFile = TRI_GetAbsolutePath(_options.pidFile, currentDir);
+  std::string absoluteFile =
+      std::filesystem::absolute(std::filesystem::path(currentDir) /
+                                _options.pidFile)
+          .string();
 
   if (!absoluteFile.empty()) {
     _options.pidFile = absoluteFile;

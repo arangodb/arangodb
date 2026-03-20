@@ -36,6 +36,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <filesystem>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -256,32 +257,48 @@ TEST_F(FilesTest, tst_filesize_non) {
 TEST_F(FilesTest, tst_absolute_paths) {
   std::string path;
 
-  path = TRI_GetAbsolutePath("the-fox", "/tmp");
+  path = std::filesystem::absolute(std::filesystem::path("/tmp") / "the-fox")
+             .string();
   EXPECT_EQ(std::string("/tmp/the-fox"), path);
 
-  path = TRI_GetAbsolutePath("the-fox.lol", "/tmp");
+  path =
+      std::filesystem::absolute(std::filesystem::path("/tmp") / "the-fox.lol")
+          .string();
   EXPECT_EQ(std::string("/tmp/the-fox.lol"), path);
 
-  path = TRI_GetAbsolutePath("the-fox.lol", "/tmp/the-fox");
+  path = std::filesystem::absolute(std::filesystem::path("/tmp/the-fox") /
+                                   "the-fox.lol")
+             .string();
   EXPECT_EQ(std::string("/tmp/the-fox/the-fox.lol"), path);
 
-  path = TRI_GetAbsolutePath("file", "/");
+  path =
+      std::filesystem::absolute(std::filesystem::path("/") / "file").string();
   EXPECT_EQ(std::string("/file"), path);
 
-  path = TRI_GetAbsolutePath("./file", "/");
+  path =
+      std::filesystem::absolute(std::filesystem::path("/") / "./file").string();
   EXPECT_EQ(std::string("/./file"), path);
 
-  path = TRI_GetAbsolutePath("/file", "/tmp");
+  path = std::filesystem::absolute(std::filesystem::path("/tmp") / "/file")
+             .string();
   EXPECT_EQ(std::string("/file"), path);
 
-  path = TRI_GetAbsolutePath("/file/to/file", "/tmp");
+  path =
+      std::filesystem::absolute(std::filesystem::path("/tmp") / "/file/to/file")
+          .string();
   EXPECT_EQ(std::string("/file/to/file"), path);
 
-  path = TRI_GetAbsolutePath("file/to/file", "/tmp");
+  path =
+      std::filesystem::absolute(std::filesystem::path("/tmp") / "file/to/file")
+          .string();
   EXPECT_EQ(std::string("/tmp/file/to/file"), path);
 
-  path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
-  EXPECT_EQ(std::string("c:file/to/file"), path);
+  path = std::filesystem::absolute(std::filesystem::path("/tmp") /
+                                   "c:file/to/file")
+             .string();
+  // POSIX: no drive-letter semantics; "c:file" is a normal path segment under
+  // /tmp.
+  EXPECT_EQ(std::string("/tmp/c:file/to/file"), path);
 }
 
 TEST_F(FilesTest, tst_normalize) {

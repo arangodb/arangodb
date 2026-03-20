@@ -30,6 +30,7 @@
 #include <functional>
 #include <memory>
 #include <utility>
+#include <filesystem>
 
 #include "FileUtils.h"
 
@@ -649,7 +650,8 @@ void makePathAbsolute(std::string& path) {
   if (path.empty()) {
     path = cwd;
   } else {
-    std::string p = TRI_GetAbsolutePath(path, cwd);
+    std::string p =
+        std::filesystem::absolute(std::filesystem::path(cwd) / path).string();
     if (!p.empty()) {
       path = p;
     }

@@ -128,7 +128,7 @@ void ArangoGlobalContext::normalizePath(std::string& path,
     arangodb::basics::FileUtils::normalizePath(directory);
     path = directory;
   } else {
-    if (!TRI_PathIsAbsolute(path)) {
+    if (!std::filesystem::path(path).is_absolute()) {
       arangodb::basics::FileUtils::makePathAbsolute(path);
     }
   }
