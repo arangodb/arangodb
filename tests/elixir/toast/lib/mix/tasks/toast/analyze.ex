@@ -26,17 +26,29 @@ defmodule Mix.Tasks.Toast.Analyze do
       --no-color            Disable ANSI colors
       --type <type>         Filter by issue type: crash, test_failure, sanitizer_report, timeout
       --suite <name>        Filter to one suite
+
+  ## Log options (detail only)
+
+      --logs                          Enable server log display
+      --log-servers <spec>            Server filter (default: all except agents)
+      --log-window <before>,<after>   Signed seconds relative to issue time bounds (default: type-specific)
+                                      Example: --log-window -20,5  (20s before, 5s after)
   """
 
   use Mix.Task
 
   import ToastTest.Formatting, only: [colorize: 3, formatter_cb: 2]
 
+  alias ToastTest.IssueFormatting.Logs
+
   @switches [
     result_dir: :string,
     color: :boolean,
     type: :string,
     suite: :string,
+    logs: :boolean,
+    log_servers: :string,
+    log_window: :string,
     help: :boolean
   ]
 
@@ -139,11 +151,17 @@ defmodule Mix.Tasks.Toast.Analyze do
     spec = parse_issue_spec(rest)
     selected = select_issues(indexed, spec)
 
+    log_opts = %{
+      enabled: opts[:logs] || false,
+      server_filter: Logs.parse_server_filter(opts[:log_servers]),
+      window_spec: Logs.parse_window_spec(opts[:log_window])
+    }
+
     if selected == [] do
       Mix.shell().info(colorize("No matching issues.", :yellow, color))
     else
       Enum.each(selected, fn {issue, idx} ->
-        print_issue_detail(issue, idx, color)
+        print_issue_detail(issue, idx, color, log_opts)
       end)
     end
   end
@@ -184,11 +202,12 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   # --- Issue detail rendering ---
 
-  defp print_issue_detail(issue, idx, color) do
-    bar = String.duplicate("\u2500", 80)
+  defp print_issue_detail(issue, idx, color, log_opts) do
+    bar = String.duplicate("─", 80)
     Mix.shell().info("\n#{colorize(bar, :faint, color)}")
     print_issue_header(issue, idx, color)
     print_issue_body(issue, color)
+    if log_opts.enabled, do: print_issue_logs(issue, log_opts, color)
   end
 
   defp print_issue_header(issue, idx, color) do
@@ -334,14 +353,150 @@ defmodule Mix.Tasks.Toast.Analyze do
   defp timeout_source_label(:global_timeout), do: "Global Timeout"
   defp timeout_source_label(other), do: "Timeout: #{other}"
 
+  # --- Server logs ---
+
+  defp print_issue_logs(issue, log_opts, color) do
+    servers = issue[:servers] || %{}
+    window = Logs.display_window(issue, log_opts.window_spec)
+    bar = String.duplicate("─", 50)
+    Mix.shell().info("\n#{colorize("── Server logs " <> bar, :faint, color)}")
+
+    case window do
+      nil ->
+        Mix.shell().info(colorize("  No time bounds available for this issue.", :faint, color))
+
+      {win_start, win_end} = window ->
+        print_log_context(issue, win_start, win_end, log_opts, servers, color)
+        entries = Logs.extract(servers, window, log_opts.server_filter)
+
+        if entries == [] do
+          Mix.shell().info(colorize("  No matching log lines found.", :faint, color))
+        else
+          Mix.shell().info("")
+          merged = Logs.merge_streams(entries)
+          Mix.shell().info(Logs.format_merged(merged, color))
+        end
+    end
+  end
+
+  defp print_log_context(issue, win_start, win_end, log_opts, servers, color) do
+    {tb_start, tb_end} = issue.time_bounds
+    matching = Logs.matching_servers(servers, log_opts.server_filter)
+
+    Mix.shell().info(
+      colorize("  Issue window:  #{fmt_dt(tb_start)} .. #{fmt_dt(tb_end)}", :faint, color)
+    )
+
+    Mix.shell().info(
+      colorize("  Log window:    #{fmt_dt(win_start)} .. #{fmt_dt(win_end)}", :faint, color)
+    )
+
+    Mix.shell().info(colorize("  Servers:", :faint, color))
+
+    Enum.each(matching, fn server_id ->
+      Mix.shell().info(colorize(format_server_label(server_id, servers), :faint, color))
+    end)
+  end
+
+  defp format_server_label(server_id, servers) do
+    tag = Logs.server_tag(server_id)
+    meta = servers[server_id] || %{}
+
+    parts = ["    #{tag}  #{server_id}"]
+
+    parts =
+      case meta do
+        %{arango_id: id} when is_binary(id) -> parts ++ ["arango=#{id}"]
+        _ -> parts
+      end
+
+    parts =
+      case meta do
+        %{endpoint: ep} when is_binary(ep) -> parts ++ ["endpoint=#{ep}"]
+        _ -> parts
+      end
+
+    parts =
+      case meta do
+        %{incarnations: [%{pid: pid}]} ->
+          parts ++ ["pid=#{pid}"]
+
+        %{incarnations: incs} when length(incs) > 1 ->
+          pids = Enum.map_join(incs, ",", &to_string(&1.pid))
+          parts ++ ["pids=#{pids}"]
+
+        _ ->
+          parts
+      end
+
+    Enum.join(parts, "  ")
+  end
+
+  defp fmt_dt(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
+
   # --- Shared infrastructure ---
 
   defp collect_issues(results, opts) do
     results
     |> Enum.flat_map(fn result ->
-      Enum.map(result.issues, &Map.put(&1, :suite, result.suite))
+      all_servers = flatten_servers(result.deployments)
+
+      result.issues
+      |> Enum.map(&Map.put(&1, :suite, result.suite))
+      |> Enum.map(&attach_time_bounds(&1, result.modules))
+      |> Enum.map(&Map.put(&1, :servers, all_servers))
     end)
     |> apply_filters(opts)
+  end
+
+  defp flatten_servers(deployments) do
+    Enum.reduce(deployments, %{}, fn {_did, deployment}, acc ->
+      Map.merge(acc, deployment.servers)
+    end)
+  end
+
+  defp attach_time_bounds(
+         %{type: :test_failure, scope: {:test, mod, name}} = issue,
+         modules
+       ) do
+    case modules do
+      %{^mod => %{tests: tests}} ->
+        case Enum.find(tests, &(&1.name == name)) do
+          %{started_at: s, finished_at: f} when not is_nil(s) and not is_nil(f) ->
+            Map.put(issue, :time_bounds, {s, f})
+
+          _ ->
+            Map.put(issue, :time_bounds, nil)
+        end
+
+      _ ->
+        Map.put(issue, :time_bounds, nil)
+    end
+  end
+
+  defp attach_time_bounds(
+         %{type: :crash, detail: %{crash_info: %{timestamp: %DateTime{} = ts}}} = issue,
+         _modules
+       ) do
+    Map.put(issue, :time_bounds, {ts, ts})
+  end
+
+  defp attach_time_bounds(
+         %{type: :sanitizer_report, detail: %{timestamp: %DateTime{} = ts}} = issue,
+         _modules
+       ) do
+    Map.put(issue, :time_bounds, {ts, ts})
+  end
+
+  defp attach_time_bounds(
+         %{type: :timeout, detail: %{timestamp: %DateTime{} = ts}} = issue,
+         _modules
+       ) do
+    Map.put(issue, :time_bounds, {ts, ts})
+  end
+
+  defp attach_time_bounds(issue, _modules) do
+    Map.put(issue, :time_bounds, nil)
   end
 
   defp indexed_issues(issues) do

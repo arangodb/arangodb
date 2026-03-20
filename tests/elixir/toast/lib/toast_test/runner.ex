@@ -590,13 +590,25 @@ defmodule ToastTest.Runner do
 
     Logger.debug("Building results (#{length(issues)} issues found)")
     warnings = coredump_warnings(crash_events, artifacts, toast_config)
+    server_meta = build_server_meta(servers, server_logs)
 
     suite_result =
-      SuiteResult.build(test_data, issues, warnings: warnings, server_logs: server_logs)
+      SuiteResult.build(test_data, issues, warnings: warnings, servers: server_meta)
 
     SuiteResult.write_all(suite_result, toast_config.result_dir)
     print_post_exec_summary(suite_result)
     suite_result
+  end
+
+  defp build_server_meta(servers, server_logs) do
+    Map.new(servers, fn {id, instance} ->
+      {id,
+       %{
+         role: instance.role,
+         arango_id: instance.arango_id,
+         logs: Map.get(server_logs, id, [])
+       }}
+    end)
   end
 
   defp coredump_warnings(crash_events, artifacts, toast_config) do
