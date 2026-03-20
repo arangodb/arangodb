@@ -427,6 +427,9 @@ struct AstNode {
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to any variable reference
+  /// allowIndexedAccess refers to allowing indexed access in an array using
+  /// the subscript operator, eg. arr[0], arr[offset].field. It has nothing to
+  /// do with the use of indexes over collections.
   /// returns true if yes, and then also returns variable reference and array
   /// of attribute names in the parameter passed by reference
   bool isAttributeAccessForVariable(

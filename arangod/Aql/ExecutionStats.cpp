@@ -42,6 +42,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
   builder.add("seeks", VPackValue(seeks));
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
+  builder.add("searchParallelism", VPackValue(iresearchParallelism));
   builder.add("cursorsCreated", VPackValue(cursorsCreated));
   builder.add("cursorsRearmed", VPackValue(cursorsRearmed));
   builder.add("cacheHits", VPackValue(cacheHits));
@@ -182,6 +183,8 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
       slice, "scannedFull", 0);
   scannedIndex = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       slice, "scannedIndex", 0);
+  iresearchParallelism = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "searchParallelism", 0);
   filtered =
       basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, "filtered", 0);
   requests = basics::VelocyPackHelper::getNumericValue<uint64_t>(

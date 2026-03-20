@@ -669,7 +669,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
 
   while (true) {
     if (_indexReadBuffer.empty()) {
-      if (!impl.fillBuffer(ctx)) {
+      if (!impl.fillBuffer(ctx, stats)) {
         return false;
       }
       if constexpr (Traits::ExplicitScanned) {

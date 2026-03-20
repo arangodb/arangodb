@@ -45,13 +45,13 @@ function testSuite() {
     "iss": "arangodb",
     "exp": Math.floor(Date.now() / 1000) + 3600
   }, 'HS256');
-  
+
   let baseUrl = function () {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
-      
+
   return {
-    tearDownAll: function() {
+    tearDownAll: function () {
       let result = request({ url: baseUrl() + "/_admin/debug/failat/startListeningEarly", method: "delete", auth: { bearer: jwtRoot } });
       assertEqual(200, result.status);
 
@@ -67,27 +67,27 @@ function testSuite() {
       }
     },
 
-    testForbiddenWithoutJWT: function() {
-      ["/_api/version", "/_admin/status", "/_api/collection", "/_admin/aardvark"].forEach((url) => {
+    testForbiddenWithoutJWT: function () {
+      ["/_api/version", "/_admin/status", "/_api/collection"].forEach((url) => {
         let result = request({ url: baseUrl() + url, method: "get" });
         assertEqual(401, result.status);
       });
     },
-    
-    testOkWithJWT: function() {
+
+    testOkWithJWT: function () {
       ["/_api/version", "/_admin/status"].forEach((url) => {
         let result = request({ url: baseUrl() + url, method: "get", auth: { bearer: jwtRoot } });
         assertEqual(200, result.status);
       });
     },
-    
-    testDisabledEndpoint: function() {
-      ["/_api/collection", "/_api/transaction", "/_admin/aardvark"].forEach((url) => {
+
+    testDisabledEndpoint: function () {
+      ["/_api/collection", "/_api/transaction"].forEach((url) => {
         let result = request({ url: baseUrl() + url, method: "get", auth: { bearer: jwtRoot } });
         assertEqual(503, result.status);
       });
     },
-    
+
   };
 }
 

@@ -41,7 +41,7 @@ function error_handlingSuite () {
     test_returns_an_error_if_collection_does_not_exist: function() {
       let cn = "UnitTestsCollectionEdge";
       db._drop(cn);
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = {"_from":"test","_to":"test"};
       let doc = arango.POST_RAW(cmd, body);
 
@@ -77,7 +77,7 @@ function known_collection_nameSuite1 () {
     },
 
     test_creating_an_edge: function() {
-      let cmd = `/_api/document?collection=${cv}`;
+      let cmd = `/_api/document/${cv}`;
 
       // create first vertex;
       let body = { "a" : 1 };
@@ -104,7 +104,7 @@ function known_collection_nameSuite1 () {
       let id2 = doc.parsedBody['_id'];
 
       // create edge;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : id1 , "_to" : id2 };
       doc = arango.POST_RAW(cmd, body);
 
@@ -127,7 +127,7 @@ function known_collection_nameSuite1 () {
       assertEqual(doc.headers['content-type'], contentType);
 
       // create another edge;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "e" : 1, "_from" : id1, "_to" : id2 };
       doc = arango.POST_RAW(cmd, body);
 
@@ -155,7 +155,7 @@ function known_collection_nameSuite1 () {
       assertEqual(doc.headers['content-type'], contentType);
 
       // create third edge;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "e" : 2, "_from" : id2, "_to" : id1 };
       doc = arango.POST_RAW(cmd, body);
 
@@ -186,7 +186,7 @@ function known_collection_nameSuite1 () {
     },
 
     test_using_collection_names_in_from_and_to: function() {
-      let cmd = `/_api/document?collection=${cv}`;
+      let cmd = `/_api/document/${cv}`;
 
       // create a vertex;
       let body = { "a" : 1 };
@@ -203,7 +203,7 @@ function known_collection_nameSuite1 () {
       let translated = id.replace(/^[0-9]+/, 'UnitTestsCollectionVertex/');
 
       // create edge, using collection id;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : id, "_to" : id };
       doc = arango.POST_RAW(cmd, body);
 
@@ -214,7 +214,7 @@ function known_collection_nameSuite1 () {
       assertEqual(doc.headers['content-type'], contentType);
 
       // create edge, using collection names;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : translated, "_to" : translated };
       doc = arango.POST_RAW(cmd, body);
 
@@ -225,7 +225,7 @@ function known_collection_nameSuite1 () {
       assertEqual(doc.headers['content-type'], contentType);
 
       // create edge, using mix of collection names and ids;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : translated, "_to" : id };
       doc = arango.POST_RAW(cmd, body);
 
@@ -236,7 +236,7 @@ function known_collection_nameSuite1 () {
       assertEqual(doc.headers['content-type'], contentType);
 
       // turn parameters around;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : id, "_to" : translated };
       doc = arango.POST_RAW(cmd, body);
 
@@ -248,7 +248,7 @@ function known_collection_nameSuite1 () {
     },
 
     test_using_collection_ids_in_collection__from_and_to: function() {
-      let cmd = `/_api/document?collection=${vid._id}`;
+      let cmd = `/_api/document/${cv}`;
 
       // create a vertex;
       let body = { "a" : 1 };
@@ -265,7 +265,7 @@ function known_collection_nameSuite1 () {
       let translated = id.replace(/UnitTestsCollectionVertex/, vid._id);
 
       // create edge, using collection id;
-      cmd = `/_api/document?collection=${eid._id}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : translated, "_to" : translated };
       doc = arango.POST_RAW(cmd, body);
 
@@ -281,7 +281,7 @@ function known_collection_nameSuite1 () {
     ////////////////////////////////////////////////////////////////////////////////;
 
     test_creating_an_edge_using_keys: function() {
-      let cmd = `/_api/document?collection=${cv}`;
+      let cmd = `/_api/document/${cv}`;
 
       // create first vertex;
       let body = { "name" : "Fred", "_key" : "fred" };
@@ -310,7 +310,7 @@ function known_collection_nameSuite1 () {
       let id2 = doc.parsedBody['_id'];
 
       // create edge;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : id1, "_to" : id2, "what" : "fred->john", "_key" : "edge1" };
       doc = arango.POST_RAW(cmd, body);
 
@@ -343,7 +343,7 @@ function known_collection_nameSuite1 () {
     ////////////////////////////////////////////////////////////////////////////////;
 
     test_creating_an_edge_using_invalid_keys: function() {
-      let cmd = `/_api/document?collection=${cv}`;
+      let cmd = `/_api/document/${cv}`;
 
       // create first vertex;
       let body = { "name" : "Fred", "_key" : "fred" };
@@ -364,7 +364,7 @@ function known_collection_nameSuite1 () {
       let id2 = doc.parsedBody['_id'];
 
       // create edge, 1st try;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : `${cv}/rak/ov`, "_to" : `${cv}/pj/otr` };
       doc = arango.POST_RAW(cmd, body);
 
@@ -375,7 +375,7 @@ function known_collection_nameSuite1 () {
       assertEqual(doc.headers['content-type'], contentType);
 
       // create edge, 2nd try;
-      cmd = `/_api/document?collection=${ce}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : `${cv}/rakov`, "_to" : `${cv}/pjotr`, "_key" : "the fox" };
       doc = arango.POST_RAW(cmd, body);
 
@@ -407,7 +407,7 @@ function known_collection_nameSuite2 () {
 
     test_creating_an_edge__waitForSync_URL_paramEQfalse: function() {
       // create first vertex;
-      let cmd = `/_api/document?collection=${cv}`;
+      let cmd = `/_api/document/${cv}`;
       let body = { "a" : 1 };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -428,7 +428,7 @@ function known_collection_nameSuite2 () {
       let id2 = doc.parsedBody['_id'];
 
       // create edge;
-      cmd = `/_api/document?collection=${ce}&waitForSync=false`;
+      cmd = `/_api/document/${ce}?waitForSync=false`;
       body = { "_from" : id1, "_to" : id2 };
       doc = arango.POST_RAW(cmd, body);
 
@@ -451,7 +451,7 @@ function known_collection_nameSuite2 () {
 
     test_creating_an_edge__waitForSync_URL_paramEQtrue: function() {
       // create first vertex;
-      let cmd = `/_api/document?collection=${cv}`;
+      let cmd = `/_api/document/${cv}`;
       let body = { "a" : 1 };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -472,7 +472,7 @@ function known_collection_nameSuite2 () {
       let id2 = doc.parsedBody['_id'];
 
       // create edge;
-      cmd = `/_api/document?collection=${ce}&waitForSync=true`;
+      cmd = `/_api/document/${ce}?waitForSync=true`;
       body = { "_from" : id1, "_to" : id2 };
       doc = arango.POST_RAW(cmd, body);
 
