@@ -12,6 +12,10 @@
   `arangodb_vector_index_training_ongoing`, `arangodb_vector_index_training_duration`,
   and `arangodb_vector_index_ingestion_duration`.
 
+* Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
+
+* Fixed a bug in arangosh that made it quit when entering `global`.
+
 * COR-324, github issue #21782: Added information to query extra output
   about parallelism achieved in SEARCH queries.
 
@@ -23,8 +27,6 @@
 * COR-123: The push-filter-into-enumerate-near optimizer rule now considers all
   compatible vector indexes on a collection to find if one whose storedValues cover
   the filter expression.
-
-* Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 
 * COR-267, github issue #21944: Fixed a bug in the handling of post filters
   with array expansion operators and inverted indexes.

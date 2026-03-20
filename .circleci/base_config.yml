@@ -22,10 +22,10 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:19"
+    default: "arangodb/ubuntubuildarangodb-devel:20"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4331f810
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-809e7ff4f
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
@@ -115,6 +115,77 @@ parameters:
 
 
 commands:
+  persist_workspace_to_s3:
+    parameters:
+      root:
+        type: string
+      paths:
+        type: string
+      archive:
+        type: string
+        default: workspace.tar.gz
+    steps:
+      - run:
+          name: Save workspace to S3
+          command: |
+            set -eo pipefail
+            set -x
+
+            ROOT="<< parameters.root >>"
+            PATHS="<< parameters.paths >>"
+            ARCHIVE="<< parameters.archive >>"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/circleci-workspace
+            TAR="/tmp/circleci-workspace/${ARCHIVE}"
+
+            cd "$ROOT"
+
+            tar -cjf "$TAR" $PATHS
+            ls -l "$TAR"
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "$TAR" \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/${ARCHIVE}"
+
+  attach_workspace_from_s3:
+    parameters:
+      at:
+        type: string
+        default: .
+      archive:
+        type: string
+        default: workspace.tar.gz
+    steps:
+      - run:
+          name: restore workspace from S3
+          command: |
+            set -eo pipefail
+            set -x
+
+            AT="<< parameters.at >>"
+            ARCHIVE="<< parameters.archive >>"
+
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+
+            mkdir -p /tmp/circleci-workspace
+            TAR="/tmp/circleci-workspace/${ARCHIVE}"
+
+            cd "$AT"
+
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/${ARCHIVE}" \
+              "$TAR"
+            tar -xjf "$TAR"
+
   checkout-arangodb:
     parameters:
       destination:
@@ -218,13 +289,30 @@ commands:
         type: string
       sanitizer:
         type: string
+      use-s3-workspace:
+        type: boolean
+        default: true
     steps:
       - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
-      - attach_workspace:
-          at: .
-
+      - when:
+          condition:
+            not:
+              << parameters.use-s3-workspace >>
+          steps:
+            - attach_workspace:
+                at: .
+      - when:
+          condition:
+            << parameters.use-s3-workspace >>
+          steps:
+            - attach_workspace_from_s3:
+                at: .
+                archive: binaries.tar.bz2
+            - attach_workspace_from_s3:
+                at: .
+                archive: frontend.tar.bz2
       - run:
           name: Log processes
           command: |
@@ -322,8 +410,7 @@ jobs:
             git submodule update --init 3rdParty/rta-makedata
       - persist_to_workspace:
           root: .
-          paths:
-            - .
+          paths: .
 
   check-log-ids:
     docker:
@@ -435,7 +522,7 @@ jobs:
   build-frontend:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    resource_class: large
+    resource_class: arangodb/large-amd64
     steps:
       - checkout-arangodb:
           with-submodules: false
@@ -449,8 +536,11 @@ jobs:
             yarn build
       - persist_to_workspace:
           root: .
-          paths:
-            - js/apps/system/_admin/aardvark/APP/react/build
+          paths: js/apps/system/_admin/aardvark/APP/react/build
+      - persist_workspace_to_s3:
+          root: .
+          paths: js/apps/system/_admin/aardvark/APP/react/build
+          archive: frontend.tar.bz2
 
   compile-linux:
     parameters:
@@ -580,13 +670,8 @@ jobs:
                 paths:
                   - VERSIONS
                   - ARANGO-VERSION
-                  - build/compile_commands.json
-                  - CMakePresets.json
-                  - install.tar.gz
                   - build/bin
                   - build/etc
-                  - build/3rdParty/snowball/libstemmer/ # required for cppcheck
-                  - build/build_version.cc
                   - scripts/
                   - js/
                   - enterprise/js
@@ -599,6 +684,35 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
+            - persist_workspace_to_s3:
+                root: .
+                archive: cppcheck.tar.bz2
+                paths: |
+                  CMakePresets.json
+                  build/3rdParty/snowball/libstemmer/
+                  build/compile_commands.json
+                  build/build_version.cc
+            - persist_workspace_to_s3:
+                # not there? install.tar.gz
+                root: .
+                archive: binaries.tar.bz2
+                paths: |
+                  VERSIONS
+                  ARANGO-VERSION
+                  build/bin
+                  build/etc
+                  scripts/
+                  js/
+                  enterprise/js
+                  etc/
+                  tests/js
+                  enterprise/tests/js
+                  utils
+                  lib/iresearch/tests/resources
+                  3rdParty/rta-makedata
+                  tsan_arangodb_suppressions.txt
+                  ubsan_arangodb_suppressions.txt
+                  lsan_arangodb_suppressions.txt
 
   create-docker-image:
     parameters:
@@ -772,6 +886,7 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
+          use-s3-workspace: false
 
   run-rta-tests:
     machine:
@@ -874,23 +989,22 @@ jobs:
   run-cppcheck:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    resource_class: medium+
+    resource_class: arangodb/medium-amd64
     steps:
       - run:
           name: Prepare container
           command: |
             mkdir -p /root/workspace/
             mkdir -p /root/project/
-      - attach_workspace:
-          at: "/root/workspace/"
+      - attach_workspace_from_s3:
+          at: /root/workspace/
+          archive: cppcheck.tar.bz2
       - run:
           name: Print workspace size
           command: |
             du -sh /root/workspace/*
             echo ===================
             du -sh /root/workspace/build/*
-            echo ===================
-            du -sh /root/workspace/build/bin/*
       - checkout-arangodb:
           with-submodules: true
           destination: "/root/project"
