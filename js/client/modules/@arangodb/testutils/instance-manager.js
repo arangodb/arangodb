@@ -1180,11 +1180,6 @@ class instanceManager {
         try {
           if (reply.code === 403) {
             let parsedBody = JSON.parse(reply.body);
-            if (!this.options.noStartStopLogs) {
-              print("service API disabled, continuing.");
-            }
-            arangod.upAndRunning = true;
-            return true;
           }
         } catch (e) {
           print(RED + Date() + " failed to parse server reply: " + JSON.stringify(reply));
