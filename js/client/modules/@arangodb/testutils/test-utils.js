@@ -33,6 +33,7 @@ const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
 const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
+const {versionHas} = require("@arangodb/test-helper");
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -197,6 +198,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if ((testname.indexOf('-novalgrind') !== -1) && options.valgrind) {
     whichFilter.filter = 'skip in valgrind';
+    return false;
+  }
+
+  if ((testname.indexOf('-noarm') !== -1) && versionHas("arm")) {
+    whichFilter.filter = 'skip on AArch64 targets';
     return false;
   }
 
