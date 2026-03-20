@@ -60,6 +60,36 @@ using namespace arangodb::rest;
 
 namespace {
 
+// Returns the least-progressed training state across all shards.
+// The progression order is: unusable < training < ingesting < ready.
+// If states is empty, returns "unusable".
+std::string_view aggregateTrainingState(
+    containers::FlatHashMap<ShardID, VectorIndexShardState> const& states) {
+  if (states.empty()) {
+    return StaticStrings::IndexTrainingStateUnusable;
+  }
+  auto stateOrder = [](std::string_view s) -> int {
+    if (s == StaticStrings::IndexTrainingStateReady) return 3;
+    if (s == StaticStrings::IndexTrainingStateIngesting) return 2;
+    if (s == StaticStrings::IndexTrainingStateTraining) return 1;
+    return 0;  // unusable or unknown
+  };
+  int minOrder = 3;
+  for (auto const& [_, shardState] : states) {
+    minOrder = std::min(minOrder, stateOrder(shardState.trainingState));
+  }
+  switch (minOrder) {
+    case 3:
+      return StaticStrings::IndexTrainingStateReady;
+    case 2:
+      return StaticStrings::IndexTrainingStateIngesting;
+    case 1:
+      return StaticStrings::IndexTrainingStateTraining;
+    default:
+      return StaticStrings::IndexTrainingStateUnusable;
+  }
+}
+
 // Enrich vector indexes in the given array with a top-level trainingState
 // and per-shard states from Current. Non-vector indexes are passed through
 // unchanged.
@@ -83,13 +113,7 @@ VPackBuilder enrichVectorIndexes(
         auto states =
             getVectorIndexShardStates(*collCurrent, *shardIds, bareId);
 
-        std::string_view aggregateState =
-            std::ranges::all_of(states,
-                                [](auto const& entry) {
-                                  return entry.second.trainingState == "ready";
-                                })
-                ? "ready"
-                : "training";
+        std::string_view aggregateState = aggregateTrainingState(states);
 
         VPackObjectBuilder o(&result);
         result.add(VPackObjectIterator(pi, true));
@@ -438,14 +462,7 @@ async<void> RestIndexHandler::getIndexes() {
               collCurrent && shardIds) {
             auto states =
                 getVectorIndexShardStates(*collCurrent, *shardIds, iid);
-            std::string_view aggregateState =
-                std::ranges::all_of(states,
-                                    [](auto const& entry) {
-                                      return entry.second.trainingState ==
-                                             "ready";
-                                    })
-                    ? "ready"
-                    : "training";
+            std::string_view aggregateState = aggregateTrainingState(states);
             tmp.add(StaticStrings::IndexTrainingState,
                     VPackValue(aggregateState));
             tmp.add(VPackValue("shards"));

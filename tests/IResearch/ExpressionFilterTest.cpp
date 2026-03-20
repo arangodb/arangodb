@@ -255,8 +255,6 @@ struct IResearchExpressionFilterTest
                           false);
     features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
                           false);
-    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                          false);
 
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
@@ -274,6 +272,8 @@ struct IResearchExpressionFilterTest
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
                 nullptr)),
         false);
+    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
+                          false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.getFeature<arangodb::metrics::MetricsFeature>()),
