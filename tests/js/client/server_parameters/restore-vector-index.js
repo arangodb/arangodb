@@ -102,11 +102,11 @@ function restoreIntegrationVectorSuite() {
         }
       }));
       let data = [];
-      for (let i = 0; i < 1000; ++i) {
+      for (let i = 0; i < 4000; ++i) {
         data.push({_key: "test" + i, value: i, vector: [0, i / 10, i / 100, i / 1000]});
       }
       dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
-      
+
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
 
