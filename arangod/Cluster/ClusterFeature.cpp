@@ -136,28 +136,28 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnDBServer))
       .setLongDescription(R"(You can specify this option multiple times to let
-    the server use a cluster of Agency servers.
+the server use a cluster of Agency servers.
 
-    Endpoints have the following pattern:
+Endpoints have the following pattern:
 
-    - `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4
-    - `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6
-    - `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL encryption
-    - `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
+- `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4
+- `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6
+- `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL encryption
+- `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
 
-    You must specify at least one endpoint or ArangoDB refuses to start. It is
-    recommended to specify at least two endpoints, so that ArangoDB has an
-    alternative endpoint if one of them becomes unavailable:
+You must specify at least one endpoint or ArangoDB refuses to start. It is
+recommended to specify at least two endpoints, so that ArangoDB has an
+alternative endpoint if one of them becomes unavailable:
 
-    `--cluster.agency-endpoint tcp://192.168.1.1:4001
-    --cluster.agency-endpoint tcp://192.168.1.2:4002 ...`)");
+`--cluster.agency-endpoint tcp://192.168.1.1:4001
+--cluster.agency-endpoint tcp://192.168.1.2:4002 ...`)");
 
   options
       ->addOption("--cluster.my-role", "This server's role.",
                   new options::StringParameter(&_options.myRole))
       .setLongDescription(R"(For a cluster, the possible values are `DBSERVER`
-    (backend data server) and `COORDINATOR` (frontend server for external and
-    application access).)");
+(backend data server) and `COORDINATOR` (frontend server for external and
+application access).)");
 
   options
       ->addOption("--cluster.my-address",
@@ -168,26 +168,26 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnDBServer))
       .setLongDescription(R"(If specified, the endpoint needs to be in one of
-    the following formats:
+the following formats:
 
-    - `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4
-    - `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6
-    - `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL encryption
-    - `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
+- `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4
+- `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6
+- `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL encryption
+- `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
 
-    If you don't specify an endpoint, the server looks up its internal endpoint
-    address in the Agency. If no endpoint can be found in the Agency for the
-    server's ID, ArangoDB refuses to start.
+If you don't specify an endpoint, the server looks up its internal endpoint
+address in the Agency. If no endpoint can be found in the Agency for the
+server's ID, ArangoDB refuses to start.
 
-    **Examples**
+**Examples**
 
-    Listen only on the interface with the address `192.168.1.1`:
+Listen only on the interface with the address `192.168.1.1`:
 
-    `--cluster.my-address tcp://192.168.1.1:8530`
+`--cluster.my-address tcp://192.168.1.1:8530`
 
-    Listen on all IPv4 and IPv6 addresses which are configured on port `8530`:
+Listen on all IPv4 and IPv6 addresses which are configured on port `8530`:
 
-    `--cluster.my-address ssl://[::]:8530`)");
+`--cluster.my-address ssl://[::]:8530`)");
 
   options
       ->addOption("--cluster.my-advertised-endpoint",
@@ -200,24 +200,24 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnDBServer))
       .setLongDescription(R"(If specified, the endpoint needs to be in one of
-    the following formats:
+the following formats:
 
-    - `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4
-    - `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6
-    - `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL encryption
-    - `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
+- `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4
+- `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6
+- `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL encryption
+- `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
 
-    If you don't specify an advertised endpoint, no external endpoint is
-    advertised.
+If you don't specify an advertised endpoint, no external endpoint is
+advertised.
 
-    **Examples**
+**Examples**
 
-    If an external interface is available to this server, you can specify it to
-    communicate with external software / drivers:
+If an external interface is available to this server, you can specify it to
+communicate with external software / drivers:
 
-    `--cluster.my-advertised-endpoint tcp://some.public.place:8530`
+`--cluster.my-advertised-endpoint tcp://some.public.place:8530`
 
-    All specifications of endpoints apply.)");
+All specifications of endpoints apply.)");
 
   options
       ->addOption("--cluster.write-concern",
@@ -230,10 +230,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
       .setLongDescription(R"(This value is used as the default write concern
-    for databases, which in turn is used as the default for collections.
+for databases, which in turn is used as the default for collections.
 
-    **Warning**: If you use multiple Coordinators, use the same value on all
-    Coordinators.)");
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options
       ->addOption("--cluster.system-replication-factor",
@@ -246,7 +246,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
       .setLongDescription(R"(**Warning**: If you use multiple Coordinators, use
-    the same value on all Coordinators.)");
+the same value on all Coordinators.)");
 
   options
       ->addOption("--cluster.default-replication-factor",
@@ -259,16 +259,16 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
       .setLongDescription(R"(If you don't set this option, it defaults to the
-    value of the `--cluster.min-replication-factor` option. If set, the value must
-    be between the values of `--cluster.min-replication-factor` and
-    `--cluster.max-replication-factor`.
+value of the `--cluster.min-replication-factor` option. If set, the value must
+be between the values of `--cluster.min-replication-factor` and
+`--cluster.max-replication-factor`.
 
-    Note that you can still adjust the replication factor per collection. This value
-    is only the default value used for new collections if no replication factor is
-    specified when creating a collection.
+Note that you can still adjust the replication factor per collection. This value
+is only the default value used for new collections if no replication factor is
+specified when creating a collection.
 
-    **Warning**: If you use multiple Coordinators, use the same value on all
-    Coordinators.)");
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options
       ->addOption("--cluster.min-replication-factor",
@@ -281,11 +281,11 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
       .setLongDescription(R"(If you change the value of this setting and
-    restart the servers, no changes are applied to existing collections that would
-    violate the new setting.
+restart the servers, no changes are applied to existing collections that would
+violate the new setting.
 
-    **Warning**: If you use multiple Coordinators, use the same value on all
-    Coordinators.)");
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options
       ->addOption("--cluster.max-replication-factor",
@@ -300,11 +300,11 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
       .setLongDescription(R"(If you change the value of this setting and
-    restart the servers, no changes are applied to existing collections that would
-    violate the new setting.
+restart the servers, no changes are applied to existing collections that would
+violate the new setting.
 
-    **Warning**: If you use multiple Coordinators, use the same value on all
-    Coordinators.)");
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options
       ->addOption(
@@ -317,11 +317,11 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
       .setLongDescription(R"(If you change the value of this setting and
-    restart the servers, no changes are applied to existing collections that would
-    violate the new setting.
+restart the servers, no changes are applied to existing collections that would
+violate the new setting.
 
-    **Warning**: If you use multiple Coordinators, use the same value on all
-    Coordinators.)");
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options
       ->addOption("--cluster.force-one-shard",
@@ -333,12 +333,12 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::Enterprise))
       .setLongDescription(R"(If set to `true`, forces the cluster into creating
-    all future collections with only a single shard and using the same DB-Server
-    as these collections' shards leader. All collections created this way are
-    eligible for specific AQL query optimizations that can improve query performance
-    and provide advanced transactional guarantees.
+all future collections with only a single shard and using the same DB-Server
+as these collections' shards leader. All collections created this way are
+eligible for specific AQL query optimizations that can improve query performance
+and provide advanced transactional guarantees.
 
-    **Warning**: Use the same value on all Coordinators and all DBServers!)");
+**Warning**: Use the same value on all Coordinators and all DBServers!)");
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
@@ -377,28 +377,28 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30800)
       .setLongDescription(R"(The possible values for the option are:
 
-    - `jwt-all`: requires a valid JWT for all accesses to `/_admin/cluster` and its
-      sub-routes. If you use this configuration, the **Cluster** and **Nodes**
-      sections of the web interface are disabled, as they rely on the ability to
-      read data from several cluster APIs.
+- `jwt-all`: requires a valid JWT for all accesses to `/_admin/cluster` and its
+  sub-routes. If you use this configuration, the **Cluster** and **Nodes**
+  sections of the web interface are disabled, as they rely on the ability to
+  read data from several cluster APIs.
 
-    - `jwt-write`: requires a valid JWT for write accesses (all HTTP methods except
-      GET) to `/_admin/cluster`. You can use this setting to allow privileged users
-      to read data from the cluster APIs, but not to do any modifications.
-      Modifications (carried out by write accesses) are then only possible by
-      requests with a valid JWT.
+- `jwt-write`: requires a valid JWT for write accesses (all HTTP methods except
+  GET) to `/_admin/cluster`. You can use this setting to allow privileged users
+  to read data from the cluster APIs, but not to do any modifications.
+  Modifications (carried out by write accesses) are then only possible by
+  requests with a valid JWT.
 
-      All existing permission checks for the cluster API routes are still in effect
-      with this setting, meaning that read operations without a valid JWT may still
-      require dedicated other permissions (as in v3.7).
+  All existing permission checks for the cluster API routes are still in effect
+  with this setting, meaning that read operations without a valid JWT may still
+  require dedicated other permissions (as in v3.7).
 
-    - `jwt-compat`: no **additional** access checks are in place for the cluster
-      APIs. However, all existing permissions checks for the cluster API routes are
-      still in effect with this setting, meaning that all operations may still
-      require dedicated other permissions (as in v3.7).
+- `jwt-compat`: no **additional** access checks are in place for the cluster
+  APIs. However, all existing permissions checks for the cluster API routes are
+  still in effect with this setting, meaning that all operations may still
+  require dedicated other permissions (as in v3.7).
 
-    The default value is `jwt-compat`, which means that this option does not cause
-    any extra JWT checks compared to v3.7.)");
+The default value is `jwt-compat`, which means that this option does not cause
+any extra JWT checks compared to v3.7.)");
 
   options
       ->addOption("--cluster.max-number-of-move-shards",
@@ -410,9 +410,9 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30900)
       .setLongDescription(R"(This option limits the maximum number of move
-    shards operations that can be made when the **Rebalance Shards** button is
-    clicked in the web interface. For backwards compatibility, the default value is
-    `10`. A value of `0` disables the button.)");
+shards operations that can be made when the **Rebalance Shards** button is
+clicked in the web interface. For backwards compatibility, the default value is
+`10`. A value of `0` disables the button.)");
 
   options
       ->addOption(
@@ -426,8 +426,8 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
               arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(31100)
       .setLongDescription(R"(The default behavior is to return an HTTP
-    `403 Forbidden` status code. You can set the option to `503` to return a
-    `503 Service Unavailable`.)");
+`403 Forbidden` status code. You can set the option to `503` to return a
+`503 Service Unavailable`.)");
 
   options
       ->addOption(
@@ -440,13 +440,13 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnDBServer))
       .setLongDescription(R"(Setting this option to a value greater than
-    zero makes Coordinators and DB-Servers run period connectivity checks
-    with approximately the specified frequency. The first connectivity check
-    is carried out approximately 15 seconds after server start.
-    Note that a random delay is added to the interval on each server, so that
-    different servers do not execute their connectivity checks all at the
-    same time.
-    Setting this option to a value of zero disables these connectivity checks.)")
+zero makes Coordinators and DB-Servers run period connectivity checks
+with approximately the specified frequency. The first connectivity check
+is carried out approximately 15 seconds after server start.
+Note that a random delay is added to the interval on each server, so that
+different servers do not execute their connectivity checks all at the
+same time.
+Setting this option to a value of zero disables these connectivity checks.)")
       .setIntroducedIn(31104);
 
   options
@@ -463,12 +463,12 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
               arangodb::options::Flags::OnDBServer))
       .setLongDescription(
           R"(Setting this option to a value greater than zero will
-    let a coordinator which cannot send a heartbeat to the agency for the specified time
-    shut down. This is necessary to prevent that a coordinator survives longer than the
-    agency supervision has patience before it removes the coordinator from the agency
-    meta data. Without this it would be possible that a coordinator is still running
-    transactions and committing them, which could, for example, render hotbackups
-    inconsistent.)")
+let a coordinator which cannot send a heartbeat to the agency for the specified time
+shut down. This is necessary to prevent that a coordinator survives longer than the
+agency supervision has patience before it removes the coordinator from the agency
+meta data. Without this it would be possible that a coordinator is still running
+transactions and committing them, which could, for example, render hotbackups
+inconsistent.)")
       .setIntroducedIn(31204);
 }
 
