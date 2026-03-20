@@ -18,9 +18,9 @@ defmodule Toast.Deployment.CommandBuilder do
 
   @spec build_args(server_spec(), server_paths(), Path.t()) :: [String.t()]
   def build_args(%{role: role, port: port, args: args}, server_paths, repo_root) do
-    base_args(role, port, server_paths, repo_root) ++
-      role_args(role) ++
-      flatten_custom_args(args)
+    (base_args(role, port, server_paths, repo_root) ++ role_args(role))
+    |> Enum.flat_map(&flatten_pair/1)
+    |> Kernel.++(flatten_custom_args(args))
   end
 
   defp config_file(:single), do: "etc/testing/arangod-single.conf"
@@ -28,11 +28,22 @@ defmodule Toast.Deployment.CommandBuilder do
   defp config_file(:coordinator), do: "etc/testing/arangod-coordinator.conf"
   defp config_file(:dbserver), do: "etc/testing/arangod-dbserver.conf"
 
-  defp role_args(:single), do: ["--server.storage-engine", "rocksdb"]
-  defp role_args(:agent), do: ["--agency.activate", "true", "--agency.supervision", "true"]
+  defp role_args(:single) do
+    [{"--server.storage-engine", "rocksdb"}]
+  end
+
+  defp role_args(:agent) do
+    [
+      {"--agency.activate", "true"},
+      {"--agency.supervision", "true"}
+    ]
+  end
 
   defp role_args(role) when role in [:coordinator, :dbserver] do
-    ["--cluster.create-waits-for-sync-replication", "false", "--cluster.write-concern", "1"]
+    [
+      {"--cluster.create-waits-for-sync-replication", "false"},
+      {"--cluster.write-concern", "1"}
+    ]
   end
 
   defp flatten_custom_args(args) when map_size(args) == 0, do: []
@@ -45,28 +56,20 @@ defmodule Toast.Deployment.CommandBuilder do
 
   defp base_args(role, port, paths, repo_root) do
     [
-      "--configuration",
-      config_file(role),
-      "--define",
-      "TOP_DIR=#{repo_root}",
-      "--server.endpoint",
-      "tcp://0.0.0.0:#{port}",
-      "--database.directory",
-      paths.data_dir,
-      "--javascript.app-path",
-      paths.app_dir,
-      "--log.file",
-      paths.log_file,
-      "--log.level",
-      "crash=info",
-      "--log.use-json-format",
-      "true",
-      "--log.ids",
-      "true",
-      "--log.process",
-      "true"
+      {"--configuration", config_file(role)},
+      {"--define", "TOP_DIR=#{repo_root}"},
+      {"--server.endpoint", "tcp://0.0.0.0:#{port}"},
+      {"--database.directory", paths.data_dir},
+      {"--javascript.app-path", paths.app_dir},
+      {"--log.file", paths.log_file},
+      {"--log.level", "crash=info"},
+      {"--log.use-json-format", "true"},
+      {"--log.ids", "true"},
+      {"--log.process", "true"}
     ]
   end
+
+  defp flatten_pair({key, value}), do: [key, value]
 
   defp expand_arg({_key, nil}), do: []
 

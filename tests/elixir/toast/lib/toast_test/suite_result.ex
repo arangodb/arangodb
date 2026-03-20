@@ -15,7 +15,7 @@ defmodule ToastTest.SuiteResult do
           log_file: Path.t() | nil,
           arango_id: String.t() | nil,
           incarnations: [incarnation()],
-          logs: [{DateTime.t(), DateTime.t(), String.t()}]
+          logs: [{DateTime.t(), DateTime.t(), [map()]}]
         }
 
   @type deployment_meta :: %{

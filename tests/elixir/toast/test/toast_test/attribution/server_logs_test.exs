@@ -277,7 +277,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
     end
 
     defp log_line(time_str, msg) do
-      "2026-01-15T#{time_str}Z [12345] INFO [abc12] #{msg}\n"
+      ~s({"time":"2026-01-15T#{time_str}Z","level":"INFO","pid":"12345","id":"abc12","topic":"general","message":"#{msg}"}\n)
     end
 
     defp write_log(dir, name, lines) do
@@ -317,16 +317,17 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       result = ServerLogs.collect(issues, artifacts, windows())
 
       assert map_size(result) == 1
-      [{start, finish, excerpt}] = result["agent1"]
+      [{start, finish, entries}] = result["agent1"]
 
       # Crash window: [-20s, 0s] => 10:04:40 - 10:05:00
       assert start == dt("10:04:40")
       assert finish == dt("10:05:00")
-      assert excerpt =~ "inside window early"
-      assert excerpt =~ "inside window late"
-      assert excerpt =~ "at crash time"
-      refute excerpt =~ "before window"
-      refute excerpt =~ "after window"
+      messages = Enum.map(entries, & &1.message)
+      assert "inside window early" in messages
+      assert "inside window late" in messages
+      assert "at crash time" in messages
+      refute "before window" in messages
+      refute "after window" in messages
     end
 
     test "servers with nil log_file are skipped", %{tmp_dir: _dir} do
@@ -371,10 +372,10 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       result = ServerLogs.collect(issues, artifacts, windows())
 
       assert map_size(result) == 2
-      [{_, _, excerpt1}] = result["agent1"]
-      [{_, _, excerpt2}] = result["dbserver1"]
-      assert excerpt1 =~ "agent1 line"
-      assert excerpt2 =~ "dbserver1 line"
+      [{_, _, entries1}] = result["agent1"]
+      [{_, _, entries2}] = result["dbserver1"]
+      assert Enum.any?(entries1, &(&1.message == "agent1 line"))
+      assert Enum.any?(entries2, &(&1.message == "dbserver1 line"))
     end
 
     test "merged windows produce separate excerpts per window", %{tmp_dir: dir} do
@@ -400,10 +401,12 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
       assert length(excerpts) == 2
 
-      texts = Enum.map(excerpts, fn {_, _, text} -> text end)
-      assert Enum.any?(texts, &(&1 =~ "in timeout window"))
-      assert Enum.any?(texts, &(&1 =~ "in crash window"))
-      refute Enum.any?(texts, &(&1 =~ "between windows"))
+      all_messages =
+        Enum.flat_map(excerpts, fn {_, _, entries} -> Enum.map(entries, & &1.message) end)
+
+      assert "in timeout window" in all_messages
+      assert "in crash window" in all_messages
+      refute "between windows" in all_messages
     end
   end
 end

@@ -27,7 +27,7 @@ defmodule ToastTest.Attribution.ServerLogs do
           [ToastTest.SuiteResult.issue()],
           ToastTest.ArtifactCollector.t(),
           ToastTest.Attribution.TimeWindows.windows()
-        ) :: %{String.t() => [{DateTime.t(), DateTime.t(), String.t()}]}
+        ) :: %{String.t() => [{DateTime.t(), DateTime.t(), [map()]}]}
   def collect(issues, artifacts, windows) do
     issues
     |> compute_windows(windows)
@@ -47,8 +47,8 @@ defmodule ToastTest.Attribution.ServerLogs do
         |> Enrichment.Logs.extract_windows(log_file)
         |> Enum.zip(merged)
         |> Enum.flat_map(fn
-          {"", _window} -> []
-          {lines, {start_dt, end_dt}} -> [{start_dt, end_dt, lines}]
+          {[], _window} -> []
+          {entries, {start_dt, end_dt}} -> [{start_dt, end_dt, entries}]
         end)
 
       {server_id, excerpts}

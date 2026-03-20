@@ -140,53 +140,6 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
   end
 
-  # --- filter_lines/2 ---
-
-  describe "filter_lines/2" do
-    test "includes lines within window" do
-      lines = """
-      2026-03-09T10:00:00Z [1] INFO msg1
-      2026-03-09T10:00:01Z [1] INFO msg2
-      2026-03-09T10:00:02Z [1] INFO msg3\
-      """
-
-      result = Logs.filter_lines(lines, {"2026-03-09T10:00:00Z", "2026-03-09T10:00:01Z"})
-      assert result =~ "msg1"
-      assert result =~ "msg2"
-      refute result =~ "msg3"
-    end
-
-    test "includes continuation lines when preceding line is included" do
-      lines = """
-      2026-03-09T10:00:00Z [1] INFO msg1
-        continuation line
-      2026-03-09T10:00:02Z [1] INFO msg2\
-      """
-
-      result = Logs.filter_lines(lines, {"2026-03-09T10:00:00Z", "2026-03-09T10:00:01Z"})
-      assert result =~ "msg1"
-      assert result =~ "continuation line"
-      refute result =~ "msg2"
-    end
-
-    test "excludes continuation lines when preceding line is excluded" do
-      lines = """
-      2026-03-09T10:00:00Z [1] INFO msg1
-        continuation line
-      2026-03-09T10:00:02Z [1] INFO msg2\
-      """
-
-      result = Logs.filter_lines(lines, {"2026-03-09T10:00:01Z", "2026-03-09T10:00:03Z"})
-      refute result =~ "msg1"
-      refute result =~ "continuation line"
-      assert result =~ "msg2"
-    end
-
-    test "empty input" do
-      assert Logs.filter_lines("", {"2026-03-09T10:00:00Z", "2026-03-09T10:00:01Z"}) == ""
-    end
-  end
-
   # --- server_tag/1 ---
 
   describe "server_tag/1" do
@@ -216,21 +169,33 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       assert Logs.merge_streams([]) == []
     end
 
-    test "single server returns lines as-is" do
-      lines = "2026-03-09T10:00:00Z [1] INFO msg1\n2026-03-09T10:00:01Z [1] INFO msg2"
-      result = Logs.merge_streams([{"coordinator1", lines}])
+    test "single server returns entries tagged with server id" do
+      entries = [
+        entry(~U[2026-03-09 10:00:00Z], message: "msg1"),
+        entry(~U[2026-03-09 10:00:01Z], message: "msg2")
+      ]
 
-      assert result == [
-               {"coordinator1", "2026-03-09T10:00:00Z [1] INFO msg1"},
-               {"coordinator1", "2026-03-09T10:00:01Z [1] INFO msg2"}
-             ]
+      result = Logs.merge_streams([{"coordinator1", entries}])
+
+      assert length(result) == 2
+      assert Enum.all?(result, fn {id, _} -> id == "coordinator1" end)
+      assert Enum.at(result, 0) |> elem(1) |> Map.get(:message) == "msg1"
+      assert Enum.at(result, 1) |> elem(1) |> Map.get(:message) == "msg2"
     end
 
     test "interleaves multiple servers chronologically" do
-      co_lines = "2026-03-09T10:00:00Z [1] INFO co-msg1\n2026-03-09T10:00:02Z [1] INFO co-msg2"
-      db_lines = "2026-03-09T10:00:01Z [2] INFO db-msg1\n2026-03-09T10:00:03Z [2] INFO db-msg2"
+      co_entries = [
+        entry(~U[2026-03-09 10:00:00Z], message: "co-msg1"),
+        entry(~U[2026-03-09 10:00:02Z], message: "co-msg2")
+      ]
 
-      result = Logs.merge_streams([{"coordinator1", co_lines}, {"dbserver1", db_lines}])
+      db_entries = [
+        entry(~U[2026-03-09 10:00:01Z], message: "db-msg1"),
+        entry(~U[2026-03-09 10:00:03Z], message: "db-msg2")
+      ]
+
+      result =
+        Logs.merge_streams([{"coordinator1", co_entries}, {"dbserver1", db_entries}])
 
       assert Enum.map(result, &elem(&1, 0)) == [
                "coordinator1",
@@ -239,23 +204,132 @@ defmodule ToastTest.IssueFormatting.LogsTest do
                "dbserver1"
              ]
     end
+  end
 
-    test "continuation lines stay with their preceding timestamped line" do
-      co_lines =
-        "2026-03-09T10:00:00Z [1] INFO co-msg\n  co-continuation"
+  # --- server_color/1 ---
 
-      db_lines = "2026-03-09T10:00:00Z [2] INFO db-msg"
+  describe "server_color/1" do
+    test "coordinator returns a color from the coordinator palette" do
+      color = Logs.server_color("coordinator0")
+      assert color in [67, 103, 110, 66, 109, 60, 68, 102, 146]
+    end
 
-      result = Logs.merge_streams([{"coordinator1", co_lines}, {"dbserver1", db_lines}])
+    test "dbserver returns a color from the dbserver palette" do
+      color = Logs.server_color("dbserver0")
+      assert color in [137, 174, 95, 180, 130, 215, 101, 172, 144]
+    end
 
-      # Both have same timestamp — order depends on input order, but continuation stays with co
-      co_entries = Enum.filter(result, fn {id, _} -> id == "coordinator1" end)
-      assert length(co_entries) == 2
-      assert Enum.at(co_entries, 1) == {"coordinator1", "  co-continuation"}
+    test "agent returns a color from the agent palette" do
+      color = Logs.server_color("agent0")
+      assert color in [101, 138, 66, 144, 96]
+    end
+
+    test "different indices return different colors" do
+      assert Logs.server_color("coordinator0") != Logs.server_color("coordinator1")
+    end
+
+    test "unknown role falls back to coordinator palette" do
+      color = Logs.server_color("unknown0")
+      assert color in [67, 103, 110, 66, 109, 60, 68, 102, 146]
     end
   end
 
-  # --- extract/4 ---
+  # --- format_merged/2 ---
+
+  describe "format_merged/2" do
+    test "empty list returns empty string" do
+      assert Logs.format_merged([], false) == ""
+    end
+
+    test "single server produces untagged lines" do
+      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
+      e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
+      merged = [{"s1", e1}, {"s1", e2}]
+      result = Logs.format_merged(merged, false)
+      assert result =~ "line1"
+      assert result =~ "line2"
+    end
+
+    test "multi-server adds server tags" do
+      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
+      e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
+      merged = [{"coordinator1", e1}, {"dbserver1", e2}]
+      result = Logs.format_merged(merged, false)
+      assert result =~ "[CO1]"
+      assert result =~ "[DB1]"
+    end
+
+    test "multi-server with color enabled includes ANSI escape sequences" do
+      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
+      e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
+      merged = [{"coordinator1", e1}, {"dbserver1", e2}]
+      result = Logs.format_merged(merged, true)
+      assert result =~ "\e[38;5;"
+    end
+
+    test "WARNING level gets bright emphasis when color enabled" do
+      e1 = entry(~U[2026-01-01 00:00:00Z], level: :warning, message: "msg")
+      e2 = entry(~U[2026-01-01 00:00:01Z], message: "other")
+      merged = [{"coordinator1", e1}, {"dbserver1", e2}]
+      result = Logs.format_merged(merged, true)
+      assert result =~ IO.ANSI.bright()
+    end
+
+    test "ERROR level gets inverse emphasis when color enabled" do
+      e1 = entry(~U[2026-01-01 00:00:00Z], level: :error, message: "msg")
+      e2 = entry(~U[2026-01-01 00:00:01Z], message: "other")
+      merged = [{"coordinator1", e1}, {"dbserver1", e2}]
+      result = Logs.format_merged(merged, true)
+      assert result =~ IO.ANSI.inverse()
+    end
+  end
+
+  # --- server_tag/1 with hyphenated IDs ---
+
+  describe "server_tag/1 with hyphenated IDs" do
+    test "coordinator with cluster prefix" do
+      assert Logs.server_tag("toast-cluster-643-coordinator-0") == "CO0"
+    end
+
+    test "dbserver with cluster prefix" do
+      assert Logs.server_tag("toast-cluster-643-dbserver-2") == "DB2"
+    end
+
+    test "agent with cluster prefix" do
+      assert Logs.server_tag("toast-cluster-643-agent-1") == "AG1"
+    end
+  end
+
+  # --- matching_servers/2 ---
+
+  describe "matching_servers/2" do
+    setup do
+      servers = %{
+        "coordinator1" => %{role: :coordinator},
+        "dbserver1" => %{role: :dbserver},
+        "agent1" => %{role: :agent}
+      }
+
+      %{servers: servers}
+    end
+
+    test "with :all filter returns all servers", %{servers: servers} do
+      result = Logs.matching_servers(servers, :all)
+      assert length(result) == 3
+    end
+
+    test "with role filter returns only matching roles", %{servers: servers} do
+      result = Logs.matching_servers(servers, [{:role, "coordinator"}])
+      assert result == ["coordinator1"]
+    end
+
+    test "results are sorted", %{servers: servers} do
+      result = Logs.matching_servers(servers, :all)
+      assert result == Enum.sort(result)
+    end
+  end
+
+  # --- extract/3 ---
 
   describe "extract/3" do
     setup do
@@ -267,7 +341,11 @@ defmodule ToastTest.IssueFormatting.LogsTest do
           arango_id: nil,
           logs: [
             {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
-             "2026-03-09T09:59:55Z [1] INFO before\n2026-03-09T10:00:00Z [1] INFO at-time\n2026-03-09T10:00:05Z [1] INFO after"}
+             [
+               entry(~U[2026-03-09 09:59:55Z], message: "before"),
+               entry(~U[2026-03-09 10:00:00Z], message: "at-time"),
+               entry(~U[2026-03-09 10:00:05Z], message: "after")
+             ]}
           ]
         },
         "agent1" => %{
@@ -275,7 +353,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
           arango_id: nil,
           logs: [
             {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
-             "2026-03-09T10:00:00Z [2] INFO agent-msg"}
+             [entry(~U[2026-03-09 10:00:00Z], message: "agent-msg")]}
           ]
         }
       }
@@ -301,12 +379,29 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       assert "agent1" in server_ids
     end
 
-    test "filters lines by time window", %{servers: servers, window: window} do
-      [{_server, lines}] = Logs.extract(servers, window, [{:role, "coordinator"}])
+    test "filters entries by time window", %{servers: servers, window: window} do
+      [{_server, entries}] = Logs.extract(servers, window, [{:role, "coordinator"}])
 
-      assert lines =~ "before"
-      assert lines =~ "at-time"
-      refute lines =~ "after"
+      messages = Enum.map(entries, & &1.message)
+      assert "before" in messages
+      assert "at-time" in messages
+      refute "after" in messages
     end
   end
+
+  # --- Helpers ---
+
+  defp entry(time, opts \\ []) do
+    %{
+      time: DateTime.to_unix(time, :microsecond),
+      message: Keyword.get(opts, :message, "msg"),
+      level: Keyword.get(opts, :level, :info)
+    }
+    |> maybe_put(:topic, opts[:topic])
+    |> maybe_put(:id, opts[:id])
+    |> maybe_put(:pid, opts[:pid])
+  end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, val), do: Map.put(map, key, val)
 end

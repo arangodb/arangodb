@@ -88,91 +88,51 @@ defmodule ToastTest.IssueFormatting.Logs do
     |> Enum.sort()
   end
 
-  # --- Extract (main entry point) ---
+  # --- Extract ---
 
   @doc """
-  Filter servers by `server_filter`, then filter stored log lines by the
-  given display window. Returns `[{server_id, filtered_lines}]` sorted by
-  server ID.
+  Filter servers by `server_filter`, then filter stored log entries by the
+  given display window. Returns `[{server_id, [entry]}]` sorted by server ID.
 
-  `servers` is `%{server_id => %{logs: [{start, end, lines_string}], ...}}`.
+  `servers` is `%{server_id => %{logs: [{start, end, [entry]}], ...}}`.
   `window` is `{DateTime.t(), DateTime.t()}` as returned by `display_window/2`.
   """
   def extract(servers, {win_start, win_end}, server_filter) do
-    start_str = DateTime.to_iso8601(win_start)
-    end_str = DateTime.to_iso8601(win_end)
+    start_us = DateTime.to_unix(win_start, :microsecond)
+    end_us = DateTime.to_unix(win_end, :microsecond)
 
     servers
     |> Enum.filter(fn {server_id, _} -> server_matches?(server_id, server_filter) end)
     |> Enum.flat_map(fn {server_id, meta} ->
-      lines =
+      entries =
         (meta[:logs] || [])
-        |> Enum.map(fn {_start, _end, lines_string} ->
-          filter_lines(lines_string, {start_str, end_str})
+        |> Enum.flat_map(fn {_start, _end, entries} ->
+          Enum.filter(entries, fn entry ->
+            entry.time >= start_us and entry.time <= end_us
+          end)
         end)
-        |> Enum.reject(&(&1 == ""))
-        |> Enum.join("\n")
 
-      if lines == "", do: [], else: [{server_id, lines}]
+      if entries == [], do: [], else: [{server_id, entries}]
     end)
     |> Enum.sort_by(&elem(&1, 0))
-  end
-
-  # --- Line filtering ---
-
-  @doc """
-  Filter individual log lines within a stored window. Uses plain string
-  comparison on the ISO 8601 timestamp prefix.
-  """
-  def filter_lines(lines_string, {start_str, end_str}) do
-    lines_string
-    |> String.split("\n")
-    |> do_filter_lines(start_str, end_str, false, [])
-    |> Enum.reverse()
-    |> Enum.join("\n")
-  end
-
-  defp do_filter_lines([], _start, _end_s, _prev, acc), do: acc
-
-  defp do_filter_lines([line | rest], start_str, end_str, prev_included, acc) do
-    case extract_timestamp(line) do
-      nil ->
-        if prev_included do
-          do_filter_lines(rest, start_str, end_str, true, [line | acc])
-        else
-          do_filter_lines(rest, start_str, end_str, false, acc)
-        end
-
-      ts ->
-        if ts >= start_str and ts <= end_str do
-          do_filter_lines(rest, start_str, end_str, true, [line | acc])
-        else
-          do_filter_lines(rest, start_str, end_str, false, acc)
-        end
-    end
   end
 
   # --- Merge streams ---
 
   @doc """
-  K-way merge of pre-sorted per-server log lines into a single chronological
-  stream. Non-timestamped continuation lines stay with their preceding line.
+  K-way merge of pre-sorted per-server log entry lists into a single
+  chronological stream. Returns `[{server_id, entry}]`.
   """
   def merge_streams([]), do: []
 
-  def merge_streams([{server_id, lines_string}]) do
-    lines_string |> String.split("\n") |> Enum.map(&{server_id, &1})
+  def merge_streams([{server_id, entries}]) do
+    Enum.map(entries, &{server_id, &1})
   end
 
   def merge_streams(streams) do
-    parsed =
-      streams
-      |> Enum.map(fn {server_id, lines_string} ->
-        {server_id, group_with_continuations(String.split(lines_string, "\n"))}
-      end)
-      |> Enum.reject(fn {_, groups} -> groups == [] end)
-
-    k_way_merge(parsed, [])
+    streams
+    |> Enum.reject(fn {_, entries} -> entries == [] end)
+    |> k_way_merge([])
   end
 
   # --- Server tag ---
@@ -204,7 +164,7 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   # --- Format merged output ---
 
-  @doc "Apply tags, colors, and alignment to produce the final output."
+  @doc "Format merged `[{server_id, entry}]` into display lines."
   def format_merged([], _color_enabled), do: ""
 
   def format_merged(merged, color_enabled) do
@@ -212,7 +172,7 @@ defmodule ToastTest.IssueFormatting.Logs do
 
     if length(servers) == 1 do
       merged
-      |> Enum.map(fn {_server_id, line} -> format_line_level(line, color_enabled) end)
+      |> Enum.map(fn {_server_id, entry} -> format_entry(entry, color_enabled) end)
       |> Enum.join("\n")
     else
       tag_map = Map.new(servers, &{&1, server_tag(&1)})
@@ -220,12 +180,13 @@ defmodule ToastTest.IssueFormatting.Logs do
       max_tag_len = tag_map |> Map.values() |> Enum.map(&String.length/1) |> Enum.max()
 
       merged
-      |> Enum.map(fn {server_id, line} ->
+      |> Enum.map(fn {server_id, entry} ->
         tag = String.pad_trailing(tag_map[server_id], max_tag_len)
+        line = format_entry_line(entry)
 
         if color_enabled do
           color_code = color_map[server_id]
-          level_extra = level_emphasis(line)
+          level_extra = level_emphasis(entry)
           "\e[38;5;#{color_code}m#{level_extra}[#{tag}] #{line}\e[0m"
         else
           "[#{tag}] #{line}"
@@ -235,44 +196,51 @@ defmodule ToastTest.IssueFormatting.Logs do
     end
   end
 
-  defp format_line_level(line, false), do: line
+  @doc "Format a single log entry as a human-readable line."
+  def format_entry(entry, color_enabled) do
+    line = format_entry_line(entry)
 
-  defp format_line_level(line, true) do
-    case level_emphasis(line) do
-      "" -> line
-      extra -> "#{extra}#{line}\e[0m"
+    if color_enabled do
+      case level_emphasis(entry) do
+        "" -> line
+        extra -> "#{extra}#{line}\e[0m"
+      end
+    else
+      line
     end
   end
 
-  # ArangoDB log format: "2026-...Z [pid] LEVEL [topic] ..."
-  defp level_emphasis(line) do
-    case extract_log_level(line) do
-      level when level in ~w(ERROR FATAL) -> IO.ANSI.inverse()
-      "WARNING" -> IO.ANSI.bright()
-      _ -> ""
-    end
+  defp format_entry_line(entry) do
+    ts = entry.time |> DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
+    level = format_level(entry[:level])
+    id = if entry[:id], do: " [#{entry.id}]", else: ""
+    topic = if entry[:topic], do: " {#{entry.topic}}", else: ""
+    pid = if entry[:pid], do: " [#{entry.pid}]", else: ""
+
+    "#{ts}#{pid} #{level}#{id}#{topic} #{entry.message}"
   end
 
-  defp extract_log_level(line) do
-    # Match: timestamp [pid] LEVEL ...
-    case Regex.run(~r/^\S+ \[\S+\] \S+ (\w+)/, line) do
-      [_, level] -> level
-      _ -> nil
-    end
-  end
+  defp format_level(:fatal), do: "FATAL"
+  defp format_level(:error), do: "ERROR"
+  defp format_level(:warning), do: "WARN"
+  defp format_level(:info), do: "INFO"
+  defp format_level(:debug), do: "DEBUG"
+  defp format_level(:trace), do: "TRACE"
+  defp format_level(_), do: "???"
+
+  defp level_emphasis(%{level: level}) when level in [:error, :fatal], do: IO.ANSI.inverse()
+  defp level_emphasis(%{level: :warning}), do: IO.ANSI.bright()
+  defp level_emphasis(_), do: ""
 
   # --- Private helpers ---
 
   defp derive_role(server_id), do: server_id |> derive_role_and_num() |> elem(0)
 
   defp derive_role_and_num(server_id) do
-    # Server IDs follow either "<prefix>-<role>-<index>" (e.g., "toast-cluster-643-coordinator-0")
-    # or simple "<role><index>" (e.g., "coordinator1", "single").
     segments = String.split(server_id, "-")
 
     case Enum.find_index(segments, &(&1 in @known_roles)) do
       nil ->
-        # Simple format: strip trailing digits for role
         {String.replace(server_id, ~r/\d+$/, ""),
          Regex.run(~r/\d+$/, server_id, capture: :first) |> List.wrap() |> Enum.at(0, "")}
 
@@ -283,57 +251,24 @@ defmodule ToastTest.IssueFormatting.Logs do
     end
   end
 
-  defp extract_timestamp(line) do
-    case String.split(line, " ", parts: 2) do
-      [<<_y::4-bytes, "-", _m::2-bytes, "-", _d::2-bytes, "T", _::binary>> = ts | _]
-      when byte_size(ts) >= 20 ->
-        ts
-
-      _ ->
-        nil
-    end
-  end
-
-  defp group_with_continuations(lines) do
-    lines
-    |> Enum.reduce([], fn line, acc ->
-      ts = extract_timestamp(line)
-
-      case {ts, acc} do
-        {nil, [{prev_ts, prev_lines} | rest]} ->
-          [{prev_ts, [line | prev_lines]} | rest]
-
-        {nil, []} ->
-          []
-
-        {ts, _} ->
-          [{ts, [line]} | acc]
-      end
-    end)
-    |> Enum.map(fn {ts, lines} -> {ts, Enum.reverse(lines)} end)
-    |> Enum.reverse()
-  end
-
   defp k_way_merge([], acc), do: Enum.reverse(acc)
 
   defp k_way_merge(streams, acc) do
     {_, min_idx} =
       streams
       |> Enum.with_index()
-      |> Enum.min_by(fn {{_server_id, [{ts, _lines} | _]}, _idx} -> ts end)
+      |> Enum.min_by(fn {{_server_id, [entry | _]}, _idx} -> entry.time end)
 
-    {server_id, [{_ts, lines} | rest_groups]} = Enum.at(streams, min_idx)
-
-    new_entries = Enum.map(lines, &{server_id, &1})
+    {server_id, [entry | rest_entries]} = Enum.at(streams, min_idx)
 
     new_streams =
-      if rest_groups == [] do
+      if rest_entries == [] do
         List.delete_at(streams, min_idx)
       else
-        List.replace_at(streams, min_idx, {server_id, rest_groups})
+        List.replace_at(streams, min_idx, {server_id, rest_entries})
       end
 
-    k_way_merge(new_streams, Enum.reverse(new_entries) ++ acc)
+    k_way_merge(new_streams, [{server_id, entry} | acc])
   end
 
   defp parse_num(""), do: 0

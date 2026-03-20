@@ -18,92 +18,277 @@ defmodule ToastTest.Enrichment.LogsTest do
   end
 
   defp dt(iso), do: DateTime.from_iso8601(iso) |> elem(1)
+  defp ts_us(iso), do: dt(iso) |> DateTime.to_unix(:microsecond)
+
+  defp log_json(time, opts) do
+    base = %{"time" => time, "message" => opts[:message] || ""}
+
+    base
+    |> maybe_add("level", opts[:level])
+    |> maybe_add("pid", opts[:pid])
+    |> maybe_add("id", opts[:id])
+    |> maybe_add("topic", opts[:topic])
+    |> maybe_add("role", opts[:role])
+    |> :json.encode()
+    |> IO.iodata_to_binary()
+  end
+
+  defp maybe_add(map, _key, nil), do: map
+  defp maybe_add(map, key, val), do: Map.put(map, key, val)
+
+  describe "parse_line/1" do
+    test "parses a complete JSON log line" do
+      line =
+        log_json("2026-03-09T10:00:00.000Z",
+          level: "INFO",
+          pid: "12345",
+          id: "abc01",
+          topic: "general",
+          role: "S",
+          message: "Server started"
+        )
+
+      assert {:ok, entry} = Logs.parse_line(line)
+      assert entry.time == ts_us("2026-03-09T10:00:00.000Z")
+      assert entry.message == "Server started"
+      assert entry.level == :info
+      assert entry.pid == "12345"
+      assert entry.id == "abc01"
+      assert entry.topic == "general"
+      assert entry.role == :single
+    end
+
+    test "parses minimal line with only time and message" do
+      line = ~s|{"time":"2026-03-09T10:00:00Z","message":"hello"}|
+
+      assert {:ok, entry} = Logs.parse_line(line)
+      assert entry.time == ts_us("2026-03-09T10:00:00Z")
+      assert entry.message == "hello"
+      refute Map.has_key?(entry, :level)
+      refute Map.has_key?(entry, :topic)
+    end
+
+    test "maps all level strings" do
+      for {str, atom} <- [
+            {"FATAL", :fatal},
+            {"ERR", :error},
+            {"WARN", :warning},
+            {"INFO", :info},
+            {"DEBUG", :debug},
+            {"TRACE", :trace}
+          ] do
+        line = log_json("2026-03-09T10:00:00Z", level: str, message: "x")
+        assert {:ok, entry} = Logs.parse_line(line)
+        assert entry.level == atom
+      end
+    end
+
+    test "maps all role strings" do
+      for {str, atom} <- [
+            {"C", :coordinator},
+            {"P", :dbserver},
+            {"A", :agent},
+            {"S", :single}
+          ] do
+        line = log_json("2026-03-09T10:00:00Z", role: str, message: "x")
+        assert {:ok, entry} = Logs.parse_line(line)
+        assert entry.role == atom
+      end
+    end
+
+    test "returns :error for non-JSON" do
+      assert :error = Logs.parse_line("not json at all")
+    end
+
+    test "returns :error for JSON missing time field" do
+      assert :error = Logs.parse_line(~s|{"message":"no time"}|)
+    end
+
+    test "returns :error for invalid time format" do
+      assert :error = Logs.parse_line(~s|{"time":"not-a-date","message":"bad"}|)
+    end
+
+    test "strips trailing newline before parsing" do
+      line = ~s|{"time":"2026-03-09T10:00:00Z","message":"ok"}\n|
+      assert {:ok, entry} = Logs.parse_line(line)
+      assert entry.message == "ok"
+    end
+
+    test "defaults message to empty string when absent" do
+      line = ~s|{"time":"2026-03-09T10:00:00Z"}|
+      assert {:ok, entry} = Logs.parse_line(line)
+      assert entry.message == ""
+    end
+  end
 
   describe "extract_crash_lines/1" do
-    test "returns last contiguous block of {crash} lines", %{tmp_dir: dir} do
+    test "returns last contiguous block of crash-topic entries", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-03-11T15:22:17Z [22788-1] S INFO [abc01] {general} starting up",
-          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7902] {crash} caught signal 11",
-          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7903] {crash} Hello crash handler",
-          "2026-03-11T15:22:19Z [22788-30] S INFO [a7904] {general} shutting down"
+          log_json("2026-03-11T15:22:17Z",
+            level: "INFO",
+            id: "abc01",
+            topic: "general",
+            message: "starting up"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            id: "a7902",
+            topic: "crash",
+            message: "caught signal 11"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            id: "a7903",
+            topic: "crash",
+            message: "Hello crash handler"
+          ),
+          log_json("2026-03-11T15:22:19Z",
+            level: "INFO",
+            id: "a7904",
+            topic: "general",
+            message: "shutting down"
+          )
         ])
 
       result = Logs.extract_crash_lines(path)
 
-      assert result =~ "caught signal 11"
-      assert result =~ "Hello crash handler"
-      refute result =~ "starting up"
-      refute result =~ "shutting down"
+      assert length(result) == 2
+      assert Enum.any?(result, &(&1.message == "caught signal 11"))
+      assert Enum.any?(result, &(&1.message == "Hello crash handler"))
+      refute Enum.any?(result, &(&1.message =~ "starting up"))
+      refute Enum.any?(result, &(&1.message =~ "shutting down"))
     end
 
     test "returns only the last crash block when multiple exist", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-03-11T15:00:00Z [1000-1] S FATAL [a7902] {crash} first crash signal 6",
-          "2026-03-11T15:00:01Z [1000-1] S INFO [c962b] {crash} first backtrace frame 1",
-          "2026-03-11T15:00:02Z [1000-1] S INFO [abc01] {general} server restarted",
-          "2026-03-11T15:00:10Z [2000-1] S INFO [abc02] {general} normal operation",
-          "2026-03-11T15:22:18Z [2000-30] S FATAL [a7902] {crash} second crash signal 11",
-          "2026-03-11T15:22:18Z [2000-30] S INFO [c962b] {crash} second backtrace frame 1",
-          "2026-03-11T15:22:18Z [2000-30] S INFO [308c3] {crash} second backtrace frame 2",
-          "2026-03-11T15:22:18Z [2000-30] S FATAL [a7903] {crash} Hello crash handler"
+          log_json("2026-03-11T15:00:00Z",
+            level: "FATAL",
+            topic: "crash",
+            message: "first crash signal 6"
+          ),
+          log_json("2026-03-11T15:00:01Z",
+            level: "INFO",
+            topic: "crash",
+            message: "first backtrace frame 1"
+          ),
+          log_json("2026-03-11T15:00:02Z",
+            level: "INFO",
+            topic: "general",
+            message: "server restarted"
+          ),
+          log_json("2026-03-11T15:00:10Z",
+            level: "INFO",
+            topic: "general",
+            message: "normal operation"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            topic: "crash",
+            message: "second crash signal 11"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "INFO",
+            topic: "crash",
+            message: "second backtrace frame 1"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "INFO",
+            topic: "crash",
+            message: "second backtrace frame 2"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            topic: "crash",
+            message: "Hello crash handler"
+          )
         ])
 
       result = Logs.extract_crash_lines(path)
 
-      assert result =~ "second crash signal 11"
-      assert result =~ "second backtrace frame 1"
-      assert result =~ "second backtrace frame 2"
-      assert result =~ "Hello crash handler"
-      refute result =~ "first crash"
-      refute result =~ "first backtrace"
+      messages = Enum.map(result, & &1.message)
+      assert "second crash signal 11" in messages
+      assert "second backtrace frame 1" in messages
+      assert "second backtrace frame 2" in messages
+      assert "Hello crash handler" in messages
+      refute Enum.any?(messages, &String.contains?(&1, "first"))
     end
 
-    test "returns empty string when no {crash} lines", %{tmp_dir: dir} do
+    test "returns empty list when no crash entries", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-03-11T15:22:17Z [22788-1] S INFO [abc01] {general} starting up",
-          "2026-03-11T15:22:18Z [22788-1] S FATAL [abc02] {startup} something failed"
+          log_json("2026-03-11T15:22:17Z",
+            level: "INFO",
+            topic: "general",
+            message: "starting up"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            topic: "startup",
+            message: "something failed"
+          )
         ])
 
-      assert Logs.extract_crash_lines(path) == ""
+      assert Logs.extract_crash_lines(path) == []
     end
 
-    test "returns empty string for nonexistent file" do
-      assert Logs.extract_crash_lines("/nonexistent/file.log") == ""
+    test "returns empty list for nonexistent file" do
+      assert Logs.extract_crash_lines("/nonexistent/file.log") == []
     end
 
-    test "returns empty string for empty file", %{tmp_dir: dir} do
+    test "returns empty list for empty file", %{tmp_dir: dir} do
       path = Path.join(dir, "empty.log")
       File.write!(path, "")
-      assert Logs.extract_crash_lines(path) == ""
+      assert Logs.extract_crash_lines(path) == []
     end
 
-    test "handles crash block at very end of file (no trailing non-crash lines)", %{tmp_dir: dir} do
+    test "handles crash block at very end of file", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-03-11T15:22:17Z [22788-1] S INFO [abc01] {general} starting up",
-          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7902] {crash} caught signal 11",
-          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7903] {crash} Hello crash handler"
+          log_json("2026-03-11T15:22:17Z",
+            level: "INFO",
+            topic: "general",
+            message: "starting up"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            topic: "crash",
+            message: "caught signal 11"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            topic: "crash",
+            message: "Hello crash handler"
+          )
         ])
 
       result = Logs.extract_crash_lines(path)
-      assert result =~ "caught signal 11"
-      assert result =~ "Hello crash handler"
-      refute result =~ "starting up"
+      messages = Enum.map(result, & &1.message)
+      assert "caught signal 11" in messages
+      assert "Hello crash handler" in messages
+      refute "starting up" in messages
     end
 
     test "handles file with only crash lines", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7902] {crash} caught signal 11",
-          "2026-03-11T15:22:18Z [22788-30] S FATAL [a7903] {crash} Hello crash handler"
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            topic: "crash",
+            message: "caught signal 11"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            topic: "crash",
+            message: "Hello crash handler"
+          )
         ])
 
       result = Logs.extract_crash_lines(path)
-      assert result =~ "caught signal 11"
-      assert result =~ "Hello crash handler"
+      assert length(result) == 2
+      assert Enum.any?(result, &(&1.message == "caught signal 11"))
+      assert Enum.any?(result, &(&1.message == "Hello crash handler"))
     end
   end
 
@@ -111,19 +296,19 @@ defmodule ToastTest.Enrichment.LogsTest do
     test "empty windows list returns []", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] some line"
+          log_json("2026-01-15T12:00:00Z", level: "INFO", message: "some line")
         ])
 
       assert Logs.extract_windows([], path) == []
     end
 
-    test "single window extracts matching lines", %{tmp_dir: dir} do
+    test "single window extracts matching entries", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] before",
-          "2026-01-15T12:00:05Z [1234] INFO [abc13] in window",
-          "2026-01-15T12:00:10Z [1234] WARNING [abc14] also in window",
-          "2026-01-15T12:00:20Z [1234] INFO [abc15] after"
+          log_json("2026-01-15T12:00:00Z", level: "INFO", message: "before"),
+          log_json("2026-01-15T12:00:05Z", level: "INFO", message: "in window"),
+          log_json("2026-01-15T12:00:10Z", level: "WARN", message: "also in window"),
+          log_json("2026-01-15T12:00:20Z", level: "INFO", message: "after")
         ])
 
       start_dt = dt("2026-01-15T12:00:05Z")
@@ -131,21 +316,22 @@ defmodule ToastTest.Enrichment.LogsTest do
 
       [result] = Logs.extract_windows([{start_dt, end_dt}], path)
 
-      assert result =~ "in window"
-      assert result =~ "also in window"
-      refute result =~ "before"
-      refute result =~ "after"
+      messages = Enum.map(result, & &1.message)
+      assert "in window" in messages
+      assert "also in window" in messages
+      refute "before" in messages
+      refute "after" in messages
     end
 
-    test "multiple non-overlapping windows each get their own excerpt", %{tmp_dir: dir} do
+    test "multiple non-overlapping windows each get their own entries", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 line1",
-          "2026-01-15T12:00:05Z [1234] INFO [abc13] w1 line2",
-          "2026-01-15T12:00:15Z [1234] INFO [abc14] gap line",
-          "2026-01-15T12:00:20Z [1234] INFO [abc15] w2 line1",
-          "2026-01-15T12:00:25Z [1234] INFO [abc16] w2 line2",
-          "2026-01-15T12:00:35Z [1234] INFO [abc17] trailing"
+          log_json("2026-01-15T12:00:00Z", level: "INFO", message: "w1 line1"),
+          log_json("2026-01-15T12:00:05Z", level: "INFO", message: "w1 line2"),
+          log_json("2026-01-15T12:00:15Z", level: "INFO", message: "gap line"),
+          log_json("2026-01-15T12:00:20Z", level: "INFO", message: "w2 line1"),
+          log_json("2026-01-15T12:00:25Z", level: "INFO", message: "w2 line2"),
+          log_json("2026-01-15T12:00:35Z", level: "INFO", message: "trailing")
         ])
 
       windows = [
@@ -155,23 +341,23 @@ defmodule ToastTest.Enrichment.LogsTest do
 
       [w1, w2] = Logs.extract_windows(windows, path)
 
-      assert w1 =~ "w1 line1"
-      assert w1 =~ "w1 line2"
-      refute w1 =~ "gap line"
-      refute w1 =~ "w2 line"
+      w1_msgs = Enum.map(w1, & &1.message)
+      assert "w1 line1" in w1_msgs
+      assert "w1 line2" in w1_msgs
+      refute "gap line" in w1_msgs
 
-      assert w2 =~ "w2 line1"
-      assert w2 =~ "w2 line2"
-      refute w2 =~ "gap line"
-      refute w2 =~ "trailing"
+      w2_msgs = Enum.map(w2, & &1.message)
+      assert "w2 line1" in w2_msgs
+      assert "w2 line2" in w2_msgs
+      refute "trailing" in w2_msgs
     end
 
-    test "line overshooting window 1 appears in window 2", %{tmp_dir: dir} do
+    test "entry overshooting window 1 appears in window 2", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 line",
-          "2026-01-15T12:00:10Z [1234] INFO [abc13] overshoot into w2",
-          "2026-01-15T12:00:15Z [1234] INFO [abc14] w2 line"
+          log_json("2026-01-15T12:00:00Z", level: "INFO", message: "w1 line"),
+          log_json("2026-01-15T12:00:10Z", level: "INFO", message: "overshoot into w2"),
+          log_json("2026-01-15T12:00:15Z", level: "INFO", message: "w2 line")
         ])
 
       windows = [
@@ -181,51 +367,26 @@ defmodule ToastTest.Enrichment.LogsTest do
 
       [w1, w2] = Logs.extract_windows(windows, path)
 
-      assert w1 =~ "w1 line"
-      refute w1 =~ "overshoot"
+      w1_msgs = Enum.map(w1, & &1.message)
+      assert "w1 line" in w1_msgs
+      refute "overshoot into w2" in w1_msgs
 
-      assert w2 =~ "overshoot into w2"
-      assert w2 =~ "w2 line"
+      w2_msgs = Enum.map(w2, & &1.message)
+      assert "overshoot into w2" in w2_msgs
+      assert "w2 line" in w2_msgs
     end
 
-    test "non-timestamped continuation lines stay with their window", %{tmp_dir: dir} do
-      path =
-        write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 start",
-          "  continuation of w1",
-          "2026-01-15T12:00:15Z [1234] INFO [abc13] gap",
-          "  orphan continuation",
-          "2026-01-15T12:00:20Z [1234] INFO [abc14] w2 start",
-          "  continuation of w2"
-        ])
-
-      windows = [
-        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
-        {dt("2026-01-15T12:00:18Z"), dt("2026-01-15T12:00:25Z")}
-      ]
-
-      [w1, w2] = Logs.extract_windows(windows, path)
-
-      assert w1 =~ "w1 start"
-      assert w1 =~ "continuation of w1"
-      refute w1 =~ "orphan"
-
-      assert w2 =~ "w2 start"
-      assert w2 =~ "continuation of w2"
-      refute w2 =~ "orphan"
-    end
-
-    test "file not found returns list of empty strings", _context do
+    test "file not found returns list of empty lists", _context do
       windows = [
         {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
         {dt("2026-01-15T12:00:10Z"), dt("2026-01-15T12:00:15Z")},
         {dt("2026-01-15T12:00:20Z"), dt("2026-01-15T12:00:25Z")}
       ]
 
-      assert Logs.extract_windows(windows, "/nonexistent/file.log") == ["", "", ""]
+      assert Logs.extract_windows(windows, "/nonexistent/file.log") == [[], [], []]
     end
 
-    test "empty file returns list of empty strings", %{tmp_dir: dir} do
+    test "empty file returns list of empty lists", %{tmp_dir: dir} do
       path = Path.join(dir, "empty.log")
       File.write!(path, "")
 
@@ -234,14 +395,14 @@ defmodule ToastTest.Enrichment.LogsTest do
         {dt("2026-01-15T12:00:10Z"), dt("2026-01-15T12:00:15Z")}
       ]
 
-      assert Logs.extract_windows(windows, path) == ["", ""]
+      assert Logs.extract_windows(windows, path) == [[], []]
     end
 
-    test "EOF mid-window finalizes current and pads remaining with empty strings", %{tmp_dir: dir} do
+    test "EOF mid-window finalizes current and pads remaining with empty lists", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 line",
-          "2026-01-15T12:00:10Z [1234] INFO [abc13] w2 partial"
+          log_json("2026-01-15T12:00:00Z", level: "INFO", message: "w1 line"),
+          log_json("2026-01-15T12:00:10Z", level: "INFO", message: "w2 partial")
         ])
 
       windows = [
@@ -252,17 +413,19 @@ defmodule ToastTest.Enrichment.LogsTest do
 
       [w1, w2, w3] = Logs.extract_windows(windows, path)
 
-      assert w1 =~ "w1 line"
-      assert w2 =~ "w2 partial"
-      assert w3 == ""
+      assert length(w1) == 1
+      assert hd(w1).message == "w1 line"
+      assert length(w2) == 1
+      assert hd(w2).message == "w2 partial"
+      assert w3 == []
     end
 
-    test "window with no matching lines returns empty string while others work", %{tmp_dir: dir} do
+    test "window with no matching entries returns empty list while others work", %{tmp_dir: dir} do
       path =
         write_log(dir, [
-          "2026-01-15T12:00:00Z [1234] INFO [abc12] w1 line",
-          "2026-01-15T12:00:05Z [1234] INFO [abc13] w1 line2",
-          "2026-01-15T12:00:20Z [1234] INFO [abc14] w3 line"
+          log_json("2026-01-15T12:00:00Z", level: "INFO", message: "w1 line"),
+          log_json("2026-01-15T12:00:05Z", level: "INFO", message: "w1 line2"),
+          log_json("2026-01-15T12:00:20Z", level: "INFO", message: "w3 line")
         ])
 
       windows = [
@@ -273,10 +436,12 @@ defmodule ToastTest.Enrichment.LogsTest do
 
       [w1, w2, w3] = Logs.extract_windows(windows, path)
 
-      assert w1 =~ "w1 line"
-      assert w1 =~ "w1 line2"
-      assert w2 == ""
-      assert w3 =~ "w3 line"
+      w1_msgs = Enum.map(w1, & &1.message)
+      assert "w1 line" in w1_msgs
+      assert "w1 line2" in w1_msgs
+      assert w2 == []
+      assert length(w3) == 1
+      assert hd(w3).message == "w3 line"
     end
   end
 end

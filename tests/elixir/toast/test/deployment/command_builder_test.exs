@@ -106,6 +106,12 @@ defmodule Toast.Deployment.CommandBuilderTest do
                @paths.log_file,
                "--log.level",
                "crash=info",
+               "--log.use-json-format",
+               "true",
+               "--log.ids",
+               "true",
+               "--log.process",
+               "true",
                "--server.storage-engine",
                "rocksdb"
              ]
