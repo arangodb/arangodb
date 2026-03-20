@@ -548,7 +548,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   std::atomic<bool> _isExecuting{false};
 
-  aql::query_activity::AQLQueryActivity::HandleType _activity;
+  aql::query_activity::AqlQueryActivity::HandleType _activity;
 };
 
 }  // namespace aql

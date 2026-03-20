@@ -32,31 +32,47 @@
 // term query and breaks.
 namespace arangodb::aql::query_activity {
 
-struct AQLQueryActivityData {
+struct AqlQueryActivityData {
   QueryId id;
   double startTime;
+  std::string database;
+  std::string user;
   std::optional<std::string> queryString;
   std::optional<velocypack::SharedSlice> options;
   std::optional<velocypack::SharedSlice> bindParameters;
+  std::vector<std::string> dataSources;
+  std::optional<velocypack::SharedSlice> plan;
 
   template<typename Inspector>
-  inline friend auto inspect(Inspector& f, AQLQueryActivityData& d) {
-    return f.object(d).fields(f.field("queryId", d.id),  //
-                              f.field("startTime", d.startTime),
-                              f.field("queryString", d.queryString),  //
-                              f.field("options", d.options),          //
-                              f.field("bindParameters", d.bindParameters));
+  inline friend auto inspect(Inspector& f, AqlQueryActivityData& d) {
+    return f.object(d).fields(f.field("queryId", d.id),                     //
+                              f.field("startTime", d.startTime),            //
+                              f.field("database", d.database),              //
+                              f.field("user", d.user),                      //
+                              f.field("queryString", d.queryString),        //
+                              f.field("options", d.options),                //
+                              f.field("bindParameters", d.bindParameters),  //
+                              f.field("dataSources", d.dataSources),        //
+                              f.field("plan", d.plan));
   }
 };
 
-struct AQLQueryActivity
-    : activities::GuardedActivity<AQLQueryActivity, AQLQueryActivityData> {
-  AQLQueryActivity(activities::ActivityId id, activities::ActivityHandle parent,
-                   QueryId queryId, double startTime, std::string queryString,
-                   QueryOptions& options, BindParameters& bindParameters)
-      : activities::GuardedActivity<AQLQueryActivity, AQLQueryActivityData>(
-            id, parent, "AQLQuery",
-            AQLQueryActivityData{
+struct AqlQueryActivity
+    : activities::GuardedActivity<AqlQueryActivity, AqlQueryActivityData> {
+  AqlQueryActivity(activities::ActivityId id, activities::ActivityHandle parent,
+                   AqlQueryActivityData data)
+      : activities::GuardedActivity<AqlQueryActivity, AqlQueryActivityData>(
+            id, parent, "AQLQuery", std::move(data)) {}
+  using Data = AqlQueryActivityData;
+
+  auto setPlanSlice(velocypack::SharedSlice plan) {
+    _data.getLockedGuard()->plan = plan;
+  }
+};
+}  // namespace arangodb::aql::query_activity
+
+#if 0
+            AqlQueryActivityData{
                 .id = queryId,
                 .startTime = startTime,
                 .queryString = queryString,
@@ -66,7 +82,5 @@ struct AQLQueryActivity
                       options.toVelocyPack(builder, true);
                       return builder.sharedSlice();
                     }),
-                .bindParameters = bindParameters.builder()->sharedSlice()}) {}
-  using Data = AQLQueryActivityData;
-};
-}  // namespace arangodb::aql::query_activity
+                .bindParameters = bindParameters.builder()->sharedSlice()})
+#endif
