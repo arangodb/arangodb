@@ -40,6 +40,7 @@ const {
   waitForAllVectorIndexesState,
   VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
+const {deriveTestSuite} = require("@arangodb/test-helper-common");
 
 const isCluster = require("internal").isCluster();
 const dbName = "vectorTrainingStateDb";
@@ -252,12 +253,20 @@ function SparseVectorIndexTestSuite() {
   };
 }
 
-jsunity.run(function DenseVectorTrainingStateTestSuite() {
-  return VectorTrainingStateTestSuite(/*sparse*/ false);
-});
-jsunity.run(function SparseVectorTrainingStateTestSuite() {
-  return VectorTrainingStateTestSuite(/*sparse*/ true);
-});
+function DenseVectorTrainingStateTestSuite() {
+  let suite = {};
+  deriveTestSuite(VectorTrainingStateTestSuite(/*sparse*/ false), suite, "_dense");
+  return suite;
+}
+
+function SparseVectorTrainingStateTestSuite() {
+  let suite = {};
+  deriveTestSuite(VectorTrainingStateTestSuite(/*sparse*/ true), suite, "_sparse");
+  return suite;
+}
+
+jsunity.run(DenseVectorTrainingStateTestSuite);
+jsunity.run(SparseVectorTrainingStateTestSuite);
 jsunity.run(SparseVectorIndexTestSuite);
 
 return jsunity.done();
