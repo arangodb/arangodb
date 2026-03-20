@@ -313,9 +313,6 @@ commands:
             - attach_workspace_from_s3:
                 at: .
                 archive: binaries.tar.bz2
-            - attach_workspace_from_s3:
-                at: .
-                archive: frontend.tar.bz2
       - run:
           name: Log processes
           command: |
