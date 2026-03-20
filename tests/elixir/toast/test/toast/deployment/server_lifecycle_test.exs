@@ -25,11 +25,8 @@ defmodule Toast.Deployment.ServerLifecycleTest do
     struct!(Toast.Process.CrashInfo, Keyword.merge(defaults, overrides))
   end
 
-  defp on_crash_ctx(overrides \\ []) do
-    %{
-      on_crash: Keyword.get(overrides, :on_crash),
-      on_event: Keyword.get(overrides, :on_event)
-    }
+  defp crash_ctx(overrides \\ []) do
+    %{deployment_id: Keyword.get(overrides, :deployment_id, "test-deployment")}
   end
 
   # --- handle_crash/5 ---
@@ -41,47 +38,10 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       info = crash_info()
 
       assert {:expected, updated} =
-               ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx())
+               ServerLifecycle.handle_crash("s1", info, expected, nil, crash_ctx())
 
       assert updated["s1"].crash_info == info
       assert updated["s1"].timer == timer
-    end
-
-    test "fires on_event with :server_crashed tuple" do
-      test_pid = self()
-      on_event = fn event -> send(test_pid, {:event, event}) end
-
-      timer = make_ref()
-      expected = %{"s1" => %{timer: timer, crash_info: nil, waiter: nil}}
-      info = crash_info()
-
-      ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx(on_event: on_event))
-
-      assert_receive {:event,
-                      {:server_crashed,
-                       %Toast.Process.CrashEvent{
-                         server_id: "s1",
-                         crash_info: ^info,
-                         expected: true
-                       }}}
-    end
-
-    test "does not fire on_crash for expected crashes" do
-      test_pid = self()
-      on_crash = fn _server_id, _info -> send(test_pid, :crash_callback) end
-
-      timer = make_ref()
-      expected = %{"s1" => %{timer: timer, crash_info: nil, waiter: nil}}
-
-      ServerLifecycle.handle_crash(
-        "s1",
-        crash_info(),
-        expected,
-        nil,
-        on_crash_ctx(on_crash: on_crash)
-      )
-
-      refute_receive :crash_callback, 50
     end
   end
 
@@ -91,68 +51,12 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       assert {:ok, %Toast.Process.CrashInfo{exit_status: 139, signal: 11}} = result
       refute Map.has_key?(updated, "s1")
     end
-
-    test "fires on_event even when waiter is present" do
-      test_pid = self()
-      on_event = fn event -> send(test_pid, {:event, event}) end
-
-      info = crash_info()
-      from = spawn_genserver_from()
-      verify_timer = Process.send_after(self(), :noop, 60_000)
-      expect_timer = Process.send_after(self(), :noop, 60_000)
-
-      expected = %{
-        "s1" => %{timer: expect_timer, crash_info: nil, waiter: {from, verify_timer}}
-      }
-
-      ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx(on_event: on_event))
-
-      assert_receive {:event,
-                      {:server_crashed,
-                       %Toast.Process.CrashEvent{
-                         server_id: "s1",
-                         crash_info: ^info,
-                         expected: true
-                       }}}
-    end
   end
 
   describe "handle_crash/5 with unexpected crash (no server instance)" do
     test "returns :unexpected_crash when server is nil" do
       assert :unexpected_crash =
-               ServerLifecycle.handle_crash("s1", crash_info(), %{}, nil, on_crash_ctx())
-    end
-
-    test "fires on_crash callback" do
-      test_pid = self()
-      on_crash = fn server_id, info -> send(test_pid, {:crash, server_id, info}) end
-      info = crash_info()
-
-      ServerLifecycle.handle_crash(
-        "s1",
-        info,
-        %{},
-        nil,
-        on_crash_ctx(on_crash: on_crash)
-      )
-
-      assert_receive {:crash, "s1", ^info}
-    end
-
-    test "fires on_event callback" do
-      test_pid = self()
-      on_event = fn event -> send(test_pid, {:event, event}) end
-      info = crash_info()
-
-      ServerLifecycle.handle_crash("s1", info, %{}, nil, on_crash_ctx(on_event: on_event))
-
-      assert_receive {:event,
-                      {:server_crashed,
-                       %Toast.Process.CrashEvent{
-                         server_id: "s1",
-                         crash_info: ^info,
-                         expected: false
-                       }}}
+               ServerLifecycle.handle_crash("s1", crash_info(), %{}, nil, crash_ctx())
     end
   end
 
@@ -162,7 +66,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       info = crash_info(signal: nil)
 
       assert :intentional_exit =
-               ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx())
+               ServerLifecycle.handle_crash("s1", info, %{}, srv, crash_ctx())
     end
 
     test "returns :intentional_exit for SIGTERM (signal 15)" do
@@ -170,29 +74,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       info = crash_info(signal: 15)
 
       assert :intentional_exit =
-               ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx())
-    end
-
-    test "does not fire on_crash for intentional exit" do
-      test_pid = self()
-      on_crash = fn _server_id, _info -> send(test_pid, :crash_callback) end
-
-      srv = server(expecting_exit: true)
-      info = crash_info(signal: 15)
-
-      ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx(on_crash: on_crash))
-      refute_receive :crash_callback, 50
-    end
-
-    test "does not fire on_event for intentional exit" do
-      test_pid = self()
-      on_event = fn event -> send(test_pid, {:event, event}) end
-
-      srv = server(expecting_exit: true)
-      info = crash_info(signal: 15)
-
-      ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx(on_event: on_event))
-      refute_receive {:event, _}, 50
+               ServerLifecycle.handle_crash("s1", info, %{}, srv, crash_ctx())
     end
 
     test "returns :crash_during_intentional_stop for SIGSEGV (signal 11)" do
@@ -200,7 +82,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       info = crash_info(signal: 11)
 
       assert :crash_during_intentional_stop =
-               ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx())
+               ServerLifecycle.handle_crash("s1", info, %{}, srv, crash_ctx())
     end
 
     test "returns :crash_during_intentional_stop for SIGABRT (signal 6)" do
@@ -208,18 +90,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       info = crash_info(signal: 6)
 
       assert :crash_during_intentional_stop =
-               ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx())
-    end
-
-    test "fires on_crash for crash during intentional stop" do
-      test_pid = self()
-      on_crash = fn _server_id, info -> send(test_pid, {:crash, info}) end
-
-      srv = server(expecting_exit: true)
-      info = crash_info(signal: 11)
-
-      ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx(on_crash: on_crash))
-      assert_receive {:crash, ^info}
+               ServerLifecycle.handle_crash("s1", info, %{}, srv, crash_ctx())
     end
   end
 
@@ -229,32 +100,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       info = crash_info()
 
       assert :unexpected_crash =
-               ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx())
-    end
-
-    test "fires both on_crash and on_event" do
-      test_pid = self()
-      on_crash = fn _server_id, info -> send(test_pid, {:crash, info}) end
-      on_event = fn event -> send(test_pid, {:event, event}) end
-      info = crash_info()
-
-      ServerLifecycle.handle_crash(
-        "s1",
-        info,
-        %{},
-        server(),
-        on_crash_ctx(on_crash: on_crash, on_event: on_event)
-      )
-
-      assert_receive {:crash, ^info}
-
-      assert_receive {:event,
-                      {:server_crashed,
-                       %Toast.Process.CrashEvent{
-                         server_id: "s1",
-                         crash_info: ^info,
-                         expected: false
-                       }}}
+               ServerLifecycle.handle_crash("s1", info, %{}, srv, crash_ctx())
     end
   end
 
@@ -463,38 +309,6 @@ defmodule Toast.Deployment.ServerLifecycleTest do
     end
   end
 
-  # --- notify_event/2 ---
-
-  describe "notify_event/2" do
-    test "returns :ok when callback is nil" do
-      assert :ok = ServerLifecycle.notify_event(nil, {:some_event})
-    end
-
-    test "invokes callback with event" do
-      test_pid = self()
-      callback = fn event -> send(test_pid, {:got_event, event}) end
-
-      ServerLifecycle.notify_event(callback, {:test_event, "data"})
-      assert_receive {:got_event, {:test_event, "data"}}
-    end
-  end
-
-  # --- notify_crash/3 ---
-
-  describe "notify_crash/3" do
-    test "returns :ok when callback is nil" do
-      assert :ok = ServerLifecycle.notify_crash(nil, "server-1", :info)
-    end
-
-    test "invokes callback with server_id and crash_info" do
-      test_pid = self()
-      callback = fn server_id, info -> send(test_pid, {:got_crash, server_id, info}) end
-
-      ServerLifecycle.notify_crash(callback, "server-1", :my_info)
-      assert_receive {:got_crash, "server-1", :my_info}
-    end
-  end
-
   # --- print_server_output/2 ---
 
   describe "print_server_output/2" do
@@ -597,7 +411,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
     }
 
     {:expected, updated} =
-      ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx())
+      ServerLifecycle.handle_crash("s1", info, expected, nil, crash_ctx())
 
     result = Task.await(task, 1_000)
     {result, updated}

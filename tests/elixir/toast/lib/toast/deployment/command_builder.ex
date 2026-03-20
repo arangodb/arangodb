@@ -58,7 +58,13 @@ defmodule Toast.Deployment.CommandBuilder do
       "--log.file",
       paths.log_file,
       "--log.level",
-      "crash=info"
+      "crash=info",
+      "--log.use-json-format",
+      "true",
+      "--log.ids",
+      "true",
+      "--log.process",
+      "true"
     ]
   end
 

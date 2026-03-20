@@ -1,5 +1,10 @@
 defmodule ToastTest.CrashMonitor do
-  @moduledoc "Default on_crash callback that aborts the test run when a server crashes unexpectedly."
+  @moduledoc """
+  Aborts the test run when a server crashes unexpectedly.
+
+  Called directly by the deployment controller. Silently does nothing
+  if the test infrastructure (Abort ETS table) is not running.
+  """
 
   @spec handle_crash(String.t(), Toast.Process.CrashInfo.t()) :: :ok
   def handle_crash(_server_id, %Toast.Process.CrashInfo{signal: signal, exit_status: exit_status}) do
@@ -13,5 +18,7 @@ defmodule ToastTest.CrashMonitor do
 
     ToastTest.Abort.abort!({:crash, message})
     ToastTest.Abort.kill_test_pid()
+  rescue
+    ArgumentError -> :ok
   end
 end

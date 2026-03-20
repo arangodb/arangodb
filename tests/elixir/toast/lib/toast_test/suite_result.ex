@@ -1,10 +1,30 @@
 defmodule ToastTest.SuiteResult do
   @moduledoc false
 
+  @type incarnation :: %{
+          pid: non_neg_integer(),
+          started_at: DateTime.t(),
+          stopped_at: DateTime.t() | nil
+        }
+
   @type server_meta :: %{
+          id: String.t(),
+          deployment_id: String.t(),
           role: atom(),
+          endpoint: String.t() | nil,
+          log_file: Path.t() | nil,
           arango_id: String.t() | nil,
+          incarnations: [incarnation()],
           logs: [{DateTime.t(), DateTime.t(), String.t()}]
+        }
+
+  @type deployment_meta :: %{
+          id: String.t(),
+          mode: :cluster | :single_server,
+          stacktrace: list() | nil,
+          started_at: DateTime.t(),
+          stopped_at: DateTime.t() | nil,
+          servers: %{String.t() => server_meta()}
         }
 
   @type t :: %__MODULE__{
@@ -19,8 +39,8 @@ defmodule ToastTest.SuiteResult do
           },
           modules: %{module() => module_result()},
           issues: [issue()],
-          servers: %{String.t() => server_meta()},
-          events: %{atom() => [map()]},
+          deployments: %{String.t() => deployment_meta()},
+          events: [map()],
           warnings: [String.t()]
         }
 
@@ -60,8 +80,8 @@ defmodule ToastTest.SuiteResult do
     version: 1,
     modules: %{},
     issues: [],
-    servers: %{},
-    events: %{},
+    deployments: %{},
+    events: [],
     warnings: []
   ]
 
@@ -75,8 +95,8 @@ defmodule ToastTest.SuiteResult do
       times_us: test_data.times_us || %{async: nil, load: nil, run: 0},
       modules: test_data.modules,
       issues: issues,
-      servers: Keyword.get(opts, :servers, %{}),
-      events: Keyword.get(opts, :events, %{}),
+      deployments: Keyword.get(opts, :deployments, %{}),
+      events: Keyword.get(opts, :events, []),
       warnings: Keyword.get(opts, :warnings, [])
     }
   end

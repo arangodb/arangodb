@@ -159,9 +159,8 @@ defmodule ToastTest.Runner do
     deployment_opts = build_deployment_opts(config, global_opts)
     toast_config = Toast.Config.load(deployment_opts)
     Logger.debug("Toast config: #{inspect(toast_config)}")
-    callback_opts = Keyword.take(deployment_opts, [:on_crash, :on_event])
 
-    case Toast.Deployment.start(mode, toast_config, callback_opts) do
+    case Toast.Deployment.start(mode, toast_config) do
       {:ok, deployment} ->
         run_suite_with_deployment(
           deployment,
@@ -423,10 +422,7 @@ defmodule ToastTest.Runner do
   ]
 
   defp build_deployment_opts(suite_config, global_opts) do
-    base = [
-      on_crash: &ToastTest.CrashMonitor.handle_crash/2,
-      on_event: &ProcessHistory.handle_event/1
-    ]
+    base = []
 
     suite_args =
       for key <- [:server_args, :coordinator_args, :dbserver_args, :agent_args],
@@ -483,47 +479,35 @@ defmodule ToastTest.Runner do
   end
 
   defp mark_all_skipped_stats(test_modules, reason, global_opts, suite_module, mode) do
-    opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
-    suite_name = derive_suite_name(suite_module, mode)
-    {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
-    Compat.suite_started(manager, opts)
-
     skip_reason = Abort.prefix() <> "Deployment failed: #{inspect(reason)}"
 
-    for module <- test_modules do
-      test_module = Compat.get_test_metadata(module)
-      Compat.module_started(manager, test_module)
-
-      skipped_tests =
-        for test <- test_module.tests do
-          %{test | state: {:skipped, skip_reason}}
-        end
-
-      for test <- skipped_tests do
-        Compat.test_started(manager, test)
-        Compat.test_finished(manager, test)
-      end
-
-      Compat.module_finished(manager, %{test_module | tests: skipped_tests})
-    end
-
-    times_us = %{async: nil, load: nil, run: 0}
-    Compat.suite_finished(manager, times_us)
-    stats = Compat.stats(stats_pid)
-    test_data = ToastTest.ResultCollector.get_data(result_collector_pid)
-    Compat.stop(manager)
-    {stats, test_data}
+    emit_all_modules(test_modules, global_opts, suite_module, mode, fn manager, module ->
+      emit_module_with_state(manager, module, fn test ->
+        %{test | state: {:skipped, skip_reason}}
+      end)
+    end)
   end
 
   defp mark_all_errored_stats(test_modules, reason, global_opts, suite_module, mode) do
+    emit_all_modules(test_modules, global_opts, suite_module, mode, fn manager, module ->
+      emit_module_with_state(manager, module, fn test ->
+        %{
+          test
+          | state:
+              {:failed,
+               [{:error, RuntimeError.exception("Deployment failed: #{inspect(reason)}"), []}]}
+        }
+      end)
+    end)
+  end
+
+  defp emit_all_modules(test_modules, global_opts, suite_module, mode, emit_fn) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
     suite_name = derive_suite_name(suite_module, mode)
     {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
     Compat.suite_started(manager, opts)
 
-    for module <- test_modules do
-      emit_errored_module(manager, module, reason)
-    end
+    for module <- test_modules, do: emit_fn.(manager, module)
 
     times_us = %{async: nil, load: nil, run: 0}
     Compat.suite_finished(manager, times_us)
@@ -533,23 +517,19 @@ defmodule ToastTest.Runner do
     {stats, test_data}
   end
 
-  defp emit_errored_module(manager, module, reason) do
+  defp emit_module_with_state(manager, module, transform_test) do
     test_module = Compat.get_test_metadata(module)
     Compat.module_started(manager, test_module)
 
-    for test <- test_module.tests do
-      errored = %{
-        test
-        | state:
-            {:failed,
-             [{:error, RuntimeError.exception("Deployment failed: #{inspect(reason)}"), []}]}
-      }
+    transformed_tests =
+      for test <- test_module.tests do
+        transformed = transform_test.(test)
+        Compat.test_started(manager, transformed)
+        Compat.test_finished(manager, transformed)
+        transformed
+      end
 
-      Compat.test_started(manager, errored)
-      Compat.test_finished(manager, errored)
-    end
-
-    Compat.module_finished(manager, test_module)
+    Compat.module_finished(manager, %{test_module | tests: transformed_tests})
   end
 
   defp post_execution(deployment, test_data, toast_config) do
@@ -568,19 +548,19 @@ defmodule ToastTest.Runner do
   end
 
   defp build_suite_result(servers, test_data, toast_config) do
-    pid_history = ProcessHistory.pids_by_server()
-    crash_events = ProcessHistory.unexpected_crashes()
-    timeout_kills = ProcessHistory.timeout_kills()
+    snapshot = ProcessHistory.snapshot()
 
     Logger.debug("Collecting artifacts")
     artifact_opts = [coredump_dir: toast_config.coredump_dir, not_before: test_data.started_at]
-    artifacts = ToastTest.ArtifactCollector.collect(servers, pid_history, artifact_opts)
+
+    artifacts =
+      ToastTest.ArtifactCollector.collect(servers, snapshot.pids_by_server, artifact_opts)
 
     Logger.debug("Running attribution")
 
     issues =
-      ToastTest.Attribution.run(test_data, artifacts, crash_events,
-        timeout_kills: timeout_kills,
+      ToastTest.Attribution.run(test_data, artifacts, snapshot.unexpected_crashes,
+        timeout_kills: snapshot.timeout_kills,
         analyzer_opts: build_coredump_analyzer_opts(toast_config)
       )
 
@@ -589,24 +569,36 @@ defmodule ToastTest.Runner do
     server_logs = ToastTest.Attribution.ServerLogs.collect(issues, artifacts, windows)
 
     Logger.debug("Building results (#{length(issues)} issues found)")
-    warnings = coredump_warnings(crash_events, artifacts, toast_config)
-    server_meta = build_server_meta(servers, server_logs)
+    warnings = coredump_warnings(snapshot.unexpected_crashes, artifacts, toast_config)
+    deployments = build_deployments(snapshot, server_logs)
 
     suite_result =
-      SuiteResult.build(test_data, issues, warnings: warnings, servers: server_meta)
+      SuiteResult.build(test_data, issues,
+        warnings: warnings,
+        deployments: deployments,
+        events: snapshot.events
+      )
 
     SuiteResult.write_all(suite_result, toast_config.result_dir)
     print_post_exec_summary(suite_result)
     suite_result
   end
 
-  defp build_server_meta(servers, server_logs) do
-    Map.new(servers, fn {id, instance} ->
-      {id,
+  defp build_deployments(snapshot, server_logs) do
+    Map.new(snapshot.deployments, fn {did, deployment_info} ->
+      servers_with_logs =
+        Map.new(Map.get(snapshot.servers, did, %{}), fn {sid, server} ->
+          {sid, Map.put(server, :logs, Map.get(server_logs, sid, []))}
+        end)
+
+      {did,
        %{
-         role: instance.role,
-         arango_id: instance.arango_id,
-         logs: Map.get(server_logs, id, [])
+         id: did,
+         mode: deployment_info.mode,
+         stacktrace: deployment_info.stacktrace,
+         started_at: deployment_info.started_at,
+         stopped_at: deployment_info.stopped_at,
+         servers: servers_with_logs
        }}
     end)
   end
@@ -648,20 +640,9 @@ defmodule ToastTest.Runner do
   end
 
   defp emit_skipped_module(config, module, reason) do
-    test_module = Compat.get_test_metadata(module)
-    Compat.module_started(config.manager, test_module)
-
-    skipped_tests =
-      for test <- test_module.tests do
-        %{test | state: {:skipped, reason}}
-      end
-
-    for test <- skipped_tests do
-      Compat.test_started(config.manager, test)
-      Compat.test_finished(config.manager, test)
-    end
-
-    Compat.module_finished(config.manager, %{test_module | tests: skipped_tests})
+    emit_module_with_state(config.manager, module, fn test ->
+      %{test | state: {:skipped, reason}}
+    end)
   end
 
   defp normalize_opts(opts) do

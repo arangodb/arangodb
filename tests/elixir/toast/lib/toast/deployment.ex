@@ -95,15 +95,15 @@ defmodule Toast.Deployment do
     Logger.info("Starting #{mode} deployment (work_dir=#{config.work_dir})")
     id = Keyword.get_lazy(opts, :id, fn -> generate_id(mode) end)
 
+    stacktrace = capture_caller_stacktrace()
+
     with {:ok, specs} <- build_specs(mode, config, id),
          {:ok, pid} <-
            Toast.Deployment.Supervisor.start_controller(
              config: config,
-             id: id,
-             on_crash: Keyword.get(opts, :on_crash),
-             on_event: Keyword.get(opts, :on_event)
+             id: id
            ),
-         :ok <- Controller.deploy(pid, specs, config.startup_timeout) do
+         :ok <- Controller.deploy(pid, specs, config.startup_timeout, stacktrace: stacktrace) do
       info = Controller.get_info(pid)
 
       {:ok,
@@ -430,13 +430,13 @@ defmodule Toast.Deployment do
   end
 
   defp controller_call_control(deployment, op, target, opts \\ []) do
-    apply(Controller, op, [deployment.controller, target | opts_args(opts)])
+    case opts do
+      [] -> apply(Controller, op, [deployment.controller, target])
+      opts -> apply(Controller, op, [deployment.controller, target, opts])
+    end
   catch
     :exit, _ -> {:error, :controller_not_available}
   end
-
-  defp opts_args([]), do: []
-  defp opts_args(opts), do: [opts]
 
   defp format_degraded_message(deployment, prev_test) do
     downed =
@@ -483,5 +483,19 @@ defmodule Toast.Deployment do
       )
 
       default
+  end
+
+  defp capture_caller_stacktrace do
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+
+    # Trim framework frames — keep only frames from test/suite code
+    stacktrace
+    |> Enum.drop_while(fn {mod, _fun, _arity, _loc} ->
+      mod_str = Atom.to_string(mod)
+
+      String.starts_with?(mod_str, "Elixir.Toast.Deployment") or
+        String.starts_with?(mod_str, "Elixir.ToastTest.")
+    end)
+    |> Enum.take(10)
   end
 end

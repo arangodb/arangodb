@@ -88,8 +88,9 @@ defmodule ToastTest.SuiteResultTest do
   defp build_suite_result(opts \\ []) do
     test_data = Keyword.get(opts, :test_data, build_test_data())
     issues = Keyword.get(opts, :issues, build_issues())
-    events = Keyword.get(opts, :events, %{})
-    SuiteResult.build(test_data, issues, events: events)
+    events = Keyword.get(opts, :events, [])
+    deployments = Keyword.get(opts, :deployments, %{})
+    SuiteResult.build(test_data, issues, events: events, deployments: deployments)
   end
 
   defp with_tmp_dir(fun) do
@@ -147,15 +148,15 @@ defmodule ToastTest.SuiteResultTest do
       assert Enum.any?(result.issues, &(&1.type == :crash))
     end
 
-    test "defaults events to empty map when not provided" do
+    test "defaults events to empty list when not provided" do
       test_data = build_test_data()
       result = SuiteResult.build(test_data, [])
 
-      assert result.events == %{}
+      assert result.events == []
     end
 
     test "populates events when provided" do
-      events = %{test_lifecycle: [%{at: @test1_started_at, event: :started}]}
+      events = [%{event: :server_started, server_id: "s1", timestamp: @test1_started_at}]
       result = build_suite_result(events: events)
 
       assert result.events == events
@@ -412,12 +413,10 @@ defmodule ToastTest.SuiteResultTest do
     end
 
     test "preserves events through roundtrip" do
-      events = %{
-        test_lifecycle: [
-          %{at: @test1_started_at, event: :started, module: FakeModule, name: :"test passes"},
-          %{at: @test1_finished_at, event: :finished, module: FakeModule, name: :"test passes"}
-        ]
-      }
+      events = [
+        %{event: :server_started, server_id: "s1", pid: 1001, timestamp: @test1_started_at},
+        %{event: :server_stopped, server_id: "s1", pid: 1001, timestamp: @test1_finished_at}
+      ]
 
       with_tmp_dir(fn dir ->
         result = build_suite_result(events: events)

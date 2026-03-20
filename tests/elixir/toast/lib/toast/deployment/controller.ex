@@ -8,8 +8,9 @@ defmodule Toast.Deployment.Controller do
   alias Toast.Config
   alias Toast.Deployment.{Health, ServerInstance, ServerLifecycle}
   alias Toast.Diagnostics.AgencyDump
-  alias Toast.Process.{CrashEvent, ServerProcess}
+  alias Toast.Process.ServerProcess
   alias Toast.Process.Supervisor, as: ProcessSupervisor
+  alias ToastTest.ProcessHistory
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
 
@@ -32,8 +33,6 @@ defmodule Toast.Deployment.Controller do
       :config,
       :id,
       :error,
-      :on_crash,
-      :on_event,
       status: :stopped,
       servers: %{},
       expected_crashes: %{},
@@ -44,8 +43,6 @@ defmodule Toast.Deployment.Controller do
             config: Toast.Config.t(),
             id: String.t() | nil,
             error: Toast.Deployment.Controller.deployment_error(),
-            on_crash: (term(), term() -> term()) | nil,
-            on_event: (term() -> term()) | nil,
             status: Toast.Deployment.Controller.status(),
             servers: %{optional(String.t()) => Toast.Deployment.ServerInstance.t()},
             expected_crashes: map(),
@@ -62,12 +59,12 @@ defmodule Toast.Deployment.Controller do
     GenServer.start_link(__MODULE__, init_opts, server_opts)
   end
 
-  @spec deploy(GenServer.server(), [map()], timeout()) :: :ok | {:error, term()}
-  def deploy(server, specs, timeout \\ 120_000) do
+  @spec deploy(GenServer.server(), [map()], timeout(), keyword()) :: :ok | {:error, term()}
+  def deploy(server, specs, timeout \\ 120_000, opts \\ []) do
     # Use :infinity because on failure the error cleanup (abort_all_servers +
     # rollback) can take significantly longer than the deploy timeout itself.
     # Internal timeouts (health check deadlines, abort waits) are all bounded.
-    GenServer.call(server, {:deploy, specs, timeout}, :infinity)
+    GenServer.call(server, {:deploy, specs, timeout, opts}, :infinity)
   end
 
   @spec shutdown(GenServer.server(), timeout()) :: :ok | {:error, term()}
@@ -136,17 +133,15 @@ defmodule Toast.Deployment.Controller do
 
     state = %State{
       id: id,
-      config: config,
-      on_crash: Keyword.get(opts, :on_crash),
-      on_event: Keyword.get(opts, :on_event)
+      config: config
     }
 
     {:ok, state}
   end
 
   @impl true
-  def handle_call({:deploy, specs, timeout}, _from, %{status: :stopped} = state) do
-    case do_deploy(state, specs, timeout) do
+  def handle_call({:deploy, specs, timeout, opts}, _from, %{status: :stopped} = state) do
+    case do_deploy(state, specs, timeout, opts) do
       {:ok, new_state} ->
         Logger.debug("Deploy succeeded, status=#{new_state.status}")
         {:reply, :ok, new_state}
@@ -251,17 +246,14 @@ defmodule Toast.Deployment.Controller do
   def handle_info({:server_crashed, server_id, crash_info}, state) do
     %ServerInstance{} = server = state.servers[server_id]
 
-    on_crash_ctx = %{
-      on_crash: state.on_crash,
-      on_event: state.on_event
-    }
+    crash_ctx = %{deployment_id: state.id}
 
     case ServerLifecycle.handle_crash(
            server_id,
            crash_info,
            state.expected_crashes,
            server,
-           on_crash_ctx
+           crash_ctx
          ) do
       {:expected, expected_crashes} ->
         state = %{state | expected_crashes: expected_crashes}
@@ -320,12 +312,21 @@ defmodule Toast.Deployment.Controller do
       timestamp: DateTime.utc_now()
     }
 
-    ServerLifecycle.notify_crash(state.on_crash, server_id, crash_info)
+    server = state.servers[server_id]
 
-    ServerLifecycle.notify_event(
-      state.on_event,
-      {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
-    )
+    event = %{
+      event: :server_crashed,
+      deployment_id: state.id,
+      server_id: server_id,
+      pid: server.pid,
+      crash_info: crash_info,
+      expected: false,
+      timestamp: DateTime.utc_now()
+    }
+
+    ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
+
+    ProcessHistory.notify(event)
 
     Logger.debug("Deployment status: #{state.status} -> :failed")
     {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}
@@ -387,19 +388,43 @@ defmodule Toast.Deployment.Controller do
 
   # --- Deploy pipeline ---
 
-  defp do_deploy(state, specs, timeout) do
+  defp do_deploy(state, specs, timeout, opts) do
     Logger.debug("Starting deploy for #{state.id} (timeout=#{timeout}ms)")
     deadline = System.monotonic_time(:millisecond) + timeout
     state = %{state | status: :starting}
     state = init_servers_from_specs(state, specs)
+
+    ProcessHistory.notify(%{
+      event: :deployment_starting,
+      deployment_id: state.id,
+      mode: derive_mode(state),
+      stacktrace: opts[:stacktrace],
+      specs:
+        Enum.map(specs, fn spec ->
+          %{id: spec.id, role: spec.role, port: spec.port, log_file: spec.log_file}
+        end),
+      timestamp: DateTime.utc_now()
+    })
 
     with {:ok, state} <- start_all_server_processes(state, specs),
          {:ok, state} <- deploy_role_groups(state, specs, deadline),
          {:ok, state} <- start_all_health_monitors(state) do
       state = post_deploy(state)
       servers = Map.new(state.servers, fn {id, s} -> {id, %{s | operational_state: :running}} end)
+      state = %{state | status: :ready, servers: servers}
+
+      ProcessHistory.notify(%{
+        event: :deployment_started,
+        deployment_id: state.id,
+        servers:
+          Map.new(state.servers, fn {id, s} ->
+            {id, %{role: s.role, endpoint: s.endpoint, log_file: s.log_file}}
+          end),
+        timestamp: DateTime.utc_now()
+      })
+
       Logger.info("Deployment #{state.id} ready")
-      {:ok, %{state | status: :ready, servers: servers}}
+      {:ok, state}
     else
       {:error, reason} ->
         handle_deploy_failure(state, reason, &rollback/2)
@@ -481,7 +506,7 @@ defmodule Toast.Deployment.Controller do
     health_check? = Keyword.get(opts, :health_check, false)
     timeout = remaining_ms(deadline)
     count = length(server_ids)
-    on_event = state.on_event
+    deployment_id = state.id
 
     role_label = state.servers[hd(server_ids)].role
 
@@ -490,7 +515,7 @@ defmodule Toast.Deployment.Controller do
     results =
       Task.async_stream(
         server_ids,
-        &launch_server_process(state.servers[&1], &1, health_check?, timeout, on_event),
+        &launch_server_process(state.servers[&1], &1, health_check?, timeout, deployment_id),
         ordered: false,
         max_concurrency: count,
         timeout: timeout + @task_stream_buffer
@@ -500,22 +525,25 @@ defmodule Toast.Deployment.Controller do
     collect_launch_results(results, state)
   end
 
-  defp launch_server_process(server, server_id, health_check?, timeout, on_event) do
+  defp launch_server_process(server, server_id, health_check?, timeout, deployment_id) do
     with :ok <- ServerProcess.launch(server.server_pid),
          os_pid = ServerProcess.os_pid(server.server_pid),
-         :ok <- notify_server_started(server_id, server, os_pid, on_event),
+         :ok <- notify_server_started(server_id, server, os_pid, deployment_id),
          :ok <- maybe_health_check(server, health_check?, timeout) do
       {:ok, {server_id, os_pid}}
     end
   end
 
-  defp notify_server_started(server_id, server, os_pid, on_event) do
+  defp notify_server_started(server_id, server, os_pid, deployment_id) do
     Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
 
-    ServerLifecycle.notify_event(
-      on_event,
-      {:server_started, server_id, os_pid, DateTime.utc_now()}
-    )
+    ProcessHistory.notify(%{
+      event: :server_started,
+      deployment_id: deployment_id,
+      server_id: server_id,
+      pid: os_pid,
+      timestamp: DateTime.utc_now()
+    })
 
     :ok
   end
@@ -605,15 +633,20 @@ defmodule Toast.Deployment.Controller do
       end)
 
     record_shutdown_escalations(state.id, escalated)
+
+    ProcessHistory.notify(%{
+      event: :deployment_stopped,
+      deployment_id: state.id,
+      timestamp: DateTime.utc_now()
+    })
+
     %{state | status: :stopped, servers: clear_server_pids(state.servers)}
   end
 
   defp stop_server_group(server_ids, state, timeout) do
-    opts = [on_event: state.on_event]
-
     Task.async_stream(
       server_ids,
-      &stop_server_process(state, &1, timeout, opts),
+      &stop_server_process(state, &1, timeout),
       ordered: false,
       timeout: timeout + ServerProcess.escalation_overhead() + @task_stream_buffer
     )
@@ -672,57 +705,61 @@ defmodule Toast.Deployment.Controller do
   # --- Control operations ---
 
   defp do_stop_server(server_id, acc) do
-    with {:ok, server} <- fetch_server(acc, server_id),
-         :ok <- ServerLifecycle.require_state(server, :running) do
-      ServerLifecycle.stop_server(server, timeout_factor: acc.config.timeout_factor)
-
-      acc =
-        update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
-
-      ServerLifecycle.notify_event(
-        acc.on_event,
-        {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()}
-      )
-
-      {:ok, acc}
-    end
+    server_control(acc, server_id, :running,
+      action: fn server ->
+        ServerLifecycle.stop_server(server, timeout_factor: acc.config.timeout_factor)
+      end,
+      state: [operational_state: :stopped, expecting_exit: true],
+      event: :server_stopped,
+      event_extra: fn server -> %{pid: server.pid, reason: nil} end
+    )
   end
 
   defp do_kill_server(server_id, acc) do
-    with {:ok, server} <- fetch_server(acc, server_id),
-         :ok <- ServerLifecycle.require_state(server, :running) do
-      ServerLifecycle.kill_server(server)
-
-      acc =
-        update_server(acc, server_id, operational_state: :killed, expecting_exit: true)
-
-      ServerLifecycle.notify_event(acc.on_event, {:server_killed, server_id, DateTime.utc_now()})
-      {:ok, acc}
-    end
+    server_control(acc, server_id, :running,
+      action: &ServerLifecycle.kill_server/1,
+      state: [operational_state: :killed, expecting_exit: true],
+      event: :server_killed,
+      event_extra: fn server -> %{pid: server.pid} end
+    )
   end
 
   defp do_pause_server(server_id, acc) do
-    with {:ok, server} <- fetch_server(acc, server_id),
-         :ok <- ServerLifecycle.require_state(server, :running) do
-      ServerLifecycle.pause_server(server)
-
-      acc =
-        update_server(acc, server_id, operational_state: :paused, expecting_exit: true)
-
-      ServerLifecycle.notify_event(acc.on_event, {:server_paused, server_id, DateTime.utc_now()})
-      {:ok, acc}
-    end
+    server_control(acc, server_id, :running,
+      action: &ServerLifecycle.pause_server/1,
+      state: [operational_state: :paused, expecting_exit: true],
+      event: :server_paused
+    )
   end
 
   defp do_resume_server(server_id, acc) do
+    server_control(acc, server_id, :paused,
+      action: &ServerLifecycle.resume_server/1,
+      state: [operational_state: :running, expecting_exit: false],
+      event: :server_resumed
+    )
+  end
+
+  defp server_control(acc, server_id, required_state, opts) do
     with {:ok, server} <- fetch_server(acc, server_id),
-         :ok <- ServerLifecycle.require_state(server, :paused) do
-      ServerLifecycle.resume_server(server)
+         :ok <- ServerLifecycle.require_state(server, required_state) do
+      opts[:action].(server)
+      acc = update_server(acc, server_id, opts[:state])
 
-      acc =
-        update_server(acc, server_id, operational_state: :running, expecting_exit: false)
+      extra = if opts[:event_extra], do: opts[:event_extra].(server), else: %{}
 
-      ServerLifecycle.notify_event(acc.on_event, {:server_resumed, server_id, DateTime.utc_now()})
+      ProcessHistory.notify(
+        Map.merge(
+          %{
+            event: opts[:event],
+            deployment_id: acc.id,
+            server_id: server_id,
+            timestamp: DateTime.utc_now()
+          },
+          extra
+        )
+      )
+
       {:ok, acc}
     end
   end
@@ -730,6 +767,15 @@ defmodule Toast.Deployment.Controller do
   defp do_restart_server(server_id, acc, opts) do
     with {:ok, server} <- fetch_server(acc, server_id) do
       ServerLifecycle.stop_before_restart(server, timeout_factor: acc.config.timeout_factor)
+
+      ProcessHistory.notify(%{
+        event: :server_stopped,
+        deployment_id: acc.id,
+        server_id: server_id,
+        pid: server.pid,
+        reason: nil,
+        timestamp: DateTime.utc_now()
+      })
 
       acc =
         update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
@@ -749,6 +795,16 @@ defmodule Toast.Deployment.Controller do
     opts = Keyword.put_new(opts, :timeout_factor, acc.config.timeout_factor)
 
     with :ok <- ServerLifecycle.relaunch_and_wait(server, opts) do
+      new_pid = ServerProcess.os_pid(server.server_pid)
+
+      ProcessHistory.notify(%{
+        event: :server_started,
+        deployment_id: acc.id,
+        server_id: server_id,
+        pid: new_pid,
+        timestamp: DateTime.utc_now()
+      })
+
       acc =
         update_server(acc, server_id,
           operational_state: :running,
@@ -781,6 +837,16 @@ defmodule Toast.Deployment.Controller do
           true -> :degraded
         end
     end)
+  end
+
+  @cluster_roles MapSet.new([:coordinator, :agent, :dbserver])
+
+  defp derive_mode(state) do
+    if Enum.any?(state.servers, fn {_id, s} -> s.role in @cluster_roles end) do
+      :cluster
+    else
+      :single_server
+    end
   end
 
   # --- Target resolution ---
@@ -848,8 +914,21 @@ defmodule Toast.Deployment.Controller do
   defp apply_arango_id_mapping(state, health) do
     Enum.reduce(health, state, fn {arango_id, info}, acc ->
       case find_toast_id_by_endpoint(acc, Map.get(info, "Endpoint", "")) do
-        nil -> acc
-        toast_id -> update_server(acc, toast_id, arango_id: arango_id)
+        nil ->
+          acc
+
+        toast_id ->
+          acc = update_server(acc, toast_id, arango_id: arango_id)
+
+          ProcessHistory.notify(%{
+            event: :server_identified,
+            deployment_id: acc.id,
+            server_id: toast_id,
+            arango_id: arango_id,
+            timestamp: DateTime.utc_now()
+          })
+
+          acc
       end
     end)
   end
@@ -953,7 +1032,7 @@ defmodule Toast.Deployment.Controller do
     ServerLifecycle.stop_health_monitor(server)
   end
 
-  defp stop_server_process(state, server_id, timeout, opts) do
+  defp stop_server_process(state, server_id, timeout) do
     Logger.debug("Stopping server process for #{server_id}")
 
     case server = Map.fetch!(state.servers, server_id) do
@@ -961,10 +1040,14 @@ defmodule Toast.Deployment.Controller do
         result = ServerProcess.stop(pid, timeout)
         DynamicSupervisor.terminate_child(ProcessSupervisor, pid)
 
-        ServerLifecycle.notify_event(
-          opts[:on_event],
-          {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()}
-        )
+        ProcessHistory.notify(%{
+          event: :server_stopped,
+          deployment_id: state.id,
+          server_id: server_id,
+          pid: server.pid,
+          reason: nil,
+          timestamp: DateTime.utc_now()
+        })
 
         case result do
           :escalated ->

@@ -54,6 +54,21 @@ defmodule ToastTest.CrashMonitorTest do
   end
 end
 
+defmodule ToastTest.CrashMonitorRescueTest do
+  use ExUnit.Case, async: false
+
+  test "silently handles missing Abort ETS table" do
+    # Do NOT set up the Abort ETS table — the rescue clause should catch the ArgumentError
+    result =
+      ToastTest.CrashMonitor.handle_crash(
+        "test",
+        %Toast.Process.CrashInfo{signal: 11, exit_status: 139, timestamp: DateTime.utc_now()}
+      )
+
+    assert result == :ok
+  end
+end
+
 defmodule ToastTest.AbortTestPidTest do
   use ExUnit.Case, async: false
 

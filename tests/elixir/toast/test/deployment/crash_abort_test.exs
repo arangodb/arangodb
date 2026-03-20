@@ -215,68 +215,6 @@ defmodule Toast.Deployment.CrashAbortTest do
     end
   end
 
-  describe "on_crash callback" do
-    test "controller invokes on_crash callback on unexpected crash" do
-      test_pid = self()
-      on_crash = fn _server_id, crash_info -> send(test_pid, {:crash_callback, crash_info}) end
-
-      id = "on-crash-#{System.unique_integer([:positive])}"
-
-      {:ok, pid} =
-        Controller.start_link(
-          config: Toast.Config.load(),
-          id: id,
-          on_crash: on_crash
-        )
-
-      :sys.replace_state(pid, fn state ->
-        %{state | servers: %{"test-server" => %ServerInstance{id: "test-server", role: :single}}}
-      end)
-
-      crash_info = %Toast.Process.CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        timestamp: DateTime.utc_now()
-      }
-
-      send(pid, {:server_crashed, "test-server", crash_info})
-
-      assert_receive {:crash_callback, _crash_info}, 1_000
-    end
-  end
-
-  describe "on_event callback" do
-    test "on_event fires for :server_crashed" do
-      test_pid = self()
-      on_event = fn event -> send(test_pid, {:event, event}) end
-
-      id = "on-event-#{System.unique_integer([:positive])}"
-
-      {:ok, pid} =
-        Controller.start_link(
-          config: Toast.Config.load(),
-          id: id,
-          on_event: on_event
-        )
-
-      :sys.replace_state(pid, fn state ->
-        %{state | servers: %{"test-server" => %ServerInstance{id: "test-server", role: :single}}}
-      end)
-
-      crash_info = %Toast.Process.CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        timestamp: DateTime.utc_now()
-      }
-
-      send(pid, {:server_crashed, "test-server", crash_info})
-
-      assert_receive {:event,
-                      {:server_crashed, %Toast.Process.CrashEvent{server_id: "test-server"}}},
-                     1_000
-    end
-  end
-
   describe "ToastTest.Abort" do
     setup do
       ToastTest.Abort.clear!()

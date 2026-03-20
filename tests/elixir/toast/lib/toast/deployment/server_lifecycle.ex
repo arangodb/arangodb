@@ -4,7 +4,7 @@ defmodule Toast.Deployment.ServerLifecycle do
   require Logger
 
   alias Toast.Deployment.{Health, ServerInstance}
-  alias Toast.Process.{CrashEvent, HealthMonitor, ServerProcess}
+  alias Toast.Process.{HealthMonitor, ServerProcess}
 
   @intentional_exit_signals [nil, 15]
 
@@ -106,23 +106,20 @@ defmodule Toast.Deployment.ServerLifecycle do
           | :intentional_exit
           | :crash_during_intentional_stop
           | :unexpected_crash
-  def handle_crash(server_id, crash_info, expected_crashes, server, on_crash_ctx) do
+  def handle_crash(server_id, crash_info, expected_crashes, server, crash_ctx) do
     case Map.get(expected_crashes, server_id) do
       %{timer: _timer} = entry ->
-        handle_expected_crash(server_id, crash_info, entry, expected_crashes, on_crash_ctx)
+        handle_expected_crash(server_id, crash_info, entry, expected_crashes, crash_ctx)
 
       nil ->
-        handle_unexpected_crash(server_id, crash_info, server, on_crash_ctx)
+        handle_unexpected_crash(server_id, crash_info, server, crash_ctx)
     end
   end
 
-  defp handle_expected_crash(server_id, crash_info, entry, expected_crashes, on_crash_ctx) do
+  defp handle_expected_crash(server_id, crash_info, entry, expected_crashes, crash_ctx) do
     Logger.info("Server #{server_id} crashed as expected")
 
-    notify_event(
-      on_crash_ctx.on_event,
-      {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info, expected: true}}
-    )
+    notify_crash_event(crash_ctx, server_id, crash_info, true)
 
     case entry.waiter do
       {from, verify_timer} ->
@@ -141,7 +138,7 @@ defmodule Toast.Deployment.ServerLifecycle do
          server_id,
          crash_info,
          %ServerInstance{expecting_exit: true},
-         on_crash_ctx
+         crash_ctx
        ) do
     if crash_info.signal in @intentional_exit_signals do
       Logger.debug(
@@ -154,24 +151,29 @@ defmodule Toast.Deployment.ServerLifecycle do
         "Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}"
       )
 
-      notify_crash_and_event(on_crash_ctx, server_id, crash_info)
+      notify_crash_event(crash_ctx, server_id, crash_info, false)
+      ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
       :crash_during_intentional_stop
     end
   end
 
-  defp handle_unexpected_crash(server_id, crash_info, _server, on_crash_ctx) do
+  defp handle_unexpected_crash(server_id, crash_info, _server, crash_ctx) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-    notify_crash_and_event(on_crash_ctx, server_id, crash_info)
+    notify_crash_event(crash_ctx, server_id, crash_info, false)
+    ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
     :unexpected_crash
   end
 
-  defp notify_crash_and_event(on_crash_ctx, server_id, crash_info) do
-    notify_crash(on_crash_ctx.on_crash, server_id, crash_info)
-
-    notify_event(
-      on_crash_ctx.on_event,
-      {:server_crashed, %CrashEvent{server_id: server_id, crash_info: crash_info}}
-    )
+  defp notify_crash_event(crash_ctx, server_id, crash_info, expected) do
+    ToastTest.ProcessHistory.notify(%{
+      event: :server_crashed,
+      deployment_id: crash_ctx.deployment_id,
+      server_id: server_id,
+      pid: crash_info.os_pid,
+      crash_info: crash_info,
+      expected: expected,
+      timestamp: DateTime.utc_now()
+    })
   end
 
   # --- Expect / verify crash protocol ---
@@ -282,24 +284,6 @@ defmodule Toast.Deployment.ServerLifecycle do
     HealthMonitor.stop(pid)
   catch
     :exit, _ -> :ok
-  end
-
-  # --- Notification helpers ---
-
-  @spec notify_event((term() -> term()) | nil, term()) :: :ok
-  def notify_event(nil, _event), do: :ok
-
-  def notify_event(on_event, event) when is_function(on_event, 1) do
-    on_event.(event)
-    :ok
-  end
-
-  @spec notify_crash((term(), term() -> term()) | nil, term(), term()) :: :ok
-  def notify_crash(nil, _server_id, _crash_info), do: :ok
-
-  def notify_crash(on_crash, server_id, crash_info) when is_function(on_crash, 2) do
-    on_crash.(server_id, crash_info)
-    :ok
   end
 
   # --- Server output ---
