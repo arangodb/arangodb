@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Remove 30xx FOXX error codes
+
 * Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
   dependencies.
   
