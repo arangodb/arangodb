@@ -36,13 +36,9 @@ const jsunity = require('jsunity');
 function testSuite() {
   return {
     testApiGet : function() {
-      let res = arango.GET("/_admin/log");
-      assertEqual(0, res.totalAmount);
-      assertEqual([], res.lid);
-      assertEqual([], res.topic);
-      assertEqual([], res.level);
-      assertEqual([], res.timestamp);
-      assertEqual([], res.text);
+      let res = arango.GET("/_admin/log/entries");
+      assertEqual(0, res.total);
+      assertEqual(0, res.messages.length);
     },
     
   };
