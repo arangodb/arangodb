@@ -41,6 +41,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Iterator.h>
+
 #include <unordered_set>
 
 DECLARE_GAUGE(arangodb_vector_index_unusable, uint64_t,
@@ -210,15 +212,25 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
           auto const& shard = coll->name();
           auto const indexId = std::to_string(vecIdx.id().id());
 
+          // Serialize the full index definition so that Current in the
+          // agency carries the complete vector-index metadata, not just
+          // the error/training-state fields.
+          VPackBuilder indexBuilder;
+          vecIdx.toVelocyPack(
+              indexBuilder,
+              static_cast<std::underlying_type<Index::Serialize>::type>(
+                  Index::Serialize::Basics));
+
           VPackBuilder eb;
           {
             VPackObjectBuilder o(&eb);
+            for (auto const& it :
+                 VPackObjectIterator(indexBuilder.slice())) {
+              eb.add(it.key.stringView(), it.value);
+            }
             eb.add(StaticStrings::Error, VPackValue(true));
             eb.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
             eb.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
-            eb.add("id", VPackValue(indexId));
-            eb.add(StaticStrings::IndexTrainingState,
-                   VPackValue(trainingStateToString(vecIdx.trainingState())));
           }
           _maintenance.storeIndexError(database, collection, shard, indexId,
                                        eb.steal());
