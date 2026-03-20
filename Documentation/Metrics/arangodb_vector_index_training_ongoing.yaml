@@ -12,4 +12,5 @@ exposedBy:
 description: |
   Current number of vector index training operations in progress on
   this DBServer. The value increases when a training phase starts and
-  decreases when it completes or fails. Only counts the leaders.
+  decreases when it completes or fails. Counts both leader and
+  follower shards.

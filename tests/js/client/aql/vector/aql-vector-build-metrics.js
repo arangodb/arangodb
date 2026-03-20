@@ -96,9 +96,9 @@ function VectorIndexBuildMetricsSuite() {
       );
 
       // The untrained gauge should reflect the exact number of untrained
-      // index instances: in cluster mode each shard has its own index copy,
-      // in single server there is just one.
-      const expectedUnusable = isCluster ? numberOfShards : 1;
+      // index instances: in cluster mode each shard replica has its own
+      // index copy, in single server there is just one.
+      const expectedUnusable = isCluster ? numberOfShards * replicationFactor : 1;
       let unusableFound = false;
       for (let i = 0; i < 30; ++i) {
         internal.wait(1);
