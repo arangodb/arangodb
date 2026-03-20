@@ -1,15 +1,17 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-283: Removed remainded active failover references.
+
 * Remove 30xx FOXX error codes
 
 * Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
   dependencies.
-  
+
 * Changed the remaining two uses of the log topics BENCH and SECURITY and
   removed these log topics.
 
-* No longer support `/_api/collection?collection=<collection-name>`, 
+* No longer support `/_api/collection?collection=<collection-name>`,
   `/_api/document/<collection-id>`, and `/_api/collection/<collection-id>`.
 
 * Raised minimal CPU architecture to Haswell-like (x86-64) and graviton2-like
