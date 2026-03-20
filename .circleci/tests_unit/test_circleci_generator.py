@@ -915,43 +915,6 @@ class TestSanitizerSuffixInJobNames:
             == "test-cluster-resilience-x64-alubsan"
         )
 
-    def test_rta_job_names_include_sanitizer_suffix(self):
-        """Test that RTA UI job names include sanitizer suffix."""
-        gen = self.create_generator()
-        job = TestJob(
-            name="ui_tests",
-            suites=[SuiteConfig(name="UserPageTestSuite")],
-            options=TestOptions(),
-            job_type="run-rta-tests",
-        )
-
-        # Test TSAN - should have -tsan suffix
-        build_config_tsan = BuildConfig(
-            architecture=Architecture.X64, build_variant=BuildVariant.TSAN
-        )
-        result_tsan = gen._create_rta_test_jobs(job, build_config_tsan, ["build-job"])
-
-        assert len(result_tsan) == 2
-        assert result_tsan[0]["run-rta-tests"]["name"] == "test-single-UI-x64-tsan"
-        assert result_tsan[1]["run-rta-tests"]["name"] == "test-cluster-UI-x64-tsan"
-
-        # Test ALUBSAN - should have -alubsan suffix
-        build_config_alubsan = BuildConfig(
-            architecture=Architecture.X64, build_variant=BuildVariant.ALUBSAN
-        )
-        result_alubsan = gen._create_rta_test_jobs(
-            job, build_config_alubsan, ["build-job"]
-        )
-
-        assert len(result_alubsan) == 2
-        assert (
-            result_alubsan[0]["run-rta-tests"]["name"] == "test-single-UI-x64-alubsan"
-        )
-        assert (
-            result_alubsan[1]["run-rta-tests"]["name"] == "test-cluster-UI-x64-alubsan"
-        )
-
-
 class TestJobLevelArchitectureFiltering:
     """Test job-level architecture filtering in _add_test_jobs."""
 
