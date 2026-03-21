@@ -421,7 +421,7 @@ defmodule Toast.Process.ServerProcess do
         crash_info = %Toast.Process.CrashInfo{
           exit_status: exit_status,
           signal: signal,
-          timestamp: DateTime.utc_now(),
+          timestamp: :os.system_time(:microsecond),
           os_pid: state.os_pid
         }
 

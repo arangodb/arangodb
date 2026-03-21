@@ -21,7 +21,12 @@ defmodule Toast.Deployment.ServerLifecycleTest do
   end
 
   defp crash_info(overrides \\ []) do
-    defaults = [exit_status: 139, signal: 11, timestamp: ~U[2026-01-15 12:00:00Z]]
+    defaults = [
+      exit_status: 139,
+      signal: 11,
+      timestamp: DateTime.to_unix(~U[2026-01-15 12:00:00Z], :microsecond)
+    ]
+
     struct!(Toast.Process.CrashInfo, Keyword.merge(defaults, overrides))
   end
 

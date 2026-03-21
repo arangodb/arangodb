@@ -165,14 +165,14 @@ defmodule Toast.Deployment.ServerLifecycle do
   end
 
   defp notify_crash_event(crash_ctx, server_id, crash_info, expected) do
-    ToastTest.ProcessHistory.notify(%{
+    ToastTest.EventStore.notify(%{
       event: :server_crashed,
       deployment_id: crash_ctx.deployment_id,
       server_id: server_id,
       pid: crash_info.os_pid,
       crash_info: crash_info,
       expected: expected,
-      timestamp: DateTime.utc_now()
+      timestamp: :os.system_time(:microsecond)
     })
   end
 

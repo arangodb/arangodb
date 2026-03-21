@@ -12,7 +12,11 @@ defmodule ToastTest.CrashMonitorTest do
   test "handle_crash sets abort with signal and exit_status" do
     CrashMonitor.handle_crash(
       "test-server",
-      %Toast.Process.CrashInfo{signal: 11, exit_status: 139, timestamp: DateTime.utc_now()}
+      %Toast.Process.CrashInfo{
+        signal: 11,
+        exit_status: 139,
+        timestamp: :os.system_time(:microsecond)
+      }
     )
 
     assert {:crash, msg} = Abort.reason()
@@ -24,7 +28,11 @@ defmodule ToastTest.CrashMonitorTest do
   test "handle_crash with only exit_status" do
     CrashMonitor.handle_crash(
       "test-server",
-      %Toast.Process.CrashInfo{exit_status: 1, signal: nil, timestamp: DateTime.utc_now()}
+      %Toast.Process.CrashInfo{
+        exit_status: 1,
+        signal: nil,
+        timestamp: :os.system_time(:microsecond)
+      }
     )
 
     assert {:crash, msg} = Abort.reason()
@@ -47,7 +55,11 @@ defmodule ToastTest.CrashMonitorTest do
 
     CrashMonitor.handle_crash(
       "test-server",
-      %Toast.Process.CrashInfo{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: :os.system_time(:microsecond)
+      }
     )
 
     assert_receive {:DOWN, ^ref, :process, ^victim, :killed}, 1000
@@ -62,7 +74,11 @@ defmodule ToastTest.CrashMonitorRescueTest do
     result =
       ToastTest.CrashMonitor.handle_crash(
         "test",
-        %Toast.Process.CrashInfo{signal: 11, exit_status: 139, timestamp: DateTime.utc_now()}
+        %Toast.Process.CrashInfo{
+          signal: 11,
+          exit_status: 139,
+          timestamp: :os.system_time(:microsecond)
+        }
       )
 
     assert result == :ok

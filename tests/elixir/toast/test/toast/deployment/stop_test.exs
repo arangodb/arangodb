@@ -130,7 +130,7 @@ defmodule Toast.Deployment.StopTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: ~U[2026-01-15 12:00:00Z]
+        timestamp: DateTime.to_unix(~U[2026-01-15 12:00:00Z], :microsecond)
       }
 
       error = {:server_crashed, "single", crash_info}

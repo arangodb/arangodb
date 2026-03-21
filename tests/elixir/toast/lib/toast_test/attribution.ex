@@ -59,7 +59,8 @@ defmodule ToastTest.Attribution do
     analyzer_opts = Keyword.get(opts, :analyzer_opts, [])
 
     Enum.map(crash_events, fn %Toast.Process.CrashEvent{} = event ->
-      {scope, confidence} = TimeWindows.attribute(event.crash_info.timestamp, windows)
+      crash_dt = DateTime.from_unix!(event.crash_info.timestamp, :microsecond)
+      {scope, confidence} = TimeWindows.attribute(crash_dt, windows)
       server_artifacts = Map.get(artifacts, event.server_id)
 
       detail =

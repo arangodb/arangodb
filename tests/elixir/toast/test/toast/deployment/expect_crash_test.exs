@@ -31,7 +31,11 @@ defmodule Toast.Deployment.ExpectCrashTest.MockController do
       responses,
       :verify_crash,
       {:ok,
-       %Toast.Process.CrashInfo{exit_status: 11, signal: 11, timestamp: ~U[2026-01-01 00:00:00Z]}}
+       %Toast.Process.CrashInfo{
+         exit_status: 11,
+         signal: 11,
+         timestamp: DateTime.to_unix(~U[2026-01-01 00:00:00Z], :microsecond)
+       }}
     )
   end
 
@@ -136,7 +140,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 11,
         signal: 11,
-        timestamp: ~U[2026-01-01 00:00:00Z]
+        timestamp: DateTime.to_unix(~U[2026-01-01 00:00:00Z], :microsecond)
       }
 
       {:ok, pid} = MockController.start_link(responses: %{verify_crash: {:ok, crash_info}})
@@ -322,7 +326,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
       info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(ctrl, {:server_crashed, server_id, info})

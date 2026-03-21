@@ -22,7 +22,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(pid, {:server_crashed, "test-server", crash_info})
@@ -47,7 +47,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 134,
         signal: 6,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(pid, {:server_crashed, "test-server", crash_info})
@@ -87,7 +87,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(pid, {:server_crashed, "test-server", crash_info})
@@ -147,7 +147,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(pid, {:server_crashed, "dbserver-1", crash_info})
@@ -172,7 +172,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(pid, {:server_crashed, "agent-1", crash_info})
@@ -195,7 +195,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(pid, {:server_crashed, "agent-1", crash_info})

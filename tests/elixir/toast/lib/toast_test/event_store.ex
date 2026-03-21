@@ -1,81 +1,80 @@
-defmodule ToastTest.ProcessHistory do
+defmodule ToastTest.EventStore do
   @moduledoc """
-  GenServer recording deployment and server lifecycle events for post-test diagnostics.
+  ETS-backed event store for recording lifecycle events during test runs.
 
-  All events are maps with an `:event` key identifying the event type and a `:timestamp` key.
-  The controller calls `notify/1` directly — no callback wiring needed.
-  If ProcessHistory is not running, `notify/1` silently drops the event.
+  Events are maps with an `:event` key and a `:timestamp` key (Unix
+  microseconds). Stored in an `ordered_set` ETS table keyed by
+  `{timestamp, sequence}` so reads are always in chronological order.
+
+  Any process can call `notify/1` — if the table doesn't exist, the
+  event is silently dropped.
   """
 
   use GenServer
 
   require Logger
 
+  @table __MODULE__
+
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
-    name = Keyword.get(opts, :name, __MODULE__)
-    GenServer.start_link(__MODULE__, %{}, name: name)
+    GenServer.start_link(__MODULE__, opts, name: Keyword.get(opts, :name, __MODULE__))
   end
 
-  @doc "Record an event. Silently drops if ProcessHistory is not running."
+  @doc """
+  Record an event. Silently drops if the event store is not running.
+
+  If the event has no `:timestamp`, one is added automatically.
+  """
   @spec notify(map()) :: :ok
   def notify(%{event: _} = event) do
+    ts = Map.get_lazy(event, :timestamp, fn -> :os.system_time(:microsecond) end)
+    event = Map.put(event, :timestamp, ts)
+    seq = :erlang.unique_integer([:monotonic])
     log_event(event)
-    GenServer.cast(__MODULE__, {:event, event})
+    :ets.insert(@table, {{ts, seq}, event})
+    :ok
   catch
-    :exit, _ -> :ok
+    :error, :badarg -> :ok
   end
 
   @doc "Return all recorded events in chronological order."
-  @spec events(GenServer.server()) :: [map()]
-  def events(server \\ __MODULE__) do
-    GenServer.call(server, :events)
+  @spec events() :: [map()]
+  def events do
+    :ets.tab2list(@table) |> Enum.map(&elem(&1, 1))
   catch
-    :exit, _ -> []
+    :error, :badarg -> []
   end
 
   @doc "Remove all recorded events."
   @spec clear() :: :ok
   def clear do
-    GenServer.cast(__MODULE__, :clear)
+    :ets.delete_all_objects(@table)
+    :ok
   catch
-    :exit, _ -> :ok
+    :error, :badarg -> :ok
   end
 
-  @doc """
-  Return a map of `%{server_id => [os_pid, ...]}` extracted from `:server_started` events.
-
-  Each server's PID list is in chronological order (first incarnation first).
-  """
-  @spec pids_by_server(GenServer.server()) :: %{String.t() => [non_neg_integer()]}
-  def pids_by_server(server \\ __MODULE__) do
-    GenServer.call(server, :pids_by_server)
-  catch
-    :exit, _ -> %{}
+  @doc "Return a map of `%{server_id => [os_pid, ...]}` from `:server_started` events."
+  @spec pids_by_server() :: %{String.t() => [non_neg_integer()]}
+  def pids_by_server do
+    snapshot().pids_by_server
   end
 
   @doc "Return all unexpected crash events in chronological order."
-  @spec unexpected_crashes(GenServer.server()) :: [map()]
-  def unexpected_crashes(server \\ __MODULE__) do
-    GenServer.call(server, :unexpected_crashes)
-  catch
-    :exit, _ -> []
+  @spec unexpected_crashes() :: [map()]
+  def unexpected_crashes do
+    snapshot().unexpected_crashes
   end
 
   @doc "Return timeout kill events in chronological order."
-  @spec timeout_kills(GenServer.server()) :: [map()]
-  def timeout_kills(server \\ __MODULE__) do
-    GenServer.call(server, :timeout_kills)
-  catch
-    :exit, _ -> []
+  @spec timeout_kills() :: [map()]
+  def timeout_kills do
+    snapshot().timeout_kills
   end
 
   @doc """
   Record that servers were killed due to a timeout.
-
-  `source` identifies what timed out (e.g., `:suite_timeout`, `:global_timeout`).
-  `reason` is a human-readable description.
-  `killed_servers` is the list returned by `Toast.Deployment.abort_all/0`.
   """
   @spec record_timeout_kill(atom(), String.t(), [map()]) :: :ok
   def record_timeout_kill(source, reason, killed_servers) do
@@ -83,113 +82,51 @@ defmodule ToastTest.ProcessHistory do
       event: :timeout_kill,
       source: source,
       reason: reason,
-      servers: killed_servers,
-      timestamp: DateTime.utc_now()
+      servers: killed_servers
     })
   end
 
-  @doc """
-  Reconstruct deployment metadata from events.
+  @doc "Reconstruct deployment metadata from events."
+  @spec deployments() :: %{String.t() => map()}
+  def deployments do
+    snapshot().deployments
+  end
 
-  Returns `%{deployment_id => deployment_meta}`.
-  """
-  @spec deployments(GenServer.server()) :: %{String.t() => map()}
-  def deployments(server \\ __MODULE__) do
-    GenServer.call(server, :deployments)
-  catch
-    :exit, _ -> %{}
+  @doc "Reconstruct server metadata from events, grouped by deployment."
+  @spec servers() :: %{String.t() => %{String.t() => map()}}
+  def servers do
+    snapshot().servers
   end
 
   @doc """
-  Reconstruct server metadata from events, grouped by deployment.
-
-  Returns `%{deployment_id => %{server_id => server_meta}}`.
-  """
-  @spec servers(GenServer.server()) :: %{String.t() => %{String.t() => map()}}
-  def servers(server \\ __MODULE__) do
-    GenServer.call(server, :servers)
-  catch
-    :exit, _ -> %{}
-  end
-
-  @doc """
-  Return all projections in a single call, avoiding repeated event list reversals.
+  Return all projections in a single pass over the event stream.
 
   Returns `%{events: [...], pids_by_server: %{...}, unexpected_crashes: [...],
   timeout_kills: [...], deployments: %{...}, servers: %{...}}`.
   """
-  @spec snapshot(GenServer.server()) :: map()
-  def snapshot(server \\ __MODULE__) do
-    GenServer.call(server, :snapshot)
-  catch
-    :exit, _ ->
-      %{
-        events: [],
-        pids_by_server: %{},
-        unexpected_crashes: [],
-        timeout_kills: [],
-        deployments: %{},
-        servers: %{}
-      }
+  @spec snapshot() :: map()
+  def snapshot do
+    events() |> build_projections()
   end
 
   # --- GenServer callbacks ---
 
   @impl true
-  def init(_) do
-    {:ok, %{events: []}}
+  def init(_opts) do
+    table = :ets.new(@table, [:ordered_set, :public, :named_table])
+    {:ok, %{table: table}}
   end
 
   @impl true
-  def handle_cast({:event, event}, state) do
-    {:noreply, %{state | events: [event | state.events]}}
+  def terminate(_reason, %{table: table}) do
+    :ets.delete(table)
+  catch
+    :error, :badarg -> :ok
   end
 
-  @impl true
-  def handle_cast(:clear, _state) do
-    {:noreply, %{events: []}}
-  end
+  # --- Projections ---
 
-  @impl true
-  def handle_call(:events, _from, state) do
-    {:reply, Enum.reverse(state.events), state}
-  end
-
-  @impl true
-  def handle_call(:pids_by_server, _from, state) do
-    {:reply, build_snapshot(state.events).pids_by_server, state}
-  end
-
-  @impl true
-  def handle_call(:unexpected_crashes, _from, state) do
-    {:reply, build_snapshot(state.events).unexpected_crashes, state}
-  end
-
-  @impl true
-  def handle_call(:timeout_kills, _from, state) do
-    {:reply, build_snapshot(state.events).timeout_kills, state}
-  end
-
-  @impl true
-  def handle_call(:deployments, _from, state) do
-    {:reply, build_snapshot(state.events).deployments, state}
-  end
-
-  @impl true
-  def handle_call(:servers, _from, state) do
-    {:reply, build_snapshot(state.events).servers, state}
-  end
-
-  @impl true
-  def handle_call(:snapshot, _from, state) do
-    {:reply, build_snapshot(state.events), state}
-  end
-
-  # --- Snapshot: single-pass reconstruction ---
-
-  defp build_snapshot(reversed_events) do
-    events = Enum.reverse(reversed_events)
-
+  defp build_projections(events) do
     Enum.reduce(
       events,
       %{
@@ -203,7 +140,7 @@ defmodule ToastTest.ProcessHistory do
       },
       &process_event/2
     )
-    |> finalize_snapshot()
+    |> finalize()
   end
 
   defp process_event(%{event: :server_started, server_id: sid, pid: pid} = e, acc)
@@ -221,7 +158,6 @@ defmodule ToastTest.ProcessHistory do
   end
 
   defp process_event(%{event: :server_crashed} = e, acc), do: close_incarnation(acc, e)
-
   defp process_event(%{event: :server_killed}, acc), do: acc
 
   defp process_event(%{event: :timeout_kill} = e, acc) do
@@ -307,7 +243,7 @@ defmodule ToastTest.ProcessHistory do
       %{
         acc
         | pid_sets: Map.put(acc.pid_sets, sid, MapSet.put(seen, pid)),
-          pids_by_server: Map.update(acc.pids_by_server, sid, [pid], fn pids -> pids ++ [pid] end)
+          pids_by_server: Map.update(acc.pids_by_server, sid, [pid], fn pids -> [pid | pids] end)
       }
     end
   end
@@ -316,7 +252,7 @@ defmodule ToastTest.ProcessHistory do
     update_server_in(acc, did, sid, fn server ->
       %{
         server
-        | incarnations: server.incarnations ++ [%{pid: pid, started_at: ts, stopped_at: nil}]
+        | incarnations: [%{pid: pid, started_at: ts, stopped_at: nil} | server.incarnations]
       }
     end)
   end
@@ -325,23 +261,27 @@ defmodule ToastTest.ProcessHistory do
 
   defp close_incarnation(acc, %{deployment_id: did, server_id: sid, pid: pid, timestamp: ts}) do
     update_server_in(acc, did, sid, fn server ->
-      idx =
-        Enum.find_index(Enum.reverse(server.incarnations), fn inc -> inc.pid == pid end)
-
-      if idx do
-        real_idx = length(server.incarnations) - 1 - idx
-
-        %{
-          server
-          | incarnations: List.update_at(server.incarnations, real_idx, &%{&1 | stopped_at: ts})
-        }
-      else
-        server
-      end
+      %{server | incarnations: close_last_match(server.incarnations, pid, ts)}
     end)
   end
 
   defp close_incarnation(acc, _event), do: acc
+
+  # Find the last incarnation matching `pid` and set its stopped_at.
+  # Incarnations are in reverse order during reduce, so the first match is the latest.
+  defp close_last_match(incarnations, pid, ts) do
+    close_first_match(incarnations, pid, ts, [])
+  end
+
+  defp close_first_match([], _pid, _ts, acc), do: Enum.reverse(acc)
+
+  defp close_first_match([%{pid: pid} = inc | rest], pid, ts, acc) do
+    Enum.reverse(acc, [%{inc | stopped_at: ts} | rest])
+  end
+
+  defp close_first_match([inc | rest], pid, ts, acc) do
+    close_first_match(rest, pid, ts, [inc | acc])
+  end
 
   defp update_server_in(acc, did, sid, update_fn) do
     case acc.servers do
@@ -357,49 +297,58 @@ defmodule ToastTest.ProcessHistory do
     end
   end
 
-  defp finalize_snapshot(acc) do
+  defp finalize(acc) do
     %{
       events: acc.events,
-      pids_by_server: acc.pids_by_server,
+      pids_by_server: Map.new(acc.pids_by_server, fn {k, v} -> {k, Enum.reverse(v)} end),
       unexpected_crashes: Enum.reverse(acc.unexpected_crashes),
       timeout_kills: Enum.reverse(acc.timeout_kills),
       deployments: acc.deployments,
-      servers: acc.servers
+      servers: finalize_servers(acc.servers)
     }
+  end
+
+  defp finalize_servers(servers) do
+    Map.new(servers, fn {did, deployment_servers} ->
+      {did,
+       Map.new(deployment_servers, fn {sid, server} ->
+         {sid, %{server | incarnations: Enum.reverse(server.incarnations)}}
+       end)}
+    end)
   end
 
   # --- Logging ---
 
   defp log_event(%{event: :server_started, server_id: sid, pid: pid}),
-    do: Logger.debug("ProcessHistory: server_started #{sid} (pid=#{pid})")
+    do: Logger.debug("EventStore: server_started #{sid} (pid=#{pid})")
 
   defp log_event(%{event: :server_stopped, server_id: sid}),
-    do: Logger.debug("ProcessHistory: server_stopped #{sid}")
+    do: Logger.debug("EventStore: server_stopped #{sid}")
 
   defp log_event(%{event: :server_crashed, server_id: sid}),
-    do: Logger.debug("ProcessHistory: server_crashed #{sid}")
+    do: Logger.debug("EventStore: server_crashed #{sid}")
 
   defp log_event(%{event: :server_killed, server_id: sid}),
-    do: Logger.debug("ProcessHistory: server_killed #{sid}")
+    do: Logger.debug("EventStore: server_killed #{sid}")
 
   defp log_event(%{event: :server_paused, server_id: sid}),
-    do: Logger.debug("ProcessHistory: server_paused #{sid}")
+    do: Logger.debug("EventStore: server_paused #{sid}")
 
   defp log_event(%{event: :server_resumed, server_id: sid}),
-    do: Logger.debug("ProcessHistory: server_resumed #{sid}")
+    do: Logger.debug("EventStore: server_resumed #{sid}")
 
   defp log_event(%{event: :deployment_starting, deployment_id: did}),
-    do: Logger.debug("ProcessHistory: deployment_starting #{did}")
+    do: Logger.debug("EventStore: deployment_starting #{did}")
 
   defp log_event(%{event: :deployment_started, deployment_id: did}),
-    do: Logger.debug("ProcessHistory: deployment_started #{did}")
+    do: Logger.debug("EventStore: deployment_started #{did}")
 
   defp log_event(%{event: :deployment_stopped, deployment_id: did}),
-    do: Logger.debug("ProcessHistory: deployment_stopped #{did}")
+    do: Logger.debug("EventStore: deployment_stopped #{did}")
 
   defp log_event(%{event: :server_identified, server_id: sid, arango_id: aid}),
-    do: Logger.debug("ProcessHistory: server_identified #{sid} => #{aid}")
+    do: Logger.debug("EventStore: server_identified #{sid} => #{aid}")
 
   defp log_event(%{event: type}),
-    do: Logger.debug("ProcessHistory: #{type}")
+    do: Logger.debug("EventStore: #{type}")
 end

@@ -67,7 +67,8 @@ defmodule ToastTest.PostExecSummaryTest do
     %Toast.Process.CrashInfo{
       signal: Keyword.get(opts, :signal, 11),
       exit_status: Keyword.get(opts, :exit_status, 139),
-      timestamp: Keyword.get(opts, :timestamp, ~U[2026-03-09 10:00:05Z]),
+      timestamp:
+        Keyword.get(opts, :timestamp, DateTime.to_unix(~U[2026-03-09 10:00:05Z], :microsecond)),
       os_pid: Keyword.get(opts, :os_pid, 22788)
     }
   end
@@ -162,7 +163,7 @@ defmodule ToastTest.PostExecSummaryTest do
     assert output =~ "agent1: PID 22788"
     assert output =~ "signal: SIGSEGV (11)"
     assert output =~ "exit_status: 139"
-    assert output =~ "at: 2026-03-09T10:00:05Z"
+    assert output =~ "at: 2026-03-09T10:00:05"
     assert output =~ "#0 foo() at foo.cpp:1"
     assert output =~ "#1 bar() at bar.cpp:2"
     assert output =~ "Log: /tmp/arangodb/agent1.log"

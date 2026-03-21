@@ -86,7 +86,7 @@ defmodule Toast.Process.ServerProcessTest do
 
       assert_receive {:server_crashed, ^id, crash_info}, 5_000
       assert crash_info.exit_status == 1
-      assert %DateTime{} = crash_info.timestamp
+      assert is_integer(crash_info.timestamp)
       assert ServerProcess.status(pid) == :crashed
     end
 

@@ -7,7 +7,7 @@ defmodule ToastTest.Runner do
   # SPDX-FileCopyrightText: 2012 Plataformatec
 
   alias ToastTest.ExUnitCompat, as: Compat
-  alias ToastTest.{Abort, TestLifecycle, ProcessHistory, SuiteResult}
+  alias ToastTest.{Abort, TestLifecycle, EventStore, SuiteResult}
 
   require Logger
 
@@ -60,7 +60,7 @@ defmodule ToastTest.Runner do
   def run_suites(suites, global_opts) do
     Abort.clear!()
     ToastTest.DeploymentRegistry.init()
-    start_process_history()
+    start_event_store()
     runner = self()
     id = {__MODULE__, runner}
 
@@ -519,6 +519,7 @@ defmodule ToastTest.Runner do
 
   defp emit_module_with_state(manager, module, transform_test) do
     test_module = Compat.get_test_metadata(module)
+    EventStore.notify(%{event: :module_started, module: module})
     Compat.module_started(manager, test_module)
 
     transformed_tests =
@@ -530,6 +531,7 @@ defmodule ToastTest.Runner do
       end
 
     Compat.module_finished(manager, %{test_module | tests: transformed_tests})
+    EventStore.notify(%{event: :module_finished, module: module})
   end
 
   defp post_execution(deployment, test_data, toast_config) do
@@ -548,7 +550,7 @@ defmodule ToastTest.Runner do
   end
 
   defp build_suite_result(servers, test_data, toast_config) do
-    snapshot = ProcessHistory.snapshot()
+    snapshot = EventStore.snapshot()
 
     Logger.debug("Collecting artifacts")
     artifact_opts = [coredump_dir: toast_config.coredump_dir, not_before: test_data.started_at]
@@ -632,8 +634,8 @@ defmodule ToastTest.Runner do
     "#{base}.#{deployment_mode}"
   end
 
-  defp start_process_history do
-    case ProcessHistory.start_link(name: ProcessHistory) do
+  defp start_event_store do
+    case EventStore.start_link() do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
     end
@@ -654,6 +656,7 @@ defmodule ToastTest.Runner do
 
   defp run_module(config, module) do
     test_module = Compat.get_test_metadata(module)
+    EventStore.notify(%{event: :module_started, module: module})
     Compat.module_started(config.manager, test_module)
 
     {to_run_tests, excluded_and_skipped_tests} =
@@ -691,6 +694,7 @@ defmodule ToastTest.Runner do
 
     test_module = %{test_module | tests: Enum.reverse(finished_tests, invalid_tests)}
     Compat.module_finished(config.manager, test_module)
+    EventStore.notify(%{event: :module_finished, module: test_module.name})
   end
 
   defp finish_pending_module(config, test_module, invalid_tests, finished_tests) do
@@ -714,6 +718,7 @@ defmodule ToastTest.Runner do
 
     test_module = %{test_module | tests: Enum.reverse(finished_tests, pending_tests)}
     Compat.module_finished(config.manager, test_module)
+    EventStore.notify(%{event: :module_finished, module: test_module.name})
   end
 
   ## Test preparation
@@ -872,8 +877,22 @@ defmodule ToastTest.Runner do
   end
 
   defp run_test(config, test, context) do
+    EventStore.notify(%{
+      event: :test_started,
+      module: test.module,
+      name: test.name
+    })
+
     Compat.test_started(config.manager, test)
     test = spawn_test(config, test, context)
+
+    EventStore.notify(%{
+      event: :test_finished,
+      module: test.module,
+      name: test.name,
+      outcome: test_outcome(test),
+      duration_us: test.time
+    })
 
     case process_max_failures(config, test) do
       :no ->
@@ -888,6 +907,13 @@ defmodule ToastTest.Runner do
         :max_failures_reached
     end
   end
+
+  defp test_outcome(%{state: nil}), do: :passed
+  defp test_outcome(%{state: {:failed, _}}), do: :failed
+  defp test_outcome(%{state: {:skipped, _}}), do: :skipped
+  defp test_outcome(%{state: {:excluded, _}}), do: :excluded
+  defp test_outcome(%{state: {:invalid, _}}), do: :invalid
+  defp test_outcome(_), do: :unknown
 
   ## Per-test execution
 
@@ -1105,7 +1131,7 @@ defmodule ToastTest.Runner do
 
   defp abort_with_timeout(source, reason) do
     Logger.warning("#{reason} — aborting suite")
-    ProcessHistory.record_timeout_kill(source, reason, [])
+    EventStore.record_timeout_kill(source, reason, [])
     Abort.abort!({:timeout, reason})
   end
 

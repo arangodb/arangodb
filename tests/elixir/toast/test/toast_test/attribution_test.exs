@@ -126,7 +126,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: ~U[2026-03-09 10:00:30Z]
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
       }
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
@@ -144,7 +144,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: ~U[2026-03-09 10:08:00Z]
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:08:00Z], :microsecond)
       }
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
@@ -159,7 +159,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: ~U[2026-03-09 10:00:30Z]
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
       }
 
       server = build_server("single1")
@@ -204,7 +204,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: ~U[2026-03-09 10:00:30Z]
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
       }
 
       server = build_server("single1")
@@ -237,7 +237,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: ~U[2026-03-09 10:00:30Z]
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
       }
 
       server = build_server("single1")
@@ -287,7 +287,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: ~U[2026-03-09 10:00:30Z]
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
       }
 
       server = build_server("single1")
@@ -521,7 +521,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: ~U[2026-03-09 10:00:30Z]
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
       }
 
       dir = System.tmp_dir!()

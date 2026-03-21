@@ -131,7 +131,7 @@ defmodule Toast.Deployment.ControllerStateTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(ctrl, {:server_crashed, id, crash_info})
@@ -153,7 +153,7 @@ defmodule Toast.Deployment.ControllerStateTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(ctrl, {:server_crashed, id, crash_info})
@@ -174,7 +174,7 @@ defmodule Toast.Deployment.ControllerStateTest do
       crash_info = %Toast.Process.CrashInfo{
         exit_status: 0,
         signal: 15,
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       }
 
       send(ctrl, {:server_crashed, id, crash_info})

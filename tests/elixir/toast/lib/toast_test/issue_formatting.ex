@@ -138,6 +138,10 @@ defmodule ToastTest.IssueFormatting do
   def format_exit_status(status), do: "exit_status: #{status}"
 
   def format_timestamp(%DateTime{} = ts), do: "at: #{DateTime.to_iso8601(ts)}"
+
+  def format_timestamp(us) when is_integer(us),
+    do: format_timestamp(DateTime.from_unix!(us, :microsecond))
+
   def format_timestamp(_), do: nil
 
   def format_coredump_backtrace(%{threads: [thread | _]}) do

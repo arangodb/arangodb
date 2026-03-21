@@ -10,7 +10,7 @@ defmodule Toast.Deployment.Controller do
   alias Toast.Diagnostics.AgencyDump
   alias Toast.Process.ServerProcess
   alias Toast.Process.Supervisor, as: ProcessSupervisor
-  alias ToastTest.ProcessHistory
+  alias ToastTest.EventStore
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
 
@@ -309,7 +309,7 @@ defmodule Toast.Deployment.Controller do
     crash_info = %Toast.Process.CrashInfo{
       exit_status: nil,
       signal: nil,
-      timestamp: DateTime.utc_now()
+      timestamp: :os.system_time(:microsecond)
     }
 
     server = state.servers[server_id]
@@ -321,12 +321,12 @@ defmodule Toast.Deployment.Controller do
       pid: server.pid,
       crash_info: crash_info,
       expected: false,
-      timestamp: DateTime.utc_now()
+      timestamp: :os.system_time(:microsecond)
     }
 
     ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
 
-    ProcessHistory.notify(event)
+    EventStore.notify(event)
 
     Logger.debug("Deployment status: #{state.status} -> :failed")
     {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}
@@ -394,7 +394,7 @@ defmodule Toast.Deployment.Controller do
     state = %{state | status: :starting}
     state = init_servers_from_specs(state, specs)
 
-    ProcessHistory.notify(%{
+    EventStore.notify(%{
       event: :deployment_starting,
       deployment_id: state.id,
       mode: derive_mode(state),
@@ -403,7 +403,7 @@ defmodule Toast.Deployment.Controller do
         Enum.map(specs, fn spec ->
           %{id: spec.id, role: spec.role, port: spec.port, log_file: spec.log_file}
         end),
-      timestamp: DateTime.utc_now()
+      timestamp: :os.system_time(:microsecond)
     })
 
     with {:ok, state} <- start_all_server_processes(state, specs),
@@ -413,14 +413,14 @@ defmodule Toast.Deployment.Controller do
       servers = Map.new(state.servers, fn {id, s} -> {id, %{s | operational_state: :running}} end)
       state = %{state | status: :ready, servers: servers}
 
-      ProcessHistory.notify(%{
+      EventStore.notify(%{
         event: :deployment_started,
         deployment_id: state.id,
         servers:
           Map.new(state.servers, fn {id, s} ->
             {id, %{role: s.role, endpoint: s.endpoint, log_file: s.log_file}}
           end),
-        timestamp: DateTime.utc_now()
+        timestamp: :os.system_time(:microsecond)
       })
 
       Logger.info("Deployment #{state.id} ready")
@@ -537,15 +537,26 @@ defmodule Toast.Deployment.Controller do
   defp notify_server_started(server_id, server, os_pid, deployment_id) do
     Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
 
-    ProcessHistory.notify(%{
+    EventStore.notify(%{
       event: :server_started,
       deployment_id: deployment_id,
       server_id: server_id,
       pid: os_pid,
-      timestamp: DateTime.utc_now()
+      timestamp: :os.system_time(:microsecond)
     })
 
     :ok
+  end
+
+  defp notify_server_stopped(server_id, server, deployment_id) do
+    EventStore.notify(%{
+      event: :server_stopped,
+      deployment_id: deployment_id,
+      server_id: server_id,
+      pid: server.pid,
+      reason: nil,
+      timestamp: :os.system_time(:microsecond)
+    })
   end
 
   defp maybe_health_check(_server, false, _timeout), do: :ok
@@ -634,10 +645,10 @@ defmodule Toast.Deployment.Controller do
 
     record_shutdown_escalations(state.id, escalated)
 
-    ProcessHistory.notify(%{
+    EventStore.notify(%{
       event: :deployment_stopped,
       deployment_id: state.id,
-      timestamp: DateTime.utc_now()
+      timestamp: :os.system_time(:microsecond)
     })
 
     %{state | status: :stopped, servers: clear_server_pids(state.servers)}
@@ -748,13 +759,13 @@ defmodule Toast.Deployment.Controller do
 
       extra = if opts[:event_extra], do: opts[:event_extra].(server), else: %{}
 
-      ProcessHistory.notify(
+      EventStore.notify(
         Map.merge(
           %{
             event: opts[:event],
             deployment_id: acc.id,
             server_id: server_id,
-            timestamp: DateTime.utc_now()
+            timestamp: :os.system_time(:microsecond)
           },
           extra
         )
@@ -767,15 +778,7 @@ defmodule Toast.Deployment.Controller do
   defp do_restart_server(server_id, acc, opts) do
     with {:ok, server} <- fetch_server(acc, server_id) do
       ServerLifecycle.stop_before_restart(server, timeout_factor: acc.config.timeout_factor)
-
-      ProcessHistory.notify(%{
-        event: :server_stopped,
-        deployment_id: acc.id,
-        server_id: server_id,
-        pid: server.pid,
-        reason: nil,
-        timestamp: DateTime.utc_now()
-      })
+      notify_server_stopped(server_id, server, acc.id)
 
       acc =
         update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
@@ -796,14 +799,7 @@ defmodule Toast.Deployment.Controller do
 
     with :ok <- ServerLifecycle.relaunch_and_wait(server, opts) do
       new_pid = ServerProcess.os_pid(server.server_pid)
-
-      ProcessHistory.notify(%{
-        event: :server_started,
-        deployment_id: acc.id,
-        server_id: server_id,
-        pid: new_pid,
-        timestamp: DateTime.utc_now()
-      })
+      notify_server_started(server_id, server, new_pid, acc.id)
 
       acc =
         update_server(acc, server_id,
@@ -920,12 +916,12 @@ defmodule Toast.Deployment.Controller do
         toast_id ->
           acc = update_server(acc, toast_id, arango_id: arango_id)
 
-          ProcessHistory.notify(%{
+          EventStore.notify(%{
             event: :server_identified,
             deployment_id: acc.id,
             server_id: toast_id,
             arango_id: arango_id,
-            timestamp: DateTime.utc_now()
+            timestamp: :os.system_time(:microsecond)
           })
 
           acc
@@ -1039,15 +1035,7 @@ defmodule Toast.Deployment.Controller do
       %ServerInstance{server_pid: pid} when pid != nil ->
         result = ServerProcess.stop(pid, timeout)
         DynamicSupervisor.terminate_child(ProcessSupervisor, pid)
-
-        ProcessHistory.notify(%{
-          event: :server_stopped,
-          deployment_id: state.id,
-          server_id: server_id,
-          pid: server.pid,
-          reason: nil,
-          timestamp: DateTime.utc_now()
-        })
+        notify_server_stopped(server_id, server, state.id)
 
         case result do
           :escalated ->
@@ -1129,7 +1117,7 @@ defmodule Toast.Deployment.Controller do
     killed_servers = abort_all_servers(state)
 
     if reason == :timeout do
-      ToastTest.ProcessHistory.record_timeout_kill(
+      ToastTest.EventStore.record_timeout_kill(
         :startup_timeout,
         "Startup timeout — deployment did not become ready in time",
         killed_servers
@@ -1144,7 +1132,7 @@ defmodule Toast.Deployment.Controller do
   defp record_shutdown_escalations(id, escalated) do
     Logger.warning("#{id}: #{length(escalated)} server(s) required shutdown escalation")
 
-    ToastTest.ProcessHistory.record_timeout_kill(
+    ToastTest.EventStore.record_timeout_kill(
       :shutdown_timeout,
       "Shutdown timeout — server(s) did not respond to SIGTERM",
       escalated

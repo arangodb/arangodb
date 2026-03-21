@@ -6,7 +6,7 @@ defmodule ToastTest.StateCleanup do
     reset_deployment_registry()
     reset_abort_table()
     reset_after_suite_callbacks()
-    reset_process_history()
+    reset_event_store()
   end
 
   defp reset_deployment_registry do
@@ -23,8 +23,8 @@ defmodule ToastTest.StateCleanup do
     Application.put_env(:ex_unit, :after_suite, [])
   end
 
-  defp reset_process_history do
-    ToastTest.ProcessHistory.clear()
+  defp reset_event_store do
+    ToastTest.EventStore.clear()
   catch
     :exit, _ -> :ok
   end
