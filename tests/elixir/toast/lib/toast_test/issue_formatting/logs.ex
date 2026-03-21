@@ -180,6 +180,7 @@ defmodule ToastTest.IssueFormatting.Logs do
       case role do
         "coordinator" -> @coordinator_colors
         "dbserver" -> @dbserver_colors
+        "single" -> @dbserver_colors
         "agent" -> @agent_colors
         _ -> @coordinator_colors
       end
@@ -202,18 +203,24 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   def format_merged(merged, color_enabled, event_detail) do
     servers = merged |> Enum.map(&elem(&1, 0)) |> Enum.uniq() |> Enum.reject(&(&1 == :event))
+    has_events = Enum.any?(merged, &match?({:event, _}, &1))
 
-    if length(servers) <= 1 do
+    if length(servers) <= 1 and not has_events do
+      # Plain output — single server, no events, no tags needed
       merged
       |> Enum.map(fn
-        {:event, event} -> format_event_line(event, event_detail)
         {_server_id, entry} -> format_entry(entry, color_enabled)
       end)
       |> Enum.join("\n")
     else
       tag_map = Map.new(servers, &{&1, server_tag(&1)})
       color_map = Map.new(servers, &{&1, server_color(&1)})
-      max_tag_len = tag_map |> Map.values() |> Enum.map(&String.length/1) |> Enum.max()
+
+      max_tag_len =
+        case Map.values(tag_map) do
+          [] -> 0
+          tags -> tags |> Enum.map(&String.length/1) |> Enum.max()
+        end
 
       merged
       |> Enum.map(fn
@@ -292,17 +299,6 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   def format_event(%{event: name}),
     do: ">>> #{name}"
-
-  defp format_event_line(event, detail) do
-    ts = event.timestamp |> DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
-    line = "#{ts} #{format_event(event)}"
-
-    if detail == :full do
-      line <> "\n  #{inspect(event, pretty: true, width: 120)}"
-    else
-      line
-    end
-  end
 
   @doc "Format a single log entry as a human-readable line."
   def format_entry(entry, color_enabled) do

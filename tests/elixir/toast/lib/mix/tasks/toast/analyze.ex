@@ -11,6 +11,7 @@ defmodule Mix.Tasks.Toast.Analyze do
 
       issues          List all issues across all suites (default)
       detail[s]       Show full diagnostic detail for issues
+      info            Show overview of diagnostics file contents
 
   ## Issue spec (detail only)
 
@@ -79,6 +80,7 @@ defmodule Mix.Tasks.Toast.Analyze do
         "help" -> print_help()
         "issues" -> run_issues(result_dir, opts, color)
         "detail" -> run_detail(result_dir, opts, rest, color)
+        "info" -> run_info(result_dir, opts, color)
       end
     end
   end
@@ -87,10 +89,11 @@ defmodule Mix.Tasks.Toast.Analyze do
     "issues" => "issues",
     "detail" => "detail",
     "details" => "detail",
+    "info" => "info",
     "help" => "help"
   }
 
-  @canonical_subcommands ~w(issues detail help)
+  @canonical_subcommands ~w(issues detail info help)
 
   defp pop_subcommand([cmd | rest]) when is_map_key(@subcommands, cmd),
     do: {@subcommands[cmd], rest}
@@ -167,6 +170,159 @@ defmodule Mix.Tasks.Toast.Analyze do
         print_issue_detail(issue, idx, color, log_opts)
       end)
     end
+  end
+
+  defp run_info(result_dir, opts, color) do
+    results = load_results(result_dir)
+
+    results
+    |> maybe_filter_suite(opts[:suite])
+    |> Enum.each(&print_suite_info(&1, color))
+  end
+
+  defp maybe_filter_suite(results, nil), do: results
+
+  defp maybe_filter_suite(results, suite) do
+    Enum.filter(results, &(&1.suite == suite))
+  end
+
+  defp print_suite_info(result, color) do
+    bar = String.duplicate("═", 80)
+    Mix.shell().info("\n#{colorize(bar, :cyan, color)}")
+    Mix.shell().info(colorize(" Suite: #{result.suite}", :bright, color))
+    Mix.shell().info(colorize(bar, :cyan, color))
+
+    # Time range
+    started = if result.started_at, do: fmt_dt(result.started_at), else: "?"
+    finished = if result.finished_at, do: fmt_dt(result.finished_at), else: "?"
+    Mix.shell().info("  Time:    #{started} .. #{finished}")
+
+    if result.times_us do
+      run_s = Float.round((result.times_us[:run] || 0) / 1_000_000, 1)
+      Mix.shell().info("  Runtime: #{run_s}s")
+    end
+
+    # Version
+    Mix.shell().info("  Version: #{Map.get(result, :version, "?")}")
+
+    # Modules & tests
+    test_counts = count_tests(result.modules)
+
+    Mix.shell().info(
+      "  Modules: #{map_size(result.modules)}  Tests: #{test_counts.total} " <>
+        "(#{test_counts.passed} passed, #{test_counts.failed} failed, #{test_counts.skipped} skipped)"
+    )
+
+    # Issues
+    issue_counts =
+      result.issues
+      |> Enum.frequencies_by(& &1.type)
+
+    Mix.shell().info("  Issues:  #{length(result.issues)} #{format_freq(issue_counts)}")
+
+    # Events
+    Mix.shell().info("  Events:  #{length(Map.get(result, :events, []))}")
+
+    # Warnings
+    warnings = Map.get(result, :warnings, [])
+
+    if warnings != [] do
+      Mix.shell().info("  Warnings: #{length(warnings)}")
+    end
+
+    # Deployments & servers
+    deployments = Map.get(result, :deployments, %{})
+    Mix.shell().info("")
+    Mix.shell().info(colorize("  Deployments (#{map_size(deployments)}):", :bright, color))
+
+    deployments
+    |> Enum.sort_by(fn {did, _} -> did end)
+    |> Enum.each(fn {did, deployment} ->
+      mode = if deployment[:mode], do: " (#{deployment.mode})", else: ""
+      Mix.shell().info("")
+      Mix.shell().info("    #{colorize("#{did}#{mode}", :cyan, color)}")
+
+      if deployment[:started_at] do
+        stopped = if deployment[:stopped_at], do: fmt_dt(deployment.stopped_at), else: "running"
+        Mix.shell().info("      Time: #{fmt_dt(deployment.started_at)} .. #{stopped}")
+      end
+
+      servers = Map.get(deployment, :servers, %{})
+
+      servers
+      |> Enum.sort_by(fn {sid, _} -> sid end)
+      |> Enum.each(fn {sid, meta} ->
+        print_server_info(sid, meta, color)
+      end)
+    end)
+  end
+
+  defp print_server_info(sid, meta, color) do
+    role = if meta[:role], do: " (#{meta.role})", else: ""
+    Mix.shell().info("      #{colorize("#{sid}#{role}", :cyan, color)}")
+
+    parts = []
+
+    parts =
+      case meta[:endpoint] do
+        ep when is_binary(ep) -> parts ++ ["endpoint=#{ep}"]
+        _ -> parts
+      end
+
+    parts =
+      case meta[:arango_id] do
+        id when is_binary(id) -> parts ++ ["arango=#{id}"]
+        _ -> parts
+      end
+
+    parts =
+      case meta[:log_file] do
+        f when is_binary(f) -> parts ++ ["log=#{f}"]
+        _ -> parts
+      end
+
+    if parts != [] do
+      Mix.shell().info("        #{Enum.join(parts, "  ")}")
+    end
+
+    # Incarnations
+    incarnations = meta[:incarnations] || []
+
+    if incarnations != [] do
+      Enum.each(incarnations, fn inc ->
+        stopped = if inc[:stopped_at], do: fmt_dt(inc.stopped_at), else: "running"
+
+        Mix.shell().info("        pid=#{inc.pid}  #{fmt_dt(inc.started_at)} .. #{stopped}")
+      end)
+    end
+
+    # Collected log windows
+    logs = meta[:logs] || []
+    total_entries = Enum.reduce(logs, 0, fn {_, _, entries}, acc -> acc + length(entries) end)
+
+    Mix.shell().info("        Logs: #{length(logs)} window(s), #{total_entries} entries")
+  end
+
+  defp count_tests(modules) do
+    Enum.reduce(modules, %{total: 0, passed: 0, failed: 0, skipped: 0}, fn {_mod, data}, acc ->
+      Enum.reduce(data.tests, acc, fn test, acc ->
+        acc = %{acc | total: acc.total + 1}
+
+        case test.outcome do
+          :passed -> %{acc | passed: acc.passed + 1}
+          :failed -> %{acc | failed: acc.failed + 1}
+          outcome when outcome in [:skipped, :excluded] -> %{acc | skipped: acc.skipped + 1}
+          _ -> acc
+        end
+      end)
+    end)
+  end
+
+  defp format_freq(freq) when map_size(freq) == 0, do: ""
+
+  defp format_freq(freq) do
+    parts = Enum.map_join(freq, ", ", fn {type, count} -> "#{count} #{type}" end)
+    "(#{parts})"
   end
 
   defp parse_issue_spec([]), do: :all
@@ -401,6 +557,7 @@ defmodule Mix.Tasks.Toast.Analyze do
   defp print_log_context(issue, win_start, win_end, log_opts, servers, color) do
     {tb_start, tb_end} = issue.time_bounds
     matching = Logs.matching_servers(servers, log_opts.server_filter)
+    deployments = issue[:deployments] || %{}
 
     Mix.shell().info(
       colorize("  Issue window:  #{fmt_dt(tb_start)} .. #{fmt_dt(tb_end)}", :faint, color)
@@ -411,17 +568,53 @@ defmodule Mix.Tasks.Toast.Analyze do
     )
 
     Mix.shell().info(colorize("  Servers:", :faint, color))
+    print_server_list(matching, servers, deployments, color)
+  end
 
-    Enum.each(matching, fn server_id ->
-      Mix.shell().info(colorize(format_server_label(server_id, servers), :faint, color))
+  defp print_server_list(matching, servers, deployments, color) do
+    grouped = group_servers_by_deployment(matching, servers)
+
+    if map_size(grouped) <= 1 do
+      Enum.each(matching, fn server_id ->
+        Mix.shell().info(colorize(format_server_label(server_id, servers), :faint, color))
+      end)
+    else
+      grouped
+      |> Enum.sort_by(fn {did, _} -> did end)
+      |> Enum.each(fn {did, server_ids} ->
+        deployment_label = format_deployment_label(did, deployments)
+        Mix.shell().info(colorize("    #{deployment_label}", :faint, color))
+
+        Enum.each(server_ids, fn server_id ->
+          Mix.shell().info(
+            colorize(format_server_label(server_id, servers, "      "), :faint, color)
+          )
+        end)
+      end)
+    end
+  end
+
+  defp group_servers_by_deployment(server_ids, servers) do
+    Enum.group_by(server_ids, fn server_id ->
+      case servers[server_id] do
+        %{deployment_id: did} when is_binary(did) -> did
+        _ -> "unknown"
+      end
     end)
   end
 
-  defp format_server_label(server_id, servers) do
+  defp format_deployment_label(did, deployments) do
+    case deployments[did] do
+      %{mode: mode} when not is_nil(mode) -> "#{did} (#{mode})"
+      _ -> did
+    end
+  end
+
+  defp format_server_label(server_id, servers, indent \\ "    ") do
     tag = Logs.server_tag(server_id)
     meta = servers[server_id] || %{}
 
-    parts = ["    #{tag}  #{server_id}"]
+    parts = ["#{indent}#{tag}  #{server_id}"]
 
     parts =
       case meta do
@@ -452,6 +645,7 @@ defmodule Mix.Tasks.Toast.Analyze do
   end
 
   defp fmt_dt(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
+  defp fmt_dt(us) when is_integer(us), do: us |> DateTime.from_unix!(:microsecond) |> fmt_dt()
 
   # --- Shared infrastructure ---
 
@@ -459,13 +653,14 @@ defmodule Mix.Tasks.Toast.Analyze do
     results
     |> Enum.flat_map(fn result ->
       all_servers = flatten_servers(result.deployments)
-
+      deployments = Map.get(result, :deployments, %{})
       events = Map.get(result, :events, [])
 
       result.issues
       |> Enum.map(&Map.put(&1, :suite, result.suite))
       |> Enum.map(&attach_time_bounds(&1, result.modules))
       |> Enum.map(&Map.put(&1, :servers, all_servers))
+      |> Enum.map(&Map.put(&1, :deployments, deployments))
       |> Enum.map(&Map.put(&1, :events, events))
     end)
     |> apply_filters(opts)

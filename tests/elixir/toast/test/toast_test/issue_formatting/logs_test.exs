@@ -228,6 +228,11 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       assert Logs.server_color("coordinator0") != Logs.server_color("coordinator1")
     end
 
+    test "single role uses dbserver palette" do
+      color = Logs.server_color("single")
+      assert color in [137, 174, 95, 180, 130, 215, 101, 172, 144]
+    end
+
     test "unknown role falls back to coordinator palette" do
       color = Logs.server_color("unknown0")
       assert color in [67, 103, 110, 66, 109, 60, 68, 102, 146]
@@ -585,7 +590,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
   # --- format_merged/2 with events ---
 
   describe "format_merged/2 with events" do
-    test "single server: events render with >>> prefix, no tag" do
+    test "single server with events uses tagged format" do
       e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
 
       event = %{
@@ -595,12 +600,13 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         name: "t"
       }
 
-      merged = [{"s1", e1}, {:event, event}]
+      merged = [{"coordinator1", e1}, {:event, event}]
       result = Logs.format_merged(merged, false)
 
       assert result =~ "line1"
       assert result =~ ">>> test_started"
-      refute result =~ "[" <> "s1" <> "]"
+      # With events present, single server still gets a tag
+      assert result =~ "[CO1]"
     end
 
     test "multi-server: events render without server color" do
