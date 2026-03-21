@@ -117,20 +117,45 @@ defmodule ToastTest.IssueFormatting.Logs do
     |> Enum.sort_by(&elem(&1, 0))
   end
 
+  # --- Extract events ---
+
+  @doc "Filter events by display window (microsecond timestamps)."
+  def extract_events(events, {win_start, win_end}) do
+    start_us = DateTime.to_unix(win_start, :microsecond)
+    end_us = DateTime.to_unix(win_end, :microsecond)
+
+    Enum.filter(events, fn event ->
+      event.timestamp >= start_us and event.timestamp <= end_us
+    end)
+  end
+
   # --- Merge streams ---
 
   @doc """
   K-way merge of pre-sorted per-server log entry lists into a single
-  chronological stream. Returns `[{server_id, entry}]`.
-  """
-  def merge_streams([]), do: []
+  chronological stream. Returns `[{server_id | :event, entry | event}]`.
 
-  def merge_streams([{server_id, entries}]) do
+  An optional `events` list can be provided to interleave EventStore events
+  with server log entries. Events use `:timestamp` for ordering while log
+  entries use `:time`.
+  """
+  def merge_streams(streams, events \\ [])
+
+  def merge_streams([], []), do: []
+
+  def merge_streams([], events) do
+    Enum.map(events, &{:event, &1})
+  end
+
+  def merge_streams([{server_id, entries}], []) do
     Enum.map(entries, &{server_id, &1})
   end
 
-  def merge_streams(streams) do
-    streams
+  def merge_streams(streams, events) do
+    event_stream =
+      if events == [], do: [], else: [{:event, events}]
+
+    (streams ++ event_stream)
     |> Enum.reject(fn {_, entries} -> entries == [] end)
     |> k_way_merge([])
   end
@@ -164,15 +189,26 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   # --- Format merged output ---
 
-  @doc "Format merged `[{server_id, entry}]` into display lines."
-  def format_merged([], _color_enabled), do: ""
+  @doc """
+  Format merged `[{server_id | :event, entry | event}]` into display lines.
 
-  def format_merged(merged, color_enabled) do
-    servers = merged |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+  `event_detail` controls how events are rendered:
+  - `:basic` — one-line summary (default)
+  - `:full` — one-line summary followed by the full event map
+  """
+  def format_merged(merged, color_enabled, event_detail \\ :basic)
 
-    if length(servers) == 1 do
+  def format_merged([], _color_enabled, _event_detail), do: ""
+
+  def format_merged(merged, color_enabled, event_detail) do
+    servers = merged |> Enum.map(&elem(&1, 0)) |> Enum.uniq() |> Enum.reject(&(&1 == :event))
+
+    if length(servers) <= 1 do
       merged
-      |> Enum.map(fn {_server_id, entry} -> format_entry(entry, color_enabled) end)
+      |> Enum.map(fn
+        {:event, event} -> format_event_line(event, event_detail)
+        {_server_id, entry} -> format_entry(entry, color_enabled)
+      end)
       |> Enum.join("\n")
     else
       tag_map = Map.new(servers, &{&1, server_tag(&1)})
@@ -180,19 +216,91 @@ defmodule ToastTest.IssueFormatting.Logs do
       max_tag_len = tag_map |> Map.values() |> Enum.map(&String.length/1) |> Enum.max()
 
       merged
-      |> Enum.map(fn {server_id, entry} ->
-        tag = String.pad_trailing(tag_map[server_id], max_tag_len)
-        line = format_entry_line(entry)
+      |> Enum.map(fn
+        {:event, event} ->
+          padding = String.duplicate(" ", max_tag_len + 2)
+          ts = event.timestamp |> DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
+          line = "#{padding} #{ts} #{format_event(event)}"
 
-        if color_enabled do
-          color_code = color_map[server_id]
-          level_extra = level_emphasis(entry)
-          "\e[38;5;#{color_code}m#{level_extra}[#{tag}] #{line}\e[0m"
-        else
-          "[#{tag}] #{line}"
-        end
+          if event_detail == :full do
+            line <> "\n#{padding}   #{inspect(event, pretty: true, width: 120)}"
+          else
+            line
+          end
+
+        {server_id, entry} ->
+          tag = String.pad_trailing(tag_map[server_id], max_tag_len)
+          line = format_entry_line(entry)
+
+          if color_enabled do
+            color_code = color_map[server_id]
+            level_extra = level_emphasis(entry)
+            "\e[38;5;#{color_code}m#{level_extra}[#{tag}] #{line}\e[0m"
+          else
+            "[#{tag}] #{line}"
+          end
       end)
       |> Enum.join("\n")
+    end
+  end
+
+  @doc "Format a single event as a `>>> event_name details` string."
+  def format_event(%{event: :server_started, server_id: sid, pid: pid}),
+    do: ">>> server_started #{sid} (pid=#{pid})"
+
+  def format_event(%{event: :server_stopped, server_id: sid}),
+    do: ">>> server_stopped #{sid}"
+
+  def format_event(%{event: :server_crashed, server_id: sid, pid: pid, signal: sig}),
+    do: ">>> server_crashed #{sid} (pid=#{pid}, signal=#{sig})"
+
+  def format_event(%{event: :server_killed, server_id: sid}),
+    do: ">>> server_killed #{sid}"
+
+  def format_event(%{event: :server_paused, server_id: sid}),
+    do: ">>> server_paused #{sid}"
+
+  def format_event(%{event: :server_resumed, server_id: sid}),
+    do: ">>> server_resumed #{sid}"
+
+  def format_event(%{event: :test_started, module: mod, name: name}),
+    do: ">>> test_started #{inspect(mod)} > #{name}"
+
+  def format_event(%{event: :test_finished, module: mod, name: name, outcome: outcome}),
+    do: ">>> test_finished #{inspect(mod)} > #{name} (#{outcome})"
+
+  def format_event(%{event: :module_started, module: mod}),
+    do: ">>> module_started #{inspect(mod)}"
+
+  def format_event(%{event: :module_finished, module: mod}),
+    do: ">>> module_finished #{inspect(mod)}"
+
+  def format_event(%{event: :deployment_starting, deployment_id: did, mode: mode}),
+    do: ">>> deployment_starting #{did} (#{mode})"
+
+  def format_event(%{event: :deployment_started, deployment_id: did}),
+    do: ">>> deployment_started #{did}"
+
+  def format_event(%{event: :deployment_stopped, deployment_id: did}),
+    do: ">>> deployment_stopped #{did}"
+
+  def format_event(%{event: :timeout_kill, reason: reason}),
+    do: ">>> timeout_kill #{reason}"
+
+  def format_event(%{event: :server_identified, server_id: sid, arango_id: aid}),
+    do: ">>> server_identified #{sid} => #{aid}"
+
+  def format_event(%{event: name}),
+    do: ">>> #{name}"
+
+  defp format_event_line(event, detail) do
+    ts = event.timestamp |> DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
+    line = "#{ts} #{format_event(event)}"
+
+    if detail == :full do
+      line <> "\n  #{inspect(event, pretty: true, width: 120)}"
+    else
+      line
     end
   end
 
@@ -257,7 +365,7 @@ defmodule ToastTest.IssueFormatting.Logs do
     {_, min_idx} =
       streams
       |> Enum.with_index()
-      |> Enum.min_by(fn {{_server_id, [entry | _]}, _idx} -> entry.time end)
+      |> Enum.min_by(fn {{_server_id, [entry | _]}, _idx} -> entry_time(entry) end)
 
     {server_id, [entry | rest_entries]} = Enum.at(streams, min_idx)
 
@@ -270,6 +378,9 @@ defmodule ToastTest.IssueFormatting.Logs do
 
     k_way_merge(new_streams, [{server_id, entry} | acc])
   end
+
+  defp entry_time(%{time: t}), do: t
+  defp entry_time(%{timestamp: t}), do: t
 
   defp parse_num(""), do: 0
   defp parse_num(s), do: String.to_integer(s)

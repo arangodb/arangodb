@@ -12,6 +12,7 @@ defmodule ToastTest.Enrichment.Logs do
   @level_map %{
     "FATAL" => :fatal,
     "ERR" => :error,
+    "ERROR" => :error,
     "WARN" => :warning,
     "INFO" => :info,
     "DEBUG" => :debug,

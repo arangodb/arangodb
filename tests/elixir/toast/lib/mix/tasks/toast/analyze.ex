@@ -33,6 +33,7 @@ defmodule Mix.Tasks.Toast.Analyze do
       --log-servers <spec>            Server filter (default: all except agents)
       --log-window <before>,<after>   Signed seconds relative to issue time bounds (default: type-specific)
                                       Example: --log-window -20,5  (20s before, 5s after)
+      --log-events <level>            Event detail in log output: none, basic (default), full
   """
 
   use Mix.Task
@@ -49,6 +50,7 @@ defmodule Mix.Tasks.Toast.Analyze do
     logs: :boolean,
     log_servers: :string,
     log_window: :string,
+    log_events: :string,
     help: :boolean
   ]
 
@@ -154,7 +156,8 @@ defmodule Mix.Tasks.Toast.Analyze do
     log_opts = %{
       enabled: opts[:logs] || false,
       server_filter: Logs.parse_server_filter(opts[:log_servers]),
-      window_spec: Logs.parse_window_spec(opts[:log_window])
+      window_spec: Logs.parse_window_spec(opts[:log_window]),
+      event_detail: parse_event_detail(opts[:log_events])
     }
 
     if selected == [] do
@@ -353,6 +356,17 @@ defmodule Mix.Tasks.Toast.Analyze do
   defp timeout_source_label(:global_timeout), do: "Global Timeout"
   defp timeout_source_label(other), do: "Timeout: #{other}"
 
+  @valid_event_details %{"none" => :none, "basic" => :basic, "full" => :full}
+
+  defp parse_event_detail(nil), do: :basic
+
+  defp parse_event_detail(level) do
+    Map.get(@valid_event_details, level) ||
+      Mix.raise(
+        "Unknown --log-events level: #{level}. Valid: #{@valid_event_details |> Map.keys() |> Enum.join(", ")}"
+      )
+  end
+
   # --- Server logs ---
 
   defp print_issue_logs(issue, log_opts, color) do
@@ -369,12 +383,17 @@ defmodule Mix.Tasks.Toast.Analyze do
         print_log_context(issue, win_start, win_end, log_opts, servers, color)
         entries = Logs.extract(servers, window, log_opts.server_filter)
 
-        if entries == [] do
+        events =
+          if log_opts.event_detail != :none,
+            do: Logs.extract_events(issue[:events] || [], window),
+            else: []
+
+        if entries == [] and events == [] do
           Mix.shell().info(colorize("  No matching log lines found.", :faint, color))
         else
           Mix.shell().info("")
-          merged = Logs.merge_streams(entries)
-          Mix.shell().info(Logs.format_merged(merged, color))
+          merged = Logs.merge_streams(entries, events)
+          Mix.shell().info(Logs.format_merged(merged, color, log_opts.event_detail))
         end
     end
   end
@@ -441,10 +460,13 @@ defmodule Mix.Tasks.Toast.Analyze do
     |> Enum.flat_map(fn result ->
       all_servers = flatten_servers(result.deployments)
 
+      events = Map.get(result, :events, [])
+
       result.issues
       |> Enum.map(&Map.put(&1, :suite, result.suite))
       |> Enum.map(&attach_time_bounds(&1, result.modules))
       |> Enum.map(&Map.put(&1, :servers, all_servers))
+      |> Enum.map(&Map.put(&1, :events, events))
     end)
     |> apply_filters(opts)
   end
@@ -475,10 +497,12 @@ defmodule Mix.Tasks.Toast.Analyze do
   end
 
   defp attach_time_bounds(
-         %{type: :crash, detail: %{crash_info: %{timestamp: %DateTime{} = ts}}} = issue,
+         %{type: :crash, detail: %{crash_info: %{timestamp: ts}}} = issue,
          _modules
-       ) do
-    Map.put(issue, :time_bounds, {ts, ts})
+       )
+       when is_integer(ts) do
+    dt = DateTime.from_unix!(ts, :microsecond)
+    Map.put(issue, :time_bounds, {dt, dt})
   end
 
   defp attach_time_bounds(

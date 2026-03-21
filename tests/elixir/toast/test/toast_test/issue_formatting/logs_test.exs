@@ -389,7 +389,327 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
   end
 
+  # --- extract_events/2 ---
+
+  describe "extract_events/2" do
+    test "filters events within the window" do
+      events = [
+        %{
+          event: :server_started,
+          timestamp: to_us(~U[2026-03-09 09:59:50Z]),
+          server_id: "s1",
+          pid: 1
+        },
+        %{
+          event: :test_started,
+          timestamp: to_us(~U[2026-03-09 10:00:02Z]),
+          module: Mod,
+          name: "t"
+        },
+        %{event: :server_stopped, timestamp: to_us(~U[2026-03-09 10:00:15Z]), server_id: "s1"}
+      ]
+
+      window = {~U[2026-03-09 10:00:00Z], ~U[2026-03-09 10:00:10Z]}
+      result = Logs.extract_events(events, window)
+
+      assert length(result) == 1
+      assert hd(result).event == :test_started
+    end
+
+    test "returns empty list when no events match" do
+      events = [
+        %{
+          event: :server_started,
+          timestamp: to_us(~U[2026-03-09 09:00:00Z]),
+          server_id: "s1",
+          pid: 1
+        }
+      ]
+
+      window = {~U[2026-03-09 10:00:00Z], ~U[2026-03-09 10:00:10Z]}
+      assert Logs.extract_events(events, window) == []
+    end
+
+    test "includes events at window boundaries" do
+      ts = to_us(~U[2026-03-09 10:00:00Z])
+      events = [%{event: :test_started, timestamp: ts, module: Mod, name: "t"}]
+      window = {~U[2026-03-09 10:00:00Z], ~U[2026-03-09 10:00:00Z]}
+      assert length(Logs.extract_events(events, window)) == 1
+    end
+  end
+
+  # --- merge_streams/2 with events ---
+
+  describe "merge_streams/2 with events" do
+    test "events interleaved with server logs chronologically" do
+      co_entries = [
+        entry(~U[2026-03-09 10:00:00Z], message: "co-msg1"),
+        entry(~U[2026-03-09 10:00:04Z], message: "co-msg2")
+      ]
+
+      events = [
+        %{
+          event: :test_started,
+          timestamp: to_us(~U[2026-03-09 10:00:02Z]),
+          module: Mod,
+          name: "t"
+        }
+      ]
+
+      result = Logs.merge_streams([{"coordinator1", co_entries}], events)
+
+      assert Enum.map(result, &elem(&1, 0)) == ["coordinator1", :event, "coordinator1"]
+    end
+
+    test "events only (no server entries)" do
+      events = [
+        %{
+          event: :test_started,
+          timestamp: to_us(~U[2026-03-09 10:00:00Z]),
+          module: Mod,
+          name: "t"
+        }
+      ]
+
+      result = Logs.merge_streams([], events)
+      assert length(result) == 1
+      assert {:event, _} = hd(result)
+    end
+
+    test "empty events preserves original behavior" do
+      entries = [entry(~U[2026-03-09 10:00:00Z], message: "msg")]
+      result = Logs.merge_streams([{"s1", entries}], [])
+      assert length(result) == 1
+      assert {"s1", _} = hd(result)
+    end
+  end
+
+  # --- format_event/1 ---
+
+  describe "format_event/1" do
+    test "server_started" do
+      event = %{event: :server_started, server_id: "dbserver1", pid: 12345, timestamp: 0}
+      assert Logs.format_event(event) == ">>> server_started dbserver1 (pid=12345)"
+    end
+
+    test "server_stopped" do
+      event = %{event: :server_stopped, server_id: "dbserver1", timestamp: 0}
+      assert Logs.format_event(event) == ">>> server_stopped dbserver1"
+    end
+
+    test "server_crashed" do
+      event = %{
+        event: :server_crashed,
+        server_id: "dbserver1",
+        pid: 123,
+        signal: 11,
+        timestamp: 0
+      }
+
+      assert Logs.format_event(event) == ">>> server_crashed dbserver1 (pid=123, signal=11)"
+    end
+
+    test "server_killed" do
+      event = %{event: :server_killed, server_id: "s1", timestamp: 0}
+      assert Logs.format_event(event) == ">>> server_killed s1"
+    end
+
+    test "server_paused" do
+      event = %{event: :server_paused, server_id: "s1", timestamp: 0}
+      assert Logs.format_event(event) == ">>> server_paused s1"
+    end
+
+    test "server_resumed" do
+      event = %{event: :server_resumed, server_id: "s1", timestamp: 0}
+      assert Logs.format_event(event) == ">>> server_resumed s1"
+    end
+
+    test "test_started" do
+      event = %{event: :test_started, module: MyModule, name: "my test", timestamp: 0}
+      assert Logs.format_event(event) == ">>> test_started MyModule > my test"
+    end
+
+    test "test_finished" do
+      event = %{
+        event: :test_finished,
+        module: MyModule,
+        name: "my test",
+        outcome: :passed,
+        timestamp: 0
+      }
+
+      assert Logs.format_event(event) == ">>> test_finished MyModule > my test (passed)"
+    end
+
+    test "module_started" do
+      event = %{event: :module_started, module: MyModule, timestamp: 0}
+      assert Logs.format_event(event) == ">>> module_started MyModule"
+    end
+
+    test "module_finished" do
+      event = %{event: :module_finished, module: MyModule, timestamp: 0}
+      assert Logs.format_event(event) == ">>> module_finished MyModule"
+    end
+
+    test "deployment_starting" do
+      event = %{event: :deployment_starting, deployment_id: "d1", mode: :cluster, timestamp: 0}
+      assert Logs.format_event(event) == ">>> deployment_starting d1 (cluster)"
+    end
+
+    test "deployment_started" do
+      event = %{event: :deployment_started, deployment_id: "d1", timestamp: 0}
+      assert Logs.format_event(event) == ">>> deployment_started d1"
+    end
+
+    test "deployment_stopped" do
+      event = %{event: :deployment_stopped, deployment_id: "d1", timestamp: 0}
+      assert Logs.format_event(event) == ">>> deployment_stopped d1"
+    end
+
+    test "timeout_kill" do
+      event = %{event: :timeout_kill, reason: "test exceeded 60s", timestamp: 0}
+      assert Logs.format_event(event) == ">>> timeout_kill test exceeded 60s"
+    end
+
+    test "server_identified" do
+      event = %{event: :server_identified, server_id: "s1", arango_id: "CRDN-abc", timestamp: 0}
+      assert Logs.format_event(event) == ">>> server_identified s1 => CRDN-abc"
+    end
+
+    test "unknown event" do
+      event = %{event: :something_new, timestamp: 0}
+      assert Logs.format_event(event) == ">>> something_new"
+    end
+  end
+
+  # --- format_merged/2 with events ---
+
+  describe "format_merged/2 with events" do
+    test "single server: events render with >>> prefix, no tag" do
+      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
+
+      event = %{
+        event: :test_started,
+        timestamp: to_us(~U[2026-01-01 00:00:01Z]),
+        module: Mod,
+        name: "t"
+      }
+
+      merged = [{"s1", e1}, {:event, event}]
+      result = Logs.format_merged(merged, false)
+
+      assert result =~ "line1"
+      assert result =~ ">>> test_started"
+      refute result =~ "[" <> "s1" <> "]"
+    end
+
+    test "multi-server: events render without server color" do
+      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
+      e2 = entry(~U[2026-01-01 00:00:02Z], message: "line2")
+
+      event = %{
+        event: :server_crashed,
+        timestamp: to_us(~U[2026-01-01 00:00:01Z]),
+        server_id: "db1",
+        pid: 1,
+        signal: 11
+      }
+
+      merged = [{"coordinator1", e1}, {:event, event}, {"dbserver1", e2}]
+      result = Logs.format_merged(merged, true)
+
+      lines = String.split(result, "\n")
+      event_line = Enum.find(lines, &String.contains?(&1, ">>>"))
+
+      assert event_line != nil
+      # Event line should NOT have server color escape
+      refute event_line =~ "\e[38;5;"
+      assert event_line =~ ">>> server_crashed"
+    end
+
+    test "multi-server: event lines are padded to align with tags" do
+      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
+      e2 = entry(~U[2026-01-01 00:00:02Z], message: "line2")
+
+      event = %{
+        event: :test_started,
+        timestamp: to_us(~U[2026-01-01 00:00:01Z]),
+        module: Mod,
+        name: "t"
+      }
+
+      merged = [{"coordinator1", e1}, {:event, event}, {"dbserver1", e2}]
+      result = Logs.format_merged(merged, false)
+
+      lines = String.split(result, "\n")
+      tag_line = Enum.find(lines, &String.contains?(&1, "[CO1]"))
+      event_line = Enum.find(lines, &String.contains?(&1, ">>>"))
+
+      # Both lines should have content starting at similar column
+      # Tag line: "[CO1] ..." event line: "      ..."
+      assert event_line =~ ">>> test_started"
+      assert String.starts_with?(tag_line, "[CO1")
+    end
+
+    test "events only renders without tags" do
+      event = %{
+        event: :test_started,
+        timestamp: to_us(~U[2026-01-01 00:00:00Z]),
+        module: Mod,
+        name: "t"
+      }
+
+      result = Logs.format_merged([{:event, event}], false)
+      assert result =~ ">>> test_started"
+    end
+
+    test "full detail includes inspect of the event map" do
+      event = %{
+        event: :server_started,
+        timestamp: to_us(~U[2026-01-01 00:00:00Z]),
+        server_id: "db1",
+        pid: 123
+      }
+
+      result = Logs.format_merged([{:event, event}], false, :full)
+      assert result =~ ">>> server_started db1 (pid=123)"
+      assert result =~ "server_id: \"db1\""
+      assert result =~ "pid: 123"
+    end
+
+    test "basic detail does not include inspect output" do
+      event = %{
+        event: :server_started,
+        timestamp: to_us(~U[2026-01-01 00:00:00Z]),
+        server_id: "db1",
+        pid: 123
+      }
+
+      result = Logs.format_merged([{:event, event}], false, :basic)
+      assert result =~ ">>> server_started db1 (pid=123)"
+      refute result =~ "server_id: \"db1\""
+    end
+
+    test "multi-server full detail includes inspect after event line" do
+      e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
+
+      event = %{
+        event: :server_started,
+        timestamp: to_us(~U[2026-01-01 00:00:01Z]),
+        server_id: "db1",
+        pid: 123
+      }
+
+      merged = [{"coordinator1", e1}, {:event, event}]
+      result = Logs.format_merged(merged, false, :full)
+      assert result =~ ">>> server_started db1 (pid=123)"
+      assert result =~ "server_id: \"db1\""
+    end
+  end
+
   # --- Helpers ---
+
+  defp to_us(%DateTime{} = dt), do: DateTime.to_unix(dt, :microsecond)
 
   defp entry(time, opts \\ []) do
     %{
