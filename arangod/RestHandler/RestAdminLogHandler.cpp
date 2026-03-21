@@ -97,7 +97,7 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
       generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,
                     "This endpoint has been removed. Please use DELETE "
                     "`/_admin/log/entries` instead.");
-    } else if(suffixes.size() == 1 && suffixes[0] == "entries") {
+    } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
       clearLogs();
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       // reset log levels to defaults
