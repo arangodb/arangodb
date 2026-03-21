@@ -310,9 +310,18 @@ defmodule Toast.Config do
 
   defp read_deployment_mode do
     case env("TOAST_DEPLOYMENT_MODE") do
-      "cluster" -> :cluster
-      nil -> nil
-      _ -> :single_server
+      "cluster" ->
+        :cluster
+
+      "single_server" ->
+        :single_server
+
+      nil ->
+        nil
+
+      other ->
+        raise ArgumentError,
+              "Invalid TOAST_DEPLOYMENT_MODE: #{inspect(other)} (expected \"cluster\" or \"single_server\")"
     end
   end
 

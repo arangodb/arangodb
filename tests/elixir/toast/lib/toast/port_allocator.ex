@@ -117,6 +117,7 @@ defmodule Toast.PortAllocator do
     end
   end
 
+  defp find_sequential(port, _attempts) when port > @max_port, do: :error
   defp find_sequential(_port, attempts) when attempts >= @max_attempts, do: :error
 
   defp find_sequential(port, attempts) do

@@ -108,13 +108,20 @@ defmodule Toast.Deployment.Controller do
   end
 
   @spec stop_server(GenServer.server(), term()) :: :ok | {:error, term()}
-  def stop_server(server, server_id), do: GenServer.call(server, {:stop_server, server_id})
+  def stop_server(server, server_id),
+    do: GenServer.call(server, {:stop_server, server_id}, :infinity)
+
   @spec kill_server(GenServer.server(), term()) :: :ok | {:error, term()}
-  def kill_server(server, server_id), do: GenServer.call(server, {:kill_server, server_id})
+  def kill_server(server, server_id),
+    do: GenServer.call(server, {:kill_server, server_id}, :infinity)
+
   @spec pause_server(GenServer.server(), term()) :: :ok | {:error, term()}
-  def pause_server(server, server_id), do: GenServer.call(server, {:pause_server, server_id})
+  def pause_server(server, server_id),
+    do: GenServer.call(server, {:pause_server, server_id}, :infinity)
+
   @spec resume_server(GenServer.server(), term()) :: :ok | {:error, term()}
-  def resume_server(server, server_id), do: GenServer.call(server, {:resume_server, server_id})
+  def resume_server(server, server_id),
+    do: GenServer.call(server, {:resume_server, server_id}, :infinity)
 
   @spec restart_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
   def restart_server(server, server_id, opts \\ []),
@@ -738,7 +745,7 @@ defmodule Toast.Deployment.Controller do
   defp do_pause_server(server_id, acc) do
     server_control(acc, server_id, :running,
       action: &ServerLifecycle.pause_server/1,
-      state: [operational_state: :paused, expecting_exit: true],
+      state: [operational_state: :paused, expecting_exit: false],
       event: :server_paused
     )
   end
@@ -966,7 +973,7 @@ defmodule Toast.Deployment.Controller do
     |> Enum.reduce_while({:ok, state}, fn server_id, {:ok, acc} ->
       case fun.(server_id, acc) do
         {:ok, new_acc} -> {:cont, {:ok, new_acc}}
-        {:error, _} = err -> {:halt, err}
+        {:error, _} = err -> {:halt, {err, acc}}
       end
     end)
     |> case do
@@ -974,8 +981,9 @@ defmodule Toast.Deployment.Controller do
         final_state = %{final_state | status: derive_status(final_state.servers)}
         {:reply, :ok, final_state}
 
-      {:error, _} = err ->
-        {:reply, err, state}
+      {{:error, _} = err, partial_state} ->
+        partial_state = %{partial_state | status: derive_status(partial_state.servers)}
+        {:reply, err, partial_state}
     end
   end
 

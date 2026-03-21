@@ -27,6 +27,7 @@ defmodule Toast.Client.AQL do
         collect_cursor_pages(client, next_body, [next_body["result"] | acc])
 
       {:error, _} = err ->
+        Client.delete(client, "/_api/cursor/#{cursor_id}")
         err
     end
   end

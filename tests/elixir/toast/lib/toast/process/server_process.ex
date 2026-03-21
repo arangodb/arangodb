@@ -158,6 +158,7 @@ defmodule Toast.Process.ServerProcess do
       :output_handler,
       :stop_from,
       :stop_timer,
+      :stop_ref,
       env: [],
       status: :stopped
     ]
@@ -228,6 +229,15 @@ defmodule Toast.Process.ServerProcess do
     {:reply, :ok, %{state | status: :killed}}
   end
 
+  def handle_call(:kill, _from, %{status: status} = state)
+      when status in [:stopping, :aborting, :killing] do
+    Logger.info("#{state.id}: killing process (SIGKILL) during #{status}")
+    cancel_timer(state.stop_timer)
+    :exec.kill(state.os_pid, @sigkill)
+    if state.stop_from, do: GenServer.reply(state.stop_from, :escalated)
+    {:reply, :ok, %{state | status: :killed, stop_from: nil, stop_timer: nil, stop_ref: nil}}
+  end
+
   def handle_call(:kill, _from, state) do
     {:reply, {:error, :not_running}, state}
   end
@@ -296,29 +306,29 @@ defmodule Toast.Process.ServerProcess do
     {:noreply, new_state}
   end
 
-  def handle_info(:stop_timeout, %{status: :stopping} = state) do
+  def handle_info({:stop_timeout, ref}, %{stop_ref: ref, status: :stopping} = state) do
     Logger.warning(
       "#{state.id} (pid=#{state.os_pid}) stop timed out, sending SIGABRT for crash backtrace"
     )
 
     if state.os_pid, do: :exec.kill(state.os_pid, :sigabrt)
 
-    timer_ref = Process.send_after(self(), :abort_timeout, @abort_wait)
+    timer_ref = Process.send_after(self(), {:abort_timeout, ref}, @abort_wait)
     {:noreply, %{state | stop_timer: timer_ref, status: :aborting}}
   end
 
-  def handle_info(:abort_timeout, %{status: :aborting} = state) do
+  def handle_info({:abort_timeout, ref}, %{stop_ref: ref, status: :aborting} = state) do
     Logger.warning(
       "#{state.id} (pid=#{state.os_pid}) did not exit after SIGABRT, sending SIGKILL"
     )
 
     if state.os_pid, do: :exec.kill(state.os_pid, @sigkill)
 
-    timer_ref = Process.send_after(self(), :kill_timeout, @kill_wait)
+    timer_ref = Process.send_after(self(), {:kill_timeout, ref}, @kill_wait)
     {:noreply, %{state | stop_timer: timer_ref, status: :killing}}
   end
 
-  def handle_info(:kill_timeout, %{status: :killing} = state) do
+  def handle_info({:kill_timeout, ref}, %{stop_ref: ref, status: :killing} = state) do
     Logger.error("#{state.id} (pid=#{state.os_pid}) did not exit after SIGKILL, giving up")
 
     if state.stop_from, do: GenServer.reply(state.stop_from, :escalated)
@@ -326,7 +336,9 @@ defmodule Toast.Process.ServerProcess do
     {:noreply, reset_process_state(state, :stopped)}
   end
 
-  def handle_info(msg, state) when msg in [:stop_timeout, :abort_timeout, :kill_timeout] do
+  # Stale timer messages from previous stop cycles — discard
+  def handle_info({msg, _ref}, state)
+      when msg in [:stop_timeout, :abort_timeout, :kill_timeout] do
     {:noreply, state}
   end
 
@@ -392,10 +404,13 @@ defmodule Toast.Process.ServerProcess do
     # Non-blocking: initiates SIGTERM (erlexec kill_timeout=300s is a safety net only)
     :exec.stop(state.exec_pid)
 
-    # Our timers handle the escalation: stop_timeout → SIGABRT → abort_timeout → SIGKILL
-    timer_ref = Process.send_after(self(), :stop_timeout, timeout)
+    # Unique ref per stop cycle — stale timer messages from previous cycles are discarded
+    ref = make_ref()
 
-    %{state | status: :stopping, stop_from: from, stop_timer: timer_ref}
+    # Our timers handle the escalation: stop_timeout → SIGABRT → abort_timeout → SIGKILL
+    timer_ref = Process.send_after(self(), {:stop_timeout, ref}, timeout)
+
+    %{state | status: :stopping, stop_from: from, stop_timer: timer_ref, stop_ref: ref}
   end
 
   defp handle_exit(state, reason) do
@@ -467,7 +482,15 @@ defmodule Toast.Process.ServerProcess do
   defp cancel_timer(ref), do: Process.cancel_timer(ref)
 
   defp reset_process_state(state, new_status) do
-    %{state | status: new_status, exec_pid: nil, os_pid: nil, stop_from: nil, stop_timer: nil}
+    %{
+      state
+      | status: new_status,
+        exec_pid: nil,
+        os_pid: nil,
+        stop_from: nil,
+        stop_timer: nil,
+        stop_ref: nil
+    }
   end
 
   defp exec_env([]), do: []

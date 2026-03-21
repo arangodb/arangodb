@@ -117,9 +117,18 @@ defmodule ToastTest.Attribution do
     # Extract only the last contiguous {crash} block — earlier crashes in the
     # same log (e.g. from resilience tests) are expected and irrelevant.
     case Enrichment.Logs.extract_crash_lines(log_file) do
-      "" -> detail
-      crash_lines -> Map.put(detail, :crash_lines, crash_lines)
+      [] -> detail
+      entries -> Map.put(detail, :crash_lines, format_crash_entries(entries))
     end
+  end
+
+  defp format_crash_entries(entries) do
+    entries
+    |> Enum.map_join("\n", fn entry ->
+      level = entry[:level] |> to_string() |> String.upcase()
+      topic = if entry[:topic], do: " {#{entry.topic}}", else: ""
+      "[#{level}]#{topic} #{entry.message}"
+    end)
   end
 
   # --- Timeouts ---

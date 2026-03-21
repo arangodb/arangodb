@@ -539,7 +539,17 @@ defmodule ToastTest.Runner do
     {servers, error} = stop_deployment(deployment, toast_config)
     if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
 
-    build_suite_result(servers, test_data, toast_config)
+    try do
+      build_suite_result(servers, test_data, toast_config)
+    rescue
+      e ->
+        Logger.warning(
+          "build_suite_result crashed, returning degraded result: " <>
+            "#{Exception.format(:error, e, __STACKTRACE__)}"
+        )
+
+        SuiteResult.build(test_data, [])
+    end
   end
 
   defp stop_deployment(deployment, toast_config) do

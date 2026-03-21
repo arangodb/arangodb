@@ -110,8 +110,14 @@ defmodule Toast.ConfigTest do
       assert load().deployment_mode == :cluster
     end
 
-    test "other values default to :single_server" do
+    test "invalid values raise ArgumentError" do
       System.put_env("TOAST_DEPLOYMENT_MODE", "something_else")
+
+      assert_raise ArgumentError, ~r/Invalid TOAST_DEPLOYMENT_MODE/, fn -> load() end
+    end
+
+    test "explicit single_server value" do
+      System.put_env("TOAST_DEPLOYMENT_MODE", "single_server")
 
       assert load().deployment_mode == :single_server
     end
