@@ -20,28 +20,28 @@ defmodule ToastTest.Attribution.ServerLogs do
   @doc """
   Collect server log excerpts for all servers based on issue time windows.
 
-  Returns `%{server_id => [{start, finish, lines}]}` where each tuple
-  represents a merged time window and its extracted log lines.
+  `log_files` is `%{server_id => log_file_path}` — a flat map of all servers
+  whose logs should be collected, regardless of which deployment they belong to.
+
+  Returns `%{server_id => [{start, finish, entries}]}` where each tuple
+  represents a merged time window and its extracted log entries.
   """
   @spec collect(
           [ToastTest.SuiteResult.issue()],
-          ToastTest.ArtifactCollector.t(),
+          %{String.t() => Path.t()},
           ToastTest.Attribution.TimeWindows.windows()
         ) :: %{String.t() => [{DateTime.t(), DateTime.t(), [map()]}]}
-  def collect(issues, artifacts, windows) do
+  def collect(issues, log_files, windows) do
     issues
     |> compute_windows(windows)
     |> merge_windows()
-    |> do_collect(artifacts)
+    |> do_collect(log_files)
   end
 
   defp do_collect([], _), do: %{}
 
-  defp do_collect(merged, artifacts) do
-    for {server_id, server_artifacts} <- artifacts,
-        log_file = server_artifacts.server.log_file,
-        log_file != nil,
-        into: %{} do
+  defp do_collect(merged, log_files) do
+    for {server_id, log_file} <- log_files, into: %{} do
       excerpts =
         merged
         |> Enrichment.Logs.extract_windows(log_file)

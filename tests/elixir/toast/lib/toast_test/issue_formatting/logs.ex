@@ -1,8 +1,8 @@
 defmodule ToastTest.IssueFormatting.Logs do
   @moduledoc false
 
-  @known_roles ~w(agent coordinator dbserver single)
-  @default_exclude_roles ["agent"]
+  @known_roles ~w(agent coordinator dbserver single)a
+  @default_exclude_roles [:agent]
 
   @type_defaults %{
     crash: {-20, 0},
@@ -12,10 +12,10 @@ defmodule ToastTest.IssueFormatting.Logs do
   }
 
   @role_abbrevs %{
-    "coordinator" => "CO",
-    "dbserver" => "DB",
-    "agent" => "AG",
-    "single" => "SNG"
+    coordinator: "CO",
+    dbserver: "DB",
+    agent: "AG",
+    single: "SNG"
   }
 
   # Muted 256-color ANSI palettes per role
@@ -25,7 +25,7 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   # --- Parsing ---
 
-  @doc "Parse `--log-servers` value. `nil` → default (exclude agents)."
+  @doc "Parse `--log-servers` value. `nil` -> default (exclude agents)."
   def parse_server_filter(nil) do
     (@known_roles -- @default_exclude_roles) |> Enum.map(&{:role, &1})
   end
@@ -33,15 +33,21 @@ defmodule ToastTest.IssueFormatting.Logs do
   def parse_server_filter("all"), do: :all
 
   def parse_server_filter(spec) when is_binary(spec) do
+    known_strings = Map.new(@known_roles, &{Atom.to_string(&1), &1})
+
     spec
     |> String.split(",", trim: true)
     |> Enum.map(fn filter ->
       filter = String.trim(filter)
-      if filter in @known_roles, do: {:role, filter}, else: {:prefix, filter}
+
+      case known_strings[filter] do
+        nil -> {:prefix, filter}
+        role -> {:role, role}
+      end
     end)
   end
 
-  @doc "Parse `--log-window` value. `nil` → use type-specific defaults."
+  @doc "Parse `--log-window` value. `nil` -> use type-specific defaults."
   def parse_window_spec(nil), do: nil
 
   def parse_window_spec(spec) when is_binary(spec) do
@@ -56,12 +62,12 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   # --- Server matching ---
 
-  @doc "Check if a server ID passes the filter."
-  def server_matches?(_server_id, :all), do: true
+  @doc "Check if a server passes the filter. `role` is an atom."
+  def server_matches?(_server_id, :all, _role), do: true
 
-  def server_matches?(server_id, filters) when is_list(filters) do
+  def server_matches?(server_id, filters, role) when is_list(filters) do
     Enum.any?(filters, fn
-      {:role, role} -> derive_role(server_id) == role
+      {:role, filter_role} -> role == filter_role
       {:prefix, prefix} -> String.starts_with?(server_id, prefix)
     end)
   end
@@ -80,29 +86,37 @@ defmodule ToastTest.IssueFormatting.Logs do
     {DateTime.add(start_dt, before_s, :second), DateTime.add(end_dt, after_s, :second)}
   end
 
+  # --- Server filtering ---
+
+  @doc "Filter servers by `server_filter`. Returns `[{server_id, meta}]`."
+  def filter_servers(servers, server_filter) do
+    Enum.filter(servers, fn {server_id, meta} ->
+      server_matches?(server_id, server_filter, meta[:role])
+    end)
+  end
+
   @doc "Return sorted list of server IDs that pass the filter."
   def matching_servers(servers, server_filter) do
     servers
-    |> Map.keys()
-    |> Enum.filter(&server_matches?(&1, server_filter))
+    |> filter_servers(server_filter)
+    |> Enum.map(&elem(&1, 0))
     |> Enum.sort()
   end
 
   # --- Extract ---
 
   @doc """
-  Filter servers by `server_filter`, then filter stored log entries by the
-  given display window. Returns `[{server_id, [entry]}]` sorted by server ID.
+  Filter stored log entries by the given display window.
+  Returns `[{server_id, [entry]}]` sorted by server ID.
 
-  `servers` is `%{server_id => %{logs: [{start, end, [entry]}], ...}}`.
+  `servers` is a pre-filtered map/list of `{server_id => %{logs: [{start, end, [entry]}], ...}}`.
   `window` is `{DateTime.t(), DateTime.t()}` as returned by `display_window/2`.
   """
-  def extract(servers, {win_start, win_end}, server_filter) do
+  def extract(servers, {win_start, win_end}) do
     start_us = DateTime.to_unix(win_start, :microsecond)
     end_us = DateTime.to_unix(win_end, :microsecond)
 
     servers
-    |> Enum.filter(fn {server_id, _} -> server_matches?(server_id, server_filter) end)
     |> Enum.flat_map(fn {server_id, meta} ->
       entries =
         (meta[:logs] || [])
@@ -162,30 +176,29 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   # --- Server tag ---
 
-  @doc "Derive a short uppercase tag from a server ID."
-  def server_tag(server_id) do
-    {role, num} = derive_role_and_num(server_id)
-    abbrev = Map.get(@role_abbrevs, role, String.upcase(String.slice(role, 0, 3)))
-    abbrev <> num
+  @doc "Short uppercase tag for a server. `role` is an atom like `:coordinator`."
+  def server_tag(server_id, role) do
+    abbrev =
+      @role_abbrevs[role] ||
+        String.upcase(String.slice(Atom.to_string(role || :""), 0, 3))
+
+    abbrev <> extract_instance_num(server_id)
   end
 
   # --- Server color ---
 
-  @doc "Get 256-color ANSI code for a server ID."
-  def server_color(server_id) do
-    {role, num_str} = derive_role_and_num(server_id)
-    num = parse_num(num_str)
-
+  @doc "256-color ANSI code for a role (atom) and instance number."
+  def server_color(role, instance_num) do
     palette =
       case role do
-        "coordinator" -> @coordinator_colors
-        "dbserver" -> @dbserver_colors
-        "single" -> @dbserver_colors
-        "agent" -> @agent_colors
+        :coordinator -> @coordinator_colors
+        :dbserver -> @dbserver_colors
+        :single -> @dbserver_colors
+        :agent -> @agent_colors
         _ -> @coordinator_colors
       end
 
-    Enum.at(palette, rem(num, length(palette)))
+    Enum.at(palette, rem(instance_num, length(palette)))
   end
 
   # --- Format merged output ---
@@ -193,28 +206,37 @@ defmodule ToastTest.IssueFormatting.Logs do
   @doc """
   Format merged `[{server_id | :event, entry | event}]` into display lines.
 
-  `event_detail` controls how events are rendered:
-  - `:basic` — one-line summary (default)
-  - `:full` — one-line summary followed by the full event map
+  Options:
+  - `event_detail` -- `:basic` (default) or `:full`
+  - `server_roles` -- `%{server_id => atom()}` for tag/color derivation
   """
-  def format_merged(merged, color_enabled, event_detail \\ :basic)
+  def format_merged(merged, color_enabled, event_detail \\ :basic, server_roles \\ %{})
 
-  def format_merged([], _color_enabled, _event_detail), do: ""
+  def format_merged([], _color_enabled, _event_detail, _server_roles), do: ""
 
-  def format_merged(merged, color_enabled, event_detail) do
+  def format_merged(merged, color_enabled, event_detail, server_roles) do
     servers = merged |> Enum.map(&elem(&1, 0)) |> Enum.uniq() |> Enum.reject(&(&1 == :event))
     has_events = Enum.any?(merged, &match?({:event, _}, &1))
 
     if length(servers) <= 1 and not has_events do
-      # Plain output — single server, no events, no tags needed
       merged
       |> Enum.map(fn
         {_server_id, entry} -> format_entry(entry, color_enabled)
       end)
       |> Enum.join("\n")
     else
-      tag_map = Map.new(servers, &{&1, server_tag(&1)})
-      color_map = Map.new(servers, &{&1, server_color(&1)})
+      {tag_map, color_map} =
+        Enum.reduce(servers, {%{}, %{}}, fn sid, {tags, colors} ->
+          role = server_roles[sid]
+          instance_num_str = extract_instance_num(sid)
+          num = parse_instance_num(instance_num_str)
+
+          tag =
+            (@role_abbrevs[role] || String.upcase(String.slice(Atom.to_string(role || :""), 0, 3))) <>
+              instance_num_str
+
+          {Map.put(tags, sid, tag), Map.put(colors, sid, server_color(role, num))}
+        end)
 
       max_tag_len =
         case Map.values(tag_map) do
@@ -338,22 +360,17 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   # --- Private helpers ---
 
-  defp derive_role(server_id), do: server_id |> derive_role_and_num() |> elem(0)
-
-  defp derive_role_and_num(server_id) do
-    segments = String.split(server_id, "-")
-
-    case Enum.find_index(segments, &(&1 in @known_roles)) do
-      nil ->
-        {String.replace(server_id, ~r/\d+$/, ""),
-         Regex.run(~r/\d+$/, server_id, capture: :first) |> List.wrap() |> Enum.at(0, "")}
-
-      idx ->
-        role = Enum.at(segments, idx)
-        num = Enum.slice(segments, (idx + 1)..-1//1) |> Enum.join("-")
-        {role, num}
+  # Extract trailing digits from a server ID as the instance number string.
+  # "toast-cluster-31-coordinator-0" -> "0", "toast-670" -> "670", "single" -> ""
+  defp extract_instance_num(server_id) do
+    case Regex.run(~r/(\d+)$/, server_id) do
+      [_, num] -> num
+      nil -> ""
     end
   end
+
+  defp parse_instance_num(""), do: 0
+  defp parse_instance_num(s), do: String.to_integer(s)
 
   defp k_way_merge([], acc), do: Enum.reverse(acc)
 
@@ -377,7 +394,4 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   defp entry_time(%{time: t}), do: t
   defp entry_time(%{timestamp: t}), do: t
-
-  defp parse_num(""), do: 0
-  defp parse_num(s), do: String.to_integer(s)
 end

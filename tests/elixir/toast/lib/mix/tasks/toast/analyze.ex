@@ -537,7 +537,9 @@ defmodule Mix.Tasks.Toast.Analyze do
 
       {win_start, win_end} = window ->
         print_log_context(issue, win_start, win_end, log_opts, servers, color)
-        entries = Logs.extract(servers, window, log_opts.server_filter)
+        filtered = Logs.filter_servers(servers, log_opts.server_filter)
+        filtered_map = Map.new(filtered)
+        entries = Logs.extract(filtered_map, window)
 
         events =
           if log_opts.event_detail != :none,
@@ -549,7 +551,8 @@ defmodule Mix.Tasks.Toast.Analyze do
         else
           Mix.shell().info("")
           merged = Logs.merge_streams(entries, events)
-          Mix.shell().info(Logs.format_merged(merged, color, log_opts.event_detail))
+          server_roles = Map.new(servers, fn {sid, meta} -> {sid, meta[:role]} end)
+          Mix.shell().info(Logs.format_merged(merged, color, log_opts.event_detail, server_roles))
         end
     end
   end
@@ -611,8 +614,8 @@ defmodule Mix.Tasks.Toast.Analyze do
   end
 
   defp format_server_label(server_id, servers, indent \\ "    ") do
-    tag = Logs.server_tag(server_id)
     meta = servers[server_id] || %{}
+    tag = Logs.server_tag(server_id, meta[:role])
 
     parts = ["#{indent}#{tag}  #{server_id}"]
 

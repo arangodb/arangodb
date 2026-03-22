@@ -8,12 +8,12 @@ defmodule ToastTest.IssueFormatting.LogsTest do
   describe "parse_server_filter/1" do
     test "nil returns default (exclude agents)" do
       result = Logs.parse_server_filter(nil)
-      assert {:role, "coordinator"} in result
-      assert {:role, "dbserver"} in result
-      assert {:role, "single"} in result
+      assert {:role, :coordinator} in result
+      assert {:role, :dbserver} in result
+      assert {:role, :single} in result
 
       refute Enum.any?(result, fn
-               {:role, r} -> r == "agent"
+               {:role, r} -> r == :agent
                _ -> false
              end)
     end
@@ -24,8 +24,8 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
     test "known roles become :role filters" do
       assert Logs.parse_server_filter("coordinator,dbserver") == [
-               {:role, "coordinator"},
-               {:role, "dbserver"}
+               {:role, :coordinator},
+               {:role, :dbserver}
              ]
     end
 
@@ -38,7 +38,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
     test "mixed roles and prefixes" do
       assert Logs.parse_server_filter("coordinator,agent1") == [
-               {:role, "coordinator"},
+               {:role, :coordinator},
                {:prefix, "agent1"}
              ]
     end
@@ -60,33 +60,38 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
   end
 
-  # --- server_matches?/2 ---
+  # --- server_matches?/3 ---
 
-  describe "server_matches?/2" do
+  describe "server_matches?/3" do
     test ":all matches everything" do
-      assert Logs.server_matches?("coordinator1", :all)
-      assert Logs.server_matches?("agent1", :all)
+      assert Logs.server_matches?("coordinator1", :all, :coordinator)
+      assert Logs.server_matches?("agent1", :all, :agent)
     end
 
     test "role matching" do
-      filter = [{:role, "coordinator"}]
-      assert Logs.server_matches?("coordinator1", filter)
-      assert Logs.server_matches?("coordinator2", filter)
-      refute Logs.server_matches?("dbserver1", filter)
+      filter = [{:role, :coordinator}]
+      assert Logs.server_matches?("coordinator1", filter, :coordinator)
+      assert Logs.server_matches?("coordinator2", filter, :coordinator)
+      refute Logs.server_matches?("dbserver1", filter, :dbserver)
     end
 
     test "prefix matching" do
       filter = [{:prefix, "coordinator1"}]
-      assert Logs.server_matches?("coordinator1", filter)
-      refute Logs.server_matches?("coordinator2", filter)
+      assert Logs.server_matches?("coordinator1", filter, :coordinator)
+      refute Logs.server_matches?("coordinator2", filter, :coordinator)
     end
 
     test "multiple filters compose as union" do
-      filter = [{:role, "coordinator"}, {:prefix, "agent1"}]
-      assert Logs.server_matches?("coordinator1", filter)
-      assert Logs.server_matches?("agent1", filter)
-      refute Logs.server_matches?("dbserver1", filter)
-      refute Logs.server_matches?("agent2", filter)
+      filter = [{:role, :coordinator}, {:prefix, "agent1"}]
+      assert Logs.server_matches?("coordinator1", filter, :coordinator)
+      assert Logs.server_matches?("agent1", filter, :agent)
+      refute Logs.server_matches?("dbserver1", filter, :dbserver)
+      refute Logs.server_matches?("agent2", filter, :agent)
+    end
+
+    test "role from metadata takes precedence over server ID" do
+      filter = [{:role, :single}]
+      assert Logs.server_matches?("toast-670", filter, :single)
     end
   end
 
@@ -140,25 +145,29 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
   end
 
-  # --- server_tag/1 ---
+  # --- server_tag/2 ---
 
-  describe "server_tag/1" do
+  describe "server_tag/2" do
     test "coordinator" do
-      assert Logs.server_tag("coordinator1") == "CO1"
-      assert Logs.server_tag("coordinator2") == "CO2"
+      assert Logs.server_tag("coordinator1", :coordinator) == "CO1"
+      assert Logs.server_tag("coordinator2", :coordinator) == "CO2"
     end
 
     test "dbserver" do
-      assert Logs.server_tag("dbserver1") == "DB1"
-      assert Logs.server_tag("dbserver2") == "DB2"
+      assert Logs.server_tag("dbserver1", :dbserver) == "DB1"
+      assert Logs.server_tag("dbserver2", :dbserver) == "DB2"
     end
 
     test "agent" do
-      assert Logs.server_tag("agent1") == "AG1"
+      assert Logs.server_tag("agent1", :agent) == "AG1"
     end
 
     test "single" do
-      assert Logs.server_tag("single") == "SNG"
+      assert Logs.server_tag("single", :single) == "SNG"
+    end
+
+    test "unconventional name with role from metadata" do
+      assert Logs.server_tag("toast-670", :single) == "SNG670"
     end
   end
 
@@ -206,36 +215,31 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
   end
 
-  # --- server_color/1 ---
+  # --- server_color/2 ---
 
-  describe "server_color/1" do
+  describe "server_color/2" do
     test "coordinator returns a color from the coordinator palette" do
-      color = Logs.server_color("coordinator0")
-      assert color in [67, 103, 110, 66, 109, 60, 68, 102, 146]
+      assert Logs.server_color(:coordinator, 0) in [67, 103, 110, 66, 109, 60, 68, 102, 146]
     end
 
     test "dbserver returns a color from the dbserver palette" do
-      color = Logs.server_color("dbserver0")
-      assert color in [137, 174, 95, 180, 130, 215, 101, 172, 144]
+      assert Logs.server_color(:dbserver, 0) in [137, 174, 95, 180, 130, 215, 101, 172, 144]
     end
 
     test "agent returns a color from the agent palette" do
-      color = Logs.server_color("agent0")
-      assert color in [101, 138, 66, 144, 96]
+      assert Logs.server_color(:agent, 0) in [101, 138, 66, 144, 96]
     end
 
     test "different indices return different colors" do
-      assert Logs.server_color("coordinator0") != Logs.server_color("coordinator1")
+      assert Logs.server_color(:coordinator, 0) != Logs.server_color(:coordinator, 1)
     end
 
     test "single role uses dbserver palette" do
-      color = Logs.server_color("single")
-      assert color in [137, 174, 95, 180, 130, 215, 101, 172, 144]
+      assert Logs.server_color(:single, 0) in [137, 174, 95, 180, 130, 215, 101, 172, 144]
     end
 
     test "unknown role falls back to coordinator palette" do
-      color = Logs.server_color("unknown0")
-      assert color in [67, 103, 110, 66, 109, 60, 68, 102, 146]
+      assert Logs.server_color(:unknown, 0) in [67, 103, 110, 66, 109, 60, 68, 102, 146]
     end
   end
 
@@ -258,8 +262,9 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     test "multi-server adds server tags" do
       e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
       e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
+      roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
       merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, false)
+      result = Logs.format_merged(merged, false, :basic, roles)
       assert result =~ "[CO1]"
       assert result =~ "[DB1]"
     end
@@ -267,41 +272,83 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     test "multi-server with color enabled includes ANSI escape sequences" do
       e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
       e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
+      roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
       merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, true)
+      result = Logs.format_merged(merged, true, :basic, roles)
       assert result =~ "\e[38;5;"
     end
 
     test "WARNING level gets bright emphasis when color enabled" do
       e1 = entry(~U[2026-01-01 00:00:00Z], level: :warning, message: "msg")
       e2 = entry(~U[2026-01-01 00:00:01Z], message: "other")
+      roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
       merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, true)
+      result = Logs.format_merged(merged, true, :basic, roles)
       assert result =~ IO.ANSI.bright()
     end
 
     test "ERROR level gets inverse emphasis when color enabled" do
       e1 = entry(~U[2026-01-01 00:00:00Z], level: :error, message: "msg")
       e2 = entry(~U[2026-01-01 00:00:01Z], message: "other")
+      roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
       merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, true)
+      result = Logs.format_merged(merged, true, :basic, roles)
       assert result =~ IO.ANSI.inverse()
     end
   end
 
-  # --- server_tag/1 with hyphenated IDs ---
+  # --- server_tag/2 with hyphenated IDs ---
 
-  describe "server_tag/1 with hyphenated IDs" do
+  describe "server_tag/2 with hyphenated IDs" do
     test "coordinator with cluster prefix" do
-      assert Logs.server_tag("toast-cluster-643-coordinator-0") == "CO0"
+      assert Logs.server_tag("toast-cluster-643-coordinator-0", :coordinator) == "CO0"
     end
 
     test "dbserver with cluster prefix" do
-      assert Logs.server_tag("toast-cluster-643-dbserver-2") == "DB2"
+      assert Logs.server_tag("toast-cluster-643-dbserver-2", :dbserver) == "DB2"
     end
 
     test "agent with cluster prefix" do
-      assert Logs.server_tag("toast-cluster-643-agent-1") == "AG1"
+      assert Logs.server_tag("toast-cluster-643-agent-1", :agent) == "AG1"
+    end
+  end
+
+  # --- filter_servers/2 ---
+
+  describe "filter_servers/2" do
+    setup do
+      servers = %{
+        "coordinator1" => %{role: :coordinator},
+        "dbserver1" => %{role: :dbserver},
+        "agent1" => %{role: :agent}
+      }
+
+      %{servers: servers}
+    end
+
+    test "with :all filter returns all servers", %{servers: servers} do
+      result = Logs.filter_servers(servers, :all)
+      assert length(result) == 3
+    end
+
+    test "with role filter returns only matching roles", %{servers: servers} do
+      result = Logs.filter_servers(servers, [{:role, :coordinator}])
+      assert [{_id, _meta}] = result
+      assert {"coordinator1", _} = hd(result)
+    end
+
+    test "with prefix filter returns matching prefix", %{servers: servers} do
+      result = Logs.filter_servers(servers, [{:prefix, "db"}])
+      assert [{"dbserver1", _}] = result
+    end
+
+    test "default filter excludes agents", %{servers: servers} do
+      filter = Logs.parse_server_filter(nil)
+      result = Logs.filter_servers(servers, filter)
+      ids = Enum.map(result, &elem(&1, 0))
+      assert "coordinator1" in ids
+      assert "dbserver1" in ids
+      refute "agent1" in ids
     end
   end
 
@@ -324,7 +371,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
 
     test "with role filter returns only matching roles", %{servers: servers} do
-      result = Logs.matching_servers(servers, [{:role, "coordinator"}])
+      result = Logs.matching_servers(servers, [{:role, :coordinator}])
       assert result == ["coordinator1"]
     end
 
@@ -334,9 +381,9 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
   end
 
-  # --- extract/3 ---
+  # --- extract/2 ---
 
-  describe "extract/3" do
+  describe "extract/2" do
     setup do
       ts = ~U[2026-03-09 10:00:00Z]
 
@@ -370,22 +417,24 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       %{servers: servers, window: window, ts: ts}
     end
 
-    test "default filter excludes agents", %{servers: servers, window: window} do
+    test "pre-filtered servers exclude agents", %{servers: servers, window: window} do
       filter = Logs.parse_server_filter(nil)
-      result = Logs.extract(servers, window, filter)
+      filtered = Map.new(Logs.filter_servers(servers, filter))
+      result = Logs.extract(filtered, window)
       server_ids = Enum.map(result, &elem(&1, 0))
       assert "coordinator1" in server_ids
       refute "agent1" in server_ids
     end
 
-    test ":all filter includes agents", %{servers: servers, window: window} do
-      result = Logs.extract(servers, window, :all)
+    test "unfiltered includes all servers", %{servers: servers, window: window} do
+      result = Logs.extract(servers, window)
       server_ids = Enum.map(result, &elem(&1, 0))
       assert "agent1" in server_ids
     end
 
     test "filters entries by time window", %{servers: servers, window: window} do
-      [{_server, entries}] = Logs.extract(servers, window, [{:role, "coordinator"}])
+      filtered = Map.new(Logs.filter_servers(servers, [{:role, :coordinator}]))
+      [{_server, entries}] = Logs.extract(filtered, window)
 
       messages = Enum.map(entries, & &1.message)
       assert "before" in messages
@@ -589,7 +638,9 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   # --- format_merged/2 with events ---
 
-  describe "format_merged/2 with events" do
+  describe "format_merged with events" do
+    @roles %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
+
     test "single server with events uses tagged format" do
       e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
 
@@ -600,12 +651,12 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         name: "t"
       }
 
+      roles = %{"coordinator1" => :coordinator}
       merged = [{"coordinator1", e1}, {:event, event}]
-      result = Logs.format_merged(merged, false)
+      result = Logs.format_merged(merged, false, :basic, roles)
 
       assert result =~ "line1"
       assert result =~ ">>> test_started"
-      # With events present, single server still gets a tag
       assert result =~ "[CO1]"
     end
 
@@ -622,13 +673,12 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       }
 
       merged = [{"coordinator1", e1}, {:event, event}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, true)
+      result = Logs.format_merged(merged, true, :basic, @roles)
 
       lines = String.split(result, "\n")
       event_line = Enum.find(lines, &String.contains?(&1, ">>>"))
 
       assert event_line != nil
-      # Event line should NOT have server color escape
       refute event_line =~ "\e[38;5;"
       assert event_line =~ ">>> server_crashed"
     end
@@ -645,14 +695,12 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       }
 
       merged = [{"coordinator1", e1}, {:event, event}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, false)
+      result = Logs.format_merged(merged, false, :basic, @roles)
 
       lines = String.split(result, "\n")
       tag_line = Enum.find(lines, &String.contains?(&1, "[CO1]"))
       event_line = Enum.find(lines, &String.contains?(&1, ">>>"))
 
-      # Both lines should have content starting at similar column
-      # Tag line: "[CO1] ..." event line: "      ..."
       assert event_line =~ ">>> test_started"
       assert String.starts_with?(tag_line, "[CO1")
     end
@@ -706,8 +754,9 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         pid: 123
       }
 
+      roles = %{"coordinator1" => :coordinator}
       merged = [{"coordinator1", e1}, {:event, event}]
-      result = Logs.format_merged(merged, false, :full)
+      result = Logs.format_merged(merged, false, :full, roles)
       assert result =~ ">>> server_started db1 (pid=123)"
       assert result =~ "server_id: \"db1\""
     end
@@ -717,7 +766,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   defp to_us(%DateTime{} = dt), do: DateTime.to_unix(dt, :microsecond)
 
-  defp entry(time, opts \\ []) do
+  defp entry(time, opts) do
     %{
       time: DateTime.to_unix(time, :microsecond),
       message: Keyword.get(opts, :message, "msg"),

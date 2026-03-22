@@ -15,7 +15,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
 
   alias Toast.Deployment.{ServerInstance, ServerLifecycle}
 
-  defp server(overrides \\ []) do
+  defp server(overrides) do
     defaults = [id: "s1", role: :single, operational_state: :running, expecting_exit: false]
     struct!(ServerInstance, Keyword.merge(defaults, overrides))
   end

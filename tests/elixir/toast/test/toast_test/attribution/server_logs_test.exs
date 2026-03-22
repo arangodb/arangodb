@@ -286,17 +286,17 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       path
     end
 
-    defp make_artifacts(servers) do
-      for {id, log_file} <- servers, into: %{} do
-        {id, %{server: %{log_file: log_file}}}
+    defp make_log_files(servers) do
+      for {id, log_file} <- servers, log_file != nil, into: %{} do
+        {id, log_file}
       end
     end
 
     test "empty issues produce empty server_logs", %{tmp_dir: dir} do
       log_path = write_log(dir, "server.log", [log_line("10:00:05", "hello")])
-      artifacts = make_artifacts([{"agent1", log_path}])
+      log_files = make_log_files([{"agent1", log_path}])
 
-      assert ServerLogs.collect([], artifacts, windows()) == %{}
+      assert ServerLogs.collect([], log_files, windows()) == %{}
     end
 
     test "extracts log lines within crash time window", %{tmp_dir: dir} do
@@ -309,12 +309,12 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       ]
 
       log_path = write_log(dir, "agent.log", lines)
-      artifacts = make_artifacts([{"agent1", log_path}])
+      log_files = make_log_files([{"agent1", log_path}])
 
       crash_ts = dt("10:05:00")
       issues = [%{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}]
 
-      result = ServerLogs.collect(issues, artifacts, windows())
+      result = ServerLogs.collect(issues, log_files, windows())
 
       assert map_size(result) == 1
       [{start, finish, entries}] = result["agent1"]
@@ -330,13 +330,10 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       refute "after window" in messages
     end
 
-    test "servers with nil log_file are skipped", %{tmp_dir: _dir} do
-      artifacts = make_artifacts([{"agent1", nil}])
+    test "servers with nil log_file are excluded from log_files map", %{tmp_dir: _dir} do
+      log_files = make_log_files([{"agent1", nil}])
 
-      issues = [%{type: :timeout, detail: %{timestamp: dt("10:05:00")}}]
-      result = ServerLogs.collect(issues, artifacts, windows())
-
-      refute Map.has_key?(result, "agent1")
+      assert log_files == %{}
     end
 
     test "servers with no matching lines produce empty excerpt list", %{tmp_dir: dir} do
@@ -347,10 +344,10 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       ]
 
       log_path = write_log(dir, "agent.log", lines)
-      artifacts = make_artifacts([{"agent1", log_path}])
+      log_files = make_log_files([{"agent1", log_path}])
 
       issues = [%{type: :timeout, detail: %{timestamp: dt("10:05:00")}}]
-      result = ServerLogs.collect(issues, artifacts, windows())
+      result = ServerLogs.collect(issues, log_files, windows())
 
       assert result["agent1"] == []
     end
@@ -366,10 +363,10 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
       log1 = write_log(dir, "agent1.log", lines1)
       log2 = write_log(dir, "dbserver1.log", lines2)
-      artifacts = make_artifacts([{"agent1", log1}, {"dbserver1", log2}])
+      log_files = make_log_files([{"agent1", log1}, {"dbserver1", log2}])
 
       issues = [%{type: :crash, detail: %{crash_info: %{timestamp: dt("10:05:00")}}}]
-      result = ServerLogs.collect(issues, artifacts, windows())
+      result = ServerLogs.collect(issues, log_files, windows())
 
       assert map_size(result) == 2
       [{_, _, entries1}] = result["agent1"]
@@ -386,7 +383,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       ]
 
       log_path = write_log(dir, "agent.log", lines)
-      artifacts = make_artifacts([{"agent1", log_path}])
+      log_files = make_log_files([{"agent1", log_path}])
 
       # Two non-overlapping issues:
       # timeout at 10:03:00 => window [10:02:50, 10:03:00]
@@ -396,7 +393,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
         %{type: :crash, detail: %{crash_info: %{timestamp: dt("10:05:00")}}}
       ]
 
-      result = ServerLogs.collect(issues, artifacts, windows())
+      result = ServerLogs.collect(issues, log_files, windows())
       excerpts = result["agent1"]
 
       assert length(excerpts) == 2
