@@ -54,7 +54,7 @@ defmodule ToastTest.Enrichment.LogsTest do
       assert entry.level == :info
       assert entry.pid == "12345"
       assert entry.id == "abc01"
-      assert entry.topic == "general"
+      assert entry.topic == :general
       assert entry.role == :single
     end
 

@@ -1,6 +1,9 @@
 defmodule ToastTest.IssueFormatting.Logs do
   @moduledoc false
 
+  @levels [:trace, :debug, :info, :warning, :error, :fatal]
+  @level_index Map.new(Enum.with_index(@levels))
+
   @known_roles ~w(agent coordinator dbserver single)a
   @default_exclude_roles [:agent]
 
@@ -60,6 +63,61 @@ defmodule ToastTest.IssueFormatting.Logs do
     end
   end
 
+  @doc "Parse `--log-exclude` value. `nil` -> no exclusions."
+  def parse_exclude(nil), do: nil
+
+  def parse_exclude(spec) when is_binary(spec) do
+    spec
+    |> String.split(",", trim: true)
+    |> MapSet.new(&String.trim/1)
+  end
+
+  @doc "Parse `--log-min-level` value. `nil` -> no filtering."
+  def parse_level_filter(nil), do: nil
+
+  def parse_level_filter(spec) when is_binary(spec) do
+    parts = String.split(spec, ",", trim: true)
+
+    {global, topics} =
+      Enum.reduce(parts, {nil, %{}}, fn part, {global, topics} ->
+        part = String.trim(part)
+
+        case String.split(part, "=", parts: 2) do
+          [topic_str, level_str] ->
+            level = parse_level!(level_str)
+            topic = String.to_atom(topic_str)
+            {global, Map.put(topics, topic, level)}
+
+          [level_str] ->
+            {parse_level!(level_str), topics}
+        end
+      end)
+
+    %{global: global, topics: topics}
+  end
+
+  @known_level_strings Map.new(@levels, &{Atom.to_string(&1), &1})
+
+  defp parse_level!(str) do
+    str = str |> String.trim() |> String.downcase()
+
+    @known_level_strings[str] ||
+      Mix.raise(
+        "Unknown log level: #{str}. Valid: #{Map.keys(@known_level_strings) |> Enum.join(", ")}"
+      )
+  end
+
+  @doc "Check if a log entry passes the level filter."
+  def level_passes?(%{level: entry_level} = entry, %{global: global, topics: topics}) do
+    min_level = Map.get(topics, entry[:topic], global)
+
+    min_level == nil or
+      Map.get(@level_index, entry_level, 0) >= Map.fetch!(@level_index, min_level)
+  end
+
+  # Entries without a :level key, or nil filter — always pass
+  def level_passes?(_entry, _filter), do: true
+
   # --- Server matching ---
 
   @doc "Check if a server passes the filter. `role` is an atom."
@@ -111,10 +169,16 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   `servers` is a pre-filtered map/list of `{server_id => %{logs: [{start, end, [entry]}], ...}}`.
   `window` is `{DateTime.t(), DateTime.t()}` as returned by `display_window/2`.
+
+  Options:
+  - `level_filter` — parsed level filter from `parse_level_filter/1`
+  - `excluded_ids` — `MapSet` of log IDs to exclude, from `parse_exclude/1`
   """
-  def extract(servers, {win_start, win_end}) do
+  def extract(servers, {win_start, win_end}, opts \\ []) do
     start_us = DateTime.to_unix(win_start, :microsecond)
     end_us = DateTime.to_unix(win_end, :microsecond)
+    level_filter = opts[:level_filter]
+    excluded_ids = opts[:excluded_ids]
 
     servers
     |> Enum.flat_map(fn {server_id, meta} ->
@@ -122,7 +186,9 @@ defmodule ToastTest.IssueFormatting.Logs do
         (meta[:logs] || [])
         |> Enum.flat_map(fn {_start, _end, entries} ->
           Enum.filter(entries, fn entry ->
-            entry.time >= start_us and entry.time <= end_us
+            entry.time >= start_us and entry.time <= end_us and
+              level_passes?(entry, level_filter) and
+              not id_excluded?(entry, excluded_ids)
           end)
         end)
 
@@ -130,6 +196,9 @@ defmodule ToastTest.IssueFormatting.Logs do
     end)
     |> Enum.sort_by(&elem(&1, 0))
   end
+
+  defp id_excluded?(_entry, nil), do: false
+  defp id_excluded?(entry, excluded_ids), do: MapSet.member?(excluded_ids, entry[:id])
 
   # --- Extract events ---
 

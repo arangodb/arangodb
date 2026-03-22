@@ -60,6 +60,28 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
   end
 
+  # --- parse_exclude/1 ---
+
+  describe "parse_exclude/1" do
+    test "nil returns nil" do
+      assert Logs.parse_exclude(nil) == nil
+    end
+
+    test "single ID" do
+      assert Logs.parse_exclude("e6460") == MapSet.new(["e6460"])
+    end
+
+    test "comma-separated IDs" do
+      result = Logs.parse_exclude("e6460,b387d,abc12")
+      assert result == MapSet.new(["e6460", "b387d", "abc12"])
+    end
+
+    test "trims whitespace" do
+      result = Logs.parse_exclude(" e6460 , b387d ")
+      assert result == MapSet.new(["e6460", "b387d"])
+    end
+  end
+
   # --- server_matches?/3 ---
 
   describe "server_matches?/3" do
@@ -759,6 +781,213 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       result = Logs.format_merged(merged, false, :full, roles)
       assert result =~ ">>> server_started db1 (pid=123)"
       assert result =~ "server_id: \"db1\""
+    end
+  end
+
+  # --- parse_level_filter/1 ---
+
+  describe "parse_level_filter/1" do
+    test "nil returns nil" do
+      assert Logs.parse_level_filter(nil) == nil
+    end
+
+    test "single level" do
+      assert Logs.parse_level_filter("info") == %{global: :info, topics: %{}}
+    end
+
+    test "topic-specific" do
+      assert Logs.parse_level_filter("crash=debug") == %{global: nil, topics: %{crash: :debug}}
+    end
+
+    test "combined global and topic" do
+      assert Logs.parse_level_filter("info,crash=debug") == %{
+               global: :info,
+               topics: %{crash: :debug}
+             }
+    end
+
+    test "multiple topics" do
+      assert Logs.parse_level_filter("crash=debug,general=warning") == %{
+               global: nil,
+               topics: %{crash: :debug, general: :warning}
+             }
+    end
+  end
+
+  # --- level_passes?/2 ---
+
+  describe "level_passes?/2" do
+    test "nil filter passes everything" do
+      assert Logs.level_passes?(%{level: :trace}, nil)
+      assert Logs.level_passes?(%{level: :fatal}, nil)
+    end
+
+    test "global filter passes entries at or above level" do
+      filter = Logs.parse_level_filter("warning")
+      assert Logs.level_passes?(%{level: :warning}, filter)
+      assert Logs.level_passes?(%{level: :error}, filter)
+      assert Logs.level_passes?(%{level: :fatal}, filter)
+    end
+
+    test "global filter rejects entries below level" do
+      filter = Logs.parse_level_filter("warning")
+      refute Logs.level_passes?(%{level: :info}, filter)
+      refute Logs.level_passes?(%{level: :debug}, filter)
+      refute Logs.level_passes?(%{level: :trace}, filter)
+    end
+
+    test "topic override overrides global for that topic" do
+      filter = Logs.parse_level_filter("warning,crash=debug")
+      # crash topic at debug level passes (overrides global warning)
+      assert Logs.level_passes?(%{level: :debug, topic: :crash}, filter)
+      # non-crash topic at debug level fails (uses global warning)
+      refute Logs.level_passes?(%{level: :debug, topic: :general}, filter)
+    end
+
+    test "entries without a level pass" do
+      filter = Logs.parse_level_filter("error")
+      assert Logs.level_passes?(%{message: "no level"}, filter)
+    end
+
+    test "entries without a topic use global level" do
+      filter = Logs.parse_level_filter("warning")
+      refute Logs.level_passes?(%{level: :info}, filter)
+      assert Logs.level_passes?(%{level: :warning}, filter)
+    end
+  end
+
+  # --- extract/3 with level filter ---
+
+  describe "extract/3 with level filter" do
+    setup do
+      servers = %{
+        "coordinator1" => %{
+          role: :coordinator,
+          logs: [
+            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+             [
+               entry(~U[2026-03-09 09:59:55Z], level: :debug, message: "debug-msg"),
+               entry(~U[2026-03-09 10:00:00Z], level: :info, message: "info-msg"),
+               entry(~U[2026-03-09 10:00:02Z], level: :warning, message: "warn-msg"),
+               entry(~U[2026-03-09 10:00:03Z], level: :error, message: "error-msg")
+             ]}
+          ]
+        }
+      }
+
+      window = {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z]}
+      %{servers: servers, window: window}
+    end
+
+    test "filters entries by level within the time window", %{servers: servers, window: window} do
+      filter = Logs.parse_level_filter("warning")
+      [{_server, entries}] = Logs.extract(servers, window, level_filter: filter)
+
+      messages = Enum.map(entries, & &1.message)
+      assert "warn-msg" in messages
+      assert "error-msg" in messages
+      refute "info-msg" in messages
+      refute "debug-msg" in messages
+    end
+
+    test "topic-specific override works", %{window: window} do
+      servers = %{
+        "coordinator1" => %{
+          role: :coordinator,
+          logs: [
+            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+             [
+               entry(~U[2026-03-09 10:00:00Z],
+                 level: :debug,
+                 topic: :crash,
+                 message: "crash-dbg"
+               ),
+               entry(~U[2026-03-09 10:00:01Z],
+                 level: :debug,
+                 topic: :general,
+                 message: "gen-dbg"
+               ),
+               entry(~U[2026-03-09 10:00:02Z],
+                 level: :warning,
+                 topic: :general,
+                 message: "gen-warn"
+               )
+             ]}
+          ]
+        }
+      }
+
+      filter = Logs.parse_level_filter("warning,crash=debug")
+      [{_server, entries}] = Logs.extract(servers, window, level_filter: filter)
+
+      messages = Enum.map(entries, & &1.message)
+      assert "crash-dbg" in messages
+      refute "gen-dbg" in messages
+      assert "gen-warn" in messages
+    end
+  end
+
+  # --- extract with excluded_ids ---
+
+  describe "extract with excluded_ids" do
+    setup do
+      servers = %{
+        "coordinator1" => %{
+          role: :coordinator,
+          logs: [
+            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+             [
+               entry(~U[2026-03-09 10:00:00Z], id: "abc12", message: "keep-me"),
+               entry(~U[2026-03-09 10:00:01Z], id: "e6460", message: "exclude-me"),
+               entry(~U[2026-03-09 10:00:02Z], id: "def34", message: "also-keep")
+             ]}
+          ]
+        }
+      }
+
+      window = {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z]}
+      %{servers: servers, window: window}
+    end
+
+    test "excludes entries by ID", %{servers: servers, window: window} do
+      excluded = Logs.parse_exclude("e6460")
+      [{_server, entries}] = Logs.extract(servers, window, excluded_ids: excluded)
+
+      messages = Enum.map(entries, & &1.message)
+      assert "keep-me" in messages
+      assert "also-keep" in messages
+      refute "exclude-me" in messages
+    end
+
+    test "excludes multiple IDs", %{servers: servers, window: window} do
+      excluded = Logs.parse_exclude("e6460,abc12")
+      [{_server, entries}] = Logs.extract(servers, window, excluded_ids: excluded)
+
+      messages = Enum.map(entries, & &1.message)
+      refute "keep-me" in messages
+      refute "exclude-me" in messages
+      assert "also-keep" in messages
+    end
+
+    test "nil excluded_ids excludes nothing", %{servers: servers, window: window} do
+      [{_server, entries}] = Logs.extract(servers, window, excluded_ids: nil)
+      assert length(entries) == 3
+    end
+
+    test "entries without an ID are never excluded", %{window: window} do
+      servers = %{
+        "coordinator1" => %{
+          role: :coordinator,
+          logs: [
+            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+             [entry(~U[2026-03-09 10:00:00Z], message: "no-id")]}
+          ]
+        }
+      }
+
+      excluded = Logs.parse_exclude("e6460")
+      [{_server, entries}] = Logs.extract(servers, window, excluded_ids: excluded)
+      assert length(entries) == 1
     end
   end
 

@@ -14,6 +14,7 @@ defmodule ToastTest.Enrichment.Logs do
     "ERR" => :error,
     "ERROR" => :error,
     "WARN" => :warning,
+    "WARNING" => :warning,
     "INFO" => :info,
     "DEBUG" => :debug,
     "TRACE" => :trace
@@ -66,7 +67,7 @@ defmodule ToastTest.Enrichment.Logs do
         role -> Map.put(entry, :role, role)
       end
 
-    entry = maybe_put(entry, :topic, raw["topic"])
+    entry = maybe_put_atom(entry, :topic, raw["topic"])
     entry = maybe_put(entry, :id, raw["id"])
     entry = maybe_put(entry, :pid, raw["pid"])
     entry = maybe_put(entry, :file, raw["file"])
@@ -76,6 +77,9 @@ defmodule ToastTest.Enrichment.Logs do
 
   defp maybe_put(entry, _key, nil), do: entry
   defp maybe_put(entry, key, value), do: Map.put(entry, key, value)
+
+  defp maybe_put_atom(entry, _key, nil), do: entry
+  defp maybe_put_atom(entry, key, value), do: Map.put(entry, key, String.to_atom(value))
 
   @doc """
   Return the last contiguous block of crash-topic log entries.

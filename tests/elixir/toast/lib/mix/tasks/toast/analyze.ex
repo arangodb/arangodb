@@ -34,6 +34,10 @@ defmodule Mix.Tasks.Toast.Analyze do
       --log-servers <spec>            Server filter (default: all except agents)
       --log-window <before>,<after>   Signed seconds relative to issue time bounds (default: type-specific)
                                       Example: --log-window -20,5  (20s before, 5s after)
+      --log-min-level <spec>          Filter log entries by level (default: show all)
+                                      Examples: --log-min-level info
+                                                --log-min-level info,crash=debug
+      --log-exclude <ids>              Exclude log entries by ID (comma-separated)
       --log-events <level>            Event detail in log output: none, basic (default), full
   """
 
@@ -52,6 +56,8 @@ defmodule Mix.Tasks.Toast.Analyze do
     log_servers: :string,
     log_window: :string,
     log_events: :string,
+    log_exclude: :string,
+    log_min_level: :string,
     help: :boolean
   ]
 
@@ -157,10 +163,12 @@ defmodule Mix.Tasks.Toast.Analyze do
     selected = select_issues(indexed, spec)
 
     log_opts = %{
-      enabled: opts[:logs] || false,
+      enabled: logs_enabled?(opts),
       server_filter: Logs.parse_server_filter(opts[:log_servers]),
       window_spec: Logs.parse_window_spec(opts[:log_window]),
-      event_detail: parse_event_detail(opts[:log_events])
+      event_detail: parse_event_detail(opts[:log_events]),
+      level_filter: Logs.parse_level_filter(opts[:log_min_level]),
+      excluded_ids: Logs.parse_exclude(opts[:log_exclude])
     }
 
     if selected == [] do
@@ -523,6 +531,12 @@ defmodule Mix.Tasks.Toast.Analyze do
       )
   end
 
+  @log_implicit_enable_keys ~w(log_servers log_window log_min_level log_exclude)a
+
+  defp logs_enabled?(opts) do
+    opts[:logs] || Enum.any?(@log_implicit_enable_keys, &(opts[&1] != nil))
+  end
+
   # --- Server logs ---
 
   defp print_issue_logs(issue, log_opts, color) do
@@ -539,7 +553,12 @@ defmodule Mix.Tasks.Toast.Analyze do
         print_log_context(issue, win_start, win_end, log_opts, servers, color)
         filtered = Logs.filter_servers(servers, log_opts.server_filter)
         filtered_map = Map.new(filtered)
-        entries = Logs.extract(filtered_map, window)
+
+        entries =
+          Logs.extract(filtered_map, window,
+            level_filter: log_opts.level_filter,
+            excluded_ids: log_opts.excluded_ids
+          )
 
         events =
           if log_opts.event_detail != :none,
