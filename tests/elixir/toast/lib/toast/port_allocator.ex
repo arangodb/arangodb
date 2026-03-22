@@ -158,7 +158,7 @@ defmodule Toast.PortAllocator do
   # Shared
 
   defp port_available?(port) do
-    case :gen_tcp.listen(port, [:binary, reuseaddr: true]) do
+    case :gen_tcp.listen(port, [:binary]) do
       {:ok, socket} ->
         :gen_tcp.close(socket)
         true

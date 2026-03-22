@@ -360,12 +360,12 @@ defmodule Toast.Deployment.Controller do
   def handle_info({:DOWN, _ref, :process, pid, reason}, state)
       when reason not in [:normal, :shutdown] do
     case find_server_by_health_monitor(state, pid) do
-      {server_id, _server} when state.status in [:ready, :degraded] ->
+      {server_id, server}
+      when state.status in [:ready, :degraded] and
+             server.operational_state == :running ->
         Logger.warning(
           "HealthMonitor for #{server_id} died unexpectedly (#{inspect(reason)}), restarting"
         )
-
-        %ServerInstance{} = server = state.servers[server_id]
 
         case start_single_health_monitor(server_id, server.endpoint) do
           {:ok, new_pid} ->

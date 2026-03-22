@@ -177,8 +177,12 @@ defmodule Toast.ResultPackaging do
 
   defp compress_with_gzip(source, dest) do
     case System.cmd("gzip", ["-c", source], into: File.stream!(dest)) do
-      {_, 0} -> {:ok, dest}
-      {_, code} -> {:error, {:gzip_failed, code}}
+      {_, 0} ->
+        {:ok, dest}
+
+      {_, code} ->
+        File.rm(dest)
+        {:error, {:gzip_failed, code}}
     end
   end
 end

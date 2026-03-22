@@ -31,14 +31,17 @@ defmodule ToastTest.PostExecSummary do
   defp print_warnings([]), do: :ok
 
   defp print_warnings(warnings) do
+    colors = %{colors_enabled: IO.ANSI.enabled?()}
+    bar = String.duplicate("!", 80)
+
     IO.puts("")
-    IO.puts(IO.ANSI.yellow() <> String.duplicate("!", 80) <> IO.ANSI.reset())
-    IO.puts(IO.ANSI.yellow() <> IO.ANSI.bright() <> " WARNINGS" <> IO.ANSI.reset())
-    IO.puts(IO.ANSI.yellow() <> String.duplicate("!", 80) <> IO.ANSI.reset())
+    IO.puts(colorize(bar, :yellow, colors))
+    IO.puts(colorize(" WARNINGS", [:yellow, :bold], colors))
+    IO.puts(colorize(bar, :yellow, colors))
 
     for warning <- warnings do
       IO.puts("")
-      IO.puts("  " <> IO.ANSI.yellow() <> warning <> IO.ANSI.reset())
+      IO.puts("  " <> colorize(warning, :yellow, colors))
     end
   end
 

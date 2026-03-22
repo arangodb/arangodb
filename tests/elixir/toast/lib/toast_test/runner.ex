@@ -35,7 +35,7 @@ defmodule ToastTest.Runner do
             capture_log: boolean() | nil,
             exclude: [term()] | nil,
             include: [term()] | nil,
-            manager: {pid(), pid()},
+            manager: pid(),
             max_failures: non_neg_integer() | :infinity | nil,
             only_test_ids: MapSet.t() | nil,
             result_collector_pid: pid(),
@@ -578,7 +578,8 @@ defmodule ToastTest.Runner do
 
     Logger.debug("Collecting server logs")
     windows = ToastTest.Attribution.TimeWindows.build(test_data)
-    server_logs = ToastTest.Attribution.ServerLogs.collect(issues, artifacts, windows)
+    all_log_files = collect_log_files(snapshot.servers)
+    server_logs = ToastTest.Attribution.ServerLogs.collect(issues, all_log_files, windows)
 
     Logger.debug("Building results (#{length(issues)} issues found)")
     warnings = coredump_warnings(snapshot.unexpected_crashes, artifacts, toast_config)
@@ -613,6 +614,16 @@ defmodule ToastTest.Runner do
          servers: servers_with_logs
        }}
     end)
+  end
+
+  defp collect_log_files(servers_by_deployment) do
+    for {_did, servers} <- servers_by_deployment,
+        {sid, server} <- servers,
+        log_file = server[:log_file],
+        log_file != nil,
+        into: %{} do
+      {sid, log_file}
+    end
   end
 
   defp coredump_warnings(crash_events, artifacts, toast_config) do

@@ -93,7 +93,7 @@ defmodule Toast.Client do
   @spec unwrap(
           {:ok, Req.Response.t()} | {:error, term()},
           Range.t() | integer()
-        ) :: {:ok, map()} | :ok | {:error, term()}
+        ) :: {:ok, term()} | {:error, term()}
   def unwrap(result, expected_status \\ 200..299)
 
   def unwrap({:ok, %{status: status, body: body}}, expected)

@@ -3,7 +3,7 @@ defmodule Toast.Client.Collection do
 
   alias Toast.Client
 
-  @spec create(Client.t(), String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec create(Client.t(), String.t(), edge: boolean()) :: {:ok, map()} | {:error, term()}
   def create(%Client{} = client, name, opts \\ []) do
     type = if Keyword.get(opts, :edge, false), do: 3, else: 2
     body = %{"name" => name, "type" => type}

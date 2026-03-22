@@ -402,7 +402,11 @@ defmodule Toast.Process.ServerProcess do
     Logger.debug("Stopping #{state.id} (pid=#{state.os_pid}) with SIGTERM")
 
     # Non-blocking: initiates SIGTERM (erlexec kill_timeout=300s is a safety net only)
-    :exec.stop(state.exec_pid)
+    try do
+      :exec.stop(state.exec_pid)
+    catch
+      :exit, _ -> :ok
+    end
 
     # Unique ref per stop cycle — stale timer messages from previous cycles are discarded
     ref = make_ref()

@@ -225,11 +225,11 @@ defmodule Toast.Config do
   defp apply_timeout_factor(config, factor) do
     %{
       config
-      | global_timeout: config.global_timeout * factor,
-        test_timeout: config.test_timeout * factor,
-        startup_timeout: config.startup_timeout * factor,
-        shutdown_timeout: config.shutdown_timeout * factor,
-        coredump_timeout: config.coredump_timeout * factor
+      | global_timeout: round(config.global_timeout * factor),
+        test_timeout: round(config.test_timeout * factor),
+        startup_timeout: round(config.startup_timeout * factor),
+        shutdown_timeout: round(config.shutdown_timeout * factor),
+        coredump_timeout: round(config.coredump_timeout * factor)
     }
   end
 

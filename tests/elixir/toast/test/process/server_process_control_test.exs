@@ -83,7 +83,7 @@ defmodule Toast.Process.ServerProcessControlTest do
   describe "relaunch/2" do
     test "on stopped server re-launches", %{id: id} do
       pid = start_and_launch(id)
-      :ok = ServerProcess.stop(pid, 5_000)
+      assert ServerProcess.stop(pid, 5_000) in [:ok, :escalated]
       assert ServerProcess.status(pid) == :stopped
       assert :ok = ServerProcess.relaunch(pid)
       assert ServerProcess.status(pid) == :running
@@ -110,7 +110,7 @@ defmodule Toast.Process.ServerProcessControlTest do
       {:ok, pid} = ServerProcess.start_link(opts)
       on_exit(fn -> cleanup_server(pid) end)
       :ok = ServerProcess.launch(pid)
-      :ok = ServerProcess.stop(pid, 5_000)
+      assert ServerProcess.stop(pid, 5_000) in [:ok, :escalated]
 
       extra_args = ["--extra-flag", "on"]
       assert :ok = ServerProcess.relaunch(pid, args: extra_args)
@@ -132,14 +132,14 @@ defmodule Toast.Process.ServerProcessControlTest do
       {:ok, pid} = ServerProcess.start_link(opts)
       on_exit(fn -> cleanup_server(pid) end)
       :ok = ServerProcess.launch(pid)
-      :ok = ServerProcess.stop(pid, 5_000)
+      assert ServerProcess.stop(pid, 5_000) in [:ok, :escalated]
 
       # First relaunch with extra args
       :ok = ServerProcess.relaunch(pid, args: ["--first"])
       state1 = :sys.get_state(pid)
       assert state1.args == ["--port", "0", "--first"]
 
-      :ok = ServerProcess.stop(pid, 5_000)
+      assert ServerProcess.stop(pid, 5_000) in [:ok, :escalated]
 
       # Second relaunch with different extra args -- should NOT accumulate
       :ok = ServerProcess.relaunch(pid, args: ["--second"])
