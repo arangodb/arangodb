@@ -194,14 +194,37 @@ function ClusterTransactionSuite() {
       db._collection(cn).save(docs);
       assertEqual(db._collection(cn).count(), 1000);
 
-      let trx = db._createTransaction({
-        collections: { write: [cn] }
-      });
-      trx.query('FOR i IN ' + cn + ' REMOVE i._key IN ' + cn);
+      // Run a long-lived streaming transaction in a background process, keeping
+      // it open while the follower is failed and healed — mirrors the original
+      // task-based JS transaction test.
+      const ct = require('@arangodb/testutils/client-tools');
+      const IM = global.instanceManager;
+      let func = function (cn) {
+        let db = require('internal').db;
+        const tx = db._createTransaction({
+          collections: { write: [cn] }
+        });
+        tx.query('FOR i IN ' + cn + ' REMOVE i._key IN ' + cn);
+        require('internal').sleep(25.0); // hold transaction open across the follower failure
+        tx.commit();
+      };
+      let bgJob = ct.run.launchPlainSnippetInBG(`(${String(func)})("${cn}");`, 0);
+
+      wait(2.0); // let the BG process open the transaction and enter the sleep
       failFollower();
-      wait(15.0);
+      wait(15.0); // follower is down for 15s while the transaction is open
       healFollower();
-      trx.commit();
+
+      // wait for the BG snippet to finish naturally (remaining sleep + commit)
+      let deadline = require('internal').time() + 60;
+      while (require('internal').time() < deadline) {
+        if (require('internal').statusExternal(bgJob.pid).status !== 'RUNNING') {
+          break;
+        }
+        wait(1.0);
+      }
+      ct.run.joinForceBGShells(IM.options, [bgJob]);
+      assertTrue(!bgJob.failed, 'background transaction failed');
 
       // transaction should have been successful
       assertTrue(waitForSynchronousReplication("_system"));

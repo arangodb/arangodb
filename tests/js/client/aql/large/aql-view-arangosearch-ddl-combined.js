@@ -2274,7 +2274,6 @@ function IResearchFeatureDDLTestSuite1() {
 function IResearchFeatureDDLTestSuite2() {
   const db = require("@arangodb").db;
   const dbName = 'TestDB';
-  const taskCreateLinkInBackground = 'CreateLinkInBackgroundMode_AuxTask';
   return {
     setUp: function () {
       db._useDatabase("_system");
