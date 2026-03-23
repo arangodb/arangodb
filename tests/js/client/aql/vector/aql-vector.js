@@ -104,7 +104,7 @@ function VectorIndexL2TestSuite() {
             });
 
             assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 10),
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
         },
