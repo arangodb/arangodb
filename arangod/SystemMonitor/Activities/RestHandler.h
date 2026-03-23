@@ -47,7 +47,11 @@ class RestHandler : public arangodb::RestVocbaseBaseHandler {
   char const* name() const override final {
     return "ActivityRegistryRestHandler";
   }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
+  RequestLane lane() const override final {
+    // use the highest priority lane here to be able to debug
+    // as much as possible with this feature
+    return RequestLane::CLIENT_FAST;
+  }
   futures::Future<futures::Unit> executeAsync() override;
 
   Feature& _feature;
