@@ -29,6 +29,7 @@ target_sources(arangodbtests
   LoggerTest.cpp
   MemoryUsageTest.cpp
   NumberUtilsTest.cpp
+  PathAllowTest.cpp
   RandomTest.cpp
   ReadWriteLockTest.cpp
   RecursiveLockerTest.cpp

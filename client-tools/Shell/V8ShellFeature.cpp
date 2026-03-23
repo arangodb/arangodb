@@ -1067,7 +1067,7 @@ void V8ShellFeature::initGlobals() {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
-  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalReadAllowList(_startupDirectory);
 
   for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
@@ -1079,7 +1079,7 @@ void V8ShellFeature::initGlobals() {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security.addToInternalAllowList(it, FSAccessType::READ);  // expand
+    v8security.addToInternalReadAllowList(it);
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
@@ -1110,7 +1110,7 @@ void V8ShellFeature::initGlobals() {
   if (_currentModuleDirectory) {
     auto const cwd = std::filesystem::current_path();
     modules += sep + cwd.string();
-    v8security.addToInternalAllowList(cwd, FSAccessType::READ);
+    v8security.addToInternalReadAllowList(cwd);
   }
 
   v8security.dumpAccessLists();
