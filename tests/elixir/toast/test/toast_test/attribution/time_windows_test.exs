@@ -25,6 +25,8 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
   @mod_b_started ~U[2026-03-09 10:05:01Z]
   @mod_b_finished ~U[2026-03-09 10:09:00Z]
 
+  defp to_us(%DateTime{} = dt), do: DateTime.to_unix(dt, :microsecond)
+
   defp build_test_data do
     %{
       started_at: @suite_started,
@@ -59,28 +61,28 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "builds suite window from test_data timestamps" do
       windows = build_windows()
 
-      assert windows.suite.started_at == @suite_started
-      assert windows.suite.finished_at == @suite_finished
+      assert windows.suite.started_at == to_us(@suite_started)
+      assert windows.suite.finished_at == to_us(@suite_finished)
     end
 
     test "builds module windows for each module" do
       windows = build_windows()
 
       assert map_size(windows.modules) == 2
-      assert windows.modules[ModA].started_at == @mod_a_started
-      assert windows.modules[ModA].finished_at == @mod_a_finished
-      assert windows.modules[ModA].setup_finished_at == @mod_a_setup_finished
-      assert windows.modules[ModA].teardown_started_at == @mod_a_teardown_started
+      assert windows.modules[ModA].started_at == to_us(@mod_a_started)
+      assert windows.modules[ModA].finished_at == to_us(@mod_a_finished)
+      assert windows.modules[ModA].setup_finished_at == to_us(@mod_a_setup_finished)
+      assert windows.modules[ModA].teardown_started_at == to_us(@mod_a_teardown_started)
     end
 
     test "builds test windows keyed by {module, name}" do
       windows = build_windows()
 
       assert map_size(windows.tests) == 2
-      assert windows.tests[{ModA, :test_one}].started_at == @test1_started
-      assert windows.tests[{ModA, :test_one}].finished_at == @test1_finished
-      assert windows.tests[{ModA, :test_two}].started_at == @test2_started
-      assert windows.tests[{ModA, :test_two}].finished_at == @test2_finished
+      assert windows.tests[{ModA, :test_one}].started_at == to_us(@test1_started)
+      assert windows.tests[{ModA, :test_one}].finished_at == to_us(@test1_finished)
+      assert windows.tests[{ModA, :test_two}].started_at == to_us(@test2_started)
+      assert windows.tests[{ModA, :test_two}].finished_at == to_us(@test2_finished)
     end
 
     test "module with no tests produces no test windows" do
@@ -127,7 +129,7 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "timestamp inside test window returns {:test, mod, name} with :high" do
       windows = build_windows()
       # 10:00:30 is inside test_one (10:00:03 - 10:01:00)
-      ts = ~U[2026-03-09 10:00:30Z]
+      ts = to_us(~U[2026-03-09 10:00:30Z])
 
       assert {{:test, ModA, :test_one}, :high} = TimeWindows.attribute(ts, windows)
     end
@@ -135,18 +137,20 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "timestamp exactly at test started_at returns :high" do
       windows = build_windows()
 
-      assert {{:test, ModA, :test_one}, :high} = TimeWindows.attribute(@test1_started, windows)
+      assert {{:test, ModA, :test_one}, :high} =
+               TimeWindows.attribute(to_us(@test1_started), windows)
     end
 
     test "timestamp exactly at test finished_at returns :high" do
       windows = build_windows()
 
-      assert {{:test, ModA, :test_one}, :high} = TimeWindows.attribute(@test1_finished, windows)
+      assert {{:test, ModA, :test_one}, :high} =
+               TimeWindows.attribute(to_us(@test1_finished), windows)
     end
 
     test "timestamp inside second test returns that test" do
       windows = build_windows()
-      ts = ~U[2026-03-09 10:01:30Z]
+      ts = to_us(~U[2026-03-09 10:01:30Z])
 
       assert {{:test, ModA, :test_two}, :high} = TimeWindows.attribute(ts, windows)
     end
@@ -156,7 +160,7 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "timestamp within 5 seconds after test end returns :low" do
       windows = build_windows()
       # test_one ends at 10:01:00, so 10:01:03 is 3s after
-      ts = ~U[2026-03-09 10:01:03Z]
+      ts = to_us(~U[2026-03-09 10:01:03Z])
 
       assert {{:test, ModA, :test_one}, :low} = TimeWindows.attribute(ts, windows)
     end
@@ -164,7 +168,7 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "timestamp exactly 5 seconds after test end returns :low" do
       windows = build_windows()
       # test_one ends at 10:01:00, exactly 5s after
-      ts = ~U[2026-03-09 10:01:05Z]
+      ts = to_us(~U[2026-03-09 10:01:05Z])
 
       # 5s is within default tolerance (<=5s), but test_two starts at 10:01:05
       # so test_two's :high match should win over test_one's :low
@@ -175,7 +179,7 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
       windows = build_windows()
       # test_two ends at 10:02:00, 10:02:06 is 6s after — beyond default 5s tolerance
       # This is between tests and after tolerance, in module teardown window
-      ts = ~U[2026-03-09 10:02:06Z]
+      ts = to_us(~U[2026-03-09 10:02:06Z])
 
       # Falls through to module teardown (teardown starts at 10:04:58),
       # but 10:02:06 is between test_two end+tolerance and teardown start.
@@ -189,23 +193,23 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
       assert {:suite, nil} = TimeWindows.attribute(ts, windows)
     end
 
-    test "custom tolerance_s option" do
+    test "custom tolerance_us option" do
       windows = build_windows()
       # test_two ends at 10:02:00, 10:02:08 is 8s after — within 10s tolerance
-      ts = ~U[2026-03-09 10:02:08Z]
+      ts = to_us(~U[2026-03-09 10:02:08Z])
 
       assert {{:test, ModA, :test_two}, :low} =
-               TimeWindows.attribute(ts, windows, tolerance_s: 10)
+               TimeWindows.attribute(ts, windows, tolerance_us: 10_000_000)
     end
 
     test "zero tolerance means no low-confidence matches" do
       windows = build_windows()
       # 1 second after test_one ends
-      ts = ~U[2026-03-09 10:01:01Z]
+      ts = to_us(~U[2026-03-09 10:01:01Z])
 
       # With zero tolerance, this is not in any test or tolerance window.
       # It's between tests — not in setup or teardown either.
-      assert {:suite, nil} = TimeWindows.attribute(ts, windows, tolerance_s: 0)
+      assert {:suite, nil} = TimeWindows.attribute(ts, windows, tolerance_us: 0)
     end
   end
 
@@ -213,7 +217,7 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "timestamp in setup window returns {:module, mod} with nil" do
       windows = build_windows()
       # ModA setup: 10:00:01 - 10:00:03
-      ts = ~U[2026-03-09 10:00:02Z]
+      ts = to_us(~U[2026-03-09 10:00:02Z])
 
       assert {{:module, ModA}, nil} = TimeWindows.attribute(ts, windows)
     end
@@ -221,7 +225,7 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "timestamp at module started_at (setup start) returns module" do
       windows = build_windows()
 
-      assert {{:module, ModA}, nil} = TimeWindows.attribute(@mod_a_started, windows)
+      assert {{:module, ModA}, nil} = TimeWindows.attribute(to_us(@mod_a_started), windows)
     end
   end
 
@@ -229,7 +233,7 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "timestamp in teardown window returns {:module, mod} with nil" do
       windows = build_windows()
       # ModA teardown: 10:04:58 - 10:05:00
-      ts = ~U[2026-03-09 10:04:59Z]
+      ts = to_us(~U[2026-03-09 10:04:59Z])
 
       assert {{:module, ModA}, nil} = TimeWindows.attribute(ts, windows)
     end
@@ -237,7 +241,7 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "timestamp at module finished_at returns module" do
       windows = build_windows()
 
-      assert {{:module, ModA}, nil} = TimeWindows.attribute(@mod_a_finished, windows)
+      assert {{:module, ModA}, nil} = TimeWindows.attribute(to_us(@mod_a_finished), windows)
     end
   end
 
@@ -245,21 +249,21 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
     test "timestamp outside all module windows returns :suite with nil" do
       windows = build_windows()
       # Between ModA (ends 10:05:00) and ModB (starts 10:05:01)
-      ts = ~U[2026-03-09 10:05:00.500000Z]
+      ts = to_us(~U[2026-03-09 10:05:00.500000Z])
 
       assert {:suite, nil} = TimeWindows.attribute(ts, windows)
     end
 
     test "timestamp before suite start returns :suite" do
       windows = build_windows()
-      ts = ~U[2026-03-09 09:59:00Z]
+      ts = to_us(~U[2026-03-09 09:59:00Z])
 
       assert {:suite, nil} = TimeWindows.attribute(ts, windows)
     end
 
     test "timestamp after suite end returns :suite" do
       windows = build_windows()
-      ts = ~U[2026-03-09 10:15:00Z]
+      ts = to_us(~U[2026-03-09 10:15:00Z])
 
       assert {:suite, nil} = TimeWindows.attribute(ts, windows)
     end
@@ -273,7 +277,7 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
       # setup nor teardown. But the timestamp IS within the module.
       # Per spec: setup = started_at..setup_finished_at, teardown = teardown_started_at..finished_at
       # With both nil, neither matches. Falls to :suite.
-      ts = ~U[2026-03-09 10:06:00Z]
+      ts = to_us(~U[2026-03-09 10:06:00Z])
 
       assert {:suite, nil} = TimeWindows.attribute(ts, windows)
     end
@@ -286,7 +290,8 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
       # and within 5s of test_one end (10:01:00)
       # :high for test_two should win over :low for test_one
 
-      assert {{:test, ModA, :test_two}, :high} = TimeWindows.attribute(@test2_started, windows)
+      assert {{:test, ModA, :test_two}, :high} =
+               TimeWindows.attribute(to_us(@test2_started), windows)
     end
   end
 end

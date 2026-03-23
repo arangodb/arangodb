@@ -172,7 +172,7 @@ defmodule Toast.Deployment.ServerLifecycle do
       pid: crash_info.os_pid,
       crash_info: crash_info,
       expected: expected,
-      timestamp: :os.system_time(:microsecond)
+      timestamp: Toast.get_timestamp()
     })
   end
 

@@ -24,7 +24,7 @@ defmodule ToastTest.Enrichment.SanitizerTest do
       assert result.content == content
       assert result.type == :alubsan
       assert result.kind == "heap-buffer-overflow"
-      assert %DateTime{} = result.timestamp
+      assert is_integer(result.timestamp)
     end
 
     test "reads tsan log file", %{tmp_dir: dir} do
@@ -58,8 +58,8 @@ defmodule ToastTest.Enrichment.SanitizerTest do
       assert {:ok, result} = Sanitizer.read(path)
 
       # Timestamp should be close to now (within a few seconds)
-      diff = DateTime.diff(DateTime.utc_now(), result.timestamp, :second)
-      assert diff >= 0 and diff < 10
+      diff_us = Toast.get_timestamp() - result.timestamp
+      assert diff_us >= 0 and diff_us < 10_000_000
     end
   end
 end

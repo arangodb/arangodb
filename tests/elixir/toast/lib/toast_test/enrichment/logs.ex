@@ -174,22 +174,18 @@ defmodule ToastTest.Enrichment.Logs do
   @doc """
   Extract log entries for multiple sorted, non-overlapping time windows in a single pass.
 
+  Windows are `{start_us, end_us}` tuples (Unix microseconds).
   Returns a list of entry lists (one per window), in the same order as the input windows.
   Empty list for windows with no matching entries.
   """
-  @spec extract_windows([{DateTime.t(), DateTime.t()}], Path.t()) :: [[map()]]
+  @spec extract_windows([{Toast.timestamp(), Toast.timestamp()}], Path.t()) :: [[map()]]
   def extract_windows([], _path), do: []
 
   def extract_windows(windows, path) do
-    unix_windows =
-      Enum.map(windows, fn {start_dt, end_dt} ->
-        {DateTime.to_unix(start_dt, :microsecond), DateTime.to_unix(end_dt, :microsecond)}
-      end)
-
     case File.open(path, [:read, :utf8]) do
       {:ok, device} ->
         try do
-          collect_multi_windows(device, unix_windows, [], [])
+          collect_multi_windows(device, windows, [], [])
         after
           File.close(device)
         end

@@ -7,7 +7,7 @@ defmodule Toast.Diagnostics.Sanitizer do
   @type sanitizer_error :: %{
           content: String.t(),
           file_path: String.t(),
-          timestamp: DateTime.t(),
+          timestamp: Toast.timestamp(),
           sanitizer_type: sanitizer_type(),
           server_id: String.t()
         }
@@ -178,8 +178,8 @@ defmodule Toast.Diagnostics.Sanitizer do
 
   defp get_file_mtime(file_path) do
     case File.stat(file_path, time: :posix) do
-      {:ok, %{mtime: mtime}} -> DateTime.from_unix!(mtime)
-      _ -> DateTime.utc_now()
+      {:ok, %{mtime: mtime}} -> mtime * 1_000_000
+      _ -> Toast.get_timestamp()
     end
   end
 end

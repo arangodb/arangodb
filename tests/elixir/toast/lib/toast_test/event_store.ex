@@ -28,7 +28,7 @@ defmodule ToastTest.EventStore do
   """
   @spec notify(map()) :: :ok
   def notify(%{event: _} = event) do
-    ts = Map.get_lazy(event, :timestamp, fn -> :os.system_time(:microsecond) end)
+    ts = Map.get_lazy(event, :timestamp, fn -> Toast.get_timestamp() end)
     event = Map.put(event, :timestamp, ts)
     seq = :erlang.unique_integer([:monotonic])
     log_event(event)

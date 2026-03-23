@@ -3,8 +3,8 @@ defmodule ToastTest.SuiteResult do
 
   @type incarnation :: %{
           pid: non_neg_integer(),
-          started_at: DateTime.t(),
-          stopped_at: DateTime.t() | nil
+          started_at: Toast.timestamp(),
+          stopped_at: Toast.timestamp() | nil
         }
 
   @type server_meta :: %{
@@ -15,15 +15,15 @@ defmodule ToastTest.SuiteResult do
           log_file: Path.t() | nil,
           arango_id: String.t() | nil,
           incarnations: [incarnation()],
-          logs: [{DateTime.t(), DateTime.t(), [map()]}]
+          logs: [{Toast.timestamp(), Toast.timestamp(), [map()]}]
         }
 
   @type deployment_meta :: %{
           id: String.t(),
           mode: :cluster | :single_server,
           stacktrace: list() | nil,
-          started_at: DateTime.t(),
-          stopped_at: DateTime.t() | nil,
+          started_at: Toast.timestamp(),
+          stopped_at: Toast.timestamp() | nil,
           servers: %{String.t() => server_meta()}
         }
 

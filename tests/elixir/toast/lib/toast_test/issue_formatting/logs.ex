@@ -8,10 +8,10 @@ defmodule ToastTest.IssueFormatting.Logs do
   @default_exclude_roles [:agent]
 
   @type_defaults %{
-    crash: {-20, 0},
-    timeout: {-10, 0},
-    test_failure: {-1, 1},
-    sanitizer_report: {-5, 1}
+    crash: {-20_000, 0},
+    timeout: {-10_000, 0},
+    test_failure: {-1_000, 1_000},
+    sanitizer_report: {-5_000, 1_000}
   }
 
   @role_abbrevs %{
@@ -132,16 +132,18 @@ defmodule ToastTest.IssueFormatting.Logs do
 
   # --- Display window ---
 
+  @usec_per_ms 1_000
+
   @doc "Compute the display window for a given issue using its `:time_bounds`."
   def display_window(%{time_bounds: nil}, _window_spec), do: nil
 
-  def display_window(%{time_bounds: {start_dt, end_dt}, type: type}, nil) do
-    {before_s, after_s} = Map.fetch!(@type_defaults, type)
-    {DateTime.add(start_dt, before_s, :second), DateTime.add(end_dt, after_s, :second)}
+  def display_window(%{time_bounds: {start_us, end_us}, type: type}, nil) do
+    {before_ms, after_ms} = Map.fetch!(@type_defaults, type)
+    {start_us + before_ms * @usec_per_ms, end_us + after_ms * @usec_per_ms}
   end
 
-  def display_window(%{time_bounds: {start_dt, end_dt}}, {before_s, after_s}) do
-    {DateTime.add(start_dt, before_s, :second), DateTime.add(end_dt, after_s, :second)}
+  def display_window(%{time_bounds: {start_us, end_us}}, {before_ms, after_ms}) do
+    {start_us + before_ms * @usec_per_ms, end_us + after_ms * @usec_per_ms}
   end
 
   # --- Server filtering ---
@@ -168,15 +170,13 @@ defmodule ToastTest.IssueFormatting.Logs do
   Returns `[{server_id, [entry]}]` sorted by server ID.
 
   `servers` is a pre-filtered map/list of `{server_id => %{logs: [{start, end, [entry]}], ...}}`.
-  `window` is `{DateTime.t(), DateTime.t()}` as returned by `display_window/2`.
+  `window` is `{Toast.timestamp(), Toast.timestamp()}` as returned by `display_window/2`.
 
   Options:
   - `level_filter` — parsed level filter from `parse_level_filter/1`
   - `excluded_ids` — `MapSet` of log IDs to exclude, from `parse_exclude/1`
   """
-  def extract(servers, {win_start, win_end}, opts \\ []) do
-    start_us = DateTime.to_unix(win_start, :microsecond)
-    end_us = DateTime.to_unix(win_end, :microsecond)
+  def extract(servers, {start_us, end_us}, opts \\ []) do
     level_filter = opts[:level_filter]
     excluded_ids = opts[:excluded_ids]
 
@@ -203,10 +203,7 @@ defmodule ToastTest.IssueFormatting.Logs do
   # --- Extract events ---
 
   @doc "Filter events by display window (microsecond timestamps)."
-  def extract_events(events, {win_start, win_end}) do
-    start_us = DateTime.to_unix(win_start, :microsecond)
-    end_us = DateTime.to_unix(win_end, :microsecond)
-
+  def extract_events(events, {start_us, end_us}) do
     Enum.filter(events, fn event ->
       event.timestamp >= start_us and event.timestamp <= end_us
     end)

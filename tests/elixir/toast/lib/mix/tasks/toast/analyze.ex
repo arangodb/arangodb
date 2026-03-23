@@ -32,8 +32,8 @@ defmodule Mix.Tasks.Toast.Analyze do
 
       --logs                          Enable server log display
       --log-servers <spec>            Server filter (default: all except agents)
-      --log-window <before>,<after>   Signed seconds relative to issue time bounds (default: type-specific)
-                                      Example: --log-window -20,5  (20s before, 5s after)
+      --log-window <before>,<after>   Signed milliseconds relative to issue time bounds (default: type-specific)
+                                      Example: --log-window -20000,5000  (20s before, 5s after)
       --log-min-level <spec>          Filter log entries by level (default: show all)
                                       Examples: --log-min-level info
                                                 --log-min-level info,crash=debug
@@ -438,7 +438,7 @@ defmodule Mix.Tasks.Toast.Analyze do
   # --- Timeout detail ---
 
   defp print_issue_body(%{type: :timeout, detail: detail}, color) do
-    label = timeout_source_label(detail.source)
+    label = IssueFormatting.timeout_source_label(detail.source)
     Mix.shell().info("  #{colorize("[#{label}] #{detail.reason}", :red, color)}")
 
     if detail[:timestamp] do
@@ -469,7 +469,7 @@ defmodule Mix.Tasks.Toast.Analyze do
     parts =
       [
         if(info.os_pid, do: "PID #{info.os_pid}"),
-        format_signal(info.signal),
+        IssueFormatting.format_signal(info.signal),
         if(info.exit_status, do: "exit_status: #{info.exit_status}"),
         if(match?(%DateTime{}, info.timestamp), do: "at: #{DateTime.to_iso8601(info.timestamp)}")
       ]
@@ -701,8 +701,12 @@ defmodule Mix.Tasks.Toast.Analyze do
     case modules do
       %{^mod => %{tests: tests}} ->
         case Enum.find(tests, &(&1.name == name)) do
-          %{started_at: s, finished_at: f} when not is_nil(s) and not is_nil(f) ->
-            Map.put(issue, :time_bounds, {s, f})
+          %{started_at: %DateTime{} = s, finished_at: %DateTime{} = f} ->
+            Map.put(
+              issue,
+              :time_bounds,
+              {DateTime.to_unix(s, :microsecond), DateTime.to_unix(f, :microsecond)}
+            )
 
           _ ->
             Map.put(issue, :time_bounds, nil)
@@ -718,21 +722,22 @@ defmodule Mix.Tasks.Toast.Analyze do
          _modules
        )
        when is_integer(ts) do
-    dt = DateTime.from_unix!(ts, :microsecond)
-    Map.put(issue, :time_bounds, {dt, dt})
-  end
-
-  defp attach_time_bounds(
-         %{type: :sanitizer_report, detail: %{timestamp: %DateTime{} = ts}} = issue,
-         _modules
-       ) do
     Map.put(issue, :time_bounds, {ts, ts})
   end
 
   defp attach_time_bounds(
-         %{type: :timeout, detail: %{timestamp: %DateTime{} = ts}} = issue,
+         %{type: :sanitizer_report, detail: %{timestamp: ts}} = issue,
          _modules
-       ) do
+       )
+       when is_integer(ts) do
+    Map.put(issue, :time_bounds, {ts, ts})
+  end
+
+  defp attach_time_bounds(
+         %{type: :timeout, detail: %{timestamp: ts}} = issue,
+         _modules
+       )
+       when is_integer(ts) do
     Map.put(issue, :time_bounds, {ts, ts})
   end
 

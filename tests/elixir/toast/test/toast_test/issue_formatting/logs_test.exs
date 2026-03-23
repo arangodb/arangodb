@@ -3,6 +3,8 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   alias ToastTest.IssueFormatting.Logs
 
+  @usec_per_sec 1_000_000
+
   # --- parse_server_filter/1 ---
 
   describe "parse_server_filter/1" do
@@ -126,44 +128,44 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
 
     test "crash default window" do
-      ts = ~U[2026-03-09 10:00:00Z]
+      ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :crash, time_bounds: {ts, ts}}
-      {start_dt, end_dt} = Logs.display_window(issue, nil)
-      assert DateTime.diff(ts, start_dt) == 20
-      assert DateTime.diff(end_dt, ts) == 0
+      {start_us, end_us} = Logs.display_window(issue, nil)
+      assert ts - start_us == 20 * @usec_per_sec
+      assert end_us - ts == 0
     end
 
     test "test_failure default window" do
-      s = ~U[2026-03-09 10:00:00Z]
-      f = ~U[2026-03-09 10:00:05Z]
+      s = to_us(~U[2026-03-09 10:00:00Z])
+      f = to_us(~U[2026-03-09 10:00:05Z])
       issue = %{type: :test_failure, time_bounds: {s, f}}
-      {start_dt, end_dt} = Logs.display_window(issue, nil)
-      assert DateTime.diff(s, start_dt) == 1
-      assert DateTime.diff(end_dt, f) == 1
+      {start_us, end_us} = Logs.display_window(issue, nil)
+      assert s - start_us == 1 * @usec_per_sec
+      assert end_us - f == 1 * @usec_per_sec
     end
 
     test "timeout default window" do
-      ts = ~U[2026-03-09 10:00:00Z]
+      ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :timeout, time_bounds: {ts, ts}}
-      {start_dt, end_dt} = Logs.display_window(issue, nil)
-      assert DateTime.diff(ts, start_dt) == 10
-      assert DateTime.diff(end_dt, ts) == 0
+      {start_us, end_us} = Logs.display_window(issue, nil)
+      assert ts - start_us == 10 * @usec_per_sec
+      assert end_us - ts == 0
     end
 
     test "sanitizer_report default window" do
-      ts = ~U[2026-03-09 10:00:00Z]
+      ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :sanitizer_report, time_bounds: {ts, ts}}
-      {start_dt, end_dt} = Logs.display_window(issue, nil)
-      assert DateTime.diff(ts, start_dt) == 5
-      assert DateTime.diff(end_dt, ts) == 1
+      {start_us, end_us} = Logs.display_window(issue, nil)
+      assert ts - start_us == 5 * @usec_per_sec
+      assert end_us - ts == 1 * @usec_per_sec
     end
 
     test "custom window spec overrides defaults" do
-      ts = ~U[2026-03-09 10:00:00Z]
+      ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :crash, time_bounds: {ts, ts}}
-      {start_dt, end_dt} = Logs.display_window(issue, {-30, 10})
-      assert DateTime.diff(ts, start_dt) == 30
-      assert DateTime.diff(end_dt, ts) == 10
+      {start_us, end_us} = Logs.display_window(issue, {-30_000, 10_000})
+      assert ts - start_us == 30 * @usec_per_sec
+      assert end_us - ts == 10 * @usec_per_sec
     end
   end
 
@@ -407,14 +409,14 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   describe "extract/2" do
     setup do
-      ts = ~U[2026-03-09 10:00:00Z]
+      ts = to_us(~U[2026-03-09 10:00:00Z])
 
       servers = %{
         "coordinator1" => %{
           role: :coordinator,
           arango_id: nil,
           logs: [
-            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+            {to_us(~U[2026-03-09 09:59:50Z]), to_us(~U[2026-03-09 10:00:10Z]),
              [
                entry(~U[2026-03-09 09:59:55Z], message: "before"),
                entry(~U[2026-03-09 10:00:00Z], message: "at-time"),
@@ -426,7 +428,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
           role: :agent,
           arango_id: nil,
           logs: [
-            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+            {to_us(~U[2026-03-09 09:59:50Z]), to_us(~U[2026-03-09 10:00:10Z]),
              [entry(~U[2026-03-09 10:00:00Z], message: "agent-msg")]}
           ]
         }
@@ -485,7 +487,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         %{event: :server_stopped, timestamp: to_us(~U[2026-03-09 10:00:15Z]), server_id: "s1"}
       ]
 
-      window = {~U[2026-03-09 10:00:00Z], ~U[2026-03-09 10:00:10Z]}
+      window = {to_us(~U[2026-03-09 10:00:00Z]), to_us(~U[2026-03-09 10:00:10Z])}
       result = Logs.extract_events(events, window)
 
       assert length(result) == 1
@@ -502,14 +504,14 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         }
       ]
 
-      window = {~U[2026-03-09 10:00:00Z], ~U[2026-03-09 10:00:10Z]}
+      window = {to_us(~U[2026-03-09 10:00:00Z]), to_us(~U[2026-03-09 10:00:10Z])}
       assert Logs.extract_events(events, window) == []
     end
 
     test "includes events at window boundaries" do
       ts = to_us(~U[2026-03-09 10:00:00Z])
       events = [%{event: :test_started, timestamp: ts, module: Mod, name: "t"}]
-      window = {~U[2026-03-09 10:00:00Z], ~U[2026-03-09 10:00:00Z]}
+      window = {ts, ts}
       assert length(Logs.extract_events(events, window)) == 1
     end
   end
@@ -864,7 +866,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         "coordinator1" => %{
           role: :coordinator,
           logs: [
-            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+            {to_us(~U[2026-03-09 09:59:50Z]), to_us(~U[2026-03-09 10:00:10Z]),
              [
                entry(~U[2026-03-09 09:59:55Z], level: :debug, message: "debug-msg"),
                entry(~U[2026-03-09 10:00:00Z], level: :info, message: "info-msg"),
@@ -875,7 +877,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         }
       }
 
-      window = {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z]}
+      window = {to_us(~U[2026-03-09 09:59:50Z]), to_us(~U[2026-03-09 10:00:10Z])}
       %{servers: servers, window: window}
     end
 
@@ -895,7 +897,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         "coordinator1" => %{
           role: :coordinator,
           logs: [
-            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+            {to_us(~U[2026-03-09 09:59:50Z]), to_us(~U[2026-03-09 10:00:10Z]),
              [
                entry(~U[2026-03-09 10:00:00Z],
                  level: :debug,
@@ -935,7 +937,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         "coordinator1" => %{
           role: :coordinator,
           logs: [
-            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+            {to_us(~U[2026-03-09 09:59:50Z]), to_us(~U[2026-03-09 10:00:10Z]),
              [
                entry(~U[2026-03-09 10:00:00Z], id: "abc12", message: "keep-me"),
                entry(~U[2026-03-09 10:00:01Z], id: "e6460", message: "exclude-me"),
@@ -945,7 +947,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         }
       }
 
-      window = {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z]}
+      window = {to_us(~U[2026-03-09 09:59:50Z]), to_us(~U[2026-03-09 10:00:10Z])}
       %{servers: servers, window: window}
     end
 
@@ -979,7 +981,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         "coordinator1" => %{
           role: :coordinator,
           logs: [
-            {~U[2026-03-09 09:59:50Z], ~U[2026-03-09 10:00:10Z],
+            {to_us(~U[2026-03-09 09:59:50Z]), to_us(~U[2026-03-09 10:00:10Z]),
              [entry(~U[2026-03-09 10:00:00Z], message: "no-id")]}
           ]
         }

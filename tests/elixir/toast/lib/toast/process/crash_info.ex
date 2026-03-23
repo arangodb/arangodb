@@ -7,7 +7,7 @@ defmodule Toast.Process.CrashInfo do
   @type t :: %__MODULE__{
           exit_status: non_neg_integer() | nil,
           signal: non_neg_integer() | nil,
-          timestamp: integer(),
+          timestamp: Toast.timestamp(),
           os_pid: pos_integer() | nil
         }
 end

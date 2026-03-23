@@ -8,7 +8,7 @@ defmodule ToastTest.Enrichment.Sanitizer do
 
   @type result :: %{
           content: String.t(),
-          timestamp: DateTime.t(),
+          timestamp: Toast.timestamp(),
           type: atom(),
           kind: String.t() | nil
         }
@@ -54,7 +54,7 @@ defmodule ToastTest.Enrichment.Sanitizer do
         iso = "#{date}T#{time}.#{usec_str}#{tz_h}:#{tz_m}"
 
         case DateTime.from_iso8601(iso) do
-          {:ok, dt, _offset} -> {:ok, dt}
+          {:ok, dt, _offset} -> {:ok, DateTime.to_unix(dt, :microsecond)}
           _ -> file_mtime_fallback(path)
         end
 
@@ -65,7 +65,7 @@ defmodule ToastTest.Enrichment.Sanitizer do
 
   defp file_mtime_fallback(path) do
     case File.stat(path, time: :posix) do
-      {:ok, stat} -> {:ok, DateTime.from_unix!(stat.mtime)}
+      {:ok, stat} -> {:ok, stat.mtime * 1_000_000}
       error -> error
     end
   end

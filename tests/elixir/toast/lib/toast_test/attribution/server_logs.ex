@@ -8,14 +8,16 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   alias ToastTest.Enrichment
 
-  @type window :: {DateTime.t(), DateTime.t()}
+  @type window :: {Toast.timestamp(), Toast.timestamp()}
 
-  # Padding (in seconds) around issue timestamps for log extraction.
+  # Padding (in milliseconds) around issue timestamps for log extraction.
   # Each type gets a different window reflecting how much context is useful.
-  @test_failure_pad {-1, 1}
-  @sanitizer_pad {-5, 1}
-  @crash_pad {-20, 0}
-  @timeout_pad {-10, 0}
+  @test_failure_pad {-1_000, 1_000}
+  @sanitizer_pad {-5_000, 1_000}
+  @crash_pad {-20_000, 0}
+  @timeout_pad {-10_000, 0}
+
+  @usec_per_ms 1_000
 
   @doc """
   Collect server log excerpts for all servers based on issue time windows.
@@ -30,7 +32,7 @@ defmodule ToastTest.Attribution.ServerLogs do
           [ToastTest.SuiteResult.issue()],
           %{String.t() => Path.t()},
           ToastTest.Attribution.TimeWindows.windows()
-        ) :: %{String.t() => [{DateTime.t(), DateTime.t(), [map()]}]}
+        ) :: %{String.t() => [{Toast.timestamp(), Toast.timestamp(), [map()]}]}
   def collect(issues, log_files, windows) do
     issues
     |> compute_windows(windows)
@@ -48,7 +50,7 @@ defmodule ToastTest.Attribution.ServerLogs do
         |> Enum.zip(merged)
         |> Enum.flat_map(fn
           {[], _window} -> []
-          {entries, {start_dt, end_dt}} -> [{start_dt, end_dt, entries}]
+          {entries, {start_us, end_us}} -> [{start_us, end_us, entries}]
         end)
 
       {server_id, excerpts}
@@ -81,7 +83,7 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   def merge_windows(windows) do
     windows
-    |> Enum.sort_by(&elem(&1, 0), DateTime)
+    |> Enum.sort_by(&elem(&1, 0))
     |> do_merge([])
   end
 
@@ -96,28 +98,22 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   defp issue_window(%{type: :test_failure}, _windows), do: []
 
-  defp issue_window(%{type: :sanitizer_report, detail: %{report: _} = detail}, _windows) do
-    # Sanitizer issues carry a timestamp from the file mtime, stored during
-    # attribution. However the issue detail doesn't have it directly — the
-    # timestamp was used for attribution and isn't stored on the issue.
-    # We can't recover it here, so sanitizer reports without an explicit
-    # timestamp in their detail are skipped.
-    case Map.get(detail, :timestamp) do
-      %DateTime{} = ts -> [pad(ts, ts, @sanitizer_pad)]
-      nil -> []
-    end
+  defp issue_window(%{type: :sanitizer_report, detail: %{timestamp: ts}}, _windows)
+       when is_integer(ts) do
+    [pad(ts, ts, @sanitizer_pad)]
   end
+
+  defp issue_window(%{type: :sanitizer_report}, _windows), do: []
 
   defp issue_window(%{type: :crash, detail: %{crash_info: %{timestamp: ts}}}, _windows)
        when is_integer(ts) do
-    dt = DateTime.from_unix!(ts, :microsecond)
-    [pad(dt, dt, @crash_pad)]
+    [pad(ts, ts, @crash_pad)]
   end
 
   defp issue_window(%{type: :crash}, _windows), do: []
 
   defp issue_window(%{type: :timeout, detail: %{timestamp: ts}}, _windows)
-       when not is_nil(ts) do
+       when is_integer(ts) do
     [pad(ts, ts, @timeout_pad)]
   end
 
@@ -133,10 +129,8 @@ defmodule ToastTest.Attribution.ServerLogs do
   end
 
   defp do_merge([{s2, f2} | rest], [{s1, f1} | merged]) do
-    if DateTime.compare(s2, f1) != :gt do
-      # Overlapping or adjacent — extend the current window
-      merged_end = if DateTime.compare(f2, f1) == :gt, do: f2, else: f1
-      do_merge(rest, [{s1, merged_end} | merged])
+    if s2 <= f1 do
+      do_merge(rest, [{s1, max(f1, f2)} | merged])
     else
       do_merge(rest, [{s2, f2}, {s1, f1} | merged])
     end
@@ -144,7 +138,7 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   # --- Helpers ---
 
-  defp pad(start_dt, end_dt, {before_s, after_s}) do
-    {DateTime.add(start_dt, before_s, :second), DateTime.add(end_dt, after_s, :second)}
+  defp pad(start_us, end_us, {before_ms, after_ms}) do
+    {start_us + before_ms * @usec_per_ms, end_us + after_ms * @usec_per_ms}
   end
 end

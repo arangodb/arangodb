@@ -5,13 +5,14 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
   @base_date ~D[2026-01-15]
 
-  defp dt(time_str) do
+  defp us(time_str) do
     DateTime.new!(@base_date, Time.from_iso8601!(time_str))
+    |> DateTime.to_unix(:microsecond)
   end
 
   defp windows(tests \\ %{}) do
     %{
-      suite: %{started_at: dt("10:00:00"), finished_at: dt("10:10:00")},
+      suite: %{started_at: us("10:00:00"), finished_at: us("10:10:00")},
       modules: %{},
       tests: tests
     }
@@ -23,7 +24,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
     test "pads test window by [-1s, +1s]" do
       test_windows =
         windows(%{
-          {MyMod, :test_one} => %{started_at: dt("10:01:00"), finished_at: dt("10:02:00")}
+          {MyMod, :test_one} => %{started_at: us("10:01:00"), finished_at: us("10:02:00")}
         })
 
       issue = %{
@@ -34,8 +35,8 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
       [{start, finish}] = ServerLogs.compute_windows([issue], test_windows)
 
-      assert start == dt("10:00:59")
-      assert finish == dt("10:02:01")
+      assert start == us("10:00:59")
+      assert finish == us("10:02:01")
     end
 
     test "produces no window for suite-scoped test_failure" do
@@ -63,7 +64,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
   describe "compute_windows/2 — sanitizer_report" do
     test "pads timestamp by [-5s, +1s]" do
-      ts = dt("10:03:00")
+      ts = us("10:03:00")
 
       issue = %{
         type: :sanitizer_report,
@@ -72,8 +73,8 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
       [{start, finish}] = ServerLogs.compute_windows([issue], windows())
 
-      assert start == dt("10:02:55")
-      assert finish == dt("10:03:01")
+      assert start == us("10:02:55")
+      assert finish == us("10:03:01")
     end
 
     test "produces no window when detail lacks timestamp" do
@@ -97,7 +98,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
   describe "compute_windows/2 — crash" do
     test "pads crash timestamp by [-20s, 0s]" do
-      ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
+      ts = us("10:05:00")
 
       issue = %{
         type: :crash,
@@ -106,8 +107,8 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
       [{start, finish}] = ServerLogs.compute_windows([issue], windows())
 
-      assert DateTime.compare(start, dt("10:04:40")) == :eq
-      assert DateTime.compare(finish, dt("10:05:00")) == :eq
+      assert start == us("10:04:40")
+      assert finish == us("10:05:00")
     end
 
     test "produces no window when crash_info has nil timestamp" do
@@ -137,13 +138,13 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
   describe "compute_windows/2 — timeout" do
     test "pads timeout timestamp by [-10s, 0s]" do
-      ts = dt("10:05:00")
+      ts = us("10:05:00")
       issue = %{type: :timeout, detail: %{timestamp: ts}}
 
       [{start, finish}] = ServerLogs.compute_windows([issue], windows())
 
-      assert start == dt("10:04:50")
-      assert finish == dt("10:05:00")
+      assert start == us("10:04:50")
+      assert finish == us("10:05:00")
     end
 
     test "produces no window when detail lacks timestamp" do
@@ -169,8 +170,8 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
   describe "compute_windows/2 — multiple issues" do
     test "collects windows from mixed issue types" do
-      crash_ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
-      timeout_ts = dt("10:08:00")
+      crash_ts = us("10:05:00")
+      timeout_ts = us("10:08:00")
 
       issues = [
         %{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}},
@@ -192,72 +193,72 @@ defmodule ToastTest.Attribution.ServerLogsTest do
     end
 
     test "single window passes through" do
-      w = {dt("10:00:00"), dt("10:01:00")}
+      w = {us("10:00:00"), us("10:01:00")}
 
       assert ServerLogs.merge_windows([w]) == [w]
     end
 
     test "non-overlapping windows stay separate" do
-      w1 = {dt("10:00:00"), dt("10:01:00")}
-      w2 = {dt("10:02:00"), dt("10:03:00")}
+      w1 = {us("10:00:00"), us("10:01:00")}
+      w2 = {us("10:02:00"), us("10:03:00")}
 
       assert ServerLogs.merge_windows([w1, w2]) == [w1, w2]
     end
 
     test "overlapping windows are merged" do
-      w1 = {dt("10:00:00"), dt("10:02:00")}
-      w2 = {dt("10:01:00"), dt("10:03:00")}
+      w1 = {us("10:00:00"), us("10:02:00")}
+      w2 = {us("10:01:00"), us("10:03:00")}
 
-      assert ServerLogs.merge_windows([w1, w2]) == [{dt("10:00:00"), dt("10:03:00")}]
+      assert ServerLogs.merge_windows([w1, w2]) == [{us("10:00:00"), us("10:03:00")}]
     end
 
     test "adjacent windows (touching boundaries) are merged" do
-      w1 = {dt("10:00:00"), dt("10:01:00")}
-      w2 = {dt("10:01:00"), dt("10:02:00")}
+      w1 = {us("10:00:00"), us("10:01:00")}
+      w2 = {us("10:01:00"), us("10:02:00")}
 
-      assert ServerLogs.merge_windows([w1, w2]) == [{dt("10:00:00"), dt("10:02:00")}]
+      assert ServerLogs.merge_windows([w1, w2]) == [{us("10:00:00"), us("10:02:00")}]
     end
 
     test "multiple overlapping windows merge into one" do
-      w1 = {dt("10:00:00"), dt("10:02:00")}
-      w2 = {dt("10:01:00"), dt("10:03:00")}
-      w3 = {dt("10:02:30"), dt("10:04:00")}
+      w1 = {us("10:00:00"), us("10:02:00")}
+      w2 = {us("10:01:00"), us("10:03:00")}
+      w3 = {us("10:02:30"), us("10:04:00")}
 
-      assert ServerLogs.merge_windows([w1, w2, w3]) == [{dt("10:00:00"), dt("10:04:00")}]
+      assert ServerLogs.merge_windows([w1, w2, w3]) == [{us("10:00:00"), us("10:04:00")}]
     end
 
     test "out-of-order input is sorted before merging" do
-      w1 = {dt("10:05:00"), dt("10:06:00")}
-      w2 = {dt("10:00:00"), dt("10:01:00")}
+      w1 = {us("10:05:00"), us("10:06:00")}
+      w2 = {us("10:00:00"), us("10:01:00")}
 
       assert ServerLogs.merge_windows([w1, w2]) == [
-               {dt("10:00:00"), dt("10:01:00")},
-               {dt("10:05:00"), dt("10:06:00")}
+               {us("10:00:00"), us("10:01:00")},
+               {us("10:05:00"), us("10:06:00")}
              ]
     end
 
     test "out-of-order overlapping windows are sorted and merged" do
-      w1 = {dt("10:02:00"), dt("10:04:00")}
-      w2 = {dt("10:00:00"), dt("10:03:00")}
+      w1 = {us("10:02:00"), us("10:04:00")}
+      w2 = {us("10:00:00"), us("10:03:00")}
 
-      assert ServerLogs.merge_windows([w1, w2]) == [{dt("10:00:00"), dt("10:04:00")}]
+      assert ServerLogs.merge_windows([w1, w2]) == [{us("10:00:00"), us("10:04:00")}]
     end
 
     test "window fully contained within another is absorbed" do
-      outer = {dt("10:00:00"), dt("10:05:00")}
-      inner = {dt("10:01:00"), dt("10:02:00")}
+      outer = {us("10:00:00"), us("10:05:00")}
+      inner = {us("10:01:00"), us("10:02:00")}
 
       assert ServerLogs.merge_windows([outer, inner]) == [outer]
     end
 
     test "mix of overlapping and non-overlapping" do
-      w1 = {dt("10:00:00"), dt("10:02:00")}
-      w2 = {dt("10:01:00"), dt("10:03:00")}
-      w3 = {dt("10:05:00"), dt("10:06:00")}
+      w1 = {us("10:00:00"), us("10:02:00")}
+      w2 = {us("10:01:00"), us("10:03:00")}
+      w3 = {us("10:05:00"), us("10:06:00")}
 
       assert ServerLogs.merge_windows([w1, w2, w3]) == [
-               {dt("10:00:00"), dt("10:03:00")},
-               {dt("10:05:00"), dt("10:06:00")}
+               {us("10:00:00"), us("10:03:00")},
+               {us("10:05:00"), us("10:06:00")}
              ]
     end
   end
@@ -311,7 +312,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       log_path = write_log(dir, "agent.log", lines)
       log_files = make_log_files([{"agent1", log_path}])
 
-      crash_ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
+      crash_ts = us("10:05:00")
       issues = [%{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}]
 
       result = ServerLogs.collect(issues, log_files, windows())
@@ -320,8 +321,8 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       [{start, finish, entries}] = result["agent1"]
 
       # Crash window: [-20s, 0s] => 10:04:40 - 10:05:00
-      assert DateTime.compare(start, dt("10:04:40")) == :eq
-      assert DateTime.compare(finish, dt("10:05:00")) == :eq
+      assert start == us("10:04:40")
+      assert finish == us("10:05:00")
       messages = Enum.map(entries, & &1.message)
       assert "inside window early" in messages
       assert "inside window late" in messages
@@ -346,7 +347,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       log_path = write_log(dir, "agent.log", lines)
       log_files = make_log_files([{"agent1", log_path}])
 
-      issues = [%{type: :timeout, detail: %{timestamp: dt("10:05:00")}}]
+      issues = [%{type: :timeout, detail: %{timestamp: us("10:05:00")}}]
       result = ServerLogs.collect(issues, log_files, windows())
 
       assert result["agent1"] == []
@@ -365,7 +366,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       log2 = write_log(dir, "dbserver1.log", lines2)
       log_files = make_log_files([{"agent1", log1}, {"dbserver1", log2}])
 
-      crash_ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
+      crash_ts = us("10:05:00")
       issues = [%{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}]
       result = ServerLogs.collect(issues, log_files, windows())
 
@@ -389,10 +390,10 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       # Two non-overlapping issues:
       # timeout at 10:03:00 => window [10:02:50, 10:03:00]
       # crash at 10:05:00 => window [10:04:40, 10:05:00]
-      crash_ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
+      crash_ts = us("10:05:00")
 
       issues = [
-        %{type: :timeout, detail: %{timestamp: dt("10:03:00")}},
+        %{type: :timeout, detail: %{timestamp: us("10:03:00")}},
         %{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}
       ]
 

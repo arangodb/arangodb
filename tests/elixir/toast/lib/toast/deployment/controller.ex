@@ -316,7 +316,7 @@ defmodule Toast.Deployment.Controller do
     crash_info = %Toast.Process.CrashInfo{
       exit_status: nil,
       signal: nil,
-      timestamp: :os.system_time(:microsecond)
+      timestamp: Toast.get_timestamp()
     }
 
     server = state.servers[server_id]
@@ -328,7 +328,7 @@ defmodule Toast.Deployment.Controller do
       pid: server.pid,
       crash_info: crash_info,
       expected: false,
-      timestamp: :os.system_time(:microsecond)
+      timestamp: Toast.get_timestamp()
     }
 
     ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
@@ -410,7 +410,7 @@ defmodule Toast.Deployment.Controller do
         Enum.map(specs, fn spec ->
           %{id: spec.id, role: spec.role, port: spec.port, log_file: spec.log_file}
         end),
-      timestamp: :os.system_time(:microsecond)
+      timestamp: Toast.get_timestamp()
     })
 
     with {:ok, state} <- start_all_server_processes(state, specs),
@@ -427,7 +427,7 @@ defmodule Toast.Deployment.Controller do
           Map.new(state.servers, fn {id, s} ->
             {id, %{role: s.role, endpoint: s.endpoint, log_file: s.log_file}}
           end),
-        timestamp: :os.system_time(:microsecond)
+        timestamp: Toast.get_timestamp()
       })
 
       Logger.info("Deployment #{state.id} ready")
@@ -549,7 +549,7 @@ defmodule Toast.Deployment.Controller do
       deployment_id: deployment_id,
       server_id: server_id,
       pid: os_pid,
-      timestamp: :os.system_time(:microsecond)
+      timestamp: Toast.get_timestamp()
     })
 
     :ok
@@ -562,7 +562,7 @@ defmodule Toast.Deployment.Controller do
       server_id: server_id,
       pid: server.pid,
       reason: nil,
-      timestamp: :os.system_time(:microsecond)
+      timestamp: Toast.get_timestamp()
     })
   end
 
@@ -655,7 +655,7 @@ defmodule Toast.Deployment.Controller do
     EventStore.notify(%{
       event: :deployment_stopped,
       deployment_id: state.id,
-      timestamp: :os.system_time(:microsecond)
+      timestamp: Toast.get_timestamp()
     })
 
     %{state | status: :stopped, servers: clear_server_pids(state.servers)}
@@ -772,7 +772,7 @@ defmodule Toast.Deployment.Controller do
             event: opts[:event],
             deployment_id: acc.id,
             server_id: server_id,
-            timestamp: :os.system_time(:microsecond)
+            timestamp: Toast.get_timestamp()
           },
           extra
         )
@@ -928,7 +928,7 @@ defmodule Toast.Deployment.Controller do
             deployment_id: acc.id,
             server_id: toast_id,
             arango_id: arango_id,
-            timestamp: :os.system_time(:microsecond)
+            timestamp: Toast.get_timestamp()
           })
 
           acc

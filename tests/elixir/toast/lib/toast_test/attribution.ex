@@ -63,8 +63,7 @@ defmodule ToastTest.Attribution do
 
     {issues, coredump_reports} =
       Enum.reduce(crash_events, {[], []}, fn event, {issues_acc, dumps_acc} ->
-        crash_dt = DateTime.from_unix!(event.crash_info.timestamp, :microsecond)
-        {scope, confidence} = TimeWindows.attribute(crash_dt, windows)
+        {scope, confidence} = TimeWindows.attribute(event.crash_info.timestamp, windows)
         server_artifacts = Map.get(artifacts, event.server_id)
 
         {coredump_paths, new_dumps} =

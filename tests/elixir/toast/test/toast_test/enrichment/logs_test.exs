@@ -311,10 +311,10 @@ defmodule ToastTest.Enrichment.LogsTest do
           log_json("2026-01-15T12:00:20Z", level: "INFO", message: "after")
         ])
 
-      start_dt = dt("2026-01-15T12:00:05Z")
-      end_dt = dt("2026-01-15T12:00:10Z")
+      window_start = ts_us("2026-01-15T12:00:05Z")
+      window_end = ts_us("2026-01-15T12:00:10Z")
 
-      [result] = Logs.extract_windows([{start_dt, end_dt}], path)
+      [result] = Logs.extract_windows([{window_start, window_end}], path)
 
       messages = Enum.map(result, & &1.message)
       assert "in window" in messages
@@ -335,8 +335,8 @@ defmodule ToastTest.Enrichment.LogsTest do
         ])
 
       windows = [
-        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:10Z")},
-        {dt("2026-01-15T12:00:20Z"), dt("2026-01-15T12:00:30Z")}
+        {ts_us("2026-01-15T12:00:00Z"), ts_us("2026-01-15T12:00:10Z")},
+        {ts_us("2026-01-15T12:00:20Z"), ts_us("2026-01-15T12:00:30Z")}
       ]
 
       [w1, w2] = Logs.extract_windows(windows, path)
@@ -361,8 +361,8 @@ defmodule ToastTest.Enrichment.LogsTest do
         ])
 
       windows = [
-        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
-        {dt("2026-01-15T12:00:08Z"), dt("2026-01-15T12:00:20Z")}
+        {ts_us("2026-01-15T12:00:00Z"), ts_us("2026-01-15T12:00:05Z")},
+        {ts_us("2026-01-15T12:00:08Z"), ts_us("2026-01-15T12:00:20Z")}
       ]
 
       [w1, w2] = Logs.extract_windows(windows, path)
@@ -378,9 +378,9 @@ defmodule ToastTest.Enrichment.LogsTest do
 
     test "file not found returns list of empty lists", _context do
       windows = [
-        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
-        {dt("2026-01-15T12:00:10Z"), dt("2026-01-15T12:00:15Z")},
-        {dt("2026-01-15T12:00:20Z"), dt("2026-01-15T12:00:25Z")}
+        {ts_us("2026-01-15T12:00:00Z"), ts_us("2026-01-15T12:00:05Z")},
+        {ts_us("2026-01-15T12:00:10Z"), ts_us("2026-01-15T12:00:15Z")},
+        {ts_us("2026-01-15T12:00:20Z"), ts_us("2026-01-15T12:00:25Z")}
       ]
 
       assert Logs.extract_windows(windows, "/nonexistent/file.log") == [[], [], []]
@@ -391,8 +391,8 @@ defmodule ToastTest.Enrichment.LogsTest do
       File.write!(path, "")
 
       windows = [
-        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
-        {dt("2026-01-15T12:00:10Z"), dt("2026-01-15T12:00:15Z")}
+        {ts_us("2026-01-15T12:00:00Z"), ts_us("2026-01-15T12:00:05Z")},
+        {ts_us("2026-01-15T12:00:10Z"), ts_us("2026-01-15T12:00:15Z")}
       ]
 
       assert Logs.extract_windows(windows, path) == [[], []]
@@ -406,9 +406,9 @@ defmodule ToastTest.Enrichment.LogsTest do
         ])
 
       windows = [
-        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:05Z")},
-        {dt("2026-01-15T12:00:08Z"), dt("2026-01-15T12:00:15Z")},
-        {dt("2026-01-15T12:00:20Z"), dt("2026-01-15T12:00:25Z")}
+        {ts_us("2026-01-15T12:00:00Z"), ts_us("2026-01-15T12:00:05Z")},
+        {ts_us("2026-01-15T12:00:08Z"), ts_us("2026-01-15T12:00:15Z")},
+        {ts_us("2026-01-15T12:00:20Z"), ts_us("2026-01-15T12:00:25Z")}
       ]
 
       [w1, w2, w3] = Logs.extract_windows(windows, path)
@@ -429,9 +429,9 @@ defmodule ToastTest.Enrichment.LogsTest do
         ])
 
       windows = [
-        {dt("2026-01-15T12:00:00Z"), dt("2026-01-15T12:00:06Z")},
-        {dt("2026-01-15T12:00:10Z"), dt("2026-01-15T12:00:15Z")},
-        {dt("2026-01-15T12:00:18Z"), dt("2026-01-15T12:00:25Z")}
+        {ts_us("2026-01-15T12:00:00Z"), ts_us("2026-01-15T12:00:06Z")},
+        {ts_us("2026-01-15T12:00:10Z"), ts_us("2026-01-15T12:00:15Z")},
+        {ts_us("2026-01-15T12:00:18Z"), ts_us("2026-01-15T12:00:25Z")}
       ]
 
       [w1, w2, w3] = Logs.extract_windows(windows, path)
