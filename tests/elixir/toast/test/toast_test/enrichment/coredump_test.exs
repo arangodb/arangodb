@@ -56,13 +56,16 @@ defmodule ToastTest.Enrichment.CoredumpTest do
 
       assert {:ok, enrichment} = result
       assert enrichment.signal == "SIGSEGV"
+      assert enrichment.faulting_address == "0xdeadbeef"
+      assert enrichment.debugger == :gdb
+      assert enrichment.crash_thread == "1"
       assert length(enrichment.threads) == 2
 
       [thread1, thread2] = enrichment.threads
-      assert thread1.thread_id == "1"
-      assert thread1.backtrace =~ "crash_func"
-      assert thread2.thread_id == "2"
-      assert thread2.backtrace =~ "worker_func"
+      assert thread1.id == "1"
+      assert [%{function: "crash_func", file: "crash.cpp", line: 42}] = thread1.frames
+      assert thread2.id == "2"
+      assert [%{function: "worker_func", file: "worker.cpp", line: 10}] = thread2.frames
     end
 
     test "crash thread is reordered to first position" do
@@ -88,9 +91,9 @@ defmodule ToastTest.Enrichment.CoredumpTest do
                )
 
       assert [first | rest] = enrichment.threads
-      assert first.thread_id == "3"
-      assert first.backtrace =~ "crash_func"
-      rest_ids = Enum.map(rest, & &1.thread_id)
+      assert first.id == "3"
+      assert [%{function: "crash_func"}] = first.frames
+      rest_ids = Enum.map(rest, & &1.id)
       assert rest_ids == ["1", "2"]
     end
 
@@ -116,7 +119,7 @@ defmodule ToastTest.Enrichment.CoredumpTest do
                  analyzer: fn _, _, _ -> {:ok, report} end
                )
 
-      ids = Enum.map(enrichment.threads, & &1.thread_id)
+      ids = Enum.map(enrichment.threads, & &1.id)
       assert ids == ["1", "2", "3"]
     end
 

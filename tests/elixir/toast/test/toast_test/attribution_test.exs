@@ -84,7 +84,7 @@ defmodule ToastTest.AttributionTest do
 
   describe "run/4 — empty inputs" do
     test "no failures, no error, no artifacts returns []" do
-      assert [] = Attribution.run(build_test_data(), empty_artifacts(), [])
+      assert {[], []} = Attribution.run(build_test_data(), empty_artifacts(), [])
     end
   end
 
@@ -97,7 +97,7 @@ defmodule ToastTest.AttributionTest do
 
       test_data = build_test_data(%{failures: [failure1, failure2]})
 
-      issues = Attribution.run(test_data, empty_artifacts(), [])
+      {issues, _coredumps} = Attribution.run(test_data, empty_artifacts(), [])
 
       assert length(issues) == 2
 
@@ -113,7 +113,7 @@ defmodule ToastTest.AttributionTest do
       failure = make_exunit_test(ModA, :test_one, {:failed, [{:error, %{message: "boom"}, []}]})
       test_data = build_test_data(%{failures: [failure]})
 
-      [issue] = Attribution.run(test_data, empty_artifacts(), [])
+      {[issue], _coredumps} = Attribution.run(test_data, empty_artifacts(), [])
 
       assert issue.detail.test == failure
     end
@@ -131,7 +131,7 @@ defmodule ToastTest.AttributionTest do
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      issues = Attribution.run(build_test_data(), empty_artifacts(), crash_events)
+      {issues, _coredumps} = Attribution.run(build_test_data(), empty_artifacts(), crash_events)
 
       assert [issue] = issues
       assert issue.type == :crash
@@ -149,7 +149,7 @@ defmodule ToastTest.AttributionTest do
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      issues = Attribution.run(build_test_data(), empty_artifacts(), crash_events)
+      {issues, _coredumps} = Attribution.run(build_test_data(), empty_artifacts(), crash_events)
 
       assert [issue] = issues
       assert issue.scope == :suite
@@ -187,7 +187,7 @@ defmodule ToastTest.AttributionTest do
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      issues =
+      {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
@@ -197,7 +197,9 @@ defmodule ToastTest.AttributionTest do
 
       assert [issue] = issues
       assert issue.type == :crash
-      assert [%{signal: "SIGSEGV", path: "/tmp/core.1234", threads: [_]}] = issue.detail.coredumps
+      assert issue.detail.coredump_paths == ["/tmp/core.1234"]
+
+      assert [%{signal: "SIGSEGV", core_path: "/tmp/core.1234", threads: [_]}] = coredump_reports
     end
 
     test "crash issue produced even when coredump analysis fails" do
@@ -219,7 +221,7 @@ defmodule ToastTest.AttributionTest do
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      issues =
+      {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
@@ -230,7 +232,8 @@ defmodule ToastTest.AttributionTest do
       assert [issue] = issues
       assert issue.type == :crash
       assert issue.detail.server == "single1"
-      assert [%{path: "/tmp/core.1234", signal: nil, threads: []}] = issue.detail.coredumps
+      refute Map.has_key?(issue.detail, :coredump_paths)
+      assert coredump_reports == []
     end
 
     test "crash enriched with multiple coredumps" do
@@ -265,7 +268,7 @@ defmodule ToastTest.AttributionTest do
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      issues =
+      {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
@@ -275,12 +278,14 @@ defmodule ToastTest.AttributionTest do
 
       assert [issue] = issues
       assert issue.type == :crash
-      assert length(issue.detail.coredumps) == 2
+      assert length(issue.detail.coredump_paths) == 2
+      assert Enum.sort(issue.detail.coredump_paths) == ["/tmp/core.1", "/tmp/core.2"]
 
-      paths = Enum.map(issue.detail.coredumps, & &1.path) |> Enum.sort()
+      assert length(coredump_reports) == 2
+      paths = Enum.map(coredump_reports, & &1.core_path) |> Enum.sort()
       assert paths == ["/tmp/core.1", "/tmp/core.2"]
-      assert Enum.all?(issue.detail.coredumps, &(&1.signal == "SIGSEGV"))
-      assert Enum.all?(issue.detail.coredumps, &(length(&1.threads) == 1))
+      assert Enum.all?(coredump_reports, &(&1.signal == "SIGSEGV"))
+      assert Enum.all?(coredump_reports, &(length(&1.threads) == 1))
     end
 
     test "crash with mixed coredump analysis results" do
@@ -319,7 +324,7 @@ defmodule ToastTest.AttributionTest do
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      issues =
+      {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
@@ -329,23 +334,21 @@ defmodule ToastTest.AttributionTest do
 
       assert [issue] = issues
       assert issue.type == :crash
-      assert length(issue.detail.coredumps) == 2
+      # Only successfully analyzed coredumps get paths in the issue
+      assert issue.detail.coredump_paths == ["/tmp/core.good"]
 
-      by_path = Map.new(issue.detail.coredumps, &{&1.path, &1})
-
-      good = by_path["/tmp/core.good"]
+      # Only one report (the successful one)
+      assert length(coredump_reports) == 1
+      assert [good] = coredump_reports
+      assert good.core_path == "/tmp/core.good"
       assert good.signal == "SIGSEGV"
       assert length(good.threads) == 1
-
-      bad = by_path["/tmp/core.bad"]
-      assert bad.signal == nil
-      assert bad.threads == []
     end
   end
 
   describe "run/4 — empty crash events" do
     test "empty list produces no crash issues" do
-      assert [] = Attribution.run(build_test_data(), empty_artifacts(), [])
+      assert {[], []} = Attribution.run(build_test_data(), empty_artifacts(), [])
     end
   end
 
@@ -367,7 +370,7 @@ defmodule ToastTest.AttributionTest do
         }
       }
 
-      issues = Attribution.run(build_test_data(), artifacts, [])
+      {issues, _coredumps} = Attribution.run(build_test_data(), artifacts, [])
 
       assert [issue] = issues
       assert issue.type == :sanitizer_report
@@ -395,7 +398,7 @@ defmodule ToastTest.AttributionTest do
         }
       }
 
-      issues = Attribution.run(build_test_data(), artifacts, [])
+      {issues, _coredumps} = Attribution.run(build_test_data(), artifacts, [])
 
       assert [issue] = issues
       assert issue.type == :sanitizer_report
@@ -409,8 +412,11 @@ defmodule ToastTest.AttributionTest do
 
   describe "run/4 — timeout kills" do
     test "empty timeout_kills produces no timeout issues" do
-      issues = Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [])
+      {issues, coredumps} =
+        Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [])
+
       assert issues == []
+      assert coredumps == []
     end
 
     test "timeout kill becomes a :timeout issue with suite scope" do
@@ -421,7 +427,8 @@ defmodule ToastTest.AttributionTest do
         timestamp: ~U[2026-03-09 10:05:00Z]
       }
 
-      issues = Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [kill])
+      {issues, _coredumps} =
+        Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [kill])
 
       assert [issue] = issues
       assert issue.type == :timeout
@@ -450,7 +457,8 @@ defmodule ToastTest.AttributionTest do
         timestamp: ~U[2026-03-09 10:05:00Z]
       }
 
-      issues = Attribution.run(build_test_data(), artifacts, [], timeout_kills: [kill])
+      {issues, _coredumps} =
+        Attribution.run(build_test_data(), artifacts, [], timeout_kills: [kill])
 
       assert [issue] = issues
       [server_info] = issue.detail.servers
@@ -466,7 +474,8 @@ defmodule ToastTest.AttributionTest do
         timestamp: ~U[2026-03-09 10:05:00Z]
       }
 
-      issues = Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [kill])
+      {issues, _coredumps} =
+        Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [kill])
 
       assert [issue] = issues
       [server_info] = issue.detail.servers
@@ -500,7 +509,8 @@ defmodule ToastTest.AttributionTest do
         timestamp: ~U[2026-03-09 10:05:00Z]
       }
 
-      issues = Attribution.run(build_test_data(), artifacts, [], timeout_kills: [kill])
+      {issues, _coredumps} =
+        Attribution.run(build_test_data(), artifacts, [], timeout_kills: [kill])
 
       assert [issue] = issues
       assert length(issue.detail.servers) == 2
@@ -540,7 +550,7 @@ defmodule ToastTest.AttributionTest do
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      issues =
+      {issues, _coredumps} =
         Attribution.run(test_data, artifacts, crash_events)
 
       types = Enum.map(issues, & &1.type)

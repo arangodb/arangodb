@@ -13,6 +13,7 @@ defmodule ToastTest.PostExecSummaryTest do
       times_us: %{async: 0, load: 0, run: 300_000_000},
       modules: %{},
       issues: issues,
+      coredumps: Keyword.get(opts, :coredumps, []),
       events: %{},
       warnings: Keyword.get(opts, :warnings, [])
     }
@@ -73,6 +74,27 @@ defmodule ToastTest.PostExecSummaryTest do
     }
   end
 
+  defp coredump_report do
+    %{
+      core_path: "/tmp/core.1234",
+      server_id: "agent1",
+      debugger: :gdb,
+      signal: "SIGSEGV",
+      faulting_address: "0x0",
+      crash_thread: "1",
+      threads: [
+        %{
+          id: "1",
+          name: "main",
+          frames: [
+            %{function: "foo()", file: "foo.cpp", line: 1},
+            %{function: "bar()", file: "bar.cpp", line: 2}
+          ]
+        }
+      ]
+    }
+  end
+
   defp crash_issue_with_coredump(opts \\ []) do
     scope = Keyword.get(opts, :scope, {:test, SomeModule, :"test something"})
 
@@ -83,19 +105,7 @@ defmodule ToastTest.PostExecSummaryTest do
       detail: %{
         server: "agent1",
         crash_info: crash_info(),
-        coredumps: [
-          %{
-            path: "/tmp/core.1234",
-            signal: "SIGSEGV",
-            threads: [
-              %{
-                thread_id: "1",
-                name: "main",
-                backtrace: "#0 foo() at foo.cpp:1\n#1 bar() at bar.cpp:2"
-              }
-            ]
-          }
-        ],
+        coredump_paths: ["/tmp/core.1234"],
         log_file: "/tmp/arangodb/agent1.log"
       }
     }
@@ -157,7 +167,11 @@ defmodule ToastTest.PostExecSummaryTest do
 
   test "prints crashes with crash info, backtrace, and log path" do
     output =
-      capture_io(fn -> PostExecSummary.print(suite_result([crash_issue_with_coredump()])) end)
+      capture_io(fn ->
+        PostExecSummary.print(
+          suite_result([crash_issue_with_coredump()], coredumps: [coredump_report()])
+        )
+      end)
 
     assert output =~ "CRASHES (1)"
     assert output =~ "agent1: PID 22788"
@@ -307,7 +321,10 @@ defmodule ToastTest.PostExecSummaryTest do
       }
     ]
 
-    output = capture_io(fn -> PostExecSummary.print(suite_result(issues)) end)
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(suite_result(issues, coredumps: [coredump_report()]))
+      end)
 
     failure_pos = :binary.match(output, "TEST FAILURES") |> elem(0)
     sanitizer_pos = :binary.match(output, "SANITIZER REPORTS") |> elem(0)
@@ -324,9 +341,16 @@ defmodule ToastTest.PostExecSummaryTest do
     module_crash = %{crash_issue_with_coredump() | scope: {:module, SomeModule}}
     test_crash = crash_issue_with_coredump(scope: {:test, SomeModule, :"test foo"})
 
-    suite_output = capture_io(fn -> PostExecSummary.print(suite_result([suite_crash])) end)
-    module_output = capture_io(fn -> PostExecSummary.print(suite_result([module_crash])) end)
-    test_output = capture_io(fn -> PostExecSummary.print(suite_result([test_crash])) end)
+    cd = [coredump_report()]
+
+    suite_output =
+      capture_io(fn -> PostExecSummary.print(suite_result([suite_crash], coredumps: cd)) end)
+
+    module_output =
+      capture_io(fn -> PostExecSummary.print(suite_result([module_crash], coredumps: cd)) end)
+
+    test_output =
+      capture_io(fn -> PostExecSummary.print(suite_result([test_crash], coredumps: cd)) end)
 
     assert suite_output =~ "agent1"
     refute suite_output =~ "SomeModule"
@@ -339,7 +363,11 @@ defmodule ToastTest.PostExecSummaryTest do
 
   test "prints coredump file path for crash with coredump" do
     output =
-      capture_io(fn -> PostExecSummary.print(suite_result([crash_issue_with_coredump()])) end)
+      capture_io(fn ->
+        PostExecSummary.print(
+          suite_result([crash_issue_with_coredump()], coredumps: [coredump_report()])
+        )
+      end)
 
     assert output =~ "Coredump: /tmp/core.1234"
   end
@@ -350,7 +378,10 @@ defmodule ToastTest.PostExecSummaryTest do
       | detail: Map.put(crash_issue_with_coredump().detail, :crash_lines, build_log_lines())
     }
 
-    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(suite_result([issue], coredumps: [coredump_report()]))
+      end)
 
     # Crash log output should be shown (not the coredump backtrace)
     assert output =~ "caught signal 11"

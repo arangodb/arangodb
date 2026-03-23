@@ -46,16 +46,24 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
         is_crash = star == "*"
         signal = if(is_crash, do: extract_signal(line), else: acc.signal)
         crash_thread = if(is_crash, do: thread_id, else: acc.crash_thread)
+        name = extract_thread_name(line)
 
         %{
           acc
-          | current: %{id: thread_id, frames: []},
+          | current: %{id: thread_id, name: name, frames: []},
             signal: signal || acc.signal,
             crash_thread: crash_thread
         }
 
       _ ->
         acc
+    end
+  end
+
+  defp extract_thread_name(line) do
+    case Regex.run(~r/name\s*=\s*'([^']+)'/, line) do
+      [_, name] -> name
+      _ -> nil
     end
   end
 

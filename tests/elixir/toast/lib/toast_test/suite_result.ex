@@ -27,6 +27,28 @@ defmodule ToastTest.SuiteResult do
           servers: %{String.t() => server_meta()}
         }
 
+  @type coredump_frame :: %{
+          function: String.t(),
+          file: String.t() | nil,
+          line: integer() | nil
+        }
+
+  @type coredump_thread :: %{
+          id: String.t(),
+          name: String.t() | nil,
+          frames: [coredump_frame()]
+        }
+
+  @type coredump_report :: %{
+          core_path: Path.t(),
+          server_id: String.t(),
+          debugger: :gdb | :lldb | nil,
+          signal: String.t() | nil,
+          faulting_address: String.t() | nil,
+          crash_thread: String.t() | nil,
+          threads: [coredump_thread()]
+        }
+
   @type t :: %__MODULE__{
           version: pos_integer(),
           suite: String.t(),
@@ -40,6 +62,7 @@ defmodule ToastTest.SuiteResult do
           modules: %{module() => module_result()},
           issues: [issue()],
           deployments: %{String.t() => deployment_meta()},
+          coredumps: [coredump_report()],
           events: [map()],
           warnings: [String.t()]
         }
@@ -81,6 +104,7 @@ defmodule ToastTest.SuiteResult do
     modules: %{},
     issues: [],
     deployments: %{},
+    coredumps: [],
     events: [],
     warnings: []
   ]
@@ -96,6 +120,7 @@ defmodule ToastTest.SuiteResult do
       modules: test_data.modules,
       issues: issues,
       deployments: Keyword.get(opts, :deployments, %{}),
+      coredumps: Keyword.get(opts, :coredumps, []),
       events: Keyword.get(opts, :events, []),
       warnings: Keyword.get(opts, :warnings, [])
     }

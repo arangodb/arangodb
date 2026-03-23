@@ -456,7 +456,7 @@ defmodule Mix.Tasks.ToastTest do
             confidence: nil,
             detail: %{
               server: "s1",
-              coredumps: [%{path: "/cores/core.1234", signal: nil, threads: []}]
+              coredump_paths: ["/cores/core.1234"]
             }
           }
         ]
@@ -480,7 +480,7 @@ defmodule Mix.Tasks.ToastTest do
             confidence: nil,
             detail: %{
               server: "s1",
-              coredumps: [%{path: "/cores/core.1", signal: nil, threads: []}]
+              coredump_paths: ["/cores/core.1"]
             }
           },
           %{
@@ -489,7 +489,7 @@ defmodule Mix.Tasks.ToastTest do
             confidence: nil,
             detail: %{
               server: "s2",
-              coredumps: [%{path: "/cores/core.2", signal: nil, threads: []}]
+              coredump_paths: ["/cores/core.2"]
             }
           }
         ]

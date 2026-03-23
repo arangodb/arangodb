@@ -58,14 +58,27 @@ defmodule Toast.Diagnostics.Coredump.GDB do
   end
 
   defp maybe_parse_thread_header(acc, line) do
-    case Regex.run(~r/^Thread\s+(\d+)\s+\(/, line) do
+    case Regex.run(~r/^Thread\s+(\d+)\s+(?:"([^"]+)")?\s*\(/, line) do
+      [_, id_str, name] ->
+        acc = Debugger.flush_current_thread(acc)
+        thread_id = String.to_integer(id_str)
+        %{acc | current: %{id: thread_id, name: name, frames: []}}
+
       [_, id_str] ->
         acc = Debugger.flush_current_thread(acc)
         thread_id = String.to_integer(id_str)
-        %{acc | current: %{id: thread_id, frames: []}}
+        name = extract_name_from_parens(line)
+        %{acc | current: %{id: thread_id, name: name, frames: []}}
 
       _ ->
         acc
+    end
+  end
+
+  defp extract_name_from_parens(line) do
+    case Regex.run(~r/\(.*?"([^"]+)".*?\)/, line) do
+      [_, name] -> name
+      _ -> nil
     end
   end
 
@@ -82,7 +95,7 @@ defmodule Toast.Diagnostics.Coredump.GDB do
             # thread ID). If an explicit "Thread 1" header follows, its frames will
             # be collected as a separate thread entry.
             crash_thread = acc.crash_thread || 1
-            current = %{id: crash_thread, frames: [frame]}
+            current = %{id: crash_thread, name: nil, frames: [frame]}
             %{acc | current: current, crash_thread: crash_thread}
 
           current ->

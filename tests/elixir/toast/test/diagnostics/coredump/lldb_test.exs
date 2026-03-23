@@ -129,6 +129,25 @@ defmodule Toast.Diagnostics.Coredump.LLDBTest do
       assert "arangodb::scheduler::run()" in funcs3
     end
 
+    test "extracts thread names" do
+      result = LLDB.parse_output(@lldb_multi_thread)
+
+      thread1 = Enum.find(result.threads, &(&1.id == 1))
+      thread2 = Enum.find(result.threads, &(&1.id == 2))
+      thread3 = Enum.find(result.threads, &(&1.id == 3))
+      assert thread1.name == "arangod"
+      assert thread2.name == "worker"
+      assert thread3.name == "scheduler"
+    end
+
+    test "thread name is nil when not present" do
+      result = LLDB.parse_output(@lldb_output)
+      thread1 = Enum.find(result.threads, &(&1.id == 1))
+      thread2 = Enum.find(result.threads, &(&1.id == 2))
+      assert thread1.name == nil
+      assert thread2.name == nil
+    end
+
     test "handles frames without file info" do
       output = """
       * thread #1, stop reason = signal SIGSEGV

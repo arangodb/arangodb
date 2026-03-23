@@ -69,7 +69,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
         confidence: :low,
         detail: %{
           server: "srv-1",
-          coredumps: [%{path: "/tmp/core.1234", signal: "SIGABRT", threads: []}],
+          coredumps: [%{core_path: "/tmp/core.1234", signal: "SIGABRT", threads: []}],
           logs: "some log output"
         }
       }
@@ -235,7 +235,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
         confidence: :high,
         detail: %{
           server: "srv-1",
-          coredumps: [%{path: "/tmp/core.5678", signal: "SIGSEGV", threads: []}]
+          coredumps: [%{core_path: "/tmp/core.5678", signal: "SIGSEGV", threads: []}]
         }
       }
     ]
@@ -392,7 +392,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
         confidence: :medium,
         detail: %{
           server: "srv-1",
-          coredumps: [%{path: "/tmp/core.100", signal: "SIGABRT", threads: []}],
+          coredumps: [%{core_path: "/tmp/core.100", signal: "SIGABRT", threads: []}],
           crash_lines: "fatal error in main"
         }
       }
@@ -541,7 +541,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
         confidence: :high,
         detail: %{
           server: "srv-1",
-          coredumps: [%{path: "/tmp/core.42", signal: "SIGSEGV", threads: []}],
+          coredumps: [%{core_path: "/tmp/core.42", signal: "SIGSEGV", threads: []}],
           crash_lines: "thread 1 crashed at 0xdeadbeef\nbacktrace follows"
         }
       }
@@ -586,7 +586,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
         confidence: :low,
         detail: %{
           server: "srv-1",
-          coredumps: [%{path: "/tmp/core.nosig"}],
+          coredumps: [%{core_path: "/tmp/core.nosig"}],
           crash_lines: nil
         }
       }

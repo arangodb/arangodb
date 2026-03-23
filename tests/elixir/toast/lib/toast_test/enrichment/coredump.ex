@@ -2,15 +2,12 @@ defmodule ToastTest.Enrichment.Coredump do
   @moduledoc """
   Enrichment wrapper around `Toast.Diagnostics.Coredump.analyze/3`.
 
-  Transforms the debugger `Report` struct into the flat thread-list
-  shape expected by `SuiteResult` issue details.
+  Transforms the debugger `Report` struct into the structured shape
+  stored in `SuiteResult.coredumps`.
   """
 
   alias Toast.Deployment.ServerInstance
   alias Toast.Diagnostics.Coredump, as: DiagCoredump
-
-  @type thread :: %{thread_id: String.t(), name: String.t() | nil, backtrace: String.t()}
-  @type result :: %{threads: [thread()], signal: String.t() | nil}
 
   @doc """
   Analyze a coredump for the given server instance.
@@ -20,7 +17,6 @@ defmodule ToastTest.Enrichment.Coredump do
       signature `(core_path, binary_path, opts) -> {:ok, Report.t()} | {:error, term()}`
     - All other options are forwarded to the analyzer.
   """
-  @spec analyze(Path.t(), ServerInstance.t(), keyword()) :: {:ok, result()} | {:error, term()}
   def analyze(core_path, server, opts \\ []) do
     case extract_binary_path(server) do
       {:ok, binary_path} ->
@@ -30,6 +26,13 @@ defmodule ToastTest.Enrichment.Coredump do
       :error ->
         {:error, :no_executable}
     end
+  end
+
+  @doc "Format a thread's frames as a human-readable backtrace string."
+  def format_backtrace(frames) do
+    frames
+    |> Enum.with_index()
+    |> Enum.map_join("\n", fn {frame, idx} -> format_frame(frame, idx) end)
   end
 
   defp extract_binary_path(%ServerInstance{launch_spec: nil}), do: :error
@@ -44,34 +47,34 @@ defmodule ToastTest.Enrichment.Coredump do
 
   defp transform_report(report) do
     threads = Enum.map(report.threads, &transform_thread/1)
+    crash_thread_id = if report.crash_thread, do: to_string(report.crash_thread)
 
     # Put the crash thread first so the summary prints the most relevant backtrace.
     threads =
-      case report.crash_thread do
+      case crash_thread_id do
         nil ->
           threads
 
-        crash_id ->
-          crash_id_str = to_string(crash_id)
-          {crash, rest} = Enum.split_with(threads, &(&1.thread_id == crash_id_str))
+        id ->
+          {crash, rest} = Enum.split_with(threads, &(&1.id == id))
           crash ++ rest
       end
 
-    %{threads: threads, signal: report.signal}
+    %{
+      threads: threads,
+      signal: report.signal,
+      faulting_address: report.faulting_address,
+      crash_thread: crash_thread_id,
+      debugger: report.debugger
+    }
   end
 
   defp transform_thread(thread) do
     %{
-      thread_id: to_string(thread.id),
+      id: to_string(thread.id),
       name: Map.get(thread, :name),
-      backtrace: format_backtrace(thread.frames)
+      frames: thread.frames
     }
-  end
-
-  defp format_backtrace(frames) do
-    frames
-    |> Enum.with_index()
-    |> Enum.map_join("\n", fn {frame, idx} -> format_frame(frame, idx) end)
   end
 
   defp format_frame(frame, idx) do

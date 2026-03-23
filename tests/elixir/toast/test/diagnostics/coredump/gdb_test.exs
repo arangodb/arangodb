@@ -152,6 +152,54 @@ defmodule Toast.Diagnostics.Coredump.GDBTest do
       assert f1.line == 10
     end
 
+    test "extracts thread name before parentheses" do
+      output = """
+      Thread 1 "main" (Thread 0x7f123 (LWP 100)):
+      #0  0x00007f1234 in crash ()
+      Thread 2 "worker-0" (Thread 0x7f456 (LWP 101)):
+      #0  0x00007f5678 in work ()
+      """
+
+      result = GDB.parse_output(output)
+      thread1 = Enum.find(result.threads, &(&1.id == 1))
+      thread2 = Enum.find(result.threads, &(&1.id == 2))
+      assert thread1.name == "main"
+      assert thread2.name == "worker-0"
+    end
+
+    test "extracts thread name inside parentheses" do
+      output = """
+      Thread 1 (Thread 0x7f123 (LWP 100) "arangod"):
+      #0  0x00007f1234 in crash ()
+      """
+
+      result = GDB.parse_output(output)
+      thread = hd(result.threads)
+      assert thread.name == "arangod"
+    end
+
+    test "thread name is nil when not present" do
+      output = """
+      Thread 1 (Thread 0x7f123 (LWP 100)):
+      #0  0x00007f1234 in crash ()
+      """
+
+      result = GDB.parse_output(output)
+      thread = hd(result.threads)
+      assert thread.name == nil
+    end
+
+    test "pre-header implicit thread has nil name" do
+      output = """
+      Program terminated with signal SIGSEGV, Segmentation fault.
+      #0  0x00007f1234 in crash () at file.cpp:1
+      """
+
+      result = GDB.parse_output(output)
+      thread = hd(result.threads)
+      assert thread.name == nil
+    end
+
     test "handles empty output" do
       result = GDB.parse_output("")
 

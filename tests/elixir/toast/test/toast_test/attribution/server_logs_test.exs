@@ -97,7 +97,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
   describe "compute_windows/2 — crash" do
     test "pads crash timestamp by [-20s, 0s]" do
-      ts = dt("10:05:00")
+      ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
 
       issue = %{
         type: :crash,
@@ -106,8 +106,8 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
       [{start, finish}] = ServerLogs.compute_windows([issue], windows())
 
-      assert start == dt("10:04:40")
-      assert finish == dt("10:05:00")
+      assert DateTime.compare(start, dt("10:04:40")) == :eq
+      assert DateTime.compare(finish, dt("10:05:00")) == :eq
     end
 
     test "produces no window when crash_info has nil timestamp" do
@@ -169,7 +169,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
   describe "compute_windows/2 — multiple issues" do
     test "collects windows from mixed issue types" do
-      crash_ts = dt("10:05:00")
+      crash_ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
       timeout_ts = dt("10:08:00")
 
       issues = [
@@ -311,7 +311,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       log_path = write_log(dir, "agent.log", lines)
       log_files = make_log_files([{"agent1", log_path}])
 
-      crash_ts = dt("10:05:00")
+      crash_ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
       issues = [%{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}]
 
       result = ServerLogs.collect(issues, log_files, windows())
@@ -320,8 +320,8 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       [{start, finish, entries}] = result["agent1"]
 
       # Crash window: [-20s, 0s] => 10:04:40 - 10:05:00
-      assert start == dt("10:04:40")
-      assert finish == dt("10:05:00")
+      assert DateTime.compare(start, dt("10:04:40")) == :eq
+      assert DateTime.compare(finish, dt("10:05:00")) == :eq
       messages = Enum.map(entries, & &1.message)
       assert "inside window early" in messages
       assert "inside window late" in messages
@@ -365,7 +365,8 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       log2 = write_log(dir, "dbserver1.log", lines2)
       log_files = make_log_files([{"agent1", log1}, {"dbserver1", log2}])
 
-      issues = [%{type: :crash, detail: %{crash_info: %{timestamp: dt("10:05:00")}}}]
+      crash_ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
+      issues = [%{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}]
       result = ServerLogs.collect(issues, log_files, windows())
 
       assert map_size(result) == 2
@@ -388,9 +389,11 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       # Two non-overlapping issues:
       # timeout at 10:03:00 => window [10:02:50, 10:03:00]
       # crash at 10:05:00 => window [10:04:40, 10:05:00]
+      crash_ts = dt("10:05:00") |> DateTime.to_unix(:microsecond)
+
       issues = [
         %{type: :timeout, detail: %{timestamp: dt("10:03:00")}},
-        %{type: :crash, detail: %{crash_info: %{timestamp: dt("10:05:00")}}}
+        %{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}
       ]
 
       result = ServerLogs.collect(issues, log_files, windows())

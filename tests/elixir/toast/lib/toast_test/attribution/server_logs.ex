@@ -109,8 +109,9 @@ defmodule ToastTest.Attribution.ServerLogs do
   end
 
   defp issue_window(%{type: :crash, detail: %{crash_info: %{timestamp: ts}}}, _windows)
-       when not is_nil(ts) do
-    [pad(ts, ts, @crash_pad)]
+       when is_integer(ts) do
+    dt = DateTime.from_unix!(ts, :microsecond)
+    [pad(dt, dt, @crash_pad)]
   end
 
   defp issue_window(%{type: :crash}, _windows), do: []

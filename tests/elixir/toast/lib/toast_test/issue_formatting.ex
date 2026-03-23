@@ -5,6 +5,26 @@ defmodule ToastTest.IssueFormatting do
   @max_crash_log_lines 15
   @max_backtrace_frames 20
 
+  # --- Coredump resolution ---
+
+  @doc "Build `%{core_path => coredump_report}` lookup from a list of coredump reports."
+  def build_coredump_index(coredumps) do
+    Map.new(coredumps, &{&1.core_path, &1})
+  end
+
+  @doc "Resolve `:coredump_paths` in crash issues to full coredump reports."
+  def resolve_coredumps(issues, coredump_index) do
+    Enum.map(issues, &resolve_issue_coredumps(&1, coredump_index))
+  end
+
+  defp resolve_issue_coredumps(%{type: :crash, detail: detail} = issue, index) do
+    paths = detail[:coredump_paths] || []
+    coredumps = Enum.flat_map(paths, fn p -> if r = index[p], do: [r], else: [] end)
+    %{issue | detail: Map.put(detail, :coredumps, coredumps)}
+  end
+
+  defp resolve_issue_coredumps(issue, _index), do: issue
+
   # --- Sanitizer ---
 
   def format_sanitizer(%{scope: scope, detail: detail}) do
@@ -145,19 +165,20 @@ defmodule ToastTest.IssueFormatting do
   def format_timestamp(_), do: nil
 
   def format_coredump_backtrace(%{threads: [thread | _]}) do
-    lines = String.split(thread.backtrace, "\n")
-    shown = Enum.take(lines, @max_backtrace_frames)
-    remaining = length(lines) - length(shown)
-    suffix = if remaining > 0, do: ["..."], else: []
-    Enum.join(shown ++ suffix, "\n")
+    frames = thread[:frames] || []
+    shown = Enum.take(frames, @max_backtrace_frames)
+    remaining = length(frames) - length(shown)
+    backtrace = ToastTest.Enrichment.Coredump.format_backtrace(shown)
+    suffix = if remaining > 0, do: "\n...", else: ""
+    backtrace <> suffix
   end
 
   def format_coredump_backtrace(_), do: nil
 
-  def format_coredump_path(%{path: path}) when is_binary(path), do: "Coredump: #{path}"
+  def format_coredump_path(%{core_path: path}) when is_binary(path), do: "Coredump: #{path}"
   def format_coredump_path(_), do: nil
 
-  def format_first_coredump_path(%{coredumps: [%{path: path} | _]}) when is_binary(path),
+  def format_first_coredump_path(%{coredumps: [%{core_path: path} | _]}) when is_binary(path),
     do: "Coredump: #{path}"
 
   def format_first_coredump_path(_), do: nil

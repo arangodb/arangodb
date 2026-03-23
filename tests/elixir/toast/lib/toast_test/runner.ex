@@ -570,7 +570,7 @@ defmodule ToastTest.Runner do
 
     Logger.debug("Running attribution")
 
-    issues =
+    {issues, coredump_reports} =
       ToastTest.Attribution.run(test_data, artifacts, snapshot.unexpected_crashes,
         timeout_kills: snapshot.timeout_kills,
         analyzer_opts: build_coredump_analyzer_opts(toast_config)
@@ -589,6 +589,7 @@ defmodule ToastTest.Runner do
       SuiteResult.build(test_data, issues,
         warnings: warnings,
         deployments: deployments,
+        coredumps: coredump_reports,
         events: snapshot.events
       )
 
@@ -628,13 +629,20 @@ defmodule ToastTest.Runner do
 
   defp coredump_warnings(crash_events, artifacts, toast_config) do
     if crash_events != [] and not ToastTest.ArtifactCollector.has_coredumps?(artifacts) do
-      case Toast.Diagnostics.Coredump.coredump_discovery_warning(toast_config.coredump_dir) do
-        nil -> []
-        warning -> [warning]
-      end
+      [
+        sanitizer_coredump_warning(toast_config),
+        Toast.Diagnostics.Coredump.coredump_discovery_warning(toast_config.coredump_dir)
+      ]
+      |> Enum.reject(&is_nil/1)
     else
       []
     end
+  end
+
+  defp sanitizer_coredump_warning(%{active_sanitizers: s}) do
+    if MapSet.size(s) > 0,
+      do:
+        "Sanitizer build detected — coredumps are typically not generated with sanitizers enabled"
   end
 
   defp build_coredump_analyzer_opts(toast_config) do

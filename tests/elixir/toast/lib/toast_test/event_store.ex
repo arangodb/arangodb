@@ -173,7 +173,25 @@ defmodule ToastTest.EventStore do
       stopped_at: nil
     }
 
-    %{acc | deployments: Map.put(acc.deployments, did, deployment_meta)}
+    acc = %{acc | deployments: Map.put(acc.deployments, did, deployment_meta)}
+
+    # Initialize server entries early so server_started events (which fire
+    # before deployment_started) can record incarnations.
+    init_servers =
+      Map.new(e[:specs] || [], fn spec ->
+        {spec.id,
+         %{
+           id: spec.id,
+           deployment_id: did,
+           role: spec[:role],
+           endpoint: nil,
+           log_file: spec[:log_file],
+           arango_id: nil,
+           incarnations: []
+         }}
+      end)
+
+    %{acc | servers: Map.update(acc.servers, did, init_servers, &Map.merge(&1, init_servers))}
   end
 
   defp process_event(%{event: :deployment_started, deployment_id: did} = e, acc) do
@@ -208,10 +226,17 @@ defmodule ToastTest.EventStore do
          }}
       end)
 
+    # Merge new server data but preserve incarnations already recorded by
+    # server_started events that fired before deployment_started.
     %{
       acc
       | servers:
-          Map.update(acc.servers, did, deployment_servers, &Map.merge(&1, deployment_servers))
+          Map.update(acc.servers, did, deployment_servers, fn existing ->
+            Map.merge(deployment_servers, existing, fn
+              _key, _new, old when is_list(old) and old != [] -> old
+              _key, new, _old -> new
+            end)
+          end)
     }
   end
 
