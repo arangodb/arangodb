@@ -1,7 +1,7 @@
 name: arangodb_vector_index_ingestion_duration
 introducedIn: "3.12.9"
 help: |
-  Duration of vector index ingestion [s].
+  Duration of vector index ingestion in seconds.
 unit: seconds
 type: histogram
 category: VectorIndex

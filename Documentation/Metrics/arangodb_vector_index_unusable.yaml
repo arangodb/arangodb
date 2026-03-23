@@ -10,6 +10,6 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Current number of vector indexes on this DBServer that are not yet
+  Current number of vector indexes on this DB-Server that are not yet
   usable, counting both leader and follower shards. An unusable index
   has not accumulated enough documents to begin its training phase.

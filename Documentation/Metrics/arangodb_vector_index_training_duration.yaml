@@ -1,7 +1,7 @@
 name: arangodb_vector_index_training_duration
 introducedIn: "3.12.9"
 help: |
-  Duration of vector index training [s].
+  Duration of vector index training seconds.
 unit: seconds
 type: histogram
 category: VectorIndex
