@@ -223,7 +223,7 @@ static void SetupV8Phase(MockServer& server) {
   server.addFeature<application_features::V8FeaturePhase>(false);
   server.addFeature<V8DealerFeature>(
       false, server.getFeature<arangodb::metrics::MetricsFeature>());
-  server.addFeature<V8SecurityFeature>(false);
+  server.addFeature<V8SecurityFeature>(false, AllowListStrictness::NONSTRICT);
 #endif
 }
 
