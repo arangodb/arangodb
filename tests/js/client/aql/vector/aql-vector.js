@@ -47,6 +47,7 @@ const {
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -56,7 +57,7 @@ function VectorIndexL2TestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     // ~1.19 × 10^−7
@@ -79,7 +80,7 @@ function VectorIndexL2TestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             // Generate vectors with minimum distance separation using the utility
@@ -533,7 +534,7 @@ function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     // ~1.19 × 10^−7
@@ -557,7 +558,7 @@ function VectorIndexCosineTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             // Generate vectors with minimum distance separation using the utility
@@ -719,7 +720,7 @@ function VectorIndexInnerProductTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     // ~1.19 × 10^−7
@@ -743,7 +744,7 @@ function VectorIndexInnerProductTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             // Generate vectors with minimum distance separation using the utility
@@ -881,7 +882,7 @@ function MultipleVectorIndexesOnField() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
 
@@ -893,7 +894,7 @@ function MultipleVectorIndexesOnField() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];

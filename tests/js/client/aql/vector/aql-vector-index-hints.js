@@ -40,6 +40,7 @@ const isCluster = require("internal").isCluster();
 
 const dbName = "vectorIndexHintDb";
 const collName = "vectorIndexHintColl";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to get the used vector index from a query plan
@@ -63,7 +64,7 @@ function VectorIndexHintsSuite() {
   let collection;
   let randomPoint;
   const dimension = 128;
-  const numberOfDocsFactor = isCluster ? 3 : 1;
+  const numberOfDocsFactor = isCluster ? numberOfShards : 1;
   const numberOfDocs = 1500 * numberOfDocsFactor;
   const seed = randomInteger();
 
@@ -74,7 +75,7 @@ function VectorIndexHintsSuite() {
       db._useDatabase(dbName);
 
       collection = db._create(collName, {
-        numberOfShards: 3,
+        numberOfShards,
       });
 
       // Generate random vectors

@@ -198,7 +198,6 @@ function VectorIndexPerShardStateSuite() {
             db._dropDatabase(dbName);
         },
 
-        // Scenario 5: Happy path — all 3 shards have enough valid data.
         // All shards should reach "ready" with no errors.
         testAllShardsReachReady: function () {
             const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold);
@@ -235,7 +234,6 @@ function VectorIndexPerShardStateSuite() {
             }
         },
 
-        // Scenario 1: 3 shards, 2 have enough data, 1 does not.
         // The 2 full shards should become "ready"; the starved shard stays
         // "unusable" with no error.
         testOneShardStarvedRemainsUntrained: function () {

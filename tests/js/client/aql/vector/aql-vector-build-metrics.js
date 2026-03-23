@@ -63,7 +63,7 @@ function getMetricValue(name) {
 function VectorIndexBuildMetricsSuite() {
   let collection;
   const seed = randomInteger();
-  const insertCountFactor = isCluster ? 3 : 1;
+  const insertCountFactor = isCluster ? numberOfShards : 1;
 
   return {
     setUp: function () {

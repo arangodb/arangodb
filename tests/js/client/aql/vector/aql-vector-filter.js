@@ -44,6 +44,7 @@ const {
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper functions for verification
@@ -107,7 +108,7 @@ function VectorIndexL2FilterTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
@@ -120,7 +121,7 @@ function VectorIndexL2FilterTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -637,7 +638,7 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
     let collection2;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
@@ -651,10 +652,10 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
             db._useDatabase(dbName);
 
             collection1 = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
             collection2 = db._create(col2, {
-                numberOfShards: 3
+                numberOfShards
             });
 
 
@@ -760,7 +761,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
@@ -773,7 +774,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -987,9 +988,9 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = 5229487420515249;
+    const seed = randomInteger();
     const nProbeAndNlists = 10;
 
     const shuffleArray = function(arr, seed) {
@@ -1029,7 +1030,7 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];

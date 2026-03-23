@@ -38,6 +38,7 @@ const {
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
 const collName = "vectorColl";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -47,8 +48,8 @@ function VectorIndexL2NprobeTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 12132390894;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const seed = randomInteger();
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     // 3 shards; enough docs per shard (300*5=15000 total in cluster) to trigger training
     const numberOfDocs = numberOfDocsFactor * 300 * 50;
 
@@ -59,7 +60,7 @@ function VectorIndexL2NprobeTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];

@@ -52,7 +52,7 @@ function VectorIndexReplicationFailoverTest() {
     // Training threshold is max(nLists * 39, 1000) = 1000 with nLists=2.
     // Use 1200 to comfortably exceed the threshold on the follower.
     const numberOfDocs = 1200;
-    const seed = 42;
+    const seed = randomInteger();
     const nLists = 2;
 
     return {

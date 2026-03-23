@@ -42,6 +42,7 @@ const { versionHas } = require("@arangodb/test-helper");
 
 const dbName = "vectorDB";
 const collName = "coll";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -50,9 +51,9 @@ const collName = "coll";
 function VectorIndexCreateAndRemoveTestSuite() {
     let collection;
     const dimension = 500;
-    const seed = 12132390894;
+    const seed = randomInteger();
     let randomPoint;
-    const insertedDocsCountFactor = isCluster ? 3 : 1;
+    const insertedDocsCountFactor = isCluster ? numberOfShards : 1;
     const insertedDocsCount = 1500 * insertedDocsCountFactor;
     let insertedDocs = [];
 
@@ -66,7 +67,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -215,7 +216,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
 function VectorIndexTestCreationWithVectors() {
     let collection;
     const dimension = 500;
-    const seed = 12132390894;
+    const seed = randomInteger();
 
     return {
         setUp: function() {
@@ -227,7 +228,7 @@ function VectorIndexTestCreationWithVectors() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
         },
 
@@ -463,9 +464,9 @@ function VectorIndexTestCreationWithVectors() {
 function VectorIndexStoredValuesTestSuite() {
     let collection;
     const dimension = 128;
-    const seed = 123456789;
+    const seed = randomInteger();
     let randomPoint;
-    const insertedDocsCountFactor = isCluster ? 3 : 1;
+    const insertedDocsCountFactor = isCluster ? numberOfShards : 1;
     const insertedDocsCount = 1500 * insertedDocsCountFactor;
     let insertedDocs = [];
 
@@ -479,7 +480,7 @@ function VectorIndexStoredValuesTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             // Insert test documents with various fields for storedValues testing

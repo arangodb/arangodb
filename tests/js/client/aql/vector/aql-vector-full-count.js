@@ -41,6 +41,7 @@ const isCluster = require("internal").isCluster();
 
 const dbName = "vectorDB";
 const collName = "vectorColl";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -50,9 +51,9 @@ function VectorIndexFullCountTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = 12132390894;
+    const seed = randomInteger();
     const nLists = 10;
 
     return {
@@ -62,7 +63,7 @@ function VectorIndexFullCountTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -239,9 +240,9 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = 12132390894;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
@@ -250,7 +251,7 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -341,9 +342,9 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = 12132390894;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
@@ -352,7 +353,7 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -446,7 +447,7 @@ function VectorIndexLargeLimitTestSuite() {
     const largeLimitDimension = 128;
     const largeLimitNumberOfDocs = 4500;
     const nLists = 32;
-    const seed = 98765432;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
@@ -454,7 +455,7 @@ function VectorIndexLargeLimitTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let gen = randomNumberGeneratorFloat(seed);

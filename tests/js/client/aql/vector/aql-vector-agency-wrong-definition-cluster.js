@@ -41,7 +41,7 @@ let IM = global.instanceManager;
 function VectorIndexCorrectDefinitionInAgencyTest() {
     let collection;
     const dimension = 500;
-    const seed = 12132390894;
+    const seed = randomInteger();
     const nLists = 1;
     const metric = "l2";
 
@@ -138,7 +138,7 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
 function VectorIndexInvalidDefinitionInAgencyTest() {
     let collection;
     const dimension = 500;
-    const seed = 12132390894;
+    const seed = randomInteger();
     const nLists = 1;
     const metric = "l2";
 
