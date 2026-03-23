@@ -1390,6 +1390,85 @@ function DuplicateValuesSuite() {
       assertNotEqual(doc2._key, "");
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testUniquenessAndLookup: function() {
+      var idx = collection.ensureIndex({type: "persistent", unique: true, fields: ["value"]});
+
+      assertEqual("persistent", idx.type);
+      assertTrue(idx.unique);
+      assertEqual(["value"], idx.fields);
+      assertTrue(idx.isNewlyCreated);
+
+      const bound = 1000;
+
+      let docs = [];
+      for (let i = -bound; i < bound; ++i) {
+        docs.push({value: i});
+      }
+      collection.insert(docs);
+
+      // need to run compaction in the rocksdb case, as the lookups
+      // may use bloom filters afterwards but not for memtables
+      collection.compact();
+
+      assertEqual(2 * bound, collection.count());
+
+      for (let i = -bound; i < bound; ++i) {
+        let d = collection.byExample({value: i}).toArray();
+        assertEqual(1, d.length);
+        assertEqual(i, d[0].value);
+
+        collection.update(d[0]._key, d[0]);
+      }
+
+      for (let i = -bound; i < bound; ++i) {
+        try {
+          collection.insert({value: i});
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+        }
+      }
+    },
+
+    testUniquenessAndLookup2: function() {
+      var idx = collection.ensureIndex({type: "persistent", unique: true, fields: ["value"]});
+
+      assertEqual("persistent", idx.type);
+      assertTrue(idx.unique);
+      assertEqual(["value"], idx.fields);
+      assertTrue(idx.isNewlyCreated);
+
+      let i = 0;
+      while (i < 100000) {
+        let d = [];
+        for (let j = 0; j < 20; ++j) {
+          d.push({value: i++});
+        }
+        collection.insert(d);
+        i *= 2;
+      }
+
+      // need to run compaction in the rocksdb case, as the lookups
+      // may use bloom filters afterwards but not for memtables
+      collection.compact();
+
+      i = 0;
+      while (i < 100000) {
+        for (let j = 0; j < 20; ++j) {
+          let d = collection.byExample({value: i}).toArray();
+          assertEqual(1, d.length);
+          assertEqual(i, d[0].value);
+          collection.update(d[0]._key, d[0]);
+          ++i;
+        }
+        i *= 2;
+      }
+    },
+
     testUniqueIndexNullSubattribute: function() {
       let idx = collection.ensureIndex({type: "persistent", unique: true, fields: ["a.b"]});
 

@@ -1189,21 +1189,6 @@ ArangoDatabase.prototype._useDatabase = function (name) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief execute a transaction
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._executeTransaction = function (data) {
-  throw new ArangoError({
-    error: true,
-    code: internal.errors.ERROR_HTTP_NOT_FOUND.code,
-    errorNum: internal.errors.ERROR_HTTP_NOT_FOUND.code,
-    errorMessage: 'JavaScript transactions are no longer supported. ' +
-      'Use streaming transactions (db._createTransaction) instead.'
-  });
-};
-
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief create a transaction
 // //////////////////////////////////////////////////////////////////////////////
 

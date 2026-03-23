@@ -1,8 +1,5 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-* COR-134: Remove JS remaining transactions, use streaming transactions
-  as replacement.
-
 * Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
   `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
 

@@ -167,6 +167,35 @@ function EdgeIndexSuite () {
       assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
     },
 
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test index selectivity after aborted transaction
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testIndexSelectivityAfterAbortion: function () {
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
+      }
+      edge.save(docs);
+      waitForEstimatorSync();  // make sure estimates are consistent
+      let idx = edge.indexes()[1];
+      let estimateBefore = idx.selectivityEstimate;
+
+      const trx = db._createTransaction({collections: {write: en}});
+      let txDocs = [];
+      for (let i = 0; i < 1000; ++i) {
+        txDocs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
+      }
+      // This would significantly modify the estimate if committed
+      trx.collection(en).save(txDocs);
+      trx.abort();
+
+      // Aborted — validate estimate is unchanged
+      waitForEstimatorSync();  // make sure estimates are consistent
+      idx = edge.indexes()[1];
+      assertEqual(idx.selectivityEstimate, estimateBefore);
+    },
+
   };
 }
 
