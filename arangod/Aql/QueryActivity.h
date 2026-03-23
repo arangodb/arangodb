@@ -76,7 +76,7 @@ struct AqlQueryActivity
   AqlQueryActivity(activities::ActivityId id, activities::ActivityHandle parent,
                    AqlQueryActivityData data)
       : activities::GuardedActivity<AqlQueryActivity, AqlQueryActivityData>(
-            id, parent, "AQLQuery", std::move(data)) {}
+            id, parent, "AqlQuery", std::move(data)) {}
   using Data = AqlQueryActivityData;
 
   auto setPlanSlice(velocypack::SharedSlice slice) {
