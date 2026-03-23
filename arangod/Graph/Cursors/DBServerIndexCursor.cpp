@@ -198,7 +198,7 @@ uint64_t DBServerIndexCursor::nextBatch(EdgeCursor::Callback const& callback,
     bool tmp = _cursor->next(
         [&](LocalDocumentId token) {
           if (token.isSet()) {
-            _cache.emplace_back(token);
+            _cache.emplace_back(token);  // TODO execute callback just in here
             return true;
           }
           return false;

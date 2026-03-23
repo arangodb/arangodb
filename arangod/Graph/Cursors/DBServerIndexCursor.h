@@ -31,6 +31,9 @@
 #include "Graph/BaseOptions.h"
 #include "Graph/Cursors/EdgeCursor.h"
 #include "Aql/AqlValue.h"
+#include "Graph/EdgeDocumentToken.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -51,6 +54,77 @@ class Methods;
 }
 
 namespace graph {
+struct NeighbourEntry {
+  LocalDocumentId edge;
+  velocypack::SharedSlice projections;
+};
+struct StorageNeighbourEnumerator {
+  // if there are elements in PR, then set coveringPositions empty
+  // because this is done in other stage
+  StorageNeighbourEnumerator(std::unique_ptr<IndexIterator> indexIterator,
+                             std::vector<uint16_t> coveringPositions,
+                             std::uint64_t batchSize)
+      : _indexIterator{std::move(indexIterator)},
+        _coveringPositions{std::move(coveringPositions)},
+        _batchSize{batchSize} {}
+
+  std::unique_ptr<IndexIterator> _indexIterator;
+  std::vector<uint16_t> _coveringPositions;
+  std::uint64_t _batchSize;
+  auto next() -> std::vector<NeighbourEntry> {
+    std::vector<NeighbourEntry> result;
+    result.reserve(_batchSize);
+    _indexIterator->nextCovering(
+        [&result, this](LocalDocumentId token,
+                        IndexIteratorCoveringData& covering) {
+          if (token.isSet()) {
+            result.emplace_back(NeighbourEntry{
+                .edge = token,
+                .projections = {covering.at(
+                    _coveringPositions[0]) /* for all positions */}});
+          }
+        },
+        _batchSize);
+    return result;
+  }
+};
+struct NeighbourToStepAdapter {
+  NeighbourToStepAdapter();
+  DataSourceId _dataSource;
+  size_t _previousStepPositionInStore;
+
+  auto process(std::vector<NeighbourEntry> entries)
+      -> std::vector<SingleServerProviderStep> {
+    std::vector<SingleServerProviderStep> result;
+    for (auto const& entry : entries) {
+      result.emplace_back(
+          SingleServerProviderStep{VertexRef{entry.projections.get("_to")},
+                                   EdgeDocumentToken{_dataSource, entry.edge},
+                                   _previousStepPositionInStore});
+    }
+    return result;
+  }
+};
+struct NeighbourFilter {
+  Expression _filter /* non covered by index */;
+  transaction::Methods* _trx;
+  PhysicalCollection* _collection;
+  auto process(std::vector<NeighbourEntry> entries)
+      -> std::vector<NeighbourEntry> {
+    std::vector<SingleServerProviderStep> result;
+    for (auto const& entry : entries) {
+      _collection->lookup(
+          _trx, entry.edge,
+          [&result, entry](LocalDocumentId token, aql::DocumentData&&,
+                           VPackSlice edgeDoc) {
+            if (/* apply filter on edgeDoc (perhaps documentData */) {
+              result.emplace_back(entry);
+            }
+          },
+          {.countBytes = true});
+    }
+  }
+};
 
 struct DBServerIndexCursor {
   void all(EdgeCursor::Callback const& callback);
@@ -96,7 +170,7 @@ struct DBServerIndexCursor {
   size_t _cursorId;
 
   uint16_t _coveringIndexPosition;
-  aql::AstNode* _indexCondition;  // for all cursors in on collection
+  aql::AstNode* _indexCondition;  // for all cursors in on collection // FI
   std::optional<size_t> _conditionMemberToUpdate;  // "
 
   transaction::Methods* _trx;

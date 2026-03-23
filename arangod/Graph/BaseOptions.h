@@ -83,8 +83,9 @@ struct BaseOptions {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
     std::vector<transaction::Methods::IndexHandle> idxHandles;
-    std::unique_ptr<aql::Expression> expression;
-    aql::AstNode* indexCondition;
+    std::unique_ptr<aql::Expression>
+        expression;                // edgePredicate not covered by index
+    aql::AstNode* indexCondition;  // edgePredicate covered by index
     TRI_edge_direction_e direction;
     // Flag if we have to update _from / _to in the index search condition
     bool conditionNeedUpdate;

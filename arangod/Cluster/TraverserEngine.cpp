@@ -411,16 +411,17 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t cursorId, size_t batchId,
           if (edge.isNull()) {
             return;
           }
-          if (_opts->evaluateEdgeExpression(edge, *vertex, *depth, cursorId)) {
-            if (!options().getEdgeProjections().empty()) {
+          if (_opts->evaluateEdgeExpression(edge, *vertex, *depth,
+                                            cursorId)) {    // FR
+            if (!options().getEdgeProjections().empty()) {  // P
               VPackObjectBuilder guard(&builder);
               options().getEdgeProjections().toVelocyPackFromDocument(
                   builder, edge, _trx.get());
             } else {
               builder.add(edge);
             }
+            count++;
           }
-          count++;
         },
         batchSize);
     if (!cursor._cursor->hasMore()) {
