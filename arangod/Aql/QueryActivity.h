@@ -37,8 +37,8 @@ struct AqlQueryActivityData {
   double startTime;
   std::string database;
   std::string user;
-  std::optional<std::string> queryString;
-  std::optional<velocypack::SharedSlice> options;
+  std::string queryString;
+  velocypack::SharedSlice options;
   std::optional<velocypack::SharedSlice> bindParameters;
   std::optional<velocypack::SharedSlice> plan;
   // These are only set in ClusterQuery.
@@ -79,6 +79,9 @@ struct AqlQueryActivity
             id, parent, "AqlQuery", std::move(data)) {}
   using Data = AqlQueryActivityData;
 
+  auto setQueryString(std::string queryString) {
+    _data.getLockedGuard()->queryString = queryString;
+  }
   auto setPlanSlice(velocypack::SharedSlice slice) {
     _data.getLockedGuard()->plan = std::move(slice);
   }
