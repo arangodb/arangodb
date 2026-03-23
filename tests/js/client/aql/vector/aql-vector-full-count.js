@@ -267,34 +267,22 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                     vector
                 });
             }
-            const batchSize = 100;
-            const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
-            const ensureIndex = () => collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 10,
+                        trainingIterations: 10,
+                    },
+                }),
             });
-
-            for (let i = 0; i < numBatches; i++) {
-                if (i === ensureIndexSlot) {
-                    ensureIndex();
-                }
-                const start = i * batchSize;
-                const end = Math.min(start + batchSize, docs.length);
-                collection.insert(docs.slice(start, end));
-            }
-            if (ensureIndexSlot === numBatches) {
-                ensureIndex();
-            }
 
             assertTrue(
                 waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
@@ -369,34 +357,22 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                     vector
                 });
             }
-            const batchSize = 100;
-            const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
-            const ensureIndex = () => collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 1,
-                    trainingIterations: 10,
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                }),
             });
-
-            for (let i = 0; i < numBatches; i++) {
-                if (i === ensureIndexSlot) {
-                    ensureIndex();
-                }
-                const start = i * batchSize;
-                const end = Math.min(start + batchSize, docs.length);
-                collection.insert(docs.slice(start, end));
-            }
-            if (ensureIndexSlot === numBatches) {
-                ensureIndex();
-            }
 
             assertTrue(
                 waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
@@ -459,34 +435,35 @@ function VectorIndexLargeLimitTestSuite() {
             });
 
             let gen = randomNumberGeneratorFloat(seed);
-            const batchSize = 1000;
-            for (let batch = 0; batch < largeLimitNumberOfDocs; batch += batchSize) {
-                let docs = [];
-                const end = Math.min(batch + batchSize, largeLimitNumberOfDocs);
-                for (let i = batch; i < end; ++i) {
-                    const vector = Array.from({
-                        length: largeLimitDimension
-                    }, () => gen());
-                    if (i === 0) {
-                        randomPoint = vector;
-                    }
-                    docs.push({
-                        vector
-                    });
+            let docs = [];
+            for (let i = 0; i < largeLimitNumberOfDocs; ++i) {
+                const vector = Array.from({
+                    length: largeLimitDimension
+                }, () => gen());
+                if (i === 0) {
+                    randomPoint = vector;
                 }
-                collection.insert(docs);
+                docs.push({
+                    vector
+                });
             }
 
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: largeLimitDimension,
-                    nLists: nLists,
-                },
+            insertDocsAndEnsureIndex({
+                collection,
+                docs,
+                seed,
+                batchSize: 1000,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: largeLimitDimension,
+                        nLists: nLists,
+                    },
+                }),
             });
 
             assertTrue(
