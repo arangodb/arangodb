@@ -86,20 +86,6 @@ auto optionToRegex(std::vector<std::string> values, std::string optionName,
   return tryStringToRegex(disjunctionOfRegexes(values), optionName, listName);
 }
 
-auto canonicalPath(std::string path) -> std::string {
-  auto result = std::filesystem::path(path);
-
-  if (result.is_relative()) {
-    result = std::filesystem::absolute(result);
-  }
-
-  result = std::filesystem::weakly_canonical(std::move(result));
-  if (std::filesystem::is_directory(result)) {
-    result /= "";
-  }
-  return result;
-}
-
 }  // namespace
 
 void V8SecurityFeature::collectOptions(
@@ -305,14 +291,12 @@ void V8SecurityFeature::dumpAccessLists() const {
 }
 
 void V8SecurityFeature::addToInternalReadAllowList(std::filesystem::path item) {
-  _internalReadAllow.addPath(
-      std::filesystem::weakly_canonical(std::move(item)));
+  _internalReadAllow.addPath(std::filesystem::canonical(std::move(item)));
 }
 
 void V8SecurityFeature::addToInternalWriteAllowList(
     std::filesystem::path item) {
-  _internalWriteAllow.addPath(
-      std::filesystem::weakly_canonical(std::move(item)));
+  _internalWriteAllow.addPath(std::filesystem::canonical(std::move(item)));
 }
 
 bool V8SecurityFeature::isAllowedToControlProcesses() const {
@@ -409,7 +393,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     return true;
   }
 
-  auto canonicalisedPath = canonicalPath(pathPtr);
+  auto canonicalisedPath = std::string(std::filesystem::canonical(pathPtr));
 
   if (access == FSAccessType::READ) {
     if (_internalReadAllow.allowed(std::filesystem::canonical(pathPtr))) {
