@@ -15,20 +15,39 @@ defmodule Toast.Diagnostics.Coredump.LLDBTest do
   """
 
   @lldb_multi_thread """
-  * thread #1, name = 'arangod', stop reason = signal SIGABRT
+  * thread #1, stop reason = signal SIGABRT
     * frame #0: 0x00007f0000000001 libc.so.6`raise(sig=6) at raise.c:51
       frame #1: 0x00007f0000000002 libc.so.6`abort() at abort.c:79
       frame #2: 0x00007f0000000003 arangod`arangodb::handleAssert(msg=0x1) at assert.cpp:30
       frame #3: 0x00007f0000000004 arangod`arangodb::query::execute() at query.cpp:150
       frame #4: 0x00007f0000000005 libc.so.6`__libc_start_main
       frame #5: 0x00007f0000000006 arangod`_start
-    thread #2, name = 'worker'
+    thread #2
       frame #0: 0x00007f0000000010 libc.so.6`__GI___poll at poll.c:29
       frame #1: 0x00007f0000000011 arangod`arangodb::network::poll() at network.cpp:42
-    thread #3, name = 'scheduler'
+    thread #3
       frame #0: 0x00007f0000000020 libc.so.6`clone at clone.S:78
       frame #1: 0x00007f0000000021 libpthread.so.0`start_thread at pthread_create.c:477
       frame #2: 0x00007f0000000022 arangod`arangodb::scheduler::run() at scheduler.cpp:88
+  """
+
+  # Simulates combined output of `thread list` + `thread backtrace all`
+  @lldb_with_thread_list """
+  (lldb) thread list
+  Process 12345 stopped
+  * thread #1: tid = 328296, 0x00007f1234 libc.so.6`raise + 8, stop reason = signal SIGABRT
+    thread #2: tid = 328297, 0x00007f5678 libc.so.6`poll + 45
+    thread #3: tid = 328298, 0x00007f9abc libc.so.6`epoll_wait + 22
+  (lldb) thread backtrace all
+  * thread #1, stop reason = signal SIGABRT
+    * frame #0: 0x00007f1234 libc.so.6`raise(sig=6) at raise.c:51
+      frame #1: 0x00007f5678 arangod`arangodb::handleAssert() at assert.cpp:30
+    thread #2
+      frame #0: 0x00007f9abc libc.so.6`__GI___poll at poll.c:29
+      frame #1: 0x00007fdef0 arangod`arangodb::network::poll() at network.cpp:42
+    thread #3
+      frame #0: 0x00007f1111 libc.so.6`epoll_wait at epoll.c:30
+      frame #1: 0x00007f2222 arangod`arangodb::scheduler::run() at scheduler.cpp:88
   """
 
   describe "executable/0" do
@@ -38,12 +57,14 @@ defmodule Toast.Diagnostics.Coredump.LLDBTest do
   end
 
   describe "command/2" do
-    test "returns correct argument list" do
+    test "returns correct argument list with thread list" do
       args = LLDB.command("/usr/bin/arangod", "/tmp/core.12345")
 
       assert args == [
                "-c",
                "/tmp/core.12345",
+               "-o",
+               "thread list",
                "-o",
                "thread backtrace all",
                "-o",
@@ -129,25 +150,6 @@ defmodule Toast.Diagnostics.Coredump.LLDBTest do
       assert "arangodb::scheduler::run()" in funcs3
     end
 
-    test "extracts thread names" do
-      result = LLDB.parse_output(@lldb_multi_thread)
-
-      thread1 = Enum.find(result.threads, &(&1.id == 1))
-      thread2 = Enum.find(result.threads, &(&1.id == 2))
-      thread3 = Enum.find(result.threads, &(&1.id == 3))
-      assert thread1.name == "arangod"
-      assert thread2.name == "worker"
-      assert thread3.name == "scheduler"
-    end
-
-    test "thread name is nil when not present" do
-      result = LLDB.parse_output(@lldb_output)
-      thread1 = Enum.find(result.threads, &(&1.id == 1))
-      thread2 = Enum.find(result.threads, &(&1.id == 2))
-      assert thread1.name == nil
-      assert thread2.name == nil
-    end
-
     test "handles frames without file info" do
       output = """
       * thread #1, stop reason = signal SIGSEGV
@@ -186,6 +188,67 @@ defmodule Toast.Diagnostics.Coredump.LLDBTest do
     test "faulting_address is nil (LLDB does not extract it)" do
       result = LLDB.parse_output(@lldb_output)
       assert result.faulting_address == nil
+    end
+
+    # --- OS thread ID (tid) ---
+
+    test "os_id is nil when no thread list and no tid in backtrace headers" do
+      result = LLDB.parse_output(@lldb_output)
+
+      Enum.each(result.threads, fn thread ->
+        assert thread.os_id == nil
+      end)
+    end
+
+    test "extracts os_id from thread list output" do
+      result = LLDB.parse_output(@lldb_with_thread_list)
+
+      thread1 = Enum.find(result.threads, &(&1.id == 1))
+      thread2 = Enum.find(result.threads, &(&1.id == 2))
+      thread3 = Enum.find(result.threads, &(&1.id == 3))
+
+      assert thread1.os_id == "328296"
+      assert thread2.os_id == "328297"
+      assert thread3.os_id == "328298"
+    end
+
+    test "extracts os_id from hex tid in backtrace header" do
+      output = """
+      * thread #1, tid = 0x1a2b, stop reason = signal SIGSEGV
+        * frame #0: 0x00007f1234 arangod`crash() at file.cpp:1
+        thread #2, tid = 0x1a2c
+          frame #0: 0x00007f5678 arangod`work() at work.cpp:10
+      """
+
+      result = LLDB.parse_output(output)
+      thread1 = Enum.find(result.threads, &(&1.id == 1))
+      thread2 = Enum.find(result.threads, &(&1.id == 2))
+
+      assert thread1.os_id == "0x1a2b"
+      assert thread2.os_id == "0x1a2c"
+    end
+
+    test "extracts decimal tid from thread list" do
+      output = """
+      * thread #1: tid = 328296, stop reason = signal SIGSEGV
+      (lldb) thread backtrace all
+      * thread #1, stop reason = signal SIGSEGV
+        * frame #0: 0x00007f1234 arangod`crash() at file.cpp:1
+      """
+
+      result = LLDB.parse_output(output)
+      thread = hd(result.threads)
+      assert thread.os_id == "328296"
+    end
+
+    test "thread list provides os_id when backtrace headers lack it" do
+      # thread list has tids, backtrace headers do not
+      result = LLDB.parse_output(@lldb_with_thread_list)
+
+      # All threads should have os_id from thread list
+      Enum.each(result.threads, fn thread ->
+        assert thread.os_id != nil, "Thread #{thread.id} should have os_id from thread list"
+      end)
     end
   end
 end

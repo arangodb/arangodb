@@ -9,7 +9,7 @@ defmodule Toast.Diagnostics.Coredump.Debugger do
 
   @type thread :: %{
           id: integer(),
-          name: String.t() | nil,
+          os_id: String.t() | nil,
           frames: [frame()]
         }
 

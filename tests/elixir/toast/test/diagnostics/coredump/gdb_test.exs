@@ -69,14 +69,14 @@ defmodule Toast.Diagnostics.Coredump.GDBTest do
       assert result.signal == "SIGSEGV"
     end
 
-    # T11: exact thread count — pre-header crash thread (id=1) + Thread 1 (id=1) + Thread 2 (id=2)
+    # Pre-header frames are replaced by the explicit "Thread 1" section.
     test "extracts threads" do
       result = GDB.parse_output(@gdb_output)
 
-      assert length(result.threads) == 3
+      assert length(result.threads) == 2
       thread_ids = Enum.map(result.threads, & &1.id)
-      assert Enum.count(thread_ids, &(&1 == 1)) == 2
-      assert Enum.count(thread_ids, &(&1 == 2)) == 1
+      assert 1 in thread_ids
+      assert 2 in thread_ids
     end
 
     test "extracts frames with file and line" do
@@ -96,6 +96,7 @@ defmodule Toast.Diagnostics.Coredump.GDBTest do
       # Crash thread keeps all frames including internal ones
       funcs = Enum.map(thread1.frames, & &1.function)
       assert "__libc_start_main" in funcs
+      assert "arangodb::doSomething" in funcs
     end
 
     test "filters internal frames from non-crash threads" do
@@ -152,7 +153,7 @@ defmodule Toast.Diagnostics.Coredump.GDBTest do
       assert f1.line == 10
     end
 
-    test "extracts thread name before parentheses" do
+    test "parses threads with names in header" do
       output = """
       Thread 1 "main" (Thread 0x7f123 (LWP 100)):
       #0  0x00007f1234 in crash ()
@@ -161,35 +162,24 @@ defmodule Toast.Diagnostics.Coredump.GDBTest do
       """
 
       result = GDB.parse_output(output)
+      assert length(result.threads) == 2
+      assert Enum.find(result.threads, &(&1.id == 1)).os_id == "100"
+      assert Enum.find(result.threads, &(&1.id == 2)).os_id == "101"
+    end
+
+    test "extracts os_id from LWP in thread headers" do
+      result = GDB.parse_output(@gdb_output)
+
+      # Thread 1 (LWP 12345) -> os_id "12345" (pre-header merged with explicit)
       thread1 = Enum.find(result.threads, &(&1.id == 1))
+      assert thread1.os_id == "12345"
+
+      # Thread 2 (Thread 0x7f12345 (LWP 12346)) -> os_id "12346"
       thread2 = Enum.find(result.threads, &(&1.id == 2))
-      assert thread1.name == "main"
-      assert thread2.name == "worker-0"
+      assert thread2.os_id == "12346"
     end
 
-    test "extracts thread name inside parentheses" do
-      output = """
-      Thread 1 (Thread 0x7f123 (LWP 100) "arangod"):
-      #0  0x00007f1234 in crash ()
-      """
-
-      result = GDB.parse_output(output)
-      thread = hd(result.threads)
-      assert thread.name == "arangod"
-    end
-
-    test "thread name is nil when not present" do
-      output = """
-      Thread 1 (Thread 0x7f123 (LWP 100)):
-      #0  0x00007f1234 in crash ()
-      """
-
-      result = GDB.parse_output(output)
-      thread = hd(result.threads)
-      assert thread.name == nil
-    end
-
-    test "pre-header implicit thread has nil name" do
+    test "pre-header only thread has nil os_id" do
       output = """
       Program terminated with signal SIGSEGV, Segmentation fault.
       #0  0x00007f1234 in crash () at file.cpp:1
@@ -197,7 +187,19 @@ defmodule Toast.Diagnostics.Coredump.GDBTest do
 
       result = GDB.parse_output(output)
       thread = hd(result.threads)
-      assert thread.name == nil
+      assert thread.os_id == nil
+    end
+
+    test "extracts os_id for all threads in multi-thread output" do
+      result = GDB.parse_output(@gdb_multi_thread)
+
+      thread1 = Enum.find(result.threads, &(&1.id == 1))
+      thread2 = Enum.find(result.threads, &(&1.id == 2))
+      thread3 = Enum.find(result.threads, &(&1.id == 3))
+
+      assert thread1.os_id == "10001"
+      assert thread2.os_id == "10002"
+      assert thread3.os_id == "10003"
     end
 
     test "handles empty output" do

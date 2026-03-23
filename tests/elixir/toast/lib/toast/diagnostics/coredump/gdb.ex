@@ -58,26 +58,32 @@ defmodule Toast.Diagnostics.Coredump.GDB do
   end
 
   defp maybe_parse_thread_header(acc, line) do
-    case Regex.run(~r/^Thread\s+(\d+)\s+(?:"([^"]+)")?\s*\(/, line) do
-      [_, id_str, name] ->
-        acc = Debugger.flush_current_thread(acc)
-        thread_id = String.to_integer(id_str)
-        %{acc | current: %{id: thread_id, name: name, frames: []}}
-
+    case Regex.run(~r/^Thread\s+(\d+)\s.*\(/, line) do
       [_, id_str] ->
-        acc = Debugger.flush_current_thread(acc)
         thread_id = String.to_integer(id_str)
-        name = extract_name_from_parens(line)
-        %{acc | current: %{id: thread_id, name: name, frames: []}}
+        os_id = extract_lwp(line)
+
+        # When GDB outputs frames before any "Thread N" header, we create an
+        # implicit thread.  If the first explicit header matches that implicit
+        # thread's id, replace it — the explicit "thread apply all bt" section
+        # is a superset of the pre-header snippet.
+        case acc.current do
+          %{id: ^thread_id} ->
+            %{acc | current: %{id: thread_id, os_id: os_id, frames: []}}
+
+          _ ->
+            acc = Debugger.flush_current_thread(acc)
+            %{acc | current: %{id: thread_id, os_id: os_id, frames: []}}
+        end
 
       _ ->
         acc
     end
   end
 
-  defp extract_name_from_parens(line) do
-    case Regex.run(~r/\(.*?"([^"]+)".*?\)/, line) do
-      [_, name] -> name
+  defp extract_lwp(line) do
+    case Regex.run(~r/LWP\s+(\d+)/, line) do
+      [_, lwp] -> lwp
       _ -> nil
     end
   end
@@ -95,7 +101,7 @@ defmodule Toast.Diagnostics.Coredump.GDB do
             # thread ID). If an explicit "Thread 1" header follows, its frames will
             # be collected as a separate thread entry.
             crash_thread = acc.crash_thread || 1
-            current = %{id: crash_thread, name: nil, frames: [frame]}
+            current = %{id: crash_thread, os_id: nil, frames: [frame]}
             %{acc | current: current, crash_thread: crash_thread}
 
           current ->

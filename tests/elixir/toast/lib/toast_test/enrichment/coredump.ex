@@ -72,7 +72,7 @@ defmodule ToastTest.Enrichment.Coredump do
   defp transform_thread(thread) do
     %{
       id: to_string(thread.id),
-      name: Map.get(thread, :name),
+      os_id: Map.get(thread, :os_id),
       frames: thread.frames
     }
   end

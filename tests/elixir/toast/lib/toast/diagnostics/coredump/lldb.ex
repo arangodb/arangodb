@@ -10,12 +10,27 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
 
   @impl true
   def command(binary_path, core_path) do
-    ["-c", core_path, "-o", "thread backtrace all", "-o", "quit", "--", binary_path]
+    [
+      "-c",
+      core_path,
+      "-o",
+      "thread list",
+      "-o",
+      "thread backtrace all",
+      "-o",
+      "quit",
+      "--",
+      binary_path
+    ]
   end
 
   @impl true
   def parse_output(output) do
     lines = String.split(output, "\n")
+
+    # First pass: build thread# → os_id map from `thread list` output
+    # (which includes tid even when `thread backtrace all` does not).
+    tid_map = parse_tid_map(lines)
 
     init_acc = %{threads: [], current: nil, signal: nil, crash_thread: nil}
 
@@ -23,7 +38,7 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
       lines
       |> Enum.reduce(init_acc, fn line, acc ->
         acc
-        |> maybe_parse_thread_header(line)
+        |> maybe_parse_thread_header(line, tid_map)
         |> maybe_parse_frame(line)
       end)
       |> Debugger.flush_current_thread()
@@ -38,7 +53,18 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
     }
   end
 
-  defp maybe_parse_thread_header(acc, line) do
+  @tid_pattern ~r/thread\s+#(\d+).*?tid\s*=\s*(0x[0-9a-fA-F]+|\d+)/i
+
+  defp parse_tid_map(lines) do
+    Enum.reduce(lines, %{}, fn line, acc ->
+      case Regex.run(@tid_pattern, line) do
+        [_, id_str, tid] -> Map.put_new(acc, String.to_integer(id_str), tid)
+        _ -> acc
+      end
+    end)
+  end
+
+  defp maybe_parse_thread_header(acc, line, tid_map) do
     case Regex.run(~r/^\s*(\*?)\s*thread\s+#(\d+)/i, line) do
       [_, star, id_str] ->
         acc = Debugger.flush_current_thread(acc)
@@ -46,11 +72,11 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
         is_crash = star == "*"
         signal = if(is_crash, do: extract_signal(line), else: acc.signal)
         crash_thread = if(is_crash, do: thread_id, else: acc.crash_thread)
-        name = extract_thread_name(line)
+        os_id = extract_tid(line) || Map.get(tid_map, thread_id)
 
         %{
           acc
-          | current: %{id: thread_id, name: name, frames: []},
+          | current: %{id: thread_id, os_id: os_id, frames: []},
             signal: signal || acc.signal,
             crash_thread: crash_thread
         }
@@ -60,9 +86,9 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
     end
   end
 
-  defp extract_thread_name(line) do
-    case Regex.run(~r/name\s*=\s*'([^']+)'/, line) do
-      [_, name] -> name
+  defp extract_tid(line) do
+    case Regex.run(~r/tid\s*=\s*(0x[0-9a-fA-F]+|\d+)/, line) do
+      [_, tid] -> tid
       _ -> nil
     end
   end
