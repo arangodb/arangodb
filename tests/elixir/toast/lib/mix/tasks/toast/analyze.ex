@@ -39,12 +39,20 @@ defmodule Mix.Tasks.Toast.Analyze do
                                                 --log-min-level info,crash=debug
       --log-exclude <ids>              Exclude log entries by ID (comma-separated)
       --log-events <level>            Event detail in log output: none, basic (default), full
+
+  ## Backtrace options (detail only)
+
+      --coredumps / --no-coredumps    Include coredump backtraces (default: on)
+      --threads relevant|all          Show threads (relevant: likely interesting, all: every thread)
+      --backtrace-frames N            Max frames per thread (default: 20)
   """
 
   use Mix.Task
 
   import ToastTest.Formatting, only: [colorize: 3, formatter_cb: 2]
 
+  alias ToastTest.Enrichment
+  alias ToastTest.IssueFormatting
   alias ToastTest.IssueFormatting.Logs
 
   @switches [
@@ -58,6 +66,9 @@ defmodule Mix.Tasks.Toast.Analyze do
     log_events: :string,
     log_exclude: :string,
     log_min_level: :string,
+    coredumps: :boolean,
+    threads: :string,
+    backtrace_frames: :integer,
     help: :boolean
   ]
 
@@ -171,11 +182,17 @@ defmodule Mix.Tasks.Toast.Analyze do
       excluded_ids: Logs.parse_exclude(opts[:log_exclude])
     }
 
+    bt_opts = %{
+      coredumps: Keyword.get(opts, :coredumps, true),
+      threads: parse_threads_opt(opts[:threads]),
+      max_frames: Keyword.get(opts, :backtrace_frames, 20)
+    }
+
     if selected == [] do
       Mix.shell().info(colorize("No matching issues.", :yellow, color))
     else
       Enum.each(selected, fn {issue, idx} ->
-        print_issue_detail(issue, idx, color, log_opts)
+        print_issue_detail(issue, idx, color, log_opts, bt_opts)
       end)
     end
   end
@@ -262,6 +279,39 @@ defmodule Mix.Tasks.Toast.Analyze do
       |> Enum.each(fn {sid, meta} ->
         print_server_info(sid, meta, color)
       end)
+    end)
+
+    # Coredump data
+    print_coredump_data(Map.get(result, :coredumps, []), color)
+  end
+
+  defp print_coredump_data([], _color), do: :ok
+
+  defp print_coredump_data(coredumps, color) do
+    Mix.shell().info("")
+    Mix.shell().info(colorize("  Coredumps (#{length(coredumps)}):", :bright, color))
+
+    Enum.each(coredumps, fn cd ->
+      threads = cd[:threads] || []
+      thread_count = length(threads)
+      debugger = if cd[:debugger], do: " (#{cd.debugger})", else: ""
+      Mix.shell().info("")
+
+      Mix.shell().info(
+        "    #{colorize("#{cd.server_id}", :red, color)}  #{cd.core_path}#{debugger}"
+      )
+
+      summary =
+        [
+          if(cd[:signal], do: "signal: #{cd.signal}"),
+          "#{thread_count} thread(s)",
+          if(cd[:faulting_address], do: "fault addr: #{cd.faulting_address}"),
+          if(cd[:crash_thread], do: "crash thread: #{cd.crash_thread}")
+        ]
+        |> Enum.reject(&is_nil/1)
+        |> Enum.join(", ")
+
+      Mix.shell().info("      #{summary}")
     end)
   end
 
@@ -369,11 +419,11 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   # --- Issue detail rendering ---
 
-  defp print_issue_detail(issue, idx, color, log_opts) do
+  defp print_issue_detail(issue, idx, color, log_opts, bt_opts) do
     bar = String.duplicate("─", 80)
     Mix.shell().info("\n#{colorize(bar, :faint, color)}")
     print_issue_header(issue, idx, color)
-    print_issue_body(issue, color)
+    print_issue_body(issue, color, bt_opts)
     if log_opts.enabled, do: print_issue_logs(issue, log_opts, color)
   end
 
@@ -403,7 +453,8 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   defp print_issue_body(
          %{type: :test_failure, detail: %{test: %ExUnit.Test{state: {:failed, failures}} = test}},
-         _color
+         _color,
+         _bt_opts
        ) do
     formatted =
       ExUnit.Formatter.format_test_failure(
@@ -419,7 +470,7 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   # --- Sanitizer report detail ---
 
-  defp print_issue_body(%{type: :sanitizer_report, detail: detail}, _color) do
+  defp print_issue_body(%{type: :sanitizer_report, detail: detail}, _color, _bt_opts) do
     if detail[:timestamp] do
       Mix.shell().info("  Time:   #{DateTime.to_iso8601(detail.timestamp)}")
     end
@@ -430,14 +481,14 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   # --- Crash detail ---
 
-  defp print_issue_body(%{type: :crash, detail: detail}, color) do
+  defp print_issue_body(%{type: :crash, detail: detail}, color, bt_opts) do
     print_crash_info(detail, color)
-    print_crash_backtrace(detail, color)
+    if bt_opts.coredumps, do: print_crash_backtrace(detail, color, bt_opts)
   end
 
   # --- Timeout detail ---
 
-  defp print_issue_body(%{type: :timeout, detail: detail}, color) do
+  defp print_issue_body(%{type: :timeout, detail: detail}, color, _bt_opts) do
     label = IssueFormatting.timeout_source_label(detail.source)
     Mix.shell().info("  #{colorize("[#{label}] #{detail.reason}", :red, color)}")
 
@@ -482,43 +533,172 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   defp print_crash_info(_detail, _color), do: :ok
 
-  defp format_signal(nil), do: nil
+  # With --threads: show crash_lines (if any) then thread backtraces
+  defp print_crash_backtrace(
+         %{coredumps: [coredump | _]} = detail,
+         color,
+         %{threads: mode} = bt_opts
+       )
+       when mode in [:relevant, :all] do
+    if is_binary(detail[:crash_lines]) do
+      Mix.shell().info("")
+      Mix.shell().info(detail.crash_lines)
+    end
 
-  defp format_signal(sig) do
-    case :exec.signal(sig) do
-      name when is_atom(name) ->
-        "signal: #{name |> Atom.to_string() |> String.upcase()} (#{sig})"
+    threads = coredump.threads || []
+    threads = if mode == :all, do: threads, else: filter_relevant_threads(threads, coredump)
 
-      _ ->
-        "signal: #{sig}"
+    if threads != [] do
+      Mix.shell().info("")
+
+      threads
+      |> Enum.intersperse(:separator)
+      |> Enum.each(fn
+        :separator -> Mix.shell().info("")
+        thread -> print_thread(thread, bt_opts.max_frames, color)
+      end)
     end
   end
 
-  defp print_crash_backtrace(%{coredumps: [coredump | _]}, _color) do
-    case coredump.threads do
-      [thread | _] ->
-        Mix.shell().info("")
-        Mix.shell().info(thread.backtrace)
-
-      _ ->
-        :ok
-    end
-  end
-
-  defp print_crash_backtrace(%{crash_lines: crash_lines}, _color) when is_binary(crash_lines) do
+  # Default (no --threads): match post-exec summary output
+  defp print_crash_backtrace(%{crash_lines: crash_lines}, _color, _bt_opts)
+       when is_binary(crash_lines) do
     Mix.shell().info("")
     Mix.shell().info(crash_lines)
   end
 
-  defp print_crash_backtrace(_detail, color) do
+  defp print_crash_backtrace(%{coredumps: [coredump | _]}, _color, _bt_opts) do
+    case IssueFormatting.format_coredump_backtrace(coredump) do
+      nil -> :ok
+      text -> Mix.shell().info("\n#{text}")
+    end
+  end
+
+  defp print_crash_backtrace(_detail, color, _bt_opts) do
     Mix.shell().info("  #{colorize("No crash details available.", :faint, color)}")
   end
 
-  defp timeout_source_label(:startup_timeout), do: "Startup Timeout"
-  defp timeout_source_label(:shutdown_timeout), do: "Shutdown Timeout"
-  defp timeout_source_label(:test_timeout), do: "Test Timeout"
-  defp timeout_source_label(:global_timeout), do: "Global Timeout"
-  defp timeout_source_label(other), do: "Timeout: #{other}"
+  defp print_thread(thread, max_frames, color) do
+    os_part = if thread[:os_id], do: " (LWP #{thread.os_id})", else: ""
+    header = "Thread #{thread.id}#{os_part}:"
+    Mix.shell().info(colorize(header, :blue, color))
+
+    frames = thread[:frames] || []
+    shown = Enum.take(frames, max_frames)
+    remaining = length(frames) - length(shown)
+
+    backtrace = Enrichment.Coredump.format_backtrace(shown)
+    Mix.shell().info(backtrace)
+    if remaining > 0, do: Mix.shell().info("  ... (#{remaining} more frames)")
+  end
+
+  # Idle thread detection for --threads relevant filtering.
+  #
+  # A thread is considered idle (irrelevant) if it's waiting for work
+  # rather than actively doing something.  The crash thread is always kept.
+  #
+  # Two categories:
+  # 1. Immediate idle — the function IS the blocking call (epoll, asio event wait).
+  #    Presence anywhere in the backtrace → thread is idle.
+  # 2. Conditional idle — thread pool / worker loops that are only idle when the
+  #    frame directly above them (closer to top of stack) is a condition wait.
+
+  @immediate_idle_functions [
+    "epoll_wait",
+    "boost::asio::detail::posix_event::wait"
+  ]
+
+  @cond_wait_patterns [
+    "pthread_cond_wait",
+    "pthread_cond_timedwait",
+    "pthread_cond_clockwait",
+    "std::condition_variable::wait_for"
+  ]
+
+  @idle_loop_functions [
+    # gdb unnamed symbol
+    "??",
+    "___lldb_unnamed_symbol",
+    "arangodb::application_features::ApplicationServer::wait",
+    "arangodb::async_registry::Feature::PromiseCleanupThread",
+    "arangodb::CacheRebalancerThread::run",
+    "arangodb::IOHeartbeatThread::run",
+    "arangodb::RocksDBBackgroundThread::run",
+    "arangodb::RocksDBIndexCacheRefillThread::run",
+    "arangodb::RocksDBSyncThread::run",
+    "arangodb::Scheduler::runCronThread",
+    "arangodb::StatisticsWorker::run",
+    "arangodb::SupervisedScheduler::getWork",
+    "arangodb::SupervisedScheduler::runSupervisor",
+    "arangodb::TtlThread::run",
+    "arangodb::V8DealerFeature::collectGarbage",
+    "background_thread_sleep",
+    "background_work_sleep_once",
+    "boost::asio::detail::scheduler::do_run_one",
+    "irs::async_utils::ThreadPool",
+    "rocksdb::ThreadPoolImpl::Impl::BGThread"
+  ]
+
+  @idle_loop_files [
+    "default-worker-threads-task-runner"
+  ]
+
+  defp filter_relevant_threads(threads, coredump) do
+    crash_id = coredump[:crash_thread]
+
+    kept =
+      Enum.reject(threads, fn thread ->
+        to_string(thread.id) != to_string(crash_id) and idle_thread?(thread[:frames] || [])
+      end)
+
+    # If nothing survived (e.g., no crash_thread set), keep at least the first thread.
+    if kept == [], do: Enum.take(threads, 1), else: kept
+  end
+
+  defp idle_thread?(frames) do
+    immediate_idle?(frames) or cond_wait_idle?(frames)
+  end
+
+  defp immediate_idle?(frames) do
+    # Use String.contains? because LLDB may inline functions into a single frame,
+    # e.g., "do_run_one(...) [inlined] posix_event::wait(...)".
+    Enum.any?(frames, fn frame ->
+      Enum.any?(@immediate_idle_functions, &String.contains?(frame.function, &1))
+    end)
+  end
+
+  defp cond_wait_idle?(frames) do
+    # Check consecutive frame pairs [inner (closer to top), outer (closer to bottom)].
+    # If inner is a cond_wait and outer is an idle loop → thread is idle.
+    # Use String.contains? because LLDB includes argument lists in function names
+    # and may inline multiple functions into a single frame.
+    frames
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.any?(fn [inner, outer] ->
+      cond_wait_frame?(inner) and idle_loop_frame?(outer)
+    end)
+  end
+
+  defp cond_wait_frame?(frame) do
+    Enum.any?(@cond_wait_patterns, &String.contains?(frame.function, &1))
+  end
+
+  defp idle_loop_frame?(frame) do
+    Enum.any?(@idle_loop_functions, &String.contains?(frame.function, &1)) or
+      (frame[:file] != nil and
+         Enum.any?(@idle_loop_files, &String.contains?(frame.file, &1)))
+  end
+
+  @valid_threads %{"relevant" => :relevant, "all" => :all}
+
+  defp parse_threads_opt(nil), do: nil
+
+  defp parse_threads_opt(value) do
+    Map.get(@valid_threads, value) ||
+      Mix.raise(
+        "Unknown --threads value: #{value}. Valid: #{@valid_threads |> Map.keys() |> Enum.join(", ")}"
+      )
+  end
 
   @valid_event_details %{"none" => :none, "basic" => :basic, "full" => :full}
 
@@ -677,6 +857,7 @@ defmodule Mix.Tasks.Toast.Analyze do
       all_servers = flatten_servers(result.deployments)
       deployments = Map.get(result, :deployments, %{})
       events = Map.get(result, :events, [])
+      coredump_index = IssueFormatting.build_coredump_index(Map.get(result, :coredumps, []))
 
       result.issues
       |> Enum.map(&Map.put(&1, :suite, result.suite))
@@ -684,6 +865,7 @@ defmodule Mix.Tasks.Toast.Analyze do
       |> Enum.map(&Map.put(&1, :servers, all_servers))
       |> Enum.map(&Map.put(&1, :deployments, deployments))
       |> Enum.map(&Map.put(&1, :events, events))
+      |> then(&IssueFormatting.resolve_coredumps(&1, coredump_index))
     end)
     |> apply_filters(opts)
   end
