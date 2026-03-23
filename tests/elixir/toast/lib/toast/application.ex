@@ -8,6 +8,7 @@ defmodule Toast.Application do
   @impl true
   def start(_type, _args) do
     setup_file_logger()
+    Toast.Deployment.init_counter()
 
     Logger.info("Starting Toast 🍞")
 

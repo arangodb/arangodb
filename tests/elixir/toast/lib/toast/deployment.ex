@@ -122,8 +122,22 @@ defmodule Toast.Deployment do
   defp build_specs(:cluster, config, id),
     do: Toast.Deployment.Factory.build_cluster(config, id)
 
-  defp generate_id(:single_server), do: "toast-#{System.unique_integer([:positive])}"
-  defp generate_id(:cluster), do: "toast-cluster-#{System.unique_integer([:positive])}"
+  defp generate_id(:single_server), do: "toast-#{next_deployment_number()}"
+  defp generate_id(:cluster), do: "toast-cluster-#{next_deployment_number()}"
+
+  @counter_key {__MODULE__, :deployment_counter}
+
+  @doc false
+  def init_counter do
+    ref = :atomics.new(1, signed: true)
+    :persistent_term.put(@counter_key, ref)
+    :ok
+  end
+
+  defp next_deployment_number do
+    n = :atomics.add_get(:persistent_term.get(@counter_key), 1, 1) - 1
+    String.pad_leading(Integer.to_string(n), 2, "0")
+  end
 
   @doc """
   Abort all running deployments by sending SIGABRT to every server.
