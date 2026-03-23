@@ -209,12 +209,11 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
           .database = _vocbase.name(),           //
           .user = _user,                         //
           .queryString = _queryString.string(),  //
-          .options = std::invoke(
-              [&options]() -> std::optional<velocypack::SharedSlice> {
-                auto builder = VPackBuilder();
-                options.toVelocyPack(builder, true);
-                return builder.sharedSlice();
-              }),
+          .options = std::invoke([&options]() -> velocypack::SharedSlice {
+            auto builder = VPackBuilder();
+            options.toVelocyPack(builder, true);
+            return builder.sharedSlice();
+          }),
           .bindParameters =
               std::invoke([this]() -> std::optional<velocypack::SharedSlice> {
                 if (_bindParameters.builder() != nullptr) {
