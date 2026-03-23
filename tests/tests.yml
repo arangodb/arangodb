@@ -391,6 +391,7 @@
       size: small
       type: cluster
       buckets: 6
+      size: 2xlarge
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
