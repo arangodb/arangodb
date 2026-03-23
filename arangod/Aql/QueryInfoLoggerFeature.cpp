@@ -550,7 +550,8 @@ void QueryInfoLoggerFeature::collectOptions(
           options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                     options::Flags::OnCoordinator,
                                     options::Flags::OnSingle))
-      .setIntroducedIn(31202) setLongDescription(
+      .setIntroducedIn(31202)
+      .setLongDescription(
           R"(A value of `100` logs all queries, whereas a value of `1`
 approximately logs every 100th query and ignores the rest. The minimum value
 is `0` and means no logging.)");
