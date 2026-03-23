@@ -55,7 +55,7 @@ struct GuardedActivity : Activity {
     ActivityId id;
     std::optional<ActivityId> parent;
     ActivityType type;
-    ActivityStart start;
+    ActivityCreated created;
     Data data;
 
     template<typename Inspector>
@@ -64,7 +64,7 @@ struct GuardedActivity : Activity {
           f.field("id", s.id),          //
           f.field("parent", s.parent),  //
           f.field("type", s.type),      //
-          f.field("start", s.start)
+          f.field("created", s.created)
               .transformWith(inspection::TimeStampTransformer{}),  //
           f.field("data", s.data));
     }
@@ -74,7 +74,7 @@ struct GuardedActivity : Activity {
     auto snap = Snapshot{.id = id(),            //
                          .parent = parentId(),  //
                          .type = type(),        //
-                         .start = start(),      //
+                         .created = created(),  //
                          .data = _data.copy()};
     auto inspector = inspection::VPackSaveInspector<>(builder);
     return inspector.apply(snap);

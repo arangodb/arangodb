@@ -24,5 +24,5 @@
 #include <chrono>
 
 namespace arangodb::activities {
-using ActivityStart = std::chrono::time_point<std::chrono::system_clock>;
+using ActivityCreated = std::chrono::time_point<std::chrono::system_clock>;
 }
