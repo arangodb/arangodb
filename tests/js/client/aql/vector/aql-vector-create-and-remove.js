@@ -30,6 +30,7 @@ const errors = internal.errors;
 const db = require("internal").db;
 const {
     randomNumberGeneratorFloat,
+    randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,

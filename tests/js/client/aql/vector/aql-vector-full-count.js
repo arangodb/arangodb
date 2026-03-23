@@ -31,6 +31,7 @@ const aql = arangodb.aql;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
+    randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,

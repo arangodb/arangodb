@@ -35,6 +35,7 @@ const {
 } = require("@arangodb/test-helper");
 const {
     randomNumberGeneratorFloat,
+    randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
     VectorIndexTrainingState,

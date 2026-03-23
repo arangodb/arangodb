@@ -29,6 +29,7 @@ const jsunity = require("jsunity");
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
+    randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,
