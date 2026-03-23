@@ -44,6 +44,7 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -124,6 +125,36 @@ async<void> ClusterQuery::prepareFromVelocyPack(
     velocypack::Builder& answerBuilder,
     QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
+
+  velocypack::Builder b;
+  {
+    b.clear();
+    b.add(querySlice);
+    _activity->setQuerySlice(b.sharedSlice());
+  }
+  {
+    b.clear();
+    b.add(collections);
+    _activity->setCollections(b.sharedSlice());
+  }
+  {
+    b.clear();
+    b.add(variables);
+    _activity->setVariables(b.sharedSlice());
+  }
+  {
+    b.clear();
+    b.add(snippets);
+    _activity->setSnippets(b.sharedSlice());
+  }
+  {
+    b.clear();
+    b.add(traverserSlice);
+    _activity->setTraverserEngines(b.sharedSlice());
+  }
+  {
+    _activity->setFastPathLocking(fastPathLocking);
+  }
 
   LOG_TOPIC("45493", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)

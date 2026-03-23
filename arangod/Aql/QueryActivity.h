@@ -40,20 +40,34 @@ struct AqlQueryActivityData {
   std::optional<std::string> queryString;
   std::optional<velocypack::SharedSlice> options;
   std::optional<velocypack::SharedSlice> bindParameters;
-  std::vector<std::string> dataSources;
   std::optional<velocypack::SharedSlice> plan;
+  // These are only set in ClusterQuery.
+  // TODO: pry apart Query and ClusterQuery to have dedicated
+  // activities for them
+  std::optional<velocypack::SharedSlice> querySlice;
+  std::optional<velocypack::SharedSlice> collections;
+  std::optional<velocypack::SharedSlice> variables;
+  std::optional<velocypack::SharedSlice> snippets;
+  std::optional<velocypack::SharedSlice> traverserEngines;
+  std::optional<bool> fastPathLocking;
 
   template<typename Inspector>
   inline friend auto inspect(Inspector& f, AqlQueryActivityData& d) {
-    return f.object(d).fields(f.field("queryId", d.id),                     //
-                              f.field("startTime", d.startTime),            //
-                              f.field("database", d.database),              //
-                              f.field("user", d.user),                      //
-                              f.field("queryString", d.queryString),        //
-                              f.field("options", d.options),                //
-                              f.field("bindParameters", d.bindParameters),  //
-                              f.field("dataSources", d.dataSources),        //
-                              f.field("plan", d.plan));
+    return f.object(d).fields(
+        f.field("queryId", d.id),                         //
+        f.field("startTime", d.startTime),                //
+        f.field("database", d.database),                  //
+        f.field("user", d.user),                          //
+        f.field("queryString", d.queryString),            //
+        f.field("options", d.options),                    //
+        f.field("bindParameters", d.bindParameters),      //
+        f.field("plan", d.plan),                          //
+        f.field("querySlice", d.querySlice),              //
+        f.field("collections", d.collections),            //
+        f.field("variables", d.variables),                //
+        f.field("snippets", d.snippets),                  //
+        f.field("traverserEngines", d.traverserEngines),  //
+        f.field("fastPathLocking", d.fastPathLocking));
   }
 };
 
@@ -65,22 +79,28 @@ struct AqlQueryActivity
             id, parent, "AQLQuery", std::move(data)) {}
   using Data = AqlQueryActivityData;
 
-  auto setPlanSlice(velocypack::SharedSlice plan) {
-    _data.getLockedGuard()->plan = plan;
+  auto setPlanSlice(velocypack::SharedSlice slice) {
+    _data.getLockedGuard()->plan = std::move(slice);
   }
+  auto setQuerySlice(velocypack::SharedSlice slice) {
+    _data.getLockedGuard()->querySlice = std::move(slice);
+  }
+  auto setCollections(velocypack::SharedSlice slice) {
+    _data.getLockedGuard()->collections = std::move(slice);
+  }
+  auto setVariables(velocypack::SharedSlice slice) {
+    _data.getLockedGuard()->variables = std::move(slice);
+  }
+  auto setSnippets(velocypack::SharedSlice slice) {
+    _data.getLockedGuard()->snippets = std::move(slice);
+  }
+  auto setTraverserEngines(velocypack::SharedSlice slice) {
+    _data.getLockedGuard()->traverserEngines = std::move(slice);
+  }
+  auto setFastPathLocking(bool locking) {
+    _data.getLockedGuard()->fastPathLocking = locking;
+  }
+
+  auto setUser(std::string user) { _data.getLockedGuard()->user = user; }
 };
 }  // namespace arangodb::aql::query_activity
-
-#if 0
-            AqlQueryActivityData{
-                .id = queryId,
-                .startTime = startTime,
-                .queryString = queryString,
-                .options = std::invoke(
-                    [&options]() -> std::optional<velocypack::SharedSlice> {
-                      auto builder = VPackBuilder();
-                      options.toVelocyPack(builder, true);
-                      return builder.sharedSlice();
-                    }),
-                .bindParameters = bindParameters.builder()->sharedSlice()})
-#endif
