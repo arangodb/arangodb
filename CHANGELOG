@@ -1,5 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
+  `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
+  `/_admin/wal/transactions`.
+
 * Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
   `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
 
