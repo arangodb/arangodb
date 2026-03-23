@@ -41,7 +41,9 @@ defmodule ToastTest.IssueFormatting do
     [
       format_attribution(scope, detail[:server]),
       format_crash_info(detail),
-      format_crash_detail(detail)
+      format_crash_detail(detail),
+      format_coredump_path(detail),
+      format_log_path(detail)
     ]
     |> Toast.Utils.compact_join("\n")
   end
@@ -61,29 +63,16 @@ defmodule ToastTest.IssueFormatting do
 
   def format_crash_info(_), do: nil
 
-  def format_crash_detail(%{crash_lines: crash_lines} = detail)
+  def format_crash_detail(%{crash_lines: crash_lines})
       when is_binary(crash_lines) do
-    [
-      truncate(crash_lines, @max_crash_log_lines),
-      format_first_coredump_path(detail),
-      format_log_path(detail)
-    ]
-    |> Toast.Utils.compact_join("\n")
+    truncate(crash_lines, @max_crash_log_lines)
   end
 
-  def format_crash_detail(%{coredumps: [coredump | _]} = detail) do
-    [
-      format_coredump_backtrace(coredump),
-      format_coredump_path(coredump),
-      format_log_path(detail)
-    ]
-    |> Toast.Utils.compact_join("\n")
+  def format_crash_detail(%{coredumps: [coredump | _]}) do
+    format_coredump_backtrace(coredump)
   end
 
-  def format_crash_detail(detail) when is_map(detail) do
-    ["No crash details available.", format_log_path(detail)]
-    |> Toast.Utils.compact_join("\n")
-  end
+  def format_crash_detail(_detail), do: nil
 
   # --- Timeout ---
 
@@ -176,12 +165,8 @@ defmodule ToastTest.IssueFormatting do
   def format_coredump_backtrace(_), do: nil
 
   def format_coredump_path(%{core_path: path}) when is_binary(path), do: "Coredump: #{path}"
+  def format_coredump_path(%{coredumps: [coredump | _]}), do: format_coredump_path(coredump)
   def format_coredump_path(_), do: nil
-
-  def format_first_coredump_path(%{coredumps: [%{core_path: path} | _]}) when is_binary(path),
-    do: "Coredump: #{path}"
-
-  def format_first_coredump_path(_), do: nil
 
   def format_log_path(%{log_file: path}) when is_binary(path), do: "Log: #{path}"
   def format_log_path(_), do: nil

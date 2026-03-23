@@ -10,62 +10,65 @@ defmodule ToastTest.ExUnitCompat do
   # Specs document intent but wrap ExUnit internal APIs that dialyzer can't verify.
   @dialyzer [:no_contracts]
 
-  @spec start_event_manager() :: {:ok, pid()}
+  @typedoc "Opaque handle returned by ExUnit.EventManager — currently a {sup, manager} pid tuple."
+  @type event_manager :: {pid(), pid()}
+
+  @spec start_event_manager() :: {:ok, event_manager()}
   def start_event_manager do
     ExUnit.EventManager.start_link()
   end
 
-  @spec add_runner_stats(pid(), keyword()) :: {:ok, pid()}
+  @spec add_runner_stats(event_manager(), keyword()) :: {:ok, pid()}
   def add_runner_stats(manager, opts) do
     ExUnit.EventManager.add_handler(manager, ExUnit.RunnerStats, opts)
   end
 
-  @spec add_formatter(pid(), module(), keyword()) :: {:ok, pid()}
+  @spec add_formatter(event_manager(), module(), keyword()) :: {:ok, pid()}
   def add_formatter(manager, formatter, opts) do
     ExUnit.EventManager.add_handler(manager, formatter, opts)
   end
 
-  @spec suite_started(pid(), keyword()) :: :ok
+  @spec suite_started(event_manager(), keyword()) :: :ok
   def suite_started(manager, opts) do
     ExUnit.EventManager.suite_started(manager, opts)
   end
 
-  @spec suite_finished(pid(), map()) :: :ok
+  @spec suite_finished(event_manager(), map()) :: :ok
   def suite_finished(manager, times_us) do
     ExUnit.EventManager.suite_finished(manager, times_us)
   end
 
-  @spec module_started(pid(), ExUnit.TestModule.t()) :: :ok
+  @spec module_started(event_manager(), ExUnit.TestModule.t()) :: :ok
   def module_started(manager, test_module) do
     ExUnit.EventManager.module_started(manager, test_module)
   end
 
-  @spec module_finished(pid(), ExUnit.TestModule.t()) :: :ok
+  @spec module_finished(event_manager(), ExUnit.TestModule.t()) :: :ok
   def module_finished(manager, test_module) do
     ExUnit.EventManager.module_finished(manager, test_module)
   end
 
-  @spec test_started(pid(), ExUnit.Test.t()) :: :ok
+  @spec test_started(event_manager(), ExUnit.Test.t()) :: :ok
   def test_started(manager, test) do
     ExUnit.EventManager.test_started(manager, test)
   end
 
-  @spec test_finished(pid(), ExUnit.Test.t()) :: :ok
+  @spec test_finished(event_manager(), ExUnit.Test.t()) :: :ok
   def test_finished(manager, test) do
     ExUnit.EventManager.test_finished(manager, test)
   end
 
-  @spec max_failures_reached(pid()) :: :ok
+  @spec max_failures_reached(event_manager()) :: :ok
   def max_failures_reached(manager) do
     ExUnit.EventManager.max_failures_reached(manager)
   end
 
-  @spec sigquit(pid(), term()) :: :ok
+  @spec sigquit(event_manager(), term()) :: :ok
   def sigquit(manager, current) do
     ExUnit.EventManager.sigquit(manager, current)
   end
 
-  @spec stop(pid()) :: :ok
+  @spec stop(event_manager()) :: :ok
   def stop(manager) do
     ExUnit.EventManager.stop(manager)
   end

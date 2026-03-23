@@ -35,7 +35,7 @@ defmodule ToastTest.Runner do
             capture_log: boolean() | nil,
             exclude: [term()] | nil,
             include: [term()] | nil,
-            manager: pid(),
+            manager: ToastTest.ExUnitCompat.event_manager(),
             max_failures: non_neg_integer() | :infinity | nil,
             only_test_ids: MapSet.t() | nil,
             result_collector_pid: pid(),

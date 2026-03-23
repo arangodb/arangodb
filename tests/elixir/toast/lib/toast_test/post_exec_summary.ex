@@ -8,7 +8,9 @@ defmodule ToastTest.PostExecSummary do
   @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :timeout]
 
   @spec print(SuiteResult.t()) :: :ok
-  def print(%SuiteResult{issues: issues, warnings: warnings}) do
+  def print(%SuiteResult{issues: issues, warnings: warnings} = result) do
+    index = IssueFormatting.build_coredump_index(result.coredumps)
+    issues = IssueFormatting.resolve_coredumps(issues, index)
     print_issues(issues)
     print_warnings(warnings)
     :ok
@@ -149,25 +151,18 @@ defmodule ToastTest.PostExecSummary do
   # Prefer the crash log output over the coredump backtrace — the log
   # captures the original CPU context from the signal handler, which may
   # differ from the coredump (see killProcess / SA_RESETHAND re-raise).
-  defp print_crash_detail(%{crash_lines: crash_lines} = detail, _colors)
-       when is_binary(crash_lines) do
-    IssueFormatting.format_crash_detail(detail)
-    |> print_indented("    ")
-  end
-
-  defp print_crash_detail(%{coredumps: [_ | _]} = detail, _colors) do
-    IssueFormatting.format_crash_detail(detail)
-    |> print_indented("    ")
-  end
-
   defp print_crash_detail(detail, colors) do
-    IO.puts("    #{colorize("No crash details available.", :faint, colors)}")
-
-    case IssueFormatting.format_log_path(detail) do
-      nil -> :ok
-      text -> IO.puts(IO.ANSI.format([:blue, "    #{text}", :reset]))
+    case IssueFormatting.format_crash_detail(detail) do
+      nil -> IO.puts("    #{colorize("No crash details available.", :faint, colors)}")
+      text -> print_indented(text, "    ")
     end
+
+    print_blue(IssueFormatting.format_coredump_path(detail))
+    print_blue(IssueFormatting.format_log_path(detail))
   end
+
+  defp print_blue(nil), do: :ok
+  defp print_blue(text), do: IO.puts(IO.ANSI.format([:blue, "    #{text}", :reset]))
 
   # --- Attribution ---
 
@@ -179,8 +174,6 @@ defmodule ToastTest.PostExecSummary do
   end
 
   # --- Helpers ---
-
-  defp print_indented(nil, _prefix), do: :ok
 
   defp print_indented(text, prefix) do
     text
