@@ -37,40 +37,10 @@ function IndexInBackgroundFailuresSuite () {
   const cn = "UnitTestsCollection";
   let collection = null;
   
-  let run = function(insertData, getRanges) {
-    const start = internal.time();
-
-    let maxArchivedLogNumber = null;
-    let ranges = getRanges();
-    if (ranges.length) {
-      maxArchivedLogNumber = ranges[ranges.length - 1];
-    }
-
-    let timeout = 600;
-    if (isInstrumented) {
-      timeout *= 20;
-    }
-
-    let newFiles = 0;
-    while (true) {
+  let run = function(insertData) {
+    for (let i = 0; i < 8; ++i) {
       insertData();
-    
-      let ranges = getRanges();
-      if (ranges.length) {
-        let max = ranges[ranges.length - 1];
-        if (maxArchivedLogNumber === null || max > maxArchivedLogNumber) {
-          maxArchivedLogNumber = max;
-          ++newFiles;
-          require("console").warn("new WAL files:", newFiles, ranges);
-        }
-      }
-
-      if (newFiles >= 8) {
-        // if we have at least 8 new WAL files, we have enough
-        break;
-      }
-
-      assertFalse(internal.time() - start > timeout, "time's up for this test!");
+      internal.wal.flush(true, false);
     }
   };
 
@@ -122,20 +92,12 @@ function IndexInBackgroundFailuresSuite () {
       assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
       const id = res.headers["x-arango-async-id"];
       
-      let getRanges = function() {
-        return require("@arangodb/replication").logger.tickRanges().filter(function(r) {
-          return r.status === 'collected';
-        }).map(function(r) {
-          return parseInt(r.datafile.replace(/^.*?(\d+)\.log$/, "$1"));
-        });
-      };
-      
       let insertData = function() {
         collection.insert(docs);
       };
 
       // insert new documents into the WAL that the index creation could miss
-      run(insertData, getRanges);
+      run(insertData);
 
       // resume index creation
       IM.debugClearFailAt();

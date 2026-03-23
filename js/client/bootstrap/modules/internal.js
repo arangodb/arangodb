@@ -98,10 +98,6 @@
       var wfs = waitForSync ? 'true' : 'false';
       var wfc = waitForCollector ? 'true' : 'false';
       exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
-    },
-
-    transactions: function () {
-      return exports.arango.GET('/_admin/wal/transactions', null);
     }
   };
   

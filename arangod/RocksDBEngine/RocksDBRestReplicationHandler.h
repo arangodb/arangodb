@@ -42,10 +42,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   }
 
  private:
-  /// @brief handle the command to determine the transactions that were open
-  /// at a certain point in time
-  void handleCommandDetermineOpenTransactions() override;
-
   /// @brief handle a batch command
   futures::Future<futures::Unit> handleCommandBatch() override;
 
