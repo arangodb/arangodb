@@ -93,7 +93,8 @@ defmodule Mix.Tasks.Toast do
     replication_factor: :integer,
     test: :string,
     no_agency_dump: :boolean,
-    ci: :boolean
+    ci: :boolean,
+    help: :boolean
   ]
 
   @aliases [
@@ -107,21 +108,29 @@ defmodule Mix.Tasks.Toast do
   def run(args) do
     {opts, args_rest} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
-    unless opts[:compile] == false do
-      Mix.Task.run("compile", [])
+    if opts[:help] or args_rest == ["help"] do
+      print_help()
+    else
+      unless opts[:compile] == false do
+        Mix.Task.run("compile", [])
+      end
+
+      unless opts[:start] == false do
+        Mix.Task.run("app.start", [])
+      end
+
+      Application.ensure_all_started(:ex_unit)
+
+      ex_unit_opts = Helpers.process_opts(opts)
+      ExUnit.configure(ex_unit_opts)
+
+      suites_dir = Path.join(File.cwd!(), "suites")
+      run_suite_mode(args_rest, opts, ex_unit_opts, suites_dir)
     end
+  end
 
-    unless opts[:start] == false do
-      Mix.Task.run("app.start", [])
-    end
-
-    Application.ensure_all_started(:ex_unit)
-
-    ex_unit_opts = Helpers.process_opts(opts)
-    ExUnit.configure(ex_unit_opts)
-
-    suites_dir = Path.join(File.cwd!(), "suites")
-    run_suite_mode(args_rest, opts, ex_unit_opts, suites_dir)
+  defp print_help do
+    Mix.shell().info(@moduledoc)
   end
 
   defp run_suite_mode(args, opts, ex_unit_opts, suites_dir) do
