@@ -113,7 +113,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
     test "role from metadata takes precedence over server ID" do
       filter = [{:role, :single}]
-      assert Logs.server_matches?("toast-670", filter, :single)
+      assert Logs.server_matches?("single-00", filter, :single)
     end
   end
 
@@ -189,7 +189,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     end
 
     test "unconventional name with role from metadata" do
-      assert Logs.server_tag("toast-670", :single) == "SNG670"
+      assert Logs.server_tag("single-00", :single) == "SNG00"
     end
   end
 
@@ -323,15 +323,15 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   describe "server_tag/2 with hyphenated IDs" do
     test "coordinator with cluster prefix" do
-      assert Logs.server_tag("toast-cluster-643-coordinator-0", :coordinator) == "CO0"
+      assert Logs.server_tag("cluster-00-coordinator-0", :coordinator) == "CO0"
     end
 
     test "dbserver with cluster prefix" do
-      assert Logs.server_tag("toast-cluster-643-dbserver-2", :dbserver) == "DB2"
+      assert Logs.server_tag("cluster-00-dbserver-2", :dbserver) == "DB2"
     end
 
     test "agent with cluster prefix" do
-      assert Logs.server_tag("toast-cluster-643-agent-1", :agent) == "AG1"
+      assert Logs.server_tag("cluster-00-agent-1", :agent) == "AG1"
     end
   end
 

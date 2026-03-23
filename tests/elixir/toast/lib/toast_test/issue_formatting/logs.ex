@@ -430,7 +430,7 @@ defmodule ToastTest.IssueFormatting.Logs do
   # --- Private helpers ---
 
   # Extract trailing digits from a server ID as the instance number string.
-  # "toast-cluster-31-coordinator-0" -> "0", "toast-670" -> "670", "single" -> ""
+  # "cluster-00-coordinator-0" -> "0", "single-00" -> "00", "single" -> ""
   defp extract_instance_num(server_id) do
     case Regex.run(~r/(\d+)$/, server_id) do
       [_, num] -> num

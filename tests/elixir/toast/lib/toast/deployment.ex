@@ -122,8 +122,8 @@ defmodule Toast.Deployment do
   defp build_specs(:cluster, config, id),
     do: Toast.Deployment.Factory.build_cluster(config, id)
 
-  defp generate_id(:single_server), do: "toast-#{next_deployment_number()}"
-  defp generate_id(:cluster), do: "toast-cluster-#{next_deployment_number()}"
+  defp generate_id(:single_server), do: "single-#{next_deployment_number()}"
+  defp generate_id(:cluster), do: "cluster-#{next_deployment_number()}"
 
   @counter_key {__MODULE__, :deployment_counter}
 
