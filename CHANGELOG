@@ -2,6 +2,8 @@
 ------------------
 * COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
 
+* Removed leftover range() method from collection objects in JavaScript API
+
 * Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
   `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
 

@@ -1494,7 +1494,7 @@ function testSuite() {
       });
     },
     
-    testHasMetricsWhenUsingJavaScriptReadTrx : function () {
+    testHasMetricsWhenUsingStreamingReadTrx : function () {
       const cn = getUniqueCollectionName();
 
       let c = db._create(cn, {numberOfShards: 3, replicationFactor: 1});
@@ -1506,21 +1506,20 @@ function testSuite() {
 
         db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i)} INTO ${cn}`);
 
-        db._executeTransaction({ 
-          collections: { write: cn }, 
-          params: { cn, n }, 
-          action: (params) => {
-            let db = require("internal").db;
-            let c = db._collection(params.cn);
-
-            for (let i = 0; i < params.n; ++i) {
-              c.document("test" + i);
-            }
+        const trx = db._createTransaction({ collections: { read: [cn] } });
+        try {
+          const tc = trx.collection(cn);
+          for (let i = 0; i < n; ++i) {
+            tc.document("test" + i);
           }
-        });
+          trx.commit();
+        } catch (err) {
+          trx.abort();
+          throw err;
+        }
 
         let parsed = getParsedMetrics(db._name(), cn);
-          
+
         let totalWritten = 0;
         let totalRead = 0;
         shards.forEach((shard) => {
@@ -1529,34 +1528,32 @@ function testSuite() {
         });
         assertTrue(totalWritten > n * 20, {parsed, totalWritten});
         assertTrue(totalWritten < n * 40, {parsed, totalWritten});
-        
+
         assertTrue(totalRead > n * 20, {parsed, totalWritten});
         assertTrue(totalRead < n * 40, {parsed, totalWritten});
       } finally {
         db._drop(cn);
-      } 
+      }
     },
     
-    testHasMetricsWhenUsingJavaScriptWriteTrx : function () {
+    testHasMetricsWhenUsingStreamingWriteTrx : function () {
       [1, 2].forEach((replicationFactor) => {
         const cn = getUniqueCollectionName();
 
         let c = db._create(cn, {numberOfShards: 3, replicationFactor});
         try {
-
           const n = 50;
-          db._executeTransaction({ 
-            collections: { write: cn }, 
-            params: { cn, n }, 
-            action: (params) => {
-              let db = require("internal").db;
-              let c = db._collection(params.cn);
-
-              for (let i = 0; i < params.n; ++i) {
-                c.insert({ value: i });
-              }
+          const trx = db._createTransaction({ collections: { write: [cn] } });
+          try {
+            const tc = trx.collection(cn);
+            for (let i = 0; i < n; ++i) {
+              tc.insert({ value: i });
             }
-          });
+            trx.commit();
+          } catch (err) {
+            trx.abort();
+            throw err;
+          }
 
           assertTotalWriteMetricsAreCounted(c, replicationFactor, n * 40, n * 50);
         } finally {
