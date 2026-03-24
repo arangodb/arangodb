@@ -102,7 +102,7 @@ function rtaMakeCheckDataSuite() {
         console.topic("replication=debug", "follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
         break;
       }
-      
+
       if (!printed) {
         console.topic("replication=debug", "waiting for follower to catch up");
         printed = true;
@@ -137,6 +137,7 @@ function rtaMakeCheckDataSuite() {
     testMakeDataLeader: function () {
       IM.endpoint = IM.arangods[0].endpoint;
       runRTAMakeCheckData(0, "creating data on leader");
+      checkReplicationCatchup();
     },
     testCheckDataLeader: function () {
       IM.endpoint = IM.arangods[0].endpoint;

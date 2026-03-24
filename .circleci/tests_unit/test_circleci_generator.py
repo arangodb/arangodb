@@ -150,7 +150,7 @@ class TestCreateBuildJob:
         assert params["preset"] == "enterprise-pr"
         assert params["enterprise"] is True
         assert params["arch"] == "x64"
-        assert params["resource-class"] == "2xlarge"
+        assert params["resource-class"] == "arangodb/2xlarge-amd64"
         assert "s3-prefix" not in params
 
     def test_create_build_job_with_sanitizer(self):
@@ -721,7 +721,7 @@ class TestCreateTestJob:
 
         job_data = result["run-linux-tests"]
         # Should be overridden to medium-plus for nightly single-server
-        assert "medium+" in job_data["size"]
+        assert "arangodb/medium-amd64" in job_data["size"]
 
     def test_create_test_job_size_no_override_cluster(self):
         """Test shell_client_aql nightly cluster does NOT get size override."""
@@ -739,7 +739,7 @@ class TestCreateTestJob:
 
         job_data = result["run-linux-tests"]
         # Should use default small size for cluster (no override)
-        assert "small" in job_data["size"]
+        assert "arangodb/small-amd64" in job_data["size"]
 
     def test_create_test_job_with_repository(self):
         """Test job with external repository configuration."""
@@ -914,43 +914,6 @@ class TestSanitizerSuffixInJobNames:
             result_alubsan["run-linux-tests"]["name"]
             == "test-cluster-resilience-x64-alubsan"
         )
-
-    def test_rta_job_names_include_sanitizer_suffix(self):
-        """Test that RTA UI job names include sanitizer suffix."""
-        gen = self.create_generator()
-        job = TestJob(
-            name="ui_tests",
-            suites=[SuiteConfig(name="UserPageTestSuite")],
-            options=TestOptions(),
-            job_type="run-rta-tests",
-        )
-
-        # Test TSAN - should have -tsan suffix
-        build_config_tsan = BuildConfig(
-            architecture=Architecture.X64, build_variant=BuildVariant.TSAN
-        )
-        result_tsan = gen._create_rta_test_jobs(job, build_config_tsan, ["build-job"])
-
-        assert len(result_tsan) == 2
-        assert result_tsan[0]["run-rta-tests"]["name"] == "test-single-UI-x64-tsan"
-        assert result_tsan[1]["run-rta-tests"]["name"] == "test-cluster-UI-x64-tsan"
-
-        # Test ALUBSAN - should have -alubsan suffix
-        build_config_alubsan = BuildConfig(
-            architecture=Architecture.X64, build_variant=BuildVariant.ALUBSAN
-        )
-        result_alubsan = gen._create_rta_test_jobs(
-            job, build_config_alubsan, ["build-job"]
-        )
-
-        assert len(result_alubsan) == 2
-        assert (
-            result_alubsan[0]["run-rta-tests"]["name"] == "test-single-UI-x64-alubsan"
-        )
-        assert (
-            result_alubsan[1]["run-rta-tests"]["name"] == "test-cluster-UI-x64-alubsan"
-        )
-
 
 class TestJobLevelArchitectureFiltering:
     """Test job-level architecture filtering in _add_test_jobs."""

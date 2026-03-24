@@ -11,7 +11,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
 
-const fixtureDir = internal.pathForTesting('fixtures/legacy-geo/dump', '');
+const fixtureDir = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data/legacy-geo/dump'));
 
 const dbName = 'LegacyGeoFixtureDB';
 const cn = 'places';
