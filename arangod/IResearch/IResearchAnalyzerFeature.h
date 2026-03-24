@@ -286,7 +286,7 @@ class IResearchAnalyzerFeature final
   /// @param level access level
   /// @return analyzers in the specified vocbase are granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(TRI_vocbase_t const& vocbase, auth::Level const& level);
+  static bool canUse(TRI_vocbase_t const& vocbase, AccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions for analyzer usage from vocbase by name
@@ -295,7 +295,7 @@ class IResearchAnalyzerFeature final
   /// @return analyzers in the specified vocbase are granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
   static bool canUseVocbase(std::string_view vocbaseName,
-                            auth::Level const& level);
+                            AccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
@@ -304,7 +304,7 @@ class IResearchAnalyzerFeature final
   /// @return analyzer with the given prefixed name (or unprefixed and resides
   ///         in defaultVocbase) is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(std::string_view name, auth::Level const& level);
+  static bool canUse(std::string_view name, AccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create new analyzer pool

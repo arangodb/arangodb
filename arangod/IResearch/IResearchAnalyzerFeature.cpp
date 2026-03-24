@@ -1137,7 +1137,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
 }
 
 bool IResearchAnalyzerFeature::canUseVocbase(std::string_view vocbaseName,
-                                             auth::Level const& level) {
+                                             AccessLevel const& level) {
   TRI_ASSERT(!vocbaseName.empty());
   auto& ctx = ExecContext::current();
   auto const nameStr = static_cast<std::string>(vocbaseName);
@@ -1148,12 +1148,12 @@ bool IResearchAnalyzerFeature::canUseVocbase(std::string_view vocbaseName,
 }
 
 bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
-                                      auth::Level const& level) {
+                                      AccessLevel const& level) {
   return canUseVocbase(vocbase.name(), level);
 }
 
 bool IResearchAnalyzerFeature::canUse(std::string_view name,
-                                      auth::Level const& level) {
+                                      AccessLevel const& level) {
   auto& staticAnalyzers = getStaticAnalyzers();
 
   if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
@@ -2059,14 +2059,15 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
     return {};
   }
   Result res{};
-  if (canUseVocbase(dbName, auth::Level::RO)) {
+  if (canUseVocbase(dbName, AccessLevel::Read)) {
     res = loadAnalyzers(operationOrigin, dbName);
     if (res.fail()) {
       return res;
     }
   }
   if (dbName != arangodb::StaticStrings::SystemDatabase &&
-      canUseVocbase(arangodb::StaticStrings::SystemDatabase, auth::Level::RO)) {
+      canUseVocbase(arangodb::StaticStrings::SystemDatabase,
+                    AccessLevel::Read)) {
     // System is available for all other databases. So reload its analyzers too
     res =
         loadAnalyzers(operationOrigin, arangodb::StaticStrings::SystemDatabase);

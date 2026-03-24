@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Auth/Common.h"
+#include "Auth/Permissions.h"
 #include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/SmallVector.h"
@@ -77,7 +78,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @return the current view is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  bool canUse(auth::Level const& level);
+  bool canUse(AccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new view according to a definition

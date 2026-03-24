@@ -481,7 +481,8 @@ Result RocksDBReplicationContext::getInventory(
   result.add("collections", VPackValue(VPackValueType::Array));
 
   ExecContext const& exec = ExecContext::current();
-  if (exec.canUseCollection(vocbase.name(), collectionName, auth::Level::RO)) {
+  if (exec.canUseCollection(vocbase.name(), collectionName,
+                            AccessLevel::Read)) {
     auto collection = vocbase.lookupCollection(collectionName);
     if (collection != nullptr && !collection->deleted()) {
       // dump inventory data for collection/shard into result

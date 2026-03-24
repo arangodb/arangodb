@@ -1323,7 +1323,8 @@ static void JS_QueryPlanCacheInvalidate(
 
   auto& vocbase = GetContextVocBase(isolate);
 
-  if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RW)) {
+  if (!ExecContext::current().canUseDatabase(vocbase.name(),
+                                             AccessLevel::WriteMeta)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1342,7 +1343,8 @@ static void JS_QueryPlanCachePlans(
 
   auto& vocbase = GetContextVocBase(isolate);
 
-  if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RO)) {
+  if (!ExecContext::current().canUseDatabase(vocbase.name(),
+                                             AccessLevel::Read)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1353,7 +1355,7 @@ static void JS_QueryPlanCachePlans(
       // collections/views used in the query
       for (auto const& dataSource : value.dataSources) {
         if (!ExecContext::current().canUseCollection(
-                vocbase.name(), dataSource.second.name, auth::Level::RO)) {
+                vocbase.name(), dataSource.second.name, AccessLevel::Read)) {
           return false;
         }
       }

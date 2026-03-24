@@ -23,9 +23,6 @@
 
 #include "ExecContext.h"
 
-#include "Auth/UserManager.h"
-#include "Basics/StaticStrings.h"
-#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 
 using namespace arangodb;
@@ -69,7 +66,7 @@ bool ExecContext::isAuthEnabled() {
 }
 
 bool ExecContext::canUseDatabase(std::string const& db,
-                                 auth::Level requested) const {
+                                 AccessLevel requested) const {
   return _authMode.getIAuth().canUse(
       {Permission::Database{.name = db, .level = requested}});
 }
@@ -115,6 +112,12 @@ auth::Level ExecContext::collectionAuthLevel(std::string_view dbname,
   //                                   "unable to find userManager instance");
   //  }
   //  return um->collectionAuthLevel(_user, dbname, coll, false);
+}
+
+/// @brief returns AccessLevel for user
+AccessLevel ExecContext::collectionAccessLevel(
+    std::string_view dbname, std::string_view collection) const {
+  std::abort();
 }
 
 /// @brief returns true if the user can be read

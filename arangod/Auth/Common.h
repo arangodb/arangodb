@@ -31,7 +31,7 @@
 namespace arangodb::auth {
 
 /// Supported access levels for data
-enum class Level : char { UNDEFINED = 0, NONE = 1, RO = 2, RWDATA = 3, RW = 4 };
+enum class Level : char { UNDEFINED = 0, NONE = 1, RO = 2, RW = 3 };
 
 auth::Level convertToAuthLevel(velocypack::Slice grants);
 auth::Level convertToAuthLevel(std::string_view grant);

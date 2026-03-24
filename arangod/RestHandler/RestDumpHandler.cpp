@@ -167,9 +167,9 @@ void RestDumpHandler::handleCommandDumpStart() {
 
   // adjust permissions in single server case, so that the behavior
   // is identical to non-parallel dumps
-  ExecContextSuperuserScope escope(
-      ExecContext::current().canUseDatabase("_system", auth::Level::RW) &&
-      ServerState::instance()->isSingleServer());
+  ExecContextSuperuserScope escope(ExecContext::current().canUseDatabase(
+                                       "_system", AccessLevel::WriteMeta) &&
+                                   ServerState::instance()->isSingleServer());
 
   auto guard =
       _dumpManager->createContext(std::move(opts), user, database, useVPack);
@@ -327,8 +327,9 @@ Result RestDumpHandler::validateRequest() {
                   _clusterInfo.getCollectionNameForShard(maybeShardID.get());
             }
           }
-          if (!ExecContext::current().canUseCollection(
-                  _request->databaseName(), collectionName, auth::Level::RO)) {
+          if (!ExecContext::current().canUseCollection(_request->databaseName(),
+                                                       collectionName,
+                                                       AccessLevel::Read)) {
             return {TRI_ERROR_FORBIDDEN,
                     absl::StrCat("insufficient permissions to access shard ",
                                  it, " of collection ", collectionName)};

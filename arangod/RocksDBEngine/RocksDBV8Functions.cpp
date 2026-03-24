@@ -150,8 +150,9 @@ static void JS_RecalculateCounts(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (!ExecContext::current().canUseCollection(
-          collection->vocbase().name(), collection->name(), auth::Level::RW)) {
+  if (!ExecContext::current().canUseCollection(collection->vocbase().name(),
+                                               collection->name(),
+                                               AccessLevel::WriteMeta)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         absl::StrCat(

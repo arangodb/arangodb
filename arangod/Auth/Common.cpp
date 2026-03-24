@@ -28,8 +28,7 @@ using namespace arangodb;
 
 static_assert(auth::Level::UNDEFINED < auth::Level::NONE, "undefined < none");
 static_assert(auth::Level::NONE < auth::Level::RO, "none < ro");
-static_assert(auth::Level::RO < auth::Level::RWDATA, "ro < rwdata");
-static_assert(auth::Level::RWDATA < auth::Level::RW, "rwdata < rw");
+static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
 
 auth::Level arangodb::auth::convertToAuthLevel(velocypack::Slice grants) {
   return convertToAuthLevel(grants.stringView());
@@ -38,24 +37,19 @@ auth::Level arangodb::auth::convertToAuthLevel(velocypack::Slice grants) {
 auth::Level arangodb::auth::convertToAuthLevel(std::string_view grants) {
   if (grants == "rw") {
     return auth::Level::RW;
-  } else if (grants == "rwdata") {
-    return auth::Level::RWDATA;
   } else if (grants == "ro") {
     return auth::Level::RO;
   } else if (grants == "none" || grants.empty()) {
     return auth::Level::NONE;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "expecting access type 'rw', 'rwdata', 'ro' or 'none'");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                 "expecting access type 'rw', 'ro' or 'none'");
 }
 
 std::string_view arangodb::auth::convertFromAuthLevel(auth::Level lvl) {
   switch (lvl) {
     case auth::Level::RW:
       return "rw";
-    case auth::Level::RWDATA:
-      return "rwdata";
     case auth::Level::RO:
       return "ro";
     case auth::Level::NONE:

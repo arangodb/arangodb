@@ -826,7 +826,7 @@ Result RestReplicationHandler::testPermissions() {
           auto& exec = ExecContext::current();
           if (!exec.isAdminUser(arangodb::rbac::Category::AdminDump{}) &&
               !exec.canUseCollection(_vocbase.name(), collectionName,
-                                     auth::Level::RO)) {
+                                     AccessLevel::Read)) {
             // not enough rights
             return Result(
                 TRI_ERROR_FORBIDDEN,
@@ -864,7 +864,7 @@ Result RestReplicationHandler::testPermissions() {
                 if (!exec.isAdminUser(
                         arangodb::rbac::Category::AdminRestore{}) &&
                     !exec.canUseCollection(dbName, collectionName,
-                                           auth::Level::RW)) {
+                                           AccessLevel::WriteMeta)) {
                   return Result(
                       TRI_ERROR_FORBIDDEN,
                       absl::StrCat("insufficient permissions to access "
@@ -878,7 +878,7 @@ Result RestReplicationHandler::testPermissions() {
                 if (!exec.isAdminUser(
                         arangodb::rbac::Category::AdminRestore{}) &&
                     !exec.canUseCollection(dbName, collectionName,
-                                           auth::Level::RWDATA)) {
+                                           AccessLevel::WriteData)) {
                   return Result(
                       TRI_ERROR_FORBIDDEN,
                       absl::StrCat("insufficient permissions to access "
@@ -1034,7 +1034,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     if (!exec.isAdminUser(arangodb::rbac::Category::AdminClusterInfo{}) &&
-        !exec.canUseCollection(dbName, c->name(), auth::Level::RO)) {
+        !exec.canUseCollection(dbName, c->name(), AccessLevel::Read)) {
       continue;
     }
 
@@ -3165,7 +3165,7 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
       arangodb::rbac::Category::AdminWriteReplicatedLog{}));
 
   if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname,
-                                               auth::Level::RO)) {
+                                               AccessLevel::Read)) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
         absl::StrCat("insufficient permissions to access collection '",

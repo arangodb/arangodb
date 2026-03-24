@@ -70,19 +70,15 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
                 ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
             auto const level = std::min(storedLevel, maxLevel);
 
-            // TODO Use the switch below instead, after switching the
-            //      Permissions to AccessLevel
-            return database.level <= level;
-
-            //            switch (database.level) {
-            //              case AccessLevel::None:
-            //                return true;
-            //              case AccessLevel::Read:
-            //                return level >= auth::Level::RO;
-            //              case AccessLevel::WriteData:
-            //              case AccessLevel::WriteMeta:
-            //                return level >= auth::Level::RW;
-            //            }
+            switch (database.level) {
+              case AccessLevel::None:
+                return true;
+              case AccessLevel::Read:
+                return level >= auth::Level::RO;
+              case AccessLevel::WriteData:
+              case AccessLevel::WriteMeta:
+                return level >= auth::Level::RW;
+            }
             ADB_PROD_CRASH();
           },
           [&](Permission::DataSource const& datasource) -> bool {
@@ -114,19 +110,15 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
             //    }  // intentional fall through
             //  }
 
-            // TODO Use the switch below instead, after switching the
-            //      Permissions to AccessLevel
-            return datasource.level <= level;
-
-            //            switch (datasource.level) {
-            //              case AccessLevel::None:
-            //                return true;
-            //              case AccessLevel::Read:
-            //                return level >= auth::Level::RO;
-            //              case AccessLevel::WriteData:
-            //              case AccessLevel::WriteMeta:
-            //                return level >= auth::Level::RW;
-            //            }
+            switch (datasource.level) {
+              case AccessLevel::None:
+                return true;
+              case AccessLevel::Read:
+                return level >= auth::Level::RO;
+              case AccessLevel::WriteData:
+              case AccessLevel::WriteMeta:
+                return level >= auth::Level::RW;
+            }
             ADB_PROD_CRASH();
           },
           [&](Permission::Admin const& admin) -> bool {
@@ -139,7 +131,7 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
 
 bool AuthMode::Classic::isAdmin() const {
   return canUse({Permission::Database{.name = StaticStrings::SystemDatabase,
-                                      .level = auth::Level::RW}});
+                                      .level = AccessLevel::WriteMeta}});
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {

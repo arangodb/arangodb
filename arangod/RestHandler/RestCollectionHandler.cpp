@@ -122,7 +122,7 @@ async<void> RestCollectionHandler::handleCommandGet() {
          methods::Collections::getNotDeleted(_vocbase)) {
       TRI_ASSERT(collection);
       bool const canUse = ExecContext::current().canUseCollection(
-          _vocbase.name(), collection->name(), auth::Level::RO);
+          _vocbase.name(), collection->name(), AccessLevel::Read);
 
       if (canUse && (!excludeSystem || !collection->system())) {
         // We do not need a transaction here

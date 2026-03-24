@@ -41,7 +41,7 @@ futures::Future<Result> RocksDBRestCollectionHandler::handleExtraCommandPut(
     velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
     if (!ExecContext::current().canUseCollection(
-            coll->vocbase().name(), coll->name(), auth::Level::RW)) {
+            coll->vocbase().name(), coll->name(), AccessLevel::WriteMeta)) {
       co_return Result(
           TRI_ERROR_FORBIDDEN,
           absl::StrCat(

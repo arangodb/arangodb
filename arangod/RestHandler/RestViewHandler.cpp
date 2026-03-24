@@ -43,7 +43,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
-bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
+bool canUse(arangodb::AccessLevel level, TRI_vocbase_t const& vocbase) {
   return arangodb::ExecContext::current().canUseDatabase(vocbase.name(), level);
 }
 
@@ -72,8 +72,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!view->canUse(
-          auth::Level::RO)) {  // check auth after ensuring that the view exists
+  if (!view->canUse(AccessLevel::Read)) {  // check auth after ensuring that the
+                                           // view exists
     // auth after ensuring that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get view"));
@@ -199,7 +199,7 @@ void RestViewHandler::createView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RW, _vocbase)) {
+  if (!canUse(AccessLevel::WriteMeta, _vocbase)) {
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to create view"));
     events::CreateView(_vocbase.name(), nameSlice.copyString(),
@@ -304,7 +304,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   // check auth after ensuring that the view exists
-  if (!view->canUse(auth::Level::RW)) {
+  if (!view->canUse(AccessLevel::WriteMeta)) {
     return generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                          "insufficient rights to modify view");
   }
@@ -383,8 +383,8 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!view->canUse(
-          auth::Level::RW)) {  // check auth after ensuring that the view exists
+  if (!view->canUse(AccessLevel::WriteMeta)) {  // check auth after ensuring
+                                                // that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
 
@@ -440,7 +440,7 @@ void RestViewHandler::getViews() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO, _vocbase)) {
+  if (!canUse(AccessLevel::Read, _vocbase)) {
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get views"));
 
@@ -466,8 +466,8 @@ void RestViewHandler::getViews() {
 
   for (auto view : views) {
     if (view && (!excludeSystem || !view->system())) {
-      if (!view->canUse(auth::Level::RO)) {  // check auth after ensuring that
-                                             // the view exists
+      if (!view->canUse(AccessLevel::Read)) {  // check auth after ensuring that
+                                               // the view exists
         continue;  // skip views that are not authorized to be read
       }
 

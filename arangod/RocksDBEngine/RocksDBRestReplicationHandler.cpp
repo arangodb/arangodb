@@ -740,7 +740,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "' using contextId '" << ctx->id() << "'";
 
   if (!ExecContext::current().canUseCollection(_vocbase.name(), cname,
-                                               auth::Level::RO)) {
+                                               AccessLevel::Read)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   absl::StrCat("insufficient permissions to read collection '",
                                cname, "'"));

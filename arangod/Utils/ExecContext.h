@@ -26,6 +26,7 @@
 #include "Auth/AuthMode.h"
 #include "Auth/Common.h"
 #include "Auth/Rbac/Actions.h"
+#include "Auth/Permissions.h"
 #include "Rest/RequestContext.h"
 
 #include <memory>
@@ -111,7 +112,7 @@ class ExecContext : public RequestContext {
   }
 
   /// @brief returns true if auth level is above or equal `requested`
-  bool canUseDatabase(std::string const& db, auth::Level requested) const;
+  bool canUseDatabase(std::string const& db, AccessLevel requested) const;
 
   /// @brief returns true if a database can be created or dropped
   bool canCreateOrDropDatabase(std::string_view db) const;
@@ -120,9 +121,13 @@ class ExecContext : public RequestContext {
   auth::Level collectionAuthLevel(std::string_view dbname,
                                   std::string_view collection) const;
 
+  /// @brief returns AccessLevel for user
+  AccessLevel collectionAccessLevel(std::string_view dbname,
+                                    std::string_view collection) const;
+
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseCollection(std::string_view db, std::string_view coll,
-                        auth::Level requested) const {
+                        AccessLevel requested) const {
     return _authMode.getIAuth().canUse(
         {Permission::DataSource{.database = std::string(db),
                                 .name = std::string(coll),

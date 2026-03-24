@@ -133,7 +133,7 @@ Result LogicalView::appendVPack(velocypack::Builder& build, Serialization ctx,
   return appendVPackImpl(build, ctx, safe);
 }
 
-bool LogicalView::canUse(auth::Level const& level) {
+bool LogicalView::canUse(AccessLevel const& level) {
   return ExecContext::current().canUseDatabase(vocbase().name(), level);
   // TODO per-view authentication checks disabled as per
   // https://github.com/arangodb/backlog/issues/459

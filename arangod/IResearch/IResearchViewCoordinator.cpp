@@ -186,7 +186,7 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
       for (auto& entry : _collections) {
         if (!exec.canUseCollection(vocbase().name(),
                                    entry.second->collectionName,
-                                   auth::Level::RO)) {
+                                   AccessLevel::Read)) {
           return {TRI_ERROR_FORBIDDEN,
                   absl::StrCat("Need read access to collection '",
                                entry.second->collectionName, "'")};
@@ -370,8 +370,8 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
         auto const& name = vocbase().name();
         auto collection = engine.getCollection(
             name, absl::AlphaNum{entry.first.id()}.Piece());
-        if (collection &&
-            !exec.canUseCollection(name, collection->name(), auth::Level::RO)) {
+        if (collection && !exec.canUseCollection(name, collection->name(),
+                                                 AccessLevel::Read)) {
           return {
               TRI_ERROR_FORBIDDEN,
               absl::StrCat(
@@ -474,7 +474,7 @@ Result IResearchViewCoordinator::dropImpl() {
       auto collection =
           engine.getCollection(name, absl::AlphaNum{entry.id()}.Piece());
       if (collection &&
-          !exec.canUseCollection(name, collection->name(), auth::Level::RO)) {
+          !exec.canUseCollection(name, collection->name(), AccessLevel::Read)) {
         return {TRI_ERROR_FORBIDDEN,
                 absl::StrCat("Need read access to collection '",
                              collection->name(), "'")};
