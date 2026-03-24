@@ -1,6 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual */
-
+/* global runSetup assertEqual, assertFalse, assertTrue */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -25,38 +24,34 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
-var internal = require('internal');
-var jsunity = require('jsunity');
+const db = require('@arangodb').db;
+const internal = require('internal');
+const jsunity = require('jsunity');
 
 if (runSetup === true) {
   'use strict';
   global.instanceManager.debugClearFailAt();
 
-  db._drop('UnitTestsRecovery1');
-  db._drop('UnitTestsRecovery2');
-  db._create('UnitTestsRecovery1');
-  db._create('UnitTestsRecovery2');
+  db._drop('UnitTestsRecovery');
+  let c = db._create('UnitTestsRecovery');
+  c.ensureIndex({ type: 'persistent', fields: ['value'] });
 
-  db._executeTransaction({
-    collections: {
-      write: [ 'UnitTestsRecovery1', 'UnitTestsRecovery2' ]
-    },
-    action: function () {
-      var db = require('@arangodb').db;
+  global.instanceManager.debugSetFailAt('TransactionWriteCommitMarkerNoRocksSync');
 
-      var c1 = db._collection('UnitTestsRecovery1');
-      var c2 = db._collection('UnitTestsRecovery2');
-      var i;
-
-      for (i = 0; i < 100; ++i) {
-        c1.save({ _key: 'foo' + i, value: 'testfoo' + i });
-        c2.save({ _key: 'bar' + i, value: 'testbar' + i }, {
-          waitForSync: (i === 99)
-        });
-      }
+  const trx = db._createTransaction({ collections: { write: 'UnitTestsRecovery' } });
+  try {
+    const tc = trx.collection('UnitTestsRecovery');
+    const docs = [];
+    for (let i = 0; i < 1000; ++i) {
+      docs.push({ value: i });
     }
-  });
+    tc.insert(docs);
+    trx.commit();
+  } catch (e) {
+    trx.abort();
+    throw e;
+  }
+
   return 0;
 }
 
@@ -75,19 +70,16 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testTransactionDurabilityMultiple: function () {
-      var c1 = db._collection('UnitTestsRecovery1');
-      var c2 = db._collection('UnitTestsRecovery2');
-
-      assertEqual(100, c1.count());
-      assertEqual(100, c2.count());
-
-      var i;
-      for (i = 0; i < 100; ++i) {
-        assertEqual('testfoo' + i, c1.document('foo' + i).value);
-        assertEqual('foo' + i, c1.document('foo' + i)._key);
-        assertEqual('testbar' + i, c2.document('bar' + i).value);
-        assertEqual('bar' + i, c2.document('bar' + i)._key);
+    testIndexesRocksDBNoSync: function () {
+      const c = db._collection('UnitTestsRecovery');
+      const idxs = c.indexes();
+      assertEqual(idxs.length, 2);
+      let idx = idxs[1];
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ 'value' ], idx.fields);
+      for (let i = 0; i < 1000; ++i) {
+        assertEqual(1, c.byExample({ value: i }).toArray().length, i);
       }
     }
 

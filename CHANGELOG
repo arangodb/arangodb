@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* Removed leftover range() method from collection objects in JavaScript API
+
 * Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
   `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
 
