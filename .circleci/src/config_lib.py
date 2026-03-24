@@ -81,6 +81,7 @@ class ResourceSize(Enum):
     MEDIUM = "medium"
     MEDIUM_PLUS = "medium+"
     LARGE = "large"
+    CIRCLECI_LARGE = "circleci-large"
     XLARGE = "xlarge"
     XXLARGE = "2xlarge"
 

@@ -1,7 +1,7 @@
 ## My Environment
 
 * __ArangoDB Version__:        <!-- e.g. 3.9.2 or self-compiled devel branch -->
-* __Deployment Mode__:       <!-- Single Server | Leader/Follower ("Master/Slave") | Active Failover | Cluster | DC2DC -->
+* __Deployment Mode__:       <!-- Single Server | Leader/Follower ("Master/Slave") | Cluster | DC2DC -->
 * __Deployment Strategy__:   <!-- Manual Start | Manual Start in Docker | ArangoDB Starter | ArangoDB Starter in Docker | Kubernetes -->
 * __Configuration__:               <!-- cluster setup details, notable server settings, etc. -->
 * __Infrastructure__:               <!-- AWS | Azure | ... | own -->

@@ -132,22 +132,12 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.parsedBody, undefined);
     },
 
-    test_checks_whether_an_invalid_location_returns_status_202: function() {
+    test_checks_whether_an_invalid_location_returns_status_404: function() {
       let cmd = "/_api/not-existing";
       let doc = arango.GET_RAW(cmd, { "X-Arango-Async": "true" });
 
-      assertEqual(doc.code, 202);
-      assertFalse(doc.headers.hasOwnProperty("x-arango-async-id"));
-      assertEqual(doc.parsedBody, undefined);
-    },
-
-    test_checks_whether_a_failing_action_returns_status_202: function() {
-      let cmd = "/_api/notacursor";;
-      let body = '{"query": "this is not a love song"}';
-      let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "true" });
-      assertEqual(doc.code, 202);
-      assertFalse(doc.headers.hasOwnProperty("x-arango-async-id"));
-      assertEqual(doc.parsedBody, undefined);
+      // in 4.0, routing happens before async queuing — non-existent endpoints return 404
+      assertEqual(doc.code, 404);
     },
 
     test_checks_the_responses_when_the_queue_fills_up: function() {
@@ -277,6 +267,44 @@ function dealing_with_async_requestsSuite () {
       assertFalse(doc.parsedBody.hasOwnProperty('id'));
     },
 
+    test_checks_whether_we_can_cancel_a_streaming_transaction_query: function () {
+      // begin a streaming transaction (no collections needed for a read-only AQL)
+      let trxDoc = arango.POST('/_api/transaction/begin', { collections: {} });
+      assertEqual(trxDoc.code, 201);
+      let trxId = trxDoc.result.id;
+
+      try {
+        // run a long AQL query within the transaction asynchronously
+        let cmd = "/_api/cursor";
+        let body = '{"query": "for x in 1..1000 let a = sleep(0.5) filter x == 1 return x"}';
+        let doc = arango.POST_RAW(cmd, body, {
+          "X-Arango-Async": "store",
+          "x-arango-trx-id": trxId
+        });
+
+        assertEqual(doc.code, 202);
+        assertTrue(doc.headers.hasOwnProperty("x-arango-async-id"));
+        let id = doc.headers["x-arango-async-id"];
+        assertMatch(/^\d+$/, id);
+        assertEqual(doc.parsedBody, undefined);
+
+        cmd = "/_api/job/" + id;
+        doc = arango.PUT_RAW(cmd, "");
+        assertEqual(doc.code, 204);
+
+        cmd = "/_api/job/" + id + "/cancel";
+        doc = arango.PUT_RAW(cmd, "");
+        assertEqual(doc.code, 200);
+
+        cmd = "/_api/job/" + id;
+        doc = wait_for_put(cmd, 410, 20);
+        assertEqual(doc.code, 410);
+        assertEqual(doc.parsedBody.errorMessage, "canceled request");
+      } finally {
+        arango.DELETE_RAW("/_api/transaction/" + trxId, "");
+      }
+    },
+
     test_checks_whether_we_can_cancel_an_AQL_query: function() {
       let cmd = "/_api/cursor";
       let body = '{"query": "for x in 1..1000 let a = sleep(0.5) filter x == 1 return x"}';
@@ -290,31 +318,6 @@ function dealing_with_async_requestsSuite () {
 
       cmd = "/_api/job/" + id;
       doc = arango.PUT_RAW(cmd, "");
-      assertEqual(doc.code, 204);
-
-      cmd = "/_api/job/" + id + "/cancel";
-      doc = arango.PUT_RAW(cmd, "");
-      assertEqual(doc.code, 200);
-
-      cmd = "/_api/job/" + id;
-      doc = wait_for_put(cmd, 410, 20);
-      assertEqual(doc.code, 410);
-      assertEqual(doc.parsedBody.errorMessage, "canceled request");
-    },
-
-    test_checks_whether_we_can_cancel_a_transaction: function() {
-      let cmd = "/_api/transaction";
-      let body = '{"collections": {"write": "_graphs"}, "action": "function() {var i = 0; while (i < 90000000000) {i++; require(\\"internal\\").wait(0.1); } return i;}"}';
-      let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
-
-      assertEqual(doc.code, 202);
-      assertTrue(doc.headers.hasOwnProperty(("x-arango-async-id")));
-      let id = doc.headers["x-arango-async-id"];
-      assertMatch(/^\d+$/, id);
-      assertEqual(doc.parsedBody, undefined);
-
-      cmd = "/_api/job/" + id;
-      doc = wait_for_put(cmd, 204, 20);
       assertEqual(doc.code, 204);
 
       cmd = "/_api/job/" + id + "/cancel";

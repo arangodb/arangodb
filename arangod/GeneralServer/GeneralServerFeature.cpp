@@ -71,7 +71,6 @@
 #include "RestHandler/RestDocumentStateHandler.h"
 #include "RestHandler/RestDumpHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
-#include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
 #include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestGraphHandler.h"
@@ -518,8 +517,6 @@ void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
   // here.
   f.addHandler("/_api/version",
                RestHandlerCreator<RestVersionHandler>::createNoData, {1});
-  f.addHandler("/_admin/version",
-               RestHandlerCreator<RestVersionHandler>::createNoData, {1});
   f.addHandler("/openapi.json",
                RestHandlerCreator<RestOpenApiHandler>::createNoData, {1, 2});
   f.addHandler("/_admin/status",
@@ -568,10 +565,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::GHARIAL_PATH,
                      RestHandlerCreator<RestGraphHandler>::createNoData, {1});
-
-  f.addPrefixHandler(RestVocbaseBaseHandler::ENDPOINT_PATH,
-                     RestHandlerCreator<RestEndpointHandler>::createNoData,
-                     {1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
                      RestHandlerCreator<RestImportHandler>::createNoData, {1});
@@ -751,11 +744,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addHandler("/_admin/system-report",
                RestHandlerCreator<RestSystemReportHandler>::createNoData, {1});
-
-  f.addPrefixHandler("/_admin/job",
-                     RestHandlerCreator<arangodb::RestJobHandler>::createData<
-                         AsyncJobManager*>,
-                     {1}, _jobManager.get());
 
   f.addPrefixHandler(
       "/_admin/log",

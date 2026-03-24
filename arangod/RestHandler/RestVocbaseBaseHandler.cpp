@@ -90,9 +90,6 @@ std::string const RestVocbaseBaseHandler::EDGES_PATH = "/_api/edges";
 // gharial graph api path
 std::string const RestVocbaseBaseHandler::GHARIAL_PATH = "/_api/gharial";
 
-// endpoint path
-std::string const RestVocbaseBaseHandler::ENDPOINT_PATH = "/_api/endpoint";
-
 // documents import path
 std::string const RestVocbaseBaseHandler::IMPORT_PATH = "/_api/import";
 

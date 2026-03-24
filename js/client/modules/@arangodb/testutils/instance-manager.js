@@ -1021,12 +1021,12 @@ class instanceManager {
             haveMaintainance = false;
             this._setMaintenance(false);
           }
+          if (role === instanceRole.agent) {
+            print("running agency health check");
+            this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
+          }
         }
       });
-      if (role === instanceRole.agent) {
-        print("running agency health check");
-        this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
-      }
     });
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -1180,13 +1180,6 @@ class instanceManager {
         try {
           if (reply.code === 403) {
             let parsedBody = JSON.parse(reply.body);
-            if (parsedBody.errorNum === errors.ERROR_SERVICE_API_DISABLED.code) {
-              if (!this.options.noStartStopLogs) {
-                print("service API disabled, continuing.");
-              }
-              arangod.upAndRunning = true;
-              return true;
-            }
           }
         } catch (e) {
           print(RED + Date() + " failed to parse server reply: " + JSON.stringify(reply));

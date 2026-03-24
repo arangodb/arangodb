@@ -1,7 +1,22 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* No longer support `/_api/collection?collection=<collection-name>`, 
+* Removed leftover range() method from collection objects in JavaScript API
+
+* Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
+  `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
+
+* COR-283: Removed remainded active failover references.
+
+* Remove 30xx FOXX error codes
+
+* Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
+  dependencies.
+
+* Changed the remaining two uses of the log topics BENCH and SECURITY and
+  removed these log topics.
+
+* No longer support `/_api/collection?collection=<collection-name>`,
   `/_api/document/<collection-id>`, and `/_api/collection/<collection-id>`.
 
 * Raised minimal CPU architecture to Haswell-like (x86-64) and graviton2-like
@@ -12,9 +27,6 @@
 
 * Updated ArangoDB Starter to v0.20.0-preview-4.
 
-* Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
-  dependencies.
-  
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
 
@@ -246,6 +258,10 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
+
+* Fixed a bug in arangosh that made it quit when entering `global`.
+
 * COR-324, github issue #21782: Added information to query extra output
   about parallelism achieved in SEARCH queries.
 
@@ -257,8 +273,6 @@
 * COR-123: The push-filter-into-enumerate-near optimizer rule now considers all
   compatible vector indexes on a collection to find if one whose storedValues cover
   the filter expression.
-
-* Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 
 * COR-267, github issue #21944: Fixed a bug in the handling of post filters
   with array expansion operators and inverted indexes.
