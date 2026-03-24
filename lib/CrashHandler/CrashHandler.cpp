@@ -664,20 +664,15 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
     std::this_thread::sleep_for(std::chrono::seconds(5));
   }
 
-  if ((signal == SIGSEGV || signal == SIGBUS || signal == SIGILL ||
-       signal == SIGFPE) &&
-      info != nullptr && info->si_code > 0) {
-    // Synchronous hardware fault (si_code > 0 means kernel-generated,
-    // e.g. SEGV_MAPERR, SEGV_ACCERR, BUS_ADRALN, ILL_ILLOPC, FPE_INTDIV).
+  if (signal == SIGSEGV || signal == SIGBUS || signal == SIGILL ||
+      signal == SIGFPE) {
     // SA_RESETHAND already restored SIG_DFL before we entered.
     // Returning re-executes the faulting instruction, which re-faults
     // and the default handler generates a coredump with the correct
     // CPU context.
     return;
   } else {
-    // Either an asynchronous signal (SIGABRT, or raise()/kill() with
-    // si_code <= 0), or no siginfo available. There is no faulting
-    // instruction to replay, so we must kill explicitly.
+    // Asynchronous signals (SIGABRT) — no faulting instruction to replay.
     killProcess(signal);
   }
 }
