@@ -308,7 +308,7 @@ Result RestDumpHandler::validateRequest() {
         // arangodump. the previous version assumed that as long as you are
         // an admin user, you can dump every collection
         ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
-            arangodb::rbac::Category::AdminWalAccess{}));
+            arangodb::rbac::Category::AdminDump{}));
 
         // validate permissions for all participating shards
         RocksDBDumpContextOptions opts;

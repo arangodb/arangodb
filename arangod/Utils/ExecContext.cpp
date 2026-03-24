@@ -117,6 +117,44 @@ auth::Level ExecContext::collectionAuthLevel(std::string_view dbname,
   //  return um->collectionAuthLevel(_user, dbname, coll, false);
 }
 
+/// @brief returns true if the user can be read
+bool ExecContext::canReadUser(std::string_view user) const {
+  // TODO
+  // Pseudocode:
+  // if superuser: true
+  // if self: true
+  // if rbac:
+  //   return AdminReadUser(user)
+  // else:
+  //   return RW(_system)
+  return true;
+}
+
+/// @brief returns true if the user can be modified, note that everybody
+/// can modify themselves (if only to change the password).
+bool ExecContext::canWriteUser(std::string_view user) const {
+  // TODO
+  // Pseudocode:
+  // if superuser: true
+  // if self: true
+  // if rbac:
+  //   return AdminWriteUser(user)
+  // else:
+  //   return RW(_system)
+  return true;
+}
+
+/// @brief returns true if a database can be created or dropped
+bool ExecContext::canCreateOrDropDatabase(std::string_view db) const {
+  return true;
+}
+
+/// @brief returns true for each user which can be read
+std::vector<bool> ExecContext::canReadUsers(
+    std::vector<std::string> users) const {
+  return std::vector<bool>(users.size());
+}
+
 ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)
     : _old(std::move(exe)) {
   std::swap(ExecContext::CURRENT, _old);

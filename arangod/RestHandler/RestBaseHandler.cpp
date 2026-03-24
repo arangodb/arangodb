@@ -23,12 +23,10 @@
 
 #include "RestBaseHandler.h"
 
-#include "Auth/Rbac/Actions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
-#include "Utils/ExecContext.h"
 #include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -47,15 +45,6 @@ RestBaseHandler::RestBaseHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestHandler(server, request, response), _potentialDirtyReads(false) {}
-
-bool RestBaseHandler::canAccessUser(
-    std::string const& user,
-    arangodb::rbac::Category::Any const& rbacAction) const {
-  if (_request->authenticated() && user == _request->user()) {
-    return true;
-  }
-  return ExecContext::current().isAdminUser(rbacAction);
-}
 
 // parses the body as VelocyPack
 velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {

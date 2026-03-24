@@ -124,19 +124,42 @@ void RestUsersHandler::generateUserResult(rest::ResponseCode code,
 }
 
 RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
+  auto& exec = ExecContext::current();
+
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (ExecContext::current().isAdminUser(
-            arangodb::rbac::Category::AdminReadUser{""})) {
-      VPackBuilder users = um->allUsers();
-      generateOk(ResponseCode::OK, users.slice());
-    } else {
-      generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    VPackBuilder users = um->allUsers();
+    VPackSlice usersArray = users.slice().get("result");
+    TRI_ASSERT(usersArray.isArray());
+    std::vector<std::string> userList;
+    userList.reserve(usersArray.length());
+    for (auto const& u : VPackArrayIterator(usersArray)) {
+      VPackSlice un = u.get("user");
+      TRI_ASSERT(un.isString());
+      userList.push_back(un.copyString());
     }
+    // Now filter out those to which we have access:
+    std::vector<bool> allowed = exec.canReadUsers(userList);
+    TRI_ASSERT(allowed.size() == userList.size());
+    VPackBuilder usersResult;
+    {
+      VPackObjectBuilder guard(&usersResult);
+      usersResult.add("error", VPackValue(false));
+      usersResult.add("code", VPackValue(200));
+      usersResult.add(VPackValue("result"));
+      {
+        VPackArrayBuilder guard2(&usersResult);
+        for (size_t i = 0; i < allowed.size(); ++i) {
+          if (allowed[i]) {
+            usersResult.add(usersArray[i]);
+          }
+        }
+      }
+    }
+    generateOk(ResponseCode::OK, usersResult.slice());
   } else if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (canAccessUser(
-            user, arangodb::rbac::Category::AdminReadUser{std::string(user)})) {
+    if (exec.canReadUser(user)) {
       VPackBuilder doc = um->serializeUser(user);
       generateUserResult(ResponseCode::OK, doc);
     } else {
@@ -144,8 +167,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
     }
   } else {
     std::string const& user = suffixes[0];
-    if (!canAccessUser(
-            user, arangodb::rbac::Category::AdminReadUser{std::string(user)})) {
+    if (!exec.canReadUser(user)) {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
       return RestStatus::DONE;
     }
@@ -291,7 +313,8 @@ static Result StoreUser(auth::UserManager* um, int mode,
 
           VPackSlice oldExtra = u.get("extra");
           if (extra.isObject() && oldExtra.isObject()) {
-            // Both `extra` and `oldExtra` are objects, so perform a deep merge.
+            // Both `extra` and `oldExtra` are objects, so perform a deep
+            // merge.
             entry.setUserData(
                 VPackCollection::merge(oldExtra, extra, true, false));
           } else if (!extra.isNone()) {
@@ -318,10 +341,10 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
 
   if (suffixes.empty()) {
     // create a new user
-    if (ExecContext::current().isAdminUser(
-            arangodb::rbac::Category::AdminWriteUser{""})) {
-      VPackSlice s = body.get("user");
-      std::string user = s.isString() ? s.copyString() : "";
+    VPackSlice s = body.get("user");
+    std::string user = s.isString() ? s.copyString() : "";
+    auto& exec = ExecContext::current();
+    if (exec.canWriteUser(user)) {
       // create user
       Result r = StoreUser(um, 0, user, body);
       if (r.ok()) {
@@ -363,11 +386,11 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
     return RestStatus::DONE;
   }
 
+  auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
     // replace existing user
     std::string const& user = suffixes[0];
-    if (!canAccessUser(user, arangodb::rbac::Category::AdminWriteUser{
-                                 std::string(user)})) {
+    if (!exec.canWriteUser(user)) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
@@ -388,9 +411,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!ExecContext::current().isAdminUser(
-              arangodb::rbac::Category::AdminWriteUser{
-                  std::string(suffixes[0])})) {
+      if (!exec.canWriteUser(name)) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
 
         return RestStatus::DONE;
@@ -443,8 +464,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // update internal config data, used in the admin dashboard
-      if (!canAccessUser(name, arangodb::rbac::Category::AdminWriteUser{
-                                   std::string(name)})) {
+      if (!exec.canWriteUser(name)) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
@@ -504,10 +524,10 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
     return RestStatus::DONE;
   }
 
+  auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (canAccessUser(user, arangodb::rbac::Category::AdminWriteUser{
-                                std::string(user)})) {
+    if (exec.canWriteUser(user)) {
       // update a user
       Result r = StoreUser(um, 2, user, body);
       if (r.ok()) {
@@ -528,15 +548,14 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
 RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
 
+  auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
-    if (!ExecContext::current().isAdminUser(
-            arangodb::rbac::Category::AdminWriteUser{
-                std::string(suffixes[0])})) {
+    std::string const& user = suffixes[0];
+    if (!exec.canWriteUser(user)) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
 
-    std::string const& user = suffixes[0];
     Result r = um->removeUser(user);
     if (r.ok()) {
       VPackBuilder b;
@@ -549,9 +568,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
     }
   } else if (suffixes.size() == 2) {
     std::string const& user = suffixes[0];
-    if (suffixes[1] == "config" &&
-        canAccessUser(user, arangodb::rbac::Category::AdminWriteUser{
-                                std::string(user)})) {
+    if (suffixes[1] == "config" && exec.canWriteUser(user)) {
       Result r = um->updateUser(
           user,
           [&](auth::User& u) {
@@ -575,9 +592,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!ExecContext::current().isAdminUser(
-              arangodb::rbac::Category::AdminWriteUser{
-                  std::string(suffixes[0])})) {
+      if (!exec.canWriteUser(user)) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
 
         return RestStatus::DONE;
@@ -618,8 +633,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // remove internal config data, used in the WebUI
-      if (canAccessUser(user, arangodb::rbac::Category::AdminWriteUser{
-                                  std::string(user)})) {
+      if (exec.canWriteUser(user)) {
         std::string const& key = suffixes[2];
         Result r = um->updateUser(
             user,

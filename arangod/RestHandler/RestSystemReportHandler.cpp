@@ -78,15 +78,6 @@ std::string exec(std::string const& cmd) {
 }
 }  // namespace
 
-bool RestSystemReportHandler::isAdminUser(
-    arangodb::rbac::Category::Any const& rbacAction) const {
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  } else {
-    return ExecContext::current().isAdminUser(rbacAction);
-  }
-}
-
 // Mounted at /_admin/system-report (exact)
 RestStatus RestSystemReportHandler::execute() {
   ServerSecurityFeature& security =

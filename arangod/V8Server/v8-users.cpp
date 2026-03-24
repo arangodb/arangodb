@@ -90,17 +90,15 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static bool IsAdminUser() {
-  return ExecContext::current().isAdminUser(
-      arangodb::rbac::Category::AdminWriteUser{""});
+/// check ExecContext if system use
+static bool CanReadUser(std::string_view user) {
+  auto const& exec = ExecContext::current();
+  return exec.canReadUser(user);
 }
 
-/// check ExecContext if system use
-static bool CanAccessUser(std::string const& user) {
+static bool CanWriteUser(std::string_view user) {
   auto const& exec = ExecContext::current();
-  return exec.isAdminUser(
-             arangodb::rbac::Category::AdminReadUser{std::string(user)}) ||
-         exec.user() == user;
+  return exec.canWriteUser(user);
 }
 
 void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
@@ -114,7 +112,7 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_USER_INVALID_NAME);
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (!CanAccessUser(username)) {
+  if (!CanWriteUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
   std::string pass = args.Length() > 1 && args[1]->IsString()
@@ -166,7 +164,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "update(username[, password, active, userData])");
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (!CanAccessUser(username)) {
+  if (!CanWriteUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -206,7 +204,8 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(username)");
   }
-  if (!IsAdminUser()) {
+  std::string user = TRI_ObjectToString(isolate, args[0]);
+  if (!CanWriteUser(user)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -216,7 +215,7 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "users are not supported on this server");
   }
 
-  Result r = um->removeUser(TRI_ObjectToString(isolate, args[0]));
+  Result r = um->removeUser(user);
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -234,7 +233,7 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
 
-  if (!CanAccessUser(username)) {
+  if (!CanReadUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -259,7 +258,8 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("reload()");
   }
-  if (!IsAdminUser()) {
+  if (!ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminAuthReload{})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -278,11 +278,11 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantDatabase(username, database, type)");
   }
-  if (!IsAdminUser()) {
+  std::string username = TRI_ObjectToString(isolate, args[0]);
+  if (!CanWriteUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  std::string username = TRI_ObjectToString(isolate, args[0]);
   std::string db = TRI_ObjectToString(isolate, args[1]);
   auth::Level lvl = auth::Level::RW;
   if (args.Length() >= 3) {
@@ -316,7 +316,8 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeDatabase(username,  database)");
   }
-  if (!IsAdminUser()) {
+  std::string username = TRI_ObjectToString(isolate, args[0]);
+  if (!CanWriteUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -326,7 +327,6 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "user are not supported on this server");
   }
 
-  std::string username = TRI_ObjectToString(isolate, args[0]);
   std::string db = TRI_ObjectToString(isolate, args[1]);
   Result r = um->updateUser(
       username,
@@ -353,7 +353,8 @@ static void JS_GrantCollection(
     TRI_V8_THROW_EXCEPTION_USAGE("grantCollection(username, db, coll[, type])");
   }
 
-  if (!IsAdminUser()) {
+  std::string username = TRI_ObjectToString(isolate, args[0]);
+  if (!CanWriteUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -363,7 +364,6 @@ static void JS_GrantCollection(
                                    "user are not supported on this server");
   }
 
-  std::string username = TRI_ObjectToString(isolate, args[0]);
   std::string db = TRI_ObjectToString(isolate, args[1]);
   std::string coll = TRI_ObjectToString(isolate, args[2]);
 
@@ -409,7 +409,8 @@ static void JS_RevokeCollection(
     TRI_V8_THROW_EXCEPTION_USAGE("revokeCollection(username, db, coll)");
   }
 
-  if (!IsAdminUser()) {
+  std::string username = TRI_ObjectToString(isolate, args[0]);
+  if (!CanWriteUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -419,7 +420,6 @@ static void JS_RevokeCollection(
                                    "user are not supported on this server");
   }
 
-  std::string username = TRI_ObjectToString(isolate, args[0]);
   std::string db = TRI_ObjectToString(isolate, args[1]);
   std::string coll = TRI_ObjectToString(isolate, args[2]);
 
@@ -457,7 +457,7 @@ static void JS_UpdateConfigData(
     TRI_V8_THROW_EXCEPTION_USAGE("updateConfigData(username, key[, value])");
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (!CanAccessUser(username)) {
+  if (!CanWriteUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -502,7 +502,7 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("configData(username[, key])");
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (!CanAccessUser(username)) {
+  if (!CanReadUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

@@ -68,23 +68,22 @@ RestStatus RestAccessTokenHandler::execute() {
 
   auto const type = _request->requestType();
 
+  auto& exec = ExecContext::current();
   switch (type) {
     case RequestType::GET:
-      if (!canAccessUser(user, arangodb::rbac::Category::AdminReadUser{user})) {
+      if (!exec.canReadUser(user)) {
         generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
         return RestStatus::DONE;
       }
       return showAccessTokens(um, user);
     case RequestType::POST:
-      if (!canAccessUser(user,
-                         arangodb::rbac::Category::AdminWriteUser{user})) {
+      if (!exec.canWriteUser(user)) {
         generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
         return RestStatus::DONE;
       }
       return createAccessToken(um, user);
     case RequestType::DELETE_REQ:
-      if (!canAccessUser(user,
-                         arangodb::rbac::Category::AdminWriteUser{user})) {
+      if (!exec.canWriteUser(user)) {
         generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
         return RestStatus::DONE;
       }

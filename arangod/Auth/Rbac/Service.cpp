@@ -177,6 +177,16 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
               -> std::vector<AuthorizationQuery> {
             return {{"db:AdminWriteReplicatedLog", ""}};
           },
+          [](Category::AdminDump const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminDump", ""}};
+          },
+          [](Category::AdminRestore const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminRestore", ""}};
+          },
+          [](Category::AdminReplication const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminReplication", ""}};
+          },
           [](Category::AdminWalAccess const&)
               -> std::vector<AuthorizationQuery> {
             return {{"db:AdminWalAccess", ""}};

@@ -25,7 +25,6 @@
 
 #include "GeneralServer/RestHandler.h"
 
-#include "Auth/Rbac/Actions.h"
 #include "Network/Methods.h"
 #include "Rest/GeneralResponse.h"
 
@@ -81,8 +80,6 @@ class RestBaseHandler : public rest::RestHandler {
   void generateForbidden();
 
  protected:
-  bool canAccessUser(std::string const& user,
-                     arangodb::rbac::Category::Any const& rbacAction) const;
   // forward request to another server
   // server is taken from query string parameter "serverId"
   auto tryForwarding() -> async<bool>;

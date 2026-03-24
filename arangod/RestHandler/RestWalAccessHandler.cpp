@@ -310,9 +310,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
-      arangodb::rbac::Category::AdminWalAccess{}));
-
   bool found = false;
   size_t chunkSize = 1024 * 1024;
   std::string const& value5 = _request->value("chunkSize", found);
