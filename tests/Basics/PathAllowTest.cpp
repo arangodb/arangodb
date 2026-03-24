@@ -46,3 +46,12 @@ TEST(PathAllowTest, allowing_allows) {
   ASSERT_TRUE(testee.allowed("/foo/bar/baz/123.txt"));
   ASSERT_TRUE(testee.allowed("/foo/bar/baz/a/b/c/123.txt"));
 }
+
+TEST(PathAllowTest, regression_test_with_longer_allow) {
+  auto testee = arangodb::PathAllow();
+
+  testee.addPath("/home/makx-arango/scratch/arangodb-play/js");
+
+  // Crashes if std::mismatch is not called with std::end(snd)
+  ASSERT_FALSE(testee.allowed("/home/makx-arango/scratch/arangodb-play"));
+}

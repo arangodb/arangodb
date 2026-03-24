@@ -27,26 +27,24 @@
 
 namespace arangodb {
 struct PathAllow {
-  auto addPath(std::filesystem::path path) {
-    // TODO check where to put this
-    _allow.emplace_back(std::filesystem::canonical(path));
-  }
+  auto addPath(std::filesystem::path path) { _allow.emplace_back(path); }
 
   auto empty() const noexcept { return _allow.empty(); }
 
   auto allowed(std::filesystem::path path) const -> bool {
     // Check that first path is a prefix of the second
-    auto is_prefix = [](std::filesystem::path fst,
-                        std::filesystem::path snd) -> bool {
-      auto [a, _] =
-          std::mismatch(std::begin(fst), std::end(fst), std::begin(snd));
+    auto is_prefix = [](std::filesystem::path const& fst,
+                        std::filesystem::path const& snd) -> bool {
+      auto [a, _] = std::mismatch(std::begin(fst), std::end(fst),
+                                  std::begin(snd), std::end(snd));
       return (a == std::end(fst));
     };
 
-    return std::any_of(std::begin(_allow), std::end(_allow),
-                       [path, is_prefix](auto container) {
-                         return is_prefix(container, path);
-                       });
+    return std::any_of(
+        std::begin(_allow), std::end(_allow),
+        [path, is_prefix](std::filesystem::path const& container) {
+          return is_prefix(container, path);
+        });
   }
 
   template<typename Inspector>
