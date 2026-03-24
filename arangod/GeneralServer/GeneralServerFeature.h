@@ -30,9 +30,12 @@
 #include "GeneralServer/GeneralServerOptions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Metrics/Counter.h"
+#include "Metrics/FixScale.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/GaugeCounterGuard.h"
+#include "Metrics/MeasureTimeGuard.h"
 #include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
 
@@ -106,6 +109,14 @@ class GeneralServerFeature final
     return _options.startedListening;
   }
 
+  auto startConnection(){
+    return metrics::MeasureTimeGuard<double>{_connectionDuration};
+  }
+
+  auto addHttpConnection() {
+    return metrics::GaugeCounterGuard{_connectionHttp, static_cast<double>(1)};
+  }
+
  private:
   // build HTTP server(s)
   void buildServers();
@@ -126,6 +137,9 @@ class GeneralServerFeature final
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
+
+  metrics::Histogram<metrics::FixScale<double>>& _connectionDuration;
+  metrics::Gauge<double>& _connectionHttp;
 };
 
 }  // namespace arangodb

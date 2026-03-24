@@ -152,14 +152,13 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _apiRecordingFeature(server.server().getFeature<ApiRecordingFeature>()),
       _connectionInfo(std::move(info)),
-      _connectionStatistics(acquireConnectionStatistics()),
+      _connectionStatistics(_generalServerFeature.startConnection()),
       _auth(AuthenticationFeature::instance()),
       _isUserRequest(true) {
   TRI_ASSERT(_auth != nullptr);
-  _connectionStatistics.SET_START();
 }
 
-CommTask::~CommTask() { _connectionStatistics.SET_END(); }
+CommTask::~CommTask() = default;
 
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted

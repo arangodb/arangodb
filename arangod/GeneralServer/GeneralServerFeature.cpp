@@ -147,6 +147,7 @@
 #include <chrono>
 #include <stdexcept>
 #include <thread>
+#include <Metrics/FixScale.h>
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -168,6 +169,22 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
+namespace {
+std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0,
+                                                                   60.0};
+struct ConnectionTimeScale {
+  static metrics::FixScale<double> scale() {
+    return {0.1, 60.0, ConnectionTimeDistributionCuts};
+  }
+};
+}
+
+DECLARE_HISTOGRAM(arangodb_client_connection_statistics_connection_time,
+                  ConnectionTimeScale, "Total connection time of a client");
+
+DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
+              "The number of client connections that are currently open");
+
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metrics)
@@ -177,7 +194,9 @@ GeneralServerFeature::GeneralServerFeature(
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
-      _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
+      _http2Connections(metrics.add(arangodb_http2_connections_total{})),
+_connectionDuration(metrics.add(arangodb_client_connection_statistics_connection_time{})),
+_connectionHttp(metrics.add(arangodb_client_connection_statistics_client_connections{})){
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
