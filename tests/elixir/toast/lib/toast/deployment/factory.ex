@@ -12,7 +12,9 @@ defmodule Toast.Deployment.Factory do
   defmodule LaunchSpec do
     @moduledoc "Server launch specification produced by Factory."
 
-    @type role :: :single | :agent | :dbserver | :coordinator
+    alias Toast.Deployment.ServerInstance
+
+    @type role :: ServerInstance.role()
 
     @type t :: %__MODULE__{
             id: String.t(),
@@ -99,34 +101,22 @@ defmodule Toast.Deployment.Factory do
 
       agency_endpoints = Enum.map(agent_ports, &"tcp://127.0.0.1:#{&1}")
 
+      ctx = %{
+        config: config,
+        deployment_id: deployment_id,
+        executable: executable,
+        repo_root: repo_root
+      }
+
       agents =
-        build_role_specs(
-          config,
-          deployment_id,
-          executable,
-          repo_root,
-          :agent,
-          agent_ports,
-          &agent_args(config, &1, agency_endpoints)
-        )
+        build_role_specs(ctx, :agent, agent_ports, &agent_args(config, &1, agency_endpoints))
 
       dbservers =
-        build_role_specs(
-          config,
-          deployment_id,
-          executable,
-          repo_root,
-          :dbserver,
-          dbserver_ports,
-          &dbserver_args(&1, agency_endpoints)
-        )
+        build_role_specs(ctx, :dbserver, dbserver_ports, &dbserver_args(&1, agency_endpoints))
 
       coordinators =
         build_role_specs(
-          config,
-          deployment_id,
-          executable,
-          repo_root,
+          ctx,
           :coordinator,
           coordinator_ports,
           &coordinator_args(config, &1, agency_endpoints)
@@ -145,22 +135,14 @@ defmodule Toast.Deployment.Factory do
     end
   end
 
-  defp build_role_specs(config, deployment_id, executable, repo_root, role, ports, custom_args_fn) do
+  defp build_role_specs(ctx, role, ports, custom_args_fn) do
     specs =
       ports
       |> Enum.with_index()
       |> Enum.reduce_while([], fn {port, index}, acc ->
-        server_id = "#{deployment_id}-#{role}-#{index}"
+        server_id = "#{ctx.deployment_id}-#{role}-#{index}"
 
-        case build_cluster_server(
-               config,
-               server_id,
-               executable,
-               repo_root,
-               role,
-               port,
-               custom_args_fn.(port)
-             ) do
+        case build_cluster_server(ctx, server_id, role, port, custom_args_fn.(port)) do
           {:ok, spec} -> {:cont, [spec | acc]}
           {:error, _} = error -> {:halt, error}
         end
@@ -172,7 +154,9 @@ defmodule Toast.Deployment.Factory do
     end
   end
 
-  defp build_cluster_server(config, server_id, executable, repo_root, role, port, custom_args) do
+  defp build_cluster_server(ctx, server_id, role, port, custom_args) do
+    %{config: config, executable: executable, repo_root: repo_root} = ctx
+
     with {:ok, paths} <- Filesystem.create_server_dirs(config.work_dir, server_id) do
       merged_args =
         config

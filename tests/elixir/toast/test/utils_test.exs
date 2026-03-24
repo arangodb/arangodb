@@ -3,37 +3,27 @@ defmodule Toast.UtilsTest do
 
   import Toast.Utils
 
-  describe "conditional_put/3" do
-    test "skips nil values" do
-      assert conditional_put(%{a: 1}, :b, nil) == %{a: 1}
+  describe "compact/1" do
+    test "removes nil values" do
+      assert compact([1, nil, 2, nil, 3]) == [1, 2, 3]
     end
 
-    test "inserts non-nil values" do
-      assert conditional_put(%{a: 1}, :b, 2) == %{a: 1, b: 2}
+    test "returns empty list when all nil" do
+      assert compact([nil, nil]) == []
     end
 
-    test "inserts false as a value" do
-      assert conditional_put(%{}, :flag, false) == %{flag: false}
-    end
-  end
-
-  describe "conditional_put/4 with boolean" do
-    test "skips when condition is false" do
-      assert conditional_put(%{a: 1}, :b, 2, false) == %{a: 1}
-    end
-
-    test "inserts when condition is true" do
-      assert conditional_put(%{a: 1}, :b, 2, true) == %{a: 1, b: 2}
+    test "returns same list when no nils" do
+      assert compact([1, 2, 3]) == [1, 2, 3]
     end
   end
 
-  describe "conditional_put/4 with modifier" do
-    test "skips nil values" do
-      assert conditional_put(%{a: 1}, :b, nil, &String.upcase/1) == %{a: 1}
+  describe "compact_join/2" do
+    test "joins non-nil values" do
+      assert compact_join(["a", nil, "b"], "-") == "a-b"
     end
 
-    test "applies modifier to non-nil values" do
-      assert conditional_put(%{}, :name, "hello", &String.upcase/1) == %{name: "HELLO"}
+    test "uses empty string joiner by default" do
+      assert compact_join(["a", nil, "b"]) == "ab"
     end
   end
 end

@@ -51,21 +51,17 @@ defmodule Toast.Client do
     request(client, :get, path, opts)
   end
 
-  def post(client, path, body \\ nil, opts \\ [])
-
   @spec post(t(), String.t(), term(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
-  def post(%__MODULE__{} = client, path, nil, opts), do: request(client, :post, path, opts)
-
-  def post(%__MODULE__{} = client, path, body, opts),
-    do: request(client, :post, path, [{:json, body} | opts])
-
-  def put(client, path, body \\ nil, opts \\ [])
+  def post(%__MODULE__{} = client, path, body \\ nil, opts \\ []) do
+    opts = if body != nil, do: [{:json, body} | opts], else: opts
+    request(client, :post, path, opts)
+  end
 
   @spec put(t(), String.t(), term(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
-  def put(%__MODULE__{} = client, path, nil, opts), do: request(client, :put, path, opts)
-
-  def put(%__MODULE__{} = client, path, body, opts),
-    do: request(client, :put, path, [{:json, body} | opts])
+  def put(%__MODULE__{} = client, path, body \\ nil, opts \\ []) do
+    opts = if body != nil, do: [{:json, body} | opts], else: opts
+    request(client, :put, path, opts)
+  end
 
   @spec delete(t(), String.t(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
   def delete(%__MODULE__{} = client, path, opts \\ []) do
@@ -113,19 +109,12 @@ defmodule Toast.Client do
           {:ok, Req.Response.t()} | {:error, term()},
           Range.t() | integer()
         ) :: :ok | {:error, term()}
-  def unwrap_ok(result, expected_status \\ 200..299)
-
-  def unwrap_ok({:ok, %{status: status}}, expected)
-      when is_integer(expected) and status == expected,
-      do: :ok
-
-  def unwrap_ok({:ok, %{status: status}}, first..last//1)
-      when status >= first and status <= last,
-      do: :ok
-
-  def unwrap_ok({:ok, resp}, _expected), do: {:error, %{status: resp.status, body: resp.body}}
-
-  def unwrap_ok({:error, _} = err, _expected), do: err
+  def unwrap_ok(result, expected_status \\ 200..299) do
+    case unwrap(result, expected_status) do
+      {:ok, _body} -> :ok
+      {:error, _} = err -> err
+    end
+  end
 
   defp apply_auth(%__MODULE__{auth: nil}, opts), do: opts
   defp apply_auth(%__MODULE__{auth: auth}, opts), do: prepend_header(opts, auth_header(auth))

@@ -152,7 +152,8 @@ defmodule ToastTest.Runner do
       suite_module: suite_module,
       deployment_mode: mode,
       suite_deadline: suite_deadline,
-      timeout_factor: timeout_factor
+      timeout_factor: timeout_factor,
+      between_tests: Keyword.get(config, :between_tests, :default)
     }
 
     Logger.info("Running suite #{inspect(suite_module)} (mode=#{mode})")
@@ -207,9 +208,12 @@ defmodule ToastTest.Runner do
           result
 
         {:error, reason} ->
-          mark_all_errored_stats(
+          mark_all_with_state(
             test_modules,
-            reason,
+            fn _test ->
+              {:failed,
+               [{:error, RuntimeError.exception("Deployment failed: #{inspect(reason)}"), []}]}
+            end,
             global_opts,
             suite_module,
             suite_run.deployment_mode
@@ -234,7 +238,15 @@ defmodule ToastTest.Runner do
     Abort.abort!({:deploy_failed, "Deployment failed: #{inspect(reason)}"})
 
     {stats, test_data} =
-      mark_all_skipped_stats(test_modules, reason, global_opts, suite_module, mode)
+      mark_all_with_state(
+        test_modules,
+        fn _test ->
+          {:skipped, Abort.prefix() <> "Deployment failed: #{inspect(reason)}"}
+        end,
+        global_opts,
+        suite_module,
+        mode
+      )
 
     suite_result = build_suite_result(%{}, test_data, toast_config)
 
@@ -478,25 +490,10 @@ defmodule ToastTest.Runner do
     }
   end
 
-  defp mark_all_skipped_stats(test_modules, reason, global_opts, suite_module, mode) do
-    skip_reason = Abort.prefix() <> "Deployment failed: #{inspect(reason)}"
-
+  defp mark_all_with_state(test_modules, state_fn, global_opts, suite_module, mode) do
     emit_all_modules(test_modules, global_opts, suite_module, mode, fn manager, module ->
       emit_module_with_state(manager, module, fn test ->
-        %{test | state: {:skipped, skip_reason}}
-      end)
-    end)
-  end
-
-  defp mark_all_errored_stats(test_modules, reason, global_opts, suite_module, mode) do
-    emit_all_modules(test_modules, global_opts, suite_module, mode, fn manager, module ->
-      emit_module_with_state(manager, module, fn test ->
-        %{
-          test
-          | state:
-              {:failed,
-               [{:error, RuntimeError.exception("Deployment failed: #{inspect(reason)}"), []}]}
-        }
+        %{test | state: state_fn.(test)}
       end)
     end)
   end
@@ -570,8 +567,10 @@ defmodule ToastTest.Runner do
 
     Logger.debug("Running attribution")
 
+    crash_events = Enum.map(snapshot.unexpected_crashes, &to_crash_event/1)
+
     {issues, coredump_reports} =
-      ToastTest.Attribution.run(test_data, artifacts, snapshot.unexpected_crashes,
+      ToastTest.Attribution.run(test_data, artifacts, crash_events,
         timeout_kills: snapshot.timeout_kills,
         analyzer_opts: build_coredump_analyzer_opts(toast_config)
       )
@@ -582,7 +581,7 @@ defmodule ToastTest.Runner do
     server_logs = ToastTest.Attribution.ServerLogs.collect(issues, all_log_files, windows)
 
     Logger.debug("Building results (#{length(issues)} issues found)")
-    warnings = coredump_warnings(snapshot.unexpected_crashes, artifacts, toast_config)
+    warnings = coredump_warnings(crash_events, artifacts, toast_config)
     deployments = build_deployments(snapshot, server_logs)
 
     suite_result =
@@ -627,13 +626,21 @@ defmodule ToastTest.Runner do
     end
   end
 
+  defp to_crash_event(%{server_id: sid, crash_info: info} = e) do
+    %Toast.Process.CrashEvent{
+      server_id: sid,
+      crash_info: info,
+      expected: Map.get(e, :expected, false)
+    }
+  end
+
   defp coredump_warnings(crash_events, artifacts, toast_config) do
     if crash_events != [] and not ToastTest.ArtifactCollector.has_coredumps?(artifacts) do
       [
         sanitizer_coredump_warning(toast_config),
         Toast.Diagnostics.Coredump.coredump_discovery_warning(toast_config.coredump_dir)
       ]
-      |> Enum.reject(&is_nil/1)
+      |> Toast.Utils.compact()
     else
       []
     end
@@ -888,13 +895,17 @@ defmodule ToastTest.Runner do
 
   @spec check_between_tests(Config.t(), ExUnit.Test.t() | nil) :: :ok | {:error, term()}
   defp check_between_tests(
-         %{suite_run: %{suite_module: suite_module, deployment: deployment}},
+         %{
+           suite_run: %{
+             suite_module: suite_module,
+             deployment: deployment,
+             between_tests: between_tests
+           }
+         },
          prev_test
        ) do
-    suite_config = suite_module.deployment_config()
-
     cond do
-      Keyword.get(suite_config, :between_tests) == false ->
+      between_tests == false ->
         :ok
 
       function_exported?(suite_module, :between_tests, 2) and prev_test != nil ->
@@ -919,7 +930,7 @@ defmodule ToastTest.Runner do
       event: :test_finished,
       module: test.module,
       name: test.name,
-      outcome: test_outcome(test),
+      outcome: ToastTest.Formatting.test_outcome(test),
       duration_us: test.time
     })
 
@@ -936,13 +947,6 @@ defmodule ToastTest.Runner do
         :max_failures_reached
     end
   end
-
-  defp test_outcome(%{state: nil}), do: :passed
-  defp test_outcome(%{state: {:failed, _}}), do: :failed
-  defp test_outcome(%{state: {:skipped, _}}), do: :skipped
-  defp test_outcome(%{state: {:excluded, _}}), do: :excluded
-  defp test_outcome(%{state: {:invalid, _}}), do: :invalid
-  defp test_outcome(_), do: :unknown
 
   ## Per-test execution
 

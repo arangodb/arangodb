@@ -53,26 +53,15 @@ defmodule ToastTest.Enrichment.Logs do
   end
 
   defp build_entry(raw, time) do
-    entry = %{time: time, message: raw["message"] || ""}
-
-    entry =
-      case Map.get(@level_map, raw["level"]) do
-        nil -> entry
-        level -> Map.put(entry, :level, level)
-      end
-
-    entry =
-      case Map.get(@role_map, raw["role"]) do
-        nil -> entry
-        role -> Map.put(entry, :role, role)
-      end
-
-    entry = maybe_put_atom(entry, :topic, raw["topic"])
-    entry = maybe_put(entry, :id, raw["id"])
-    entry = maybe_put(entry, :pid, raw["pid"])
-    entry = maybe_put(entry, :file, raw["file"])
-    entry = maybe_put(entry, :line, raw["line"])
-    maybe_put(entry, :function, raw["function"])
+    %{time: time, message: raw["message"] || ""}
+    |> maybe_put(:level, Map.get(@level_map, raw["level"]))
+    |> maybe_put(:role, Map.get(@role_map, raw["role"]))
+    |> maybe_put_atom(:topic, raw["topic"])
+    |> maybe_put(:id, raw["id"])
+    |> maybe_put(:pid, raw["pid"])
+    |> maybe_put(:file, raw["file"])
+    |> maybe_put(:line, raw["line"])
+    |> maybe_put(:function, raw["function"])
   end
 
   defp maybe_put(entry, _key, nil), do: entry

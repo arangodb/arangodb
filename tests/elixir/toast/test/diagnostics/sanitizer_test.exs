@@ -46,26 +46,26 @@ defmodule Toast.Diagnostics.SanitizerTest do
       assert MapSet.member?(result, "LSAN_OPTIONS")
     end
 
-    test "explicit \"tsan\" forces TSAN_OPTIONS active" do
-      result = Sanitizer.detect("tsan")
+    test "explicit :tsan forces TSAN_OPTIONS active" do
+      result = Sanitizer.detect(:tsan)
       assert MapSet.equal?(result, MapSet.new(["TSAN_OPTIONS"]))
     end
 
-    test "explicit \"alubsan\" forces ASAN/LSAN/UBSAN active" do
-      result = Sanitizer.detect("alubsan")
+    test "explicit :alubsan forces ASAN/LSAN/UBSAN active" do
+      result = Sanitizer.detect(:alubsan)
       assert MapSet.equal?(result, MapSet.new(["ASAN_OPTIONS", "LSAN_OPTIONS", "UBSAN_OPTIONS"]))
     end
 
     test "explicit mode ignores env vars" do
       System.put_env("TSAN_OPTIONS", "halt_on_error=0")
 
-      result = Sanitizer.detect("alubsan")
+      result = Sanitizer.detect(:alubsan)
       refute MapSet.member?(result, "TSAN_OPTIONS")
     end
 
     test "raises on invalid explicit sanitizer" do
       assert_raise ArgumentError, ~r/invalid sanitizer/, fn ->
-        Sanitizer.detect("invalid")
+        Sanitizer.detect(:invalid)
       end
     end
   end
@@ -81,19 +81,19 @@ defmodule Toast.Diagnostics.SanitizerTest do
 
     test "detects alubsan from asan in path" do
       assert Sanitizer.detect_from_build_dir("/home/user/arangodb/build-clang-asan-debug") ==
-               "alubsan"
+               :alubsan
     end
 
     test "detects tsan from tsan in path" do
-      assert Sanitizer.detect_from_build_dir("/home/user/arangodb/build-clang-tsan") == "tsan"
+      assert Sanitizer.detect_from_build_dir("/home/user/arangodb/build-clang-tsan") == :tsan
     end
 
     test "is case-insensitive" do
-      assert Sanitizer.detect_from_build_dir("/home/user/arangodb/build-ASAN") == "alubsan"
+      assert Sanitizer.detect_from_build_dir("/home/user/arangodb/build-ASAN") == :alubsan
     end
 
     test "tsan takes precedence when both present" do
-      assert Sanitizer.detect_from_build_dir("/home/user/arangodb/build-tsan-asan") == "tsan"
+      assert Sanitizer.detect_from_build_dir("/home/user/arangodb/build-tsan-asan") == :tsan
     end
   end
 
@@ -165,7 +165,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
 
     test "explicit mode applies default ASAN options" do
       active = MapSet.new(["ASAN_OPTIONS"])
-      env = Sanitizer.build_env(active, "/tmp/server1", "/repo", "alubsan")
+      env = Sanitizer.build_env(active, "/tmp/server1", "/repo", :alubsan)
 
       assert [{"ASAN_OPTIONS", value}] = env
       assert String.contains?(value, "halt_on_error=0")
@@ -174,7 +174,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
 
     test "explicit mode applies default TSAN options" do
       active = MapSet.new(["TSAN_OPTIONS"])
-      env = Sanitizer.build_env(active, "/tmp/server1", "/repo", "tsan")
+      env = Sanitizer.build_env(active, "/tmp/server1", "/repo", :tsan)
 
       assert [{"TSAN_OPTIONS", value}] = env
       assert String.contains?(value, "halt_on_error=0")
@@ -183,7 +183,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
 
     test "explicit mode applies default UBSAN options" do
       active = MapSet.new(["UBSAN_OPTIONS"])
-      env = Sanitizer.build_env(active, "/tmp/server1", "/repo", "alubsan")
+      env = Sanitizer.build_env(active, "/tmp/server1", "/repo", :alubsan)
 
       assert [{"UBSAN_OPTIONS", value}] = env
       assert String.contains?(value, "halt_on_error=0")
@@ -194,7 +194,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
       System.put_env("TSAN_OPTIONS", "halt_on_error=1:history_size=4")
 
       active = MapSet.new(["TSAN_OPTIONS"])
-      env = Sanitizer.build_env(active, "/tmp/server1", "/repo", "tsan")
+      env = Sanitizer.build_env(active, "/tmp/server1", "/repo", :tsan)
 
       assert [{"TSAN_OPTIONS", value}] = env
       assert String.contains?(value, "halt_on_error=1")
@@ -208,49 +208,6 @@ defmodule Toast.Diagnostics.SanitizerTest do
       assert [{"ASAN_OPTIONS", value}] = env
       refute String.contains?(value, "halt_on_error=")
       refute String.contains?(value, "detect_leaks=")
-    end
-  end
-
-  describe "collect_errors/2" do
-    setup do
-      dir = Path.join(System.tmp_dir!(), "toast_san_test_#{System.unique_integer([:positive])}")
-      File.mkdir_p!(dir)
-      on_exit(fn -> File.rm_rf!(dir) end)
-      %{dir: dir}
-    end
-
-    test "returns empty list when no log files", %{dir: dir} do
-      assert Sanitizer.collect_errors(dir, "server-1") == []
-    end
-
-    test "reads sanitizer log files", %{dir: dir} do
-      content = String.duplicate("==12345==ERROR: AddressSanitizer: heap-buffer-overflow\n", 3)
-      File.write!(Path.join(dir, "alubsan.log.arangod.12345"), content)
-
-      errors = Sanitizer.collect_errors(dir, "server-1")
-      assert length(errors) == 1
-
-      [error] = errors
-      assert error.content == content
-      assert error.sanitizer_type == :alubsan
-      assert error.server_id == "server-1"
-      assert String.contains?(error.file_path, "alubsan.log.arangod.12345")
-    end
-
-    test "skips small files", %{dir: dir} do
-      File.write!(Path.join(dir, "alubsan.log.arangod.99999"), "tiny")
-
-      assert Sanitizer.collect_errors(dir, "server-1") == []
-    end
-
-    test "collects both alubsan and tsan errors", %{dir: dir} do
-      File.write!(Path.join(dir, "alubsan.log.arangod.111"), String.duplicate("ASAN error\n", 5))
-      File.write!(Path.join(dir, "tsan.log.arangod.222"), String.duplicate("TSAN warning\n", 5))
-
-      errors = Sanitizer.collect_errors(dir, "server-1")
-      assert length(errors) == 2
-      types = Enum.map(errors, & &1.sanitizer_type) |> MapSet.new()
-      assert MapSet.equal?(types, MapSet.new([:alubsan, :tsan]))
     end
   end
 end

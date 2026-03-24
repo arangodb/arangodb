@@ -344,36 +344,12 @@ defmodule ToastTest.EventStore do
 
   # --- Logging ---
 
-  defp log_event(%{event: :server_started, server_id: sid, pid: pid}),
-    do: Logger.debug("EventStore: server_started #{sid} (pid=#{pid})")
+  defp log_event(%{event: event} = e) do
+    detail =
+      e
+      |> Map.drop([:event, :timestamp])
+      |> Enum.map_join(", ", fn {k, v} -> "#{k}=#{inspect(v)}" end)
 
-  defp log_event(%{event: :server_stopped, server_id: sid}),
-    do: Logger.debug("EventStore: server_stopped #{sid}")
-
-  defp log_event(%{event: :server_crashed, server_id: sid}),
-    do: Logger.debug("EventStore: server_crashed #{sid}")
-
-  defp log_event(%{event: :server_killed, server_id: sid}),
-    do: Logger.debug("EventStore: server_killed #{sid}")
-
-  defp log_event(%{event: :server_paused, server_id: sid}),
-    do: Logger.debug("EventStore: server_paused #{sid}")
-
-  defp log_event(%{event: :server_resumed, server_id: sid}),
-    do: Logger.debug("EventStore: server_resumed #{sid}")
-
-  defp log_event(%{event: :deployment_starting, deployment_id: did}),
-    do: Logger.debug("EventStore: deployment_starting #{did}")
-
-  defp log_event(%{event: :deployment_started, deployment_id: did}),
-    do: Logger.debug("EventStore: deployment_started #{did}")
-
-  defp log_event(%{event: :deployment_stopped, deployment_id: did}),
-    do: Logger.debug("EventStore: deployment_stopped #{did}")
-
-  defp log_event(%{event: :server_identified, server_id: sid, arango_id: aid}),
-    do: Logger.debug("EventStore: server_identified #{sid} => #{aid}")
-
-  defp log_event(%{event: type}),
-    do: Logger.debug("EventStore: #{type}")
+    Logger.debug("EventStore: #{event} #{detail}")
+  end
 end

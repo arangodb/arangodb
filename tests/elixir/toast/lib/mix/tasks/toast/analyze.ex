@@ -99,7 +99,7 @@ defmodule Mix.Tasks.Toast.Analyze do
     else
       {subcommand, rest} = pop_subcommand(rest)
       {opts, rest} = pop_positional_result_dir(opts, rest)
-      result_dir = Keyword.get(opts, :result_dir, "./toast-results")
+      result_dir = Keyword.get(opts, :result_dir, Toast.Config.default_result_dir())
       color = Keyword.get(opts, :color, true)
 
       case subcommand do
@@ -319,7 +319,7 @@ defmodule Mix.Tasks.Toast.Analyze do
           if(cd[:faulting_address], do: "fault addr: #{cd.faulting_address}"),
           if(cd[:crash_thread], do: "crash thread: #{cd.crash_thread}")
         ]
-        |> Enum.reject(&is_nil/1)
+        |> Toast.Utils.compact()
         |> Enum.join(", ")
 
       Mix.shell().info("      #{summary}")
@@ -535,7 +535,7 @@ defmodule Mix.Tasks.Toast.Analyze do
         if(info.exit_status, do: "exit_status: #{info.exit_status}"),
         if(match?(%DateTime{}, info.timestamp), do: "at: #{DateTime.to_iso8601(info.timestamp)}")
       ]
-      |> Enum.reject(&is_nil/1)
+      |> Toast.Utils.compact()
 
     if parts != [] do
       Mix.shell().info("  #{colorize(Enum.join(parts, "  "), :red, color)}")
@@ -1128,7 +1128,7 @@ defmodule Mix.Tasks.Toast.Analyze do
       |> Enum.take(top)
 
     Enum.each(test_stats, fn test ->
-      name = test.name |> Atom.to_string() |> String.replace_prefix("test ", "")
+      name = ToastTest.Formatting.display_test_name(test.name)
       name = if String.length(name) > 40, do: String.slice(name, 0, 37) <> "...", else: name
       pct = if tests_us > 0, do: test.duration_us / tests_us * 100, else: 0
 
@@ -1331,13 +1331,7 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   # --- Formatting ---
 
-  defp format_scope(:suite), do: ":suite"
-  defp format_scope({:module, mod}), do: inspect(mod)
-
-  defp format_scope({:test, mod, test_name}) do
-    name = test_name |> Atom.to_string() |> String.replace_prefix("test ", "")
-    "#{inspect(mod)} > \"#{name}\""
-  end
+  defp format_scope(scope), do: IssueFormatting.format_scope(scope) || ":suite"
 
   defp format_server(%{type: :crash, detail: %{server: server}}), do: server
   defp format_server(%{type: :sanitizer_report, detail: %{server: server}}), do: server

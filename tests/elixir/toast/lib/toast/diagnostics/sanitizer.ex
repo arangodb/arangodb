@@ -32,11 +32,11 @@ defmodule Toast.Diagnostics.Sanitizer do
   When `explicit` is `"tsan"` or `"alubsan"`, forces those sanitizer vars active
   regardless of whether the env vars exist.
   """
-  @spec detect(String.t() | nil) :: MapSet.t(String.t())
+  @spec detect(atom() | nil) :: MapSet.t(String.t())
   def detect(explicit \\ nil)
 
-  def detect("tsan"), do: @tsan_vars
-  def detect("alubsan"), do: @alubsan_vars
+  def detect(:tsan), do: @tsan_vars
+  def detect(:alubsan), do: @alubsan_vars
 
   def detect(nil) do
     Enum.reduce(@all_vars, MapSet.new(), fn var, acc ->
@@ -45,7 +45,7 @@ defmodule Toast.Diagnostics.Sanitizer do
   end
 
   def detect(other) do
-    raise ArgumentError, "invalid sanitizer: #{inspect(other)}, expected \"tsan\" or \"alubsan\""
+    raise ArgumentError, "invalid sanitizer: #{inspect(other)}, expected :tsan or :alubsan"
   end
 
   @doc """
@@ -54,15 +54,15 @@ defmodule Toast.Diagnostics.Sanitizer do
   Returns `"alubsan"` if the path contains "asan", `"tsan"` if it contains "tsan",
   or `nil` if no sanitizer can be inferred.
   """
-  @spec detect_from_build_dir(Path.t() | nil) :: String.t() | nil
+  @spec detect_from_build_dir(Path.t() | nil) :: atom() | nil
   def detect_from_build_dir(nil), do: nil
 
   def detect_from_build_dir(build_dir) do
     dir = String.downcase(build_dir)
 
     cond do
-      String.contains?(dir, "tsan") -> "tsan"
-      String.contains?(dir, "asan") -> "alubsan"
+      String.contains?(dir, "tsan") -> :tsan
+      String.contains?(dir, "asan") -> :alubsan
       true -> nil
     end
   end
@@ -73,7 +73,7 @@ defmodule Toast.Diagnostics.Sanitizer do
   When `explicit` is non-nil, default sanitizer options are applied as a base
   before overlaying any user-provided env var values.
   """
-  @spec build_env(MapSet.t(String.t()), String.t(), String.t(), String.t() | nil) ::
+  @spec build_env(MapSet.t(String.t()), String.t(), String.t(), atom() | nil) ::
           [{String.t(), String.t()}]
   def build_env(active, log_dir, repo_root, explicit \\ nil) do
     if Enum.empty?(active) do
@@ -90,14 +90,6 @@ defmodule Toast.Diagnostics.Sanitizer do
         {san_var, format_options(options)}
       end)
     end
-  end
-
-  @doc "Collect sanitizer errors from a server's log directory after shutdown."
-  @spec collect_errors(String.t(), String.t()) :: [sanitizer_error()]
-  def collect_errors(log_dir, server_id) do
-    alubsan_errors = collect_log_files(log_dir, "alubsan.log", :alubsan, server_id)
-    tsan_errors = collect_log_files(log_dir, "tsan.log", :tsan, server_id)
-    alubsan_errors ++ tsan_errors
   end
 
   defp build_base_options(_san_var, nil), do: %{}
@@ -149,37 +141,5 @@ defmodule Toast.Diagnostics.Sanitizer do
       safe_value = String.replace(value, ",", "_")
       "#{key}=#{safe_value}"
     end)
-  end
-
-  defp collect_log_files(log_dir, base_name, sanitizer_type, server_id) do
-    log_dir
-    |> Path.join("#{base_name}.*")
-    |> Path.wildcard()
-    |> Enum.flat_map(fn file_path ->
-      case File.read(file_path) do
-        {:ok, content} when byte_size(content) > 10 ->
-          timestamp = get_file_mtime(file_path)
-
-          [
-            %{
-              content: content,
-              file_path: file_path,
-              timestamp: timestamp,
-              sanitizer_type: sanitizer_type,
-              server_id: server_id
-            }
-          ]
-
-        _ ->
-          []
-      end
-    end)
-  end
-
-  defp get_file_mtime(file_path) do
-    case File.stat(file_path, time: :posix) do
-      {:ok, %{mtime: mtime}} -> mtime * 1_000_000
-      _ -> Toast.get_timestamp()
-    end
   end
 end

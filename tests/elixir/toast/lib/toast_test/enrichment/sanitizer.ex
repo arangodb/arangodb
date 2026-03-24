@@ -21,7 +21,7 @@ defmodule ToastTest.Enrichment.Sanitizer do
   """
   @spec read(Path.t()) :: {:ok, result()} | {:error, term()}
   def read(path) do
-    with {:ok, timestamp} <- file_mtime(path),
+    with {:ok, timestamp} <- Toast.Utils.Filesystem.file_mtime_us(path),
          {:ok, content} <- File.read(path) do
       {:ok,
        %{
@@ -30,43 +30,6 @@ defmodule ToastTest.Enrichment.Sanitizer do
          type: detect_type(path),
          kind: detect_kind(content)
        }}
-    end
-  end
-
-  # Get file mtime with microsecond precision via Linux stat(1).
-  # %y gives human-readable mtime with nanoseconds: "2026-01-15 11:00:05.820000000 +0100"
-  # Falls back to File.stat (second precision) if parsing fails.
-  defp file_mtime(path) do
-    case System.cmd("stat", ["-c", "%y", path], stderr_to_stdout: true) do
-      {output, 0} -> parse_stat_mtime(output, path)
-      _ -> file_mtime_fallback(path)
-    end
-  end
-
-  defp parse_stat_mtime(output, path) do
-    case Regex.run(
-           ~r/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})\.(\d+) ([+-]\d{4})/,
-           String.trim(output)
-         ) do
-      [_, date, time, nanos, offset] ->
-        usec_str = nanos |> String.slice(0, 6) |> String.pad_trailing(6, "0")
-        <<tz_h::binary-size(3), tz_m::binary>> = offset
-        iso = "#{date}T#{time}.#{usec_str}#{tz_h}:#{tz_m}"
-
-        case DateTime.from_iso8601(iso) do
-          {:ok, dt, _offset} -> {:ok, DateTime.to_unix(dt, :microsecond)}
-          _ -> file_mtime_fallback(path)
-        end
-
-      _ ->
-        file_mtime_fallback(path)
-    end
-  end
-
-  defp file_mtime_fallback(path) do
-    case File.stat(path, time: :posix) do
-      {:ok, stat} -> {:ok, stat.mtime * 1_000_000}
-      error -> error
     end
   end
 

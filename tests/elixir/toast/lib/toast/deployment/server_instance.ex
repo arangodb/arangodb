@@ -37,6 +37,11 @@ defmodule Toast.Deployment.ServerInstance do
     expecting_exit: false
   ]
 
+  @cluster_roles [:agent, :dbserver, :coordinator]
+
+  @spec cluster_role?(role()) :: boolean()
+  def cluster_role?(role), do: role in @cluster_roles
+
   @doc "Whether this server has crashed unexpectedly (not as part of an expected exit)."
   @spec unexpected_crash?(t()) :: boolean()
   def unexpected_crash?(%__MODULE__{operational_state: :crashed, expecting_exit: false}), do: true

@@ -123,7 +123,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     details =
       issues
       |> Enum.map(&render_issue_detail/1)
-      |> Enum.reject(&is_nil/1)
+      |> Toast.Utils.compact()
 
     case details do
       [] ->
@@ -245,7 +245,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
   defp render_system_err(issues, indent) do
     parts = Enum.map(issues, &render_issue_detail/1)
 
-    case Enum.reject(parts, &is_nil/1) do
+    case Toast.Utils.compact(parts) do
       [] -> ""
       non_empty -> indent <> wrap_cdata("system-err", Enum.join(non_empty, "\n\n"))
     end

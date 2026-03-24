@@ -43,4 +43,16 @@ defmodule ToastTest.Formatting do
   def colorize(text, color, true) do
     Inspect.Algebra.concat([ansi_code(color), text, IO.ANSI.reset()])
   end
+
+  @spec test_outcome(ExUnit.Test.t()) ::
+          :passed | :failed | :skipped | :excluded | :invalid | :unknown
+  def test_outcome(%{state: nil}), do: :passed
+  def test_outcome(%{state: {:failed, _}}), do: :failed
+  def test_outcome(%{state: {:skipped, _}}), do: :skipped
+  def test_outcome(%{state: {:excluded, _}}), do: :excluded
+  def test_outcome(%{state: {:invalid, _}}), do: :invalid
+  def test_outcome(%{state: _}), do: :unknown
+
+  @spec display_test_name(atom() | String.t()) :: String.t()
+  def display_test_name(name), do: name |> to_string() |> String.replace_prefix("test ", "")
 end

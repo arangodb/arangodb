@@ -25,6 +25,10 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
         [] -> Mix.raise("Usage: mix toast.gen.suite <name> [--mode single_server|cluster]")
       end
 
+    unless name =~ ~r/^[a-z][a-z0-9_]*$/ do
+      Mix.raise("Suite name must match [a-z][a-z0-9_]*, got: #{inspect(name)}")
+    end
+
     mode = parse_mode(Keyword.get(opts, :mode))
     module_name = Macro.camelize(name)
     suite_dir = Path.join("suites", name)

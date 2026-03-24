@@ -51,7 +51,7 @@ defmodule Toast.Deployment do
   @doc "Returns true if this is a cluster deployment."
   @spec cluster?(t()) :: boolean()
   def cluster?(%__MODULE__{servers: servers}) do
-    Enum.any?(servers, fn {_id, srv} -> srv.role in [:agent, :dbserver, :coordinator] end)
+    Enum.any?(servers, fn {_id, srv} -> ServerInstance.cluster_role?(srv.role) end)
   end
 
   @doc """
@@ -444,10 +444,7 @@ defmodule Toast.Deployment do
   end
 
   defp controller_call_control(deployment, op, target, opts \\ []) do
-    case opts do
-      [] -> apply(Controller, op, [deployment.controller, target])
-      opts -> apply(Controller, op, [deployment.controller, target, opts])
-    end
+    apply(Controller, op, [deployment.controller, target, opts])
   catch
     :exit, _ -> {:error, :controller_not_available}
   end

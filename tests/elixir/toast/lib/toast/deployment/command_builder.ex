@@ -1,7 +1,9 @@
 defmodule Toast.Deployment.CommandBuilder do
   @moduledoc "Build arangod CLI arguments for different server roles."
 
-  @type role :: :single | :agent | :coordinator | :dbserver
+  alias Toast.Deployment.ServerInstance
+
+  @type role :: ServerInstance.role()
 
   @type server_spec :: %{
           role: role(),

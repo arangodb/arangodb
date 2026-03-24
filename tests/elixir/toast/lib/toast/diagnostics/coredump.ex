@@ -167,27 +167,6 @@ defmodule Toast.Diagnostics.Coredump do
     end
   end
 
-  @doc "Discover and analyze all core files for a set of servers."
-  @spec collect(keyword()) :: [Report.t()]
-  def collect(opts) do
-    servers = Keyword.get(opts, :servers, [])
-    timeout = Keyword.get(opts, :timeout, @default_timeout_ms)
-    debugger = Keyword.get(opts, :debugger)
-
-    deadline = System.monotonic_time(:millisecond) + timeout
-
-    Enum.reduce_while(servers, [], fn server, acc ->
-      remaining = deadline - System.monotonic_time(:millisecond)
-
-      if remaining <= 0 do
-        Logger.warning("Coredump analysis timeout budget exhausted, skipping remaining servers")
-        {:halt, acc}
-      else
-        {:cont, acc ++ collect_for_server(server, remaining, debugger)}
-      end
-    end)
-  end
-
   defp resolve_os_pids(opts) do
     case Keyword.get(opts, :os_pids) do
       [_ | _] = pids ->
@@ -198,44 +177,6 @@ defmodule Toast.Diagnostics.Coredump do
           nil -> []
           pid -> [pid]
         end
-    end
-  end
-
-  defp collect_for_server(server, remaining_ms, debugger) do
-    discover_opts =
-      case Map.get(server, :os_pids) do
-        [_ | _] = pids ->
-          [server_dir: server.server_dir, os_pids: pids]
-
-        _ ->
-          [server_dir: server.server_dir, os_pid: server.os_pid]
-      end
-
-    case discover(discover_opts) do
-      [] ->
-        []
-
-      cores ->
-        Logger.info("Found #{length(cores)} core file(s) for #{server.id}")
-        per_core_timeout = max(1_000, div(remaining_ms, length(cores)))
-
-        analyze_opts =
-          if debugger,
-            do: [timeout: per_core_timeout, debugger: debugger],
-            else: [timeout: per_core_timeout]
-
-        Enum.flat_map(cores, &analyze_core(&1, server.binary_path, analyze_opts))
-    end
-  end
-
-  defp analyze_core(core_path, binary_path, opts) do
-    case analyze(core_path, binary_path, opts) do
-      {:ok, report} ->
-        [report]
-
-      {:error, reason} ->
-        Logger.warning("Failed to analyze core #{core_path}: #{inspect(reason)}")
-        []
     end
   end
 
@@ -302,7 +243,9 @@ defmodule Toast.Diagnostics.Coredump do
         collect_port_output(port, os_pid, [], deadline)
     end
   rescue
-    e -> {:error, e}
+    e in [ErlangError, SystemLimitError] ->
+      Logger.warning("cmd_with_timeout failed: #{inspect(e)}")
+      {:error, e}
   end
 
   defp collect_port_output(port, os_pid, chunks, deadline) do

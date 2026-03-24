@@ -16,6 +16,8 @@ defmodule ToastTest.CrashMonitor do
       ]
       |> Toast.Utils.compact_join(" ")
 
+    # abort!/1 calls :ets.insert_new which raises ArgumentError if the
+    # Abort ETS table hasn't been created yet (no active suite run).
     ToastTest.Abort.abort!({:crash, message})
     ToastTest.Abort.kill_test_pid()
   rescue

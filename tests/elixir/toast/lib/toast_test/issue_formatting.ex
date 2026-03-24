@@ -108,8 +108,7 @@ defmodule ToastTest.IssueFormatting do
   def format_scope({:module, mod}), do: inspect(mod)
 
   def format_scope({:test, mod, name}) do
-    short_name = name |> to_string() |> String.replace_prefix("test ", "")
-    "#{inspect(mod)} > \"#{short_name}\""
+    "#{inspect(mod)} > \"#{ToastTest.Formatting.display_test_name(name)}\""
   end
 
   def timeout_source_label(:startup_timeout), do: "Startup Timeout"

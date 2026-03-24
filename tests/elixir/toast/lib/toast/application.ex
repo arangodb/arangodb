@@ -36,7 +36,7 @@ defmodule Toast.Application do
   end
 
   defp setup_file_logger do
-    result_dir = Application.get_env(:toast, :result_dir, "toast-results")
+    result_dir = Application.get_env(:toast, :result_dir, Toast.Config.default_result_dir())
     File.mkdir_p!(result_dir)
     log_path = Path.join(result_dir, "toast.log")
 

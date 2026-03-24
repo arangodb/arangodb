@@ -90,7 +90,7 @@ defmodule ToastTest.ResultCollector do
 
     result = %{
       name: test.name,
-      outcome: extract_outcome(test.state),
+      outcome: ToastTest.Formatting.test_outcome(test),
       duration_us: test.time,
       started_at: started_at,
       finished_at: finished_at,
@@ -160,12 +160,6 @@ defmodule ToastTest.ResultCollector do
 
   defp max_dt([]), do: nil
   defp max_dt(dts), do: Enum.max(dts, DateTime)
-
-  defp extract_outcome(nil), do: :passed
-  defp extract_outcome({:failed, _}), do: :failed
-  defp extract_outcome({:skipped, _}), do: :skipped
-  defp extract_outcome({:excluded, _}), do: :excluded
-  defp extract_outcome({:invalid, _}), do: :invalid
 
   defp record_failure(failures, %ExUnit.Test{state: {:failed, _}} = test), do: [test | failures]
   defp record_failure(failures, _test), do: failures

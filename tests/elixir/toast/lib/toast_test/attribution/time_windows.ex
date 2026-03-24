@@ -12,6 +12,25 @@ defmodule ToastTest.Attribution.TimeWindows do
 
   @default_tolerance_us 5_000_000
 
+  @usec_per_ms 1_000
+
+  @padding %{
+    crash: {-20_000, 0},
+    timeout: {-10_000, 0},
+    test_failure: {-1_000, 1_000},
+    sanitizer: {-5_000, 1_000},
+    sanitizer_report: {-5_000, 1_000}
+  }
+
+  @spec padding_for(atom()) :: {integer(), integer()}
+  def padding_for(type), do: Map.fetch!(@padding, type)
+
+  @spec pad(integer(), integer(), atom()) :: {integer(), integer()}
+  def pad(start_us, end_us, type) do
+    {before_ms, after_ms} = padding_for(type)
+    {start_us + before_ms * @usec_per_ms, end_us + after_ms * @usec_per_ms}
+  end
+
   @type windows :: %{
           suite: %{started_at: Toast.timestamp(), finished_at: Toast.timestamp()},
           modules: %{module() => module_window()},

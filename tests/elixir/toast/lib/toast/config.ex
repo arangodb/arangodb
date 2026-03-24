@@ -27,7 +27,7 @@ defmodule Toast.Config do
           cluster_coordinators: pos_integer(),
           cluster_replication_factor: pos_integer(),
           keep_work_dir: boolean(),
-          sanitizer_override: String.t() | nil,
+          sanitizer_override: atom() | nil,
           active_sanitizers: MapSet.t(String.t()),
           api_version: non_neg_integer() | String.t() | nil,
           debugger: :gdb | :lldb | :auto | :none | nil,
@@ -38,6 +38,9 @@ defmodule Toast.Config do
         }
 
   @default_result_dir "toast-results"
+
+  @spec default_result_dir() :: String.t()
+  def default_result_dir, do: @default_result_dir
 
   # all timeouts are in milliseconds
   defstruct build_dir: nil,
@@ -74,10 +77,10 @@ defmodule Toast.Config do
   @spec load(keyword()) :: t()
   def load(opts) do
     local = load_local_config(Keyword.get(opts, :local_config_dir))
-    {build_dir, sanitizer_override, active_sanitizers, factor} = resolve_sanitizer(opts, local)
+    sanitizer = resolve_sanitizer(opts, local)
 
-    build_config(opts, local, build_dir, sanitizer_override, active_sanitizers, factor)
-    |> apply_timeout_factor(factor)
+    build_config(opts, local, sanitizer)
+    |> apply_timeout_factor(sanitizer.factor)
     |> log_config()
   end
 
@@ -85,8 +88,10 @@ defmodule Toast.Config do
     build_dir = opt_or(opts, :build_dir, env("TOAST_BUILD_DIR"), local[:build_dir])
 
     sanitizer_override =
-      opt_or(opts, :sanitizer_override, env("TOAST_SANITIZER"), local[:sanitizer_override]) ||
-        Sanitizer.detect_from_build_dir(build_dir)
+      opts
+      |> opt_or(:sanitizer_override, env("TOAST_SANITIZER"), local[:sanitizer_override])
+      |> parse_sanitizer_name()
+      |> Kernel.||(Sanitizer.detect_from_build_dir(build_dir))
 
     active_sanitizers =
       opt_or(opts, :active_sanitizers, Sanitizer.detect(sanitizer_override))
@@ -99,14 +104,24 @@ defmodule Toast.Config do
         local[:timeout_factor]
       )
 
-    {build_dir, sanitizer_override, active_sanitizers, factor}
+    %{
+      build_dir: build_dir,
+      sanitizer_override: sanitizer_override,
+      active_sanitizers: active_sanitizers,
+      factor: factor
+    }
   end
 
-  defp build_config(opts, local, build_dir, sanitizer_override, active_sanitizers, factor) do
-    (build_path_config(opts, local, build_dir) ++
-       build_timeout_config(opts, local, factor) ++
+  defp build_config(opts, local, sanitizer) do
+    (build_path_config(opts, local, sanitizer.build_dir) ++
+       build_timeout_config(opts, local, sanitizer.factor) ++
        build_cluster_config(opts, local) ++
-       build_deployment_config(opts, local, sanitizer_override, active_sanitizers))
+       build_deployment_config(
+         opts,
+         local,
+         sanitizer.sanitizer_override,
+         sanitizer.active_sanitizers
+       ))
     |> Enum.reject(&match?({_, nil}, &1))
     |> then(&struct(__MODULE__, &1))
   end
@@ -293,7 +308,10 @@ defmodule Toast.Config do
     end
   rescue
     error ->
-      Logger.error("Failed to load .toast.local.exs: #{Exception.message(error)}")
+      Logger.error(
+        "Failed to load .toast.local.exs: #{Exception.message(error)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+      )
+
       %{}
   end
 
@@ -377,6 +395,19 @@ defmodule Toast.Config do
         end
     end
   end
+
+  defp parse_sanitizer_name(nil), do: nil
+  defp parse_sanitizer_name(:tsan), do: :tsan
+  defp parse_sanitizer_name(:alubsan), do: :alubsan
+  defp parse_sanitizer_name("tsan"), do: :tsan
+  defp parse_sanitizer_name("alubsan"), do: :alubsan
+
+  defp parse_sanitizer_name(other),
+    do:
+      raise(
+        ArgumentError,
+        "invalid sanitizer: #{inspect(other)}, expected \"tsan\" or \"alubsan\""
+      )
 
   defp read_debugger do
     case env("TOAST_DEBUGGER") do

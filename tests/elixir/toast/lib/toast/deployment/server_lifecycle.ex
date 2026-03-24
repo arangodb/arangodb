@@ -164,6 +164,23 @@ defmodule Toast.Deployment.ServerLifecycle do
     :unexpected_crash
   end
 
+  @spec handle_unhealthy_server(String.t(), ServerInstance.t() | nil, map()) :: :ok
+  def handle_unhealthy_server(server_id, server, crash_ctx) do
+    if server && server.server_pid do
+      ServerProcess.send_signal(server.server_pid, :sigabrt)
+    end
+
+    crash_info = %Toast.Process.CrashInfo{
+      exit_status: nil,
+      signal: nil,
+      timestamp: Toast.get_timestamp()
+    }
+
+    notify_crash_event(crash_ctx, server_id, crash_info, false)
+    ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
+    :ok
+  end
+
   defp notify_crash_event(crash_ctx, server_id, crash_info, expected) do
     ToastTest.EventStore.notify(%{
       event: :server_crashed,

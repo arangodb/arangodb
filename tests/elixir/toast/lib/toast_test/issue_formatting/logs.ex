@@ -7,12 +7,7 @@ defmodule ToastTest.IssueFormatting.Logs do
   @known_roles ~w(agent coordinator dbserver single)a
   @default_exclude_roles [:agent]
 
-  @type_defaults %{
-    crash: {-20_000, 0},
-    timeout: {-10_000, 0},
-    test_failure: {-1_000, 1_000},
-    sanitizer_report: {-5_000, 1_000}
-  }
+  alias ToastTest.Attribution.TimeWindows
 
   @role_abbrevs %{
     coordinator: "CO",
@@ -138,8 +133,7 @@ defmodule ToastTest.IssueFormatting.Logs do
   def display_window(%{time_bounds: nil}, _window_spec), do: nil
 
   def display_window(%{time_bounds: {start_us, end_us}, type: type}, nil) do
-    {before_ms, after_ms} = Map.fetch!(@type_defaults, type)
-    {start_us + before_ms * @usec_per_ms, end_us + after_ms * @usec_per_ms}
+    TimeWindows.pad(start_us, end_us, type)
   end
 
   def display_window(%{time_bounds: {start_us, end_us}}, {before_ms, after_ms}) do
@@ -297,9 +291,7 @@ defmodule ToastTest.IssueFormatting.Logs do
           instance_num_str = extract_instance_num(sid)
           num = parse_instance_num(instance_num_str)
 
-          tag =
-            (@role_abbrevs[role] || String.upcase(String.slice(Atom.to_string(role || :""), 0, 3))) <>
-              instance_num_str
+          tag = server_tag(sid, role)
 
           {Map.put(tags, sid, tag), Map.put(colors, sid, server_color(role, num))}
         end)

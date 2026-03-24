@@ -21,13 +21,12 @@ defmodule ToastTest.CLIFormatter do
 
   import ToastTest.Formatting
 
-  @impl true
-  def init(opts) do
-    colors_enabled = colors_enabled?(opts)
-
-    state = %{
-      config: opts,
-      colors_enabled: colors_enabled,
+  defmodule State do
+    @moduledoc false
+    @enforce_keys [:config, :colors_enabled]
+    defstruct [
+      :config,
+      :colors_enabled,
       # Module tracking — header is deferred until the first real test starts
       pending_module: nil,
       module_header_printed: false,
@@ -37,6 +36,15 @@ defmodule ToastTest.CLIFormatter do
       # Suite-level stats
       failure_counter: 0,
       counters: %{passed: 0, failed: 0, skipped: 0, excluded: 0, invalid: 0, total: 0},
+      suite_start_time: nil
+    ]
+  end
+
+  @impl true
+  def init(opts) do
+    state = %State{
+      config: opts,
+      colors_enabled: colors_enabled?(opts),
       suite_start_time: System.monotonic_time(:millisecond)
     }
 
@@ -348,9 +356,7 @@ defmodule ToastTest.CLIFormatter do
 
   # --- Helpers ---
 
-  defp display_name(%ExUnit.Test{name: name}) do
-    name |> to_string() |> String.replace_prefix("test ", "")
-  end
+  defp display_name(%ExUnit.Test{name: name}), do: display_test_name(name)
 
   defp module_file(%ExUnit.TestModule{state: {:failed, %{tags: %{file: file}}}}), do: file
 

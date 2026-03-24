@@ -6,18 +6,10 @@ defmodule ToastTest.Attribution.ServerLogs do
   overlapping windows, then extracts matching log lines for each server.
   """
 
+  alias ToastTest.Attribution.TimeWindows
   alias ToastTest.Enrichment
 
   @type window :: {Toast.timestamp(), Toast.timestamp()}
-
-  # Padding (in milliseconds) around issue timestamps for log extraction.
-  # Each type gets a different window reflecting how much context is useful.
-  @test_failure_pad {-1_000, 1_000}
-  @sanitizer_pad {-5_000, 1_000}
-  @crash_pad {-20_000, 0}
-  @timeout_pad {-10_000, 0}
-
-  @usec_per_ms 1_000
 
   @doc """
   Collect server log excerpts for all servers based on issue time windows.
@@ -91,7 +83,7 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   defp issue_window(%{type: :test_failure, scope: {:test, mod, name}}, windows) do
     case Map.get(windows.tests, {mod, name}) do
-      %{started_at: s, finished_at: f} -> [pad(s, f, @test_failure_pad)]
+      %{started_at: s, finished_at: f} -> [TimeWindows.pad(s, f, :test_failure)]
       nil -> []
     end
   end
@@ -100,21 +92,21 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   defp issue_window(%{type: :sanitizer_report, detail: %{timestamp: ts}}, _windows)
        when is_integer(ts) do
-    [pad(ts, ts, @sanitizer_pad)]
+    [TimeWindows.pad(ts, ts, :sanitizer)]
   end
 
   defp issue_window(%{type: :sanitizer_report}, _windows), do: []
 
   defp issue_window(%{type: :crash, detail: %{crash_info: %{timestamp: ts}}}, _windows)
        when is_integer(ts) do
-    [pad(ts, ts, @crash_pad)]
+    [TimeWindows.pad(ts, ts, :crash)]
   end
 
   defp issue_window(%{type: :crash}, _windows), do: []
 
   defp issue_window(%{type: :timeout, detail: %{timestamp: ts}}, _windows)
        when is_integer(ts) do
-    [pad(ts, ts, @timeout_pad)]
+    [TimeWindows.pad(ts, ts, :timeout)]
   end
 
   defp issue_window(%{type: :timeout}, _windows), do: []
@@ -134,11 +126,5 @@ defmodule ToastTest.Attribution.ServerLogs do
     else
       do_merge(rest, [{s2, f2}, {s1, f1} | merged])
     end
-  end
-
-  # --- Helpers ---
-
-  defp pad(start_us, end_us, {before_ms, after_ms}) do
-    {start_us + before_ms * @usec_per_ms, end_us + after_ms * @usec_per_ms}
   end
 end

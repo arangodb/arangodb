@@ -82,26 +82,20 @@ defmodule Toast.Diagnostics.AgencyDump do
     e -> {:error, Exception.message(e)}
   end
 
-  defp fetch_config(client) do
-    case Toast.Client.get(client, "/_api/agency/config") do
-      {:ok, %{status: 200, body: body}} -> {:ok, body}
-      {:ok, %{status: status}} -> {:error, "config returned status #{status}"}
-      {:error, reason} -> {:error, reason}
-    end
-  end
+  defp fetch_config(client), do: fetch(client, :get, "/_api/agency/config", nil, "config")
+  defp fetch_state(client), do: fetch(client, :get, "/_api/agency/state", nil, "state")
+  defp fetch_plan(client), do: fetch(client, :post, "/_api/agency/read", [["/arango"]], "plan")
 
-  defp fetch_state(client) do
-    case Toast.Client.get(client, "/_api/agency/state") do
-      {:ok, %{status: 200, body: body}} -> {:ok, body}
-      {:ok, %{status: status}} -> {:error, "state returned status #{status}"}
-      {:error, reason} -> {:error, reason}
-    end
-  end
+  defp fetch(client, method, path, body, label) do
+    result =
+      case method do
+        :get -> Toast.Client.get(client, path)
+        :post -> Toast.Client.post(client, path, body)
+      end
 
-  defp fetch_plan(client) do
-    case Toast.Client.post(client, "/_api/agency/read", [["/arango"]]) do
+    case result do
       {:ok, %{status: 200, body: body}} -> {:ok, body}
-      {:ok, %{status: status}} -> {:error, "plan returned status #{status}"}
+      {:ok, %{status: status}} -> {:error, "#{label} returned status #{status}"}
       {:error, reason} -> {:error, reason}
     end
   end
