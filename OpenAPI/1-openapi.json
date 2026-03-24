@@ -25077,42 +25077,6 @@
     ]
    }
   },
-  "/_arango/v1/_db/{database-name}/_api/replication/logger-first-tick": {
-   "get": {
-    "description": "Returns the first available tick value that can be served from the server's\nreplication log. This method can be called by replication clients after to\ndetermine if certain data (identified by a tick value) is still available\nfor replication.\n\nThe result is a JSON object containing the attribute `firstTick`. This\nattribute contains the minimum tick value available in the server's\nreplication\nlog.\n\n\u003e **INFO:**\nThis method is not supported on a Coordinator in a cluster deployment.\n",
-    "operationId": "getReplicationLoggerFirstTick",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     },
-     "501": {
-      "description": "is returned when this operation is called on a Coordinator in a cluster deployment.\n"
-     }
-    },
-    "summary": "Get the first available replication tick value",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
   "/_arango/v1/_db/{database-name}/_api/replication/logger-state": {
    "get": {
     "description": "Returns the current state of the server's replication logger. The state will\ninclude information about whether the logger is running and about the last\nlogged tick value. This tick value is important for incremental fetching of\ndata.\n\nThe body of the response contains a JSON object with the following\nattributes:\n\n- `state`: the current logger state as a JSON object with the following\n  sub-attributes:\n\n  - `running`: whether or not the logger is running\n\n  - `lastLogTick`: the tick value of the latest tick the logger has logged.\n    This value can be used for incremental fetching of log data.\n\n  - `totalEvents`: total number of events logged since the server was started.\n    The value is not reset between multiple stops and re-starts of the logger.\n\n  - `time`: the current date and time on the logger server\n\n- `server`: a JSON object with the following sub-attributes:\n\n  - `version`: the logger server's version\n\n  - `serverId`: the logger server's id\n\n- `clients`: returns the last fetch status by replication clients connected to\n  the logger. Each client is returned as a JSON object with the following attributes:\n\n  - `syncerId`: id of the client syncer\n\n  - `serverId`: server id of client\n\n  - `lastServedTick`: last tick value served to this client via the WAL tailing API\n\n  - `time`: date and time when this client last called the WAL tailing API\n",
@@ -25141,42 +25105,6 @@
      }
     },
     "summary": "Get the replication logger state",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_arango/v1/_db/{database-name}/_api/replication/logger-tick-ranges": {
-   "get": {
-    "description": "Returns the currently available ranges of tick values for all currently\navailable WAL logfiles. The tick values can be used to determine if certain\ndata (identified by tick value) are still available for replication.\n\nThe body of the response contains a JSON array. Each array member is an\nobject\nthat describes a single logfile. Each object has the following attributes:\n\n- `datafile`: name of the logfile\n\n- `status`: status of the datafile, in textual form (e.g. \"sealed\", \"open\")\n\n- `tickMin`: minimum tick value contained in logfile\n\n- `tickMax`: maximum tick value contained in logfile\n",
-    "operationId": "getReplicationLoggerTickRanges",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the tick ranges could be determined successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if the logger state could not be determined.\n"
-     },
-     "501": {
-      "description": "is returned when this operation is called on a Coordinator in a cluster deployment.\n"
-     }
-    },
-    "summary": "Get the tick ranges available in the WAL logfiles",
     "tags": [
      "Replication"
     ]
