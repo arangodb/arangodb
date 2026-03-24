@@ -156,36 +156,49 @@ GeneralServerFeature::GeneralServerFeature(
       _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
-      _histConnectionTime(metrics.add(arangodb_client_connection_statistics_connection_time{})),
-      _histTotalTime(metrics.add(arangodb_client_connection_statistics_total_time{})),
-      _histRequestTime(metrics.add(arangodb_client_connection_statistics_request_time{})),
-      _histQueueTime(metrics.add(arangodb_client_connection_statistics_queue_time{})),
+      _histConnectionTime(
+          metrics.add(arangodb_client_connection_statistics_connection_time{})),
+      _histTotalTime(
+          metrics.add(arangodb_client_connection_statistics_total_time{})),
+      _histRequestTime(
+          metrics.add(arangodb_client_connection_statistics_request_time{})),
+      _histQueueTime(
+          metrics.add(arangodb_client_connection_statistics_queue_time{})),
       _histIoTime(metrics.add(arangodb_client_connection_statistics_io_time{})),
-      _histBytesReceived(metrics.add(arangodb_client_connection_statistics_bytes_received{})),
-      _histBytesSent(metrics.add(arangodb_client_connection_statistics_bytes_sent{})),
-      _histBytesReceivedUser(
-          metrics.add(arangodb_client_user_connection_statistics_bytes_received{})),
+      _histBytesReceived(
+          metrics.add(arangodb_client_connection_statistics_bytes_received{})),
+      _histBytesSent(
+          metrics.add(arangodb_client_connection_statistics_bytes_sent{})),
+      _histBytesReceivedUser(metrics.add(
+          arangodb_client_user_connection_statistics_bytes_received{})),
       _histBytesSentUser(
           metrics.add(arangodb_client_user_connection_statistics_bytes_sent{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
       _http2Connections(metrics.add(arangodb_http2_connections_total{})),
-      _httpReqsTotal(metrics.add(arangodb_http_request_statistics_total_requests_total{})),
-      _httpReqsSuperuser(
-          metrics.add(arangodb_http_request_statistics_superuser_requests_total{})),
-      _httpReqsUser(metrics.add(arangodb_http_request_statistics_user_requests_total{})),
-      _httpReqsAsync(metrics.add(arangodb_http_request_statistics_async_requests_total{})),
-      _httpReqsDelete(
-          metrics.add(arangodb_http_request_statistics_http_delete_requests_total{})),
-      _httpReqsGet(metrics.add(arangodb_http_request_statistics_http_get_requests_total{})),
-      _httpReqsHead(metrics.add(arangodb_http_request_statistics_http_head_requests_total{})),
-      _httpReqsOptions(
-          metrics.add(arangodb_http_request_statistics_http_options_requests_total{})),
-      _httpReqsPatch(
-          metrics.add(arangodb_http_request_statistics_http_patch_requests_total{})),
-      _httpReqsPost(metrics.add(arangodb_http_request_statistics_http_post_requests_total{})),
-      _httpReqsPut(metrics.add(arangodb_http_request_statistics_http_put_requests_total{})),
-      _httpReqsOther(
-          metrics.add(arangodb_http_request_statistics_other_http_requests_total{})) {
+      _httpReqsTotal(
+          metrics.add(arangodb_http_request_statistics_total_requests_total{})),
+      _httpReqsSuperuser(metrics.add(
+          arangodb_http_request_statistics_superuser_requests_total{})),
+      _httpReqsUser(
+          metrics.add(arangodb_http_request_statistics_user_requests_total{})),
+      _httpReqsAsync(
+          metrics.add(arangodb_http_request_statistics_async_requests_total{})),
+      _httpReqsDelete(metrics.add(
+          arangodb_http_request_statistics_http_delete_requests_total{})),
+      _httpReqsGet(metrics.add(
+          arangodb_http_request_statistics_http_get_requests_total{})),
+      _httpReqsHead(metrics.add(
+          arangodb_http_request_statistics_http_head_requests_total{})),
+      _httpReqsOptions(metrics.add(
+          arangodb_http_request_statistics_http_options_requests_total{})),
+      _httpReqsPatch(metrics.add(
+          arangodb_http_request_statistics_http_patch_requests_total{})),
+      _httpReqsPost(metrics.add(
+          arangodb_http_request_statistics_http_post_requests_total{})),
+      _httpReqsPut(metrics.add(
+          arangodb_http_request_statistics_http_put_requests_total{})),
+      _httpReqsOther(metrics.add(
+          arangodb_http_request_statistics_other_http_requests_total{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -500,6 +513,80 @@ std::shared_ptr<rest::RestHandlerFactory> GeneralServerFeature::handlerFactory()
 
 rest::AsyncJobManager& GeneralServerFeature::jobManager() {
   return *_jobManager;
+}
+
+void GeneralServerFeature::countHttpRequestByMethod(
+    rest::RequestType requestType) noexcept {
+  using rest::RequestType;
+  switch (requestType) {
+    case RequestType::DELETE_REQ:
+      _httpReqsDelete.count();
+      break;
+    case RequestType::GET:
+      _httpReqsGet.count();
+      break;
+    case RequestType::POST:
+      _httpReqsPost.count();
+      break;
+    case RequestType::PUT:
+      _httpReqsPut.count();
+      break;
+    case RequestType::HEAD:
+      _httpReqsHead.count();
+      break;
+    case RequestType::PATCH:
+      _httpReqsPatch.count();
+      break;
+    case RequestType::OPTIONS:
+      _httpReqsOptions.count();
+      break;
+    case RequestType::ILLEGAL:
+      _httpReqsOther.count();
+      break;
+  }
+}
+
+void GeneralServerFeature::recordHttpRequestStatistics(
+    bool async, rest::RequestType requestType, bool superuser, double readStart,
+    double requestEnd, double writeEnd, double queueStart, double queueEnd,
+    double requestStart, double sentBytes, double receivedBytes) noexcept {
+  _httpReqsTotal.count();
+  if (async) {
+    _httpReqsAsync.count();
+  }
+  countHttpRequestByMethod(requestType);
+
+  if (readStart != 0.0 && (async || writeEnd != 0.0)) {
+    double const totalTime =
+        async ? (requestEnd - readStart) : (writeEnd - readStart);
+    if (superuser) {
+      _httpReqsSuperuser.count();
+    } else {
+      _httpReqsUser.count();
+    }
+
+    _histTotalTime.count(totalTime);
+    double const reqT = requestEnd - requestStart;
+    _histRequestTime.count(reqT);
+
+    double queueTime = 0.0;
+    if (queueStart != 0.0 && queueEnd != 0.0) {
+      queueTime = queueEnd - queueStart;
+      _histQueueTime.count(queueTime);
+    }
+
+    double const ioTime = totalTime - reqT - queueTime;
+    if (ioTime >= 0.0) {
+      _histIoTime.count(ioTime);
+    }
+
+    _histBytesSent.count(sentBytes);
+    _histBytesReceived.count(receivedBytes);
+    if (!superuser) {
+      _histBytesSentUser.count(sentBytes);
+      _histBytesReceivedUser.count(receivedBytes);
+    }
+  }
 }
 
 void GeneralServerFeature::buildServers() {

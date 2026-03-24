@@ -587,7 +587,7 @@ void StatisticsFeature::validateOptions(
   if (_options.statistics) {
     // initialize counters for all HTTP request types
     ConnectionStatistics::initialize();
-    RequestStatistics::initialize();
+    RequestStatistics::initialize(&server());
   } else {
     // turn ourselves off
     disable();
@@ -827,100 +827,11 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
     ConnectionStatistics::Snapshot connectionStats;
     ConnectionStatistics::getSnapshot(connectionStats);
 
-    RequestStatistics::Snapshot requestStats;
-    RequestStatistics::getSnapshot(requestStats,
-                                   stats::RequestStatisticsSource::ALL);
-
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()),
                  "clientHttpConnections", globals, ensureWhitespace);
     appendHistogram(result, connectionStats.connectionTime, "connectionTime",
                     {"0.01", "1.0", "60.0", "+Inf"}, false, globals,
                     ensureWhitespace);
-    appendHistogram(result, requestStats.totalTime, "totalTime",
-                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    false, globals, ensureWhitespace);
-    appendHistogram(result, requestStats.requestTime, "requestTime",
-                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    false, globals, ensureWhitespace);
-    appendHistogram(result, requestStats.queueTime, "queueTime",
-                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    false, globals, ensureWhitespace);
-    appendHistogram(result, requestStats.ioTime, "ioTime",
-                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    false, globals, ensureWhitespace);
-    appendHistogram(result, requestStats.bytesSent, "bytesSent",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
-                    globals, ensureWhitespace);
-    appendHistogram(result, requestStats.bytesReceived, "bytesReceived",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
-                    globals, ensureWhitespace);
-
-    RequestStatistics::Snapshot requestStatsUser;
-    RequestStatistics::getSnapshot(requestStatsUser,
-                                   stats::RequestStatisticsSource::USER);
-    appendHistogram(result, requestStatsUser.bytesSent, "bytesSentUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
-                    globals, ensureWhitespace);
-    appendHistogram(result, requestStatsUser.bytesReceived, "bytesReceivedUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
-                    globals, ensureWhitespace);
-
-    // _httpStatistics()
-    using rest::RequestType;
-    appendMetric(result, std::to_string(connectionStats.asyncRequests.get()),
-                 "httpReqsAsync", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()),
-        "httpReqsDelete", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::GET].get()),
-        "httpReqsGet", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::HEAD].get()),
-        "httpReqsHead", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::OPTIONS].get()),
-        "httpReqsOptions", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::PATCH].get()),
-        "httpReqsPatch", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::POST].get()),
-        "httpReqsPost", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::PUT].get()),
-        "httpReqsPut", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()),
-        "httpReqsOther", globals, ensureWhitespace);
-    appendMetric(result, std::to_string(connectionStats.totalRequests.get()),
-                 "httpReqsTotal", globals, ensureWhitespace);
-    appendMetric(result,
-                 std::to_string(connectionStats.totalRequestsSuperuser.get()),
-                 "httpReqsSuperuser", globals, ensureWhitespace);
-    appendMetric(result,
-                 std::to_string(connectionStats.totalRequestsUser.get()),
-                 "httpReqsUser", globals, ensureWhitespace);
   }
 }

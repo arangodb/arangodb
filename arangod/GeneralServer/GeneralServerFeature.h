@@ -36,6 +36,7 @@
 #include "Metrics/Gauge.h"
 #include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
+#include "Rest/CommonDefines.h"
 
 #include <cstdint>
 #include <memory>
@@ -90,6 +91,12 @@ class GeneralServerFeature final
 
   void countHttp2Connection() { _http2Connections.count(); }
 
+  void recordHttpRequestStatistics(
+    bool async, rest::RequestType requestType, bool superuser,
+    double readStart, double requestEnd, double writeEnd,
+    double queueStart, double queueEnd, double requestStart,
+    double sentBytes, double receivedBytes) noexcept;
+
   bool isTelemetricsEnabled() const noexcept {
     return _options.enableTelemetrics;
   }
@@ -112,6 +119,8 @@ class GeneralServerFeature final
   void defineInitialHandlers(rest::RestHandlerFactory& f);
   // define remaining REST handlers
   void defineRemainingHandlers(rest::RestHandlerFactory& f);
+
+  void countHttpRequestByMethod(rest::RequestType requestType) noexcept;
 
   GeneralServerOptions _options;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;

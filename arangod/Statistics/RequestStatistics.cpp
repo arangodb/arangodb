@@ -23,6 +23,9 @@
 
 #include "RequestStatistics.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "GeneralServer/GeneralServerFeature.h"
+
 #include <atomic>
 #include <iomanip>
 #include <mutex>
@@ -38,6 +41,8 @@ using namespace arangodb;
 // -----------------------------------------------------------------------------
 
 namespace {
+application_features::ApplicationServer* gApplicationServer = nullptr;
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // this variable is only used in maintainer mode, to check that we are
 // only acquiring memory for statistics in case they are enabled.
@@ -106,7 +111,8 @@ uint64_t RequestStatistics::memoryUsage() noexcept {
   return ::memoryUsage.load(std::memory_order_relaxed);
 }
 
-void RequestStatistics::initialize() {
+void RequestStatistics::initialize(application_features::ApplicationServer* appServer) {
+  gApplicationServer = appServer;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!statisticsEnabled);
   statisticsEnabled = true;
@@ -256,6 +262,18 @@ void RequestStatistics::process(RequestStatistics* statistics) {
 
     figures.bytesSentDistribution.addFigure(statistics->_sentBytes);
     figures.bytesReceivedDistribution.addFigure(statistics->_receivedBytes);
+
+    if (::gApplicationServer != nullptr &&
+      ::gApplicationServer->hasFeature<GeneralServerFeature>()) {
+    ::gApplicationServer->getFeature<GeneralServerFeature>()
+        .recordHttpRequestStatistics(
+            statistics->_async, statistics->_requestType,
+            statistics->_superuser, statistics->_readStart,
+            statistics->_requestEnd, statistics->_writeEnd,
+            statistics->_queueStart, statistics->_queueEnd,
+            statistics->_requestStart, statistics->_sentBytes,
+            statistics->_receivedBytes);
+  }
   }
 
   // clear statistics

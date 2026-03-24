@@ -32,10 +32,15 @@
 #include <cstdint>
 
 namespace arangodb {
+namespace application_features{
+  class ApplicationServer;
+};
+
 class RequestStatistics {
  public:
   static uint64_t memoryUsage() noexcept;
-  static void initialize();
+  static void initialize(application_features::ApplicationServer* appServer);
+
   static size_t processAll();
 
   class Item {
