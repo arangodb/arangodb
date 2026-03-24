@@ -157,8 +157,6 @@ DECLARE_GAUGE(
     "This figure contains The size of the virtual memory the process is using");
 DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
               "The number of client connections that are currently open");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_connection_time,
-                  ConnectionTimeScale, "Total connection time of a client");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_total_time,
                   ConnectionTimeScale, "Total time needed to answer a request");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_request_time,
@@ -271,9 +269,6 @@ auto const statStrings = std::map<std::string_view,
      {"arangodb_process_statistics_virtual_memory_size", "gauge",
       "This figure contains The size of the virtual memory the process is "
       "using"}},
-    {"clientHttpConnections",
-     {"arangodb_client_connection_statistics_client_connections", "gauge",
-      "The number of client connections that are currently open"}},
     {"connectionTime",
      {"arangodb_client_connection_statistics_connection_time", "histogram",
       "Total connection time of a client"}},
@@ -421,10 +416,6 @@ auto const statBuilder = makeStatBuilder({
     {"residentSizePercent",
      new arangodb_process_statistics_resident_set_size_percent()},
     {"virtualSize", new arangodb_process_statistics_virtual_memory_size()},
-    {"clientHttpConnections",
-     new arangodb_client_connection_statistics_client_connections()},
-    {"connectionTime",
-     new arangodb_client_connection_statistics_connection_time()},
     {"connectionTimeCount", nullptr},
     {"connectionTimeSum", nullptr},
     {"totalTime", new arangodb_client_connection_statistics_total_time()},
@@ -898,11 +889,6 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                                    stats::RequestStatisticsSource::ALL);
 
     // _clientStatistics()
-    appendMetric(result, std::to_string(connectionStats.httpConnections.get()),
-                 "clientHttpConnections", globals, ensureWhitespace);
-    appendHistogram(result, connectionStats.connectionTime, "connectionTime",
-                    {"0.01", "1.0", "60.0", "+Inf"}, false, globals,
-                    ensureWhitespace);
     appendHistogram(result, requestStats.totalTime, "totalTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},

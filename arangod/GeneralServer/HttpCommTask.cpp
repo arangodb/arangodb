@@ -275,7 +275,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
       _messageDone(false),
       _urlCorrupt(false),
       _headerCorrupt(false) {
-  this->_connectionStatistics.SET_HTTP();
+  this->_connectionHttp = this->_generalServerFeature.addHttpConnection();
 
   // initialize http parsing code
   llhttp_settings_init(&_parserSettings);
