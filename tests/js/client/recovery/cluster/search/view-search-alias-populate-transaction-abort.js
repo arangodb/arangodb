@@ -28,7 +28,6 @@ var arangodb = require('@arangodb');
 var db = arangodb.db;
 var internal = require('internal');
 var jsunity = require('jsunity');
-var transactionFailure = require('@arangodb/test-helper-common').transactionFailure;
 var IM = global.instanceManager;
 
 if (runSetup === true) {
