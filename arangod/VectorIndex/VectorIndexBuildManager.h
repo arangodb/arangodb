@@ -42,7 +42,6 @@ class VectorIndexBuildManager {
  public:
   static constexpr auto kScanInterval = std::chrono::seconds(5);
   static constexpr auto kSleepGranularity = std::chrono::seconds(1);
-  static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
   explicit VectorIndexBuildManager(DatabaseFeature& dbFeature,
                                    MaintenanceFeature& maintenance,
@@ -53,25 +52,26 @@ class VectorIndexBuildManager {
   void stop();
 
  private:
-  void run(std::stop_token stopToken);
-  void scanAndBuild(std::stop_token const& stopToken);
+  static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
   struct FailedBuildInfo {
     std::chrono::steady_clock::time_point failedAt;
     std::int64_t documentCount;
   };
 
-  /// Returns true if a retry should be skipped for this index.
-  bool shouldSkipRetry(std::uint64_t objectId,
-                       std::int64_t currentDocCount) const;
-  void recordFailure(std::uint64_t objectId, std::int64_t docCount);
+  using FailedBuildsMap = std::unordered_map<std::uint64_t, FailedBuildInfo>;
 
-  void clearFailure(std::uint64_t objectId);
+  static bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
+                              std::uint64_t objectId,
+                              std::int64_t currentDocCount);
+
+  void run(std::stop_token stopToken);
+  void scanAndBuild(std::stop_token const& stopToken,
+                    FailedBuildsMap& failedBuilds);
 
   DatabaseFeature& _dbFeature;
   MaintenanceFeature& _maintenance;
   std::jthread _thread;
-  std::unordered_map<std::uint64_t, FailedBuildInfo> _failedBuilds;
 
   metrics::Gauge<uint64_t>& _untrainedCount;
   metrics::Gauge<uint64_t>& _trainingOngoingCount;

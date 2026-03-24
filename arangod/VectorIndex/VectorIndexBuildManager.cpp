@@ -101,32 +101,28 @@ void VectorIndexBuildManager::stop() {
 }
 
 bool VectorIndexBuildManager::shouldSkipRetry(
-    std::uint64_t objectId, std::int64_t currentDocCount) const {
-  auto const it = _failedBuilds.find(objectId);
-  if (it == _failedBuilds.end()) {
+    FailedBuildsMap const& failedBuilds, std::uint64_t objectId,
+    std::int64_t currentDocCount) {
+  auto const it = failedBuilds.find(objectId);
+  if (it == failedBuilds.end()) {
     return false;
   }
   auto const& info = it->second;
   bool backoffElapsed =
       std::chrono::steady_clock::now() - info.failedAt >= kRetryBackoff;
   bool docCountChanged = currentDocCount != info.documentCount;
-  // Retry only if backoff elapsed AND document count changed.
-  return !(backoffElapsed && docCountChanged);
-}
-
-void VectorIndexBuildManager::recordFailure(std::uint64_t objectId,
-                                            std::int64_t docCount) {
-  _failedBuilds[objectId] = {std::chrono::steady_clock::now(), docCount};
-}
-
-void VectorIndexBuildManager::clearFailure(std::uint64_t objectId) {
-  _failedBuilds.erase(objectId);
+  // Retry if either the backoff has elapsed or the document count has
+  // changed.  Using OR avoids permanently blocking retries when the doc
+  // count stays the same (e.g. after a restore with all data present).
+  return !(backoffElapsed || docCountChanged);
 }
 
 void VectorIndexBuildManager::run(std::stop_token stopToken) {
 #ifdef TRI_HAVE_SYS_PRCTL_H
   pthread_setname_np(pthread_self(), "VecIdxBuild");
 #endif
+
+  FailedBuildsMap failedBuilds;
 
   while (!stopToken.stop_requested()) {
     auto const deadline = std::chrono::steady_clock::now() + kScanInterval;
@@ -136,7 +132,7 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
     }
 
     try {
-      scanAndBuild(stopToken);
+      scanAndBuild(stopToken, failedBuilds);
     } catch (std::exception const& ex) {
       LOG_TOPIC("e170b", WARN, Logger::ENGINES)
           << "VectorIndexBuildManager scan error: " << ex.what();
@@ -144,9 +140,10 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
   }
 }
 
-void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
+void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
+                                           FailedBuildsMap& failedBuilds) {
   // Collect objectIds seen this scan to prune stale entries from
-  // _failedBuilds (e.g. indexes that were dropped since the last scan).
+  // failedBuilds (e.g. indexes that were dropped since the last scan).
   std::unordered_set<std::uint64_t> seenObjectIds;
   uint64_t unusableIndexesCount = 0;
 
@@ -178,7 +175,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
           continue;
         }
 
-        if (shouldSkipRetry(vecIdx.objectId(), numDocs)) {
+        if (shouldSkipRetry(failedBuilds, vecIdx.objectId(), numDocs)) {
           continue;
         }
 
@@ -199,7 +196,8 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
           LOG_TOPIC("e164b", ERR, Logger::ENGINES)
               << "[index=" << vecIdx.id().id()
               << "] Vector build failed: " << res.errorMessage();
-          recordFailure(vecIdx.objectId(), numDocs);
+          failedBuilds[vecIdx.objectId()] = {std::chrono::steady_clock::now(),
+                                             numDocs};
 
           // Report the error via MaintenanceFeature so it flows to the
           // agency Current section and becomes visible on the Coordinator.
@@ -241,7 +239,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
           auto const indexId = std::to_string(vecIdx.id().id());
           _maintenance.clearIndexError(database, collection, shard, indexId);
         }
-        clearFailure(vecIdx.objectId());
+        failedBuilds.erase(vecIdx.objectId());
 
         // Built one index — return to the scan loop so we sleep
         // before starting the next one.
@@ -256,7 +254,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken) {
   _untrainedCount.store(unusableIndexesCount, std::memory_order_relaxed);
 
   // Prune failed build entries for indexes that no longer exist.
-  std::erase_if(_failedBuilds, [&](auto const& entry) {
+  std::erase_if(failedBuilds, [&](auto const& entry) {
     return !seenObjectIds.contains(entry.first);
   });
 }
