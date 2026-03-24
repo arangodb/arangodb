@@ -127,23 +127,23 @@ defmodule Toast.ResultPackagingTest do
                ResultPackaging.package(
                  ci: false,
                  result_dir: "/tmp/nonexistent",
-                 work_dir: "/tmp/nonexistent"
+                 base_dir: "/tmp/nonexistent"
                )
     end
 
     @tag :tmp_dir
     test "creates tier 1 files when ci is true", %{tmp_dir: tmp_dir} do
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
       result_dir = Path.join(tmp_dir, "results")
-      File.mkdir_p!(work_dir)
+      File.mkdir_p!(base_dir)
       File.mkdir_p!(result_dir)
 
       # Create the tier 1 source files in result_dir (they're already there from export step)
       File.write!(Path.join(result_dir, "results.json"), "{}")
       File.write!(Path.join(result_dir, "results.xml"), "<testsuites/>")
 
-      # Create a toast.log in work_dir
-      log_dir = Path.join(work_dir, "logs")
+      # Create a toast.log in base_dir
+      log_dir = Path.join(base_dir, "logs")
       File.mkdir_p!(log_dir)
       File.write!(Path.join(log_dir, "toast.log"), "log content")
 
@@ -151,7 +151,7 @@ defmodule Toast.ResultPackagingTest do
                ResultPackaging.package(
                  ci: true,
                  result_dir: result_dir,
-                 work_dir: work_dir,
+                 base_dir: base_dir,
                  suite_diagnostics: [],
                  log_file: Path.join(log_dir, "toast.log")
                )
@@ -163,13 +163,13 @@ defmodule Toast.ResultPackagingTest do
 
     @tag :tmp_dir
     test "creates tier 2 archive when server logs exist", %{tmp_dir: tmp_dir} do
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
       result_dir = Path.join(tmp_dir, "results")
-      File.mkdir_p!(work_dir)
+      File.mkdir_p!(base_dir)
       File.mkdir_p!(result_dir)
 
       # Create some server log files
-      log_dir = Path.join(work_dir, "suite1/server1")
+      log_dir = Path.join(base_dir, "suite1/server1")
       File.mkdir_p!(log_dir)
       File.write!(Path.join(log_dir, "arangod.log"), "server log content")
 
@@ -185,7 +185,7 @@ defmodule Toast.ResultPackagingTest do
                ResultPackaging.package(
                  ci: true,
                  result_dir: result_dir,
-                 work_dir: work_dir,
+                 base_dir: base_dir,
                  suite_diagnostics: [suite_diag]
                )
 
@@ -194,9 +194,9 @@ defmodule Toast.ResultPackagingTest do
 
     @tag :tmp_dir
     test "tier 3 only created when core dumps exist", %{tmp_dir: tmp_dir} do
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
       result_dir = Path.join(tmp_dir, "results")
-      File.mkdir_p!(work_dir)
+      File.mkdir_p!(base_dir)
       File.mkdir_p!(result_dir)
 
       # No core dumps
@@ -204,7 +204,7 @@ defmodule Toast.ResultPackagingTest do
                ResultPackaging.package(
                  ci: true,
                  result_dir: result_dir,
-                 work_dir: work_dir,
+                 base_dir: base_dir,
                  suite_diagnostics: []
                )
 
@@ -215,13 +215,13 @@ defmodule Toast.ResultPackagingTest do
 
     @tag :tmp_dir
     test "tier 3 compresses core dumps individually", %{tmp_dir: tmp_dir} do
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
       result_dir = Path.join(tmp_dir, "results")
-      File.mkdir_p!(work_dir)
+      File.mkdir_p!(base_dir)
       File.mkdir_p!(result_dir)
 
       # Create a fake core dump
-      core_path = Path.join(work_dir, "core.12345")
+      core_path = Path.join(base_dir, "core.12345")
       File.write!(core_path, String.duplicate("x", 10_000))
 
       suite_diag = %{
@@ -237,7 +237,7 @@ defmodule Toast.ResultPackagingTest do
                ResultPackaging.package(
                  ci: true,
                  result_dir: result_dir,
-                 work_dir: work_dir,
+                 base_dir: base_dir,
                  suite_diagnostics: [suite_diag]
                )
 

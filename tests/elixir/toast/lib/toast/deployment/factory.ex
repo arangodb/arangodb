@@ -44,13 +44,13 @@ defmodule Toast.Deployment.Factory do
 
   @type launch_spec :: LaunchSpec.t()
 
-  @spec build_single_server(Config.t(), String.t()) ::
+  @spec build_single_server(Config.t(), String.t(), Path.t()) ::
           {:ok, [launch_spec()]} | {:error, term()}
-  def build_single_server(config, server_id) do
+  def build_single_server(config, server_id, deployment_dir) do
     with {:ok, port} <- PortAllocator.allocate(),
          {:ok, executable} <- Filesystem.find_arangod(config.build_dir),
          {:ok, repo_root} <- Filesystem.find_repository_root(config.build_dir),
-         {:ok, paths} <- Filesystem.create_server_dirs(config.work_dir, server_id) do
+         {:ok, paths} <- Filesystem.create_server_dirs(deployment_dir) do
       merged_args =
         config
         |> build_server_args()
@@ -88,8 +88,9 @@ defmodule Toast.Deployment.Factory do
     end
   end
 
-  @spec build_cluster(Config.t(), String.t()) :: {:ok, [launch_spec()]} | {:error, term()}
-  def build_cluster(config, deployment_id) do
+  @spec build_cluster(Config.t(), String.t(), Path.t()) ::
+          {:ok, [launch_spec()]} | {:error, term()}
+  def build_cluster(config, deployment_id, deployment_dir) do
     total_count =
       config.cluster_agents + config.cluster_dbservers + config.cluster_coordinators
 
@@ -104,6 +105,7 @@ defmodule Toast.Deployment.Factory do
       ctx = %{
         config: config,
         deployment_id: deployment_id,
+        deployment_dir: deployment_dir,
         executable: executable,
         repo_root: repo_root
       }
@@ -140,9 +142,10 @@ defmodule Toast.Deployment.Factory do
       ports
       |> Enum.with_index()
       |> Enum.reduce_while([], fn {port, index}, acc ->
-        server_id = "#{ctx.deployment_id}-#{role}-#{index}"
+        dir_name = "#{role}-#{index}"
+        server_id = "#{ctx.deployment_id}-#{dir_name}"
 
-        case build_cluster_server(ctx, server_id, role, port, custom_args_fn.(port)) do
+        case build_cluster_server(ctx, server_id, dir_name, role, port, custom_args_fn.(port)) do
           {:ok, spec} -> {:cont, [spec | acc]}
           {:error, _} = error -> {:halt, error}
         end
@@ -154,10 +157,15 @@ defmodule Toast.Deployment.Factory do
     end
   end
 
-  defp build_cluster_server(ctx, server_id, role, port, custom_args) do
-    %{config: config, executable: executable, repo_root: repo_root} = ctx
+  defp build_cluster_server(ctx, server_id, dir_name, role, port, custom_args) do
+    %{
+      config: config,
+      deployment_dir: deployment_dir,
+      executable: executable,
+      repo_root: repo_root
+    } = ctx
 
-    with {:ok, paths} <- Filesystem.create_server_dirs(config.work_dir, server_id) do
+    with {:ok, paths} <- Filesystem.create_server_dirs(deployment_dir, dir_name) do
       merged_args =
         config
         |> build_server_args()

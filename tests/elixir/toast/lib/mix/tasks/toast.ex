@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Toast do
   ## Toast Options
 
       --build-dir PATH            - Path to ArangoDB build directory
-      --work-dir PATH             - Temporary directory for server data/logs
+      --base-dir PATH             - Base directory for server data/logs
       --result-dir PATH           - Output directory for test results
       --cluster                   - Use cluster deployment (default: single server)
       --single                    - Use single server deployment (explicit default)
@@ -28,7 +28,7 @@ defmodule Mix.Tasks.Toast do
       --startup-timeout MS        - Server startup timeout in milliseconds (default: 60000)
       --shutdown-timeout MS       - Server shutdown timeout in milliseconds (default: 60000)
       --timeout-factor N          - Timeout multiplier (default: 1, auto-set to 3 for sanitizer builds)
-      --keep-work-dir             - Keep server data/logs even on success
+      --keep-data                 - Keep server data/logs even on success
       --sanitizer TYPE            - Sanitizer: tsan or alubsan (auto-detected from build dir)
       --cluster-agents N          - Number of agency nodes (default: 3)
       --cluster-dbservers N       - Number of DB servers (default: 3)
@@ -75,7 +75,7 @@ defmodule Mix.Tasks.Toast do
     start: :boolean,
     # Toast options
     build_dir: :string,
-    work_dir: :string,
+    base_dir: :string,
     result_dir: :string,
     cluster: :boolean,
     single: :boolean,
@@ -85,7 +85,7 @@ defmodule Mix.Tasks.Toast do
     startup_timeout: :integer,
     shutdown_timeout: :integer,
     timeout_factor: :integer,
-    keep_work_dir: :boolean,
+    keep_data: :boolean,
     sanitizer: :string,
     cluster_agents: :integer,
     cluster_dbservers: :integer,
@@ -225,11 +225,11 @@ defmodule Mix.Tasks.Toast do
       timeout: config.test_timeout,
       timeout_factor: config.timeout_factor,
       build_dir: config.build_dir,
-      work_dir: config.work_dir,
+      base_dir: config.base_dir,
       startup_timeout: config.startup_timeout,
       shutdown_timeout: config.shutdown_timeout,
       show_server_logs: config.show_server_logs,
-      keep_work_dir: config.keep_work_dir,
+      keep_data: config.keep_data,
       cluster_agents: config.cluster_agents,
       cluster_dbservers: config.cluster_dbservers,
       cluster_coordinators: config.cluster_coordinators,

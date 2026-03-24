@@ -5,7 +5,7 @@ defmodule Toast.ConfigTest do
 
   @env_vars ~w(
     TOAST_BUILD_DIR
-    TOAST_WORK_DIR
+    TOAST_BASE_DIR
     TOAST_RESULT_DIR
     TOAST_COREDUMP_DIR
     TOAST_DEPLOYMENT_MODE
@@ -23,7 +23,7 @@ defmodule Toast.ConfigTest do
     TOAST_DEBUGGER
     TOAST_DUMP_AGENCY
     TOAST_COREDUMP_TIMEOUT
-    TOAST_KEEP_WORK_DIR
+    TOAST_KEEP_DATA
     TOAST_SANITIZER
     TOAST_CI
   )
@@ -79,11 +79,11 @@ defmodule Toast.ConfigTest do
       assert config.coredump_timeout == 180_000
     end
 
-    test "work_dir has unique default under tmp_dir" do
+    test "base_dir has unique default under tmp_dir" do
       config = load()
 
-      assert String.starts_with?(config.work_dir, System.tmp_dir!())
-      assert config.work_dir =~ ~r/toast\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z_[0-9A-F]{4}$/
+      assert String.starts_with?(config.base_dir, System.tmp_dir!())
+      assert config.base_dir =~ ~r/toast\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z_[0-9A-F]{4}$/
     end
   end
 
@@ -95,11 +95,11 @@ defmodule Toast.ConfigTest do
     end
   end
 
-  describe "TOAST_WORK_DIR env var" do
-    test "reads work_dir from environment" do
-      System.put_env("TOAST_WORK_DIR", "/custom/work")
+  describe "TOAST_BASE_DIR env var" do
+    test "reads base_dir from environment" do
+      System.put_env("TOAST_BASE_DIR", "/custom/work")
 
-      assert load().work_dir == "/custom/work"
+      assert load().base_dir == "/custom/work"
     end
   end
 
@@ -172,7 +172,7 @@ defmodule Toast.ConfigTest do
   describe "keyword overrides" do
     test "take precedence over env vars" do
       System.put_env("TOAST_BUILD_DIR", "/env/build")
-      System.put_env("TOAST_WORK_DIR", "/env/work")
+      System.put_env("TOAST_BASE_DIR", "/env/work")
       System.put_env("TOAST_DEPLOYMENT_MODE", "cluster")
       System.put_env("TOAST_SHOW_SERVER_LOGS", "true")
       System.put_env("TOAST_STARTUP_TIMEOUT", "120000")
@@ -182,7 +182,7 @@ defmodule Toast.ConfigTest do
       config =
         load(
           build_dir: "/opt/build",
-          work_dir: "/opt/work",
+          base_dir: "/opt/work",
           deployment_mode: :single_server,
           show_server_logs: false,
           startup_timeout: 5_000,
@@ -191,7 +191,7 @@ defmodule Toast.ConfigTest do
         )
 
       assert config.build_dir == "/opt/build"
-      assert config.work_dir == "/opt/work"
+      assert config.base_dir == "/opt/work"
       assert config.deployment_mode == :single_server
       assert config.show_server_logs == false
       assert config.startup_timeout == 5_000

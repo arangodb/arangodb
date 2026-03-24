@@ -167,8 +167,8 @@ defmodule Toast.ResultPackaging do
     end
   end
 
-  # Flattens "work_dir/dbserver-0/log" → "dbserver-0.log"
-  # and "work_dir/dbserver-0/tsan.log" → "dbserver-0.tsan.log"
+  # Flattens "deployment_dir/dbserver-0/log" → "dbserver-0.log"
+  # and "deployment_dir/dbserver-0/tsan.log" → "dbserver-0.tsan.log"
   defp flatten_artifact_name(path) do
     server_id = path |> Path.dirname() |> Path.basename()
     basename = Path.basename(path)

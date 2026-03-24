@@ -12,31 +12,61 @@ defmodule Toast.Utils.FilesystemTest do
     dir
   end
 
+  describe "create_server_dirs/1" do
+    test "creates data/ and apps/ directly in the given directory" do
+      dir = unique_tmp_dir()
+
+      assert {:ok, dirs} = Filesystem.create_server_dirs(dir)
+
+      assert File.dir?(dirs.data_dir)
+      assert File.dir?(dirs.app_dir)
+    end
+
+    test "returns correct paths with base_dir equal to the input" do
+      dir = unique_tmp_dir()
+
+      {:ok, dirs} = Filesystem.create_server_dirs(dir)
+
+      assert dirs.base_dir == dir
+      assert dirs.data_dir == Path.join(dir, "data")
+      assert dirs.app_dir == Path.join(dir, "apps")
+      assert dirs.log_file == Path.join(dir, "log")
+    end
+
+    test "log_file path is returned but file is not created" do
+      dir = unique_tmp_dir()
+
+      {:ok, dirs} = Filesystem.create_server_dirs(dir)
+
+      refute File.exists?(dirs.log_file)
+    end
+  end
+
   describe "create_server_dirs/2" do
     test "creates data/ and apps/ directories" do
-      work_dir = unique_tmp_dir()
+      deployment_dir = unique_tmp_dir()
 
-      assert {:ok, dirs} = Filesystem.create_server_dirs(work_dir, "srv1")
+      assert {:ok, dirs} = Filesystem.create_server_dirs(deployment_dir, "srv1")
 
       assert File.dir?(dirs.data_dir)
       assert File.dir?(dirs.app_dir)
     end
 
     test "returns correct paths structure" do
-      work_dir = unique_tmp_dir()
+      deployment_dir = unique_tmp_dir()
 
-      {:ok, dirs} = Filesystem.create_server_dirs(work_dir, "srv1")
+      {:ok, dirs} = Filesystem.create_server_dirs(deployment_dir, "srv1")
 
-      assert dirs.base_dir == Path.join(work_dir, "srv1")
-      assert dirs.data_dir == Path.join(work_dir, "srv1/data")
-      assert dirs.app_dir == Path.join(work_dir, "srv1/apps")
-      assert dirs.log_file == Path.join(work_dir, "srv1/log")
+      assert dirs.base_dir == Path.join(deployment_dir, "srv1")
+      assert dirs.data_dir == Path.join(deployment_dir, "srv1/data")
+      assert dirs.app_dir == Path.join(deployment_dir, "srv1/apps")
+      assert dirs.log_file == Path.join(deployment_dir, "srv1/log")
     end
 
     test "log_file path is returned but file is not created" do
-      work_dir = unique_tmp_dir()
+      deployment_dir = unique_tmp_dir()
 
-      {:ok, dirs} = Filesystem.create_server_dirs(work_dir, "srv1")
+      {:ok, dirs} = Filesystem.create_server_dirs(deployment_dir, "srv1")
 
       refute File.exists?(dirs.log_file)
     end

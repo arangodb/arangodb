@@ -324,15 +324,15 @@ defmodule ToastTest.IssueFormatting.LogsTest do
   # --- server_tag/2 with hyphenated IDs ---
 
   describe "server_tag/2 with hyphenated IDs" do
-    test "coordinator with cluster prefix" do
+    test "coordinator with deployment prefix" do
       assert Logs.server_tag("cluster-00-coordinator-0", :coordinator) == "CO0"
     end
 
-    test "dbserver with cluster prefix" do
+    test "dbserver with deployment prefix" do
       assert Logs.server_tag("cluster-00-dbserver-2", :dbserver) == "DB2"
     end
 
-    test "agent with cluster prefix" do
+    test "agent with deployment prefix" do
       assert Logs.server_tag("cluster-00-agent-1", :agent) == "AG1"
     end
   end

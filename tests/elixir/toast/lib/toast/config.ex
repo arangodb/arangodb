@@ -9,7 +9,7 @@ defmodule Toast.Config do
 
   @type t :: %__MODULE__{
           build_dir: Path.t() | nil,
-          work_dir: Path.t(),
+          base_dir: Path.t(),
           result_dir: Path.t(),
           deployment_mode: :single_server | :cluster,
           show_server_logs: boolean(),
@@ -26,7 +26,7 @@ defmodule Toast.Config do
           cluster_dbservers: pos_integer(),
           cluster_coordinators: pos_integer(),
           cluster_replication_factor: pos_integer(),
-          keep_work_dir: boolean(),
+          keep_data: boolean(),
           sanitizer_override: atom() | nil,
           active_sanitizers: MapSet.t(String.t()),
           api_version: non_neg_integer() | String.t() | nil,
@@ -44,7 +44,7 @@ defmodule Toast.Config do
 
   # all timeouts are in milliseconds
   defstruct build_dir: nil,
-            work_dir: nil,
+            base_dir: nil,
             result_dir: @default_result_dir,
             deployment_mode: :single_server,
             show_server_logs: false,
@@ -61,7 +61,7 @@ defmodule Toast.Config do
             cluster_dbservers: 3,
             cluster_coordinators: 1,
             cluster_replication_factor: 2,
-            keep_work_dir: false,
+            keep_data: false,
             sanitizer_override: nil,
             active_sanitizers: MapSet.new(),
             api_version: nil,
@@ -129,8 +129,8 @@ defmodule Toast.Config do
   defp build_path_config(opts, local, build_dir) do
     [
       build_dir: build_dir,
-      work_dir:
-        opt_or(opts, :work_dir, env("TOAST_WORK_DIR"), local[:work_dir]) || default_work_dir(),
+      base_dir:
+        opt_or(opts, :base_dir, env("TOAST_BASE_DIR"), local[:base_dir]) || default_base_dir(),
       result_dir: opt_or(opts, :result_dir, env("TOAST_RESULT_DIR"), local[:result_dir]),
       coredump_dir: opt_or(opts, :coredump_dir, env("TOAST_COREDUMP_DIR"), local[:coredump_dir])
     ]
@@ -220,8 +220,7 @@ defmodule Toast.Config do
       coordinator_args: Keyword.get(opts, :coordinator_args, local[:coordinator_args]),
       dbserver_args: Keyword.get(opts, :dbserver_args, local[:dbserver_args]),
       agent_args: Keyword.get(opts, :agent_args, local[:agent_args]),
-      keep_work_dir:
-        opt_or(opts, :keep_work_dir, read_bool("TOAST_KEEP_WORK_DIR"), local[:keep_work_dir]),
+      keep_data: opt_or(opts, :keep_data, read_bool("TOAST_KEEP_DATA"), local[:keep_data]),
       sanitizer_override: sanitizer_override,
       active_sanitizers: active_sanitizers,
       api_version: opt_or(opts, :api_version, read_api_version(), local[:api_version]),
@@ -252,7 +251,7 @@ defmodule Toast.Config do
     Logger.debug(fn ->
       fields = [
         build_dir: inspect(config.build_dir),
-        work_dir: config.work_dir,
+        base_dir: config.base_dir,
         result_dir: config.result_dir,
         deployment_mode: config.deployment_mode,
         show_server_logs: config.show_server_logs,
@@ -419,7 +418,7 @@ defmodule Toast.Config do
     end
   end
 
-  defp default_work_dir do
+  defp default_base_dir do
     ts = DateTime.utc_now(:second) |> DateTime.to_iso8601() |> String.replace(":", "-")
     suffix = :crypto.strong_rand_bytes(2) |> Base.encode16()
     Path.join([System.tmp_dir!(), "toast", "#{ts}_#{suffix}"])

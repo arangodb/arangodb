@@ -68,10 +68,10 @@ defmodule ToastTest.Runner do
 
   @infra_keys [
     :build_dir,
-    :work_dir,
+    :base_dir,
     :sanitizer_override,
     :show_server_logs,
-    :keep_work_dir
+    :keep_data
   ]
 
   ## Public API
@@ -191,7 +191,7 @@ defmodule ToastTest.Runner do
     # Precedence (highest to lowest): suite topology > global CLI opts > suite server args > base
     #
     # Suite topology (cluster shape) is part of the test contract — the test requires a specific
-    # topology to be meaningful, so it must win. Infrastructure opts (build_dir, work_dir, etc.)
+    # topology to be meaningful, so it must win. Infrastructure opts (build_dir, base_dir, etc.)
     # are deployment environment settings where CLI should override suite defaults.
     base
     |> Keyword.merge(suite_args)

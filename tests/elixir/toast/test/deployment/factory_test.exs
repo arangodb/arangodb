@@ -17,10 +17,10 @@ defmodule Toast.Deployment.FactoryTest do
     %{repo_root: repo_root, build_dir: build_dir}
   end
 
-  defp make_config(build_dir, work_dir, opts \\ []) do
+  defp make_config(build_dir, base_dir, opts \\ []) do
     Config.load(
       Keyword.merge(
-        [build_dir: build_dir, work_dir: work_dir, show_server_logs: false],
+        [build_dir: build_dir, base_dir: base_dir, show_server_logs: false],
         opts
       )
     )
@@ -38,10 +38,11 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "returns correct spec structure", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir, repo_root: repo_root} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
-      config = make_config(build_dir, work_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir, base_dir)
 
-      assert {:ok, [spec]} = Factory.build_single_server(config, "srv1")
+      deployment_dir = Path.join(base_dir, "srv1")
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv1", deployment_dir)
 
       assert spec.id == "srv1"
       assert spec.role == :single
@@ -50,7 +51,7 @@ defmodule Toast.Deployment.FactoryTest do
       assert spec.env == []
       assert is_list(spec.args)
       assert spec.working_dir == repo_root
-      assert spec.server_dir == Path.join(work_dir, "srv1")
+      assert spec.server_dir == deployment_dir
 
       assert "--configuration" in spec.args
       assert "etc/testing/arangod-single.conf" in spec.args
@@ -62,60 +63,68 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "creates data and app directories", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
-      config = make_config(build_dir, work_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir, base_dir)
 
-      assert {:ok, [_spec]} = Factory.build_single_server(config, "srv2")
+      deployment_dir = Path.join(base_dir, "srv2")
+      assert {:ok, [_spec]} = Factory.build_single_server(config, "srv2", deployment_dir)
 
-      assert File.dir?(Path.join([work_dir, "srv2", "data"]))
-      assert File.dir?(Path.join([work_dir, "srv2", "apps"]))
+      assert File.dir?(Path.join(deployment_dir, "data"))
+      assert File.dir?(Path.join(deployment_dir, "apps"))
     end
 
     test "returns error when arangod is missing", %{tmp_dir: tmp_dir} do
       empty_build = Path.join(tmp_dir, "empty_build")
       File.mkdir_p!(empty_build)
-      work_dir = Path.join(tmp_dir, "work")
-      config = make_config(empty_build, work_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(empty_build, base_dir)
 
-      assert {:error, msg} = Factory.build_single_server(config, "srv3")
+      deployment_dir = Path.join(base_dir, "srv3")
+      assert {:error, msg} = Factory.build_single_server(config, "srv3", deployment_dir)
       assert msg =~ "arangod not found"
     end
 
     test "show_server_logs false suppresses non-error output", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
-      config = make_config(build_dir, work_dir, show_server_logs: false)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir, base_dir, show_server_logs: false)
 
-      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-log1")
+      deployment_dir = Path.join(base_dir, "srv-log1")
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-log1", deployment_dir)
       assert not Enum.any?(spec.args, &(&1 == "--log.output"))
     end
 
     test "show_server_logs true passes output through", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
-      config = make_config(build_dir, work_dir, show_server_logs: true)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir, base_dir, show_server_logs: true)
 
-      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-log2")
+      deployment_dir = Path.join(base_dir, "srv-log2")
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-log2", deployment_dir)
       assert has_flag_value?(spec.args, "--log.output", "+")
     end
 
     test "custom server_args override defaults", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, work_dir,
+        make_config(build_dir, base_dir,
           show_server_logs: false,
           server_args: %{"log.output" => "custom", "extra" => "val"}
         )
 
-      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-custom")
+      deployment_dir = Path.join(base_dir, "srv-custom")
+
+      assert {:ok, [spec]} =
+               Factory.build_single_server(config, "srv-custom", deployment_dir)
+
       assert has_flag_value?(spec.args, "--log.output", "custom")
       assert has_flag_value?(spec.args, "--extra", "val")
     end
   end
 
-  describe "build_cluster/2" do
+  describe "build_cluster/3" do
     setup do
       tmp_dir =
         Path.join(System.tmp_dir!(), "toast_cluster_test_#{System.unique_integer([:positive])}")
@@ -127,16 +136,17 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "returns flat list ordered by deploy order", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, work_dir,
+        make_config(build_dir, base_dir,
           cluster_agents: 3,
           cluster_dbservers: 3,
           cluster_coordinators: 1
         )
 
-      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
+      deployment_dir = Path.join(base_dir, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
 
       assert length(specs) == 7
 
@@ -159,16 +169,17 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "server IDs follow naming convention", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, work_dir,
+        make_config(build_dir, base_dir,
           cluster_agents: 3,
           cluster_dbservers: 3,
           cluster_coordinators: 1
         )
 
-      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
+      deployment_dir = Path.join(base_dir, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
 
       agents = Enum.filter(specs, &(&1.role == :agent))
       dbservers = Enum.filter(specs, &(&1.role == :dbserver))
@@ -191,16 +202,17 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "agent specs include agency-specific args", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, work_dir,
+        make_config(build_dir, base_dir,
           cluster_agents: 3,
           cluster_dbservers: 3,
           cluster_coordinators: 1
         )
 
-      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
+      deployment_dir = Path.join(base_dir, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
 
       agents = Enum.filter(specs, &(&1.role == :agent))
       agent_ports = Enum.map(agents, & &1.port)
@@ -227,16 +239,17 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "dbserver specs include cluster args with all agency endpoints", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, work_dir,
+        make_config(build_dir, base_dir,
           cluster_agents: 3,
           cluster_dbservers: 3,
           cluster_coordinators: 1
         )
 
-      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
+      deployment_dir = Path.join(base_dir, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
 
       dbservers = Enum.filter(specs, &(&1.role == :dbserver))
 
@@ -259,16 +272,17 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "coordinator specs include cluster and foxx args", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, work_dir,
+        make_config(build_dir, base_dir,
           cluster_agents: 3,
           cluster_dbservers: 3,
           cluster_coordinators: 1
         )
 
-      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
+      deployment_dir = Path.join(base_dir, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
 
       coordinators = Enum.filter(specs, &(&1.role == :coordinator))
 
@@ -286,16 +300,17 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "all ports are unique", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, work_dir,
+        make_config(build_dir, base_dir,
           cluster_agents: 3,
           cluster_dbservers: 3,
           cluster_coordinators: 1
         )
 
-      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
+      deployment_dir = Path.join(base_dir, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
 
       all_ports = Enum.map(specs, & &1.port)
       assert length(all_ports) == length(Enum.uniq(all_ports))
@@ -303,16 +318,17 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "all working dirs point to repo root", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir, repo_root: repo_root} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, work_dir,
+        make_config(build_dir, base_dir,
           cluster_agents: 3,
           cluster_dbservers: 3,
           cluster_coordinators: 1
         )
 
-      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
+      deployment_dir = Path.join(base_dir, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
 
       for spec <- specs do
         assert spec.working_dir == repo_root
@@ -321,16 +337,17 @@ defmodule Toast.Deployment.FactoryTest do
 
     test "all specs have correct role field", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
-      work_dir = Path.join(tmp_dir, "work")
+      base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, work_dir,
+        make_config(build_dir, base_dir,
           cluster_agents: 3,
           cluster_dbservers: 3,
           cluster_coordinators: 1
         )
 
-      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster")
+      deployment_dir = Path.join(base_dir, "test-cluster")
+      assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
 
       for spec <- specs do
         assert spec.role in [:agent, :dbserver, :coordinator]
@@ -340,10 +357,11 @@ defmodule Toast.Deployment.FactoryTest do
     test "returns error when arangod is missing", %{tmp_dir: tmp_dir} do
       empty_build = Path.join(tmp_dir, "empty_build")
       File.mkdir_p!(empty_build)
-      work_dir = Path.join(tmp_dir, "work")
-      config = make_config(empty_build, work_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(empty_build, base_dir)
 
-      assert {:error, msg} = Factory.build_cluster(config, "test-cluster")
+      deployment_dir = Path.join(base_dir, "test-cluster")
+      assert {:error, msg} = Factory.build_cluster(config, "test-cluster", deployment_dir)
       assert msg =~ "arangod not found"
     end
   end

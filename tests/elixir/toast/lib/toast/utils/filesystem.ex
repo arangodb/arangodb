@@ -10,17 +10,21 @@ defmodule Toast.Utils.Filesystem do
           log_file: Path.t()
         }
 
-  @spec create_server_dirs(Path.t(), String.t()) :: {:ok, server_dirs()} | {:error, term()}
-  def create_server_dirs(work_dir, server_id) do
-    base_dir = Path.join(work_dir, server_id)
-    data_dir = Path.join(base_dir, "data")
-    app_dir = Path.join(base_dir, "apps")
-    log_file = Path.join(base_dir, "log")
+  @spec create_server_dirs(Path.t()) :: {:ok, server_dirs()} | {:error, term()}
+  def create_server_dirs(dir) do
+    data_dir = Path.join(dir, "data")
+    app_dir = Path.join(dir, "apps")
+    log_file = Path.join(dir, "log")
 
     with :ok <- File.mkdir_p(data_dir),
          :ok <- File.mkdir_p(app_dir) do
-      {:ok, %{base_dir: base_dir, data_dir: data_dir, app_dir: app_dir, log_file: log_file}}
+      {:ok, %{base_dir: dir, data_dir: data_dir, app_dir: app_dir, log_file: log_file}}
     end
+  end
+
+  @spec create_server_dirs(Path.t(), String.t()) :: {:ok, server_dirs()} | {:error, term()}
+  def create_server_dirs(deployment_dir, server_id) do
+    create_server_dirs(Path.join(deployment_dir, server_id))
   end
 
   @spec find_arangod(Path.t() | nil) :: {:ok, Path.t()} | {:error, String.t()}

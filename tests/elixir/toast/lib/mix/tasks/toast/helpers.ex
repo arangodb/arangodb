@@ -62,7 +62,7 @@ defmodule Mix.Tasks.Toast.Helpers do
   def opts_to_config_list(opts) do
     mapping = [
       build_dir: :build_dir,
-      work_dir: :work_dir,
+      base_dir: :base_dir,
       result_dir: :result_dir,
       show_server_logs: :show_server_logs,
       global_timeout: :global_timeout,
@@ -70,7 +70,7 @@ defmodule Mix.Tasks.Toast.Helpers do
       startup_timeout: :startup_timeout,
       shutdown_timeout: :shutdown_timeout,
       timeout_factor: :timeout_factor,
-      keep_work_dir: :keep_work_dir,
+      keep_data: :keep_data,
       sanitizer: :sanitizer_override,
       cluster_agents: :cluster_agents,
       cluster_dbservers: :cluster_dbservers,

@@ -69,16 +69,20 @@ defmodule Toast.Deployment do
   end
 
   @doc "Start a single-server deployment."
-  @spec start_single_server(Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
-  def start_single_server(config_or_opts \\ [])
-  def start_single_server(%Config{} = config), do: start(:single_server, config)
-  def start_single_server(opts) when is_list(opts), do: start(:single_server, Config.load(opts))
+  @spec start_single_server(Config.t() | keyword(), keyword()) :: {:ok, t()} | {:error, term()}
+  def start_single_server(config_or_opts \\ [], opts \\ [])
+  def start_single_server(%Config{} = config, opts), do: start(:single_server, config, opts)
+
+  def start_single_server(config_opts, opts) when is_list(config_opts),
+    do: start(:single_server, Config.load(config_opts), opts)
 
   @doc "Start a cluster deployment."
-  @spec start_cluster(Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
-  def start_cluster(config_or_opts \\ [])
-  def start_cluster(%Config{} = config), do: start(:cluster, config)
-  def start_cluster(opts) when is_list(opts), do: start(:cluster, Config.load(opts))
+  @spec start_cluster(Config.t() | keyword(), keyword()) :: {:ok, t()} | {:error, term()}
+  def start_cluster(config_or_opts \\ [], opts \\ [])
+  def start_cluster(%Config{} = config, opts), do: start(:cluster, config, opts)
+
+  def start_cluster(config_opts, opts) when is_list(config_opts),
+    do: start(:cluster, Config.load(config_opts), opts)
 
   @doc """
   Start a deployment with the given mode.
@@ -92,12 +96,13 @@ defmodule Toast.Deployment do
   end
 
   defp do_start(mode, config, opts) do
-    Logger.info("Starting #{mode} deployment (work_dir=#{config.work_dir})")
     id = Keyword.get_lazy(opts, :id, fn -> generate_id(mode) end)
+    deployment_dir = Keyword.get(opts, :deployment_dir, Path.join(config.base_dir, id))
+    Logger.info("Starting #{mode} deployment (deployment_dir=#{deployment_dir})")
 
     stacktrace = capture_caller_stacktrace()
 
-    with {:ok, specs} <- build_specs(mode, config, id),
+    with {:ok, specs} <- build_specs(mode, config, id, deployment_dir),
          {:ok, pid} <-
            Toast.Deployment.Supervisor.start_controller(
              config: config,
@@ -116,11 +121,11 @@ defmodule Toast.Deployment do
     end
   end
 
-  defp build_specs(:single_server, config, id),
-    do: Toast.Deployment.Factory.build_single_server(config, id)
+  defp build_specs(:single_server, config, id, deployment_dir),
+    do: Toast.Deployment.Factory.build_single_server(config, id, deployment_dir)
 
-  defp build_specs(:cluster, config, id),
-    do: Toast.Deployment.Factory.build_cluster(config, id)
+  defp build_specs(:cluster, config, id, deployment_dir),
+    do: Toast.Deployment.Factory.build_cluster(config, id, deployment_dir)
 
   defp generate_id(:single_server), do: "single-#{next_deployment_number()}"
   defp generate_id(:cluster), do: "cluster-#{next_deployment_number()}"
