@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNotEqual, print */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -30,7 +30,7 @@ const db = internal.db;
 const IM = global.instanceManager;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
     VectorIndexTrainingState,
@@ -178,7 +178,7 @@ function createVectorIndex(collection, sparse) {
 
 
 function VectorIndexPerShardStateSuite() {
-    const seed = randomInteger();
+    const seed = generateSeed();
     const collName = "vectorColl";
     let gen;
     let collection;
@@ -186,7 +186,6 @@ function VectorIndexPerShardStateSuite() {
     return {
         setUp: function () {
             gen = randomNumberGeneratorFloat(seed);
-            print("Using seed: " + seed);
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);

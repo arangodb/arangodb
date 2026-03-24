@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, print */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -34,7 +34,7 @@ const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
     createVectorGenerator,
@@ -59,7 +59,7 @@ function VectorIndexL2TestSuite() {
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
 
@@ -74,7 +74,6 @@ function VectorIndexL2TestSuite() {
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
@@ -536,7 +535,7 @@ function VectorIndexCosineTestSuite() {
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
 
@@ -552,7 +551,6 @@ function VectorIndexCosineTestSuite() {
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
@@ -722,7 +720,7 @@ function VectorIndexInnerProductTestSuite() {
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
 
@@ -738,7 +736,6 @@ function VectorIndexInnerProductTestSuite() {
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
@@ -884,11 +881,10 @@ function MultipleVectorIndexesOnField() {
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
 
     return {
         setUp: function() {
-            print("Using seed: " + seed);
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);

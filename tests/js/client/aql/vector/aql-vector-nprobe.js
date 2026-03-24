@@ -29,7 +29,7 @@ const jsunity = require("jsunity");
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,
@@ -49,7 +49,7 @@ function VectorIndexL2NprobeTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = randomInteger();
+    const seed = generateSeed();
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     // 3 shards; enough docs per shard (300*5=15000 total in cluster) to trigger training
     const numberOfDocs = numberOfDocsFactor * 300 * 50;

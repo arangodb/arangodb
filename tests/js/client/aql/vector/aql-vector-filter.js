@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, print */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -34,7 +34,7 @@ const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,
@@ -110,12 +110,11 @@ function VectorIndexL2FilterTestSuite() {
     const dimension = 20;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
     const nProbeAndNlists = 10;
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
@@ -640,13 +639,12 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
     const dimension = 20;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
     const nProbeAndNlists = 10;
     const col2 = "col2";
 
     return {
         setUpAll: function() {
-            print(`Using seed: ${seed}`);
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
@@ -763,12 +761,11 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
     const dimension = 20;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
     const nProbeAndNlists = 10;
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
@@ -990,7 +987,7 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
     const dimension = 20;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
     const nProbeAndNlists = 10;
 
     const shuffleArray = function(arr, seed) {
@@ -1025,7 +1022,6 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 

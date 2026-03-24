@@ -35,7 +35,7 @@ const {
 } = require("@arangodb/test-helper");
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
     VectorIndexTrainingState,
@@ -53,7 +53,7 @@ function VectorIndexReplicationFailoverTest() {
     // Training threshold is max(nLists * 39, 1000) = 1000 with nLists=2.
     // Use 1200 to comfortably exceed the threshold on the follower.
     const numberOfDocs = 1200;
-    const seed = randomInteger();
+    const seed = generateSeed();
     const nLists = 2;
 
     return {

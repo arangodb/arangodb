@@ -29,7 +29,7 @@ const jsunity = require("jsunity");
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const dbName = "vectorDb";
 const collName = "vectorColl";
@@ -42,7 +42,7 @@ let IM = global.instanceManager;
 function VectorIndexCorrectDefinitionInAgencyTest() {
     let collection;
     const dimension = 500;
-    const seed = randomInteger();
+    const seed = generateSeed();
     const nLists = 1;
     const metric = "l2";
 
@@ -139,7 +139,7 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
 function VectorIndexInvalidDefinitionInAgencyTest() {
     let collection;
     const dimension = 500;
-    const seed = randomInteger();
+    const seed = generateSeed();
     const nLists = 1;
     const metric = "l2";
 

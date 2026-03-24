@@ -30,7 +30,7 @@ const errors = internal.errors;
 const db = require("internal").db;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,
@@ -52,7 +52,7 @@ const numberOfShards = 3;
 function VectorIndexCreateAndRemoveTestSuite() {
     let collection;
     const dimension = 500;
-    const seed = randomInteger();
+    const seed = generateSeed();
     let randomPoint;
     const insertedDocsCountFactor = isCluster ? numberOfShards : 1;
     const insertedDocsCount = 1500 * insertedDocsCountFactor;
@@ -217,7 +217,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
 function VectorIndexTestCreationWithVectors() {
     let collection;
     const dimension = 500;
-    const seed = randomInteger();
+    const seed = generateSeed();
 
     return {
         setUp: function() {
@@ -460,7 +460,7 @@ function VectorIndexTestCreationWithVectors() {
 function VectorIndexStoredValuesTestSuite() {
     let collection;
     const dimension = 128;
-    const seed = randomInteger();
+    const seed = generateSeed();
     let randomPoint;
     const insertedDocsCountFactor = isCluster ? numberOfShards : 1;
     const insertedDocsCount = 1500 * insertedDocsCountFactor;

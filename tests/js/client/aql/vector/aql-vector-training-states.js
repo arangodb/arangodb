@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, print */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -33,11 +33,11 @@ const errors = internal.errors;
 const db = internal.db;
 const {
   randomNumberGeneratorFloat,
-  randomInteger,
+  generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
   generateDocs,
-  waitForAllVectorIndexesState,
+  waitForVectorIndexState,
   VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
 const {deriveTestSuite} = require("@arangodb/test-helper-common");
@@ -80,12 +80,10 @@ function buildSearchQuery(collectionName) {
 
 function VectorTrainingStateTestSuite(sparse) {
   let collection;
-  const seed = randomInteger();
-  const label = sparse ? "sparse" : "dense";
+  const seed = generateSeed();
 
   return {
     setUpAll: function () {
-      print("Using seed (" + label + "): " + seed);
       db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
@@ -109,8 +107,8 @@ function VectorTrainingStateTestSuite(sparse) {
       createIndex(collection, sparse);
 
       assertTrue(
-        waitForAllVectorIndexesState(
-          collection, VectorIndexTrainingState.kUnusable, 10),
+        waitForVectorIndexState(
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
         "Index should remain unusable with no documents"
       );
 
@@ -131,8 +129,8 @@ function VectorTrainingStateTestSuite(sparse) {
       createIndex(collection, sparse);
 
       assertTrue(
-        waitForAllVectorIndexesState(
-          collection, VectorIndexTrainingState.kUnusable, 10),
+        waitForVectorIndexState(
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
         "Index should remain unusable with " + belowThresholdCount + " docs"
       );
 
@@ -152,8 +150,8 @@ function VectorTrainingStateTestSuite(sparse) {
       createIndex(collection, sparse);
 
       assertTrue(
-        waitForAllVectorIndexesState(
-          collection, VectorIndexTrainingState.kReady, 120),
+        waitForVectorIndexState(
+          collection, "vec_l2", VectorIndexTrainingState.kReady, 120),
         "Index should become ready with " + aboveThresholdCount + " docs"
       );
 
@@ -170,8 +168,8 @@ function VectorTrainingStateTestSuite(sparse) {
       createIndex(collection, sparse);
 
       assertTrue(
-        waitForAllVectorIndexesState(
-          collection, VectorIndexTrainingState.kUnusable, 10),
+        waitForVectorIndexState(
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
         "Index should start as unusable with " + belowThresholdCount + " docs"
       );
 
@@ -180,8 +178,8 @@ function VectorTrainingStateTestSuite(sparse) {
       collection.insert(moreDocs);
 
       assertTrue(
-        waitForAllVectorIndexesState(
-          collection, VectorIndexTrainingState.kReady, 120),
+        waitForVectorIndexState(
+          collection, "vec_l2", VectorIndexTrainingState.kReady, 120),
         "Index should become ready after inserting more data"
       );
 
@@ -198,11 +196,10 @@ function VectorTrainingStateTestSuite(sparse) {
 
 function SparseVectorIndexTestSuite() {
   let collection;
-  const seed = randomInteger();
+  const seed = generateSeed();
 
   return {
     setUpAll: function () {
-      print("Using seed (sparse-specific): " + seed);
       db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
@@ -237,8 +234,8 @@ function SparseVectorIndexTestSuite() {
       createIndex(collection, /*sparse*/ true);
 
       assertTrue(
-        waitForAllVectorIndexesState(
-          collection, VectorIndexTrainingState.kUnusable, 10),
+        waitForVectorIndexState(
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
         "Sparse index should remain unusable when total docs exceed threshold " +
         "but vector-bearing docs (" + belowThresholdCount + ") do not"
       );

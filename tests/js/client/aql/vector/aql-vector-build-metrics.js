@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertFalse, print */
+/*global fail, assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,7 +29,7 @@ const db = require("internal").db;
 const internal = require("internal");
 const {
   randomNumberGeneratorFloat,
-  randomInteger,
+  generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
   generateDocs,
@@ -62,12 +62,11 @@ function getMetricValue(name) {
 
 function VectorIndexBuildMetricsSuite() {
   let collection;
-  const seed = randomInteger();
+  const seed = generateSeed();
   const insertCountFactor = isCluster ? numberOfShards : 1;
 
   return {
     setUp: function () {
-      print("Using seed: " + seed);
       db._useDatabase("_system");
       db._createDatabase(dbName);
       db._useDatabase(dbName);

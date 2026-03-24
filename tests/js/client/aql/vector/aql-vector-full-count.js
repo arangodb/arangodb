@@ -31,7 +31,7 @@ const aql = arangodb.aql;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndEnsureIndex,
@@ -54,7 +54,7 @@ function VectorIndexFullCountTestSuite() {
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
     const nLists = 10;
 
     return {
@@ -243,7 +243,7 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
 
     return {
         setUpAll: function() {
@@ -333,7 +333,7 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     const dimension = 500;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
     const numberOfDocs = 1500 * numberOfDocsFactor;
-    const seed = randomInteger();
+    const seed = generateSeed();
 
     return {
         setUpAll: function() {
@@ -424,7 +424,7 @@ function VectorIndexLargeLimitTestSuite() {
     const largeLimitDimension = 128;
     const largeLimitNumberOfDocs = 4500;
     const nLists = 32;
-    const seed = randomInteger();
+    const seed = generateSeed();
 
     return {
         setUpAll: function() {

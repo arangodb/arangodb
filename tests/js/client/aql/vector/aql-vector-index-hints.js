@@ -30,7 +30,7 @@ const errors = internal.errors;
 const db = internal.db;
 const {
   randomNumberGeneratorFloat,
-  randomInteger,
+  generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
   waitForAllVectorIndexesState,
@@ -66,7 +66,7 @@ function VectorIndexHintsSuite() {
   const dimension = 128;
   const numberOfDocsFactor = isCluster ? numberOfShards : 1;
   const numberOfDocs = 1500 * numberOfDocsFactor;
-  const seed = randomInteger();
+  const seed = generateSeed();
 
   return {
     setUpAll: function () {
@@ -85,11 +85,11 @@ function VectorIndexHintsSuite() {
         const vector = Array.from({ length: dimension }, () => gen());
         const vectorCosine = Array.from({ length: dimension }, () => gen());
         const vectorInnerProduct = Array.from({ length: dimension }, () => gen());
-        
+
         if (i === Math.floor(numberOfDocs / 2)) {
           randomPoint = vector;
         }
-        
+
         docs.push({
           vector: vector,
           vectorCosine: vectorCosine,
@@ -144,7 +144,7 @@ function VectorIndexHintsSuite() {
       `;
       const bindVars = { qp: randomPoint };
       const indexName = getVectorIndexName(query, bindVars);
-      
+
       assertEqual("vector_l2", indexName);
     },
 
@@ -157,7 +157,7 @@ function VectorIndexHintsSuite() {
         `;
         const bindVars = { qp: randomPoint };
         const indexName = getVectorIndexName(query, bindVars);
-        
+
         assertEqual("vector_l2_secondary", indexName);
       },
 
@@ -170,10 +170,10 @@ function VectorIndexHintsSuite() {
         `;
         const bindVars = { qp: randomPoint };
         const indexName = getVectorIndexName(query, bindVars);
-        
+
         assertTrue(["vector_l2_secondary", "vector_l2"].includes(indexName));
       },
-  
+
     testVectorL2WithHintForced: function () {
       const query = `
         FOR doc IN ${collName} OPTIONS { indexHint: "vector_l2_secondary", forceIndexHint: true }
@@ -183,7 +183,7 @@ function VectorIndexHintsSuite() {
       `;
       const bindVars = { qp: randomPoint };
       const indexName = getVectorIndexName(query, bindVars);
-      
+
       assertEqual("vector_l2_secondary", indexName);
     },
 
@@ -195,7 +195,7 @@ function VectorIndexHintsSuite() {
             RETURN doc
         `;
         const bindVars = { qp: randomPoint };
-        
+
         try {
             db._createStatement({ query, bindVars }).explain();
             fail();
@@ -213,7 +213,7 @@ function VectorIndexHintsSuite() {
         `;
         const bindVars = { qp: randomPoint };
         const indexName = getVectorIndexName(query, bindVars);
-        
+
         assertEqual("vector_l2_secondary", indexName);
     },
 
@@ -227,7 +227,7 @@ function VectorIndexHintsSuite() {
         `;
         const bindVars = { qp: randomPoint };
         const indexName = getVectorIndexName(query, bindVars);
-        
+
         assertEqual("vector_l2_with_filter", indexName);
     },
 
@@ -246,7 +246,7 @@ function VectorIndexHintsSuite() {
         `;
         const bindVars = { qp: randomPoint };
         const indexName = getVectorIndexName(query, bindVars);
-        
+
         assertEqual("vector_l2_with_filter", indexName);
     },
   };
