@@ -44,6 +44,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/RequestStatisticsMetrics.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "Metrics/CounterBuilder.h"
@@ -152,12 +153,39 @@ GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
-      _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_requests_memory_usage{})),
+      _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
+      _histConnectionTime(metrics.add(arangodb_client_connection_statistics_connection_time{})),
+      _histTotalTime(metrics.add(arangodb_client_connection_statistics_total_time{})),
+      _histRequestTime(metrics.add(arangodb_client_connection_statistics_request_time{})),
+      _histQueueTime(metrics.add(arangodb_client_connection_statistics_queue_time{})),
+      _histIoTime(metrics.add(arangodb_client_connection_statistics_io_time{})),
+      _histBytesReceived(metrics.add(arangodb_client_connection_statistics_bytes_received{})),
+      _histBytesSent(metrics.add(arangodb_client_connection_statistics_bytes_sent{})),
+      _histBytesReceivedUser(
+          metrics.add(arangodb_client_user_connection_statistics_bytes_received{})),
+      _histBytesSentUser(
+          metrics.add(arangodb_client_user_connection_statistics_bytes_sent{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
-      _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
+      _http2Connections(metrics.add(arangodb_http2_connections_total{})),
+      _httpReqsTotal(metrics.add(arangodb_http_request_statistics_total_requests_total{})),
+      _httpReqsSuperuser(
+          metrics.add(arangodb_http_request_statistics_superuser_requests_total{})),
+      _httpReqsUser(metrics.add(arangodb_http_request_statistics_user_requests_total{})),
+      _httpReqsAsync(metrics.add(arangodb_http_request_statistics_async_requests_total{})),
+      _httpReqsDelete(
+          metrics.add(arangodb_http_request_statistics_http_delete_requests_total{})),
+      _httpReqsGet(metrics.add(arangodb_http_request_statistics_http_get_requests_total{})),
+      _httpReqsHead(metrics.add(arangodb_http_request_statistics_http_head_requests_total{})),
+      _httpReqsOptions(
+          metrics.add(arangodb_http_request_statistics_http_options_requests_total{})),
+      _httpReqsPatch(
+          metrics.add(arangodb_http_request_statistics_http_patch_requests_total{})),
+      _httpReqsPost(metrics.add(arangodb_http_request_statistics_http_post_requests_total{})),
+      _httpReqsPut(metrics.add(arangodb_http_request_statistics_http_put_requests_total{})),
+      _httpReqsOther(
+          metrics.add(arangodb_http_request_statistics_other_http_requests_total{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 

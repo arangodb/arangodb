@@ -23,6 +23,8 @@
 
 #include "StatisticsFeature.h"
 
+#include "GeneralServer/RequestStatisticsMetrics.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
@@ -91,40 +93,6 @@ std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0,
 std::initializer_list<double> const RequestTimeDistributionCuts{
     0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 5.0, 15.0, 30.0};
 
-struct BytesReceivedScale {
-  static metrics::FixScale<double> scale() {
-    return {250, 10000, BytesReceivedDistributionCuts};
-  }
-};
-
-struct BytesSentScale {
-  static metrics::FixScale<double> scale() {
-    return {250, 10000, BytesSentDistributionCuts};
-  }
-};
-
-struct ConnectionTimeScale {
-  static metrics::FixScale<double> scale() {
-    return {0.1, 60.0, ConnectionTimeDistributionCuts};
-  }
-};
-
-struct RequestTimeScale {
-  static metrics::FixScale<double> scale() {
-    return {0.01, 30.0, RequestTimeDistributionCuts};
-  }
-};
-
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_received,
-                  BytesReceivedScale, "Bytes received for requests");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_sent,
-                  BytesSentScale, "Bytes sent for responses");
-DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_received,
-                  BytesReceivedScale,
-                  "Bytes received for requests, only user traffic");
-DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_sent,
-                  BytesSentScale,
-                  "Bytes sent for responses, only user traffic");
 DECLARE_COUNTER(
     arangodb_process_statistics_minor_page_faults_total,
     "The number of minor faults the process has made which have not required "
@@ -157,40 +125,6 @@ DECLARE_GAUGE(
     "This figure contains The size of the virtual memory the process is using");
 DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
               "The number of client connections that are currently open");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_connection_time,
-                  ConnectionTimeScale, "Total connection time of a client");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_total_time,
-                  ConnectionTimeScale, "Total time needed to answer a request");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_request_time,
-                  RequestTimeScale, "Request time needed to answer a request");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_queue_time,
-                  RequestTimeScale, "Queue time needed to answer a request");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_io_time,
-                  RequestTimeScale, "IO time needed to answer a request");
-DECLARE_COUNTER(arangodb_http_request_statistics_total_requests_total,
-                "Total number of HTTP requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_superuser_requests_total,
-                "Total number of HTTP requests executed by superuser/JWT");
-DECLARE_COUNTER(arangodb_http_request_statistics_user_requests_total,
-                "Total number of HTTP requests executed by clients");
-DECLARE_COUNTER(arangodb_http_request_statistics_async_requests_total,
-                "Number of asynchronously executed HTTP requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_delete_requests_total,
-                "Number of HTTP DELETE requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_get_requests_total,
-                "Number of HTTP GET requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_head_requests_total,
-                "Number of HTTP HEAD requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_options_requests_total,
-                "Number of HTTP OPTIONS requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_patch_requests_total,
-                "Number of HTTP PATCH requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_post_requests_total,
-                "Number of HTTP POST requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_put_requests_total,
-                "Number of HTTP PUT requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_other_http_requests_total,
-                "Number of other HTTP requests");
 DECLARE_COUNTER(arangodb_server_statistics_server_uptime_total,
                 "Number of seconds elapsed since server start");
 DECLARE_GAUGE(arangodb_server_statistics_physical_memory, double,
