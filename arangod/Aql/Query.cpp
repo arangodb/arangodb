@@ -575,16 +575,16 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
     // add views
     for (auto const& it : _queryDataSources) {
       dataSources.try_emplace(it.first, QueryPlanCache::DataSourceEntry{
-                                            it.second, auth::Level::RO});
+                                            it.second, AccessLevel::Read});
     }
     // collect transaction DataSources
     _trx->state()->allCollections(
         [&dataSources](TransactionCollection& trxCollection) -> bool {
           auto const& c = trxCollection.collection();
-          auth::Level level =
+          AccessLevel level =
               trxCollection.accessType() == AccessMode::Type::READ
-                  ? auth::Level::RO
-                  : auth::Level::RW;
+                  ? AccessLevel::Read
+                  : AccessLevel::WriteData;
           dataSources.try_emplace(
               c->guid(), QueryPlanCache::DataSourceEntry{c->name(), level});
           return true;  // continue traversal
