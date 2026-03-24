@@ -4,6 +4,8 @@
   `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
   `/_admin/wal/transactions`.
 
+* Removed leftover range() method from collection objects in JavaScript API
+
 * Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
   `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
 
