@@ -145,6 +145,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   
   let iresearch_filter = ['gtest_filter=IResearch*'];
   testFns['gtest_iresearch'] = x => gtestRunner('arangodbtests', 'gtest-iresearch', x, iresearch_filter);
+  // Standalone IResearch library tests (lib/iresearch/tests, binary iresearch-tests-s)
+  testFns['gtest_iresearch_standalone'] = x => gtestRunner('iresearch-tests-s', 'gtest-iresearch-standalone', x);
   let no_iresearch_filter = ['gtest_filter=-IResearch*:*_LongRunning*'];
   testFns['gtest_arangodb'] = x => gtestRunner('arangodbtests', 'gtest-arangodb', x, no_iresearch_filter);
 

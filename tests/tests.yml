@@ -226,6 +226,14 @@
       type: single
     requires:
       coverage: false
+- gtest_iresearch_standalone:
+    options:
+      priority: 1000
+      parallelity: 3
+      size: medium
+      type: single
+    requires:
+      coverage: false
 - gtest_arangodb:
     options:
       priority: 1000
