@@ -23,9 +23,16 @@ defmodule ToastTest.ArtifactCollector do
   @spec collect(%{String.t() => ServerInstance.t()}, map(), keyword()) :: t()
   def collect(servers, pid_history \\ %{}, opts \\ []) do
     result =
-      for {id, server} <- servers, server.server_dir != nil, into: %{} do
-        {id, collect_server_artifacts(server, Map.get(pid_history, id, []), opts)}
-      end
+      servers
+      |> Enum.filter(fn {_id, server} -> server.server_dir != nil end)
+      |> Task.async_stream(
+        fn {id, server} ->
+          {id, collect_server_artifacts(server, Map.get(pid_history, id, []), opts)}
+        end,
+        timeout: :infinity,
+        ordered: false
+      )
+      |> Map.new(fn {:ok, result} -> result end)
 
     Logger.debug(
       "Artifacts: #{coredump_count(result)} coredump(s), #{sanitizer_count(result)} sanitizer report(s) from #{map_size(servers)} server(s)"

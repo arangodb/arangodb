@@ -35,18 +35,24 @@ defmodule ToastTest.Attribution.ServerLogs do
   defp do_collect([], _), do: %{}
 
   defp do_collect(merged, log_files) do
-    for {server_id, log_file} <- log_files, into: %{} do
-      excerpts =
-        merged
-        |> Enrichment.Logs.extract_windows(log_file)
-        |> Enum.zip(merged)
-        |> Enum.flat_map(fn
-          {[], _window} -> []
-          {entries, {start_us, end_us}} -> [{start_us, end_us, entries}]
-        end)
+    log_files
+    |> Task.async_stream(
+      fn {server_id, log_file} ->
+        excerpts =
+          merged
+          |> Enrichment.Logs.extract_windows(log_file)
+          |> Enum.zip(merged)
+          |> Enum.flat_map(fn
+            {[], _window} -> []
+            {entries, {start_us, end_us}} -> [{start_us, end_us, entries}]
+          end)
 
-      {server_id, excerpts}
-    end
+        {server_id, excerpts}
+      end,
+      timeout: :infinity,
+      ordered: false
+    )
+    |> Map.new(fn {:ok, result} -> result end)
   end
 
   @doc """

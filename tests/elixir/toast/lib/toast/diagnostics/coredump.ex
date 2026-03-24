@@ -23,7 +23,11 @@ defmodule Toast.Diagnostics.Coredump do
       case override_dir do
         nil ->
           Logger.debug("Coredump discover: server_dir=#{server_dir} pids=#{inspect(os_pids)}")
-          pid_paths = Enum.flat_map(os_pids, &(cores_in_tmp(&1) ++ cores_from_pattern(&1)))
+          core_pattern = read_core_pattern()
+
+          pid_paths =
+            Enum.flat_map(os_pids, &(cores_in_tmp(&1) ++ cores_from_pattern(&1, core_pattern)))
+
           cores_in_dir(server_dir) ++ pid_paths
 
         dir ->
@@ -312,14 +316,10 @@ defmodule Toast.Diagnostics.Coredump do
   defp to_posix(%DateTime{} = dt), do: DateTime.to_unix(dt)
   defp to_posix(ts) when is_integer(ts), do: ts
 
-  defp valid_core_file?(path, nil) do
-    File.exists?(path)
-  end
-
   defp valid_core_file?(path, not_before) do
     case File.stat(path, time: :posix) do
       {:ok, %{mtime: mtime}} ->
-        mtime >= not_before
+        is_nil(not_before) or mtime >= not_before
 
       {:error, _} ->
         false
@@ -376,19 +376,20 @@ defmodule Toast.Diagnostics.Coredump do
     |> Enum.filter(&filename_contains_pid?(&1, pid_str))
   end
 
-  defp cores_from_pattern(os_pid) do
+  defp read_core_pattern do
     case File.read("/proc/sys/kernel/core_pattern") do
-      {:ok, pattern} ->
-        pattern = String.trim(pattern)
+      {:ok, pattern} -> {:ok, String.trim(pattern)}
+      {:error, _} -> :error
+    end
+  end
 
-        if String.starts_with?(pattern, "|") do
-          cores_from_piped_handler(pattern, os_pid)
-        else
-          cores_from_fs_pattern(pattern, os_pid)
-        end
+  defp cores_from_pattern(_os_pid, :error), do: []
 
-      {:error, _} ->
-        []
+  defp cores_from_pattern(os_pid, {:ok, pattern}) do
+    if String.starts_with?(pattern, "|") do
+      cores_from_piped_handler(pattern, os_pid)
+    else
+      cores_from_fs_pattern(pattern, os_pid)
     end
   end
 

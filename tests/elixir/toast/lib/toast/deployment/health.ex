@@ -51,7 +51,17 @@ defmodule Toast.Deployment.Health do
   end
 
   defp agency_poll_loop(agent_endpoints, opts, poll_interval, deadline) do
-    results = Enum.map(agent_endpoints, &check_agency_config(&1, opts))
+    results =
+      agent_endpoints
+      |> Task.async_stream(
+        &check_agency_config(&1, opts),
+        timeout: :timer.seconds(10),
+        ordered: true
+      )
+      |> Enum.map(fn
+        {:ok, result} -> result
+        {:exit, _reason} -> {:error, :timeout}
+      end)
 
     case analyze_agency_status(results) do
       :ready ->

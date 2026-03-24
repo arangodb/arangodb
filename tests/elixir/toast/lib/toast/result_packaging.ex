@@ -119,17 +119,27 @@ defmodule Toast.ResultPackaging do
   # --- Tier 3: Individually compressed ---
 
   defp package_tier3(opts, result_dir) do
+    tool = detect_compression_tool()
+
     opts
     |> Keyword.get(:suite_diagnostics, [])
     |> Enum.flat_map(&Map.get(&1, :core_dumps, []))
     |> Enum.filter(&File.exists?/1)
-    |> Enum.each(&package_core_dump(&1, result_dir))
+    |> Enum.each(&package_core_dump(&1, result_dir, tool))
   end
 
-  defp package_core_dump(core_path, result_dir) do
+  defp detect_compression_tool do
+    cond do
+      zstd_available?() -> :zstd
+      gzip_available?() -> :gzip
+      true -> nil
+    end
+  end
+
+  defp package_core_dump(core_path, result_dir, tool) do
     basename = Path.basename(core_path)
 
-    case compression_ext() do
+    case tool do
       nil ->
         Logger.warning(
           "No compression tool (zstd, gzip) available; copying #{core_path} uncompressed"
@@ -137,24 +147,23 @@ defmodule Toast.ResultPackaging do
 
         File.cp!(core_path, Path.join(result_dir, basename))
 
-      ext ->
-        dest = Path.join(result_dir, basename <> ext)
+      :zstd ->
+        dest = Path.join(result_dir, basename <> ".zst")
+        compress_core(core_path, dest, &compress_with_zstd/2)
 
-        case compress_file(core_path, dest) do
-          {:ok, _} ->
-            :ok
-
-          {:error, reason} ->
-            Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
-        end
+      :gzip ->
+        dest = Path.join(result_dir, basename <> ".gz")
+        compress_core(core_path, dest, &compress_with_gzip/2)
     end
   end
 
-  defp compression_ext do
-    cond do
-      zstd_available?() -> ".zst"
-      gzip_available?() -> ".gz"
-      true -> nil
+  defp compress_core(core_path, dest, compress_fn) do
+    case compress_fn.(core_path, dest) do
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
     end
   end
 
