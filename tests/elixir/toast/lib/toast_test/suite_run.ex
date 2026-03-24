@@ -3,19 +3,19 @@ defmodule ToastTest.SuiteRun do
 
   defstruct [
     :suite_module,
-    :deployment,
     :deployment_mode,
     :suite_deadline,
     :timeout_factor,
+    :toast_config,
     between_tests: :default
   ]
 
   @type t :: %__MODULE__{
           suite_module: module(),
-          deployment: Toast.Deployment.t() | nil,
           deployment_mode: :cluster | :single_server,
-          suite_deadline: integer(),
+          suite_deadline: integer() | nil,
           timeout_factor: number(),
+          toast_config: Toast.Config.t() | nil,
           between_tests: :default | false
         }
 end

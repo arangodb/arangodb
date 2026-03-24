@@ -94,4 +94,8 @@ defmodule ToastTest.Abort do
   def display_reason({_type, msg}), do: msg
   def display_reason(msg) when is_binary(msg), do: msg
   def display_reason(other), do: inspect(other)
+
+  @doc "Formats an abort reason as a skip message with the standard prefix."
+  @spec format_skip(term()) :: String.t()
+  def format_skip(reason), do: prefix() <> display_reason(reason)
 end
