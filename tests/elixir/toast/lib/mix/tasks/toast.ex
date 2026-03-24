@@ -108,7 +108,7 @@ defmodule Mix.Tasks.Toast do
   def run(args) do
     {opts, args_rest} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
-    if opts[:help] or args_rest == ["help"] do
+    if opts[:help] || args_rest == ["help"] do
       print_help()
     else
       unless opts[:compile] == false do
