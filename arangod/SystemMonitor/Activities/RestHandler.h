@@ -28,6 +28,14 @@
 
 namespace arangodb::activities {
 
+struct Output {
+  velocypack::SharedSlice activities;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, Output& x) {
+  return f.object(x).fields(f.field("activities", x.activities));
+}
+
 /**
    Activities REST handler
 
