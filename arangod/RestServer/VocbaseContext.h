@@ -25,6 +25,7 @@
 
 #include "Rest/GeneralRequest.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/vocbase.h"
 
 #include <atomic>
 
@@ -42,6 +43,10 @@ class VocbaseContext final : public arangodb::ExecContext {
       GeneralRequest& req, TRI_vocbase_t& vocbase);
 
   [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
+
+  [[nodiscard]] std::string_view database() const {
+    return _vocbase.name();
+  }
 
   /// @brief upgrade to internal superuser
   void forceSuperuser();
