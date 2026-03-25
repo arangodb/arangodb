@@ -1104,33 +1104,6 @@ bool optimizeTraversalPathVariable(
   return false; /*modified*/
 }
 
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
-                                 char const* context) {
-  aql::Collection* coll = nullptr;
-
-  if (!cname.empty()) {
-    coll = query.collections().add(cname, AccessMode::Type::READ,
-                                   aql::Collection::Hint::Collection);
-    // simon: code below is used for FULLTEXT(), ..
-    // could become unnecessary if the AST takes care of adding the collections
-    if (!ServerState::instance()->isCoordinator()) {
-      TRI_ASSERT(coll != nullptr);
-      query.trxForOptimization()
-          .addCollectionAtRuntime(cname, AccessMode::Type::READ)
-          .waitAndGet();
-    }
-  }
-
-  if (coll == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-        std::string("collection '") + cname + "' used in " + context +
-            " not found");
-  }
-
-  return coll;
-}
-
 }  // namespace aql
 }  // namespace arangodb
 
