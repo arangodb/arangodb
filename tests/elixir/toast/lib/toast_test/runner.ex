@@ -69,7 +69,11 @@ defmodule ToastTest.Runner do
   ## Public API
 
   @spec run_suites(
-          [{module(), [module()]} | {module(), [module()], keyword()}],
+          [
+            {module(), [module()]}
+            | {module(), [module()], keyword()}
+            | {module(), [module()], keyword(), String.t()}
+          ],
           ToastTest.Config.t(),
           keyword()
         ) :: map()
@@ -123,7 +127,9 @@ defmodule ToastTest.Runner do
       Enum.reduce(suites, {[], %{total: 0, failures: 0, skipped: 0, excluded: 0}}, fn
         suite_entry, {results, acc} ->
           __MODULE__.Timeout.check_global_deadline!(global_deadline)
-          {suite_module, test_modules, suite_opts} = normalize_suite_entry(suite_entry)
+
+          {suite_module, test_modules, suite_opts, suite_name} =
+            normalize_suite_entry(suite_entry)
 
           suite_result =
             run_suite(
@@ -132,7 +138,8 @@ defmodule ToastTest.Runner do
               test_config,
               ex_unit_opts,
               suite_opts,
-              global_deadline
+              global_deadline,
+              suite_name
             )
 
           result = %{
@@ -150,11 +157,18 @@ defmodule ToastTest.Runner do
     }
   end
 
+  defp normalize_suite_entry({suite_module, test_modules, suite_opts, suite_name}),
+    do: {suite_module, test_modules, suite_opts, suite_name}
+
   defp normalize_suite_entry({suite_module, test_modules, suite_opts}),
-    do: {suite_module, test_modules, suite_opts}
+    do: {suite_module, test_modules, suite_opts, default_suite_name(suite_module)}
 
   defp normalize_suite_entry({suite_module, test_modules}),
-    do: {suite_module, test_modules, []}
+    do: {suite_module, test_modules, [], default_suite_name(suite_module)}
+
+  defp default_suite_name(suite_module) do
+    suite_module |> Module.split() |> List.last() |> Macro.underscore()
+  end
 
   ## Suite config validation
 
@@ -315,7 +329,8 @@ defmodule ToastTest.Runner do
          test_config,
          ex_unit_opts,
          suite_opts,
-         global_deadline
+         global_deadline,
+         suite_name
        ) do
     suite_config = suite_module.deployment_config()
     validate_suite_config!(suite_module, suite_config)
@@ -332,7 +347,7 @@ defmodule ToastTest.Runner do
     Logger.debug("Deployment config: #{inspect(deploy_config)}")
 
     id = Toast.Deployment.generate_id(mode)
-    deployment_dir = Path.join(test_config.base_dir, id)
+    deployment_dir = Path.join([test_config.base_dir, suite_name, id])
 
     suite_run = %ToastTest.SuiteRun{
       suite_module: suite_module,

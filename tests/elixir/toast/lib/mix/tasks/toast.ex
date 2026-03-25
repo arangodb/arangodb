@@ -205,7 +205,8 @@ defmodule Mix.Tasks.Toast do
       end)
 
     suite_opts = Helpers.build_suite_opts(test_modules, line_filters, test_filter)
-    [{suite_module, test_modules, suite_opts}]
+    suite_name = Path.basename(suite_dir)
+    [{suite_module, test_modules, suite_opts, suite_name}]
   end
 
   ## Suite discovery helpers
