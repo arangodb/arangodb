@@ -1,5 +1,6 @@
 target_sources(arangodbtests
   PRIVATE
+  AllowedPathsTest.cpp
   AtomicListTest.cpp
   ConversionsTest.cpp
   CsvTest.cpp
@@ -29,7 +30,6 @@ target_sources(arangodbtests
   LoggerTest.cpp
   MemoryUsageTest.cpp
   NumberUtilsTest.cpp
-  PathAllowTest.cpp
   RandomTest.cpp
   ReadWriteLockTest.cpp
   RecursiveLockerTest.cpp

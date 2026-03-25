@@ -26,12 +26,12 @@
 #include <filesystem>
 
 namespace arangodb {
-struct PathAllow {
-  auto addPath(std::filesystem::path path) { _allow.emplace_back(path); }
+struct AllowedPaths {
+  auto addPath(std::filesystem::path path) { _allowed.emplace_back(path); }
 
-  auto empty() const noexcept { return _allow.empty(); }
+  auto empty() const noexcept { return _allowed.empty(); }
 
-  auto allowed(std::filesystem::path path) const -> bool {
+  auto isAllowed(std::filesystem::path path) const -> bool {
     // Check that first path is a prefix of the second
     auto is_prefix = [](std::filesystem::path const& fst,
                         std::filesystem::path const& snd) -> bool {
@@ -41,19 +41,19 @@ struct PathAllow {
     };
 
     return std::any_of(
-        std::begin(_allow), std::end(_allow),
+        std::begin(_allowed), std::end(_allowed),
         [path, is_prefix](std::filesystem::path const& container) {
           return is_prefix(container, path);
         });
   }
 
   template<typename Inspector>
-  friend auto inline inspect(Inspector& f, PathAllow& p) {
-    return f.object(p).fields(f.field("allow", p._allow));
+  friend auto inline inspect(Inspector& f, AllowedPaths& p) {
+    return f.object(p).fields(f.field("allow", p._allowed));
   }
 
  private:
-  std::vector<std::filesystem::path> _allow;
+  std::vector<std::filesystem::path> _allowed;
 };
 
 }  // namespace arangodb

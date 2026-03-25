@@ -20,38 +20,38 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 #include "gtest/gtest.h"
-#include "Basics/PathAllow.h"
+#include "Basics/AllowedPaths.h"
 
-TEST(PathAllowTest, default_does_not_allow_any) {
-  auto testee = arangodb::PathAllow();
+TEST(AllowedPathsTest, default_does_not_allow_any) {
+  auto testee = arangodb::AllowedPaths();
 
-  ASSERT_FALSE(testee.allowed(""));
-  ASSERT_FALSE(testee.allowed("foo"));
-  ASSERT_FALSE(testee.allowed("///blubb"));
-  ASSERT_FALSE(testee.allowed("irgend string"));
-  ASSERT_FALSE(testee.allowed("14 20 🙄"));
+  ASSERT_FALSE(testee.isAllowed(""));
+  ASSERT_FALSE(testee.isAllowed("foo"));
+  ASSERT_FALSE(testee.isAllowed("///blubb"));
+  ASSERT_FALSE(testee.isAllowed("irgend string"));
+  ASSERT_FALSE(testee.isAllowed("14 20 🙄"));
 }
 
-TEST(PathAllowTest, allowing_allows) {
-  auto testee = arangodb::PathAllow();
+TEST(AllowedPathsTest, allowing_allows) {
+  auto testee = arangodb::AllowedPaths();
 
   testee.addPath("/foo/bar/baz");
 
-  ASSERT_FALSE(testee.allowed("/"));
-  ASSERT_FALSE(testee.allowed("/foo/bar"));
-  ASSERT_FALSE(testee.allowed("banana"));
-  ASSERT_FALSE(testee.allowed("/banana"));
-  ASSERT_TRUE(testee.allowed("/foo/bar/baz"));
-  ASSERT_TRUE(testee.allowed("/foo/bar/baz/"));
-  ASSERT_TRUE(testee.allowed("/foo/bar/baz/123.txt"));
-  ASSERT_TRUE(testee.allowed("/foo/bar/baz/a/b/c/123.txt"));
+  ASSERT_FALSE(testee.isAllowed("/"));
+  ASSERT_FALSE(testee.isAllowed("/foo/bar"));
+  ASSERT_FALSE(testee.isAllowed("banana"));
+  ASSERT_FALSE(testee.isAllowed("/banana"));
+  ASSERT_TRUE(testee.isAllowed("/foo/bar/baz"));
+  ASSERT_TRUE(testee.isAllowed("/foo/bar/baz/"));
+  ASSERT_TRUE(testee.isAllowed("/foo/bar/baz/123.txt"));
+  ASSERT_TRUE(testee.isAllowed("/foo/bar/baz/a/b/c/123.txt"));
 }
 
-TEST(PathAllowTest, regression_test_with_longer_allow) {
-  auto testee = arangodb::PathAllow();
+TEST(AllowedPathsTest, regression_test_with_longer_allow) {
+  auto testee = arangodb::AllowedPaths();
 
   testee.addPath("/home/makx-arango/scratch/arangodb-play/js");
 
   // Crashes if std::mismatch is not called with std::end(snd)
-  ASSERT_FALSE(testee.allowed("/home/makx-arango/scratch/arangodb-play"));
+  ASSERT_FALSE(testee.isAllowed("/home/makx-arango/scratch/arangodb-play"));
 }

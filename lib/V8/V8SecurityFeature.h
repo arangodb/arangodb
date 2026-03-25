@@ -32,7 +32,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/DenyAllow.h"
-#include "Basics/PathAllow.h"
+#include "Basics/AllowedPaths.h"
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeatureOptions.h"
 
@@ -130,8 +130,8 @@ class V8SecurityFeature final
   // an logical OR to the final expression. That in turn
   // will be compiled into an std::regex.
 
-  PathAllow _internalReadAllow;
-  PathAllow _internalWriteAllow;
+  AllowedPaths _internalReadAllow;
+  AllowedPaths _internalWriteAllow;
 
   AllowListStrictness _strictness;
 

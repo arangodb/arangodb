@@ -396,13 +396,13 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
   auto canonical = std::filesystem::weakly_canonical(pathPtr);
 
   if (access == FSAccessType::READ) {
-    if (_internalReadAllow.allowed(canonical)) {
+    if (_internalReadAllow.isAllowed(canonical)) {
       return true;
     }
   }
 
   if (access == FSAccessType::WRITE) {
-    if (_internalWriteAllow.allowed(canonical)) {
+    if (_internalWriteAllow.isAllowed(canonical)) {
       return true;
     }
   }
