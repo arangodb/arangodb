@@ -322,10 +322,6 @@ void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
 void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                             OptimizerRule const&);
 
-/// @brief replace legacy JS functions in the plan.
-void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                   OptimizerRule const&);
-
 /// @brief replace LIKE function with range scan where possible
 void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
