@@ -59,7 +59,7 @@
       extraArgs:log.level: replication=trace
 
 
-- authentication_audit_endpoints_import_export_agency:
+- authentication_audit_endpoints_import_export_agency_fuerte:
     options:
       type: single
     suites:
