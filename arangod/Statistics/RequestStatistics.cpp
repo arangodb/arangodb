@@ -68,10 +68,6 @@ std::vector<std::unique_ptr<RequestStatistics>> statisticsItems;
 // is initially populated with kInitialQueueSize objects.
 boost::lockfree::queue<RequestStatistics*> freeList;
 
-// a list of finished (to-be-process) RequestStatistics objects, not owning
-// them. this list will be initially empty
-boost::lockfree::queue<RequestStatistics*> finishedList;
-
 bool enqueueItem(boost::lockfree::queue<RequestStatistics*>& queue,
                  RequestStatistics* item) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -121,7 +117,6 @@ void RequestStatistics::initialize(application_features::ApplicationServer* appS
   std::lock_guard guard{::statisticsMutex};
 
   ::freeList.reserve(kInitialQueueSize * 2);
-  ::finishedList.reserve(kInitialQueueSize * 2);
 
   ::statisticsItems.reserve(kInitialQueueSize);
   for (size_t i = 0; i < kInitialQueueSize; ++i) {
@@ -141,24 +136,6 @@ void RequestStatistics::initialize(application_features::ApplicationServer* appS
                               (sizeof(decltype(::statisticsItems)::value_type) +
                                sizeof(RequestStatistics)),
                           std::memory_order_relaxed);
-}
-
-size_t RequestStatistics::processAll() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(statisticsEnabled);
-#endif
-
-  RequestStatistics* statistics = nullptr;
-  size_t count = 0;
-
-  while (::finishedList.pop(statistics)) {
-    if (statistics != nullptr) {
-      process(statistics);
-      ++count;
-    }
-  }
-
-  return count;
 }
 
 RequestStatistics::Item RequestStatistics::acquire() noexcept {
@@ -200,7 +177,7 @@ void RequestStatistics::release() noexcept {
   TRI_ASSERT(statisticsEnabled);
 #endif
 
-  ::enqueueItem(::finishedList, this);
+  process(this);
 }
 
 // -----------------------------------------------------------------------------

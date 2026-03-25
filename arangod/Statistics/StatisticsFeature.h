@@ -40,7 +40,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class Thread;
 namespace stats {
 class Descriptions;
 }
@@ -131,7 +130,6 @@ class StatisticsFeature final
   StatisticsFeatureOptions _options;
 
   stats::Descriptions _descriptions;
-  std::unique_ptr<Thread> _statisticsThread;
 
   metrics::Gauge<uint64_t>& _requestStatisticsMemoryUsage;
   metrics::Gauge<uint64_t>& _connectionStatisticsMemoryUsage;

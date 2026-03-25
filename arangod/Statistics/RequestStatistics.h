@@ -41,8 +41,6 @@ class RequestStatistics {
   static uint64_t memoryUsage() noexcept;
   static void initialize(application_features::ApplicationServer* appServer);
 
-  static size_t processAll();
-
   class Item {
    public:
     constexpr Item() noexcept : _stat(nullptr) {}

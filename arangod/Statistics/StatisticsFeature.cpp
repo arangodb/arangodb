@@ -435,59 +435,6 @@ RequestFigures UserRequestFigures;
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  StatisticsThread
-// -----------------------------------------------------------------------------
-
-class StatisticsThread final : public ServerThread {
- public:
-  explicit StatisticsThread(Server& server)
-      : ServerThread(server, "Statistics") {}
-  ~StatisticsThread() { shutdown(); }
-
- public:
-  void run() override {
-    constexpr uint64_t const kMinIdleSleepTime = 100;
-    constexpr uint64_t const kMaxIdleSleepTime = 250;
-
-    uint64_t sleepTime = kMinIdleSleepTime;
-    int nothingHappened = 0;
-
-    while (!isStopping()) {
-      size_t count = 0;
-      try {
-        count = RequestStatistics::processAll();
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("82524", WARN, Logger::STATISTICS)
-            << "caught exception during request statistics processing: "
-            << ex.what();
-      }
-
-      if (count == 0) {
-        // nothing needed to be processed
-        if (++nothingHappened == 10 * 30) {
-          // increase sleep time every 30 seconds
-          nothingHappened = 0;
-          sleepTime = std::min(sleepTime + 50, kMaxIdleSleepTime);
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
-
-      } else {
-        // something needed to be processed
-        nothingHappened = 0;
-        sleepTime = kMinIdleSleepTime;
-
-        if (count < 10) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        } else if (count < 100) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-      }
-    }
-  }
-};
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 StatisticsFeature
 // -----------------------------------------------------------------------------
 
@@ -611,30 +558,10 @@ void StatisticsFeature::start() {
         << "could not find system database";
     FATAL_ERROR_EXIT();
   }
-
-  // don't start the thread when we are running an upgrade
-  auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
-  if (!databaseFeature.upgrade()) {
-    _statisticsThread = std::make_unique<StatisticsThread>(server());
-
-    if (!_statisticsThread->start()) {
-      LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
-          << "could not start statistics thread";
-      FATAL_ERROR_EXIT();
-    }
-  }
 }
 
 void StatisticsFeature::stop() {
-  if (_statisticsThread != nullptr) {
-    _statisticsThread->beginShutdown();
-
-    while (_statisticsThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
-    }
-  }
-
-  _statisticsThread.reset();
+  // no-op
 }
 
 VPackBuilder StatisticsFeature::fillDistribution(
