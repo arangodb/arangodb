@@ -5912,14 +5912,6 @@
            "description": "ArangoDB Edition, either `\"community\"` or `\"enterprise\"`.\n",
            "type": "string"
           },
-          "mode": {
-           "description": "Either `\"server\"` or `\"console\"`. **Deprecated**, use `operationMode` instead.\n",
-           "type": "string"
-          },
-          "operationMode": {
-           "description": "Either `\"server\"` or `\"console\"`.\n",
-           "type": "string"
-          },
           "pid": {
            "description": "The process ID of _arangod_.\n",
            "type": "number"
@@ -5985,16 +5977,11 @@
             "state": {
              "description": "Either `\"STARTUP\"`, `\"SERVING\"`, or `\"SHUTDOWN\"`.\n*Cluster only* (Coordinators and DB-Servers).\n",
              "type": "string"
-            },
-            "writeOpsEnabled": {
-             "description": "Whether writes are enabled. **Deprecated**, use `readOnly` instead.\n",
-             "type": "boolean"
             }
            },
            "required": [
             "progress",
             "role",
-            "writeOpsEnabled",
             "readOnly",
             "maintenance"
            ],
@@ -6009,8 +5996,6 @@
           "server",
           "license",
           "version",
-          "mode",
-          "operationMode",
           "foxxApi",
           "host",
           "pid",

@@ -52,7 +52,6 @@ function adminStatusSuite () {
       assertTrue(result.serverInfo.hasOwnProperty("role"));
       assertNotEqual(-1, ["SINGLE", "COORDINATOR"].indexOf(result.serverInfo.role));
       assertTrue(result.serverInfo.hasOwnProperty("readOnly"));
-      assertTrue(result.serverInfo.hasOwnProperty("writeOpsEnabled"));
     },
     
     testOverview: function () {
