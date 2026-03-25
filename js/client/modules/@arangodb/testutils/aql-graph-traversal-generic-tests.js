@@ -2716,7 +2716,6 @@ const testParallelism = (testGraph, mode) => {
       `;
   };
 
-  /*
   if (IM.debugCanUseFailAt()) {
     const query = makeQuery(true, 1001);
     // Dry run, try to hit the MutexExecutor, a sign that parallelism is triggereds
@@ -2733,7 +2732,7 @@ const testParallelism = (testGraph, mode) => {
     }
     IM.debugRemoveFailAt("MutexExecutor::distributeBlock");
   }
- */
+
   executeParallelQuery(makeQuery);
 };
 
