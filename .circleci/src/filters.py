@@ -157,6 +157,7 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
         return False
 
     # if we should filter for a name:
+    print('xxxxx')
     print(FilterCriteria.test_suite)
     print(job.name)
     if (FilterCriteria.test_suite is not None and
