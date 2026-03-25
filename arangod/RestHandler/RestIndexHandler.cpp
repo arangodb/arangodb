@@ -96,7 +96,7 @@ std::string_view aggregateTrainingState(
 VPackBuilder enrichVectorIndexes(
     VPackSlice indexes,
     std::shared_ptr<CollectionInfoCurrent> const& collCurrent,
-    std::shared_ptr<ShardMap const> const& shardIds) {
+    std::shared_ptr<ShardMap const> const& shardIds, bool withShardDetails) {
   VPackBuilder result;
   {
     VPackArrayBuilder guard(&result);
@@ -120,14 +120,33 @@ VPackBuilder enrichVectorIndexes(
         result.add(StaticStrings::IndexTrainingState,
                    VPackValue(aggregateState));
 
-        result.add(VPackValue("shards"));
-        VPackObjectBuilder shardsObj(&result);
-        for (auto const& [shardId, shardState] : states) {
-          result.add(VPackValue(static_cast<std::string>(shardId)));
-          VPackObjectBuilder shardEntry(&result);
-          result.add(StaticStrings::IndexTrainingState,
-                     VPackValue(shardState.trainingState));
-          result.add("error", VPackValue(shardState.error));
+        if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
+          // Collect the first non-empty shard error, if any.
+          std::string_view shardError;
+          for (auto const& [_, shardState] : states) {
+            if (!shardState.error.empty()) {
+              shardError = shardState.error;
+              break;
+            }
+          }
+          if (shardError.empty()) {
+            result.add(StaticStrings::ErrorMessage,
+                       VPackValue("not enough training data for vector index"));
+          } else {
+            result.add(StaticStrings::ErrorMessage, VPackValue(shardError));
+          }
+        }
+
+        if (withShardDetails) {
+          result.add(VPackValue("shards"));
+          VPackObjectBuilder shardsObj(&result);
+          for (auto const& [shardId, shardState] : states) {
+            result.add(VPackValue(static_cast<std::string>(shardId)));
+            VPackObjectBuilder shardEntry(&result);
+            result.add(StaticStrings::IndexTrainingState,
+                       VPackValue(shardState.trainingState));
+            result.add("error", VPackValue(shardState.error));
+          }
         }
       } else {
         result.add(pi);
@@ -249,8 +268,8 @@ async<void> RestIndexHandler::getIndexes() {
         }
         auto const shardIds = coll->shardIds();
 
-        auto enriched =
-            enrichVectorIndexes(indexes.slice(), collCurrent, shardIds);
+        auto enriched = enrichVectorIndexes(indexes.slice(), collCurrent,
+                                            shardIds, withHidden);
 
         tmp.add("indexes", enriched.slice());
         tmp.add("identifiers", VPackValue(VPackValueType::Object));
@@ -336,8 +355,8 @@ async<void> RestIndexHandler::getIndexes() {
       }
 
       auto const shardIds = coll->shardIds();
-      auto enriched =
-          enrichVectorIndexes(indexes.slice(), collCurrent, shardIds);
+      auto enriched = enrichVectorIndexes(indexes.slice(), collCurrent,
+                                          shardIds, withHidden);
 
       tmp.add(VPackValue("indexes"));
 
@@ -465,6 +484,24 @@ async<void> RestIndexHandler::getIndexes() {
             std::string_view aggregateState = aggregateTrainingState(states);
             tmp.add(StaticStrings::IndexTrainingState,
                     VPackValue(aggregateState));
+
+            if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
+              std::string_view shardError;
+              for (auto const& [_, shardState] : states) {
+                if (!shardState.error.empty()) {
+                  shardError = shardState.error;
+                  break;
+                }
+              }
+              if (shardError.empty()) {
+                tmp.add(StaticStrings::ErrorMessage,
+                        VPackValue("not enough training data for "
+                                   "vector index"));
+              } else {
+                tmp.add(StaticStrings::ErrorMessage, VPackValue(shardError));
+              }
+            }
+
             tmp.add(VPackValue("shards"));
             VPackObjectBuilder shardsObj(&tmp);
             for (auto const& [shardId, shardState] : states) {

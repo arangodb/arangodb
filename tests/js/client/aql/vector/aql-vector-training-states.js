@@ -74,6 +74,42 @@ function buildSearchQuery(collectionName) {
     " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d._key";
 }
 
+function assertIndexUnusable(collection, indexName) {
+  const idx = collection.indexes().find(i => i.name === indexName);
+  assertEqual(VectorIndexTrainingState.kUnusable, idx.trainingState);
+  assertTrue(idx.errorMessage.length > 0,
+    "Unusable vector index should have an error message");
+  assertFalse(idx.hasOwnProperty("shards"),
+    "Shards should not be present without hidden flag");
+
+  if (isCluster) {
+    const hiddenIdx = collection.indexes(true, true)
+      .find(i => i.name === indexName);
+    assertTrue(hiddenIdx.hasOwnProperty("shards"),
+      "Shards should be present with hidden flag");
+    assertTrue(hiddenIdx.errorMessage.length > 0,
+      "Hidden index should also have a top-level error message");
+  }
+}
+
+function assertIndexReady(collection, indexName) {
+  const idx = collection.indexes().find(i => i.name === indexName);
+  assertEqual(VectorIndexTrainingState.kReady, idx.trainingState);
+  assertFalse(idx.hasOwnProperty("errorMessage"),
+    "Ready vector index should not have an error message");
+  assertFalse(idx.hasOwnProperty("shards"),
+    "Shards should not be present without hidden flag");
+
+  if (isCluster) {
+    const hiddenIdx = collection.indexes(true, true)
+      .find(i => i.name === indexName);
+    assertTrue(hiddenIdx.hasOwnProperty("shards"),
+      "Shards should be present with hidden flag");
+    assertFalse(hiddenIdx.hasOwnProperty("errorMessage"),
+      "Ready hidden index should not have an error message");
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Vector index training state tests (parameterized by sparse flag)
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +148,8 @@ function VectorTrainingStateTestSuite(sparse) {
         "Index should remain unusable with no documents"
       );
 
+      assertIndexUnusable(collection, "vec_l2");
+
       const gen = randomNumberGeneratorFloat(seed);
       const qp = Array.from({length: dimension}, () => gen());
       assertQueryError(
@@ -134,6 +172,8 @@ function VectorTrainingStateTestSuite(sparse) {
         "Index should remain unusable with " + belowThresholdCount + " docs"
       );
 
+      assertIndexUnusable(collection, "vec_l2");
+
       const qp = Array.from({length: dimension}, () => gen());
       assertQueryError(
         errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code,
@@ -154,6 +194,8 @@ function VectorTrainingStateTestSuite(sparse) {
           collection, "vec_l2", VectorIndexTrainingState.kReady, 120),
         "Index should become ready with " + aboveThresholdCount + " docs"
       );
+
+      assertIndexReady(collection, "vec_l2");
 
       const qp = docs[0].vector;
       const results = db._query(buildSearchQuery(collection.name()), {qp}).toArray();
@@ -239,6 +281,8 @@ function SparseVectorIndexTestSuite() {
         "Sparse index should remain unusable when total docs exceed threshold " +
         "but vector-bearing docs (" + belowThresholdCount + ") do not"
       );
+
+      assertIndexUnusable(collection, "vec_l2");
 
       const qp = vectorDocs[0].vector;
       assertQueryError(

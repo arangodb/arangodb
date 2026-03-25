@@ -195,6 +195,10 @@ void RocksDBVectorIndex::toVelocyPack(
   auto const trainingState = _trainingState.load();
   builder.add(StaticStrings::IndexTrainingState,
               VPackValue(trainingStateToString(trainingState)));
+  if (trainingState == VectorIndexTrainingState::kUnusable) {
+    builder.add(StaticStrings::ErrorMessage,
+                VPackValue("not enough training data for vector index"));
+  }
 }
 
 std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
