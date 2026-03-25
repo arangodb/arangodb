@@ -343,6 +343,14 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         continue;
       }
 
+      if (!index->isVectorIndexReady()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+            std::format(
+                "vector index '{}' on collection '{}' is not yet trained",
+                index->name(), enumerateCollectionNode->collection()->name()));
+      }
+
       auto searchParameters = getSearchParameters(
           approxNearExpression, plan->getAst()->query().resourceMonitor());
 

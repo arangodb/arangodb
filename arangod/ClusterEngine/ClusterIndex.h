@@ -121,6 +121,8 @@ class ClusterIndex : public Index {
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
+  bool isVectorIndexReady() const noexcept override;
+
   StoredValues const& storedValues() const override;
 
  protected:
