@@ -1,4 +1,4 @@
-defmodule Toast.ResultPackaging do
+defmodule ToastTest.ResultPackaging do
   @moduledoc """
   Tiered result packaging for CI environments.
 

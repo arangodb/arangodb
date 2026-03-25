@@ -5,17 +5,18 @@ defmodule ToastTest.Runner.PostExecution do
 
   require Logger
 
-  def run(nil, test_data, _toast_config) do
+  @spec run(Toast.Deployment.t() | nil, map(), ToastTest.Config.t()) :: SuiteResult.t()
+  def run(nil, test_data, _test_config) do
     SuiteResult.build(test_data, [])
   end
 
-  def run(deployment, test_data, toast_config) do
+  def run(deployment, test_data, %ToastTest.Config{} = test_config) do
     Logger.debug("Post-execution: stopping deployment")
-    {servers, error} = stop_deployment(deployment, toast_config)
+    {servers, error} = stop_deployment(deployment)
     if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
 
     try do
-      build_suite_result(servers, test_data, toast_config)
+      build_suite_result(servers, test_data, test_config)
     rescue
       e ->
         Logger.warning(
@@ -29,18 +30,18 @@ defmodule ToastTest.Runner.PostExecution do
     end
   end
 
-  defp stop_deployment(deployment, toast_config) do
-    case Toast.Deployment.stop(deployment, timeout: toast_config.shutdown_timeout) do
+  defp stop_deployment(deployment) do
+    case Toast.Deployment.stop(deployment) do
       {:ok, info} -> {info.servers, info.error}
       {:error, _reason, info} -> {info.servers, info.error}
     end
   end
 
-  defp build_suite_result(servers, test_data, toast_config) do
+  defp build_suite_result(servers, test_data, test_config) do
     snapshot = EventStore.snapshot()
 
     Logger.debug("Collecting artifacts")
-    artifact_opts = [coredump_dir: toast_config.coredump_dir, not_before: test_data.started_at]
+    artifact_opts = [coredump_dir: test_config.coredump_dir, not_before: test_data.started_at]
 
     artifacts =
       ToastTest.ArtifactCollector.collect(servers, snapshot.pids_by_server, artifact_opts)
@@ -52,7 +53,7 @@ defmodule ToastTest.Runner.PostExecution do
     {issues, coredump_reports} =
       ToastTest.Attribution.run(test_data, artifacts, crash_events,
         timeout_kills: snapshot.timeout_kills,
-        analyzer_opts: build_coredump_analyzer_opts(toast_config)
+        analyzer_opts: build_coredump_analyzer_opts(test_config)
       )
 
     Logger.debug("Collecting server logs")
@@ -61,7 +62,7 @@ defmodule ToastTest.Runner.PostExecution do
     server_logs = ToastTest.Attribution.ServerLogs.collect(issues, all_log_files, windows)
 
     Logger.debug("Building results (#{length(issues)} issues found)")
-    warnings = coredump_warnings(crash_events, artifacts, toast_config)
+    warnings = coredump_warnings(crash_events, artifacts, test_config)
     deployments = build_deployments(snapshot, server_logs)
 
     suite_result =
@@ -72,7 +73,7 @@ defmodule ToastTest.Runner.PostExecution do
         events: snapshot.events
       )
 
-    SuiteResult.write_all(suite_result, toast_config.result_dir)
+    SuiteResult.write_all(suite_result, test_config.result_dir)
     print_post_exec_summary(suite_result)
     suite_result
   end
@@ -114,11 +115,11 @@ defmodule ToastTest.Runner.PostExecution do
     }
   end
 
-  defp coredump_warnings(crash_events, artifacts, toast_config) do
+  defp coredump_warnings(crash_events, artifacts, test_config) do
     if crash_events != [] and not ToastTest.ArtifactCollector.has_coredumps?(artifacts) do
       [
-        sanitizer_coredump_warning(toast_config),
-        Toast.Diagnostics.Coredump.coredump_discovery_warning(toast_config.coredump_dir)
+        sanitizer_coredump_warning(),
+        Toast.Diagnostics.Coredump.coredump_discovery_warning(test_config.coredump_dir)
       ]
       |> Toast.Utils.compact()
     else
@@ -126,16 +127,18 @@ defmodule ToastTest.Runner.PostExecution do
     end
   end
 
-  defp sanitizer_coredump_warning(%{active_sanitizers: s}) do
-    if MapSet.size(s) > 0,
+  defp sanitizer_coredump_warning do
+    active = Application.get_env(:toast, :active_sanitizers, MapSet.new())
+
+    if MapSet.size(active) > 0,
       do:
         "Sanitizer build detected — coredumps are typically not generated with sanitizers enabled"
   end
 
-  defp build_coredump_analyzer_opts(toast_config) do
-    opts = [timeout: toast_config.coredump_timeout]
+  defp build_coredump_analyzer_opts(test_config) do
+    opts = [timeout: test_config.coredump_timeout]
 
-    case Toast.Diagnostics.Coredump.resolve_debugger(toast_config.debugger) do
+    case Toast.Diagnostics.Coredump.resolve_debugger(test_config.debugger) do
       nil -> opts
       debugger -> [{:debugger, debugger} | opts]
     end

@@ -1,7 +1,6 @@
 defmodule ToastTest.RunnerTest do
   use ExUnit.Case, async: false
 
-  alias Toast.Config
   alias Toast.Deployment
   alias Toast.Deployment.Controller
   alias Toast.Deployment.ServerInstance
@@ -69,7 +68,7 @@ defmodule ToastTest.RunnerTest do
     # merge_stats is private; test through the public run_suites return value shape
     test "run_suites returns expected structure" do
       # run_suites with empty list should return zero stats
-      result = Runner.run_suites([], [])
+      result = Runner.run_suites([], ToastTest.Config.new(), [])
 
       assert result == %{
                suites: [],
@@ -86,7 +85,7 @@ defmodule ToastTest.RunnerTest do
     test "check_health returns :ok for :ready status" do
       {:ok, ctrl} =
         Controller.start_link(
-          config: Config.load(),
+          config: Toast.Deployment.Config.new(),
           id: "runner-test-#{System.unique_integer([:positive])}"
         )
 
@@ -99,7 +98,7 @@ defmodule ToastTest.RunnerTest do
     test "check_health returns error for :degraded status" do
       {:ok, ctrl} =
         Controller.start_link(
-          config: Config.load(),
+          config: Toast.Deployment.Config.new(),
           id: "runner-test-#{System.unique_integer([:positive])}"
         )
 
@@ -124,7 +123,7 @@ defmodule ToastTest.RunnerTest do
     test "check_health returns error for :failed status" do
       {:ok, ctrl} =
         Controller.start_link(
-          config: Config.load(),
+          config: Toast.Deployment.Config.new(),
           id: "runner-test-#{System.unique_integer([:positive])}"
         )
 
@@ -157,7 +156,7 @@ defmodule ToastTest.RunnerTest do
     test "check_health returns error for :stopped status" do
       {:ok, ctrl} =
         Controller.start_link(
-          config: Config.load(),
+          config: Toast.Deployment.Config.new(),
           id: "runner-test-#{System.unique_integer([:positive])}"
         )
 
@@ -170,7 +169,7 @@ defmodule ToastTest.RunnerTest do
 
   describe "merge_stats accumulates across suites" do
     test "empty suites returns zero stats" do
-      result = Runner.run_suites([], [])
+      result = Runner.run_suites([], ToastTest.Config.new(), [])
 
       assert result.stats == %{total: 0, failures: 0, skipped: 0, excluded: 0}
       assert result.suites == []

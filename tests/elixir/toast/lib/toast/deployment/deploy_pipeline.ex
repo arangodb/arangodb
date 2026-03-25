@@ -22,7 +22,7 @@ defmodule Toast.Deployment.DeployPipeline do
     deadline = System.monotonic_time(:millisecond) + timeout
     state = init_servers_from_specs(state, specs)
 
-    Events.notify(state, :deployment_starting, %{
+    Events.notify(state.event_listener, state, :deployment_starting, %{
       mode: derive_mode(state),
       stacktrace: opts[:stacktrace],
       specs:
@@ -38,7 +38,7 @@ defmodule Toast.Deployment.DeployPipeline do
       servers = Map.new(state.servers, fn {id, s} -> {id, %{s | operational_state: :running}} end)
       state = %{state | status: :ready, servers: servers}
 
-      Events.notify(state, :deployment_started, %{
+      Events.notify(state.event_listener, state, :deployment_started, %{
         servers:
           Map.new(state.servers, fn {id, s} ->
             {id, %{role: s.role, endpoint: s.endpoint, log_file: s.log_file}}
@@ -133,13 +133,21 @@ defmodule Toast.Deployment.DeployPipeline do
     deployment_id = state.id
 
     role_label = state.servers[hd(server_ids)].role
+    listener = state.event_listener
 
     Logger.info("#{state.id}: launching #{role_label}s")
 
     results =
       Task.async_stream(
         server_ids,
-        &launch_server_process(state.servers[&1], &1, health_check?, timeout, deployment_id),
+        &launch_server_process(
+          state.servers[&1],
+          &1,
+          health_check?,
+          timeout,
+          deployment_id,
+          listener
+        ),
         ordered: false,
         max_concurrency: count,
         timeout: timeout + @task_stream_buffer
@@ -149,10 +157,10 @@ defmodule Toast.Deployment.DeployPipeline do
     collect_launch_results(results, state)
   end
 
-  defp launch_server_process(server, server_id, health_check?, timeout, deployment_id) do
+  defp launch_server_process(server, server_id, health_check?, timeout, deployment_id, listener) do
     with :ok <- ServerProcess.launch(server.server_pid),
          os_pid = ServerProcess.os_pid(server.server_pid),
-         :ok <- Events.server_started(server_id, server, os_pid, deployment_id),
+         :ok <- Events.server_started(listener, server_id, server, os_pid, deployment_id),
          :ok <- maybe_health_check(server, health_check?, timeout) do
       {:ok, {server_id, os_pid}}
     end
@@ -240,7 +248,10 @@ defmodule Toast.Deployment.DeployPipeline do
         toast_id ->
           acc = update_server(acc, toast_id, arango_id: arango_id)
 
-          Events.notify(acc, :server_identified, %{server_id: toast_id, arango_id: arango_id})
+          Events.notify(acc.event_listener, acc, :server_identified, %{
+            server_id: toast_id,
+            arango_id: arango_id
+          })
 
           acc
       end

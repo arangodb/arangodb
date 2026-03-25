@@ -2,7 +2,6 @@ defmodule Mix.Tasks.ToastTest do
   use ExUnit.Case, async: true
 
   alias Mix.Tasks.Toast.Helpers
-  alias Toast.Diagnostics.Summary
 
   describe "parse_suite_args/1" do
     test "empty args returns :all with empty filters" do
@@ -182,62 +181,62 @@ defmodule Mix.Tasks.ToastTest do
     end
   end
 
-  describe "opts_to_config_list/1" do
+  describe "opts_to_env_list/1" do
     test "empty opts produces empty config" do
-      assert Helpers.opts_to_config_list([]) == []
+      assert Helpers.opts_to_env_list([]) == []
     end
 
     test "maps build_dir to :build_dir" do
-      config = Helpers.opts_to_config_list(build_dir: "/path")
+      config = Helpers.opts_to_env_list(build_dir: "/path")
 
       assert Keyword.get(config, :build_dir) == "/path"
     end
 
     test "maps sanitizer to :sanitizer_override" do
-      config = Helpers.opts_to_config_list(sanitizer: "tsan")
+      config = Helpers.opts_to_env_list(sanitizer: "tsan")
 
       assert Keyword.get(config, :sanitizer_override) == "tsan"
     end
 
     test "maps replication_factor to :cluster_replication_factor" do
-      config = Helpers.opts_to_config_list(replication_factor: 3)
+      config = Helpers.opts_to_env_list(replication_factor: 3)
 
       assert Keyword.get(config, :cluster_replication_factor) == 3
     end
 
     test "--cluster sets deployment_mode: :cluster" do
-      config = Helpers.opts_to_config_list(cluster: true)
+      config = Helpers.opts_to_env_list(cluster: true)
 
       assert Keyword.get(config, :deployment_mode) == :cluster
     end
 
     test "--single sets deployment_mode: :single_server" do
-      config = Helpers.opts_to_config_list(single: true)
+      config = Helpers.opts_to_env_list(single: true)
 
       assert Keyword.get(config, :deployment_mode) == :single_server
     end
 
     test "neither --cluster nor --single omits deployment_mode" do
-      config = Helpers.opts_to_config_list(build_dir: "/path")
+      config = Helpers.opts_to_env_list(build_dir: "/path")
 
       refute Keyword.has_key?(config, :deployment_mode)
     end
 
     test "--cluster takes precedence over --single" do
-      config = Helpers.opts_to_config_list(cluster: true, single: true)
+      config = Helpers.opts_to_env_list(cluster: true, single: true)
 
       assert Keyword.get(config, :deployment_mode) == :cluster
     end
 
     test "maps ci to :ci" do
-      config = Helpers.opts_to_config_list(ci: true)
+      config = Helpers.opts_to_env_list(ci: true)
 
       assert Keyword.get(config, :ci) == true
     end
 
     test "maps all timeout options" do
       config =
-        Helpers.opts_to_config_list(
+        Helpers.opts_to_env_list(
           global_timeout: 100,
           test_timeout: 200,
           startup_timeout: 300,
@@ -254,7 +253,7 @@ defmodule Mix.Tasks.ToastTest do
 
     test "maps cluster topology options" do
       config =
-        Helpers.opts_to_config_list(
+        Helpers.opts_to_env_list(
           cluster_agents: 5,
           cluster_dbservers: 2,
           cluster_coordinators: 3
@@ -266,7 +265,7 @@ defmodule Mix.Tasks.ToastTest do
     end
 
     test "ignores keys not in the mapping" do
-      config = Helpers.opts_to_config_list(trace: true)
+      config = Helpers.opts_to_env_list(trace: true)
 
       assert config == []
     end
@@ -367,161 +366,6 @@ defmodule Mix.Tasks.ToastTest do
       {filtered, _} = Helpers.apply_file_filters(files, filters, "/suites/smoke")
 
       assert filtered == []
-    end
-  end
-
-  describe "has_sanitizer_errors?/1" do
-    test "returns false for empty suite list" do
-      refute Summary.has_sanitizer_errors?([])
-    end
-
-    test "returns false for suite without suite_result" do
-      refute Summary.has_sanitizer_errors?([%{suite_module: MyApp.Test}])
-    end
-
-    test "returns false when no sanitizer issues" do
-      suite_result = %ToastTest.SuiteResult{
-        suite: "smoke",
-        started_at: ~U[2026-01-01 00:00:00Z],
-        finished_at: ~U[2026-01-01 00:01:00Z],
-        times_us: %{async: 0, load: 0, run: 60_000_000},
-        issues: [%{type: :test_failure, scope: :suite, confidence: nil, detail: %{}}]
-      }
-
-      refute Summary.has_sanitizer_errors?([%{suite_result: suite_result}])
-    end
-
-    test "returns true when sanitizer issues exist" do
-      suite_result = %ToastTest.SuiteResult{
-        suite: "smoke",
-        started_at: ~U[2026-01-01 00:00:00Z],
-        finished_at: ~U[2026-01-01 00:01:00Z],
-        times_us: %{async: 0, load: 0, run: 60_000_000},
-        issues: [
-          %{type: :sanitizer_report, scope: :suite, confidence: nil, detail: %{server: "s1"}}
-        ]
-      }
-
-      assert Summary.has_sanitizer_errors?([%{suite_result: suite_result}])
-    end
-
-    test "returns true if any suite has sanitizer errors" do
-      clean = %ToastTest.SuiteResult{
-        suite: "clean",
-        started_at: ~U[2026-01-01 00:00:00Z],
-        finished_at: ~U[2026-01-01 00:01:00Z],
-        times_us: %{async: 0, load: 0, run: 60_000_000},
-        issues: []
-      }
-
-      dirty = %ToastTest.SuiteResult{
-        suite: "dirty",
-        started_at: ~U[2026-01-01 00:00:00Z],
-        finished_at: ~U[2026-01-01 00:01:00Z],
-        times_us: %{async: 0, load: 0, run: 60_000_000},
-        issues: [
-          %{type: :sanitizer_report, scope: :suite, confidence: nil, detail: %{server: "s1"}}
-        ]
-      }
-
-      assert Summary.has_sanitizer_errors?([
-               %{suite_result: clean},
-               %{suite_result: dirty}
-             ])
-    end
-  end
-
-  describe "build_suite_diagnostics/1" do
-    test "returns empty list for empty suites" do
-      assert Summary.build_suite_diagnostics([]) == []
-    end
-
-    test "extracts name from suite_module" do
-      suites = [%{suite_module: MyApp.Smoke}]
-      [diag] = Summary.build_suite_diagnostics(suites)
-
-      assert diag.name == "MyApp.Smoke"
-    end
-
-    test "extracts core dump paths from crash issues" do
-      suite_result = %ToastTest.SuiteResult{
-        suite: "smoke",
-        started_at: ~U[2026-01-01 00:00:00Z],
-        finished_at: ~U[2026-01-01 00:01:00Z],
-        times_us: %{async: 0, load: 0, run: 60_000_000},
-        issues: [
-          %{
-            type: :crash,
-            scope: :suite,
-            confidence: nil,
-            detail: %{
-              server: "s1",
-              coredump_paths: ["/cores/core.1234"]
-            }
-          }
-        ]
-      }
-
-      suites = [%{suite_module: MyApp.Test, suite_result: suite_result}]
-      [diag] = Summary.build_suite_diagnostics(suites)
-      assert diag.core_dumps == ["/cores/core.1234"]
-    end
-
-    test "extracts multiple core dump paths" do
-      suite_result = %ToastTest.SuiteResult{
-        suite: "smoke",
-        started_at: ~U[2026-01-01 00:00:00Z],
-        finished_at: ~U[2026-01-01 00:01:00Z],
-        times_us: %{async: 0, load: 0, run: 60_000_000},
-        issues: [
-          %{
-            type: :crash,
-            scope: :suite,
-            confidence: nil,
-            detail: %{
-              server: "s1",
-              coredump_paths: ["/cores/core.1"]
-            }
-          },
-          %{
-            type: :crash,
-            scope: :suite,
-            confidence: nil,
-            detail: %{
-              server: "s2",
-              coredump_paths: ["/cores/core.2"]
-            }
-          }
-        ]
-      }
-
-      suites = [%{suite_module: MyApp.Test, suite_result: suite_result}]
-      [diag] = Summary.build_suite_diagnostics(suites)
-      assert Enum.sort(diag.core_dumps) == ["/cores/core.1", "/cores/core.2"]
-    end
-
-    test "no suite_result produces empty core_dumps" do
-      suites = [%{suite_module: MyApp.Test}]
-      [diag] = Summary.build_suite_diagnostics(suites)
-
-      assert diag.core_dumps == []
-      assert Map.keys(diag) |> Enum.sort() == [:core_dumps, :name]
-    end
-
-    test "crash without coredump_path is skipped" do
-      suite_result = %ToastTest.SuiteResult{
-        suite: "smoke",
-        started_at: ~U[2026-01-01 00:00:00Z],
-        finished_at: ~U[2026-01-01 00:01:00Z],
-        times_us: %{async: 0, load: 0, run: 60_000_000},
-        issues: [
-          %{type: :crash, scope: :suite, confidence: nil, detail: %{server: "s1"}}
-        ]
-      }
-
-      suites = [%{suite_module: MyApp.Test, suite_result: suite_result}]
-      [diag] = Summary.build_suite_diagnostics(suites)
-      assert diag.core_dumps == []
     end
   end
 

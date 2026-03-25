@@ -153,7 +153,7 @@ defmodule Toast.Deployment.ServerLifecycle do
       )
 
       notify_crash_event(crash_ctx, server_id, crash_info, false)
-      ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
+      crash_ctx.event_listener.on_crash(server_id, crash_info)
       :crash_during_intentional_stop
     end
   end
@@ -161,7 +161,7 @@ defmodule Toast.Deployment.ServerLifecycle do
   defp handle_unexpected_crash(server_id, crash_info, _server, crash_ctx) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
     notify_crash_event(crash_ctx, server_id, crash_info, false)
-    ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
+    crash_ctx.event_listener.on_crash(server_id, crash_info)
     :unexpected_crash
   end
 
@@ -178,12 +178,12 @@ defmodule Toast.Deployment.ServerLifecycle do
     }
 
     notify_crash_event(crash_ctx, server_id, crash_info, false)
-    ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
+    crash_ctx.event_listener.on_crash(server_id, crash_info)
     :ok
   end
 
   defp notify_crash_event(crash_ctx, server_id, crash_info, expected) do
-    ToastTest.EventStore.notify(%{
+    crash_ctx.event_listener.on_event(%{
       event: :server_crashed,
       deployment_id: crash_ctx.deployment_id,
       server_id: server_id,

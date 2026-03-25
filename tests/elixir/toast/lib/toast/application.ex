@@ -7,6 +7,7 @@ defmodule Toast.Application do
 
   @impl true
   def start(_type, _args) do
+    unless Toast.Env.loaded?(), do: Toast.Env.load()
     setup_file_logger()
     Toast.Deployment.init_counter()
 
@@ -36,7 +37,7 @@ defmodule Toast.Application do
   end
 
   defp setup_file_logger do
-    result_dir = Application.get_env(:toast, :result_dir, Toast.Config.default_result_dir())
+    result_dir = Application.get_env(:toast, :result_dir, Toast.Env.default_result_dir())
     File.mkdir_p!(result_dir)
     log_path = Path.join(result_dir, "toast.log")
 

@@ -97,7 +97,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
     test "matching server_id resolves successfully" do
       id = "ssc-resolve-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       # Inject the single server so resolve_target can find it
       :sys.replace_state(ctrl, fn state ->
@@ -119,7 +119,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
     test "non-matching server_id returns :not_found" do
       id = "ssc-resolve-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       on_exit(fn ->
         try do
@@ -137,7 +137,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
     test "role: :single resolves to the server" do
       id = "ssc-role-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       # Inject the single server so resolve_target can find it
       :sys.replace_state(ctrl, fn state ->
@@ -159,7 +159,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
     test "other roles return :no_servers_for_role" do
       id = "ssc-role-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       on_exit(fn ->
         try do
@@ -184,7 +184,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
     test "invalid target format returns :invalid_target" do
       id = "ssc-invalid-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       on_exit(fn ->
         try do
@@ -204,7 +204,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
     test "cluster deployment with role target" do
       id = "cluster-resolve-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       on_exit(fn ->
         try do
@@ -240,7 +240,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
     test "single server deployment with role: :single" do
       id = "ssc-deploy-api-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       # Inject the single server
       :sys.replace_state(ctrl, fn state ->
@@ -270,7 +270,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
   defp start_cluster_with_servers(_context) do
     id = "cluster-#{System.unique_integer([:positive])}"
 
-    {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+    {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
     servers = %{
       "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver},

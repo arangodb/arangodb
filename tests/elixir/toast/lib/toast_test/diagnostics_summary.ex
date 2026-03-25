@@ -1,4 +1,4 @@
-defmodule Toast.Diagnostics.Summary do
+defmodule ToastTest.DiagnosticsSummary do
   @moduledoc "Query helpers for suite diagnostic results."
 
   @doc """

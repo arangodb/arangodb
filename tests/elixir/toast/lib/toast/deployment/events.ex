@@ -3,20 +3,18 @@ defmodule Toast.Deployment.Events do
 
   require Logger
 
-  alias ToastTest.EventStore
-
-  @spec notify(%{id: String.t()}, atom(), map()) :: :ok
-  def notify(state, event, extra \\ %{}) do
-    EventStore.notify(
+  @spec notify(module(), %{id: String.t()}, atom(), map()) :: :ok
+  def notify(listener, state, event, extra \\ %{}) do
+    listener.on_event(
       Map.merge(%{event: event, deployment_id: state.id, timestamp: Toast.get_timestamp()}, extra)
     )
   end
 
-  @spec server_started(String.t(), %{endpoint: String.t()}, term(), String.t()) :: :ok
-  def server_started(server_id, server, os_pid, deployment_id) do
+  @spec server_started(module(), String.t(), %{endpoint: String.t()}, term(), String.t()) :: :ok
+  def server_started(listener, server_id, server, os_pid, deployment_id) do
     Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
 
-    EventStore.notify(%{
+    listener.on_event(%{
       event: :server_started,
       deployment_id: deployment_id,
       server_id: server_id,
@@ -27,9 +25,9 @@ defmodule Toast.Deployment.Events do
     :ok
   end
 
-  @spec server_stopped(String.t(), %{pid: term()}, String.t()) :: :ok
-  def server_stopped(server_id, server, deployment_id) do
-    EventStore.notify(%{
+  @spec server_stopped(module(), String.t(), %{pid: term()}, String.t()) :: :ok
+  def server_stopped(listener, server_id, server, deployment_id) do
+    listener.on_event(%{
       event: :server_stopped,
       deployment_id: deployment_id,
       server_id: server_id,

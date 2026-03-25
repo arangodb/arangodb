@@ -57,8 +57,8 @@ defmodule Mix.Tasks.Toast do
   require Logger
 
   alias Mix.Tasks.Toast.Helpers
-  alias Toast.Diagnostics.Summary
-  alias Toast.ResultPackaging
+  alias ToastTest.DiagnosticsSummary
+  alias ToastTest.ResultPackaging
 
   @compile {:no_warn_undefined, [ExUnit, ExUnit.Filters]}
 
@@ -100,8 +100,7 @@ defmodule Mix.Tasks.Toast do
   @aliases [
     i: :include,
     e: :exclude,
-    t: :trace,
-    b: :build_dir
+    t: :trace
   ]
 
   @impl Mix.Task
@@ -114,6 +113,8 @@ defmodule Mix.Tasks.Toast do
       unless opts[:compile] == false do
         Mix.Task.run("compile", [])
       end
+
+      Toast.Env.load(Helpers.opts_to_env_list(opts))
 
       unless opts[:start] == false do
         Mix.Task.run("app.start", [])
@@ -151,10 +152,9 @@ defmodule Mix.Tasks.Toast do
         prepare_suite(suite_module, suite_dir, file_filters, test_filter)
       end)
 
-    config = Toast.Config.load(Helpers.opts_to_config_list(opts))
-    Toast.Application.reconfigure_file_logger(config.result_dir)
-    global_opts = build_global_opts(config, ex_unit_opts)
-    result = ToastTest.Runner.run_suites(suite_data, global_opts)
+    test_config = ToastTest.Config.new()
+    Toast.Application.reconfigure_file_logger(test_config.result_dir)
+    result = ToastTest.Runner.run_suites(suite_data, test_config, ex_unit_opts)
 
     abort_reason = ToastTest.Abort.reason()
 
@@ -162,15 +162,15 @@ defmodule Mix.Tasks.Toast do
       test_failures: result.stats.failures,
       server_crashed: match?({:crash, _}, abort_reason),
       infrastructure_failure: abort_reason != nil and not match?({:crash, _}, abort_reason),
-      sanitizer_errors: Summary.has_sanitizer_errors?(result.suites)
+      sanitizer_errors: DiagnosticsSummary.has_sanitizer_errors?(result.suites)
     }
 
-    if config.ci do
-      suite_diagnostics = Summary.build_suite_diagnostics(result.suites)
+    if test_config.ci do
+      suite_diagnostics = DiagnosticsSummary.build_suite_diagnostics(result.suites)
 
       ResultPackaging.package(
         ci: true,
-        result_dir: config.result_dir,
+        result_dir: test_config.result_dir,
         suite_diagnostics: suite_diagnostics
       )
     end
@@ -206,35 +206,6 @@ defmodule Mix.Tasks.Toast do
 
     suite_opts = Helpers.build_suite_opts(test_modules, line_filters, test_filter)
     [{suite_module, test_modules, suite_opts}]
-  end
-
-  defp build_global_opts(config, ex_unit_opts) do
-    global_deadline = System.monotonic_time(:millisecond) + config.global_timeout
-
-    mode_exclusion =
-      case config.deployment_mode do
-        :cluster -> [:single_only]
-        :single_server -> [:cluster_only]
-      end
-
-    ex_unit_opts
-    |> Keyword.update(:exclude, mode_exclusion, &(mode_exclusion ++ &1))
-    |> Keyword.merge(
-      global_deadline: global_deadline,
-      deployment_mode: config.deployment_mode,
-      timeout: config.test_timeout,
-      timeout_factor: config.timeout_factor,
-      build_dir: config.build_dir,
-      base_dir: config.base_dir,
-      startup_timeout: config.startup_timeout,
-      shutdown_timeout: config.shutdown_timeout,
-      show_server_logs: config.show_server_logs,
-      keep_data: config.keep_data,
-      cluster_agents: config.cluster_agents,
-      cluster_dbservers: config.cluster_dbservers,
-      cluster_coordinators: config.cluster_coordinators,
-      replication_factor: config.cluster_replication_factor
-    )
   end
 
   ## Suite discovery helpers

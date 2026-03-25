@@ -1,7 +1,7 @@
-defmodule Toast.ResultPackagingTest do
+defmodule ToastTest.ResultPackagingTest do
   use ExUnit.Case, async: true
 
-  alias Toast.ResultPackaging
+  alias ToastTest.ResultPackaging
 
   describe "exit_code/1" do
     test "returns 0 for all passed" do

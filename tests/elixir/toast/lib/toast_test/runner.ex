@@ -66,21 +66,14 @@ defmodule ToastTest.Runner do
                              :between_tests
                            ] ++ @topology_keys
 
-  @infra_keys [
-    :build_dir,
-    :base_dir,
-    :sanitizer_override,
-    :show_server_logs,
-    :keep_data
-  ]
-
   ## Public API
 
   @spec run_suites(
           [{module(), [module()]} | {module(), [module()], keyword()}],
+          ToastTest.Config.t(),
           keyword()
         ) :: map()
-  def run_suites(suites, global_opts) do
+  def run_suites(suites, %ToastTest.Config{} = test_config, ex_unit_opts) do
     Abort.clear!()
     ToastTest.DeploymentRegistry.init()
     start_event_store()
@@ -106,14 +99,25 @@ defmodule ToastTest.Runner do
         end)
 
       Logger.info("Starting #{length(suites)} suite(s)")
-      do_run_suites(suites, global_opts)
+      do_run_suites(suites, test_config, ex_unit_opts)
     after
       System.untrap_signal(:sigquit, id)
     end
   end
 
-  defp do_run_suites(suites, global_opts) do
-    global_deadline = Keyword.get(global_opts, :global_deadline)
+  defp do_run_suites(suites, test_config, ex_unit_opts) do
+    global_deadline = System.monotonic_time(:millisecond) + test_config.global_timeout
+
+    mode_exclusion =
+      case test_config.deployment_mode do
+        :cluster -> [:single_only]
+        :single_server -> [:cluster_only]
+      end
+
+    ex_unit_opts =
+      ex_unit_opts
+      |> Keyword.update(:exclude, mode_exclusion, &(mode_exclusion ++ &1))
+      |> Keyword.put(:timeout, test_config.test_timeout)
 
     {suite_results, acc_stats} =
       Enum.reduce(suites, {[], %{total: 0, failures: 0, skipped: 0, excluded: 0}}, fn
@@ -122,7 +126,14 @@ defmodule ToastTest.Runner do
           {suite_module, test_modules, suite_opts} = normalize_suite_entry(suite_entry)
 
           suite_result =
-            run_suite(suite_module, test_modules, global_opts, suite_opts, global_deadline)
+            run_suite(
+              suite_module,
+              test_modules,
+              test_config,
+              ex_unit_opts,
+              suite_opts,
+              global_deadline
+            )
 
           result = %{
             suite_module: suite_module,
@@ -170,33 +181,50 @@ defmodule ToastTest.Runner do
     end
   end
 
-  defp resolve_deployment_mode(suite_config, global_opts) do
-    case Keyword.get(suite_config, :mode, :auto) do
-      :auto -> Keyword.get(global_opts, :deployment_mode, :single_server)
-      mode -> mode
-    end
-  end
+  # Translate flat suite deployment_config into a Toast.Deployment.Config struct.
+  # Infrastructure settings come from app env (via Config.new); suite overrides
+  # only affect server args and cluster topology.
+  defp build_deploy_config(suite_config, test_config) do
+    mode =
+      case Keyword.get(suite_config, :mode, :auto) do
+        :auto -> test_config.deployment_mode
+        mode -> mode
+      end
 
-  defp build_deployment_opts(suite_config, global_opts) do
-    base = []
+    server_args_override =
+      case Keyword.get(suite_config, :server_args, %{}) do
+        args when args != %{} -> [server_args: args]
+        _ -> []
+      end
 
-    suite_args =
-      for key <- [:server_args, :coordinator_args, :dbserver_args, :agent_args],
-          args = Keyword.get(suite_config, key, %{}),
-          args != %{},
-          do: {key, args}
+    cluster_override =
+      case mode do
+        :cluster ->
+          topology =
+            for {suite_key, cluster_key} <- [
+                  cluster_agents: :agents,
+                  cluster_dbservers: :dbservers,
+                  cluster_coordinators: :coordinators,
+                  replication_factor: :replication_factor
+                ],
+                val = Keyword.get(suite_config, suite_key),
+                val != nil,
+                do: {cluster_key, val}
 
-    suite_topology = Keyword.take(suite_config, @topology_keys)
+          role_args =
+            for key <- [:coordinator_args, :dbserver_args, :agent_args],
+                args = Keyword.get(suite_config, key, %{}),
+                args != %{},
+                do: {key, args}
 
-    # Precedence (highest to lowest): suite topology > global CLI opts > suite server args > base
-    #
-    # Suite topology (cluster shape) is part of the test contract — the test requires a specific
-    # topology to be meaningful, so it must win. Infrastructure opts (build_dir, base_dir, etc.)
-    # are deployment environment settings where CLI should override suite defaults.
-    base
-    |> Keyword.merge(suite_args)
-    |> Keyword.merge(Keyword.take(global_opts, @infra_keys ++ @topology_keys))
-    |> Keyword.merge(suite_topology)
+          opts = topology ++ role_args
+          [cluster: if(opts == [], do: true, else: opts)]
+
+        :single_server ->
+          []
+      end
+
+    Toast.Deployment.Config.new(server_args_override ++ cluster_override)
   end
 
   ## Event pipeline
@@ -281,43 +309,55 @@ defmodule ToastTest.Runner do
 
   ## Suite execution
 
-  defp run_suite(suite_module, test_modules, global_opts, suite_opts, global_deadline) do
-    config = suite_module.deployment_config()
-    validate_suite_config!(suite_module, config)
-    suite_timeout = Keyword.get(config, :timeout, 3_600_000)
-    timeout_factor = Keyword.get(global_opts, :timeout_factor, 1)
+  defp run_suite(
+         suite_module,
+         test_modules,
+         test_config,
+         ex_unit_opts,
+         suite_opts,
+         global_deadline
+       ) do
+    suite_config = suite_module.deployment_config()
+    validate_suite_config!(suite_module, suite_config)
+    suite_timeout = Keyword.get(suite_config, :timeout, 3_600_000)
+    timeout_factor = test_config.timeout_factor
     suite_deadline = __MODULE__.Timeout.compute_suite_deadline(suite_timeout, global_deadline)
 
     validate_no_async!(test_modules)
 
-    mode = resolve_deployment_mode(config, global_opts)
+    deploy_config = build_deploy_config(suite_config, test_config)
+    mode = Toast.Deployment.Config.mode(deploy_config)
 
     Logger.info("Running suite #{inspect(suite_module)} (mode=#{mode})")
-    deployment_opts = build_deployment_opts(config, global_opts)
-    toast_config = Toast.Config.load(deployment_opts)
-    Logger.debug("Toast config: #{inspect(toast_config)}")
+    Logger.debug("Deployment config: #{inspect(deploy_config)}")
+
+    id = Toast.Deployment.generate_id(mode)
+    deployment_dir = Path.join(test_config.base_dir, id)
 
     suite_run = %ToastTest.SuiteRun{
       suite_module: suite_module,
       deployment_mode: mode,
       suite_deadline: suite_deadline,
       timeout_factor: timeout_factor,
-      toast_config: toast_config,
-      between_tests: Keyword.get(config, :between_tests, :default)
+      test_config: test_config,
+      between_tests: Keyword.get(suite_config, :between_tests, :default)
     }
 
-    case Toast.Deployment.start(mode, toast_config) do
+    case Toast.Deployment.start(deploy_config, deployment_dir,
+           id: id,
+           event_listener: ToastTest.DeploymentListener
+         ) do
       {:ok, deployment} ->
-        run_suite_with_deployment(deployment, suite_run, test_modules, global_opts, suite_opts)
+        run_suite_with_deployment(deployment, suite_run, test_modules, ex_unit_opts, suite_opts)
 
       {:error, reason} ->
-        handle_deployment_failure(suite_run, test_modules, reason, global_opts)
+        handle_deployment_failure(suite_run, test_modules, reason, ex_unit_opts)
     end
   end
 
-  defp run_suite_with_deployment(deployment, suite_run, test_modules, global_opts, suite_opts) do
+  defp run_suite_with_deployment(deployment, suite_run, test_modules, ex_unit_opts, suite_opts) do
     suite_module = suite_run.suite_module
-    toast_config = suite_run.toast_config
+    test_config = suite_run.test_config
     ToastTest.DeploymentRegistry.put(suite_module, deployment)
     Logger.debug("Suite #{inspect(suite_module)}: deployment ready")
 
@@ -327,7 +367,7 @@ defmodule ToastTest.Runner do
           Logger.debug("Suite #{inspect(suite_module)}: setup complete")
           ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
 
-          result = run_suite_tests(deployment, suite_run, test_modules, global_opts, suite_opts)
+          result = run_suite_tests(deployment, suite_run, test_modules, ex_unit_opts, suite_opts)
 
           run_suite_teardown(suite_module, deployment)
           result
@@ -339,21 +379,21 @@ defmodule ToastTest.Runner do
               {:failed,
                [{:error, RuntimeError.exception("Suite setup failed: #{inspect(reason)}"), []}]}
             end,
-            global_opts,
+            ex_unit_opts,
             suite_module,
             suite_run.deployment_mode
           )
       end
 
-    suite_result = __MODULE__.PostExecution.run(deployment, test_data, toast_config)
+    suite_result = __MODULE__.PostExecution.run(deployment, test_data, test_config)
 
     ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}
   end
 
-  defp handle_deployment_failure(suite_run, test_modules, reason, global_opts) do
+  defp handle_deployment_failure(suite_run, test_modules, reason, ex_unit_opts) do
     suite_module = suite_run.suite_module
-    toast_config = suite_run.toast_config
+    test_config = suite_run.test_config
     mode = suite_run.deployment_mode
 
     Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
@@ -365,12 +405,12 @@ defmodule ToastTest.Runner do
         fn _test ->
           {:skipped, Abort.format_skip("Deployment failed: #{inspect(reason)}")}
         end,
-        global_opts,
+        ex_unit_opts,
         suite_module,
         mode
       )
 
-    suite_result = __MODULE__.PostExecution.run(nil, test_data, toast_config)
+    suite_result = __MODULE__.PostExecution.run(nil, test_data, test_config)
 
     ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}
@@ -422,8 +462,8 @@ defmodule ToastTest.Runner do
 
   ## Suite test orchestration
 
-  defp run_suite_tests(deployment, suite_run, test_modules, global_opts, suite_opts) do
-    opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
+  defp run_suite_tests(deployment, suite_run, test_modules, ex_unit_opts, suite_opts) do
+    opts = normalize_opts(Keyword.merge(ExUnit.configuration(), ex_unit_opts))
     suite_name = derive_suite_name(suite_run.suite_module, suite_run.deployment_mode)
     {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
 
@@ -492,16 +532,16 @@ defmodule ToastTest.Runner do
     }
   end
 
-  defp mark_all_with_state(test_modules, state_fn, global_opts, suite_module, mode) do
-    emit_all_modules(test_modules, global_opts, suite_module, mode, fn manager, module ->
+  defp mark_all_with_state(test_modules, state_fn, ex_unit_opts, suite_module, mode) do
+    emit_all_modules(test_modules, ex_unit_opts, suite_module, mode, fn manager, module ->
       __MODULE__.TestExecution.emit_module_with_state(manager, module, fn test ->
         %{test | state: state_fn.(test)}
       end)
     end)
   end
 
-  defp emit_all_modules(test_modules, global_opts, suite_module, mode, emit_fn) do
-    opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
+  defp emit_all_modules(test_modules, ex_unit_opts, suite_module, mode, emit_fn) do
+    opts = normalize_opts(Keyword.merge(ExUnit.configuration(), ex_unit_opts))
     suite_name = derive_suite_name(suite_module, mode)
     {manager, stats_pid, result_collector_pid} = start_event_pipeline(opts, suite_name)
     Compat.suite_started(manager, opts)

@@ -9,7 +9,7 @@ defmodule ToastTest.ServerIdMappingTest do
       id = "arango-id-#{System.unique_integer([:positive])}"
 
       {:ok, ctrl} =
-        Controller.start_link(config: Toast.Config.load(), id: id)
+        Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       inject_arango_ids(ctrl, %{
         "dbserver-0" => %ServerInstance{
@@ -61,7 +61,7 @@ defmodule ToastTest.ServerIdMappingTest do
       id = "server-by-aid-#{System.unique_integer([:positive])}"
 
       {:ok, ctrl} =
-        Controller.start_link(config: Toast.Config.load(), id: id)
+        Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       inject_arango_ids(ctrl, %{
         "dbserver-0" => %ServerInstance{
@@ -107,7 +107,7 @@ defmodule ToastTest.ServerIdMappingTest do
       id = "arango-mapping-#{System.unique_integer([:positive])}"
 
       {:ok, ctrl} =
-        Controller.start_link(config: Toast.Config.load(), id: id)
+        Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       on_exit(fn ->
         try do

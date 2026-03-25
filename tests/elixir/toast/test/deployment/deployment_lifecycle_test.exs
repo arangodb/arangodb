@@ -8,7 +8,7 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
   describe "status/1 with dead controller" do
     test "returns :stopped when controller process has died" do
       id = "test-status-dead-#{System.unique_integer([:positive])}"
-      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, pid} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       deployment = make_deployment(pid, id: id)
 

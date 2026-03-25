@@ -4,8 +4,7 @@ defmodule Toast.Deployment do
   require Logger
 
   alias Toast.Client
-  alias Toast.Config
-  alias Toast.Deployment.{Controller, ServerInstance}
+  alias Toast.Deployment.{Config, Controller, DefaultEventListener, ServerInstance}
 
   defmodule ServerInfo do
     @moduledoc "Static, immutable server info snapshot taken at deploy time."
@@ -68,51 +67,71 @@ defmodule Toast.Deployment do
     end
   end
 
-  @deployment_opts [:id, :deployment_dir]
+  @doc "Start a single-server deployment with defaults from app env."
+  @spec start_single_server(Path.t(), keyword()) :: {:ok, t()} | {:error, term()}
+  def start_single_server(deployment_dir, opts \\ [])
 
-  @doc "Start a single-server deployment."
-  @spec start_single_server(Config.t() | keyword(), keyword()) :: {:ok, t()} | {:error, term()}
-  def start_single_server(config_or_opts \\ [], opts \\ [])
-  def start_single_server(%Config{} = config, opts), do: start(:single_server, config, opts)
-
-  def start_single_server(all_opts, opts) when is_list(all_opts) do
-    {deploy_opts, config_opts} = Keyword.split(all_opts, @deployment_opts)
-    start(:single_server, Config.load(config_opts), Keyword.merge(deploy_opts, opts))
+  def start_single_server(%Config{} = config, deployment_dir) do
+    start_single_server(config, deployment_dir, [])
   end
 
-  @doc "Start a cluster deployment."
-  @spec start_cluster(Config.t() | keyword(), keyword()) :: {:ok, t()} | {:error, term()}
-  def start_cluster(config_or_opts \\ [], opts \\ [])
-  def start_cluster(%Config{} = config, opts), do: start(:cluster, config, opts)
+  def start_single_server(deployment_dir, opts) when is_binary(deployment_dir) do
+    start(Config.new(), deployment_dir, opts)
+  end
 
-  def start_cluster(all_opts, opts) when is_list(all_opts) do
-    {deploy_opts, config_opts} = Keyword.split(all_opts, @deployment_opts)
-    start(:cluster, Config.load(config_opts), Keyword.merge(deploy_opts, opts))
+  @doc "Start a single-server deployment with explicit config."
+  @spec start_single_server(Config.t(), Path.t(), keyword()) :: {:ok, t()} | {:error, term()}
+  def start_single_server(%Config{} = config, deployment_dir, opts) do
+    config = %{config | cluster: nil}
+    start(config, deployment_dir, opts)
+  end
+
+  @doc "Start a cluster deployment with defaults from app env."
+  @spec start_cluster(Path.t(), keyword()) :: {:ok, t()} | {:error, term()}
+  def start_cluster(deployment_dir, opts \\ [])
+
+  def start_cluster(%Config{} = config, deployment_dir) do
+    start_cluster(config, deployment_dir, [])
+  end
+
+  def start_cluster(deployment_dir, opts) when is_binary(deployment_dir) do
+    start(Config.new(cluster: true), deployment_dir, opts)
+  end
+
+  @doc "Start a cluster deployment with explicit config."
+  @spec start_cluster(Config.t(), Path.t(), keyword()) :: {:ok, t()} | {:error, term()}
+  def start_cluster(%Config{} = config, deployment_dir, opts) do
+    config =
+      if config.cluster == nil,
+        do: %{config | cluster: Toast.Deployment.ClusterOpts.new()},
+        else: config
+
+    start(config, deployment_dir, opts)
   end
 
   @doc """
-  Start a deployment with the given mode.
+  Start a deployment. The mode is derived from the config:
+  `config.cluster == nil` → single server, otherwise → cluster.
 
   The `opts` keyword list can include non-config keys like `:on_crash`,
   `:on_event`, and `:id` that are forwarded to the controller.
   """
-  @spec start(mode(), Config.t(), keyword()) :: {:ok, t()} | {:error, term()}
-  def start(mode, %Config{} = config, opts \\ []) when mode in [:single_server, :cluster] do
-    do_start(mode, config, opts)
-  end
-
-  defp do_start(mode, config, opts) do
+  @spec start(Config.t(), Path.t(), keyword()) :: {:ok, t()} | {:error, term()}
+  def start(%Config{} = config, deployment_dir, opts \\ []) do
+    mode = Config.mode(config)
     id = Keyword.get_lazy(opts, :id, fn -> generate_id(mode) end)
-    deployment_dir = Keyword.get(opts, :deployment_dir, Path.join(config.base_dir, id))
     Logger.info("Starting #{mode} deployment (deployment_dir=#{deployment_dir})")
 
     stacktrace = capture_caller_stacktrace()
+
+    listener = Keyword.get(opts, :event_listener, DefaultEventListener)
 
     with {:ok, specs} <- build_specs(mode, config, id, deployment_dir),
          {:ok, pid} <-
            Toast.Deployment.Supervisor.start_controller(
              config: config,
-             id: id
+             id: id,
+             event_listener: listener
            ),
          :ok <- Controller.deploy(pid, specs, config.startup_timeout, stacktrace: stacktrace) do
       info = Controller.get_info(pid)
@@ -133,8 +152,10 @@ defmodule Toast.Deployment do
   defp build_specs(:cluster, config, id, deployment_dir),
     do: Toast.Deployment.Factory.build_cluster(config, id, deployment_dir)
 
-  defp generate_id(:single_server), do: "single-#{next_deployment_number()}"
-  defp generate_id(:cluster), do: "cluster-#{next_deployment_number()}"
+  @doc "Generate a unique deployment ID for the given mode."
+  @spec generate_id(:single_server | :cluster) :: String.t()
+  def generate_id(:single_server), do: "single-#{next_deployment_number()}"
+  def generate_id(:cluster), do: "cluster-#{next_deployment_number()}"
 
   @counter_key {__MODULE__, :deployment_counter}
 
@@ -515,8 +536,7 @@ defmodule Toast.Deployment do
     |> Enum.drop_while(fn {mod, _fun, _arity, _loc} ->
       mod_str = Atom.to_string(mod)
 
-      String.starts_with?(mod_str, "Elixir.Toast.Deployment") or
-        String.starts_with?(mod_str, "Elixir.ToastTest.")
+      String.starts_with?(mod_str, "Elixir.Toast.Deployment")
     end)
     |> Enum.take(10)
   end

@@ -76,7 +76,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
     {killed_servers, state} = abort_all(state)
 
     if reason == :timeout do
-      ToastTest.EventStore.record_timeout_kill(
+      state.event_listener.on_timeout_kill(
         :startup_timeout,
         "Startup timeout — deployment did not become ready in time",
         killed_servers
@@ -107,9 +107,9 @@ defmodule Toast.Deployment.ShutdownPipeline do
         end
       end)
 
-    record_shutdown_escalations(state.id, escalated)
+    record_shutdown_escalations(state.id, state.event_listener, escalated)
 
-    Events.notify(state, :deployment_stopped)
+    Events.notify(state.event_listener, state, :deployment_stopped)
 
     %{state | status: :stopped, servers: clear_server_pids(state.servers)}
   end
@@ -134,7 +134,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
       %ServerInstance{server_pid: pid} when pid != nil ->
         result = ServerProcess.stop(pid, timeout)
         DynamicSupervisor.terminate_child(ProcessSupervisor, pid)
-        Events.server_stopped(server_id, server, state.id)
+        Events.server_stopped(state.event_listener, server_id, server, state.id)
 
         case result do
           :escalated ->
@@ -163,12 +163,12 @@ defmodule Toast.Deployment.ShutdownPipeline do
     Map.new(servers, fn {id, server} -> {id, %{server | server_pid: nil, health_monitor: nil}} end)
   end
 
-  defp record_shutdown_escalations(_id, []), do: :ok
+  defp record_shutdown_escalations(_id, _listener, []), do: :ok
 
-  defp record_shutdown_escalations(id, escalated) do
+  defp record_shutdown_escalations(id, listener, escalated) do
     Logger.warning("#{id}: #{length(escalated)} server(s) required shutdown escalation")
 
-    ToastTest.EventStore.record_timeout_kill(
+    listener.on_timeout_kill(
       :shutdown_timeout,
       "Shutdown timeout — server(s) did not respond to SIGTERM",
       escalated

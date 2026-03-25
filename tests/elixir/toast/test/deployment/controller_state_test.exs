@@ -79,7 +79,7 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       :ok = ServerProcess.launch(server_pid)
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       inject_single_server_state(ctrl, id, server_pid)
 
@@ -120,7 +120,7 @@ defmodule Toast.Deployment.ControllerStateTest do
     test "crash without prior stop/kill leaves expecting_exit as false" do
       id = "ssc-unexp-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       # Inject a server so crash handler can find it
       :sys.replace_state(ctrl, fn state ->
@@ -146,7 +146,7 @@ defmodule Toast.Deployment.ControllerStateTest do
     test "SIGSEGV (signal 11) during expected exit clears expecting_exit flag" do
       id = "ssc-sig11-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       set_expecting_exit(ctrl, id, true)
 
@@ -167,7 +167,7 @@ defmodule Toast.Deployment.ControllerStateTest do
     test "SIGTERM (signal 15) during expected exit keeps expecting_exit true" do
       id = "ssc-sig15-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       set_expecting_exit(ctrl, id, true)
 
@@ -191,7 +191,7 @@ defmodule Toast.Deployment.ControllerStateTest do
   describe "Controller (cluster) derive_cluster_status" do
     setup do
       id = "cluster-status-#{System.unique_integer([:positive])}"
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       on_exit(fn ->
         try do
@@ -313,7 +313,7 @@ defmodule Toast.Deployment.ControllerStateTest do
     test "restarts health monitor when it dies unexpectedly during :ready" do
       id = "ssc-hm-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       fake_hm = spawn(fn -> Process.sleep(:infinity) end)
       Process.monitor(fake_hm)
@@ -332,7 +332,7 @@ defmodule Toast.Deployment.ControllerStateTest do
     test "does not restart health monitor on normal shutdown" do
       id = "ssc-hm-normal-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Config.load(), id: id)
+      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
 
       fake_hm = spawn(fn -> Process.sleep(:infinity) end)
       set_ready_with_health_monitor(ctrl, id, fake_hm)

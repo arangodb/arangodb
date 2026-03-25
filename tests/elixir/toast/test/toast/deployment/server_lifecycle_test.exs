@@ -31,7 +31,10 @@ defmodule Toast.Deployment.ServerLifecycleTest do
   end
 
   defp crash_ctx(overrides \\ []) do
-    %{deployment_id: Keyword.get(overrides, :deployment_id, "test-deployment")}
+    %{
+      deployment_id: Keyword.get(overrides, :deployment_id, "test-deployment"),
+      event_listener: Toast.Deployment.DefaultEventListener
+    }
   end
 
   # --- handle_crash/5 ---

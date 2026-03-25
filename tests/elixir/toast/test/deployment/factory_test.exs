@@ -1,8 +1,7 @@
 defmodule Toast.Deployment.FactoryTest do
   use ExUnit.Case, async: false
 
-  alias Toast.Config
-  alias Toast.Deployment.Factory
+  alias Toast.Deployment.{Config, Factory}
 
   defp create_fake_repo(tmp_dir) do
     repo_root = Path.join(tmp_dir, "repo")
@@ -17,13 +16,8 @@ defmodule Toast.Deployment.FactoryTest do
     %{repo_root: repo_root, build_dir: build_dir}
   end
 
-  defp make_config(build_dir, base_dir, opts \\ []) do
-    Config.load(
-      Keyword.merge(
-        [build_dir: build_dir, base_dir: base_dir, show_server_logs: false],
-        opts
-      )
-    )
+  defp make_config(build_dir, opts \\ []) do
+    Config.new(Keyword.merge([build_dir: build_dir, show_server_logs: false], opts))
   end
 
   describe "build_single_server/2" do
@@ -39,7 +33,7 @@ defmodule Toast.Deployment.FactoryTest do
     test "returns correct spec structure", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir, repo_root: repo_root} = create_fake_repo(tmp_dir)
       base_dir = Path.join(tmp_dir, "work")
-      config = make_config(build_dir, base_dir)
+      config = make_config(build_dir)
 
       deployment_dir = Path.join(base_dir, "srv1")
       assert {:ok, [spec]} = Factory.build_single_server(config, "srv1", deployment_dir)
@@ -64,7 +58,7 @@ defmodule Toast.Deployment.FactoryTest do
     test "creates data and app directories", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
       base_dir = Path.join(tmp_dir, "work")
-      config = make_config(build_dir, base_dir)
+      config = make_config(build_dir)
 
       deployment_dir = Path.join(base_dir, "srv2")
       assert {:ok, [_spec]} = Factory.build_single_server(config, "srv2", deployment_dir)
@@ -77,7 +71,7 @@ defmodule Toast.Deployment.FactoryTest do
       empty_build = Path.join(tmp_dir, "empty_build")
       File.mkdir_p!(empty_build)
       base_dir = Path.join(tmp_dir, "work")
-      config = make_config(empty_build, base_dir)
+      config = make_config(empty_build)
 
       deployment_dir = Path.join(base_dir, "srv3")
       assert {:error, msg} = Factory.build_single_server(config, "srv3", deployment_dir)
@@ -87,7 +81,7 @@ defmodule Toast.Deployment.FactoryTest do
     test "show_server_logs false suppresses non-error output", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
       base_dir = Path.join(tmp_dir, "work")
-      config = make_config(build_dir, base_dir, show_server_logs: false)
+      config = make_config(build_dir, show_server_logs: false)
 
       deployment_dir = Path.join(base_dir, "srv-log1")
       assert {:ok, [spec]} = Factory.build_single_server(config, "srv-log1", deployment_dir)
@@ -97,7 +91,7 @@ defmodule Toast.Deployment.FactoryTest do
     test "show_server_logs true passes output through", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
       base_dir = Path.join(tmp_dir, "work")
-      config = make_config(build_dir, base_dir, show_server_logs: true)
+      config = make_config(build_dir, show_server_logs: true)
 
       deployment_dir = Path.join(base_dir, "srv-log2")
       assert {:ok, [spec]} = Factory.build_single_server(config, "srv-log2", deployment_dir)
@@ -109,7 +103,7 @@ defmodule Toast.Deployment.FactoryTest do
       base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, base_dir,
+        make_config(build_dir,
           show_server_logs: false,
           server_args: %{"log.output" => "custom", "extra" => "val"}
         )
@@ -139,11 +133,7 @@ defmodule Toast.Deployment.FactoryTest do
       base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, base_dir,
-          cluster_agents: 3,
-          cluster_dbservers: 3,
-          cluster_coordinators: 1
-        )
+        make_config(build_dir, cluster: [agents: 3, dbservers: 3, coordinators: 1])
 
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
@@ -172,11 +162,7 @@ defmodule Toast.Deployment.FactoryTest do
       base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, base_dir,
-          cluster_agents: 3,
-          cluster_dbservers: 3,
-          cluster_coordinators: 1
-        )
+        make_config(build_dir, cluster: [agents: 3, dbservers: 3, coordinators: 1])
 
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
@@ -205,11 +191,7 @@ defmodule Toast.Deployment.FactoryTest do
       base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, base_dir,
-          cluster_agents: 3,
-          cluster_dbservers: 3,
-          cluster_coordinators: 1
-        )
+        make_config(build_dir, cluster: [agents: 3, dbservers: 3, coordinators: 1])
 
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
@@ -242,11 +224,7 @@ defmodule Toast.Deployment.FactoryTest do
       base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, base_dir,
-          cluster_agents: 3,
-          cluster_dbservers: 3,
-          cluster_coordinators: 1
-        )
+        make_config(build_dir, cluster: [agents: 3, dbservers: 3, coordinators: 1])
 
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
@@ -275,11 +253,7 @@ defmodule Toast.Deployment.FactoryTest do
       base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, base_dir,
-          cluster_agents: 3,
-          cluster_dbservers: 3,
-          cluster_coordinators: 1
-        )
+        make_config(build_dir, cluster: [agents: 3, dbservers: 3, coordinators: 1])
 
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
@@ -303,11 +277,7 @@ defmodule Toast.Deployment.FactoryTest do
       base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, base_dir,
-          cluster_agents: 3,
-          cluster_dbservers: 3,
-          cluster_coordinators: 1
-        )
+        make_config(build_dir, cluster: [agents: 3, dbservers: 3, coordinators: 1])
 
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
@@ -321,11 +291,7 @@ defmodule Toast.Deployment.FactoryTest do
       base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, base_dir,
-          cluster_agents: 3,
-          cluster_dbservers: 3,
-          cluster_coordinators: 1
-        )
+        make_config(build_dir, cluster: [agents: 3, dbservers: 3, coordinators: 1])
 
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
@@ -340,11 +306,7 @@ defmodule Toast.Deployment.FactoryTest do
       base_dir = Path.join(tmp_dir, "work")
 
       config =
-        make_config(build_dir, base_dir,
-          cluster_agents: 3,
-          cluster_dbservers: 3,
-          cluster_coordinators: 1
-        )
+        make_config(build_dir, cluster: [agents: 3, dbservers: 3, coordinators: 1])
 
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:ok, specs} = Factory.build_cluster(config, "test-cluster", deployment_dir)
@@ -358,7 +320,9 @@ defmodule Toast.Deployment.FactoryTest do
       empty_build = Path.join(tmp_dir, "empty_build")
       File.mkdir_p!(empty_build)
       base_dir = Path.join(tmp_dir, "work")
-      config = make_config(empty_build, base_dir)
+
+      config =
+        make_config(empty_build, cluster: [agents: 3, dbservers: 3, coordinators: 1])
 
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:error, msg} = Factory.build_cluster(config, "test-cluster", deployment_dir)

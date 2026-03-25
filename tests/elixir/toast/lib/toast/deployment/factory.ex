@@ -3,7 +3,7 @@ defmodule Toast.Deployment.Factory do
 
   require Logger
 
-  alias Toast.Config
+  alias Toast.Deployment.Config
   alias Toast.Deployment.CommandBuilder
   alias Toast.Diagnostics.Sanitizer
   alias Toast.PortAllocator
@@ -91,14 +91,16 @@ defmodule Toast.Deployment.Factory do
   @spec build_cluster(Config.t(), String.t(), Path.t()) ::
           {:ok, [launch_spec()]} | {:error, term()}
   def build_cluster(config, deployment_id, deployment_dir) do
+    cluster = config.cluster
+
     total_count =
-      config.cluster_agents + config.cluster_dbservers + config.cluster_coordinators
+      cluster.agents + cluster.dbservers + cluster.coordinators
 
     with {:ok, executable} <- Filesystem.find_arangod(config.build_dir),
          {:ok, repo_root} <- Filesystem.find_repository_root(config.build_dir),
          {:ok, ports} <- PortAllocator.allocate_batch(total_count) do
-      {agent_ports, rest} = Enum.split(ports, config.cluster_agents)
-      {dbserver_ports, coordinator_ports} = Enum.split(rest, config.cluster_dbservers)
+      {agent_ports, rest} = Enum.split(ports, cluster.agents)
+      {dbserver_ports, coordinator_ports} = Enum.split(rest, cluster.dbservers)
 
       agency_endpoints = Enum.map(agent_ports, &"tcp://127.0.0.1:#{&1}")
 
@@ -198,7 +200,7 @@ defmodule Toast.Deployment.Factory do
 
   defp agent_args(config, port, agency_endpoints) do
     %{
-      "agency.size" => to_string(config.cluster_agents),
+      "agency.size" => to_string(config.cluster.agents),
       "agency.my-address" => "tcp://127.0.0.1:#{port}",
       "agency.endpoint" => agency_endpoints
     }
@@ -217,14 +219,14 @@ defmodule Toast.Deployment.Factory do
       "cluster.my-role" => "COORDINATOR",
       "cluster.my-address" => "tcp://127.0.0.1:#{port}",
       "cluster.agency-endpoint" => agency_endpoints,
-      "cluster.default-replication-factor" => to_string(config.cluster_replication_factor),
+      "cluster.default-replication-factor" => to_string(config.cluster.replication_factor),
       "foxx.force-update-on-startup" => "true"
     }
   end
 
-  defp role_config_args(config, :coordinator), do: config.coordinator_args
-  defp role_config_args(config, :dbserver), do: config.dbserver_args
-  defp role_config_args(config, :agent), do: config.agent_args
+  defp role_config_args(config, :coordinator), do: config.cluster.coordinator_args
+  defp role_config_args(config, :dbserver), do: config.cluster.dbserver_args
+  defp role_config_args(config, :agent), do: config.cluster.agent_args
   defp role_config_args(_config, :single), do: %{}
 
   defp build_server_args(config) do

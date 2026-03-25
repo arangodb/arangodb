@@ -99,7 +99,7 @@ defmodule Mix.Tasks.Toast.Analyze do
     else
       {subcommand, rest} = pop_subcommand(rest)
       {opts, rest} = pop_positional_result_dir(opts, rest)
-      result_dir = Keyword.get(opts, :result_dir, Toast.Config.default_result_dir())
+      result_dir = Keyword.get(opts, :result_dir, Toast.Env.default_result_dir())
       color = Keyword.get(opts, :color, true)
 
       case subcommand do

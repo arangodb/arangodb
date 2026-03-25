@@ -45,7 +45,7 @@ end
 defmodule Toast.Deployment.ExpectCrashTest do
   use ExUnit.Case, async: false
 
-  alias Toast.Config
+  alias Toast.Deployment.Config
   alias Toast.Deployment
   alias Toast.Deployment.{Controller, ServerInstance}
   alias Toast.Deployment.ExpectCrashTest.MockController
@@ -201,7 +201,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
   describe "expect_crash timeout auto-clear" do
     test "expectation auto-clears after timeout" do
-      config = Config.load()
+      config = Config.new()
 
       {:ok, ctrl} =
         Controller.start_link(
@@ -236,7 +236,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
 
     test "verify_crash returns {:error, :timeout} when no crash occurs within verify timeout" do
-      config = Config.load()
+      config = Config.new()
 
       {:ok, ctrl} =
         Controller.start_link(
@@ -269,7 +269,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
 
     test "verify_crash returns {:error, :no_expectation} after expect timeout clears" do
-      config = Config.load()
+      config = Config.new()
 
       {:ok, ctrl} =
         Controller.start_link(
@@ -301,7 +301,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
 
     test "crash during expect window is captured and verify_crash succeeds" do
-      config = Config.load()
+      config = Config.new()
 
       {:ok, ctrl} =
         Controller.start_link(

@@ -6,7 +6,7 @@ defmodule ToastTest.SuiteRun do
     :deployment_mode,
     :suite_deadline,
     :timeout_factor,
-    :toast_config,
+    :test_config,
     between_tests: :default
   ]
 
@@ -15,7 +15,7 @@ defmodule ToastTest.SuiteRun do
           deployment_mode: :cluster | :single_server,
           suite_deadline: integer() | nil,
           timeout_factor: number(),
-          toast_config: Toast.Config.t() | nil,
+          test_config: ToastTest.Config.t(),
           between_tests: :default | false
         }
 end

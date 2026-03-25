@@ -56,10 +56,10 @@ defmodule Mix.Tasks.Toast.Helpers do
   end
 
   @doc """
-  Maps CLI option keys to Toast.Config keyword list keys.
+  Maps CLI option keys to `Toast.Env.load/1` keyword list keys.
   """
-  @spec opts_to_config_list(keyword()) :: keyword()
-  def opts_to_config_list(opts) do
+  @spec opts_to_env_list(keyword()) :: keyword()
+  def opts_to_env_list(opts) do
     mapping = [
       build_dir: :build_dir,
       base_dir: :base_dir,

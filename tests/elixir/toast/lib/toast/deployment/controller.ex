@@ -5,9 +5,10 @@ defmodule Toast.Deployment.Controller do
 
   require Logger
 
-  alias Toast.Config
+  alias Toast.Deployment.Config
 
   alias Toast.Deployment.{
+    DefaultEventListener,
     DeployPipeline,
     Events,
     ServerInstance,
@@ -35,17 +36,19 @@ defmodule Toast.Deployment.Controller do
       status: :stopped,
       servers: %{},
       expected_crashes: %{},
-      agency_dump: nil
+      agency_dump: nil,
+      event_listener: Toast.Deployment.DefaultEventListener
     ]
 
     @type t :: %__MODULE__{
-            config: Toast.Config.t(),
+            config: Toast.Deployment.Config.t(),
             id: String.t() | nil,
             error: Toast.Deployment.Controller.deployment_error(),
             status: Toast.Deployment.Controller.status(),
             servers: %{optional(String.t()) => Toast.Deployment.ServerInstance.t()},
             expected_crashes: map(),
-            agency_dump: term()
+            agency_dump: term(),
+            event_listener: module()
           }
   end
 
@@ -134,12 +137,14 @@ defmodule Toast.Deployment.Controller do
 
   @impl true
   def init(opts) do
-    config = Keyword.get(opts, :config, Config.load())
+    config = Keyword.get(opts, :config, Config.new())
     id = Keyword.fetch!(opts, :id)
+    listener = Keyword.get(opts, :event_listener, DefaultEventListener)
 
     state = %State{
       id: id,
-      config: config
+      config: config,
+      event_listener: listener
     }
 
     {:ok, state}
@@ -255,7 +260,7 @@ defmodule Toast.Deployment.Controller do
   def handle_info({:server_crashed, server_id, crash_info}, state) do
     %ServerInstance{} = server = state.servers[server_id]
 
-    crash_ctx = %{deployment_id: state.id}
+    crash_ctx = %{deployment_id: state.id, event_listener: state.event_listener}
 
     case ServerLifecycle.handle_crash(
            server_id,
@@ -308,7 +313,7 @@ defmodule Toast.Deployment.Controller do
     Logger.error("Server #{server_id} is unresponsive, sending SIGABRT for crash backtrace")
     server = state.servers[server_id]
 
-    crash_ctx = %{deployment_id: state.id}
+    crash_ctx = %{deployment_id: state.id, event_listener: state.event_listener}
     ServerLifecycle.handle_unhealthy_server(server_id, server, crash_ctx)
 
     state = update_server(state, server_id, operational_state: :killed, expecting_exit: true)
@@ -416,7 +421,12 @@ defmodule Toast.Deployment.Controller do
 
       extra = if opts[:event_extra], do: opts[:event_extra].(server), else: %{}
 
-      Events.notify(acc, opts[:event], Map.merge(%{server_id: server_id}, extra))
+      Events.notify(
+        acc.event_listener,
+        acc,
+        opts[:event],
+        Map.merge(%{server_id: server_id}, extra)
+      )
 
       {:ok, acc}
     end
@@ -425,7 +435,7 @@ defmodule Toast.Deployment.Controller do
   defp do_restart_server(server_id, acc, opts) do
     with {:ok, server} <- fetch_server(acc, server_id) do
       ServerLifecycle.stop_before_restart(server, timeout_factor: acc.config.timeout_factor)
-      Events.server_stopped(server_id, server, acc.id)
+      Events.server_stopped(acc.event_listener, server_id, server, acc.id)
 
       acc =
         update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
@@ -446,7 +456,7 @@ defmodule Toast.Deployment.Controller do
 
     with :ok <- ServerLifecycle.relaunch_and_wait(server, opts) do
       new_pid = ServerProcess.os_pid(server.server_pid)
-      Events.server_started(server_id, server, new_pid, acc.id)
+      Events.server_started(acc.event_listener, server_id, server, new_pid, acc.id)
 
       acc =
         update_server(acc, server_id,
