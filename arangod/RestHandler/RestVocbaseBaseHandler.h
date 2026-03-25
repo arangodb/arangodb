@@ -94,9 +94,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // tasks path
   static std::string const TASKS_PATH;
 
-  // upload path
-  static std::string const UPLOAD_PATH;
-
   // users path
   static std::string const USERS_PATH;
 
