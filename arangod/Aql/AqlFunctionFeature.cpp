@@ -559,13 +559,6 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer),
        &functions::Warn});  // not deterministic and not cacheable
 
-  // FULLTEXT is replaced by the AQL
-  // optimizer with collection-/index-based subqueries. it is
-  // marked as deterministic and cacheable here as it is just
-  // a placeholder for collection/index accesses nowaways.
-  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable),
-       &functions::NotImplemented});
-
   add({"MAKE_DISTRIBUTE_INPUT", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
                            FF::CanRunOnDBServerCluster,

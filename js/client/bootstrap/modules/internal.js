@@ -100,14 +100,6 @@
       exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
     },
 
-    properties: function (value) {
-      if (value !== undefined) {
-        return exports.arango.PUT('/_admin/wal/properties', value);
-      }
-
-      return exports.arango.GET('/_admin/wal/properties', '');
-    },
-
     transactions: function () {
       return exports.arango.GET('/_admin/wal/transactions', null);
     }
@@ -255,23 +247,6 @@
     }
     arangosh.checkRequestResult(requestResult);
     return requestResult.result;
-  };
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief reloads the AQL user functions (does nothing in 3.7)
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.reloadAqlFunctions = function () {};
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief rebuilds the routing cache
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.reloadRouting = function () {
-    const arangosh = require('@arangodb/arangosh');
-    let requestResult = exports.arango.POST('/_admin/routing/reload', null);
-    arangosh.checkRequestResult(requestResult);
-    return requestResult;
   };
 
   // //////////////////////////////////////////////////////////////////////////////

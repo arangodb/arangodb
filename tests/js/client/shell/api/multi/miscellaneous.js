@@ -49,9 +49,7 @@ function admin_statuSuite () {
       let info = doc["serverInfo"];
       assertTrue(info.hasOwnProperty("maintenance"));
       assertTrue(info.hasOwnProperty("role"));
-      assertTrue(info.hasOwnProperty("writeOpsEnabled")); // to be removed;
       assertTrue(info.hasOwnProperty("readOnly"));
-      assertEqual(info["writeOpsEnabled"], !info["readOnly"]);
     }
   };
 }

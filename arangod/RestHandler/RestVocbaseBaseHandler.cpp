@@ -90,9 +90,6 @@ std::string const RestVocbaseBaseHandler::EDGES_PATH = "/_api/edges";
 // gharial graph api path
 std::string const RestVocbaseBaseHandler::GHARIAL_PATH = "/_api/gharial";
 
-// endpoint path
-std::string const RestVocbaseBaseHandler::ENDPOINT_PATH = "/_api/endpoint";
-
 // documents import path
 std::string const RestVocbaseBaseHandler::IMPORT_PATH = "/_api/import";
 
@@ -105,9 +102,6 @@ std::string const RestVocbaseBaseHandler::REPLICATION_PATH =
 
 // tasks path
 std::string const RestVocbaseBaseHandler::TASKS_PATH = "/_api/tasks";
-
-// upload path
-std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
 // users path
 std::string const RestVocbaseBaseHandler::USERS_PATH = "/_api/user";

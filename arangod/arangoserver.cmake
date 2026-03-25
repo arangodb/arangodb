@@ -83,7 +83,6 @@ add_library(arangoserver STATIC
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestDumpHandler.cpp
   RestHandler/RestEdgesHandler.cpp
-  RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
   RestHandler/RestExplainHandler.cpp
   RestHandler/RestImportHandler.cpp
@@ -107,7 +106,6 @@ add_library(arangoserver STATIC
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
-  RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestOpenApiHandler.cpp

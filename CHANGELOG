@@ -1,5 +1,15 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
+
+* Removed leftover range() method from collection objects in JavaScript API
+
+* COR-325 Remove FULLTEXT remnants
+
+* Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
+  `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
+
+* COR-330: Removed APIs associated with foxx.
 
 * COR-283: Removed remainded active failover references.
 
