@@ -30,32 +30,32 @@ using namespace arangodb;
 thread_local std::shared_ptr<ExecContext const> ExecContext::CURRENT = nullptr;
 
 std::shared_ptr<ExecContext const> const ExecContext::Superuser =
-    std::make_shared<ExecContext const>(ExecContext::ConstructorToken{},
+    std::make_shared<ExecContext const>(ConstructorToken{},
                                         AuthMode{AuthMode::Superuser{}});
 
 /// Should always contain a reference to current user context
-/*static*/ ExecContext const& ExecContext::current() {
-  if (ExecContext::CURRENT != nullptr) {
-    return *ExecContext::CURRENT;
+ExecContext const& ExecContext::current() {
+  if (CURRENT != nullptr) {
+    return *CURRENT;
   }
-  return *ExecContext::Superuser;
+  return *Superuser;
 }
 /// Note that this intentionally returns CURRENT, even if it is a nullptr: This
 /// makes it suitable to set CURRENT in another thread.
-/*static*/ std::shared_ptr<ExecContext const> ExecContext::currentAsShared() {
-  return ExecContext::CURRENT;
+std::shared_ptr<ExecContext const> ExecContext::currentAsShared() {
+  return CURRENT;
 }
 
 /// @brief an internal superuser context, is
 ///        a singleton instance, deleting is an error
-/*static*/ ExecContext const& ExecContext::superuser() {
-  return *ExecContext::Superuser;
+ExecContext const& ExecContext::superuser() {
+  return *Superuser;
 }
-/*static*/ std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
-  return ExecContext::Superuser;
+std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
+  return Superuser;
 }
 
-ExecContext::ExecContext(ExecContext::ConstructorToken, AuthMode authMode)
+ExecContext::ExecContext(ConstructorToken, AuthMode authMode)
     : _authMode(std::move(authMode)) {}
 
 // TODO make this non-static, use _authenticationFeature instead

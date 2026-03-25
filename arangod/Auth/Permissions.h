@@ -30,7 +30,6 @@
 
 namespace arangodb {
 
-// TODO Use AccessLevel instead of auth::Level in these permissions!
 enum class AccessLevel { None = 0, Read, WriteData, WriteMeta };
 
 std::string_view convertFromAccessLevel(AccessLevel level);
@@ -38,6 +37,8 @@ std::string_view convertFromAccessLevel(AccessLevel level);
 struct Permission {
   struct Database {
     std::string name;
+    // TODO Database permissions don't differentiate between WriteData & WriteMeta:
+    //      use a different enum!
     AccessLevel level;
   };
   struct DataSource {
