@@ -112,7 +112,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
   std::size_t _limit;
 
   // @brief specifies which order is set for enumerate
-  std::size_t _ascending;
+  bool _ascending;
 
   /// @brief contains the offset, this skips offset number of results
   std::size_t _offset;

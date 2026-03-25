@@ -1,0 +1,15 @@
+name: arangodb_vector_index_unusable
+introducedIn: "3.12.9"
+help: |
+  Number of unusable vector indexes on this DBServer.
+unit: number
+type: gauge
+category: VectorIndex
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Current number of vector indexes on this DB-Server that are not yet
+  usable, counting both leader and follower shards. An unusable index
+  has not accumulated enough documents to begin its training phase.

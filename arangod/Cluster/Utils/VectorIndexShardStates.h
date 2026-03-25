@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -17,32 +17,34 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <memory>
+#include <string>
 #include <string_view>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/VectorIndexFeatureOptions.h"
+#include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 
-class VectorIndexFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "VectorIndex"; }
+class CollectionInfoCurrent;
+using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
-  explicit VectorIndexFeature(application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  bool isVectorIndexEnabled() const;
-
- private:
-  VectorIndexFeatureOptions _options;
+struct VectorIndexShardState {
+  std::string trainingState;
+  std::string error;
 };
+
+/// Gathers the per-shard training state and error info for a vector index
+/// from CollectionInfoCurrent.
+containers::FlatHashMap<ShardID, VectorIndexShardState>
+getVectorIndexShardStates(CollectionInfoCurrent const& collCurrent,
+                          ShardMap const& shardIds,
+                          std::string_view bareIndexId);
 
 }  // namespace arangodb
