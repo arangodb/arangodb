@@ -46,6 +46,7 @@ function AuthSuite() {
     let result = arango.GET('/_admin/cluster/health');
     assertTrue(result.hasOwnProperty('ClusterId'), result);
     assertTrue(result.hasOwnProperty('Health'), result);
+    assertFalse(result.hasOwnProperty('Timestamp'), result);
   };
 
   let checkClusterNodeVersion = function() {
