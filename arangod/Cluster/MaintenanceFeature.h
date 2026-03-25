@@ -262,6 +262,18 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
                                    std::shared_ptr<VPackBuffer<uint8_t>> error);
 
   /**
+   * @brief clear a single index error from the error bucket
+   *
+   * @param  database     database
+   * @param  collection   collection
+   * @param  shard        shard
+   * @param  indexId      index id to clear
+   */
+  void clearIndexError(std::string const& database,
+                       std::string const& collection, std::string const& shard,
+                       std::string const& indexId);
+
+  /**
    * @brief remove 1+ errors from index error bucket
    *        Errors are removed by phaseOne, as soon as indexes no longer in plan
    *

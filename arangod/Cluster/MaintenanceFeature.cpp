@@ -61,6 +61,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "absl/strings/str_cat.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -1006,6 +1007,22 @@ arangodb::Result MaintenanceFeature::storeIndexError(
   }
 
   return Result();
+}
+
+void MaintenanceFeature::clearIndexError(std::string const& database,
+                                         std::string const& collection,
+                                         std::string const& shard,
+                                         std::string const& indexId) {
+  // std::string const key = database + SLASH + collection + SLASH + shard;
+  auto const key = absl::StrCat(database, SLASH, collection, SLASH, shard);
+  std::lock_guard guard{_ieLock};
+  auto it = _indexErrors.find(key);
+  if (it != _indexErrors.end()) {
+    it->second.erase(indexId);
+    if (it->second.empty()) {
+      _indexErrors.erase(it);
+    }
+  }
 }
 
 /// @brief remove all replication errors for all shards of the database

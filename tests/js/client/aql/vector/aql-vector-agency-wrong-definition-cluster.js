@@ -26,27 +26,14 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
-const arangodb = require("@arangodb");
-const helper = require("@arangodb/aql-helper");
-const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
-const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const dbName = "vectorDb";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
-let {
-    agency,
-    getMetric,
-    getEndpointById
-} = require('@arangodb/test-helper');
-
 let IM = global.instanceManager;
-const { versionHas } = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -55,12 +42,13 @@ const { versionHas } = require("@arangodb/test-helper");
 function VectorIndexCorrectDefinitionInAgencyTest() {
     let collection;
     const dimension = 500;
-    const seed = 12132390894;
+    const seed = generateSeed();
     const nLists = 1;
     const metric = "l2";
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -151,12 +139,13 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
 function VectorIndexInvalidDefinitionInAgencyTest() {
     let collection;
     const dimension = 500;
-    const seed = 12132390894;
+    const seed = generateSeed();
     const nLists = 1;
     const metric = "l2";
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
