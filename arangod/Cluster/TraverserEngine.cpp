@@ -316,6 +316,14 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
+void BaseTraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
+}
+
+void BaseTraverserEngine::smartSearchUnified(VPackSlice, VPackBuilder&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
+}
+
 size_t BaseTraverserEngine::createNewCursor(size_t depth, uint64_t batchSize,
                                             std::vector<std::string> vertices,
                                             VPackSlice variables) {
@@ -609,11 +617,3 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
 }
 
 TraverserEngine::~TraverserEngine() = default;
-
-void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
-}
-
-void TraverserEngine::smartSearchUnified(VPackSlice, VPackBuilder&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
-}
