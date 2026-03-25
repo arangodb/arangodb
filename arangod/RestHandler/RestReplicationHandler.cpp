@@ -1694,6 +1694,12 @@ Result RestReplicationHandler::processRestoreDataBatch(
     return res;
   }
 
+  // As far as I can tell, this is the only place where the ExecContext in the
+  // OperationOptions differs from ExecContext::current().
+  // It is also somewhat curious. The caller,
+  // RestReplicationHandler::processRestoreData, explicitly creates a SuperUser
+  // context. This overrides that for the following operations: But it is not
+  // used for permission checks, only for auditing.
   OperationOptions options(_context);
   options.silent = true;
   options.ignoreRevs = true;
