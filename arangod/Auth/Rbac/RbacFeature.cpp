@@ -64,9 +64,7 @@ void RbacFeature::prepare() {
       << "External RBAC service enabled, endpoint: " << endpoint;
 }
 
-void RbacFeature::unprepare() {
-  _service.reset();
-}
+void RbacFeature::unprepare() { _service.reset(); }
 
 rbac::Service* RbacFeature::service() const noexcept {
   // Assert the state, so there can be no confusion whether the service is

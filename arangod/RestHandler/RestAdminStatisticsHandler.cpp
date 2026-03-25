@@ -42,6 +42,8 @@ RestAdminStatisticsHandler::RestAdminStatisticsHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/statistics (exact) and /_admin/statistics-description
+// (exact)
 RestStatus RestAdminStatisticsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -52,7 +54,7 @@ RestStatus RestAdminStatisticsHandler::execute() {
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
-  if (!security.canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi(rbac::Category::AdminMonitoring{})) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;

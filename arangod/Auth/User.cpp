@@ -751,7 +751,8 @@ auth::Level auth::User::collectionAuthLevel(std::string_view dbname,
   auth::Level lvl = auth::Level::NONE;
   if (dbname != "*") {
     // skip special rules for wildcard
-    auto it = _dbAccess.find(dbname);
+    auto it =
+        _dbAccess.find(std::string(dbname));  // FIXME: std::string-Wicklung
     if (it != _dbAccess.end()) {
       // Second try to find a specific grant
       auto pair = it->second._collectionAccess.find(cname);

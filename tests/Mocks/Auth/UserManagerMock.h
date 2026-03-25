@@ -47,8 +47,7 @@ struct UserManagerMock : UserManager {
   MOCK_METHOD(Result, enumerateUsers,
               (std::function<bool(User&)>&&, RetryOnConflict), (override));
   MOCK_METHOD(Result, updateUser,
-              (std::string const&, UserCallback&&, RetryOnConflict),
-              (override));
+              (std::string_view, UserCallback&&, RetryOnConflict), (override));
   MOCK_METHOD(Result, accessUser, (std::string const&, ConstUserCallback&&),
               (override));
   MOCK_METHOD(bool, userExists, (std::string const&), (override));
@@ -60,9 +59,9 @@ struct UserManagerMock : UserManager {
               (std::string const&, std::string const&, std::string&),
               (override));
   MOCK_METHOD(Level, databaseAuthLevel,
-              (std::string const&, std::string const&, bool), (override));
+              (std::string_view, std::string_view, bool), (override));
   MOCK_METHOD(Level, collectionAuthLevel,
-              (std::string const&, std::string const&, std::string_view, bool),
+              (std::string_view, std::string_view, std::string_view, bool),
               (override));
   MOCK_METHOD(Result, accessTokens, (std::string const&, velocypack::Builder&),
               (override));

@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -136,7 +137,9 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
     -> futures::Future<ResultT<bool>> {
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+      (ExecContext::current().isAdminUser(
+           arangodb::rbac::Category::AdminRestore{}) &&
+       !ServerState::readOnly()));
 
   std::shared_ptr<LogicalCollection> col;
   auto lookupResult = methods::Collections::lookup(vocbase, name, col);
@@ -442,6 +445,7 @@ std::string const RestReplicationHandler::HoldReadLockCollection =
     "holdReadLockCollection";
 
 // main function that dispatches the different routes and commands
+// Mounted at /_api/replication (prefix)
 auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto res = testPermissions();
   if (!res.ok()) {
@@ -820,11 +824,14 @@ Result RestReplicationHandler::testPermissions() {
 
         if (!collectionName.empty()) {
           auto& exec = ExecContext::current();
-          ExecContextSuperuserScope escope(exec.isAdminUser());
-          if (!exec.isAdminUser() &&
-              !exec.canUseCollection(collectionName, auth::Level::RO)) {
+          if (!exec.isAdminUser(arangodb::rbac::Category::AdminDump{}) &&
+              !exec.canUseCollection(_vocbase.name(), collectionName,
+                                     AccessLevel::Read)) {
             // not enough rights
-            return Result(TRI_ERROR_FORBIDDEN);
+            return Result(
+                TRI_ERROR_FORBIDDEN,
+                absl::StrCat("insufficient permissions to access collection '",
+                             collectionName, "'"));
           }
         } else {
           // not found, return 404
@@ -849,22 +856,34 @@ Result RestReplicationHandler::testPermissions() {
                   _request->value("overwrite");
 
               auto& exec = ExecContext::current();
-              ExecContextSuperuserScope escope(exec.isAdminUser());
 
               if (overwriteCollection == "true" ||
                   vocbase->lookupCollection(collectionName) == nullptr) {
                 // 1.) re-create collection, means: overwrite=true (rw database)
                 // OR 2.) not existing, new collection (rw database)
-                if (!exec.isAdminUser() &&
-                    !exec.canUseDatabase(dbName, auth::Level::RW)) {
-                  return Result(TRI_ERROR_FORBIDDEN);
+                if (!exec.isAdminUser(
+                        arangodb::rbac::Category::AdminRestore{}) &&
+                    !exec.canUseCollection(dbName, collectionName,
+                                           AccessLevel::WriteMeta)) {
+                  return Result(
+                      TRI_ERROR_FORBIDDEN,
+                      absl::StrCat("insufficient permissions to access "
+                                   "(write meta) collection '",
+                                   collectionName, "' in database '", dbName,
+                                   "'"));
                 }
               } else {
                 // 3.) Existing collection (ro database, rw collection)
                 // no overwrite. restoring into an existing collection
-                if (!exec.isAdminUser() &&
-                    !exec.canUseCollection(collectionName, auth::Level::RW)) {
-                  return Result(TRI_ERROR_FORBIDDEN);
+                if (!exec.isAdminUser(
+                        arangodb::rbac::Category::AdminRestore{}) &&
+                    !exec.canUseCollection(dbName, collectionName,
+                                           AccessLevel::WriteData)) {
+                  return Result(
+                      TRI_ERROR_FORBIDDEN,
+                      absl::StrCat("insufficient permissions to access "
+                                   "(write data) collection '",
+                                   collectionName, "'"));
                 }
               }
             } else {
@@ -936,7 +955,8 @@ void RestReplicationHandler::handleCommandMakeFollower() {
   configuration.validate();
 
   // allow access to _users if appropriate
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+      arangodb::rbac::Category::AdminReplication{}));
 
   // forget about any existing replication applier configuration
   applier->forget();
@@ -1010,12 +1030,11 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   vocbase.reset();
 
   auto& exec = ExecContext::current();
-  ExecContextSuperuserScope escope(exec.isAdminUser());
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
-    if (!exec.isAdminUser() &&
-        !exec.canUseCollection(dbName, c->name(), auth::Level::RO)) {
+    if (!exec.isAdminUser(arangodb::rbac::Category::AdminClusterInfo{}) &&
+        !exec.canUseCollection(dbName, c->name(), AccessLevel::Read)) {
       continue;
     }
 
@@ -1306,8 +1325,9 @@ futures::Future<Result> RestReplicationHandler::processRestoreData(
 #endif
 
   ExecContextSuperuserScope escope(
-      ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+      ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminRestore{}) &&
+      !ServerState::readOnly());
 
   if (colName == StaticStrings::UsersCollection) {
     // We need to handle the _users in a special way
@@ -1857,8 +1877,9 @@ Result RestReplicationHandler::processRestoreIndexes(
   Result fres;
 
   ExecContextSuperuserScope escope(
-      ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+      ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminRestore{}) &&
+      !ServerState::readOnly());
 
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
@@ -3146,11 +3167,15 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
   LOG_TOPIC("6e075", TRACE, arangodb::Logger::REPLICATION)
       << "requested revision tree for collection '" << ctx.cname << "'";
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+      arangodb::rbac::Category::AdminWriteReplicatedLog{}));
 
   if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname,
-                                               auth::Level::RO)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+                                               AccessLevel::Read)) {
+    generateError(
+        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+        absl::StrCat("insufficient permissions to access collection '",
+                     ctx.cname, "'"));
     return false;
   }
 

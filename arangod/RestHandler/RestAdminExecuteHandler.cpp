@@ -51,6 +51,7 @@ RestAdminExecuteHandler::RestAdminExecuteHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/execute (exact, requires V8)
 RestStatus RestAdminExecuteHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,

@@ -22,4 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Permissions.h"
 
-namespace arangodb {}  // namespace arangodb
+namespace arangodb {
+
+std::string_view convertFromAccessLevel(AccessLevel level) {
+  switch (level) {
+    case AccessLevel::None:
+      return "none";
+    case AccessLevel::Read:
+      return "read";
+    case AccessLevel::WriteData:
+      return "writedata";
+    case AccessLevel::WriteMeta:
+      return "writemeta";
+  }
+}
+
+}  // namespace arangodb

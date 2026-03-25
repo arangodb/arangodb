@@ -34,6 +34,7 @@ RestQueryCacheHandler::RestQueryCacheHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/query-cache (prefix)
 RestStatus RestQueryCacheHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

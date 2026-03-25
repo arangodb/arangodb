@@ -25,6 +25,7 @@
 
 #include "Activities/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -61,6 +62,7 @@ RestDumpHandler::RestDumpHandler(
 }
 
 // main function that dispatches the different routes and commands
+// Mounted at /_api/dump (prefix)
 RestStatus RestDumpHandler::execute() {
   if (!ServerState::instance()->isDBServer() &&
       !ServerState::instance()->isSingleServer()) {
@@ -165,7 +167,8 @@ void RestDumpHandler::handleCommandDumpStart() {
 
   // adjust permissions in single server case, so that the behavior
   // is identical to non-parallel dumps
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
+  ExecContextSuperuserScope escope(ExecContext::current().canUseDatabase(
+                                       "_system", AccessLevel::WriteMeta) &&
                                    ServerState::instance()->isSingleServer());
 
   auto guard =
@@ -304,7 +307,8 @@ Result RestDumpHandler::validateRequest() {
         // make this version of dump compatible with the previous version of
         // arangodump. the previous version assumed that as long as you are
         // an admin user, you can dump every collection
-        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminDump{}));
 
         // validate permissions for all participating shards
         RocksDBDumpContextOptions opts;
@@ -323,8 +327,9 @@ Result RestDumpHandler::validateRequest() {
                   _clusterInfo.getCollectionNameForShard(maybeShardID.get());
             }
           }
-          if (!ExecContext::current().canUseCollection(
-                  _request->databaseName(), collectionName, auth::Level::RO)) {
+          if (!ExecContext::current().canUseCollection(_request->databaseName(),
+                                                       collectionName,
+                                                       AccessLevel::Read)) {
             return {TRI_ERROR_FORBIDDEN,
                     absl::StrCat("insufficient permissions to access shard ",
                                  it, " of collection ", collectionName)};

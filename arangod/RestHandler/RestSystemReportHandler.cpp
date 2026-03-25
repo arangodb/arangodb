@@ -26,6 +26,7 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/HttpRequest.h"
@@ -77,19 +78,13 @@ std::string exec(std::string const& cmd) {
 }
 }  // namespace
 
-bool RestSystemReportHandler::isAdminUser() const {
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  } else {
-    return ExecContext::current().isAdminUser();
-  }
-}
-
+// Mounted at /_admin/system-report (exact)
 RestStatus RestSystemReportHandler::execute() {
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
-  if (!security.canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi(
+          arangodb::rbac::Category::AdminMonitoringInternal{})) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;

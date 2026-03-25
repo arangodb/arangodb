@@ -808,7 +808,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
   // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
   // However, in case a collection has to be created but can't, we have to
   // throw FORBIDDEN instead of READ_ONLY for backwards compatibility.
-  if (!execContext.canUseDatabase(auth::Level::RW)) {
+  if (!execContext.canUseDatabase(databaseName, AccessLevel::WriteMeta)) {
     // Check for all collections: if it exists and if we have RO access to it.
     // If none fails the check above we need to return READ_ONLY.
     // Otherwise we return FORBIDDEN
@@ -821,7 +821,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
             << col;
         return false;
       }
-      if (!execContext.canUseCollection(col, auth::Level::RO)) {
+      if (!execContext.canUseCollection(databaseName, col, AccessLevel::Read)) {
         LOG_TOPIC("b4d48", DEBUG, Logger::GRAPHS)
             << logprefix << "No read access to " << databaseName << "." << col;
         return false;
@@ -851,14 +851,14 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
         << logprefix << "No write access to " << databaseName << "."
         << StaticStrings::GraphsCollection;
     return {TRI_ERROR_ARANGO_READ_ONLY,
-            "Createing graphs requires RW access on the database (" +
+            "Creating graphs requires RW access on the database (" +
                 databaseName + ")"};
   }
 
   auto checkCollectionAccess = [&](std::string const& col) -> bool {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
-    if (!execContext.canUseCollection(col, auth::Level::RO)) {
+    if (!execContext.canUseCollection(databaseName, col, AccessLevel::Read)) {
       LOG_TOPIC("43c84", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return false;
@@ -1103,7 +1103,8 @@ Result GraphManager::checkDropGraphPermissions(
 
   bool mustDropAtLeastOneCollection =
       !followersToBeRemoved.empty() || !leadersToBeRemoved.empty();
-  bool canUseDatabaseRW = execContext.canUseDatabase(auth::Level::RW);
+  bool canUseDatabaseRW =
+      execContext.canUseDatabase(databaseName, AccessLevel::WriteMeta);
 
   if (mustDropAtLeastOneCollection && !canUseDatabaseRW) {
     LOG_TOPIC("fdc57", DEBUG, Logger::GRAPHS)
@@ -1115,17 +1116,19 @@ Result GraphManager::checkDropGraphPermissions(
   for (auto const& col :
        boost::join(followersToBeRemoved, leadersToBeRemoved)) {
     // We need RW to drop a collection.
-    if (!execContext.canUseCollection(col, auth::Level::RW)) {
+    if (!execContext.canUseCollection(databaseName, col,
+                                      AccessLevel::WriteMeta)) {
       LOG_TOPIC("96384", DEBUG, Logger::GRAPHS)
-          << logprefix << "No write access to " << databaseName << "." << col;
+          << logprefix << "No write (metadata) access to " << databaseName
+          << "." << col;
       return TRI_ERROR_FORBIDDEN;
     }
   }
 
   // We need RW on _graphs (which is the same as RW on the database). But in
   // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
-  if (!execContext.canUseCollection(StaticStrings::GraphsCollection,
-                                    auth::Level::RO)) {
+  if (!execContext.canUseCollection(
+          databaseName, StaticStrings::GraphsCollection, AccessLevel::Read)) {
     LOG_TOPIC("bfe63", DEBUG, Logger::GRAPHS)
         << logprefix << "No read access to " << databaseName << "."
         << StaticStrings::GraphsCollection;
@@ -1137,10 +1140,11 @@ Result GraphManager::checkDropGraphPermissions(
   // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
   // However, in case a collection has to be created but can't, we have to
   // throw FORBIDDEN instead of READ_ONLY for backwards compatibility.
-  if (!execContext.canUseCollection(StaticStrings::GraphsCollection,
-                                    auth::Level::RW)) {
+  if (!execContext.canUseCollection(databaseName,
+                                    StaticStrings::GraphsCollection,
+                                    AccessLevel::WriteData)) {
     LOG_TOPIC("bbb09", DEBUG, Logger::GRAPHS)
-        << logprefix << "No write access to " << databaseName << "."
+        << logprefix << "No write (data) access to " << databaseName << "."
         << StaticStrings::GraphsCollection;
     return TRI_ERROR_ARANGO_READ_ONLY;
   }

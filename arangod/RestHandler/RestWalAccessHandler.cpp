@@ -24,6 +24,7 @@
 #include "RestWalAccessHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -183,16 +184,12 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   return true;
 }
 
+// Mounted at /_api/wal (prefix)
 RestStatus RestWalAccessHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/wal' is not yet supported in a cluster");
-    return RestStatus::DONE;
-  }
-
-  if (!_context.isAdminUser()) {
-    generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
 
@@ -312,8 +309,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
     return;
   }
-
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   bool found = false;
   size_t chunkSize = 1024 * 1024;

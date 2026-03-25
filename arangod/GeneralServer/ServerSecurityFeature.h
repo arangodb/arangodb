@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Auth/Rbac/Actions.h"
 #include "GeneralServer/ServerSecurityFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -44,7 +45,8 @@ class ServerSecurityFeature final
   bool isRestApiHardened() const noexcept;
   bool isFoxxApiDisabled() const noexcept;
   bool isFoxxStoreDisabled() const noexcept;
-  bool canAccessHardenedApi() const noexcept;
+  bool canAccessHardenedApi(
+      arangodb::rbac::Category::Any const& action) const noexcept;
   bool foxxAllowInstallFromRemote() const noexcept;
 
  private:

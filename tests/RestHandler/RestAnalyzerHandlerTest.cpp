@@ -238,14 +238,14 @@ class RestAnalyzerHandlerTest
     EXPECT_CALL(*um, databaseAuthLevel)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string const& dbname) {
+            [this](std::string const& username, std::string_view dbname) {
               EXPECT_EQ(username, _user.username());
               return _user.databaseAuthLevel(dbname);
             }));
     EXPECT_CALL(*um, collectionAuthLevel)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string const& dbname,
+                                                 std::string_view dbname,
                                                  std::string_view const cname) {
           EXPECT_EQ(username, _user.username());
           return _user.collectionAuthLevel(dbname, cname);

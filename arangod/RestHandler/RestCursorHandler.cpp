@@ -74,6 +74,7 @@ RequestLane RestCursorHandler::lane() const {
   return RequestLane::CLIENT_AQL;
 }
 
+// Mounted at /_api/cursor (prefix)
 futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();

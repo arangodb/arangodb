@@ -28,7 +28,7 @@ using namespace arangodb;
 
 static_assert(auth::Level::UNDEFINED < auth::Level::NONE, "undefined < none");
 static_assert(auth::Level::NONE < auth::Level::RO, "none < ro");
-static_assert(auth::Level::RO < auth::Level::RW, "none < ro");
+static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
 
 auth::Level arangodb::auth::convertToAuthLevel(velocypack::Slice grants) {
   return convertToAuthLevel(grants.stringView());
@@ -47,13 +47,14 @@ auth::Level arangodb::auth::convertToAuthLevel(std::string_view grants) {
 }
 
 std::string_view arangodb::auth::convertFromAuthLevel(auth::Level lvl) {
-  if (lvl == auth::Level::RW) {
-    return "rw";
-  } else if (lvl == auth::Level::RO) {
-    return "ro";
-  } else if (lvl == auth::Level::NONE) {
-    return "none";
-  } else {
-    return "undefined";
+  switch (lvl) {
+    case auth::Level::RW:
+      return "rw";
+    case auth::Level::RO:
+      return "ro";
+    case auth::Level::NONE:
+      return "none";
+    default:
+      return "undefined";
   }
 }

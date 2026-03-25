@@ -24,6 +24,7 @@
 
 #include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 
 using namespace arangodb;
 using namespace arangodb::async_registry;
@@ -34,8 +35,10 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
     : RestVocbaseBaseHandler(server, request, response),
       _feature(server.getFeature<Feature>()) {}
 
+// Mounted at /_admin/async-registry (prefix)
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
-  if (!ExecContext::current().isAdminUser()) {
+  if (!ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminMonitoringInternal{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "you need admin user rights for async-registry operations");
     co_return;

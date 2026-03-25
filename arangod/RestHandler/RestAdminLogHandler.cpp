@@ -24,6 +24,7 @@
 #include "RestAdminLogHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
@@ -58,7 +59,7 @@ RestAdminLogHandler::RestAdminLogHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-arangodb::Result RestAdminLogHandler::verifyPermitted() {
+arangodb::Result RestAdminLogHandler::verifyPermitted(RequestType const type) {
   auto& loggerFeature = server().getFeature<arangodb::LoggerFeature>();
 
   if (!loggerFeature.isAPIEnabled()) {
@@ -70,19 +71,33 @@ arangodb::Result RestAdminLogHandler::verifyPermitted() {
     if (!ExecContext::current().isSuperuser()) {
       return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
                               "you need super user rights for log operations");
-    }  // if
+    }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
-      return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
-                              "you need admin rights for log operations");
-    }  // if
+    if (type == RequestType::GET) {
+      if (!ExecContext::current().isAdminUser(
+              arangodb::rbac::Category::AdminReadLogs{})) {
+        return arangodb::Result(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            "you need AdminReadLogs rights for log operations");
+      }
+    }
+    // Please note that this means that both `clearLogs` as well as
+    // setting logs levels is allowed by AdminSetLogLevel!
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminSetLogLevel{})) {
+      return arangodb::Result(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          "you need AdminSetLogLevel rights for log operations");
+    }
   }
 
   return arangodb::Result();
 }
 
+// Mounted at /_admin/log (prefix)
 auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
-  auto result = verifyPermitted();
+  auto const type = _request->requestType();
+  auto result = verifyPermitted(type);
   if (!result.ok()) {
     generateError(rest::ResponseCode::FORBIDDEN, result.errorNumber(),
                   result.errorMessage());
@@ -90,7 +105,6 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   }
 
   auto const& suffixes = _request->suffixes();
-  auto const type = _request->requestType();
 
   if (type == rest::RequestType::DELETE_REQ) {
     if (suffixes.empty() ||

@@ -28,8 +28,7 @@
 
 using namespace arangodb;
 
-using Cat = rbac::Service::Category;
-using Perm = rbac::Service::Permission;
+using Cat = rbac::Category;
 using AQ = rbac::Service::AuthorizationQuery;
 
 namespace {
@@ -55,89 +54,90 @@ struct MockService : rbac::Service {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-TEST(RbacServiceTest, Databases) {
+TEST(RbacServiceTest, ReadDatabase) {
   MockService svc;
-  svc.maySync({}, Perm::Read, Cat::Databases{});
+  svc.maySync({}, Cat::ReadDatabase{.name = "mydb"});
   ASSERT_EQ(svc.lastQueries.size(), 1);
-  EXPECT_EQ(svc.lastQueries[0].action, "db:ReadDatabases");
-  EXPECT_EQ(svc.lastQueries[0].resource, "");
+  EXPECT_EQ(svc.lastQueries[0].action, "db:ReadDatabase");
+  EXPECT_EQ(svc.lastQueries[0].resource, "db:database:mydb");
 }
 
-TEST(RbacServiceTest, Database) {
+TEST(RbacServiceTest, WriteDatabase) {
   MockService svc;
-  svc.maySync({}, Perm::Write, Cat::Database{.name = "mydb"});
+  svc.maySync({}, Cat::WriteDatabase{.name = "mydb"});
   ASSERT_EQ(svc.lastQueries.size(), 1);
   EXPECT_EQ(svc.lastQueries[0].action, "db:WriteDatabase");
   EXPECT_EQ(svc.lastQueries[0].resource, "db:database:mydb");
 }
 
-TEST(RbacServiceTest, Collection_requires_ReadDatabase) {
+TEST(RbacServiceTest, ReadCollection) {
   MockService svc;
-  svc.maySync({}, Perm::Read,
-              Cat::Collection{.database = "mydb", .name = "vertices"});
-  ASSERT_EQ(svc.lastQueries.size(), 2);
+  svc.maySync({}, Cat::ReadCollection{.database = "mydb", .name = "vertices"});
+  ASSERT_EQ(svc.lastQueries.size(), 1);
   EXPECT_EQ(svc.lastQueries[0].action, "db:ReadCollection");
   EXPECT_EQ(svc.lastQueries[0].resource, "db:collection:mydb:vertices");
-  EXPECT_EQ(svc.lastQueries[1].action, "db:ReadDatabase");
-  EXPECT_EQ(svc.lastQueries[1].resource, "db:database:mydb");
 }
 
-TEST(RbacServiceTest, Collection_write_requires_WriteDatabase) {
+TEST(RbacServiceTest, WriteCollectionData) {
   MockService svc;
-  svc.maySync({}, Perm::Write,
-              Cat::Collection{.database = "mydb", .name = "vertices"});
-  ASSERT_EQ(svc.lastQueries.size(), 2);
-  EXPECT_EQ(svc.lastQueries[0].action, "db:WriteCollection");
-  EXPECT_EQ(svc.lastQueries[1].action, "db:WriteDatabase");
+  svc.maySync({},
+              Cat::WriteCollectionData{.database = "mydb", .name = "vertices"});
+  ASSERT_EQ(svc.lastQueries.size(), 1);
+  EXPECT_EQ(svc.lastQueries[0].action, "db:WriteCollectionData");
+  EXPECT_EQ(svc.lastQueries[0].resource, "db:collection:mydb:vertices");
 }
 
-TEST(RbacServiceTest, View_requires_ReadDatabase) {
+TEST(RbacServiceTest, WriteCollectionMeta) {
   MockService svc;
-  svc.maySync({}, Perm::Write, Cat::View{.database = "mydb", .name = "search"});
-  ASSERT_EQ(svc.lastQueries.size(), 2);
+  svc.maySync({},
+              Cat::WriteCollectionMeta{.database = "mydb", .name = "vertices"});
+  ASSERT_EQ(svc.lastQueries.size(), 1);
+  EXPECT_EQ(svc.lastQueries[0].action, "db:WriteCollectionMeta");
+  EXPECT_EQ(svc.lastQueries[0].resource, "db:collection:mydb:vertices");
+}
+
+TEST(RbacServiceTest, ReadView) {
+  MockService svc;
+  svc.maySync({}, Cat::ReadView{.database = "mydb", .name = "search"});
+  ASSERT_EQ(svc.lastQueries.size(), 1);
+  EXPECT_EQ(svc.lastQueries[0].action, "db:ReadView");
+  EXPECT_EQ(svc.lastQueries[0].resource, "db:view:mydb:search");
+}
+
+TEST(RbacServiceTest, WriteView) {
+  MockService svc;
+  svc.maySync({}, Cat::WriteView{.database = "mydb", .name = "search"});
+  ASSERT_EQ(svc.lastQueries.size(), 1);
   EXPECT_EQ(svc.lastQueries[0].action, "db:WriteView");
   EXPECT_EQ(svc.lastQueries[0].resource, "db:view:mydb:search");
-  EXPECT_EQ(svc.lastQueries[1].action, "db:WriteDatabase");
-  EXPECT_EQ(svc.lastQueries[1].resource, "db:database:mydb");
 }
 
-TEST(RbacServiceTest, Analyzer_requires_ReadDatabase) {
+TEST(RbacServiceTest, ReadAnalyzer) {
   MockService svc;
-  svc.maySync({}, Perm::Read,
-              Cat::Analyzer{.database = "mydb", .name = "text_en"});
-  ASSERT_EQ(svc.lastQueries.size(), 2);
+  svc.maySync({}, Cat::ReadAnalyzer{.database = "mydb", .name = "text_en"});
+  ASSERT_EQ(svc.lastQueries.size(), 1);
   EXPECT_EQ(svc.lastQueries[0].action, "db:ReadAnalyzer");
   EXPECT_EQ(svc.lastQueries[0].resource, "db:analyzer:mydb:text_en");
-  EXPECT_EQ(svc.lastQueries[1].action, "db:ReadDatabase");
-  EXPECT_EQ(svc.lastQueries[1].resource, "db:database:mydb");
 }
 
-TEST(RbacServiceTest, Documents_requires_ReadCollection_and_ReadDatabase) {
+TEST(RbacServiceTest, WriteAnalyzer) {
   MockService svc;
-  svc.maySync({}, Perm::Write,
-              Cat::Documents{.database = "mydb", .collection = "edges"});
-  ASSERT_EQ(svc.lastQueries.size(), 3);
-  EXPECT_EQ(svc.lastQueries[0].action, "db:WriteDocuments");
-  EXPECT_EQ(svc.lastQueries[0].resource, "db:collection:mydb:edges");
-  EXPECT_EQ(svc.lastQueries[1].action, "db:WriteCollection");
-  EXPECT_EQ(svc.lastQueries[1].resource, "db:collection:mydb:edges");
-  EXPECT_EQ(svc.lastQueries[2].action, "db:WriteDatabase");
-  EXPECT_EQ(svc.lastQueries[2].resource, "db:database:mydb");
+  svc.maySync({}, Cat::WriteAnalyzer{.database = "mydb", .name = "text_en"});
+  ASSERT_EQ(svc.lastQueries.size(), 1);
+  EXPECT_EQ(svc.lastQueries[0].action, "db:WriteAnalyzer");
+  EXPECT_EQ(svc.lastQueries[0].resource, "db:analyzer:mydb:text_en");
 }
 
-TEST(RbacServiceTest, mayAllSync_combines_hierarchies) {
+TEST(RbacServiceTest, mayAllSync_combines_categories) {
   MockService svc;
-  svc.mayAllSync(
-      {}, {{Perm::Read, Cat::Database{.name = "db1"}},
-           {Perm::Read, Cat::Collection{.database = "db2", .name = "col"}}});
-  // Database: 1 query, Collection: 2 queries
-  ASSERT_EQ(svc.lastQueries.size(), 3);
+  svc.mayAllSync({}, {Cat::ReadDatabase{.name = "db1"},
+                      Cat::ReadCollection{.database = "db2", .name = "col"}});
+  // One query per category
+  ASSERT_EQ(svc.lastQueries.size(), 2);
   EXPECT_EQ(svc.lastQueries[0].action, "db:ReadDatabase");
   EXPECT_EQ(svc.lastQueries[0].resource, "db:database:db1");
   EXPECT_EQ(svc.lastQueries[1].action, "db:ReadCollection");
   EXPECT_EQ(svc.lastQueries[1].resource, "db:collection:db2:col");
-  EXPECT_EQ(svc.lastQueries[2].action, "db:ReadDatabase");
-  EXPECT_EQ(svc.lastQueries[2].resource, "db:database:db2");
 }
 
 TEST(RbacServiceTest, mayAllSync_empty_queries) {
@@ -147,21 +147,3 @@ TEST(RbacServiceTest, mayAllSync_empty_queries) {
 }
 
 #pragma GCC diagnostic pop
-
-TEST(RbacServiceTest, may_async) {
-  MockService svc;
-  auto result = svc.may({}, Perm::Read, Cat::Database{.name = "mydb"});
-  ASSERT_EQ(svc.lastQueries.size(), 1);
-  EXPECT_EQ(svc.lastQueries[0].action, "db:ReadDatabase");
-  EXPECT_EQ(svc.lastQueries[0].resource, "db:database:mydb");
-}
-
-TEST(RbacServiceTest, mayAll_async) {
-  MockService svc;
-  auto result = svc.mayAll(
-      {}, {{Perm::Read, Cat::Documents{.database = "db", .collection = "c"}}});
-  ASSERT_EQ(svc.lastQueries.size(), 3);
-  EXPECT_EQ(svc.lastQueries[0].action, "db:ReadDocuments");
-  EXPECT_EQ(svc.lastQueries[1].action, "db:ReadCollection");
-  EXPECT_EQ(svc.lastQueries[2].action, "db:ReadDatabase");
-}

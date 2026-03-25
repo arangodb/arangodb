@@ -158,6 +158,7 @@ bool readValue(GeneralRequest const& req, char const* name, std::string& val) {
 }
 }  // namespace
 
+// Mounted at /_api/agency_priv (prefix, only when agency is enabled)
 RestStatus RestAgencyPrivHandler::execute() {
   try {
     auto const& suffixes = _request->suffixes();

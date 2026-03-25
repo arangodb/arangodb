@@ -607,7 +607,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
 
           if (checkPermissions &&
               !execCtx.canUseCollection(vocbase().name(), collection->name(),
-                                        auth::Level::RO)) {
+                                        AccessLevel::Read)) {
             return {TRI_ERROR_FORBIDDEN,
                     absl::StrCat("Current user cannot use collection '",
                                  collection->name(), "'")};
@@ -695,7 +695,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     }
     if (auto const& ctx = ExecContext::current(); !ctx.isSuperuser()) {
       if (!ctx.canUseCollection(vocbase().name(), collection->name(),
-                                auth::Level::RO)) {
+                                AccessLevel::Read)) {
         return {TRI_ERROR_FORBIDDEN,
                 absl::StrCat("Current user cannot use collection '",
                              collection->name(), "'")};

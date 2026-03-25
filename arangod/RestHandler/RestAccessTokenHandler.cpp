@@ -45,6 +45,7 @@ RestAccessTokenHandler::RestAccessTokenHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/token (prefix)
 RestStatus RestAccessTokenHandler::execute() {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
@@ -65,19 +66,27 @@ RestStatus RestAccessTokenHandler::execute() {
 
   std::string const& user = suffixes[0];
 
-  if (!canAccessUser(user)) {
-    generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
-  }
-
   auto const type = _request->requestType();
 
+  auto& exec = ExecContext::current();
   switch (type) {
     case RequestType::GET:
+      if (!exec.canReadUser(user)) {
+        generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+        return RestStatus::DONE;
+      }
       return showAccessTokens(um, user);
     case RequestType::POST:
+      if (!exec.canWriteUser(user)) {
+        generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+        return RestStatus::DONE;
+      }
       return createAccessToken(um, user);
     case RequestType::DELETE_REQ:
+      if (!exec.canWriteUser(user)) {
+        generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+        return RestStatus::DONE;
+      }
       return deleteAccessToken(um, user);
 
     default:

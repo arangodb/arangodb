@@ -44,6 +44,7 @@ RestUploadHandler::RestUploadHandler(
 
 RestUploadHandler::~RestUploadHandler() = default;
 
+// Mounted at /_api/upload (prefix)
 RestStatus RestUploadHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();

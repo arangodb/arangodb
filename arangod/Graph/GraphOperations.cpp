@@ -1164,19 +1164,19 @@ bool GraphOperations::collectionExists(std::string const& collection) const {
 }
 
 bool GraphOperations::hasROPermissionsFor(std::string const& collection) const {
-  return hasPermissionsFor(collection, auth::Level::RO);
+  return hasPermissionsFor(collection, AccessLevel::Read);
 }
 
 bool GraphOperations::hasRWPermissionsFor(std::string const& collection) const {
-  return hasPermissionsFor(collection, auth::Level::RW);
+  return hasPermissionsFor(collection, AccessLevel::WriteMeta);
 }
 
 bool GraphOperations::hasPermissionsFor(std::string const& collection,
-                                        auth::Level level) const {
+                                        AccessLevel level) const {
   std::string const& databaseName = _vocbase.name();
 
   std::stringstream stringstream;
-  stringstream << "When checking " << convertFromAuthLevel(level)
+  stringstream << "When checking " << convertFromAccessLevel(level)
                << " permissions for " << databaseName << "." << collection
                << ": ";
   std::string const logprefix = stringstream.str();
@@ -1188,11 +1188,12 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection,
     return true;
   }
 
-  if (execContext.canUseCollection(collection, level)) {
+  if (execContext.canUseCollection(databaseName, collection, level)) {
     return true;
   }
 
-  LOG_TOPIC("ef8d1", DEBUG, Logger::GRAPHS) << logprefix << "Not allowed.";
+  LOG_TOPIC("ef8d1", DEBUG, Logger::GRAPHS)
+      << logprefix << "Not allowed (missing data access to _graphs).";
   return false;
 }
 
@@ -1219,11 +1220,12 @@ Result GraphOperations::checkEdgeDefinitionPermissions(
   setUnion(graphCollections, edgeDefinition.getTo());
   graphCollections.emplace(edgeDefinition.getName());
 
-  bool canUseDatabaseRW = execContext.canUseDatabase(auth::Level::RW);
+  bool canUseDatabaseRW =
+      execContext.canUseDatabase(databaseName, AccessLevel::WriteMeta);
   for (auto const& col : graphCollections) {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
-    if (!execContext.canUseCollection(col, auth::Level::RO)) {
+    if (!execContext.canUseCollection(databaseName, col, AccessLevel::Read)) {
       LOG_TOPIC("e8a53", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;

@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Async/async.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/ResultT.h"
 
 #include <string>
@@ -39,66 +40,30 @@ struct Service {
     std::string jwtToken;
   };
 
-  struct Category {
-    struct Databases {};
-    struct Database {
-      std::string name;
-    };
-    struct Collection {
-      std::string database;
-      std::string name;
-    };
-    struct View {
-      std::string database;
-      std::string name;
-    };
-    struct Analyzer {
-      std::string database;
-      std::string name;
-    };
-    struct Documents {
-      std::string database;
-      std::string collection;
-    };
-    using Any = std::variant<Databases, Database, Collection, View, Analyzer,
-                             Documents>;
-  };
-
-  enum class Permission { Read, Write };
-
   struct AuthorizationQuery {
     std::string action;
     std::string resource;
   };
 
-  // Expands a (Permission, Category) pair into the full hierarchy of
-  // authorization queries required by the RBAC design. For example,
-  // reading documents requires db:ReadDocuments, db:ReadCollection,
-  // and db:ReadDatabase.
-  static auto toAuthorizationQueries(Permission permission,
-                                     Category::Any const& category)
+  // Translates a Category into the corresponding authorization query.
+  // Currently each Category maps to exactly one AuthorizationQuery.
+  static auto toAuthorizationQueries(Category::Any const& category)
       -> std::vector<AuthorizationQuery>;
 
-  auto may(User user, Permission permission,
-           Category::Any const& category) noexcept -> async<ResultT<bool>>;
+  auto may(User user, Category::Any const& category) noexcept
+      -> async<ResultT<bool>>;
 
   [[deprecated("Use the asynchronous counterpart instead")]] auto maySync(
-      User user, Permission permission, Category::Any const& category) noexcept
-      -> ResultT<bool>;
-
-  struct PermissionQuery {
-    Permission permission;
-    Category::Any category;
-  };
+      User user, Category::Any const& category) noexcept -> ResultT<bool>;
 
   // TODO We might want to change the return type in a way that it reports
   //      which permission(s) are missing, in order to give a proper error
   //      message to the user.
-  auto mayAll(User user, std::vector<PermissionQuery> queries) noexcept
+  auto mayAll(User user, std::vector<Category::Any> categories) noexcept
       -> async<ResultT<bool>>;
 
   [[deprecated("Use the asynchronous counterpart instead")]] auto mayAllSync(
-      User user, std::vector<PermissionQuery> queries) noexcept
+      User user, std::vector<Category::Any> categories) noexcept
       -> ResultT<bool>;
 
  private:

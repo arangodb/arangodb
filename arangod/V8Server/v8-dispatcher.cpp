@@ -31,6 +31,7 @@
 #include <velocypack/Builder.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
@@ -348,7 +349,8 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto const runAsUser = exec.user();
-  TRI_ASSERT(exec.isAdminUser() || !runAsUser.empty());
+  TRI_ASSERT(exec.isAdminUser(arangodb::rbac::Category::AdminTasks{}) ||
+             !runAsUser.empty());
 
   std::string key = TRI_ObjectToString(isolate, args[0]);
   uint64_t maxWorkers =

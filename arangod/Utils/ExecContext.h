@@ -25,6 +25,8 @@
 
 #include "Auth/AuthMode.h"
 #include "Auth/Common.h"
+#include "Auth/Rbac/Actions.h"
+#include "Auth/Permissions.h"
 #include "Rest/RequestContext.h"
 
 #include <memory>
@@ -82,7 +84,8 @@ class ExecContext : public RequestContext {
     std::abort();  // TODO remove this method
   }
 
-  bool isAdminUser() const noexcept {
+  bool isAdminUser(
+      arangodb::rbac::Category::Any const& rbacAction) const noexcept {
     std::abort();  // TODO remove this method
   }
 
@@ -109,28 +112,37 @@ class ExecContext : public RequestContext {
   }
 
   /// @brief returns true if auth level is above or equal `requested`
-  [[deprecated]] bool canUseDatabase(auth::Level requested) const noexcept {
-    std::abort();  // TODO remove this method
-  }
+  bool canUseDatabase(std::string const& db, AccessLevel requested) const;
 
-  /// @brief returns true if auth level is above or equal `requested`
-  bool canUseDatabase(std::string const& db, auth::Level requested) const;
+  /// @brief returns true if a database can be created or dropped
+  bool canCreateOrDropDatabase(std::string_view db) const;
 
   /// @brief returns auth level for user
-  auth::Level collectionAuthLevel(std::string const& dbname,
+  auth::Level collectionAuthLevel(std::string_view dbname,
                                   std::string_view collection) const;
 
-  /// @brief returns true if auth levels is above or equal `requested`
-  [[deprecated]] bool canUseCollection(std::string const& collection,
-                                       auth::Level requested) const {
-    std::abort();  // TODO remove this method
-  }
+  /// @brief returns AccessLevel for user
+  AccessLevel collectionAccessLevel(std::string_view dbname,
+                                    std::string_view collection) const;
+
   /// @brief returns true if auth level is above or equal `requested`
-  bool canUseCollection(std::string const& db, std::string const& coll,
-                        auth::Level requested) const {
-    return _authMode.getIAuth().canUse({Permission::DataSource{
-        .database = db, .name = coll, .level = requested}});
+  bool canUseCollection(std::string_view db, std::string_view coll,
+                        AccessLevel requested) const {
+    return _authMode.getIAuth().canUse(
+        {Permission::DataSource{.database = std::string(db),
+                                .name = std::string(coll),
+                                .level = requested}});
   }
+
+  /// @brief returns true if the user can be read
+  bool canReadUser(std::string_view user) const;
+
+  /// @brief returns true for each user which can be read
+  std::vector<bool> canReadUsers(std::vector<std::string> users) const;
+
+  /// @brief returns true if the user can be modified, note that everybody
+  // can modify themselves (if only to change the password).
+  bool canWriteUser(std::string_view user) const;
 
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {

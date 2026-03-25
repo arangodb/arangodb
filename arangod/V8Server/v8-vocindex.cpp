@@ -217,7 +217,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         "_create(<name>, <properties>, <type>, <options>)");
   }
 
-  if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RW)) {
+  if (!ExecContext::current().canUseDatabase(vocbase.name(),
+                                             AccessLevel::WriteMeta)) {
     events::CreateCollection(vocbase.name(), StaticStrings::Empty,
                              TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);

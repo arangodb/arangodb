@@ -306,7 +306,8 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
     // get the permissions to be used by this task
     auto const& dbname = _dbGuard->database().name();
-    bool allowContinue = _execContext->canUseDatabase(dbname, auth::Level::RW);
+    bool allowContinue =
+        _execContext->canUseDatabase(dbname, AccessLevel::WriteMeta);
 
     // permissions might have changed since starting this task
     if (_dbGuard->database().server().isStopping() || !allowContinue) {

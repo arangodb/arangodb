@@ -27,7 +27,6 @@
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
-#include "Utils/ExecContext.h"
 #include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -46,30 +45,6 @@ RestBaseHandler::RestBaseHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestHandler(server, request, response), _potentialDirtyReads(false) {}
-
-bool RestBaseHandler::isAdminUser() const {
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  }
-  return ExecContext::current().isAdminUser();
-}
-
-bool RestBaseHandler::isSelfUser(std::string const& user) const {
-  if (_request->authenticated() && user == _request->user()) {
-    return true;
-  }
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  }
-  return false;
-}
-
-bool RestBaseHandler::canAccessUser(std::string const& user) const {
-  if (_request->authenticated() && user == _request->user()) {
-    return true;
-  }
-  return isAdminUser();
-}
 
 // parses the body as VelocyPack
 velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {

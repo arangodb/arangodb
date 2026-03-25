@@ -242,7 +242,7 @@ class GraphOperations {
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;
   bool hasPermissionsFor(std::string const& collection,
-                         auth::Level level) const;
+                         AccessLevel level) const;
 
   Result checkEdgeDefinitionPermissions(
       EdgeDefinition const& edgeDefinition) const;

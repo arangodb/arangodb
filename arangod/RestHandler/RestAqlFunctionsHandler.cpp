@@ -35,6 +35,7 @@ RestAqlFunctionsHandler::RestAqlFunctionsHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/aql-builtin (prefix)
 RestStatus RestAqlFunctionsHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

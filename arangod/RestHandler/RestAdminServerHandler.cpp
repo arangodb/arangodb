@@ -26,6 +26,7 @@
 #include "Actions/RestActionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Handler.h"
+#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -52,6 +53,7 @@ RestAdminServerHandler::RestAdminServerHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/server (prefix)
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() == 1 && suffixes[0] == "mode") {
@@ -189,20 +191,12 @@ void RestAdminServerHandler::handleMode() {
   if (requestType == rest::RequestType::GET) {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    if (af->isActive() && !_request->user().empty()) {
-      auth::Level lvl;
-      if (af->userManager() != nullptr) {
-        lvl = af->userManager()->databaseAuthLevel(
-            _request->user(), StaticStrings::SystemDatabase,
-            /*configured*/ true);
-      } else {
-        lvl = auth::Level::RW;
-      }
-      if (lvl < auth::Level::RW) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-        return;
-      }
+    if (ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminMaintenance{})) {
+      generateError(
+          rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+          "You need AdminMaintenance rights for changing the server mode");
+      return;
     }
 
     bool parseSuccess = false;
@@ -245,7 +239,6 @@ void RestAdminServerHandler::handleMode() {
       return;
     }
     writeModeResult(ServerState::readOnly());
-
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -330,7 +323,8 @@ void RestAdminServerHandler::handleApiCalls() {
       return;
     }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminApiCalls{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "You need admin rights for recording API operations");
       return;
@@ -385,7 +379,8 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
       return;
     }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminAqlQueries{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights for recording API operations");
       return;

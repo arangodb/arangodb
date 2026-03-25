@@ -23,9 +23,6 @@
 
 #include "ExecContext.h"
 
-#include "Auth/UserManager.h"
-#include "Basics/StaticStrings.h"
-#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 
 using namespace arangodb;
@@ -69,13 +66,13 @@ bool ExecContext::isAuthEnabled() {
 }
 
 bool ExecContext::canUseDatabase(std::string const& db,
-                                 auth::Level requested) const {
+                                 AccessLevel requested) const {
   return _authMode.getIAuth().canUse(
       {Permission::Database{.name = db, .level = requested}});
 }
 
 /// @brief returns auth level for user
-auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
+auth::Level ExecContext::collectionAuthLevel(std::string_view dbname,
                                              std::string_view coll) const {
   std::abort();  // TODO remove this method
   //  if (isInternal()) {
@@ -115,6 +112,50 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   //                                   "unable to find userManager instance");
   //  }
   //  return um->collectionAuthLevel(_user, dbname, coll, false);
+}
+
+/// @brief returns AccessLevel for user
+AccessLevel ExecContext::collectionAccessLevel(
+    std::string_view dbname, std::string_view collection) const {
+  std::abort();
+}
+
+/// @brief returns true if the user can be read
+bool ExecContext::canReadUser(std::string_view user) const {
+  // TODO
+  // Pseudocode:
+  // if superuser: true
+  // if self: true
+  // if rbac:
+  //   return AdminReadUser(user)
+  // else:
+  //   return RW(_system)
+  return true;
+}
+
+/// @brief returns true if the user can be modified, note that everybody
+/// can modify themselves (if only to change the password).
+bool ExecContext::canWriteUser(std::string_view user) const {
+  // TODO
+  // Pseudocode:
+  // if superuser: true
+  // if self: true
+  // if rbac:
+  //   return AdminWriteUser(user)
+  // else:
+  //   return RW(_system)
+  return true;
+}
+
+/// @brief returns true if a database can be created or dropped
+bool ExecContext::canCreateOrDropDatabase(std::string_view db) const {
+  return true;
+}
+
+/// @brief returns true for each user which can be read
+std::vector<bool> ExecContext::canReadUsers(
+    std::vector<std::string> users) const {
+  return std::vector<bool>(users.size());
 }
 
 ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)

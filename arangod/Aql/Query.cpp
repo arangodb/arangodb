@@ -391,7 +391,7 @@ bool Query::tryLoadPlanFromCache() {
 
         if (!exec.isSuperuser()) {
           for (auto const& dataSource : cacheEntry->dataSources) {
-            if (!exec.canUseCollection(dataSource.second.name,
+            if (!exec.canUseCollection(_vocbase.name(), dataSource.second.name,
                                        dataSource.second.level)) {
               // cannot use query cache result because of permissions
               return false;
@@ -575,16 +575,16 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
     // add views
     for (auto const& it : _queryDataSources) {
       dataSources.try_emplace(it.first, QueryPlanCache::DataSourceEntry{
-                                            it.second, auth::Level::RO});
+                                            it.second, AccessLevel::Read});
     }
     // collect transaction DataSources
     _trx->state()->allCollections(
         [&dataSources](TransactionCollection& trxCollection) -> bool {
           auto const& c = trxCollection.collection();
-          auth::Level level =
+          AccessLevel level =
               trxCollection.accessType() == AccessMode::Type::READ
-                  ? auth::Level::RO
-                  : auth::Level::RW;
+                  ? AccessLevel::Read
+                  : AccessLevel::WriteData;
           dataSources.try_emplace(
               c->guid(), QueryPlanCache::DataSourceEntry{c->name(), level});
           return true;  // continue traversal
@@ -992,7 +992,7 @@ futures::Future<futures::Unit> Query::execute(
           // create a query cache entry for later storage
           _cacheEntry = std::make_unique<QueryCacheResultEntry>(
               hash(), _queryString, queryResult.data, bindParametersAsBuilder(),
-              std::move(dataSources)  // query DataSources
+              std::move(dataSources), _vocbase.name()  // query DataSources
           );
         }
 
@@ -1255,7 +1255,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       // create a cache entry for later usage
       _cacheEntry = std::make_unique<QueryCacheResultEntry>(
           hash(), _queryString, builder, bindParametersAsBuilder(),
-          std::move(dataSources)  // query DataSources
+          std::move(dataSources), _vocbase.name()  // query DataSources
       );
     }
 
@@ -2856,7 +2856,7 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   }
 
 #if 0
-  // TODO: currently does not work in cluster, as stats in cluster are only 
+  // TODO: currently does not work in cluster, as stats in cluster are only
   // updated after the query is removed from the query list.
   // these attributes can be added once the issue is fixed in cluster.
   builder.add("writesExecuted", VPackValue(_execStats.writesExecuted));

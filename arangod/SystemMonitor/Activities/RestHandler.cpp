@@ -23,6 +23,7 @@
 #include "RestHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 
 using namespace arangodb;
 using namespace arangodb::activities;
@@ -33,6 +34,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
     : RestVocbaseBaseHandler(server, request, response),
       _feature(server.getFeature<Feature>()) {}
 
+// Mounted at /_admin/activities (prefix)
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (_feature.isOnlySuperUserEnabled()) {
     if (!ExecContext::current().isSuperuser()) {
@@ -41,7 +43,8 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
       co_return;
     }
   } else {
-    if (!ExecContext::current().isAdminUser()) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminMonitoringInternal{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin user rights for activities operations");
       co_return;

@@ -30,6 +30,7 @@
 #include <Network/NetworkFeature.h>
 
 #include "Agency/AgencyPaths.h"
+#include "Auth/Rbac/Actions.h"
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Methods.h"
@@ -45,11 +46,22 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
+// Mounted at /_api/log (prefix, only when replication2 is enabled and in
+// cluster mode)
 auto RestLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    co_return;
+  if (_request->requestType() == RequestType::GET) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminReadReplicatedLog{})) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      co_return;
+    }
+  } else {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      co_return;
+    }
   }
 
   auto methods = ReplicatedLogMethods::createInstance(_vocbase);

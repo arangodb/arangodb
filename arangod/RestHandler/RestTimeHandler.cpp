@@ -37,6 +37,7 @@ RestTimeHandler::RestTimeHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/time (exact)
 RestStatus RestTimeHandler::execute() {
   VPackBuilder result;
   result.openObject(true);

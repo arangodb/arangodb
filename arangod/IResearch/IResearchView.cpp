@@ -423,8 +423,10 @@ Result IResearchView::dropImpl() {
         auto collection = vocbase().lookupCollection(entry);
         if (collection &&
             !ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), auth::Level::RO)) {
-          return {TRI_ERROR_FORBIDDEN};
+                vocbase().name(), collection->name(), AccessLevel::Read)) {
+          return {TRI_ERROR_FORBIDDEN,
+                  absl::StrCat("Need read access to collection '",
+                               collection->name(), "'")};
         }
       }
     }
@@ -605,7 +607,7 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
         auto collection = vocbase().lookupCollection(entry.first);
         if (collection &&
             !ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), auth::Level::RO)) {
+                vocbase().name(), collection->name(), AccessLevel::Read)) {
           return {
               TRI_ERROR_FORBIDDEN,
               absl::StrCat(

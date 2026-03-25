@@ -24,6 +24,7 @@
 #include "RestSupportInfoHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Utils/ExecContext.h"
@@ -40,6 +41,7 @@ RestSupportInfoHandler::RestSupportInfoHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/support-info (exact)
 RestStatus RestSupportInfoHandler::execute() {
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
   auto const& apiPolicy = gs.supportInfoApiPolicy();
@@ -53,7 +55,9 @@ RestStatus RestSupportInfoHandler::execute() {
     }
   }
 
-  if (apiPolicy == "admin" && !ExecContext::current().isAdminUser()) {
+  if (apiPolicy == "admin" &&
+      !ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminMonitoring{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");
     return RestStatus::DONE;

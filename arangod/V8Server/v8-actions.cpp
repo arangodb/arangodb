@@ -29,6 +29,7 @@
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -402,7 +403,8 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
-    if (user.empty() || ExecContext::current().isAdminUser()) {
+    if (user.empty() || ExecContext::current().isAdminUser(
+                            arangodb::rbac::Category::AdminFoxx{})) {
       req->Set(context, IsAdminUser, v8::True(isolate)).FromMaybe(false);
     } else {
       req->Set(context, IsAdminUser, v8::False(isolate)).FromMaybe(false);

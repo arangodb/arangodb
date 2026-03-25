@@ -91,6 +91,7 @@ RequestLane RestDocumentHandler::lane() const {
   return RequestLane::CLIENT_SLOW;
 }
 
+// Mounted at /_api/document (prefix)
 auto RestDocumentHandler::executeAsync() -> futures::Future<futures::Unit> {
   // extract the sub-request type
   auto const type = _request->requestType();

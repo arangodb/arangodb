@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Auth/Rbac/Actions.h"
 #include "RestHandler/RestBaseHandler.h"
 
 #include <mutex>
@@ -38,8 +39,6 @@ class RestSystemReportHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  private:
-  bool isAdminUser() const;
-
   static std::mutex _exclusive;
   std::unordered_map<std::string, std::string> const cmds;
 };

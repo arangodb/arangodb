@@ -24,6 +24,7 @@
 #include "RocksDBRestWalHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -46,6 +47,7 @@ RocksDBRestWalHandler::RocksDBRestWalHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/wal (prefix, RocksDB engine)
 RestStatus RocksDBRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
@@ -80,7 +82,8 @@ RestStatus RocksDBRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #else
-    if (!ExecContext::current().isAdminUser()) {
+    if (!ExecContext::current().isAdminUser(
+            arangodb::rbac::Category::AdminWalAccess{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights to produce a cluster info dump");
       return RestStatus::DONE;

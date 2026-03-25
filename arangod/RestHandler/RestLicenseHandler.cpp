@@ -27,6 +27,7 @@
 #include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/License/LicenseFeature.h"
 #endif
@@ -44,11 +45,13 @@ RestLicenseHandler::RestLicenseHandler(
     : RestBaseHandler(server, request, response) {}
 
 #ifndef USE_ENTERPRISE
+// Mounted at /_admin/license (prefix)
 RestStatus RestLicenseHandler::execute() {
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
-  if (!security.canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi(
+          arangodb::rbac::Category::AdminLicense{})) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
@@ -77,25 +80,3 @@ RestStatus RestLicenseHandler::execute() {
   return RestStatus::DONE;
 }
 #endif
-
-/// @brief check for administrator rights
-arangodb::Result RestLicenseHandler::verifyPermitted() {
-#ifdef USE_ENTERPRISE
-  auto& feature = server().getFeature<arangodb::LicenseFeature>();
-
-  // do we have admin rights (if rights are active)
-  if (feature.onlySuperUser()) {
-    if (!ExecContext::current().isSuperuser()) {
-      return arangodb::Result(
-          TRI_ERROR_HTTP_FORBIDDEN,
-          "you need super user rights for license operations");
-    }
-  } else {
-    if (!ExecContext::current().isAdminUser()) {
-      return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
-                              "you need admin rights for license operations");
-    }
-  }
-#endif
-  return arangodb::Result();
-}

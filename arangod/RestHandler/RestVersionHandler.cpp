@@ -129,13 +129,15 @@ void RestVersionHandler::getVersion(
   result.close();
 }
 
+// Mounted at /_api/version (exact) and /_admin/version (exact)
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
 
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
-  bool const allowInfo = security.canAccessHardenedApi();
+  bool const allowInfo =
+      security.canAccessHardenedApi(rbac::Category::AdminMonitoringInternal{});
   bool const includeDetails = _request->parsedValue("details", false);
   getVersion(server(), allowInfo, includeDetails, result,
              _request->requestedApiVersion());

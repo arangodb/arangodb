@@ -59,6 +59,7 @@ RestQueryHandler::RestQueryHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/query (prefix)
 RestStatus RestQueryHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

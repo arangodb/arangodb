@@ -74,7 +74,8 @@ QueryCacheResultEntry::QueryCacheResultEntry(
     uint64_t hash, QueryString const& queryString,
     std::shared_ptr<VPackBuilder> const& queryResult,
     std::shared_ptr<VPackBuilder> const& bindVars,
-    std::unordered_map<std::string, std::string>&& dataSources)
+    std::unordered_map<std::string, std::string>&& dataSources,
+    std::string_view databaseName)
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
@@ -85,7 +86,8 @@ QueryCacheResultEntry::QueryCacheResultEntry(
       _hits(0),
       _stamp(0.0),
       _prev(nullptr),
-      _next(nullptr) {
+      _next(nullptr),
+      _databaseName(databaseName) {
   // add result size
   try {
     if (_queryResult) {
@@ -172,7 +174,8 @@ bool QueryCacheResultEntry::currentUserHasPermissions() const {
   // got a result from the query cache
   if (!exec.isSuperuser()) {
     for (auto const& dataSource : _dataSources) {
-      if (!exec.canUseCollection(dataSource.second, auth::Level::RO)) {
+      if (!exec.canUseCollection(_databaseName, dataSource.second,
+                                 AccessLevel::Read)) {
         // cannot use query cache result because of permissions
         return false;
       }

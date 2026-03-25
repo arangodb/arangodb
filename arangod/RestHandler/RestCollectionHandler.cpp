@@ -80,6 +80,7 @@ RequestLane RestCollectionHandler::lane() const {
   return RequestLane::CLIENT_SLOW;
 }
 
+// Mounted at /_api/collection (prefix)
 futures::Future<futures::Unit> RestCollectionHandler::executeAsync() {
   switch (_request->requestType()) {
     case rest::RequestType::GET:
@@ -121,7 +122,7 @@ async<void> RestCollectionHandler::handleCommandGet() {
          methods::Collections::getNotDeleted(_vocbase)) {
       TRI_ASSERT(collection);
       bool const canUse = ExecContext::current().canUseCollection(
-          collection->name(), auth::Level::RO);
+          _vocbase.name(), collection->name(), AccessLevel::Read);
 
       if (canUse && (!excludeSystem || !collection->system())) {
         // We do not need a transaction here

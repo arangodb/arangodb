@@ -39,6 +39,7 @@ RestEngineHandler::RestEngineHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_api/engine (prefix)
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -70,7 +71,8 @@ void RestEngineHandler::handleGet() {
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
-  if (!security.canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi(
+          rbac::Category::AdminMonitoringInternal{})) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;

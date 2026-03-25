@@ -88,10 +88,11 @@ RestMetricsHandler::RestMetricsHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/metrics (prefix)
 auto RestMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto& security = server().getFeature<ServerSecurityFeature>();
 
-  if (!security.canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi(rbac::Category::AdminMonitoring{})) {
     // don't leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     co_return;

@@ -45,6 +45,8 @@ RestSimpleHandler::RestSimpleHandler(
     : RestCursorHandler(server, request, response, queryRegistry),
       _silent(true) {}
 
+// Mounted at /_api/simple/lookup-by-keys and /_api/simple/remove-by-keys
+// (prefix)
 auto RestSimpleHandler::executeAsync() -> futures::Future<futures::Unit> {
   // extract the request type
   auto const type = _request->requestType();

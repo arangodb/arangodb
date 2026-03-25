@@ -38,6 +38,7 @@ RestPublicOptionsHandler::RestPublicOptionsHandler(
     GeneralResponse* response)
     : RestOptionsBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/options-public (exact)
 futures::Future<futures::Unit> RestPublicOptionsHandler::executeAsync() {
   if (_request->requestType() != rest::RequestType::GET) {
     // only HTTP GET allowed
@@ -48,7 +49,8 @@ futures::Future<futures::Unit> RestPublicOptionsHandler::executeAsync() {
 
   // available to any user with at least read access to the database
   if (ExecContext::isAuthEnabled() &&
-      !ExecContext::current().canUseDatabase(auth::Level::RO)) {
+      !ExecContext::current().canUseDatabase(_request->databaseName(),
+                                             AccessLevel::Read)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");
     co_return;

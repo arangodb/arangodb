@@ -29,83 +29,208 @@
 
 namespace arangodb::rbac {
 
-auto Service::toAuthorizationQueries(Permission permission,
-                                     Category::Any const& category)
+auto Service::toAuthorizationQueries(Category::Any const& category)
     -> std::vector<AuthorizationQuery> {
-  using namespace std::string_view_literals;
-  auto const perm = permission == Permission::Read ? "Read"sv : "Write"sv;
-
-  // TODO For now, I've done this as I understand the design document.
-  //      However, I currently have doubts that this is how we would like to
-  //      implement it: e.g., requiring *write* permissions on both a database
-  //      and collection, just to write documents, seems questionable to me.
-  //      - Tobias
-  // TODO Refactor this to make it a little more readable. Some thoughts:
-  //      - Maybe expand the "perm" cases, trading some added redundancy for
-  //        readability.
-  //      - Maybe factor out the format calls, by e.g. introducing one local
-  //        lambda that dispatches actions, and one for resources, and reuse
-  //        them in this dispatch.
   return std::visit(
       overload{
-          [&](Category::Databases const&) -> std::vector<AuthorizationQuery> {
-            return {{std::format("db:{}Databases", perm), ""}};
-          },
-          [&](Category::Database const& c) -> std::vector<AuthorizationQuery> {
-            return {{std::format("db:{}Database", perm),
-                     std::format("db:database:{}", c.name)}};
-          },
-          [&](Category::Collection const& c)
+          [](Category::ReadDatabase const& c)
               -> std::vector<AuthorizationQuery> {
-            return {{std::format("db:{}Collection", perm),
-                     std::format("db:collection:{}:{}", c.database, c.name)},
-                    {std::format("db:{}Database", perm),
-                     std::format("db:database:{}", c.database)}};
+            return {{"db:ReadDatabase", std::format("db:database:{}", c.name)}};
           },
-          [&](Category::View const& c) -> std::vector<AuthorizationQuery> {
-            return {{std::format("db:{}View", perm),
-                     std::format("db:view:{}:{}", c.database, c.name)},
-                    {std::format("db:{}Database", perm),
-                     std::format("db:database:{}", c.database)}};
-          },
-          [&](Category::Analyzer const& c) -> std::vector<AuthorizationQuery> {
-            return {{std::format("db:{}Analyzer", perm),
-                     std::format("db:analyzer:{}:{}", c.database, c.name)},
-                    {std::format("db:{}Database", perm),
-                     std::format("db:database:{}", c.database)}};
-          },
-          [&](Category::Documents const& c) -> std::vector<AuthorizationQuery> {
+          [](Category::WriteDatabase const& c)
+              -> std::vector<AuthorizationQuery> {
             return {
-                {std::format("db:{}Documents", perm),
-                 std::format("db:collection:{}:{}", c.database, c.collection)},
-                {std::format("db:{}Collection", perm),
-                 std::format("db:collection:{}:{}", c.database, c.collection)},
-                {std::format("db:{}Database", perm),
-                 std::format("db:database:{}", c.database)}};
+                {"db:WriteDatabase", std::format("db:database:{}", c.name)}};
+          },
+          [](Category::ReadCollection const& c)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:ReadCollection",
+                     std::format("db:collection:{}:{}", c.database, c.name)}};
+          },
+          [](Category::WriteCollectionData const& c)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:WriteCollectionData",
+                     std::format("db:collection:{}:{}", c.database, c.name)}};
+          },
+          [](Category::WriteCollectionMeta const& c)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:WriteCollectionMeta",
+                     std::format("db:collection:{}:{}", c.database, c.name)}};
+          },
+          [](Category::ReadView const& c) -> std::vector<AuthorizationQuery> {
+            return {{"db:ReadView",
+                     std::format("db:view:{}:{}", c.database, c.name)}};
+          },
+          [](Category::WriteView const& c) -> std::vector<AuthorizationQuery> {
+            return {{"db:WriteView",
+                     std::format("db:view:{}:{}", c.database, c.name)}};
+          },
+          [](Category::ReadAnalyzer const& c)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:ReadAnalyzer",
+                     std::format("db:analyzer:{}:{}", c.database, c.name)}};
+          },
+          [](Category::WriteAnalyzer const& c)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:WriteAnalyzer",
+                     std::format("db:analyzer:{}:{}", c.database, c.name)}};
+          },
+          [](Category::UseApiVersion const& c)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:UseApiVersion",
+                     std::format("db:apiversion:{}", c.version)}};
+          },
+          [](Category::AdminReadUser const& c)
+              -> std::vector<AuthorizationQuery> {
+            return {
+                {"db:AdminReadUser", std::format("db:user:{}", c.username)}};
+          },
+          [](Category::AdminWriteUser const& c)
+              -> std::vector<AuthorizationQuery> {
+            return {
+                {"db:AdminWriteUser", std::format("db:user:{}", c.username)}};
+          },
+          [](Category::AdminMoveShards const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminMoveShards", ""}};
+          },
+          [](Category::AdminMonitoring const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminMonitoring", ""}};
+          },
+          [](Category::AdminMonitoringInternal const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminMonitoringInternal", ""}};
+          },
+          [](Category::AdminCompaction const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminCompaction", ""}};
+          },
+          [](Category::AdminAuthReload const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminAuthReload", ""}};
+          },
+          [](Category::AdminCrashHandler const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminCrashHandler", ""}};
+          },
+          [](Category::AdminApiCalls const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminApiCalls", ""}};
+          },
+          [](Category::AdminAqlQueries const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminAqlQueries", ""}};
+          },
+          [](Category::AdminShutdown const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminShutdown", ""}};
+          },
+          [](Category::AdminReadLogs const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminReadLogs", ""}};
+          },
+          [](Category::AdminSetLogLevel const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminSetLogLevel", ""}};
+          },
+          [](Category::AdminOptions const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminOptions", ""}};
+          },
+          [](Category::AdminSupervisionState const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminSupervisionState", ""}};
+          },
+          [](Category::AdminRemoveServer const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminRemoveServer", ""}};
+          },
+          [](Category::AdminClusterInfo const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminClusterInfo", ""}};
+          },
+          [](Category::AdminMaintenance const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminMaintenance", ""}};
+          },
+          [](Category::AdminRebalance const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminRebalance", ""}};
+          },
+          [](Category::AdminLicense const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminLicense", ""}};
+          },
+          [](Category::AdminBackup const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminBackup", ""}};
+          },
+          [](Category::AdminJobs const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminJobs", ""}};
+          },
+          [](Category::AdminTasks const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminTasks", ""}};
+          },
+          [](Category::AdminReadReplicatedLog const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminReadReplicatedLog", ""}};
+          },
+          [](Category::AdminWriteReplicatedLog const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminWriteReplicatedLog", ""}};
+          },
+          [](Category::AdminDump const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminDump", ""}};
+          },
+          [](Category::AdminRestore const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminRestore", ""}};
+          },
+          [](Category::AdminReplication const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminReplication", ""}};
+          },
+          [](Category::AdminWalAccess const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminWalAccess", ""}};
+          },
+          [](Category::AdminReadAgency const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminReadAgency", ""}};
+          },
+          [](Category::AdminReadOnlyMode const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminReadOnlyMode", ""}};
+          },
+          [](Category::AdminFoxx const&) -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminFoxx", ""}};
+          },
+          [](Category::AdminReadAqlFunctions const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminReadAqlFunctions", ""}};
+          },
+          [](Category::AdminWriteAqlFunctions const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminWriteAqlFunctions", ""}};
           },
       },
       category);
 }
 
-auto Service::may(User user, Permission permission,
-                  Category::Any const& category) noexcept
+auto Service::may(User user, Category::Any const& category) noexcept
     -> async<ResultT<bool>> {
-  auto queries = toAuthorizationQueries(permission, category);
+  auto queries = toAuthorizationQueries(category);
   return mayImpl(std::move(user), std::move(queries));
 }
 
-auto Service::maySync(Service::User user, Service::Permission permission,
-                      Service::Category::Any const& category) noexcept
-    -> ResultT<bool> {
-  auto queries = toAuthorizationQueries(permission, category);
+auto Service::maySync(Service::User user,
+                      Category::Any const& category) noexcept -> ResultT<bool> {
+  auto queries = toAuthorizationQueries(category);
   return maySyncImpl(std::move(user), std::move(queries));
 }
 
-auto Service::mayAll(User user, std::vector<PermissionQuery> queries) noexcept
+auto Service::mayAll(User user, std::vector<Category::Any> categories) noexcept
     -> async<ResultT<bool>> {
   std::vector<AuthorizationQuery> authQueries;
-  for (auto& q : queries) {
-    auto expanded = toAuthorizationQueries(q.permission, q.category);
+  for (auto& c : categories) {
+    auto expanded = toAuthorizationQueries(c);
     authQueries.insert(authQueries.end(),
                        std::make_move_iterator(expanded.begin()),
                        std::make_move_iterator(expanded.end()));
@@ -114,11 +239,11 @@ auto Service::mayAll(User user, std::vector<PermissionQuery> queries) noexcept
 }
 
 auto Service::mayAllSync(User user,
-                         std::vector<PermissionQuery> queries) noexcept
+                         std::vector<Category::Any> categories) noexcept
     -> ResultT<bool> {
   std::vector<AuthorizationQuery> authQueries;
-  for (auto& q : queries) {
-    auto expanded = toAuthorizationQueries(q.permission, q.category);
+  for (auto& c : categories) {
+    auto expanded = toAuthorizationQueries(c);
     authQueries.insert(authQueries.end(),
                        std::make_move_iterator(expanded.begin()),
                        std::make_move_iterator(expanded.end()));

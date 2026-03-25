@@ -24,6 +24,7 @@
 #include "RestTelemetricsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Utils/ExecContext.h"
@@ -122,6 +123,7 @@ RestTelemetricsHandler::RestTelemetricsHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+// Mounted at /_admin/telemetrics (exact)
 RestStatus RestTelemetricsHandler::execute() {
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
   if (!gs.isTelemetricsEnabled()) {
@@ -143,7 +145,9 @@ RestStatus RestTelemetricsHandler::execute() {
     }
   }
 
-  if (apiPolicy == "admin" && !ExecContext::current().isAdminUser()) {
+  if (apiPolicy == "admin" &&
+      !ExecContext::current().isAdminUser(
+          arangodb::rbac::Category::AdminMonitoringInternal{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");
     return RestStatus::DONE;

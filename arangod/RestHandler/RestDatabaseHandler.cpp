@@ -44,6 +44,7 @@ RestDatabaseHandler::RestDatabaseHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/database (prefix)
 RestStatus RestDatabaseHandler::execute() {
   // extract the request type
   rest::RequestType const type = _request->requestType();

@@ -24,6 +24,7 @@
 #include "RestOptionsBaseHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Utils/ExecContext.h"
@@ -50,7 +51,8 @@ bool RestOptionsBaseHandler::checkAuthentication() {
     }
   }
 
-  if (apiPolicy == "admin" && !ExecContext::current().isAdminUser()) {
+  if (apiPolicy == "admin" && !ExecContext::current().isAdminUser(
+                                  arangodb::rbac::Category::AdminOptions{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");
     return false;

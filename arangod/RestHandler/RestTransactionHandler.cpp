@@ -107,6 +107,7 @@ RequestLane RestTransactionHandler::lane() const {
   return RequestLane::CLIENT_V8;
 }
 
+// Mounted at /_api/transaction (prefix)
 auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
   switch (_request->requestType()) {
     case rest::RequestType::POST:

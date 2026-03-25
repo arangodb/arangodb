@@ -35,6 +35,7 @@ RestKeyGeneratorsHandler::RestKeyGeneratorsHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+// Mounted at /_api/key-generators (prefix)
 RestStatus RestKeyGeneratorsHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
