@@ -103,9 +103,6 @@ std::string const RestVocbaseBaseHandler::REPLICATION_PATH =
 // tasks path
 std::string const RestVocbaseBaseHandler::TASKS_PATH = "/_api/tasks";
 
-// upload path
-std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
-
 // users path
 std::string const RestVocbaseBaseHandler::USERS_PATH = "/_api/user";
 
