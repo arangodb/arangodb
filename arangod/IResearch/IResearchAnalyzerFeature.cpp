@@ -1156,9 +1156,15 @@ bool IResearchAnalyzerFeature::canUse(std::string_view name,
                                       auth::Level const& level) {
   auto& ctx = ExecContext::current();
 
-  if (ctx.isAdminUser()) {
-    return true;  // authentication not enabled
-  }
+  // TODO This methods does not make sense to me.
+  // First:
+  // ctx.canUseCollection(vocbaseName, arangodb::StaticStrings::AnalyzersCollection, level)
+  // will fallback to the database permissions, because it is a system collection.
+  // So it will always be the same as ctx.canUseDatabase(vocbaseName, level).
+  // Second:
+  // Whether it's a static analyzer is checked first by looking it up in a map,
+  // but then again by checking whether the database name (the part before `::`)
+  // is empty. One or either of those should be unnecessary.
 
   auto& staticAnalyzers = getStaticAnalyzers();
 
