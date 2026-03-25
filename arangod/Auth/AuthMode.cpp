@@ -157,9 +157,9 @@ auto AuthMode::Unauthenticated::canUse(Permission permission) const -> bool {
       [](auto const& perm) -> bool {
         using T = std::decay_t<decltype(perm)>;
         if constexpr (std::is_same_v<T, Permission::Database>) {
-          return perm.level <= auth::Level::NONE;
+          return perm.level <= AccessLevel::None;
         } else if constexpr (std::is_same_v<T, Permission::DataSource>) {
-          return perm.level <= auth::Level::NONE;
+          return perm.level <= AccessLevel::None;
         } else {
           return false;
         }
