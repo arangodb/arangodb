@@ -144,7 +144,7 @@ def _check_requirements_match(
     # if we should filter for a name:
     if (FilterCriteria.test_suite is not None and
         FilterCriteria.test_suite != "" and
-        name.find(FilterCriteria.test_suite) >= 0):
+        not (name.find(FilterCriteria.test_suite) >= 0)):
         return False
     return True
 
