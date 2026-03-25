@@ -166,6 +166,7 @@ jobs:
       config-definitions-branches:
         type: string
         default: ""
+      
     steps:
       - run:
           name: Print pipeline parameters
@@ -251,7 +252,7 @@ jobs:
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
                 --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
-                --test-suite "<<parameters.filter-testsuite>>" \
+                --test-suite "<<pipeline.parameters.filter-testsuite>>" \
                 -o continuation_config.yml \
                 ./.circleci/base_config.yml \
                 << parameters.definitions >>
