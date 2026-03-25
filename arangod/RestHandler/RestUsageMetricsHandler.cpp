@@ -48,7 +48,8 @@ RestUsageMetricsHandler::RestUsageMetricsHandler(
 auto RestUsageMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto& security = server().getFeature<ServerSecurityFeature>();
 
-  if (!security.canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi(
+          rbac::Category::AdminMonitoringInternal{})) {
     // don't leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     co_return;

@@ -1711,8 +1711,8 @@ S/A          - API is switchable between superuser and admin access, additionall
 | DELETE | `/_admin/job/all`                                            |                            |                                     |                                          |                        |
 | DELETE | `/_admin/job/expired`                                        |                            |                                     |                                          |                        |
 | DELETE | `/_admin/job/{id}`                                           |                            |                                     |                                          |                        |
-| GET    | `/_admin/license`                                            | RestLicenseHandler(EE)     | AdminLicense                        |                                          |                        |
-| PUT    | `/_admin/license`                                            | RestLicenseHandler(EE)     | AdminLicense                        |                                          |                        |
+| GET    | `/_admin/license`                                            | RestLicenseHandler(EE)     | AdminLicense HARD                   |                                          |                        |
+| PUT    | `/_admin/license`                                            | RestLicenseHandler(EE)     | AdminLicense HARD                   |                                          |                        |
 | GET    | `/_admin/log`                                                | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
 | GET    | `/_admin/log/entries`                                        | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
 | GET    | `/_admin/log/level`                                          | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
@@ -1722,7 +1722,7 @@ S/A          - API is switchable between superuser and admin access, additionall
 | DELETE | `/_admin/log`                                                | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
 | DELETE | `/_admin/log/entries`                                        | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
 | DELETE | `/_admin/log/level`                                          | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
-| GET    | `/_admin/metrics`                                            |                            |                                     |                                          |                        |
+| GET    | `/_admin/metrics`                                            | RestMetricsHandler         | AdminMonitoring HARD                |                                          |                        |
 | GET    | `/_admin/options`                                            | RestOptionsHandler         | S/A AdminOptions                    |                                          |                        |
 | GET    | `/_admin/options-description`                                | RestOptionsHandler         | S/A AdminOptions                    |                                          |                        |
 | GET    | `/_admin/options-public`                                     | RestOptionsHandler         | AUTHEN + DB RO                      | NON_STANDARD                             |                        |
@@ -1743,17 +1743,17 @@ S/A          - API is switchable between superuser and admin access, additionall
 | POST   | `/_admin/server/encryption`                                  | RestAdminServerHandler     | SUPER                               |                                          |                        |
 | GET    | `/_admin/shutdown`                                           |                            |                                     |                                          |                        |
 | DELETE | `/_admin/shutdown`                                           |                            |                                     |                                          |                        |
-| GET    | `/_admin/statistics`                                         |                            |                                     |                                          |                        |
-| GET    | `/_admin/statistics-description`                             |                            |                                     |                                          |                        |
-| GET    | `/_admin/status`                                             |                            |                                     |                                          |                        |
+| GET    | `/_admin/statistics`                                         | RestAdminStatisticsHandler | AdminMonitoring HARD                |                                          |                        |
+| GET    | `/_admin/statistics-description`                             | RestAdminStatisticsHandler | AdminMonitoring HARD                |                                          |                        |
+| GET    | `/_admin/status`                                             | RestAdminStatusHandler     | AdminMonitoring HARD                |                                          |                        |
 | GET    | `/_admin/supervisionState`                                   | RestSupervisionStateHandler| AdminSupervisionState               | (cluster only)                           |                        |
 | GET    | `/_admin/support-info`                                       | RestSupportInfoHandler     | AdminMonitoring                     |                                          |                        |
-| GET    | `/_admin/system-report`                                      |                            |                                     |                                          |                        |
+| GET    | `/_admin/system-report`                                      | RestSystemReportHandler    | AdminMonitoringInternal HARD        |                                          |                        |
 | GET    | `/_admin/telemetrics`                                        | RestTelemtricsHandler      | AdminMonitoringInternal             |                                          |                        |
 | DELETE | `/_admin/telemetrics`                                        | RestTelemetricsHandler     | AdminMonitoringInternal             |                                          |                        |
 | GET    | `/_admin/time`                                               |                            |                                     |                                          |                        |
-| GET    | `/_admin/usage-metrics`                                      |                            |                                     |                                          |                        |
-| GET    | `/_admin/version`                                            |                            |                                     |                                          |                        |
+| GET    | `/_admin/usage-metrics`                                      | RestUsageMetricsHandler    | AdminMonitoringInternal HARD        |                                          |                        |
+| GET    | `/_admin/version`                                            | RestVersionhandler         | AUTHEN, details (2)                 |                                          |                        |
 | GET    | `/_admin/wal/properties`                                     | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
 | PUT    | `/_admin/wal/properties`                                     | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
 | GET    | `/_admin/wal/transactions`                                   | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
@@ -1835,8 +1835,8 @@ S/A          - API is switchable between superuser and admin access, additionall
 | GET    | `/_api/edges/{collection}`                                   |                            |                                     |                                          |                        |
 | POST   | `/_api/edges/{collection}`                                   |                            |                                     |                                          |                        |
 | GET    | `/_api/endpoint`                                             |                            |                                     |                                          |                        |
-| GET    | `/_api/engine`                                               |                            |                                     |                                          |                        |
-| GET    | `/_api/engine/stats`                                         |                            |                                     |                                          |                        |
+| GET    | `/_api/engine`                                               | RestEngineHandler          | AdminMonitoringInternal HARD        |                                         |
+| GET    | `/_api/engine/stats`                                         | RestEngineHandler          | AdminMonitoringInternal HARD        |                                          |                        |
 | POST   | `/_api/explain`                                              |                            |                                     |                                          |                        |
 | GET    | `/_api/gharial`                                              |                            |                                     |                                          |                        |
 | POST   | `/_api/gharial`                                              |                            |                                     |                                          |                        |
@@ -1960,7 +1960,7 @@ S/A          - API is switchable between superuser and admin access, additionall
 | DELETE | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
 | DELETE | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
 | DELETE | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| GET    | `/_api/version`                                              |                            |                                     |                                          |                        |
+| GET    | `/_api/version`                                              | RestVersionHandler         | AUTHEN, details (2)                 |                                          |                        |U
 | GET    | `/_api/view`                                                 |                            |                                     |                                          |                        |
 | POST   | `/_api/view`                                                 |                            |                                     |                                          |                        |
 | DELETE | `/_api/view/{name}`                                          |                            |                                     |                                          |                        |
@@ -2019,3 +2019,9 @@ S/A          - API is switchable between superuser and admin access, additionall
 
 
 (1) For `arangorestore`, if `--overwrite=true`, then we need COLL RW, if `--overwrite=false`, we only need COLL RWDATA
+(2) For `/_api/version`, details can only be queried with `AdminMonitoringInternal`, if `--server.harden=true`
+
+Rules:
+ - internal use of system collections allowed without check
+ - read access to system collections can be regulated by RBAC if switched on
+ - write access (with normal APIs) to system collections is superuser only

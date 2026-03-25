@@ -46,9 +46,7 @@ class ServerSecurityFeature final
   bool isFoxxApiDisabled() const noexcept;
   bool isFoxxStoreDisabled() const noexcept;
   bool canAccessHardenedApi(
-      arangodb::rbac::Category::Any const& action =
-          arangodb::rbac::Category::AdminMonitoring{} /* FIXME */)
-      const noexcept;
+      arangodb::rbac::Category::Any const& action) const noexcept;
   bool foxxAllowInstallFromRemote() const noexcept;
 
  private:
