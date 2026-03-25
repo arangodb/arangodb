@@ -181,6 +181,8 @@ def create_generator_config(
 
     assert build_variants, "build_variants must not be empty (logic error)"
 
+    print('yyy1')
+    print(test_suite)
     # Create filter criteria
     filter_criteria = FilterCriteria(
         gtest=gtest,
