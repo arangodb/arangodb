@@ -337,7 +337,7 @@ def main(
             test_defs = load_test_definitions(definition_list, driver_branches_dict)
         else:
             test_defs = []
-        print(test_suite)
+
         # Create generator config
         config = create_generator_config(
             tsan=tsan,
