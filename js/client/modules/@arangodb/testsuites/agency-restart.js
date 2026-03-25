@@ -73,7 +73,6 @@ function runArangodRecovery (params, agencyMgr) {
 
     // enable development debugging if extremeVerbosity is set
     let args = Object.assign({
-      'server.rest-server': 'false',
       'javascript.script': params.script,
       'log.output': 'file://' + params.crashLog
     }, params.options.extraArgs);

@@ -61,7 +61,7 @@ start () {
     case "$1" in
         "--upgrade")
             shift
-            $ARANGO_BIN --uid arangodb --gid arangodb --server.rest-server false --database.auto-upgrade true $@
+            $ARANGO_BIN --uid arangodb --gid arangodb --database.auto-upgrade true $@
             RETVAL=$?
             rc_status -v
             ;;

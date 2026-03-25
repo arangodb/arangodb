@@ -517,7 +517,8 @@ Mode:
 ### Runtime
 
 - start arangod with `--console` to get a debug console
-- Cheapen startup for valgrind: `--server.rest-server false`
+- Under valgrind, use a small test database and low log verbosity (e.g.
+  `--log.level error`) to shorten runs.
 
 ### Startup
 

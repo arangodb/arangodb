@@ -38,11 +38,11 @@ start () {
     ( cd $PIDDIR && chown arangodb:arangodb . ) || exit 1
 
     if [ "$1" = "--database.auto-upgrade" ]; then
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --server.rest-server false $@
+      $DAEMON -c $CONF --uid arangodb --gid arangodb $@
       RETVAL=$?
       log_end_msg $RETVAL
     else
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --server.rest-server --log.foreground-tty false --database.check-version true
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --log.foreground-tty false --database.check-version true
       RETVAL=$?
 
       if [ "$RETVAL" -eq 0 ];  then

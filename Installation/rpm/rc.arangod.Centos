@@ -41,7 +41,7 @@ start() {
   case "$1" in
       "--upgrade")
           shift
-          $ARANGO_BIN --uid arangodb --gid arangodb --server.rest-server false --database.auto-upgrade true $@
+          $ARANGO_BIN --uid arangodb --gid arangodb --database.auto-upgrade true $@
           RETVAL=$?
           ;;
       "--reopen-logs")
@@ -53,7 +53,7 @@ start() {
           log_end_msg $RETVAL
           ;;
       *)
-          $ARANGO_BIN --uid arangodb --gid arangodb --server.rest-server false --log.foreground-tty false --database.check-version
+          $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --database.check-version
           RETVAL=$?
 
           if [ "$RETVAL" -eq 0 ];  then

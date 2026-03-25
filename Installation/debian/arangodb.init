@@ -43,7 +43,7 @@ start () {
     case "$1" in
         "--upgrade")
             shift
-            $DAEMON --uid arangodb --gid arangodb --server.rest-server false --database.auto-upgrade true $@
+            $DAEMON --uid arangodb --gid arangodb --database.auto-upgrade true $@
             RETVAL=$?
             log_end_msg $RETVAL
             ;;
@@ -56,7 +56,7 @@ start () {
             log_end_msg $RETVAL
             ;;
         *)
-            $DAEMON --uid arangodb --gid arangodb --server.rest-server false --log.foreground-tty false --database.check-version
+            $DAEMON --uid arangodb --gid arangodb --log.foreground-tty false --database.check-version
             RETVAL=$?
 
             if [ "$RETVAL" -eq 0 ];  then
