@@ -328,20 +328,6 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     }
 
-  } else if (suffixes.size() == 1) {
-    // validate username / password
-    std::string const& user = suffixes[0];
-    std::string password;
-    VPackSlice s = body.get("passwd");
-    if (s.isString()) {
-      password = s.copyString();
-    }
-    std::string un;
-    if (um->checkCredentials(user, password, un)) {
-      generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
-    } else {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
-    }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
   }

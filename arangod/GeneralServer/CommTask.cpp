@@ -840,42 +840,48 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     }
 #endif
 
+    // TODO Revisit this in face of RBAC.
+    //      - Can we remove it in 4.0, together with `--server.authentication-system-only`?
+    //      - Shouldn't the forceSuperuser be done as part of the responsible
+    //        RestHandler (i.e. RestActionHandler) instead of here?
     if (result == Flow::Abort && _auth->authenticationSystemOnly()) {
-      // authentication required, but only for /_api, /_admin etc.
-      if (!path.empty()) {
-        // check if path starts with /_
-        // or path begins with /
-        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
-          // simon: upgrade rights for Foxx apps. FIXME
-          result = Flow::Continue;
-          vc->forceSuperuser();
-          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
-              << "Upgrading rights for " << path;
-        }
+      // With system-only authentication, authorization is required as usual for
+      // the following paths:
+      // - ""
+      // - "/"
+      // - everything prefixed by "/_" (e.g. "/_api", "/_admin", etc.)
+      // For everything else, authentication is not required. Afaik, this only
+      // includes Foxx apps, i.e. the RestActionHandler.
+      // I think that at least the "forceSuperuser" part should be moved to the
+      // RestActionHandler, while we need to keep overriding the flow-result.
+      if (!path.empty() && path != "/" && !path.starts_with("/_")) {
+        // simon: upgrade rights for Foxx apps. FIXME
+        result = Flow::Continue;
+        vc->forceSuperuser();
+        LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
+            << "Upgrading rights for " << path;
       }
     }
 
     if (result == Flow::Abort) {
-      std::string const& username = req.user();
-
+      // TODO Handle this with a list of allowed paths, to make the logic easier
+      //      to follow. Instead of overriding the result as an afterthought,
+      //      it should be part of the previous check that currently sets result
+      //      to Flow::Abort in the affected cases.
       if (path == "/" || path.starts_with(::pathPrefixOpen) ||
           path.starts_with(::pathPrefixAdminAardvark) ||
           path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = Flow::Continue;
+        // TODO Do we really need to do this? Shouldn't the permissions checks
+        //      of the respective RestHandlers be able to handle this? Or to put
+        //      it differently: Why are they doing permission checks, if they
+        //      are only ever called with superuser permissions?
         vc->forceSuperuser();
       } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
         // allow authenticated users to access cluster/endpoints
         result = Flow::Continue;
-        // vc->forceReadOnly();
-      } else if (req.requestType() == RequestType::POST && !username.empty() &&
-                 path.starts_with(std::string{::pathPrefixApiUser} + username +
-                                  '/')) {
-        // simon: unauthorized users should be able to call
-        // `/_api/user/<name>` to check their passwords
-        result = Flow::Continue;
-        vc->forceReadOnly();
       } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
         result = Flow::Continue;
       } else if (userAuthenticated && path.starts_with(::pathPrefixApiToken)) {
