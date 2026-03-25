@@ -1021,9 +1021,9 @@ class instanceManager {
             haveMaintainance = false;
             this._setMaintenance(false);
           }
-          if (role === instanceRole.agent) {
+          if (arangod.isRole(instanceRole.agent)) {
             print("running agency health check");
-            this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
+            this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions, true);
           }
         }
       });

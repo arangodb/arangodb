@@ -153,6 +153,7 @@ class EnumerateNearVectorsExecutor {
   std::size_t _currentProcessedResultCount{0};
   // needed to enable fullCount to work
   std::size_t _processedInputs{0};
+  bool _reportedCurrentRowForFullCount{false};
   std::size_t _collectionCount{
       _collection->count(&_trx, transaction::CountType::kNormal)};
 };

@@ -62,12 +62,12 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "RestServer/VectorIndexFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/AgencyMock.h"
@@ -110,9 +110,9 @@
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-#include "utils/log.hpp"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
@@ -176,7 +176,8 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true,
                                          std::span<const std::type_index>{});
-  server.addFeature<ViewTypesFeature>(false);  // true ??
+  server.addFeature<ViewTypesFeature>(false);    // true ??
+  server.addFeature<MaintenanceFeature>(false);  // do not start the thread
   server.addFeature<VectorIndexFeature>(true);
 
 #if USE_ENTERPRISE
@@ -850,8 +851,7 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
 MockDBServer::MockDBServer(ServerID serverId, bool start, bool useAgencyMock)
     : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_DBSERVER,
                         serverId) {
-  addFeature<FlushFeature>(false);        // do not start the thread
-  addFeature<MaintenanceFeature>(false);  // do not start the thread
+  addFeature<FlushFeature>(false);  // do not start the thread
 
   // turn off auto-repairing of revision trees for unit tests
   auto& rf = addFeature<arangodb::ReplicationFeature>(

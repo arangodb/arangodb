@@ -262,6 +262,28 @@
 
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+* COR-255: Fixed vector index not being properly trained on follower shards
+  when replicationFactor is increased. Followers now automatically train and
+  populate vector indexes from local documents after initial sync.
+  Vector index training now happens in the background; index creation returns
+  immediately and queries return error 1555 (`ERROR_QUERY_VECTOR_INDEX_NOT_READY`)
+  until training completes.
+  The REST index API (`GET /_api/index`) now includes per-shard training state
+  for vector indexes in cluster deployments.
+  Added four new vector index metrics: `arangodb_vector_index_unusable`,
+  `arangodb_vector_index_training_ongoing`, `arangodb_vector_index_training_duration`,
+  and `arangodb_vector_index_ingestion_duration`.
+
+* Make defaults for JavaScript security options stricter: Use a default deny
+  policy for the following options:
+    - `--javascript.endpoints-allowlist`
+    - `--javascript.environment-variables-allowlist`
+    - `--javascript.files-allowlist`
+    - `--javascript.startup-options-allowlist`
+  This changes nothing if you **have set these options**. But if you have not,
+  then the default is now "deny".
+
+* Fix an issue when removing documents while using sparse vector index.
 
 * Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 

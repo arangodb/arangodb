@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -19,10 +19,14 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Metrics/MetricsFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Parameters.h"
 
@@ -30,7 +34,10 @@ namespace arangodb {
 
 VectorIndexFeature::VectorIndexFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : ApplicationFeature{server, *this},
+      _buildManager(server.getFeature<DatabaseFeature>(),
+                    server.getFeature<MaintenanceFeature>(),
+                    server.getFeature<metrics::MetricsFeature>()) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -44,6 +51,32 @@ void VectorIndexFeature::collectOptions(
       true);
 
   options->addOldOption("--experimental-vector-index", "--vector-index");
+}
+
+bool VectorIndexFeature::shouldRunBuildManager() const {
+  return isVectorIndexEnabled() && (ServerState::instance()->isDBServer() ||
+                                    ServerState::instance()->isSingleServer());
+}
+
+void VectorIndexFeature::start() {
+  if (!shouldRunBuildManager()) {
+    return;
+  }
+  _buildManager.start();
+}
+
+void VectorIndexFeature::beginShutdown() {
+  if (!shouldRunBuildManager()) {
+    return;
+  }
+  _buildManager.beginShutdown();
+}
+
+void VectorIndexFeature::stop() {
+  if (!shouldRunBuildManager()) {
+    return;
+  }
+  _buildManager.stop();
 }
 
 bool VectorIndexFeature::isVectorIndexEnabled() const {

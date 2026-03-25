@@ -62,9 +62,10 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -251,7 +252,7 @@ struct IResearchExpressionFilterTest
                           false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);
-    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
+    features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
                           false);
 
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
@@ -270,6 +271,8 @@ struct IResearchExpressionFilterTest
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
                 nullptr)),
         false);
+    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
+                          false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.getFeature<arangodb::metrics::MetricsFeature>()),

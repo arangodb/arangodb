@@ -28,7 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 
 using namespace arangodb::application_features;
 
