@@ -153,7 +153,7 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
         True if job should be included, False otherwise
     """
     # Check common requirements (architecture, full, instrumentation)
-    if not _check_requirements_match(job.name, job.requires, criteria):
+    if not _check_requirements_match(job.requires, criteria):
         return False
 
     # if we should filter for a name:
