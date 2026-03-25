@@ -291,7 +291,7 @@ commands:
         type: string
       use-s3-workspace:
         type: boolean
-        default: true
+        default: false
     steps:
       - add_ssh_keys:
           fingerprints:
