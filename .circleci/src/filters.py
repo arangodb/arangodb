@@ -203,7 +203,7 @@ def should_include_suite(suite: SuiteConfig, criteria: FilterCriteria) -> bool:
         True if suite should be included, False otherwise
     """
     # Check common requirements (architecture, full, instrumentation)
-    return _check_requirements_match(suite.requires, criteria)
+    return _check_requirements_match(suite.name, suite.requires, criteria)
 
 
 def filter_suites(job: TestJob, criteria: FilterCriteria) -> List[SuiteConfig]:
