@@ -174,6 +174,12 @@ Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
 }
 
 Result LogicalView::drop() {
+  // TODO We mark a view as deleted before doing any permission checks (or maybe
+  //      check for other failure conditions), but happily report it as deleted
+  //      in the meantime.
+  //      So if one user tries to drop the view, but it fails (e.g. due to missing permissions);
+  //      and a second user tries to drop it while the first try is running,
+  //      it will see a success, but the view is still there.
   if (deleted()) {
     return {};  // view already dropped
   }
