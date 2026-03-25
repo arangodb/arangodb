@@ -113,7 +113,36 @@ struct AuthMode {
     [[nodiscard]] auto canUse(Permission permission) const -> bool override;
   };
 
-  using Any = std::variant<Superuser, Classic, Rbac, Unauthenticated, Disabled>;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  struct Mockable : IAuth {
+    // Use pImpl and delegate in order to avoid having to include gmock
+    std::shared_ptr<IAuth> mock;
+
+    // If you don't want Mockable to own the mock, pass a raw pointer to this
+    // constructor:
+    Mockable(IAuth* mock)
+        : mock(mock, [](auto*){}) {}
+
+    // construct from any compatible unique_ptr:
+    template<typename T, typename D>
+      requires std::derived_from<T, IAuth>
+    Mockable(std::unique_ptr<T, D> mock)
+        : mock(std::move(mock)) {}
+
+    // construct from a shared_ptr
+    Mockable(std::shared_ptr<IAuth> mock)
+        : mock(std::move(mock)) {}
+
+    [[nodiscard]] auto username() const noexcept -> std::string_view override;
+    [[nodiscard]] auto canUse(Permission permission) const -> bool override;
+  };
+#define MOCKABLE , Mockable
+#else
+#define MOCKABLE
+#endif
+
+  using Any =
+      std::variant<Superuser, Classic, Rbac, Unauthenticated, Disabled MOCKABLE>;
 
   [[nodiscard]] auto getIAuth() -> IAuth&;
   [[nodiscard]] auto getIAuth() const -> IAuth const&;

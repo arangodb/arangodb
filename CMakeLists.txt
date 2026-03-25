@@ -821,8 +821,8 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
   endif()
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "19.0")
-  # broken warnings in clang-19
-    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=missing-designated-field-initializers")
+    # We explicitly want to be able to use field initializers for partial initialization.
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-missing-designated-field-initializers")
   endif()
 else()
   # unknown compiler

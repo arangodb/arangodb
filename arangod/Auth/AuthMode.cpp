@@ -23,6 +23,7 @@
 
 #include "AuthMode.h"
 
+#include "Assertions/ProdAssert.h"
 #include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/overload.h"
@@ -169,6 +170,16 @@ auto AuthMode::Disabled::username() const noexcept -> std::string_view {
 
 auto AuthMode::Disabled::canUse(Permission permission) const -> bool {
   return true;
+}
+
+auto AuthMode::Mockable::username() const noexcept -> std::string_view {
+  ADB_PROD_ASSERT(mock != nullptr);
+  return mock->username();
+}
+
+auto AuthMode::Mockable::canUse(Permission permission) const -> bool {
+  ADB_PROD_ASSERT(mock != nullptr);
+  return mock->canUse(permission);
 }
 
 }  // namespace arangodb
