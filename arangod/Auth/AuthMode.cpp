@@ -153,12 +153,26 @@ auto AuthMode::Rbac::canUse(Permission permission) const -> bool {
   // access to the collection somehow!
 }
 
+AuthMode::Unauthenticated::Unauthenticated(std::string username)
+    : _username(std::move(username)) {}
+
 auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
-  return "";
+  return _username;
 }
 
 auto AuthMode::Unauthenticated::canUse(Permission permission) const -> bool {
-  return false;
+  return std::visit(
+      [](auto const& perm) -> bool {
+        using T = std::decay_t<decltype(perm)>;
+        if constexpr (std::is_same_v<T, Permission::Database>) {
+          return perm.level <= auth::Level::NONE;
+        } else if constexpr (std::is_same_v<T, Permission::DataSource>) {
+          return perm.level <= auth::Level::NONE;
+        } else {
+          return false;
+        }
+      },
+      permission.permission);
 }
 
 AuthMode::Disabled::Disabled(std::string username)

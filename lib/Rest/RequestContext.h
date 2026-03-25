@@ -24,6 +24,7 @@
 #pragma once
 
 namespace arangodb {
+// TODO Let's drop RequestContext, we don't have any use for it.
 class RequestContext {
   RequestContext(RequestContext const&) = delete;
   RequestContext& operator=(RequestContext const&) = delete;

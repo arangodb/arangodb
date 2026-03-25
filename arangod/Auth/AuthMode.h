@@ -37,6 +37,16 @@ namespace rbac {
 struct Service;
 }
 
+// TODO It is becoming apparent that we need to be able to keep information
+//      related to the original request, like user and path, in the ExecContext.
+//      And that we need to keep it for all kinds of AuthMode; e.g. including
+//      Superuser or Unauthenticated, probably even Disabled.
+//      That probably means removing the username again from AuthMode/IAuth,
+//      and instead keeping it in the ExecContext.
+//      Also, creating a Superuser ExecContextScope needs to be changed in a
+//      way that keeps the original request/user information, and just
+//      "upgrades" the AuthMode to Superuser, or something along these lines.
+
 // Different modes of authentication and authorization, depending on server
 // configuration, and the specific user. Used to handle authorization in
 // ExecContext.
@@ -71,6 +81,7 @@ struct AuthMode {
 
     [[nodiscard]] auto canUse(Permission permission) const -> bool override;
 
+   protected:
     // has _system RW access
     [[nodiscard]] bool isAdmin() const;
   };
@@ -97,6 +108,13 @@ struct AuthMode {
   // Authentication is on, but the current user is without authentication.
   // Has basically no permissions.
   struct Unauthenticated : IAuth {
+    std::string _username;
+
+    // TODO Assuming we keep _username: Drop the default constructor.
+    //      I've added it just so I could compile the tests again quickly.
+    Unauthenticated() = default;
+    explicit Unauthenticated(std::string username);
+
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
     [[nodiscard]] auto canUse(Permission permission) const -> bool override;
@@ -150,6 +168,11 @@ struct AuthMode {
   Any authMode;
 
   [[nodiscard]] bool isSuperuser() const noexcept;
+
+  template<typename T, typename... Args>
+  void reset(Args&& ...args) {
+        authMode.emplace<T>(std::forward<Args>(args)...);
+  }
 };
 
 }  // namespace arangodb

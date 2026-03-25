@@ -46,9 +46,6 @@ class VocbaseContext final : public arangodb::ExecContext {
   /// @brief upgrade to internal superuser
   void forceSuperuser();
 
-  /// @brief upgrade to internal read-only user
-  void forceReadOnly();
-
 #ifdef USE_ENTERPRISE
   [[nodiscard]] std::string clientAddress() const override {
     return _request.connectionInfo().fullClient();

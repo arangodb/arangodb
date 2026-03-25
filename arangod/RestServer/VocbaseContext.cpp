@@ -78,7 +78,7 @@ std::shared_ptr<VocbaseContext> VocbaseContext::create(
     // request, in which case this check would be necessary. We might want to
     // catch that earlier, though.
     if (!req.authenticated() || userManager == nullptr) {
-      return AuthMode::Unauthenticated{};
+      return AuthMode::Unauthenticated{req.user()};
     }
 
     if (auto* rbacService = rbacFeature.service(); rbacService != nullptr) {
@@ -252,24 +252,15 @@ std::shared_ptr<VocbaseContext> VocbaseContext::create(
 // }
 
 void VocbaseContext::forceSuperuser() {
-  std::abort();  // TODO remove this method
-  //  TRI_ASSERT(_type != ExecContext::Type::Internal || _user.empty());
-  //  if (ServerState::readOnly()) {
-  //    forceReadOnly();
-  //  } else {
-  //    _type = ExecContext::Type::Internal;
-  //    _systemDbAuthLevel = auth::Level::RW;
-  //    _databaseAuthLevel = auth::Level::RW;
-  //    _isAdminUser = true;
-  //  }
-}
-
-void VocbaseContext::forceReadOnly() {
-  std::abort();  // TODO remove this method
-  //  TRI_ASSERT(_type != ExecContext::Type::Internal || _user.empty());
-  //  _type = ExecContext::Type::Internal;
-  //  _systemDbAuthLevel = auth::Level::RO;
-  //  _databaseAuthLevel = auth::Level::RO;
+  // TODO See if we can remove this method. It might be sufficient to use
+  //      SuperUserExecContext, instead of modifying the current context.
+  //      One contradictory thought: We might want to be able to track stuff
+  //      about the original request, e.g. for auditing.
+  //      But note that currently, this explicitly does not happen: Setting the
+  //      _type to Internal causes the user to be ignored in AuditRequestInfo,
+  //      and the request path to be ignored in EventsEE.cpp.
+  //      If we remove it, we can remove the reset() method in AuthMode as well.
+  _authMode.reset<AuthMode::Superuser>();
 }
 
 #ifdef USE_ENTERPRISE
