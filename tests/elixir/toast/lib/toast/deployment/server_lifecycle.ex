@@ -5,6 +5,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   alias Toast.Deployment.{Health, ServerInstance}
   alias Toast.Process.{HealthMonitor, ServerProcess}
+  alias Toast.Process.Supervisor, as: ProcessSupervisor
 
   @intentional_exit_signals [nil, 15]
 
@@ -280,6 +281,22 @@ defmodule Toast.Deployment.ServerLifecycle do
   end
 
   # --- Health monitor helpers ---
+
+  @spec start_health_monitor(String.t(), String.t()) :: {:ok, pid()} | {:error, term()}
+  def start_health_monitor(server_id, endpoint) do
+    case ProcessSupervisor.start_health_monitor(
+           server_id: server_id,
+           endpoint: endpoint,
+           listener: self()
+         ) do
+      {:ok, pid} ->
+        Process.monitor(pid)
+        {:ok, pid}
+
+      error ->
+        error
+    end
+  end
 
   @spec suspend_health_monitor(ServerInstance.t()) :: :ok
   def suspend_health_monitor(%{health_monitor: nil}), do: :ok

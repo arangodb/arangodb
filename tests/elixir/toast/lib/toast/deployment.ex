@@ -68,21 +68,27 @@ defmodule Toast.Deployment do
     end
   end
 
+  @deployment_opts [:id, :deployment_dir]
+
   @doc "Start a single-server deployment."
   @spec start_single_server(Config.t() | keyword(), keyword()) :: {:ok, t()} | {:error, term()}
   def start_single_server(config_or_opts \\ [], opts \\ [])
   def start_single_server(%Config{} = config, opts), do: start(:single_server, config, opts)
 
-  def start_single_server(config_opts, opts) when is_list(config_opts),
-    do: start(:single_server, Config.load(config_opts), opts)
+  def start_single_server(all_opts, opts) when is_list(all_opts) do
+    {deploy_opts, config_opts} = Keyword.split(all_opts, @deployment_opts)
+    start(:single_server, Config.load(config_opts), Keyword.merge(deploy_opts, opts))
+  end
 
   @doc "Start a cluster deployment."
   @spec start_cluster(Config.t() | keyword(), keyword()) :: {:ok, t()} | {:error, term()}
   def start_cluster(config_or_opts \\ [], opts \\ [])
   def start_cluster(%Config{} = config, opts), do: start(:cluster, config, opts)
 
-  def start_cluster(config_opts, opts) when is_list(config_opts),
-    do: start(:cluster, Config.load(config_opts), opts)
+  def start_cluster(all_opts, opts) when is_list(all_opts) do
+    {deploy_opts, config_opts} = Keyword.split(all_opts, @deployment_opts)
+    start(:cluster, Config.load(config_opts), Keyword.merge(deploy_opts, opts))
+  end
 
   @doc """
   Start a deployment with the given mode.
