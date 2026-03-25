@@ -398,7 +398,7 @@
 - shell_client_aql_large:
     options:
       priority: 1000
-      size: medium+
+      size: circleci-large
       type: cluster
       buckets: 4
       suffix: _large
