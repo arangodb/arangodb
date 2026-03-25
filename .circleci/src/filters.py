@@ -41,6 +41,9 @@ class FilterCriteria:
     # Feature flags
     enterprise: bool = True
 
+    # filter for testsuites if commanded
+    test_suite: str = ""
+
     @property
     def is_full_run(self) -> bool:
         """Check if this is a full run."""
@@ -71,7 +74,9 @@ def is_gtest_suite(suite: SuiteConfig) -> bool:
 
 
 def _check_requirements_match(
-    requires: TestRequirements, criteria: FilterCriteria
+    name: str,
+    requires: TestRequirements,
+    criteria: FilterCriteria
 ) -> bool:
     """
     Check if test requirements match filter criteria.
@@ -136,6 +141,11 @@ def _check_requirements_match(
     if requires.v8 is False and criteria.is_v8_build:
         return False  # Non-V8-only, but we're in V8 mode
 
+    # if we should filter for a name:
+    if (FilterCriteria.test_suite is not None and
+        FilterCriteria.test_suite != "" and
+        name.find(FilterCriteria.test_suite) >= 0):
+        return False
     return True
 
 
@@ -151,7 +161,7 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
         True if job should be included, False otherwise
     """
     # Check common requirements (architecture, full, instrumentation)
-    if not _check_requirements_match(job.requires, criteria):
+    if not _check_requirements_match(job.name, job.requires, criteria):
         return False
 
     # Check deployment type filter
