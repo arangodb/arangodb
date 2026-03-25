@@ -194,10 +194,15 @@ struct OperationOptions {
   // using a transaction or creates a new one.
   bool allowDirtyReads = false;
 
+private:
   // get associated execution context
   ExecContext const& context() const;
 
  private:
+  // TODO Remove _context, it's unnecessary. Its original intent was to preserve
+  //      the context for asynchronous calls. This has been achieved by the
+  //      Context struct and corresponding save&restore operations in both
+  //      Futures and async coroutines.
   ExecContext const* _context = nullptr;
 };
 

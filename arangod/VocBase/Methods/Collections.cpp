@@ -597,7 +597,7 @@ Collections::create(         // create collection
                                 {{"collectionNames", collectionNames}});
 
   // Let's first check if we are allowed to create the collections
-  ExecContext const& exec = options.context();
+  auto const& exec = ExecContext::current();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& col : collections) {
       events::CreateCollection(vocbase.name(), col.name, TRI_ERROR_FORBIDDEN);
