@@ -443,7 +443,7 @@ void RestClusterHandler::handleCI_getResponsibleShard(
                   "only the POST method is allowed");
     return;
   }
-  if (suffixes.size() < 4) {
+  if (suffixes.size() < 5) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "databaseName, collectionName, documentIsComplete arguments "
                   "are missing");
