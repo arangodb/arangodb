@@ -83,7 +83,7 @@ function VectorIndexBuildMetricsSuite() {
         name: "vec_l2",
         type: "vector",
         fields: ["vector"],
-        inBackground: false,
+        inBackground: true,
         params: {metric: "l2", dimension, nLists: 1},
       });
 
@@ -117,7 +117,7 @@ function VectorIndexBuildMetricsSuite() {
         name: "vec_l2",
         type: "vector",
         fields: ["vector"],
-        inBackground: false,
+        inBackground: true,
         params: {metric: "l2", dimension, nLists: 1},
       });
 
