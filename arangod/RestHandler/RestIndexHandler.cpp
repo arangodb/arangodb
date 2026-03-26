@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/async.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -715,7 +716,21 @@ async<void> RestIndexHandler::createIndex() {
           type.stringView() == StaticStrings::IndexNameVector) {
         auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
         if (vectorIndexFeature.isVectorIndexEnabled()) {
-          vectorIndexFeature.trackIndexCreation();
+          auto idSlice = response.slice().get("id");
+          if (idSlice.isString()) {
+            auto const idStr = idSlice.stringView();
+            if (auto const pos = idStr.find('/');
+                pos != std::string_view::npos) {
+              auto const numericId = basics::StringUtils::uint64(
+                  idStr.data() + pos + 1, idStr.size() - pos - 1);
+              auto const res = co_await vectorIndexFeature.waitForIndexReady(
+                  IndexId{numericId});
+              if (res.fail()) {
+                generateError(res);
+                co_return;
+              }
+            }
+          }
         }
       }
 

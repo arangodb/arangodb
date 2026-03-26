@@ -24,9 +24,12 @@
 #include <string_view>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Result.h"
+#include "Futures/Future.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "VectorIndex/VectorIndexBuildManager.h"
 #include "VectorIndex/VectorIndexFeatureOptions.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
@@ -47,7 +50,11 @@ class VectorIndexFeature final
 
   bool isVectorIndexEnabled() const;
 
-  void trackIndexCreation();
+  // Wait until the given vector index is trained. On single server, returns
+  // a future that resolves when the build manager finishes (or fails) the
+  // build.  On coordinator the future resolves immediately (training happens
+  // on DBServers).
+  futures::Future<Result> waitForIndexReady(IndexId indexId);
 
  private:
   bool shouldRunBuildManager() const;

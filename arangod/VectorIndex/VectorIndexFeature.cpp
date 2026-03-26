@@ -22,6 +22,7 @@
 #include "VectorIndex/VectorIndexFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Futures/Utilities.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -92,6 +93,11 @@ bool VectorIndexFeature::isVectorIndexEnabled() const {
   return _options.useVectorIndex;
 }
 
-void VectorIndexFeature::trackIndexCreation() { _buildManager.notify(); }
+futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
+  if (!shouldRunBuildManager()) {
+    return futures::makeFuture(Result{});
+  }
+  return _buildManager.waitForIndexReady(indexId);
+}
 
 }  // namespace arangodb

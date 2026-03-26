@@ -23,14 +23,19 @@
 
 #pragma once
 
-#include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <mutex>
 #include <stop_token>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
+#include "Basics/Result.h"
+#include "Futures/Future.h"
+#include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
@@ -52,8 +57,10 @@ class VectorIndexBuildManager {
   void beginShutdown();
   void stop();
 
-  // Wake up the scan loop so it picks up a newly created index immediately.
-  void notify() noexcept;
+  // Register a waiter for a specific index. The scan loop wakes up
+  // immediately when waiters are pending. The returned future is fulfilled
+  // when the index reaches the ready state or the build fails.
+  futures::Future<Result> waitForIndexReady(IndexId indexId);
 
  private:
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
@@ -72,6 +79,8 @@ class VectorIndexBuildManager {
   void run(std::stop_token stopToken);
   void scanAndBuild(std::stop_token const& stopToken,
                     FailedBuildsMap& failedBuilds);
+  void fulfillWaiters(IndexId indexId, Result const& result);
+  void fulfillAllWaiters(Result const& result);
 
   DatabaseFeature& _dbFeature;
   MaintenanceFeature& _maintenance;
@@ -82,7 +91,9 @@ class VectorIndexBuildManager {
   metrics::Histogram<metrics::LogScale<double>>& _trainingDuration;
   metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
 
-  std::atomic<std::uint32_t> _pendingNotifications{0};
+  std::mutex _waitersMutex;
+  std::unordered_map<IndexId::BaseType, std::vector<futures::Promise<Result>>>
+      _waiters;
 };
 
 }  // namespace arangodb

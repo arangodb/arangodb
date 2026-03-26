@@ -23,6 +23,7 @@
 
 #include "VectorIndex/VectorIndexBuildManager.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
@@ -100,8 +101,47 @@ void VectorIndexBuildManager::stop() {
   }
 }
 
-void VectorIndexBuildManager::notify() noexcept {
-  _pendingNotifications.fetch_add(1, std::memory_order_release);
+futures::Future<Result> VectorIndexBuildManager::waitForIndexReady(
+    IndexId indexId) {
+  futures::Promise<Result> promise;
+  auto future = promise.getFuture();
+  {
+    std::lock_guard lock(_waitersMutex);
+    _waiters[indexId.id()].push_back(std::move(promise));
+  }
+  return future;
+}
+
+void VectorIndexBuildManager::fulfillWaiters(IndexId indexId,
+                                             Result const& result) {
+  std::vector<futures::Promise<Result>> waiters;
+  {
+    std::lock_guard lock(_waitersMutex);
+    auto it = _waiters.find(indexId.id());
+    if (it == _waiters.end()) {
+      return;
+    }
+    waiters = std::move(it->second);
+    _waiters.erase(it);
+  }
+  for (auto& p : waiters) {
+    p.setValue(result);
+  }
+}
+
+void VectorIndexBuildManager::fulfillAllWaiters(Result const& result) {
+  std::unordered_map<IndexId::BaseType, std::vector<futures::Promise<Result>>>
+      waiters;
+  {
+    std::lock_guard lock(_waitersMutex);
+    waiters = std::move(_waiters);
+    _waiters.clear();
+  }
+  for (auto& [_, promises] : waiters) {
+    for (auto& p : promises) {
+      p.setValue(result);
+    }
+  }
 }
 
 bool VectorIndexBuildManager::shouldSkipRetry(
@@ -128,13 +168,19 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
 
   FailedBuildsMap failedBuilds;
 
+  auto fulfillOnExit = scopeGuard([this]() noexcept {
+    fulfillAllWaiters(Result{TRI_ERROR_SHUTTING_DOWN});
+  });
+
   while (!stopToken.stop_requested()) {
     auto const deadline = std::chrono::steady_clock::now() + kScanInterval;
     while (std::chrono::steady_clock::now() < deadline &&
            !stopToken.stop_requested()) {
-      if (_pendingNotifications.load(std::memory_order_acquire) > 0) {
-        _pendingNotifications.fetch_sub(1, std::memory_order_acq_rel);
-        break;
+      {
+        std::lock_guard lock(_waitersMutex);
+        if (!_waiters.empty()) {
+          break;
+        }
       }
       std::this_thread::sleep_for(kSleepGranularity);
     }
@@ -153,6 +199,9 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
   // Collect objectIds seen this scan to prune stale entries from
   // failedBuilds (e.g. indexes that were dropped since the last scan).
   std::unordered_set<std::uint64_t> seenObjectIds;
+  // Track IndexIds of unusable indexes that have pending waiters but
+  // could not be built in this scan (below threshold or in backoff).
+  std::unordered_set<IndexId::BaseType> skippedWaiters;
   uint64_t unusableIndexesCount = 0;
 
   _dbFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
@@ -169,6 +218,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         }
         auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
         if (vecIdx.trainingState() != VectorIndexTrainingState::kUnusable) {
+          fulfillWaiters(vecIdx.id(), Result{});
           continue;
         }
 
@@ -180,10 +230,12 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         auto const numDocs =
             static_cast<std::int64_t>(rcoll->meta().numberDocuments());
         if (numDocs < vecIdx.trainingThreshold()) {
+          skippedWaiters.insert(vecIdx.id().id());
           continue;
         }
 
         if (shouldSkipRetry(failedBuilds, vecIdx.objectId(), numDocs)) {
+          skippedWaiters.insert(vecIdx.id().id());
           continue;
         }
 
@@ -201,6 +253,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         _trainingOngoingCount.fetch_sub(1);
 
         if (res.fail()) {
+          fulfillWaiters(vecIdx.id(), res);
           LOG_TOPIC("e164b", ERR, Logger::ENGINES)
               << "[index=" << vecIdx.id().id()
               << "] Vector build failed: " << res.errorMessage();
@@ -239,6 +292,8 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
           continue;
         }
 
+        fulfillWaiters(vecIdx.id(), Result{});
+
         // Clear any previous error for this index.
         {
           auto const& database = vocbase.name();
@@ -265,6 +320,14 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
   std::erase_if(failedBuilds, [&](auto const& entry) {
     return !seenObjectIds.contains(entry.first);
   });
+
+  // Fulfill waiters for indexes that were scanned but could not be built
+  // (below threshold or in retry backoff) so the REST handler doesn't hang.
+  for (auto indexId : skippedWaiters) {
+    fulfillWaiters(IndexId{indexId},
+                   Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                          "not enough training data for vector index"});
+  }
 }
 
 }  // namespace arangodb
