@@ -265,7 +265,12 @@ void buildHealthResult(
       {
         VPackObjectBuilder obMember(&builder, serverId);
 
-        builder.add(VPackObjectIterator(member.value));
+        for (auto const& agentIter : VPackObjectIterator(member.value)) {
+          if (!agentIter.key.isEqualString("Timestamp")) {
+            builder.add(agentIter.key.copyString(), agentIter.value);
+          }
+        }
+
         if (ClusterHelpers::isDBServerName(serverId)) {
           builder.add("Role", VPackValue("DBServer"));
           builder.add("CanBeDeleted",
