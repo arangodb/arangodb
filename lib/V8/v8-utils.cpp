@@ -1665,7 +1665,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (name.length() == 0) {
     TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, cwd.result()));
   }
-  
+
   std::string abs =
       std::filesystem::absolute(std::string(*name, name.length()));
   v8::Handle<v8::String> res;
