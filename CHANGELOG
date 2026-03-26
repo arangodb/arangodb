@@ -1,5 +1,9 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+* Lowered the vector index training threshold from
+  `nLists * max_points_per_centroid` to `nLists`, allowing vector indexes
+  to be trained with fewer documents in the collection.
+
 * COR-255: Fixed vector index not being properly trained on follower shards
   when replicationFactor is increased. Followers now automatically train and
   populate vector indexes from local documents after initial sync.
