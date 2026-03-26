@@ -100,6 +100,10 @@ void VectorIndexBuildManager::stop() {
   }
 }
 
+void VectorIndexBuildManager::notify() noexcept {
+  _pendingNotifications.fetch_add(1, std::memory_order_release);
+}
+
 bool VectorIndexBuildManager::shouldSkipRetry(
     FailedBuildsMap const& failedBuilds, std::uint64_t objectId,
     std::int64_t currentDocCount) {
@@ -128,6 +132,10 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
     auto const deadline = std::chrono::steady_clock::now() + kScanInterval;
     while (std::chrono::steady_clock::now() < deadline &&
            !stopToken.stop_requested()) {
+      if (_pendingNotifications.load(std::memory_order_acquire) > 0) {
+        _pendingNotifications.fetch_sub(1, std::memory_order_acq_rel);
+        break;
+      }
       std::this_thread::sleep_for(kSleepGranularity);
     }
 

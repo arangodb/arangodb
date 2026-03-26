@@ -47,6 +47,8 @@ class VectorIndexFeature final
 
   bool isVectorIndexEnabled() const;
 
+  void trackIndexCreation();
+
  private:
   bool shouldRunBuildManager() const;
 

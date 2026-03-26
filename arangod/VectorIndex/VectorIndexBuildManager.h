@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <stop_token>
@@ -51,6 +52,9 @@ class VectorIndexBuildManager {
   void beginShutdown();
   void stop();
 
+  // Wake up the scan loop so it picks up a newly created index immediately.
+  void notify() noexcept;
+
  private:
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
@@ -77,6 +81,8 @@ class VectorIndexBuildManager {
   metrics::Gauge<uint64_t>& _trainingOngoingCount;
   metrics::Histogram<metrics::LogScale<double>>& _trainingDuration;
   metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
+
+  std::atomic<std::uint32_t> _pendingNotifications{0};
 };
 
 }  // namespace arangodb

@@ -92,4 +92,6 @@ bool VectorIndexFeature::isVectorIndexEnabled() const {
   return _options.useVectorIndex;
 }
 
+void VectorIndexFeature::trackIndexCreation() { _buildManager.notify(); }
+
 }  // namespace arangodb

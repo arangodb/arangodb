@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/async.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -43,6 +44,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -708,6 +710,15 @@ async<void> RestIndexHandler::createIndex() {
 
     if (result.ok()) {
       TRI_ASSERT(response.slice().isObject());
+      if (auto type = response.slice().get("type");
+          type.isString() &&
+          type.stringView() == StaticStrings::IndexNameVector) {
+        auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
+        if (vectorIndexFeature.isVectorIndexEnabled()) {
+          vectorIndexFeature.trackIndexCreation();
+        }
+      }
+
       VPackSlice const created = response.slice().get("isNewlyCreated");
       auto const resCode = created.isBool() && created.getBool()
                                ? rest::ResponseCode::CREATED
