@@ -24,6 +24,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstHelper.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -75,10 +76,12 @@ void forEachEqualCondition(Expression* expr, F&& fn) {
   }
 
   if (root->type == NODE_TYPE_OPERATOR_NARY_OR) {
-    if (root->numMembers() != 1) {
+    ast::NaryOperatorNode naryOr(root);
+    auto operands = naryOr.getOperands();
+    if (operands.size() != 1) {
       return;
     } else {
-      root = root->getMember(0);
+      root = operands[0];
     }
   }
 
@@ -106,10 +109,11 @@ void forEachEqualCondition(Expression* expr, F&& fn) {
 template<typename F>
 void findEqualComparedAttributeAccesses(Expression* expr, F&& fn) {
   static_assert(std::is_invocable_v<F, AstNode const*, AstNode const*>);
-  forEachEqualCondition(expr, [&](AstNode const* ast) {
-    TRI_ASSERT(ast->type == NODE_TYPE_OPERATOR_BINARY_EQ);
-    auto* lhs = ast->getMember(0);
-    auto* rhs = ast->getMember(1);
+  forEachEqualCondition(expr, [&](AstNode const* node) {
+    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_BINARY_EQ);
+    ast::RelationalOperatorNode eqOp(node);
+    auto* lhs = eqOp.getLeft();
+    auto* rhs = eqOp.getRight();
 
     if (lhs->type != NODE_TYPE_REFERENCE &&
         !lhs->isAttributeAccessForVariable()) {
@@ -160,10 +164,11 @@ std::ostream& operator<<(std::ostream& os, VarAttribKey const& attr) noexcept {
 std::optional<VarAttribKey> extractVariableAttributeAccess(
     AstNode const* node) {
   if (node->type == NODE_TYPE_REFERENCE) {
-    auto* var = static_cast<Variable const*>(node->getData());
-    return VarAttribKey{.var = var, .path = {}};
+    ast::ReferenceNode ref(node);
+    return VarAttribKey{.var = ref.getVariable(), .path = {}};
   } else if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    auto result = extractVariableAttributeAccess(node->getMember(0));
+    ast::AttributeAccessNode attrAccess(node);
+    auto result = extractVariableAttributeAccess(attrAccess.getObject());
     result->path.emplace_back(node->getStringValue(), node->getStringLength());
     return result;
   }

@@ -108,7 +108,7 @@ void RequestHeader::parseArangoPath(std::string_view p) {
       if (remainder.starts_with(experimentalSuffix)) {
         size_t suffixEnd = experimentalSuffix.size();
         if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
-          this->apiVersion = ApiVersion::experimentalApiVersion;
+          this->apiVersion = experimentalSuffix;
           this->path = suffixEnd < remainder.size()
                            ? std::string(remainder.substr(suffixEnd))
                            : "/";
@@ -117,7 +117,8 @@ void RequestHeader::parseArangoPath(std::string_view p) {
       } else if (!remainder.empty() && remainder[0] == 'v') {
         std::string_view afterV = remainder.substr(1);
         size_t numEnd = 0;
-        while (numEnd < afterV.size() && (afterV[numEnd] >= '0' && afterV[numEnd] <= '9')) {
+        while (numEnd < afterV.size() &&
+               (afterV[numEnd] >= '0' && afterV[numEnd] <= '9')) {
           ++numEnd;
         }
         if (numEnd > 0 && (numEnd == afterV.size() || afterV[numEnd] == '/')) {
@@ -134,7 +135,7 @@ void RequestHeader::parseArangoPath(std::string_view p) {
               version = version * 10 + d;
             }
             if (!overflow) {
-              this->apiVersion = version;
+              this->apiVersion = "v" + std::to_string(version);
               this->path = numEnd < afterV.size()
                                ? std::string(afterV.substr(numEnd))
                                : "/";

@@ -153,6 +153,13 @@ class StaticStrings {
   static std::string_view constexpr IndexLookahead{"lookahead"};
   static std::string const IndexCreationError;  // index failed to create
 
+  // Vector index specific fields
+  static std::string_view constexpr IndexTrainingState{"trainingState"};
+  static std::string_view constexpr IndexTrainingStateUnusable{"unusable"};
+  static std::string_view constexpr IndexTrainingStateTraining{"training"};
+  static std::string_view constexpr IndexTrainingStateIngesting{"ingesting"};
+  static std::string_view constexpr IndexTrainingStateReady{"ready"};
+
   // static index names
   static std::string const IndexNameEdge;
   static std::string const IndexNameEdgeFrom;

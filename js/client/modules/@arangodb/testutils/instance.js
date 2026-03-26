@@ -375,6 +375,10 @@ class instance {
       // the argparser barely ignores them and breaks others...
       default_args['javascript.app-path'] = this.appDir;
       default_args['javascript.copy-installation'] = false;
+      default_args['javascript.files-allowlist'] = ".*";
+      default_args['javascript.environment-variables-allowlist'] = ".*";
+      default_args['javascript.endpoints-allowlist'] = ".*";
+      default_args['javascript.startup-options-allowlist'] = ".*";
     }
     this.args = _.defaults(this.args, default_args);
     if (this.options.extremeVerbosity) {
@@ -792,6 +796,12 @@ class instance {
     httpOptions.method = 'POST';
     httpOptions.returnBodyOnError = true;
     while (true) {
+      this.exitStatus = this.status(false);
+      if (this.exitStatus.status === 'RUNNING') {
+        this.exitStatus = null;
+      } else {
+        throw new Error('server exited during startup! bailing out!');
+      }
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
@@ -1220,6 +1230,10 @@ class instance {
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
   readImportantLogLines () {
+    if (!fs.exists(fs.join(this.logFile))) {
+      print(`${RED}${Date()} unable to find ${this.logFile} of ${this.name}!${RESET}`);
+      return [];
+    }
     let fnLines = [];
     const buf = fs.readBuffer(fs.join(this.logFile));
     let lineStart = 0;
@@ -1456,6 +1470,55 @@ class instance {
     }
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
   }
+
+  toThisInstance(callback) {
+    let handle = arango.getConnectionHandle();
+    this.connect();
+    let reconnected = false;
+    let ret;
+    try {
+      ret = callback();
+    } finally {
+      reconnected = arango.connectHandle(handle);
+    }
+    if (!reconnected) {
+      throw new Error(`failed to restore connection to ${handle}`);
+    }
+    return ret;
+  }
+
+  getRawMetric(tags) {
+    return this.toThisInstance(() => {
+      return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
+    });
+  }
+
+  getAllMetric(tags) {
+    let res = this.getRawMetric(tags);
+    if (res.code !== 200) {
+      throw "error fetching metric";
+    }
+    return res.body;
+  }
+
+  getMetricName(text, name) {
+    let re = new RegExp("^" + name);
+    let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+    if (!matches.length) {
+      throw "Metric " + name + " not found";
+    }
+    let res = 0; // Sum up values from all matches
+    for(let i = 0; i < matches.length; i+= 1) {
+      res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+    }
+    return res;
+  }
+
+  getMetric(name) {
+    let text = this.getAllMetric('');
+    return this.getMetricName(text, name);
+  }
+  
   debugGetFailurePoints() {
     this.connect();
     let haveFailAt = arango.GET("/_admin/debug/failat") === true;

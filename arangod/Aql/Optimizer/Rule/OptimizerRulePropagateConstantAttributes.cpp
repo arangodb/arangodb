@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AstNode.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
@@ -88,11 +89,13 @@ bool getAttribute(AstNode const* attribute,
                   VarAttributeAccess& attributeAccess) {
   TRI_ASSERT(attribute != nullptr);
   if (attribute->type == NODE_TYPE_REFERENCE) {
-    attributeAccess.var = static_cast<Variable const*>(attribute->getData());
+    ast::ReferenceNode ref(attribute);
+    attributeAccess.var = ref.getVariable();
     return true;
   } else if (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    getAttribute(attribute->getMember(0), attributeAccess);
-    attributeAccess.path.emplace_back(attribute->getStringView());
+    ast::AttributeAccessNode attrAccess(attribute);
+    getAttribute(attrAccess.getObject(), attributeAccess);
+    attributeAccess.path.emplace_back(attrAccess.getAttributeName());
     return true;
   }
   return false;
@@ -128,14 +131,16 @@ void collectConstantAttributes(AstNode const* node,
   LOG_RULE << node->toString();
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-    auto lhs = node->getMember(0);
-    auto rhs = node->getMember(1);
+    ast::LogicalOperatorNode andOp(node);
+    auto lhs = andOp.getLeft();
+    auto rhs = andOp.getRight();
 
     collectConstantAttributes(lhs, currentLimitCount, replacements);
     collectConstantAttributes(rhs, currentLimitCount, replacements);
   } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-    auto lhs = node->getMember(0);
-    auto rhs = node->getMember(1);
+    ast::RelationalOperatorNode eqOp(node);
+    auto lhs = eqOp.getLeft();
+    auto rhs = eqOp.getRight();
     LOG_RULE << "BINARY EQ " << lhs->toString() << " == " << rhs->toString();
 
     LOG_RULE << "LHS = " << lhs->getTypeString();
@@ -192,13 +197,15 @@ bool insertConstantAttribute(ExecutionPlan& plan, AstNode* parentNode,
     // disable SmartJoin functionality
     if (arangodb::ServerState::instance()->isCoordinator() &&
         parentNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      AstNode const* current = parentNode->getMember(accessIndex == 0 ? 1 : 0);
+      AstNode const* current =
+          parentNode->getMemberUnchecked(accessIndex == 0 ? 1 : 0);
       if (current->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         AstNode const* nameAttribute = current;
-        current = current->getMember(0);
+        ast::AttributeAccessNode attrAccess(current);
+        current = attrAccess.getObject();
         if (current->type == NODE_TYPE_REFERENCE) {
-          auto setter = plan.getVarSetBy(
-              static_cast<Variable const*>(current->getData())->id);
+          ast::ReferenceNode ref(current);
+          auto setter = plan.getVarSetBy(ref.getVariable()->id);
           if (setter != nullptr &&
               (setter->getType() == EN::ENUMERATE_COLLECTION ||
                setter->getType() == EN::INDEX)) {
@@ -247,16 +254,18 @@ bool insertConstantAttributes(ExecutionPlan& plan, AstNode* node,
   bool modified = false;
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-    auto lhs = node->getMember(0);
-    auto rhs = node->getMember(1);
+    ast::LogicalOperatorNode andOp(node);
+    auto lhs = andOp.getLeft();
+    auto rhs = andOp.getRight();
 
     modified |=
         insertConstantAttributes(plan, lhs, currentLimitCount, replacements);
     modified |=
         insertConstantAttributes(plan, rhs, currentLimitCount, replacements);
   } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-    auto lhs = node->getMember(0);
-    auto rhs = node->getMember(1);
+    ast::RelationalOperatorNode eqOp(node);
+    auto lhs = eqOp.getLeft();
+    auto rhs = eqOp.getRight();
 
     if (!lhs->isConstant() && (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                                rhs->type == NODE_TYPE_REFERENCE)) {

@@ -33,7 +33,7 @@ namespace arangodb {
 /// @brief Central configuration for API versioning
 struct ApiVersion {
   // The list of all supported API versions (both stable and deprecated)
-  static constexpr uint32_t supportedApiVersions[] = {0, 1};
+  static constexpr uint32_t supportedApiVersions[] = {0};
 
   // The list of deprecated API versions (subset of supportedApiVersions)
   static constexpr uint32_t deprecatedApiVersions[] = {};

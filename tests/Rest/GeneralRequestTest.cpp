@@ -87,40 +87,12 @@ TEST_F(ApiVersionDetectionTest, RegularPath) {
   EXPECT_EQ("/some/random/path", r.remaining);
 }
 
-// Test: Valid API version v1
-TEST_F(ApiVersionDetectionTest, ValidApiVersionV1) {
+TEST_F(ApiVersionDetectionTest, UnsupportedVersionNotStripped) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/v1/_api/version");
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(1u, r.apiVersion);
-  EXPECT_EQ("/_api/version", r.remaining);
-}
-
-// Test: Valid API version v2
-TEST_F(ApiVersionDetectionTest, ValidApiVersionV2) {
-  HttpRequest request(ci, 1);
-  auto r = callDetect(request, "/_arango/v2/_api/collection");
-  EXPECT_TRUE(r.ok);
-  EXPECT_EQ(2u, r.apiVersion);
-  EXPECT_EQ("/_api/collection", r.remaining);
-}
-
-// Test: Valid API version v42
-TEST_F(ApiVersionDetectionTest, ValidApiVersionV42) {
-  HttpRequest request(ci, 1);
-  auto r = callDetect(request, "/_arango/v42/_admin/status");
-  EXPECT_TRUE(r.ok);
-  EXPECT_EQ(42u, r.apiVersion);
-  EXPECT_EQ("/_admin/status", r.remaining);
-}
-
-// Test: Valid API version v1234567
-TEST_F(ApiVersionDetectionTest, ValidApiVersionLargeNumber) {
-  HttpRequest request(ci, 1);
-  auto r = callDetect(request, "/_arango/v1234567/path");
-  EXPECT_TRUE(r.ok);
-  EXPECT_EQ(1234567u, r.apiVersion);
-  EXPECT_EQ("/path", r.remaining);
+  EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
+  EXPECT_EQ("/_arango/v1/_api/version", r.remaining);
 }
 
 // Test: Experimental API version
@@ -135,9 +107,9 @@ TEST_F(ApiVersionDetectionTest, ExperimentalApiVersion) {
 // Test: Path ending exactly at version number
 TEST_F(ApiVersionDetectionTest, PathEndingAtVersion) {
   HttpRequest request(ci, 1);
-  auto r = callDetect(request, "/_arango/v5");
+  auto r = callDetect(request, "/_arango/v0");
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(5u, r.apiVersion);
+  EXPECT_EQ(0u, r.apiVersion);
   EXPECT_EQ("", r.remaining);
 }
 
@@ -168,22 +140,22 @@ TEST_F(ApiVersionDetectionTest, InvalidMissingVPrefix) {
   EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
 }
 
-// Test: Invalid - v without number
-TEST_F(ApiVersionDetectionTest, InvalidVWithoutNumber) {
+// Test: v without number - unrecognized, not stripped
+TEST_F(ApiVersionDetectionTest, VWithoutNumberNotStripped) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/v/path");
-  EXPECT_FALSE(r.ok);
-  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, r.errorNumber);
+  EXPECT_TRUE(r.ok);
   EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
+  EXPECT_EQ("/_arango/v/path", r.remaining);
 }
 
-// Test: Invalid - v with non-numeric characters
-TEST_F(ApiVersionDetectionTest, InvalidVWithAlpha) {
+// Test: v with non-numeric characters - unrecognized, not stripped
+TEST_F(ApiVersionDetectionTest, VWithAlphaNotStripped) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/vabc/path");
-  EXPECT_FALSE(r.ok);
-  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, r.errorNumber);
+  EXPECT_TRUE(r.ok);
   EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
+  EXPECT_EQ("/_arango/vabc/path", r.remaining);
 }
 
 // Test: Invalid - random text after /_arango/
@@ -213,12 +185,14 @@ TEST_F(ApiVersionDetectionTest, ValidApiVersionV0) {
   EXPECT_EQ("/path", r.remaining);
 }
 
-// Test: Version number followed by non-slash character should be invalid
-TEST_F(ApiVersionDetectionTest, InvalidVersionNotFollowedBySlash) {
+// Test: Version number followed by non-slash character - unrecognized, not
+// stripped
+TEST_F(ApiVersionDetectionTest, VersionFollowedByAlphaNotStripped) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/v1abc/path");
-  EXPECT_FALSE(r.ok);
-  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, r.errorNumber);
+  EXPECT_TRUE(r.ok);
+  EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
+  EXPECT_EQ("/_arango/v1abc/path", r.remaining);
 }
 
 // Test: Experimental followed by non-slash character should be invalid
@@ -229,14 +203,13 @@ TEST_F(ApiVersionDetectionTest, InvalidExperimentalNotFollowedBySlash) {
   EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, r.errorNumber);
 }
 
-// Test: Multiple slashes after version (start pointer lands at first slash,
-// remaining slashes are left for the caller to handle)
-TEST_F(ApiVersionDetectionTest, MultipleSlashesAfterVersion) {
+// Test: Unsupported version with multiple slashes - not stripped
+TEST_F(ApiVersionDetectionTest, UnsupportedVersionWithMultipleSlashes) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/v1///path");
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(1u, r.apiVersion);
-  EXPECT_EQ("///path", r.remaining);
+  EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
+  EXPECT_EQ("/_arango/v1///path", r.remaining);
 }
 
 // Test: Root path
@@ -248,34 +221,34 @@ TEST_F(ApiVersionDetectionTest, RootPath) {
   EXPECT_EQ("/", r.remaining);
 }
 
-// Test: Deep nested path with version
-TEST_F(ApiVersionDetectionTest, DeepNestedPath) {
+// Test: Unsupported version with deep nested path - not stripped
+TEST_F(ApiVersionDetectionTest, UnsupportedVersionWithNestedPath) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/v3/_api/collection/test/document/123");
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(3u, r.apiVersion);
-  EXPECT_EQ("/_api/collection/test/document/123", r.remaining);
+  EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
+  EXPECT_EQ("/_arango/v3/_api/collection/test/document/123", r.remaining);
 }
 
-// Test: Path with query parameters (should work on path only)
-TEST_F(ApiVersionDetectionTest, PathWithQueryString) {
+// Test: Another unsupported version - not stripped
+TEST_F(ApiVersionDetectionTest, UnsupportedVersionV7NotStripped) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/v7/_api/cursor");
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(7u, r.apiVersion);
-  EXPECT_EQ("/_api/cursor", r.remaining);
+  EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
+  EXPECT_EQ("/_arango/v7/_api/cursor", r.remaining);
 }
 
-// Test: API version at max uint32_t - 1 should work
-TEST_F(ApiVersionDetectionTest, MaxUint32Minus1) {
+// Test: Large unsupported version (uint32_t max - 1) - not stripped
+TEST_F(ApiVersionDetectionTest, UnsupportedLargeVersionNotStripped) {
   HttpRequest request(ci, 1);
   std::string path = "/_arango/v" +
                      std::to_string(std::numeric_limits<uint32_t>::max() - 1) +
                      "/path";
   auto r = callDetect(request, path);
   EXPECT_TRUE(r.ok);
-  EXPECT_EQ(std::numeric_limits<uint32_t>::max() - 1, r.apiVersion);
-  EXPECT_EQ("/path", r.remaining);
+  EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
+  EXPECT_EQ(path, r.remaining);
 }
 
 // Test: Check that default API version constant is accessible and is 0
@@ -289,17 +262,16 @@ TEST_F(ApiVersionDetectionTest, NewRequestHasDefaultVersion) {
   EXPECT_EQ(ApiVersion::defaultApiVersion, request.requestedApiVersion());
 }
 
-// Test: API version exceeding uint32_t max should be rejected
-TEST_F(ApiVersionDetectionTest, VersionExceedsUint32Max) {
+// Test: Version exceeding uint32_t max - unsupported, not stripped
+TEST_F(ApiVersionDetectionTest, UnsupportedVersionExceedsUint32Max) {
   HttpRequest request(ci, 1);
   uint64_t tooLarge =
       static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) + 1;
   std::string path = "/_arango/v" + std::to_string(tooLarge) + "/path";
   auto r = callDetect(request, path);
-  EXPECT_FALSE(r.ok);
-  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, r.errorNumber);
+  EXPECT_TRUE(r.ok);
   EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
-  EXPECT_NE(std::string::npos, r.errorMessage.find("too large"));
+  EXPECT_EQ(path, r.remaining);
 }
 
 // Test: Version with leading zero should be rejected (v01)
@@ -382,16 +354,15 @@ TEST_F(ApiVersionDetectionTest, VersionExceedsUint64Max) {
   EXPECT_NE(std::string::npos, r.errorMessage.find("failed to parse"));
 }
 
-// Test: Version number at uint64_t max boundary
-TEST_F(ApiVersionDetectionTest, VersionAtUint64Max) {
+// Test: uint64_t max - parses fine but unsupported, not stripped
+TEST_F(ApiVersionDetectionTest, UnsupportedVersionAtUint64Max) {
   HttpRequest request(ci, 1);
   // uint64_t max is 18446744073709551615 - exceeds uint32_t max
   std::string path = "/_arango/v18446744073709551615/path";
   auto r = callDetect(request, path);
-  EXPECT_FALSE(r.ok);
-  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, r.errorNumber);
+  EXPECT_TRUE(r.ok);
   EXPECT_EQ(ApiVersion::defaultApiVersion, r.apiVersion);
-  EXPECT_NE(std::string::npos, r.errorMessage.find("too large"));
+  EXPECT_EQ(path, r.remaining);
 }
 
 // Test: Version number slightly above uint64_t max

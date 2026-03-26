@@ -28,8 +28,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 
-#include "Aql/VelocyPackHelper.h"
-
 #include "Basics/error.h"
 #include "Basics/Exceptions.h"
 
@@ -39,6 +37,7 @@
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "Geo/ShapeContainer.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 #include <iostream>
 
@@ -508,7 +507,7 @@ TEST_F(ShapeContainerTest, polygon_area_test) {
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 7800367402432, 50000000000);
 }
 
-using namespace arangodb::tests;
+using namespace arangodb::velocypack;
 
 TEST_F(ShapeContainerTest, compare_new_legacy) {
   // Check that legacy parsing detects LngLatRects and new style finds .
@@ -517,7 +516,7 @@ TEST_F(ShapeContainerTest, compare_new_legacy) {
     "type": "Polygon",
     "coordinates": [[[10, 10], [20, 10], [20, 20], [10, 20], [10, 10]]]
   })"_vpack;
-  VPackSlice polyS = velocypack::Slice(poly->data());
+  VPackSlice polyS = poly.slice();
   Result res = json::parseRegion(polyS, shape, false);
   ASSERT_TRUE(res.ok());
   ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
@@ -537,7 +536,7 @@ TEST_F(ShapeContainerTest, compare_new_legacy) {
   })"_vpack;
   // This polygon contains what is to the left of the polyline, which is
   // the complement of a small shape around [15, 10]!
-  polyS = velocypack::Slice(poly->data());
+  polyS = poly.slice();
   res = json::parseRegion(polyS, shape, false);
   ASSERT_TRUE(res.ok());
   ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());

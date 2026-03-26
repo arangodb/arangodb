@@ -262,6 +262,13 @@ class instanceManager {
       throw ex;
     }
   }
+  getInstanceByID(urlIDOrShortName) {
+    let ret = this.arangods.filter(arangod => arangod.matches(undefined, urlIDOrShortName));
+    if (ret.length !== 1) {
+      throw new Error(`wasn't able to determinde ${urlIDOrShortName} ${ret}`);
+    }
+    return ret[0];
+  }
   getTypeToUrlsMap() {
     let ret = new Map();
     this.instanceRoles.forEach(role => {
@@ -649,6 +656,29 @@ class instanceManager {
     }
   }
 
+  waitForAgencyJob(jobId, timeout, jobMessage) {
+    let count = 0;
+    let jobStatus;
+
+    while (true) {
+      if (count > timeout) {
+        throw new Error(`FAILED to ${jobMessage} TIMEOUT`);
+      }
+      sleep(0.1);
+      jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + jobId);
+      if (jobStatus.parsedBody.status === 'Failed') {
+        let msg = `FAILED ${jobMessage} - ${JSON.stringify(jobStatus)}`;
+        print(`${RED}${Date()}${msg} ${JSON.stringify(jobStatus)}${RESET}`);
+        return false;
+      }
+      print(jobStatus.parsedBody.status);
+      if (jobStatus.parsedBody.status === 'Finished') {
+        print(`${GREEN}${Date()} DONE ${jobMessage} ${JSON.stringify(jobStatus)}${RESET}`);
+        return true;
+      }
+    }
+  }
+
   resignLeaderShip(dbServer) {
     let frontend = this.arangods.filter(arangod => {return arangod.isFrontend();})[0];
     print(`${Date()} resigning leaderships from ${dbServer.name} via ${frontend.name}`);
@@ -670,23 +700,33 @@ class instanceManager {
       if (result.code !== 202) {
         throw new Error(`failed to resign ${dbServer.name} (${dbServer.shortName}) from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
       }
-      let jobStatus;
-      while (true) {
-        sleep(1);
-        jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + result.parsedBody.id);
-        if (jobStatus.parsedBody.status === 'Failed') {
-          let msg = `failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(jobStatus)}`;
-          print(`${RED}${Date()}${msg}${RESET}`);
-          break;
-        }
-        print(jobStatus.parsedBody.status);
-        if (jobStatus.parsedBody.status === 'Finished') {
-          print(`${GREEN}${Date()} DONE resigning leaderships from ${dbServer.name} via ${frontend.name}${RESET}`);
-          return;
-        }
+      if (this.waitForAgencyJob(
+        result.parsedBody.id, 1000,
+        `resign ${dbServer.name} from leadership via ${frontend.name}:`)) {
+        return;
       }
     }
   }
+
+  moveShard(database, collection, shard, fromServer, toServer) {
+    let body = {
+      database,
+      collection,
+      shard,
+      'fromServer': fromServer.id,
+      'toServer': toServer.id
+    };
+    let result = arango.POST_RAW("/_admin/cluster/moveShard", body);
+    // Now wait until the job we triggered is finished:
+    var count = 600;   // seconds
+
+    if (this.waitForAgencyJob(
+      result.parsedBody.id, 600,
+      `moveShard in _db/${database}/${collection}/${shard} from ${fromServer.name} to ${toServer.name}:`)) {
+      return;
+    }
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief shuts down an instance
   // //////////////////////////////////////////////////////////////////////////////
@@ -999,12 +1039,12 @@ class instanceManager {
             haveMaintainance = false;
             this._setMaintenance(false);
           }
+          if (arangod.isRole(instanceRole.agent)) {
+            print("running agency health check");
+            this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions, true);
+          }
         }
       });
-      if (role === instanceRole.agent) {
-        print("running agency health check");
-        this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
-      }
     });
   }
   // //////////////////////////////////////////////////////////////////////////////

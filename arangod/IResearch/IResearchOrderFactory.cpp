@@ -31,6 +31,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
 #include "IResearch/IResearchFeature.h"
@@ -103,7 +104,8 @@ bool makeScorer(irs::Scorer::ptr& scorer, std::string_view name,
 bool fromFCall(irs::Scorer::ptr* scorer, std::string_view scorerName,
                aql::AstNode const* args,
                arangodb::iresearch::QueryContext const& ctx) {
-  auto const* ref = arangodb::iresearch::getSearchFuncRef(args);
+  auto n = aql::ast::ArrayNode(args);
+  auto const* ref = arangodb::iresearch::getSearchFuncRef(n);
 
   if (ref != ctx.ref) {
     // invalid arguments
@@ -124,51 +126,22 @@ bool fromFCall(irs::Scorer::ptr* scorer, std::string_view scorerName,
   return makeScorer(*scorer, scorerName, *args, ctx);
 }
 
-bool nameFromFCall(std::string& scorerName, aql::AstNode const& node) {
-  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
-  auto* fn = static_cast<aql::Function*>(node.getData());
-
-  if (!fn || 1 != node.numMembers() || !arangodb::iresearch::isScorer(*fn)) {
-    return false;  // no function
-  }
-
-  scorerName = fn->name;
+bool fromFCall(irs::Scorer::ptr* scorer, aql::AstNode const& node,
+               arangodb::iresearch::QueryContext const& ctx) {
+  auto scorerName =
+      std::string{aql::ast::FunctionCallNode(&node).getFunctionName()};
 
   // convert name to lower case
   std::transform(scorerName.begin(), scorerName.end(), scorerName.begin(),
                  ::tolower);
 
-  return true;
-}
-
-bool fromFCall(irs::Scorer::ptr* scorer, aql::AstNode const& node,
-               arangodb::iresearch::QueryContext const& ctx) {
-  std::string scorerName;
-
-  if (!nameFromFCall(scorerName, node)) {
-    return false;
-  }
-
   return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
-}
-
-bool nameFromFCallUser(std::string_view& scorerName, aql::AstNode const& node) {
-  TRI_ASSERT(aql::NODE_TYPE_FCALL_USER == node.type);
-
-  if (aql::VALUE_TYPE_STRING != node.value.type || 1 != node.numMembers()) {
-    return false;  // no function name
-  }
-
-  return arangodb::iresearch::parseValue(scorerName, node);
 }
 
 bool fromFCallUser(irs::Scorer::ptr* scorer, aql::AstNode const& node,
                    arangodb::iresearch::QueryContext const& ctx) {
-  std::string_view scorerName;
-
-  if (!nameFromFCallUser(scorerName, node)) {
-    return false;
-  }
+  auto scorerName =
+      std::string{aql::ast::FunctionCallNode(&node).getFunctionName()};
 
   return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
@@ -176,29 +149,6 @@ bool fromFCallUser(irs::Scorer::ptr* scorer, aql::AstNode const& node,
 }  // namespace
 
 namespace arangodb::iresearch::order_factory {
-
-aql::Variable const* refFromScorer(aql::AstNode const& node) {
-  if (aql::NODE_TYPE_FCALL != node.type &&
-      aql::NODE_TYPE_FCALL_USER != node.type) {
-    return nullptr;
-  }
-
-  auto* ref = getSearchFuncRef(node.getMember(0));
-
-  if (!ref) {
-    // invalid arguments or reference
-    return nullptr;
-  }
-
-  QueryContext const ctx{.ref = ref};
-
-  if (!order_factory::scorer(nullptr, node, ctx)) {
-    // not a scorer function
-    return nullptr;
-  }
-
-  return ref;
-}
 
 bool scorer(irs::Scorer::ptr* scorer, aql::AstNode const& node,
             QueryContext const& ctx) {
@@ -212,47 +162,6 @@ bool scorer(irs::Scorer::ptr* scorer, aql::AstNode const& node,
       // expressions except function calls
       return false;
   }
-}
-
-bool comparer(irs::Scorer::ptr* comparer, aql::AstNode const& node) {
-  std::string buf;
-  std::string_view scorerName;
-
-  switch (node.type) {
-    case aql::NODE_TYPE_FCALL: {  // function call
-      if (!nameFromFCall(buf, node)) {
-        return false;
-      }
-
-      scorerName = buf;
-    } break;
-    case aql::NODE_TYPE_FCALL_USER: {  // user function call
-      if (!nameFromFCallUser(scorerName, node)) {
-        return false;
-      }
-    } break;
-    default:
-      // IResearch does not support any
-      // expressions except function calls
-      return false;
-  }
-
-  if (!comparer) {
-    // cheap shallow check
-    // ArangoDB, for API consistency, only supports scorers configurable via
-    // jSON
-    return irs::scorers::exists(
-        scorerName, irs::type<irs::text_format::json>::get(), false);
-  }
-
-  // create scorer with default arguments
-  // ArangoDB, for API consistency, only supports scorers configurable via jSON
-  *comparer = irs::scorers::get(  // get scorer
-      scorerName, irs::type<irs::text_format::json>::get(), std::string_view{},
-      false  // args
-  );
-
-  return bool(*comparer);
 }
 
 }  // namespace arangodb::iresearch::order_factory

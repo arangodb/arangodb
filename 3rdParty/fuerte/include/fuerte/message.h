@@ -113,8 +113,7 @@ struct RequestHeader final : public MessageHeader {
 
   /// @brief API version, if specified via /_arango/vX or /_arango/experimental.
   /// std::nullopt means no prefix was present; appendPath will not add one.
-  /// experimentalApiVersion means /_arango/experimental was used.
-  std::optional<uint32_t> apiVersion = std::nullopt;
+  std::optional<std::string> apiVersion = std::nullopt;
 
   // accept header accessors
   ContentType acceptType() const { return _acceptType; }

@@ -2564,7 +2564,7 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
     url += "&includeFoxxQueues=true";
   }
 
-  // use an optmization here for shard synchronization: only fetch the
+  // use an optimization here for shard synchronization: only fetch the
   // inventory including a single shard. this can greatly reduce the size of
   // the response.
   if (ServerState::instance()->isDBServer() && !_config.isChild() &&

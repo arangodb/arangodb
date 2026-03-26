@@ -27,6 +27,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TypedAstNodes.h"
 #include "IResearch/IResearchCommon.h"
 #include "VelocyPackHelper.h"
 
@@ -570,7 +571,7 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 
 // checks a specified args to be deterministic
 // and retuns reference to a loop variable
-aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept;
+aql::Variable const* getSearchFuncRef(aql::ast::ArrayNode args) noexcept;
 
 }  // namespace iresearch
 }  // namespace arangodb

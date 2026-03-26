@@ -38,7 +38,6 @@
       "hidden": true,
       "name": "x86_64",
       "cacheVariables": {
-        "USE_LIBUNWIND": "On",
         "TARGET_ARCHITECTURE": "sandy-bridge"
       }
     },
@@ -46,7 +45,7 @@
       "hidden": true,
       "name": "arm",
       "cacheVariables": {
-        "USE_LIBUNWIND": "Off"
+        "TARGET_ARCHITECTURE": "graviton1"
       }
     },
     {
@@ -113,59 +112,13 @@
       }
     },
     {
-      "name": "community",
-      "inherits": "release-base",
-      "displayName": "Build ArangoDB Community Edition (Release Build)",
-      "binaryDir": "${sourceDir}/build-presets/${presetName}",
-      "cacheVariables": {}
-    },
-    {
       "name": "enterprise",
       "inherits": "release-base",
       "displayName": "Build ArangoDB Enterprise Edition (Release Build)",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
       "cacheVariables": {
         "USE_ENTERPRISE": "On"
       }
-    },
-    {
-      "name": "community-developer",
-      "inherits": [
-        "maintainer",
-        "community"
-      ],
-      "displayName": "Build ArangoDB Community Edition (Developer Build)",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "USE_IPO": "Off",
-        "USE_FAIL_ON_WARNINGS": "On",
-        "STATIC_EXECUTABLES": "On",
-        "USE_STRICT_OPENSSL_VERSION": "Off"
-      }
-    },
-    {
-      "name": "community-pr-non-maintainer",
-      "inherits": [
-        "pr",
-        "community"
-      ],
-      "displayName": "PR Build ArangoDB Community Edition"
-    },
-    {
-      "name": "community-pr-no-v8",
-      "inherits": [
-        "pr",
-        "community",
-        "no-v8"
-      ],
-      "displayName": "PR Build ArangoDB Community Edition (without V8)"
-    },
-    {
-      "name": "community-pr",
-      "inherits": [
-        "maintainer",
-        "community-pr-non-maintainer"
-      ],
-      "displayName": "PR Build ArangoDB Community Edition Maintainer Mode"
     },
     {
       "name": "enterprise-pr-no-v8",
@@ -185,6 +138,14 @@
       "displayName": "PR Build ArangoDB Enterprise Edition"
     },
     {
+      "name": "enterprise-pr-non-maintainer-arm",
+      "inherits": [
+        "pr-arm",
+        "enterprise"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition - ARM"
+    },
+    {
       "name": "enterprise-pr",
       "inherits": [
         "maintainer",
@@ -193,13 +154,12 @@
       "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode"
     },
     {
-      "name": "community-pr-arm",
+      "name": "enterprise-pr-arm",
       "inherits": [
-        "pr-arm",
         "maintainer",
-        "community"
+        "enterprise-pr-non-maintainer-arm"
       ],
-      "displayName": "PR Build ArangoDB Community Edition (ARM)"
+      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode - ARM"
     },
     {
       "name": "enterprise-developer",
@@ -216,22 +176,6 @@
       }
     },
     {
-      "name": "community-developer-tsan",
-      "inherits": [
-        "tsan",
-        "community-developer"
-      ],
-      "displayName": "Build ArangoDB Community Edition (TSAN Build)"
-    },
-    {
-      "name": "community-pr-tsan",
-      "inherits": [
-        "tsan",
-        "community-pr"
-      ],
-      "displayName": "Build ArangoDB Community Edition (TSAN Build)"
-    },
-    {
       "name": "enterprise-developer-tsan",
       "inherits": [
         "tsan",
@@ -248,20 +192,12 @@
       "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
     },
     {
-      "name": "community-developer-alubsan",
+      "name": "enterprise-pr-arm-tsan",
       "inherits": [
-        "alubsan",
-        "community-developer"
+        "tsan",
+        "enterprise-pr-arm"
       ],
-      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
-    },
-    {
-      "name": "community-pr-alubsan",
-      "inherits": [
-        "alubsan",
-        "community-pr"
-      ],
-      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build) - ARM"
     },
     {
       "name": "enterprise-developer-alubsan",
@@ -280,12 +216,12 @@
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
     },
     {
-      "name": "community-developer-coverage",
+      "name": "enterprise-pr-arm-alubsan",
       "inherits": [
-        "gcov",
-        "community-developer"
+        "alubsan",
+        "enterprise-pr-arm"
       ],
-      "displayName": "Build ArangoDB Community Edition (Coverage Build)"
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build) - ARM"
     },
     {
       "name": "enterprise-developer-coverage",
@@ -298,36 +234,20 @@
   ],
   "buildPresets": [
     {
-      "name": "community",
-      "configurePreset": "community"
-    },
-    {
       "name": "enterprise",
       "configurePreset": "enterprise"
-    },
-    {
-      "name": "community-developer",
-      "configurePreset": "community-developer"
     },
     {
       "name": "enterprise-developer",
       "configurePreset": "enterprise-developer"
     },
     {
-      "name": "community-pr",
-      "configurePreset": "community-pr"
-    },
-    {
-      "name": "community-pr-no-v8",
-      "configurePreset": "community-pr-no-v8"
-    },
-    {
-      "name": "community-pr-non-maintainer",
-      "configurePreset": "community-pr-non-maintainer"
-    },
-    {
       "name": "enterprise-pr",
       "configurePreset": "enterprise-pr"
+    },
+    {
+      "name": "enterprise-pr-arm",
+      "configurePreset": "enterprise-pr-arm"
     },
     {
       "name": "enterprise-pr-no-v8",
@@ -338,18 +258,6 @@
       "configurePreset": "enterprise-pr-non-maintainer"
     },
     {
-      "name": "community-pr-arm",
-      "configurePreset": "community-pr-arm"
-    },
-    {
-      "name": "community-developer-tsan",
-      "configurePreset": "community-developer-tsan"
-    },
-    {
-      "name": "community-pr-tsan",
-      "configurePreset": "community-pr-tsan"
-    },
-    {
       "name": "enterprise-developer-tsan",
       "configurePreset": "enterprise-developer-tsan"
     },
@@ -358,12 +266,8 @@
       "configurePreset": "enterprise-pr-tsan"
     },
     {
-      "name": "community-developer-alubsan",
-      "configurePreset": "community-developer-alubsan"
-    },
-    {
-      "name": "community-pr-alubsan",
-      "configurePreset": "community-pr-alubsan"
+      "name": "enterprise-pr-arm-tsan",
+      "configurePreset": "enterprise-pr-arm-tsan"
     },
     {
       "name": "enterprise-developer-alubsan",
@@ -374,8 +278,8 @@
       "configurePreset": "enterprise-pr-alubsan"
     },
     {
-      "name": "community-developer-coverage",
-      "configurePreset": "community-developer-coverage"
+      "name": "enterprise-pr-arm-alubsan",
+      "configurePreset": "enterprise-pr-arm-alubsan"
     },
     {
       "name": "enterprise-developer-coverage",
@@ -388,15 +292,11 @@
       "configurePreset": "enterprise-developer"
     },
     {
-      "name": "community-developer",
-      "configurePreset": "community-developer"
-    },
-    {
-      "name": "community-pr",
-      "configurePreset": "community-pr"
-    },
-    {
       "name": "enterprise-pr",
+      "configurePreset": "enterprise-pr"
+    },
+    {
+      "name": "enterprise-pr-arm",
       "configurePreset": "enterprise-pr"
     }
   ]

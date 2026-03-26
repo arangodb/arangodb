@@ -9,6 +9,7 @@
       - BackupAuthNoSysTests
       - BackupAuthSysTests
       - BackupNoAuthSysTests
+      - BackupNoAuthNoSysTests
       - arangosh
       - arangobench
       - permissions
@@ -42,7 +43,6 @@
       buckets: 2
     args:
       extraArgs:log.level: replication=trace
-      extraArgs:experimental-vector-index: true
 # TODO - we could actually use 4 buckets instead of 2,
 # but ATM this causes issues with other tests on Jenkins
 # For CircleCI we have a special case in the generate_config
@@ -59,7 +59,7 @@
       extraArgs:log.level: replication=trace
 
 
-- authentication_audit_endpoints_import_export_agency:
+- authentication_audit_endpoints_import_export_agency_fuerte:
     options:
       type: single
     suites:
@@ -278,6 +278,7 @@
     options:
       priority: 1000
       type: mixed
+      size: large
     suites:
       - deadlock:
           args:
@@ -338,7 +339,7 @@
 - cluster_resilience:
     options:
       priority: 500
-      size: medium
+      size: large
       type: cluster
     args:
       dumpAgencyOnError: true
@@ -417,7 +418,7 @@
     options:
       priority: 500
       type: cluster
-      size: medium+
+      size: large
       buckets: 6
     args:
       dumpAgencyOnError: true
@@ -458,13 +459,17 @@
       parallelity: 5
     args:
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
+      extraArgs:vector-index: true
     suites:
       - hot_backup
       - hot_backup_views
       - hot_backup_aql
       - hot_backup_smart_graphs
       - hot_backup_el_cheapo
+      - BackupAuthNoSysTests
+      - BackupAuthSysTests
+      - BackupNoAuthSysTests
+      - BackupNoAuthNoSysTests
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 - server_parameters:
@@ -473,6 +478,7 @@
       parallelity: 3
       buckets: 2
       type: single
+      size: medium
 
 - server_parameters:
     options:

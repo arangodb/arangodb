@@ -156,10 +156,8 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
             this.instanceManager.destructor(false);
             this.results[te] = {
               status: false,
-              messages: 'Warmup of system failed: ' + ex,
-              shutdown: shutdownStatus
+              messages: `Warmup of system failed: ${ex}\n${ex.stack} Shutdown: ${shutdownStatus}`,
             };
-            this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
             this.results.status = false;
             return this.results;
           }
@@ -189,7 +187,6 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                   ex.message + " - " + ex.stack +
                   JSON.stringify(this.instanceManager.getStructure()),
                 status: false,
-                shutdown: false
               };
               this.results.status = false;
               this.instanceManager.shutdownInstance(true);
@@ -201,7 +198,6 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
             this.results[te] = {
               status: false,
               message: "failed to stop instance",
-              shutdown: false
             };
           }
         } else {
@@ -225,7 +221,6 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
               this.results[te] = {
                 message: "Aborting testrun; failed to launch instance: " + JSON.stringify(this.instanceManager.getStructure()),
                 status: false,
-                shutdown: false
               };
               this.results.status = false;
               this.instanceManager.shutdownInstance(true);
@@ -239,9 +234,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                 ex.message + " - " +
                 JSON.stringify(this.instanceManager.getStructure()),
               status: false,
-              shutdown: false
             };
-            this.results.shutdown = false;
             this.results.status = false;
             this.instanceManager.shutdownInstance(true);
             this.instanceManager.destructor(false);
@@ -261,7 +254,10 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
         }
         this.results.status = this.results.status && this.results[te].status;
         shutdownStatus = this.instanceManager.shutdownInstance(false);
-        this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
+        this.results['shutdown'] = {
+          status: this.results['shutdown'] && shutdownStatus,
+          message: (this.results['shutdown'] && shutdownStatus)? "": "shutdown failed"
+        };
         this.instanceManager.destructor(this.results[te].status && shutdownStatus);
       } else {
         if (this.options.extremeVerbosity) {
