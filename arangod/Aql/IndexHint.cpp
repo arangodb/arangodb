@@ -212,7 +212,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node, bool hasLevels) {
 
         if (name == StaticStrings::IndexHintOption) {
           // indexHint
-          AstNode const* value = ast::ObjectElementNode(child).getValue();
+          AstNode const* value = child->getMember(0);
 
           if (value->type == AstNodeType::NODE_TYPE_OBJECT) {
             _hint = NestedContents{};
@@ -223,8 +223,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node, bool hasLevels) {
           }
           if (empty()) {
             VPackBuilder builder;
-            ast::ObjectElementNode(child).getValue()->toVelocyPackValue(
-                builder);
+            child->getMember(0)->toVelocyPackValue(builder);
             ExecutionPlan::invalidOptionAttribute(
                 query, absl::StrCat("invalid value ", builder.toJson(), " in"),
                 "TRAVERSAL", name);
