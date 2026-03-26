@@ -1877,21 +1877,21 @@ S/A          - API is switchable between superuser and admin access, additionall
 | POST   | `/_api/log`                                                  | RestLogHandler             | AdminWriteReplicatedLog             | (replication2 + cluster only)            |                        |
 | DELETE | `/_api/log`                                                  | RestLogHandler             | AdminWriteReplicatedLog             | (replication2 + cluster only)            |                        |
 | GET    | `/_api/log-internal`                                         | RestLogInternalHandler     | SUPER                               | (replication2 + cluster only)            |                        |
-| GET    | `/_api/query/slow`                                           | RestQueryHandler           | _system, all DBs needs SUPER        |                                          |                        |
-| GET    | `/_api/query/current`                                        | RestQueryHandler           | _system, all DBs needs SUPER        |                                          |                        |
+| GET    | `/_api/query/slow`                                           | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
+| GET    | `/_api/query/current`                                        | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
 | GET    | `/_api/query/properties`                                     | RestQueryHandler           | AUTHEN                              |                                          |                        |
 | GET    | `/_api/query/registry`                                       | RestQueryHandler           | SUPER                               |                                          |                        |
 | GET    | `/_api/query/rules`                                          | RestQueryHandler           | AUTHEN                              |                                          |                        |
 | POST   | `/_api/query`                                                | RestQueryHandler           | AUTHEN                              |                                          |                        |
 | PUT    | `/_api/query`                                                | RestQueryHandler           | AUTHEN                              |                                          | FIXME                  |
-| DELETE | `/_api/query/{id}`                                           | RestQueryHandler           |                                     |                                          |                        |
-| DELETE | `/_api/query/slow`                                           | RestQueryHandler           |                                     |                                          |                        |
-| DELETE | `/_api/query-cache`                                          |                            |                                     |                                          |                        |
-| GET    | `/_api/query-cache/entries`                                  |                            |                                     |                                          |                        |
-| GET    | `/_api/query-cache/properties`                               |                            |                                     |                                          |                        |
-| PUT    | `/_api/query-cache/properties`                               |                            |                                     |                                          |                        |
-| DELETE | `/_api/query-plan-cache`                                     |                            |                                     |                                          |                        |
-| GET    | `/_api/query-plan-cache`                                     |                            |                                     |                                          |                        |
+| DELETE | `/_api/query/{id}`                                           | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
+| DELETE | `/_api/query/slow`                                           | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
+| GET    | `/_api/query-cache/entries`                                  | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
+| GET    | `/_api/query-cache/properties`                               | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
+| PUT    | `/_api/query-cache/properties`                               | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
+| DELETE | `/_api/query-cache`                                          | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
+| GET    | `/_api/query-plan-cache`                                     | RestQueryPlanCacheHandler  | AUTHEN, details (5)                 | redundant check for DB RO                | FIXME                  |
+| DELETE | `/_api/query-plan-cache`                                     | RestQueryPlanCacheHandler  | AUTHEN, DB RW                       | needs an RBAC solution                   | FIXME                  |
 | DELETE | `/_api/replication/applier-state`                            | RestReplicationHandler     |                                     |                                          |                        |
 | GET    | `/_api/replication/applier-config`                           | RestReplicationHandler     |                                     |                                          |                        |
 | GET    | `/_api/replication/applier-state`                            | RestReplicationHandler     |                                     |                                          |                        |
@@ -1930,23 +1930,23 @@ S/A          - API is switchable between superuser and admin access, additionall
 | GET    | `/_api/replication/server-id`                                | RestReplicationHandler     |                                     |                                          |                        |
 | PUT    | `/_api/replication/set-the-leader`                           | RestReplicationHandler     |                                     |                                          |                        |
 | PUT    | `/_api/replication/sync`                                     | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/simple/all`                                           |                            |                                     |                                          |                        |
-| PUT    | `/_api/simple/all-keys`                                      |                            |                                     |                                          |                        |
-| PUT    | `/_api/simple/by-example`                                    |                            |                                     |                                          |                        |
-| PUT    | `/_api/simple/lookup-by-keys`                                |                            |                                     |                                          |                        |
-| PUT    | `/_api/simple/remove-by-keys`                                |                            |                                     |                                          |                        |
-| GET    | `/_api/tasks`                                                |                            |                                     | (V8 required)                            |                        |
-| GET    | `/_api/tasks/{id}`                                           |                            |                                     | (V8 required)                            |                        |
-| POST   | `/_api/tasks`                                                |                            |                                     | (V8 required)                            |                        |
-| PUT    | `/_api/tasks/{id}`                                           |                            |                                     | (V8 required)                            |                        |
-| DELETE | `/_api/tasks/{id}`                                           |                            |                                     | (V8 required)                            |                        |
-| DELETE | `/_api/token/{user}/{id}`                                    |                            |                                     |                                          |                        |
-| GET    | `/_api/token/{user}`                                         |                            |                                     |                                          |                        |
-| POST   | `/_api/token/{user}`                                         |                            |                                     |                                          |                        |
-| GET    | `/_api/ttl/properties`                                       |                            |                                     |                                          |                        |
-| GET    | `/_api/ttl/statistics`                                       |                            |                                     |                                          |                        |
-| PUT    | `/_api/ttl/properties`                                       |                            |                                     |                                          |                        |
-| POST   | `/_api/upload`                                               |                            |                                     |                                          |                        |
+| PUT    | `/_api/simple/all`                                           | RestSimpleQueryHandler     | AUTHEN, COLL RO                     |                                          |                        |
+| PUT    | `/_api/simple/all-keys`                                      | RestSimpleQueryHandler     | AUTHEN, COLL RO                     |                                          |                        |
+| PUT    | `/_api/simple/by-example`                                    | RestSimpleQueryHandler     | AUTHEN, COLL RO                     |                                          |                        |
+| PUT    | `/_api/simple/lookup-by-keys`                                | RestSimpleHandler          | AUTHEN, COLL RO                     |                                          |                        |
+| PUT    | `/_api/simple/remove-by-keys`                                | RestSimpleHandler          | AUTHEN, COLL RO                     |                                          |                        |
+| GET    | `/_api/tasks`                                                | RestTasksHandler           | AUTHEN, list only SUPER or SELF     | (V8 required)                            |                        |
+| GET    | `/_api/tasks/{id}`                                           | RestTasksHandler           | AUTHEN, SUPER or SELF               | (V8 required)                            |                        |
+| POST   | `/_api/tasks`                                                | RestTasksHandler           | DB RW                               | (V8 required), adapt to RBAC             | FIXME                  |
+| PUT    | `/_api/tasks/{id}`                                           | RestTasksHandler           | DB RW                               | (V8 required), adapt to RBAC             | FIXME                  |
+| DELETE | `/_api/tasks/{id}`                                           | RestTasksHandler           | DB RW                               | (V8 required), adapt to RBAC             | FIXME                  |
+| GET    | `/_api/token/{user}`                                         | RestAccessTokenHandler     | canReadUser                         |                                          |                        |
+| POST   | `/_api/token/{user}`                                         | RestAccessTokenHandler     | canWriteUser                        |                                          |                        |
+| DELETE | `/_api/token/{user}/{id}`                                    | RestAccessTokenHandler     | canWriteUser                        |                                          |                        |
+| GET    | `/_api/ttl/properties`                                       | RestTtlHandler             | AUTHEN, _system                     |                                          |                        |
+| GET    | `/_api/ttl/statistics`                                       | RestTtlHandler             | AUTHEN, _system                     |                                          |                        |
+| PUT    | `/_api/ttl/properties`                                       | RestTtlHandler             | AUTHEN, _system                     |                                          |                        |
+| POST   | `/_api/upload`                                               | RestUploadHandler          | AUTHEN                              | should this not be restricted further??? | FIXME                  |
 | GET    | `/_api/user`                                                 | RestUsersHandler           | AUTHEN, see only canReadUser(u)     |                                          |                        |
 | POST   | `/_api/user`                                                 | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
 | POST   | `/_api/user/{user}`                                          | RestUsersHandler           | AUTHEN, just check credentials      |                                          |                        |
@@ -1964,7 +1964,7 @@ S/A          - API is switchable between superuser and admin access, additionall
 | DELETE | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
 | DELETE | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
 | DELETE | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| GET    | `/_api/version`                                              | RestVersionHandler         | AUTHEN, details (2)                 |                                          |                        |U
+| GET    | `/_api/version`                                              | RestVersionHandler         | AUTHEN, details (2)                 |                                          |                        |
 | GET    | `/_api/view`                                                 |                            |                                     |                                          |                        |
 | POST   | `/_api/view`                                                 |                            |                                     |                                          |                        |
 | DELETE | `/_api/view/{name}`                                          |                            |                                     |                                          |                        |
@@ -2026,6 +2026,7 @@ S/A          - API is switchable between superuser and admin access, additionall
 (2) For `/_api/version`, details can only be queried with `AdminMonitoringInternal`, if `--server.harden=true`
 (3) For `/_api/collection`, RO for database is needed, then all collections with COLL RO are listed
 (4) For `/_api/database`, all databases with DB RO are listed
+(5) For `GET /_api/query-plan-cache` only those entries are returned, for which the user has read access to all occurring collections
 
 Rules:
  - internal use of system collections allowed without check
