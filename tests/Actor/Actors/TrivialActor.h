@@ -23,10 +23,12 @@
 #pragma once
 
 #include <chrono>
+#include <format>
+#include <iostream>
+#include <memory>
+#include <string>
 #include <string_view>
 #include <thread>
-#include <string>
-#include <memory>
 #include <variant>
 
 #include "Actor/Actor.h"
@@ -101,7 +103,7 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
       -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state =
-        fmt::format("sent unknown message to {}", unknown.receiver);
+        std::format("sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
@@ -109,19 +111,19 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
       -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state =
-        fmt::format("receiving actor {} not found", notFound.actor);
+        std::format("receiving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 
   auto operator()(actor::message::NetworkError notFound)
       -> std::unique_ptr<TrivialState> {
     this->state->called++;
-    this->state->state = fmt::format("network error: {}", notFound.message);
+    this->state->state = std::format("network error: {}", notFound.message);
     return std::move(this->state);
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<TrivialState> {
-    fmt::print(stderr, "TrivialActor: handles rest\n");
+    std::cerr << "TrivialActor: handles rest\n";
     return std::move(this->state);
   }
 };
@@ -138,8 +140,8 @@ struct TrivialActor {
 }  // namespace arangodb::actor::test
 
 template<>
-struct fmt::formatter<arangodb::actor::test::TrivialState>
+struct std::formatter<arangodb::actor::test::TrivialState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::actor::test::message::TrivialMessages>
+struct std::formatter<arangodb::actor::test::message::TrivialMessages>
     : arangodb::inspection::inspection_formatter {};

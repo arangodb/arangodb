@@ -24,6 +24,8 @@
 
 #include "StorageEngineMock.h"
 
+#include <typeindex>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Basics/Result.h"
@@ -70,7 +72,8 @@
 namespace {
 
 struct IndexFactoryMock : arangodb::IndexFactory {
-  IndexFactoryMock(arangodb::ArangodServer& server, bool injectClusterIndexes)
+  IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
+                   bool injectClusterIndexes)
       : IndexFactory(server) {
     if (injectClusterIndexes) {
       arangodb::ClusterIndexFactory::linkIndexFactories(
@@ -197,9 +200,11 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
-StorageEngineMock::StorageEngineMock(arangodb::ArangodServer& server,
-                                     bool injectClusterIndexes)
-    : StorageEngine(server, "Mock", "", std::numeric_limits<size_t>::max(),
+StorageEngineMock::StorageEngineMock(
+    arangodb::application_features::ApplicationServer& server,
+    bool injectClusterIndexes)
+    : StorageEngine(server, "Mock", "Mock",
+                    std::type_index(typeid(StorageEngineMock)),
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes))),
       vocbaseCount(1),

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertNotEqual */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,20 +26,24 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 const db = require("internal").db;
 const {
     randomNumberGeneratorFloat,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    insertDocsAndEnsureIndex,
+    waitForAllVectorIndexesState,
+    VectorIndexTrainingState,
+} = require("@arangodb/testutils/vector-index-common");
+const isCluster = require("internal").isCluster();
 
 const { versionHas } = require("@arangodb/test-helper");
 
 const dbName = "vectorDB";
 const collName = "coll";
-const indexName = "vectorIndex";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -48,18 +52,23 @@ const indexName = "vectorIndex";
 function VectorIndexCreateAndRemoveTestSuite() {
     let collection;
     const dimension = 500;
-    const seed = 12132390894;
+    const seed = generateSeed();
     let randomPoint;
-    const insertedDocsCount = 100;
+    const insertedDocsCountFactor = isCluster ? numberOfShards : 1;
+    const insertedDocsCount = 1500 * insertedDocsCountFactor;
     let insertedDocs = [];
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
+            try {
+                db._dropDatabase(dbName);
+            } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -75,19 +84,27 @@ function VectorIndexCreateAndRemoveTestSuite() {
                     vector
                 });
             }
-            insertedDocs = db.coll.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension,
-                    nLists: 1
-                },
+            insertedDocs = [];
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension,
+                        nLists: 10
+                    },
+                }),
+                onBatchInserted: (result) => insertedDocs.push(...result),
             });
+
+            assertTrue(
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
+                "Expected index to become ready with " + insertedDocsCount + " docs"
+            );
         },
 
         tearDown: function() {
@@ -200,15 +217,19 @@ function VectorIndexCreateAndRemoveTestSuite() {
 function VectorIndexTestCreationWithVectors() {
     let collection;
     const dimension = 500;
-    const seed = 12132390894;
+    const seed = generateSeed();
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
+            try {
+                db._dropDatabase(dbName);
+            } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
         },
 
@@ -233,7 +254,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                    collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -268,7 +289,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -300,7 +321,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -336,7 +357,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -372,7 +393,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2",
                     type: "vector",
                     fields: ["vector"],
@@ -415,7 +436,7 @@ function VectorIndexTestCreationWithVectors() {
             collection.insert(docs);
 
             try {
-                let result = collection.ensureIndex({
+                collection.ensureIndex({
                     name: "vector_l2_stored",
                     type: "vector",
                     inBackground: false,
@@ -439,18 +460,23 @@ function VectorIndexTestCreationWithVectors() {
 function VectorIndexStoredValuesTestSuite() {
     let collection;
     const dimension = 128;
-    const seed = 123456789;
+    const seed = generateSeed();
     let randomPoint;
-    const insertedDocsCount = 50;
+    const insertedDocsCountFactor = isCluster ? numberOfShards : 1;
+    const insertedDocsCount = 1500 * insertedDocsCountFactor;
     let insertedDocs = [];
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
+            try {
+                db._dropDatabase(dbName);
+            } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             // Insert test documents with various fields for storedValues testing
@@ -476,21 +502,28 @@ function VectorIndexStoredValuesTestSuite() {
                     description: `This is document number ${i} with some description text`
                 });
             }
-            insertedDocs = db.coll.insert(docs);
-
-            // Create vector index with storedValues
-            collection.ensureIndex({
-                name: "vector_l2_stored",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                storedValues: ["name", "value", "category", "metadata", "description"],
-                params: {
-                    metric: "l2",
-                    dimension,
-                    nLists: 1
-                },
+            insertedDocs = [];
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2_stored",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    storedValues: ["name", "value", "category", "metadata", "description"],
+                    params: {
+                        metric: "l2",
+                        dimension,
+                        nLists: 1
+                    },
+                }),
+                onBatchInserted: (result) => insertedDocs.push(...result),
             });
+
+            assertTrue(
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
+                "Expected index to become ready with " + insertedDocsCount + " docs"
+            );
         },
 
         tearDown: function() {
@@ -505,10 +538,10 @@ function VectorIndexStoredValuesTestSuite() {
             assertEqual("vector", indexInfo.type);
             assertTrue(indexInfo.storedValues !== undefined, "storedValues should be defined");
             assertEqual(5, indexInfo.storedValues.length, "Should have 5 stored values");
-            
+
             const expectedStoredValues = ["name", "value", "category", "metadata", "description"];
             for (let i = 0; i < expectedStoredValues.length; i++) {
-                assertEqual(expectedStoredValues[i], indexInfo.storedValues[i], 
+                assertEqual(expectedStoredValues[i], indexInfo.storedValues[i],
                     `Stored value ${i} should match expected value`);
             }
         },
@@ -516,7 +549,7 @@ function VectorIndexStoredValuesTestSuite() {
         testInsertDocumentsWithStoredValues: function() {
             // Test inserting documents when index has storedValues
             const initialCount = collection.count();
-            
+
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
             for (let i = 0; i < 10; ++i) {
@@ -536,7 +569,7 @@ function VectorIndexStoredValuesTestSuite() {
                     description: `New document ${i}`
                 });
             }
-            
+
             const insertResult = collection.insert(docs);
             assertEqual(10, insertResult.length, "Should insert 10 documents");
             assertEqual(initialCount + 10, collection.count(), "Collection count should increase by 10");
@@ -545,7 +578,7 @@ function VectorIndexStoredValuesTestSuite() {
         testInsertDocumentsWithMissingStoredValues: function() {
             // Test inserting documents with missing storedValues fields
             const initialCount = collection.count();
-            
+
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
             for (let i = 0; i < 5; ++i) {
@@ -555,7 +588,7 @@ function VectorIndexStoredValuesTestSuite() {
                 // Missing storedValues fields
                 docs.push({vector});
             }
-            
+
             const insertResult = collection.insert(docs);
             assertEqual(5, insertResult.length, "Should insert 5 documents");
             assertEqual(initialCount + 5, collection.count(), "Collection count should increase by 5");
@@ -588,7 +621,7 @@ function VectorIndexStoredValuesTestSuite() {
             };
 
             collection.update(docToUpdate._key, updateData);
-            
+
             // Verify the update
             const updatedDoc = collection.document(docToUpdate._key);
             assertEqual("updated_name", updatedDoc.name);
@@ -614,7 +647,7 @@ function VectorIndexStoredValuesTestSuite() {
             };
 
             collection.replace(docToReplace._key, replaceData);
-            
+
             // Verify the replacement
             const replacedDoc = collection.document(docToReplace._key);
             assertEqual("replaced_name", replacedDoc.name);
@@ -629,7 +662,7 @@ function VectorIndexStoredValuesTestSuite() {
             const vector = Array.from({
                 length: dimension
             }, () => gen());
-            
+
             const testDoc = {
                 vector,
                 name: "test_types", // string
@@ -646,7 +679,7 @@ function VectorIndexStoredValuesTestSuite() {
             };
 
             const insertResult = collection.insert(testDoc);
-            
+
             // Verify the document was inserted correctly*/
             const insertedDoc = collection.document(insertResult._key);
             assertEqual("test_types", insertedDoc.name);
@@ -664,15 +697,15 @@ function VectorIndexStoredValuesTestSuite() {
             // Test that storedValues are properly serialized in index definition
             const indexes = collection.getIndexes();
             const vectorIndex = indexes.find(idx => idx.name === "vector_l2_stored");
-            
+
             assertTrue(vectorIndex !== undefined, "Vector index should exist");
             assertTrue(vectorIndex.storedValues !== undefined, "storedValues should be defined");
             assertEqual(5, vectorIndex.storedValues.length, "Should have 5 stored values");
-            
+
             // Verify the storedValues array contains the expected fields
             const expectedFields = ["name", "value", "category", "metadata", "description"];
             for (const field of expectedFields) {
-                assertTrue(vectorIndex.storedValues.includes(field), 
+                assertTrue(vectorIndex.storedValues.includes(field),
                     `storedValues should include field: ${field}`);
             }
         },
@@ -681,7 +714,8 @@ function VectorIndexStoredValuesTestSuite() {
 
 
 jsunity.run(VectorIndexCreateAndRemoveTestSuite);
-jsunity.run(VectorIndexTestCreationWithVectors);
 jsunity.run(VectorIndexStoredValuesTestSuite);
+
+jsunity.run(VectorIndexTestCreationWithVectors);
 
 return jsunity.done();

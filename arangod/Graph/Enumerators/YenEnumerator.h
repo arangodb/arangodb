@@ -33,6 +33,7 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <vector>
 
@@ -159,8 +160,7 @@ template<class ProviderType, class EnumeratorType, bool IsWeighted>
 class YenEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
-  using VertexRef = ProviderType::Step::VertexType;
-  using Edge = ProviderType::Step::EdgeType;
+  using Edge = typename ProviderType::Step::EdgeType;
 
   using VertexSet =
       arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,

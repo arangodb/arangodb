@@ -37,6 +37,7 @@
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -87,8 +88,8 @@ class PhysicalCollectionTest
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
     features.emplace_back(server.addFeature<QueryRegistryFeature>(
-        server.template getFeature<
-            metrics::MetricsFeature>()));  // required for TRI_vocbase_t
+        server.getFeature<metrics::MetricsFeature>()));  // required for
+                                                         // TRI_vocbase_t
 
     for (auto& f : features) {
       f.get().prepare();

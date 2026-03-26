@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
-
 #include <velocypack/Builder.h>
 #include <string>
 
@@ -73,7 +71,7 @@ struct Figure {
 
 class Descriptions final {
  public:
-  explicit Descriptions(ArangodServer&);
+  explicit Descriptions(application_features::ApplicationServer&);
 
   std::vector<stats::Group> const& groups() const { return _groups; }
 
@@ -86,7 +84,7 @@ class Descriptions final {
   void processStatistics(velocypack::Builder&) const;
 
  private:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 
   std::vector<double> _requestTimeCuts;
   std::vector<double> _connectionTimeCuts;

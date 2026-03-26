@@ -34,8 +34,9 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using application_features::ApplicationServer;
 
-RestActionHandler::RestActionHandler(ArangodServer& server,
+RestActionHandler::RestActionHandler(ApplicationServer& server,
                                      GeneralRequest* request,
                                      GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),

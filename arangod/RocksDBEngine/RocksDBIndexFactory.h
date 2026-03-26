@@ -23,13 +23,14 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Indexes/IndexFactory.h"
 
 namespace arangodb {
 
 class RocksDBIndexFactory final : public IndexFactory {
  public:
-  explicit RocksDBIndexFactory(ArangodServer&);
+  explicit RocksDBIndexFactory(application_features::ApplicationServer&);
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities

@@ -26,7 +26,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-#include "Graph/Queues/ExpansionMarker.h"
+#include "Graph/Queues/QueueEntry.h"
 
 #include <queue>
 #include <vector>
@@ -47,7 +47,7 @@ class WeightedQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~WeightedQueue() { this->clear(); }
 
-  bool isBatched() { return false; }
+  bool usesCursor() { return false; }
 
   void clear() {
     if (!_queue.empty()) {
@@ -71,7 +71,10 @@ class WeightedQueue {
     std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
-  void append(Expansion expansion) { TRI_ASSERT(false); }
+  template<NeighbourCursor<Step> Cursor>
+  void append(Cursor& cursor) {
+    TRI_ASSERT(false);
+  }
 
   void setStartContent(std::vector<Step> startSteps) {
     // NOTE: This is not optimal.
@@ -83,14 +86,6 @@ class WeightedQueue {
       // This is proven to be correct, but may not be the fastest possible way.
       append(std::move(s));
     }
-  }
-
-  bool firstIsVertexFetched() const {
-    if (not isEmpty()) {
-      auto const& first = _queue.front();
-      return first.vertexFetched();
-    }
-    return false;
   }
 
   bool hasProcessableElement() const {
@@ -132,7 +127,7 @@ class WeightedQueue {
     return first;
   }
 
-  QueueEntry<Step> pop() {
+  std::optional<Step> pop() {
     TRI_ASSERT(!isEmpty());
     // std::pop_heap will move the front element (the one we would like to
     // steal) to the back of the vector, keeping the tree intact otherwise. Now
@@ -163,6 +158,8 @@ class WeightedQueue {
       }
     }
   }
+  template<class S, typename Inspector>
+  friend auto inspect(Inspector& f, WeightedQueue<S>& x);
 
  private:
   struct WeightedComparator {
@@ -188,6 +185,9 @@ class WeightedQueue {
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
-
+template<class StepType, typename Inspector>
+auto inspect(Inspector& f, WeightedQueue<StepType>& x) {
+  return f.object(x).fields(f.field("queue", x._queue));
+}
 }  // namespace graph
 }  // namespace arangodb

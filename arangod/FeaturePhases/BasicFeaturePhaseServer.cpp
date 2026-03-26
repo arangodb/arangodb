@@ -22,43 +22,67 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicFeaturePhaseServer.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/TempFeature.h"
+#include "RestServer/CpuUsageFeature.h"
+#include "RestServer/DaemonFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/EnvironmentFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/MaxMapCountFeature.h"
+#include "RestServer/NonceFeature.h"
+#include "RestServer/PrivilegeFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
+#include "RestServer/SupervisorFeature.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Sharding/ShardingFeature.h"
+#include "Ssl/SslFeature.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Audit/AuditFeature.h"
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 namespace arangodb::application_features {
 
-BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
+BasicFeaturePhaseServer::BasicFeaturePhaseServer(
+    application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<GreetingsFeaturePhase, ArangodServer>();
+  startsAfter<GreetingsFeaturePhase>();
 
-  if constexpr (ArangodServer::contains<DaemonFeature>()) {
-    startsAfter<DaemonFeature, ArangodServer>();
+  if (server.hasFeature<DaemonFeature>()) {
+    startsAfter<DaemonFeature>();
   }
-  if constexpr (ArangodServer::contains<SupervisorFeature>()) {
-    startsAfter<SupervisorFeature, ArangodServer>();
+  if (server.hasFeature<SupervisorFeature>()) {
+    startsAfter<SupervisorFeature>();
   }
-  startsAfter<CpuUsageFeature, ArangodServer>();
-  startsAfter<DatabasePathFeature, ArangodServer>();
-  startsAfter<EnvironmentFeature, ArangodServer>();
-  startsAfter<LanguageFeature, ArangodServer>();
-  startsAfter<MaxMapCountFeature, ArangodServer>();
-  startsAfter<NonceFeature, ArangodServer>();
-  startsAfter<PrivilegeFeature, ArangodServer>();
-  startsAfter<SchedulerFeature, ArangodServer>();
-  startsAfter<SharedPRNGFeature, ArangodServer>();
-  startsAfter<ShardingFeature, ArangodServer>();
-  startsAfter<SslFeature, ArangodServer>();
-  startsAfter<TempFeature, ArangodServer>();
+  startsAfter<CpuUsageFeature>();
+  startsAfter<DatabasePathFeature>();
+  startsAfter<EnvironmentFeature>();
+  startsAfter<LanguageFeature>();
+  startsAfter<MaxMapCountFeature>();
+  startsAfter<NonceFeature>();
+  startsAfter<PrivilegeFeature>();
+  startsAfter<SchedulerFeature>();
+  startsAfter<SharedPRNGFeature>();
+  startsAfter<ShardingFeature>();
+  startsAfter<SslFeature>();
+  startsAfter<TempFeature>();
 
-  if constexpr (ArangodServer::contains<FileDescriptorsFeature>()) {
-    startsAfter<FileDescriptorsFeature, ArangodServer>();
+  if (server.hasFeature<FileDescriptorsFeature>()) {
+    startsAfter<FileDescriptorsFeature>();
   }
-  if constexpr (ArangodServer::contains<AuditFeature>()) {
-    startsAfter<AuditFeature, ArangodServer>();
+#ifdef USE_ENTERPRISE
+  if (server.hasFeature<AuditFeature>()) {
+    startsAfter<AuditFeature>();
   }
-  if constexpr (ArangodServer::contains<EncryptionFeature>()) {
-    startsAfter<EncryptionFeature, ArangodServer>();
+  if (server.hasFeature<EncryptionFeature>()) {
+    startsAfter<EncryptionFeature>();
   }
+#endif
 }
 
 }  // namespace arangodb::application_features

@@ -54,9 +54,8 @@ PathValidatorTabooWrapper<
 template<class PathValidatorImplementation>
 auto PathValidatorTabooWrapper<PathValidatorImplementation>::validatePath(
     typename PathStoreImpl::Step& step) -> ValidationResult {
-  auto v = step.getVertex().getID();
   if (_forbiddenVertices != nullptr &&
-      _forbiddenVertices->contains(step.getVertex().getID())) {
+      _forbiddenVertices->contains(step.getVertex())) {
     return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
   }
   if (_forbiddenEdges != nullptr &&
@@ -72,7 +71,7 @@ auto PathValidatorTabooWrapper<PathValidatorImplementation>::validatePath(
     PathValidatorTabooWrapper<PathValidatorImplementation> const&
         otherValidator) -> ValidationResult {
   if (_forbiddenVertices != nullptr &&
-      _forbiddenVertices->contains(step.getVertex().getID())) {
+      _forbiddenVertices->contains(step.getVertex())) {
     return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
   }
   if (_forbiddenEdges != nullptr &&
@@ -86,9 +85,8 @@ template<class PathValidatorImplementation>
 auto PathValidatorTabooWrapper<PathValidatorImplementation>::
     validatePathWithoutGlobalVertexUniqueness(
         typename PathStoreImpl::Step& step) -> ValidationResult {
-  auto v = step.getVertex().getID();
   if (_forbiddenVertices != nullptr &&
-      _forbiddenVertices->contains(step.getVertex().getID())) {
+      _forbiddenVertices->contains(step.getVertex())) {
     return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
   }
   if (_forbiddenEdges != nullptr &&

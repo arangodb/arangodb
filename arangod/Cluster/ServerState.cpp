@@ -51,6 +51,7 @@
 #include "Logger/LoggerStream.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
+#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"

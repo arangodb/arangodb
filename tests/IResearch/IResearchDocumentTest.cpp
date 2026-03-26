@@ -113,8 +113,8 @@ void assertField(arangodb::tests::mocks::MockAqlServer& server,
     } else {
       ASSERT_EQ(mangleString(expectedName, analyzerName), value.name());
     }
-    auto& analyzers = server.template getFeature<
-        arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     const auto expectedAnalyzerPtr = irs::analysis::analyzers::get(
         irs::type<Analyzer>::name(), irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
@@ -3011,8 +3011,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
   auto& analyzers =
-      server
-          .template getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._analyzers.clear();
   linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
@@ -3779,7 +3778,7 @@ TEST_F(IResearchDocumentTest,
 TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
       R"({"includeAllFields":true, "fields" : [
-            {"name": "boost.foo.bar", "analyzer":"iresearch-document-string"}, 
+            {"name": "boost.foo.bar", "analyzer":"iresearch-document-string"},
             {"name": "boost.foo"}]})");
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();

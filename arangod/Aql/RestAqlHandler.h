@@ -44,8 +44,8 @@ class QueryRegistry;
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
-                 QueryRegistry*);
+  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*,
+                 GeneralResponse*, QueryRegistry*);
   ~RestAqlHandler() override = default;
 
   char const* name() const override final { return "RestAqlHandler"; }

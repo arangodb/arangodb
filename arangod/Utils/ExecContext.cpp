@@ -62,9 +62,13 @@ std::shared_ptr<ExecContext const> const ExecContext::Superuser =
 ExecContext::ExecContext(ConstructorToken, ExecContext::Type type,
                          std::string const& user, std::string const& database,
                          auth::Level systemLevel, auth::Level dbLevel,
-                         bool isAdminUser)
+                         bool isAdminUser,
+                         std::vector<std::string> const& roles,
+                         std::string const& jwtToken)
     : _user(user),
       _database(database),
+      _roles(roles),
+      _jwtToken(jwtToken),
       _type(type),
       _isAdminUser(isAdminUser),
       _systemDbAuthLevel(systemLevel),

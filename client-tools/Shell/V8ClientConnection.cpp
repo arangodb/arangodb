@@ -58,15 +58,16 @@
 #include <absl/strings/escaping.h>
 #include <absl/strings/str_cat.h>
 #include <fuerte/connection.h>
-#include <fuerte/jwt.h>
 #include <fuerte/requests.h>
 #include <fuerte/helper.h>
+#include "Ssl/jwt.h"
 #include <v8.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <stdexcept>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -93,6 +94,11 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
   char hex[32];
   arangodb::rest::SslInterface::sslHEX(hash, 16, &hex[0]);
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  LOG_TOPIC("9aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
+      << "Connection identifier " << std::string(hex, 32)
+      << " calculated from: " << raw;
+#endif
   // and return
   return std::string(hex, 32);
 }
@@ -105,8 +111,8 @@ static constexpr uint32_t kFuzzNotConnected = 1002;
 
 }  // namespace
 
-V8ClientConnection::V8ClientConnection(ArangoshServer& server,
-                                       ClientFeature& client)
+V8ClientConnection::V8ClientConnection(
+    application_features::ApplicationServer& server, ClientFeature& client)
     : _server(server),
       _client(client),
       _requestTimeout(_client.requestTimeout()),
@@ -192,6 +198,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
 
   // try to find an existing connection in the cache
   // the cache has one connection per endpoint
+  std::lock_guard<std::recursive_mutex> guard(_lock);
   auto [newConnection, wasFromCache] = findConnection();
   int retryCount = wasFromCache ? 2 : 1;
   fu::StringMap params{{"details", "true"}};
@@ -367,7 +374,9 @@ std::string V8ClientConnection::endpointSpecification() const {
   return "";
 }
 
-ArangoshServer& V8ClientConnection::server() { return _server; }
+application_features::ApplicationServer& V8ClientConnection::server() {
+  return _server;
+}
 
 void V8ClientConnection::setDatabaseName(std::string const& value) {
   _databaseName = value;
@@ -605,8 +614,8 @@ void V8ClientConnection::prepareConnection() {
     _builder.jwtToken(_client.jwtToken());
     _builder.authenticationType(fu::AuthenticationType::Jwt);
   } else if (!_client.jwtSecret().empty()) {
-    _builder.jwtToken(
-        fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
+    _builder.jwtToken(arangodb::rest::SslInterface::jwt::generateInternalToken(
+        _client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
   } else if (!_client.username().empty()) {
     // Use new authentication method via /_open/auth endpoint
@@ -665,6 +674,9 @@ void V8ClientConnection::reconnect() {
   _connection.swap(oldConnection);
   if (oldConnection) {
     if (oldConnection->state() == fu::Connection::State::Closed) {
+      LOG_TOPIC("7aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
+          << "connection state is closed of " << oldConnectionId
+          << " not putting back to cache";
       oldConnection->cancel();
     } else {
       // a non-closed connection. now try to insert it into the connection
@@ -684,13 +696,13 @@ void V8ClientConnection::reconnect() {
 
   if (isConnected() &&
       _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
-    LOG_TOPIC("2d416", INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("2d416", INFO, arangodb::Logger::HTTPCLIENT)
         << ClientFeature::buildConnectedMessage(
                endpointSpecification(), _version, _role, _mode, _databaseName,
                _client.username());
   } else {
     if (_client.getWarnConnect()) {
-      LOG_TOPIC("9d7ea", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("9d7ea", ERR, arangodb::Logger::HTTPCLIENT)
           << "Could not connect to endpoint '" << _client.endpoint()
           << "', username: '" << _client.username()
           << "' - Server message: " << _lastErrorMessage;
@@ -708,25 +720,90 @@ void V8ClientConnection::reconnect() {
 
 std::string V8ClientConnection::getHandle() { return _currentConnectionId; }
 
+void V8ClientConnection::getConnectionHandleTable(
+    v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  v8::Local<v8::Object> table = v8::Object::New(isolate);
+
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+
+  auto const setString = [&](char const* key, std::string const& value,
+                             auto& entry) {
+    entry
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, key),
+              TRI_V8_STD_STRING(isolate, value))
+        .FromMaybe(false);
+  };
+
+  auto const setBool = [&](char const* key, bool value, auto& entry) {
+    entry
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, key),
+              value ? v8::True(isolate) : v8::False(isolate))
+        .FromMaybe(false);
+  };
+
+  auto const addEntry =
+      [&](std::string const& id, std::shared_ptr<fu::Connection> const& conn,
+          fu::ConnectionBuilder const& builder, bool isActive) {
+        v8::Local<v8::Object> entry = v8::Object::New(isolate);
+
+        setBool("active", isActive, entry);
+        setBool("connected", conn->state() == fu::Connection::State::Connected,
+                entry);
+        setString("endpoint", conn->endpoint(), entry);
+        setString("localPort", conn->localEndpoint(), entry);
+        setString("username", builder.user(), entry);
+        setString("password", builder.password(), entry);
+        setString("jwtToken", builder.jwtToken(), entry);
+
+        table->Set(context, TRI_V8_STRING(isolate, id), entry).FromMaybe(false);
+      };
+
+  bool foundCurrentConnection = false;
+
+  for (auto const& [id, cachedConn] : _connectionCache) {
+    if (cachedConn != nullptr) {
+      auto builderIt = _connectionBuilderCache.find(id);
+      if (builderIt != _connectionBuilderCache.end()) {
+        addEntry(id, cachedConn, builderIt->second, /*isActive=*/false);
+      }
+    } else {
+      // Connection was taken from cache and is now the active connection
+      addEntry(id, _connection, _builder, /*isActive=*/true);
+      foundCurrentConnection = true;
+    }
+  }
+
+  if (!foundCurrentConnection && _connection != nullptr) {
+    addEntry(_currentConnectionId, _connection, _builder, /*isActive=*/true);
+  }
+
+  TRI_V8_RETURN(table);
+}
+
 void V8ClientConnection::connectHandle(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& handle) {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  LOG_TOPIC("8aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
+      << "Connecting to handle: " << handle;
+#endif
+  std::lock_guard<std::recursive_mutex> guard(_lock);
   if (_currentConnectionId == handle) {
     _builder = _connectedBuilder;
     // its the currently active one
     TRI_V8_RETURN_TRUE();
     return;
   }
-  std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
   auto iit = _connectionBuilderCache.find(handle);
   if (it != _connectionCache.end()) {
-    auto c = (*it).second;
     // cache hit. remove the connection from the cache and return it!
     std::shared_ptr<fu::Connection> oldConnection;
     std::string oldConnectionId = _currentConnectionId;
     _connection.swap(oldConnection);
+    _connection.swap(it->second);
     _connectionCache.erase(it);
     _connectionCache.emplace(oldConnectionId, oldConnection);
     _currentConnectionId = handle;
@@ -883,7 +960,7 @@ static void ClientConnection_ConstructorCallback(
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  TRI_GET_SERVER_GLOBALS(ArangoshServer);
+  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
 
   auto v8connection =
       std::make_unique<V8ClientConnection>(v8g->server(), *client);
@@ -1094,6 +1171,25 @@ static void ClientConnection_getHandle(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->getHandle());
+  TRI_V8_TRY_CATCH_END
+}
+
+static void ClientConnection_getHandleTable(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "getHandleTable() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  v8connection->getConnectionHandleTable(isolate, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2080,13 +2176,12 @@ static void ClientConnection_importCsv(
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  ArangoshServer& server = v8connection->server();
+  application_features::ApplicationServer& server = v8connection->server();
   EncryptionFeature* encryption{};
-  if constexpr (ArangoshServer::contains<EncryptionFeature>()) {
-    if (server.hasFeature<EncryptionFeature>()) {
-      encryption = &server.getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server.hasFeature<EncryptionFeature>());
+  encryption = &server.getFeature<EncryptionFeature>();
+#endif
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   auto* client = static_cast<ClientFeature*>(wrap->Value());
@@ -2177,14 +2272,13 @@ static void ClientConnection_importJson(
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  ArangoshServer& server = v8connection->server();
+  application_features::ApplicationServer& server = v8connection->server();
 
   EncryptionFeature* encryption{};
-  if constexpr (ArangoshServer::contains<EncryptionFeature>()) {
-    if (server.hasFeature<EncryptionFeature>()) {
-      encryption = &server.getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server.hasFeature<EncryptionFeature>());
+  encryption = &server.getFeature<EncryptionFeature>();
+#endif
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
@@ -3368,6 +3462,42 @@ void V8ClientConnection::forceNewConnection() {
   createConnection(/*bypassCache*/ true);
 }
 
+static void JS_getAddrInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getAddrInfo(<hostname>)");
+  }
+
+  std::string hostNameStr = TRI_ObjectToString(isolate, args[0]);
+
+  boost::asio::io_context io_ctx;
+  boost::asio::ip::tcp::resolver resolver(io_ctx);
+  boost::system::error_code ec;
+
+  auto results = resolver.resolve(hostNameStr, "", ec);
+
+  if (ec) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ec.message().c_str());
+  }
+
+  auto context = TRI_IGETC;
+  v8::Local<v8::Object> array = v8::Array::New(isolate);
+  uint32_t i = 0;
+
+  for (const auto& entry : results) {
+    std::string addr_str = entry.endpoint().address().to_string();
+    v8::Local<v8::String> oneAddr =
+        TRI_V8_ASCII_STRING(isolate, addr_str.c_str());
+    array->Set(context, i, oneAddr).FromMaybe(false);
+    i++;
+  }
+
+  TRI_V8_RETURN(array);
+  TRI_V8_TRY_CATCH_END
+}
+
 void V8ClientConnection::initServer(v8::Isolate* isolate,
                                     v8::Local<v8::Context> context) {
   v8::Local<v8::Value> v8client = v8::External::New(isolate, &_client);
@@ -3496,6 +3626,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
       isolate, "getConnectionHandle",
       v8::FunctionTemplate::New(isolate, ClientConnection_getHandle, v8client));
 
+  connection_proto->Set(
+      isolate, "getConnectionHandleTable",
+      v8::FunctionTemplate::New(isolate, ClientConnection_getHandleTable,
+                                v8client));
+
   connection_proto->Set(isolate, "connectHandle",
                         v8::FunctionTemplate::New(
                             isolate, ClientConnection_connectHandle, v8client));
@@ -3585,6 +3720,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
           v8::Local<v8::Object>()));
 
   ConnectionTempl.Reset(isolate, connection_inst);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "getAddrInfo"), JS_getAddrInfo);
 
   // add the client connection to the context:
   TRI_AddGlobalVariableVocbase(isolate,

@@ -33,7 +33,6 @@
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/ExpansionMarker.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Steps/VertexDescription.h"
 #include "Graph/Types/ValidationResult.h"
@@ -45,6 +44,8 @@
 #endif
 
 #include <velocypack/Builder.h>
+
+#define LOG_TRAVERSAL LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -109,37 +110,34 @@ void OneSidedEnumerator<Configuration>::clearProvider() {
 }
 
 template<class Configuration>
-auto OneSidedEnumerator<Configuration>::popFromQueue() -> QueueEntry<Step> {
-  TRI_ASSERT(!_queue.isEmpty());
-  if (!ServerState::instance()->isSingleServer() &&
-      !_queue.firstIsVertexFetched()) {
-    std::vector<Step*> looseEnds = _queue.getStepsWithoutFetchedVertex();
-    auto preparedEnds = _provider.fetchVertices(looseEnds);
-    TRI_ASSERT(preparedEnds.size() != 0);
-    TRI_ASSERT(_queue.firstIsVertexFetched());
-  }
-  return _queue.pop();
-}
-template<class Configuration>
 auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     -> void {
-  auto tmp = popFromQueue();
-  if (std::holds_alternative<Expansion>(tmp)) {
-    auto expansion = std::get<Expansion>(tmp);
-    _queue.append(std::move(std::get<Expansion>(
-        tmp)));  // push it back because iteration could not yet be over
-    auto& step = _interior.getStepReference(expansion.from);
-    auto stepsAdded =
-        _provider.expandToNextBatch(expansion.id, step, expansion.from,
-                                    [&](Step n) -> void { _queue.append(n); });
-    if (not stepsAdded) {  // means that nothing was added to the queue in
-                           // expandToNextBatch
-      _queue.pop();        // now we can pop NextBatch item savely
-    }
-    return;
+  if (_options.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
-  TRI_ASSERT(std::holds_alternative<Step>(tmp));
-  auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
+  TRI_ASSERT(!_queue.isEmpty());
+  auto tmp = _queue.pop();
+  if (not tmp.has_value()) {
+    return;  // queue is empty
+  }
+  auto value = tmp.value();
+  LOG_TRAVERSAL << "Popped   " << inspection::json(value) << " | "
+                << inspection::json(_queue);
+
+  // fetch vertices
+  if (!ServerState::instance()->isSingleServer() && not value.vertexFetched()) {
+    std::vector<Step*> looseEnds = {&value};
+    // important to add current value to front of looseEnds, otherwise
+    // SmartGraphProvider will not fetch vertex properly!
+    auto looseEndsInQueue = _queue.getStepsWithoutFetchedVertex();
+    looseEnds.insert(looseEnds.end(), looseEndsInQueue.begin(),
+                     looseEndsInQueue.end());
+    auto preparedEnds = _provider.fetchVertices(looseEnds);
+    TRI_ASSERT(preparedEnds.size() != 0);
+    TRI_ASSERT(value.vertexFetched());
+  }
+
+  auto posPrevious = _interior.append(std::move(value));
   auto& step = _interior.getStepReference(posPrevious);
 
   if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
@@ -167,16 +165,14 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       _stats.incrFiltered();
     }
     if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
-      // Include it in results.
       _results.emplace_back(step);
     }
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-      // currently batching only works with single server case
-      if (_queue.isBatched() && ServerState::instance()->isSingleServer()) {
-        auto cursorId = _nextCursorId++;
-        _provider.addExpansionIterator(cursorId, step, [&]() -> void {
-          _queue.append(Expansion{cursorId, posPrevious});
-        });
+      if (_queue.usesCursor()) {
+        auto& cursor = _provider.createNeighbourCursor(step, posPrevious);
+        _queue.append(cursor);
+        LOG_TRAVERSAL << "Pushed   " << inspection::json(step) << " | "
+                      << inspection::json(_queue);
       } else {
         if (!step.edgeFetched()) {
           // NOTE: The step we have should be the first, s.t. we are guaranteed
@@ -191,6 +187,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
         }
         _provider.expand(step, posPrevious,
                          [&](Step n) -> void { _queue.append(n); });
+        LOG_TRAVERSAL << "Expanded " << inspection::json(step) << " | "
+                      << inspection::json(_queue);
       }
     }
   } else if constexpr (std::is_same_v<
@@ -244,7 +242,8 @@ void OneSidedEnumerator<Configuration>::resetManyStartVertices(
   for (auto const& v : vertices) {
     VPackHashedStringRef source{v.id.data(),
                                 static_cast<uint32_t>(v.id.size())};
-    startSteps.emplace_back(_provider.startVertex(source, v.depth, v.weight));
+    startSteps.emplace_back(
+        _provider.startVertex(VertexRef{source}, v.depth, v.weight));
   }
   _queue.setStartContent(std::move(startSteps));
 }

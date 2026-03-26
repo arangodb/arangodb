@@ -25,7 +25,6 @@
 
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
-#include "RestServer/arangod.h"
 #include "Replication2/Version.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/voc-types.h"
@@ -74,7 +73,8 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo(ArangodServer&, ExecContext const&);
+  CreateDatabaseInfo(application_features::ApplicationServer&,
+                     ExecContext const&);
   Result load(std::string_view name, uint64_t id);
 
   Result load(std::string_view name, VPackSlice options,
@@ -85,7 +85,7 @@ class CreateDatabaseInfo {
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
 
-  ArangodServer& server() const;
+  application_features::ApplicationServer& server() const;
 
   uint64_t getId() const;
 
@@ -138,7 +138,8 @@ class CreateDatabaseInfo {
  protected:
   struct MockConstruct {
   } constexpr static mockConstruct = {};
-  CreateDatabaseInfo(MockConstruct, ArangodServer& server,
+  CreateDatabaseInfo(MockConstruct,
+                     application_features::ApplicationServer& server,
                      ExecContext const& execContext, std::string const& name,
                      std::uint64_t id, replication::Version version);
 #endif
@@ -149,7 +150,7 @@ class CreateDatabaseInfo {
                         bool extractName = true);
   Result checkOptions();
 
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   ExecContext const& _context;
 
   std::uint64_t _id = 0;
@@ -175,8 +176,8 @@ struct VocbaseOptions {
   replication::Version replicationVersion = replication::Version::ONE;
 };
 
-VocbaseOptions getVocbaseOptions(ArangodServer&, velocypack::Slice,
-                                 bool strictValidation);
+VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&,
+                                 velocypack::Slice, bool strictValidation);
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
                        std::uint32_t replicationFactor,

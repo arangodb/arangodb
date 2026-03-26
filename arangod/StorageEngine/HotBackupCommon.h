@@ -28,6 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 
@@ -47,14 +48,15 @@ struct BackupMeta {
   std::string _version;
   std::string _datetime;
   std::vector<std::string> _userSecretHashes;  // might be empty
-  size_t _sizeInBytes;
-  size_t _nrFiles;
-  unsigned int _nrDBServers;
+  size_t _sizeInBytes = 0;
+  size_t _nrFiles = 0;
+  unsigned int _nrDBServers = 0;
   std::string _serverId;
-  bool _potentiallyInconsistent;
-  bool _isAvailable;
-  unsigned int _nrPiecesPresent;
-  bool _countIncludesFilesOnly;
+  bool _potentiallyInconsistent = true;
+  bool _isAvailable = false;
+  unsigned int _nrPiecesPresent = 0;
+  bool _countIncludesFilesOnly = false;
+  std::unordered_map<std::string, result::Error> _errors;
 
   static constexpr const char* ID = "id";
   static constexpr const char* VERSION = "version";
@@ -98,6 +100,16 @@ struct BackupMeta {
       builder.add(POTENTIALLYINCONSISTENT,
                   VPackValue(_potentiallyInconsistent));
       builder.add(COUNTINCLUDESFILESONLY, VPackValue(_countIncludesFilesOnly));
+      if (!_errors.empty()) {
+        VPackObjectBuilder errorBuilder(&builder, StaticStrings::Error);
+        for (auto const& [server, error] : _errors) {
+          VPackObjectBuilder errorBuilder2(&builder, server);
+          builder.add(arangodb::StaticStrings::ErrorMessage,
+                      VPackValue(error.errorMessage()));
+          builder.add(arangodb::StaticStrings::ErrorNum,
+                      VPackValue(error.errorNumber()));
+        }
+      }
     }
   }
 
@@ -138,6 +150,19 @@ struct BackupMeta {
     } catch (std::exception const& e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
     }
+  }
+
+  static auto fromError(std::string id, std::string server, VPackSlice slice)
+      -> BackupMeta {
+    BackupMeta meta{};
+    meta._id = std::move(id);
+    meta._isAvailable = false;
+    meta._errors.emplace(
+        std::move(server),
+        result::Error(
+            ErrorCode{slice.get(StaticStrings::ErrorNum).getNumber<int>()},
+            slice.get(StaticStrings::ErrorMessage).stringView()));
+    return meta;
   }
 
   BackupMeta(std::string const& id, std::string const& version,

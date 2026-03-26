@@ -45,6 +45,11 @@ class UserManagerClusterTest : public ::testing::Test {
     auto& auth = _server.getFeature<AuthenticationFeature>();
     // we are testing the proper implementation of the userManager, not the
     // mock.
+    // The MockServer sets up an expectation for the UserManager's shutdown
+    // function to be called when the AuthenticationFeature is stopped. Since we
+    // swap out the userManager here with a real version, we have to call
+    // shutdown manually to fulfill this expectation.
+    auth.userManager()->shutdown();
     auth.setUserManager(
         std::make_unique<auth::UserManagerImpl>(_server.server()));
     auto* um = auth.userManager();

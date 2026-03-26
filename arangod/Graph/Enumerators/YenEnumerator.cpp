@@ -135,8 +135,7 @@ YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::toOwned(
       path.getSourceProvider(), path.getTargetProvider()};  // empty path
   size_t l = path.getLength();
   for (size_t i = 0; i < l + 1; ++i) {
-    typename ProviderType::Step::Vertex v{
-        _arena.toOwned(path.getVertex(i).getID())};
+    VertexRef v{_arena.toOwned(path.getVertex(i).getID())};
     copy.appendVertex(v);
     if (i == l) {
       break;  // one more vertex than edge
@@ -223,7 +222,7 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     for (size_t i = 0; i < prefixLen; ++i) {
       LOG_TOPIC("47004", TRACE, Logger::GRAPHS)
           << "Yen: forbidden vertex: " << prevPath.getVertex(i).getID();
-      forbiddenVertices->insert(prevPath.getVertex(i).getID());
+      forbiddenVertices->insert(prevPath.getVertex(i));
     }
     // To avoid finding old shortest paths again, we must forbid every edge,
     // which is a continuation of a previous shortest path which has the
@@ -258,7 +257,7 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     // with forbidden vertices and edges:
     _shortestPathEnumerator->clear();  // needed, otherwise algorithm
                                        // finished remains!
-    _shortestPathEnumerator->reset(spurVertex.getID(), _target);
+    _shortestPathEnumerator->reset(spurVertex, _target);
     _shortestPathEnumerator->setForbiddenVertices(std::move(forbiddenVertices));
     _shortestPathEnumerator->setForbiddenEdges(std::move(forbiddenEdges));
 

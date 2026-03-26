@@ -24,7 +24,7 @@
 
 #include "gtest/gtest.h"
 
-#include "../3rdParty/iresearch/tests/tests_config.hpp"
+#include "iresearch/tests/tests_config.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "search/all_filter.hpp"
@@ -62,10 +62,12 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -251,7 +253,7 @@ struct IResearchExpressionFilterTest
                           false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);
-    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
+    features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
                           false);
 
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
@@ -270,9 +272,11 @@ struct IResearchExpressionFilterTest
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
                 nullptr)),
         false);
+    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
+                          false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // must be first
     system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
     features.emplace_back(

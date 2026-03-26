@@ -41,7 +41,8 @@ VocbaseContext::VocbaseContext(ConstructorToken, GeneralRequest& req,
                                auth::Level systemLevel, auth::Level dbLevel,
                                bool isAdminUser)
     : ExecContext(ExecContext::ConstructorToken{}, type, req.user(),
-                  req.databaseName(), systemLevel, dbLevel, isAdminUser),
+                  req.databaseName(), systemLevel, dbLevel, isAdminUser,
+                  req.roles(), req.jwtToken()),
 #ifdef USE_ENTERPRISE
       _request(req),
 #endif

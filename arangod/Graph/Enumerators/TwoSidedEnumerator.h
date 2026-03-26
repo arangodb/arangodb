@@ -33,6 +33,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Types/ForbiddenVertices.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <set>
 
@@ -103,7 +104,6 @@ class TwoSidedEnumerator {
 
   enum Direction { FORWARD, BACKWARD };
 
-  using VertexRef = arangodb::velocypack::HashedStringRef;
   using VertexSet =
       arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                     std::equal_to<VertexRef>>;

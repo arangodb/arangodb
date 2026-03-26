@@ -22,16 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
-struct DocumentStateMachineFeature : public ArangodFeature {
+struct DocumentStateMachineFeature
+    : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept {
     return "DocumentStateMachine";
   }
 
-  explicit DocumentStateMachineFeature(Server& server);
+  explicit DocumentStateMachineFeature(
+      application_features::ApplicationServer& server);
   void start() override;
   void prepare() override;
 };

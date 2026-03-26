@@ -34,8 +34,7 @@
 #include "Basics/overload.h"
 #include "Logger/LogMacros.h"
 
-#include <fmt/format.h>
-
+#include <format>
 #include <optional>
 #include <string>
 
@@ -77,14 +76,14 @@ auto matchExpression(Ast* ast, AstNode const* expression,
                      Variable const* pathVar) -> std::optional<Match> {
   if (expression->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << fmt::format("iterating andNode, bailing not binary eq, but {}",
+        << std::format("iterating andNode, bailing not binary eq, but {}",
                        expression->getTypeString());
     return std::nullopt;
   }
 
   auto quantifier = expression->getMemberUnchecked(2);
   if ((quantifier == nullptr) or (not Quantifier::isAll(quantifier))) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
         "iterating andNode, bailing binary eq quantifier not ALL, but {}",
         quantifier->getIntValue(true));
     return std::nullopt;
@@ -93,23 +92,23 @@ auto matchExpression(Ast* ast, AstNode const* expression,
   auto lhs = expression->getMemberUnchecked(0);
   if (lhs->type != NODE_TYPE_EXPANSION) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << fmt::format("iterating andNode, bailing lhs not EXPANSION");
+        << std::format("iterating andNode, bailing lhs not EXPANSION");
     return std::nullopt;
   }
   if (lhs->getMemberUnchecked(2)->type != NODE_TYPE_NOP) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << fmt::format("iterating andNode, bailing lhs member 2 not NOP");
+        << std::format("iterating andNode, bailing lhs member 2 not NOP");
     return std::nullopt;
   }
   if (lhs->getMemberUnchecked(3)->type != NODE_TYPE_NOP) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << fmt::format("iterating andNode, bailing lhs member 3 not NOP");
+        << std::format("iterating andNode, bailing lhs member 3 not NOP");
     return std::nullopt;
   }
 
   if (lhs->getMemberUnchecked(1)->type != NODE_TYPE_ATTRIBUTE_ACCESS &&
       lhs->getMemberUnchecked(4)->type == NODE_TYPE_NOP) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
         "iterating andNode, bailing lhs member 1 not ATTRIBUTE_ACCESS");
     return std::nullopt;
   }
@@ -119,14 +118,14 @@ auto matchExpression(Ast* ast, AstNode const* expression,
   auto rhsValue = expression->getMemberUnchecked(1);
   if (rhsValue->type != NODE_TYPE_VALUE) {
     LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
-        << fmt::format("iterating andNode, bailing rhs not a Value, but a {}",
+        << std::format("iterating andNode, bailing rhs not a Value, but a {}",
                        rhsValue->getTypeString());
     return std::nullopt;
   }
 
   auto iterator = lhs->getMemberUnchecked(0);
   if (iterator->type != NODE_TYPE_ITERATOR) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
         "iterating andNode, bailing lhs member 0 not an iterator, but a "
         "{}",
         rhsValue->getTypeString());
@@ -134,7 +133,7 @@ auto matchExpression(Ast* ast, AstNode const* expression,
   }
   auto current = iterator->getMemberUnchecked(0);
   if (current->type != NODE_TYPE_VARIABLE) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
         "iterating andNode, bailing iterator member 0 not a variable, "
         "but a "
         "{}",
@@ -144,7 +143,7 @@ auto matchExpression(Ast* ast, AstNode const* expression,
 
   auto attributeAccess = iterator->getMemberUnchecked(1);
   if (attributeAccess->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
         "iterating andNode, bailing iterator member 1 not an attribute "
         "access, but a {}",
         rhsValue->getTypeString());
@@ -152,7 +151,7 @@ auto matchExpression(Ast* ast, AstNode const* expression,
   }
 
   if (!attributeAccess->isAttributeAccessForVariable(pathVar, true)) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
         "iterating andNode, bailing attribute access is not accessing "
         "the path variable");
     return std::nullopt;
@@ -160,7 +159,7 @@ auto matchExpression(Ast* ast, AstNode const* expression,
 
   auto accessedAttribute = attributeAccess->getStringView();
   if (not(accessedAttribute == "vertices" or accessedAttribute == "edges")) {
-    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << std::format(
         "iterating andNode, bailing iterator member accessed attribute "
         "is {}"
         " not `vertices` or `edges`",
@@ -244,7 +243,7 @@ auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
     enumeratePathsNode->registerGlobalEdgeCondition(condition);
     return true;
   } else {
-    TRI_ASSERT(false) << fmt::format(
+    TRI_ASSERT(false) << std::format(
         "only matching on `vertices` or `edges` is expected, found {}",
         match->accessedAttribute);
     return false;
@@ -349,7 +348,7 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
       // TODO: should this maybe just prevent the optimiser rule to fire
       // instead of crashing?
       ADB_PROD_ASSERT(false)
-          << fmt::format("Unsupported node type {}.", node->getTypeString());
+          << std::format("Unsupported node type {}.", node->getTypeString());
     }
   }
   return false;

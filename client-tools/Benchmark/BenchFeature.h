@@ -26,7 +26,6 @@
 #include <atomic>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Benchmark/arangobench.h"
 #include "Benchmark/BenchmarkThread.h"
 #include "Benchmark/BenchmarkStats.h"
 
@@ -52,11 +51,11 @@ struct BenchRunResult {
   }
 };
 
-class BenchFeature final : public ArangoBenchFeature {
+class BenchFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Bench"; }
 
-  BenchFeature(Server& server, int* result);
+  BenchFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;

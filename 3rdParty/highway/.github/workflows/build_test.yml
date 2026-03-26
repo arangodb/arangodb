@@ -1,0 +1,78 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+permissions: read-all
+name: Build / test
+on: [push, pull_request]
+jobs:
+  cmake:
+    name: Build and test ${{ matrix.name }}
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - name: Clang-6.0
+            extra_deps: clang-6.0
+            c_compiler: clang-6.0
+            cxx_compiler: clang++-6.0
+
+          - name: Clang-10
+            extra_deps: clang-10
+            c_compiler: clang-10
+            cxx_compiler: clang++-10
+
+          - name: Clang-12
+            extra_deps: clang-12
+            c_compiler: clang-12
+            cxx_compiler: clang++-12
+
+          - name: GCC-10
+            extra_deps: g++-10
+            c_compiler: gcc-10
+            cxx_compiler: g++-10
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@128a63446a954579617e875aaab7d2978154e969 # v2.4.0
+        with:
+          egress-policy: audit  # cannot be block - runner does git checkout
+
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+
+      - name: Install deps
+        run: sudo apt-get install ${{ matrix.extra_deps }}
+
+      - name: Build and test
+        run: |
+          export CMAKE_BUILD_PARALLEL_LEVEL=2
+          export CTEST_PARALLEL_LEVEL=2
+          CXXFLAGS=-Werror CC=${{ matrix.c_compiler }} CXX=${{ matrix.cxx_compiler }} cmake -B out .
+          cmake --build out
+          ctest --test-dir out
+
+  bazel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@128a63446a954579617e875aaab7d2978154e969 # v2.4.0
+        with:
+          egress-policy: audit  # cannot be block - runner does git checkout
+
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: bazelbuild/setup-bazelisk@95c9bf48d0c570bb3e28e57108f3450cd67c1a44 # v2.0.0
+      - uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+        with:
+          path: ~/.cache/bazel
+          key: bazel-${{ runner.os }}
+      - run: bazel build //...

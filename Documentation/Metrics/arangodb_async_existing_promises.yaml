@@ -1,7 +1,7 @@
 name: arangodb_async_existing_promises
 introducedIn: "3.12.4"
 help: |
-  Number of currently existing asynchronous promises.
+  Number of currently existing asynchronous operations.
 unit: number
 type: gauge
 category: Statistics
@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
   - coordinator
 description: |
-  Number of currently existing asynchronous promises.
+  Number of currently existing asynchronous operations.

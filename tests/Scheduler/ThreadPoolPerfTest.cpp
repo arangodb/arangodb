@@ -44,7 +44,13 @@ struct SupervisedSchedulerPool {
   explicit SupervisedSchedulerPool(
       tests::mocks::MockRestServer& mockApplicationServer, unsigned numThreads)
       : metricsFeature(std::make_shared<arangodb::metrics::MetricsFeature>(
-            mockApplicationServer.server())),
+            mockApplicationServer.server(),
+            LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+            LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+            LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+            LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+                nullptr),
+            LazyApplicationFeatureReference<ClusterFeature>(nullptr))),
         scheduler(mockApplicationServer.server(), numThreads, numThreads, limit,
                   limit, limit, limit, limit, 0.0,
                   std::make_shared<SchedulerMetrics>(*metricsFeature)) {
@@ -278,7 +284,9 @@ void runPingPong(WorkSimulation work) {
     if constexpr (std::same_as<Pool, SupervisedSchedulerPool>) {
       // the SupervisedScheduler needs at least 4 threads, otherwise it will
       // assert
-      continue;
+      if (t < 4) {
+        continue;
+      }
     }
     std::cout << std::setw(2) << t << " threads: " << std::flush;
     for (auto b : balls) {

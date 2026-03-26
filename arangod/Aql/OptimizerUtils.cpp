@@ -47,6 +47,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "Containers/SmallUnorderedMap.h"
 
 #include <absl/strings/str_cat.h>
 

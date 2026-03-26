@@ -5,14 +5,13 @@ project(immer-pretty-printer-test CXX)
 add_executable(flex_vector_test flex_vector_test.cpp)
 
 target_link_libraries(flex_vector_test immer)
-target_link_libraries(flex_vector_test fmt::fmt)
 
 set_target_properties(flex_vector_test
         PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
-        )
+)
 
 enable_testing()
 
@@ -26,4 +25,4 @@ add_test(NAME flex_vector_test
         -batch
 
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        )
+)

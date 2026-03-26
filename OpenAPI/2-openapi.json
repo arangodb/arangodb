@@ -1,0 +1,290 @@
+{
+ "externalDocs": {
+  "description": "Arango Documentation",
+  "url": "https://docs.arango.ai"
+ },
+ "info": {
+  "contact": {
+   "name": "ArangoDB Inc.",
+   "url": "https://arango.ai"
+  },
+  "license": {
+   "name": "Business Source License 1.1",
+   "url": "https://github.com/arangodb/arangodb/blob/devel/LICENSE"
+  },
+  "summary": "The RESTful HTTP API of the ArangoDB Core Database System",
+  "title": "ArangoDB Core API",
+  "version": "3.12.8"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/_arango/experimental/_db/{database-name}/_admin/activities": {
+   "get": {
+    "description": "\u003e **WARNING:**\nThe activities API is incomplete and thus an experimental feature.\n\n\nReturns the list of activities currently in progress on the server.\nEach activity has an identifier, a type (e.g. `RestHandler`, `AQLQuery`),\nan optional parent reference, and a `metadata` object. The structure of\n`metadata` depends on the activity type and may be extended in future\nversions.\n\nThe permissions required to use the endpoint depend on the\n[`--activities.only-superuser-enabled` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--activitiesonly-superuser-enabled).\nBy default, *administrate* access for the `_system` database is\nsufficient. If the startup option is enabled, the endpoint is restricted\nto the superuser and you therefore need to authenticate with a token\ncreated from the JWT secret.\n",
+    "operationId": "getActivities",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "activities": {
+           "description": "Array of activity objects currently in progress.\n",
+           "items": {
+            "properties": {
+             "id": {
+              "description": "Unique identifier of the activity (opaque string).\n",
+              "example": "0x7ec9c067a7c0",
+              "type": "string"
+             },
+             "metadata": {
+              "description": "Type-specific details for this activity. The shape of\nthis object depends on the activity type and is\nintentionally left flexible so the feature can grow\nwithout breaking the API. Do not rely on a fixed schema.\n",
+              "type": "object"
+             },
+             "parent": {
+              "description": "The parent activity, if any. Use `id` to correlate\nwith another entry in the list. The value `\"0x0\"` means no parent.\n",
+              "properties": {
+               "id": {
+                "description": "Identifier of the parent activity.\n",
+                "example": "0x0",
+                "type": "string"
+               }
+              },
+              "required": [
+               "id"
+              ],
+              "type": "object"
+             },
+             "type": {
+              "description": "The kind of activity (e.g. `RestHandler`, `AQLQuery`).\n",
+              "example": "RestHandler",
+              "type": "string"
+             }
+            },
+            "required": [
+             "id",
+             "type",
+             "parent",
+             "metadata"
+            ],
+            "type": "object"
+           },
+           "type": "array"
+          }
+         },
+         "required": [
+          "activities"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The list of activities was returned successfully.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The user account you authenticated with lacks read access for the\nspecified database, the credentials are wrong, or the user account\nis inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The request is not authorized due to a lack of permissions.\nThe reason depends on the setting of the\n`--activities.only-superuser-enabled` startup option:\n\n- `false`: The endpoint is restricted to admin users but the\n  user account you authenticated with lacks write access to the\n  `_system` database.\n- `true`: The endpoint is restricted to the superuser but you didn't\n  authenticate with a token created from the JWT secret.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned when an HTTP method other than `GET` is used.\n"
+     }
+    },
+    "summary": "Get the activities (experimental)",
+    "tags": [
+     "Monitoring"
+    ]
+   }
+  }
+ },
+ "tags": [
+  {
+   "description": "Manage session tokens and JWT secrets",
+   "name": "Authentication"
+  },
+  {
+   "description": "Manage ArangoDB user accounts",
+   "name": "Users"
+  },
+  {
+   "description": "Manage databases for organizing collections",
+   "name": "Databases"
+  },
+  {
+   "description": "Manage collections for organizing documents",
+   "name": "Collections"
+  },
+  {
+   "description": "Perform CRUD operations on JSON-based records",
+   "name": "Documents"
+  },
+  {
+   "description": "Manage named graphs and query edges",
+   "name": "Graphs"
+  },
+  {
+   "description": "Run, process, and manage AQL queries",
+   "name": "Queries"
+  },
+  {
+   "description": "Execute Stream Transactions",
+   "name": "Transactions"
+  },
+  {
+   "description": "Improve the performance of queries",
+   "name": "Indexes"
+  },
+  {
+   "description": "Manage Views to use ArangoSearch for information retrieval",
+   "name": "Views"
+  },
+  {
+   "description": "Manage Analyzers for transforming data",
+   "name": "Analyzers"
+  },
+  {
+   "description": "Load JSON data in bulk",
+   "name": "Import"
+  },
+  {
+   "description": "Execute requests asynchronously",
+   "name": "Jobs"
+  },
+  {
+   "description": "Control data replication for deployments",
+   "name": "Replication"
+  },
+  {
+   "description": "Access logs, metrics, and activities",
+   "name": "Monitoring"
+  },
+  {
+   "description": "Configure audit logging, encryption at rest and encryption in transit",
+   "name": "Security"
+  },
+  {
+   "description": "Get server information, manage licenses, shut down nodes, and more",
+   "name": "Administration"
+  },
+  {
+   "description": "Get information, monitor, and administrate cluster deployments",
+   "name": "Cluster"
+  },
+  {
+   "description": "Manage incremental data backups",
+   "name": "Hot Backups"
+  }
+ ]
+}

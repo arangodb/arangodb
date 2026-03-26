@@ -24,6 +24,7 @@
 #pragma once
 
 #include <functional>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -339,6 +340,21 @@ struct Access<std::reference_wrapper<T>>
                   "cannot be default constructed (default construction is "
                   "required for the deserialization result type)");
     return f.apply(x.get());
+  }
+};
+
+template<>
+struct Access<std::filesystem::path> : AccessBase<std::filesystem::path> {
+  template<class Inspector>
+  static auto apply(Inspector& f, std::filesystem::path& x) {
+    if constexpr (Inspector::isLoading) {
+      auto in = std::string{};
+      auto result = f.value(in);
+      x = in;
+      return result;
+    } else {
+      return f.apply(std::string(x));
+    }
   }
 };
 

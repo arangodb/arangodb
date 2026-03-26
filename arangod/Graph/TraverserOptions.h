@@ -72,8 +72,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   /// @brief The condition given for PostFilters (might be empty)
   ///        The Node keeps responsibility
-  ///        This is used to avoid producing paths if the last vertex or edge do
-  ///        not match.
+  ///        This is used to avoid producing paths if the last vertex or edge
+  ///        do not match.
   std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterExpression;
 
   bool _producePathsVertices{true};
@@ -115,8 +115,8 @@ struct TraverserOptions : public graph::BaseOptions {
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
   ///        When allowAlreadyBuiltCopy is true, the constructor also works
-  ///        after the planning phase; however, the options have to be prepared
-  ///        again (see TraversalNode::prepareOptions())
+  ///        after the planning phase; however, the options have to be
+  ///        prepared again (see TraversalNode::prepareOptions())
   TraverserOptions(TraverserOptions const& other,
                    bool allowAlreadyBuiltCopy = false);
   TraverserOptions& operator=(TraverserOptions const&) = delete;

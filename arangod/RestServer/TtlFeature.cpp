@@ -24,8 +24,9 @@
 #include "TtlFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -175,12 +176,11 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
   }
 }
 
-class TtlThread final : public ServerThread<ArangodServer> {
+class TtlThread final : public ServerThread {
  public:
-  explicit TtlThread(ArangodServer& server, TtlFeature& ttlFeature)
-      : ServerThread<ArangodServer>(server, "TTL"),
-        _ttlFeature(ttlFeature),
-        _working(false) {}
+  explicit TtlThread(application_features::ApplicationServer& server,
+                     TtlFeature& ttlFeature)
+      : ServerThread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
 
   ~TtlThread() final { shutdown(); }
 
@@ -649,8 +649,8 @@ class TtlThread final : public ServerThread<ArangodServer> {
 
 }  // namespace arangodb
 
-TtlFeature::TtlFeature(Server& server)
-    : ArangodFeature{server, *this}, _active(true) {
+TtlFeature::TtlFeature(application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this}, _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
 }

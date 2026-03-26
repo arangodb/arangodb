@@ -35,8 +35,12 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const ct = require('@arangodb/testutils/client-tools');
-const toArgv = require('internal').toArgv;
-const download = require('internal').download;
+const {
+  toArgv,
+  download,
+  time
+}  = require('internal');
+
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
@@ -211,6 +215,7 @@ class runInArangoshRunner extends testRunnerBase {
   runOneTest(file) {
     let args = ct.makeArgs.arangosh(this.options);
     args['server.endpoint'] = this.getEndpoint();
+    args['server.connection-timeout'] = this.options.httpTimeout;
 
     args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
@@ -273,8 +278,10 @@ class runLocalInArangoshRunner extends testRunnerBase {
       };
     }
 
+    let startTime = time();
     try {
       SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+      arango.timeout(this.options.httpTimeout);
       let result = testFunc();
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       if (timeout) {
@@ -283,14 +290,19 @@ class runLocalInArangoshRunner extends testRunnerBase {
           forceTerminate: true,
           status: false,
           message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(result)}`,
+          duration: (time() - startTime) * 1000,
         };
       }
       if (result === undefined) {
         return {
           timeout: true,
           status: false,
-          message: "test didn't return any result at all!"
+          message: "test didn't return any result at all!",
+          duration: (time() - startTime) * 1000,
         };
+      }
+      if (!result.hasOwnProperty('duration')) {
+        result.duration = (time() - startTime) * 1000;
       }
       return result;
     } catch (ex) {
@@ -303,7 +315,8 @@ class runLocalInArangoshRunner extends testRunnerBase {
         forceTerminate: true,
         status: false,
         message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
-        stack: ex.stack
+        stack: ex.stack,
+        duration: (time() - startTime) * 1000,
       };
     }
   }
@@ -362,6 +375,157 @@ class shellv8Runner extends runLocalInArangoshRunner {
 }
 
 
+class runWithAllureReport extends testRunnerBase {
+  getAllureResults(testResultsDir, results, status, defaultName) {
+    let allResultJsons = {};
+    let topLevelContainers = [];
+    let allContainerJsons = {};
+    let containerRe = /-container.json/;
+    let resultRe = /-result.json/;
+    let resultFiles = fs.list(testResultsDir).filter(file => {
+      return file.match(resultRe) !== null;
+    });
+    if (resultFiles.length === 0) {
+      let msg = `did not find any files in ${testResultsDir}`;
+      //print(msg);
+      results['status'] = false;
+      results['message'] = msg;
+    }
+    //print(resultFiles)
+    resultFiles.forEach(containerFile => {
+      let resultJson = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
+      resultJson['parents'] = [];
+      allResultJsons[resultJson.uuid] = resultJson;
+    });
+
+    let containerFiles = fs.list(testResultsDir).filter(file => file.match(containerRe) !== null);
+    containerFiles.forEach(containerFile => {
+      let container = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
+      container['childContainers'] = [];
+      container['isToplevel'] = false;
+      //print(container)
+      if ('children' in container)
+      {
+        container.children.forEach(child => {
+          allResultJsons[child]['parents'].push(container.uuid);
+        });
+      }
+      allContainerJsons[container.uuid] = container;
+    });
+
+    for(let oneResultKey in allResultJsons) {
+      allResultJsons[oneResultKey].parents = 
+        allResultJsons[oneResultKey].parents.sort(function(aUuid, bUuid) {
+          let a = allContainerJsons[aUuid];
+          let b = allContainerJsons[bUuid];
+          if ((a.start !== b.start) || (a.stop !== b.stop)) {
+            return (b.stop - b.start) - (a.stop - a.start);
+          }
+          if (a.children.length !== b.children.length) {
+            return b.children.length - a.children.length;
+          }
+          //print(a)
+          //print(b)
+          //print('--------')
+          return 0;
+        });
+      for (let i = 0; i + 1 < allResultJsons[oneResultKey].parents.length; i++) {
+        let parent = allResultJsons[oneResultKey].parents[i];
+        let child = allResultJsons[oneResultKey].parents[i + 1];
+        if(i === 0) {
+          topLevelContainers.push(parent);
+        }
+        if (!allContainerJsons[parent]['childContainers'].includes(child)) {
+          allContainerJsons[parent]['childContainers'].push(child);
+        }
+        // print(allContainerJsons[parent])
+      }
+      //print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+      //print(allResultJsons[oneResultKey])
+      //print('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+    }
+    //print(topLevelContainers)
+    let totalFailed = 0;
+    let count = 0;
+    topLevelContainers.forEach(id => {
+      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
+      let tlContainer = allContainerJsons[id];
+      //print(tlContainer)
+      //print(tlContainer['childContainers'])
+
+      let resultSet = {
+        duration: tlContainer.stop - tlContainer.start,
+        total: tlContainer.children.length,
+        failed: 0,
+        status: true
+      };
+      let name = `${defaultName}_${count++}`;
+      if (tlContainer.hasOwnProperty('name')) {
+        name = tlContainer.name;
+      }
+      results[name] = resultSet;
+      //print('aaaaaaaaaaaaaaaaaa')
+      //print(results)
+
+      let tlCount = 0;
+      tlContainer['childContainers'].forEach(childContainerId => {
+        let childContainer = allContainerJsons[childContainerId];
+        let suiteResult = {
+          status: true,
+          failed: 0,
+          message: ""
+        };
+        let childName = `child_${defaultName}_${tlCount++}`;
+        if (childContainer.hasOwnProperty('name')) {
+          childName = childContainer.name;
+        }
+        resultSet[childName] = suiteResult;
+        //print(childContainer);
+        //print('-------------------------')
+        //print(childName);
+        childContainer['childContainers'].forEach(grandChildContainerId => {
+          let grandChildContainer = allContainerJsons[grandChildContainerId];
+          //print(grandChildContainer);
+          let name = childContainer.name + "." + grandChildContainer.name;
+          if (grandChildContainer.children.length !== 1) {
+            print(RED+"This grandchild has more than one item - not supported!"+RESET);
+            print(RED+grandChildContainer.children+RESET);
+          }
+          let gcTestResult = allResultJsons[grandChildContainer.children[0]];
+          //print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+          //print(gcTestResult)
+          let message = "";
+          if (gcTestResult.hasOwnProperty('statusDetails')) {
+            message = gcTestResult.statusDetails.message + "\n\n" + gcTestResult.statusDetails.trace;
+          }
+          let myResult = {
+            duration: gcTestResult.stop - gcTestResult.start,
+            status: (gcTestResult.status === "passed") || (gcTestResult.status === "skipped"),
+            message: message
+          };
+
+          suiteResult[grandChildContainer.name + '.' + gcTestResult.name] = myResult;
+          if (!myResult.status) {
+            resultSet.status = false;
+            resultSet.failed += 1;
+            totalFailed += 1;
+            status = false;
+            suiteResult.status = false;
+            suiteResult.message += myResult.message;
+            results.message += myResult.message;
+          }
+        });
+      });
+      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
+    });
+    results['failed'] = totalFailed;
+    results['timeout'] = false;
+    results['status'] = status;
+  }
+}
+
+
+
 exports.runOnArangodRunner = runOnArangodRunner;
 exports.runInArangoshRunner = runInArangoshRunner;
 exports.runLocalInArangoshRunner = runLocalInArangoshRunner;
@@ -369,3 +533,4 @@ exports.shellv8Runner = shellv8Runner;
 exports.readTestResult = readTestResult;
 exports.writeTestResult = writeTestResult;
 exports.getTestCode = getTestCode;
+exports.runWithAllureReport = runWithAllureReport;

@@ -226,6 +226,39 @@ exports.getMetric = function (endpoint, name) {
   return getMetricName(text, name);
 };
 
+// Eventually assert a metric from a single server endpoint.
+// compareFn takes the metric value and returns true if the assertion should pass.
+exports.eventuallyAssertMetric = function(endpoint, metricName, compareFn, errorMessage, maxIterations = 200) {
+  let metricValue;
+  for (let i = 0; i < maxIterations; i++) {
+    internal.wait(0.1);
+    metricValue = exports.getMetric(endpoint, metricName);
+    if (compareFn(metricValue)) {
+      break;
+    }
+  }
+  assertTrue(compareFn(metricValue), `${errorMessage}: got ${metricValue}`);
+  return metricValue;
+};
+
+// Eventually assert the sum of a metric across multiple servers.
+// compareFn takes the summed metric value and returns true if the assertion should pass.
+exports.eventuallyAssertMetricSum = function(servers, metricName, compareFn, errorMessage, maxIterations = 200) {
+  let metricValue;
+  for (let i = 0; i < maxIterations; i++) {
+    internal.wait(0.1);
+    metricValue = 0;
+    for (let server of servers) {
+      metricValue += exports.getMetric(server.endpoint, metricName);
+    }
+    if (compareFn(metricValue)) {
+      break;
+    }
+  }
+  assertTrue(compareFn(metricValue), `${errorMessage}: got ${metricValue}`);
+  return metricValue;
+};
+
 exports.getMetricSingle = function (name) {
   let res = arango.GET_RAW("/_admin/metrics");
   if (res.code !== 200) {

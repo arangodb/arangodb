@@ -33,6 +33,7 @@ const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
 const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
+const {versionHas} = require("@arangodb/test-helper");
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -200,6 +201,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-noarm') !== -1) && versionHas("arm")) {
+    whichFilter.filter = 'skip on AArch64 targets';
+    return false;
+  }
+
   if ((testname.indexOf('-noinstr') !== -1) && (options.isInstrumented)) {
     whichFilter.filter = 'skip when built with an instrumented build';
     return false;
@@ -327,6 +333,7 @@ function scanTestPaths (paths, options, fun) {
     allTestCases = allTestCases.concat(doOnePathInner(p));
   });
 
+  allTestCases.sort();
   let allFiltered = [];
   let filteredTestCases = _.filter(allTestCases,
                                    function (p) {

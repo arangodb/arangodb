@@ -178,7 +178,7 @@ class IResearchDataStore {
     DataSnapshotPtr _snapshot;
   };
 
-  explicit IResearchDataStore(ArangodServer& server,
+  explicit IResearchDataStore(application_features::ApplicationServer& server,
                               LogicalCollection& collection);
 
   virtual ~IResearchDataStore();

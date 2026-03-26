@@ -1,5 +1,5 @@
 import { ChangeEvent, Dispatch, useCallback, useEffect, useRef } from "react";
-import minimatch from "minimatch";
+import { minimatch } from "minimatch";
 import { cloneDeep, compact, has, isEqual, merge, set, uniqueId, unset } from "lodash";
 import { DispatchArgs, State } from "./constants";
 import { ErrorObject, ValidateFunction } from "ajv";

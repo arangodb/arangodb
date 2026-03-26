@@ -24,14 +24,12 @@
 
 #pragma once
 
-#include "Aql/types.h"
 #include "Basics/Result.h"
-#include "Cluster/ClusterTypes.h"
 #include "Basics/ResultT.h"
 #include "Replication/Syncer.h"
-#include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "StorageEngine/ReplicationIterator.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
 #include <unordered_set>
@@ -60,7 +58,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
-  RestReplicationHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestReplicationHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
  public:
   static std::string const Revisions;
@@ -76,6 +75,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const LoggerState;
   static std::string const LoggerTickRanges;
   static std::string const LoggerFirstTick;
+  static std::string const LoggerLast;
   static std::string const LoggerFollow;
   static std::string const Batch;
   static std::string const Inventory;
@@ -260,6 +260,15 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerFirstTick();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the first tick available in a logfile
+  /// @route GET logger-first-tick
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackObject with minTick of LogfileManager->ranges()
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandLoggerLast();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the available logfile range

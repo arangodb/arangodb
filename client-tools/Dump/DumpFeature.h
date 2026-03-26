@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Dump/arangodump.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
@@ -43,11 +42,11 @@ namespace httpclient {
 class SimpleHttpClient;
 }
 
-class DumpFeature final : public ArangoDumpFeature {
+class DumpFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Dump"; }
 
-  DumpFeature(Server& server, int& exitCode);
+  DumpFeature(application_features::ApplicationServer& server, int& exitCode);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(

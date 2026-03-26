@@ -93,6 +93,15 @@ ValidatorBase::ValidatorBase(VPackSlice params) : ValidatorBase() {
 }
 
 bool ValidatorBase::isSame(VPackSlice validator1, VPackSlice validator2) {
+  // Treat empty objects as null, since this is what happens during collection
+  // serialization.
+  if (validator1.isEmptyObject()) {
+    validator1 = VPackSlice::nullSlice();
+  }
+  if (validator2.isEmptyObject()) {
+    validator2 = VPackSlice::nullSlice();
+  }
+
   if (validator1.isObject() && validator2.isObject()) {
     // type "json" is default if no "type" attribute is specified
     std::string_view type1{"json"};
@@ -131,7 +140,7 @@ bool ValidatorBase::isSame(VPackSlice validator1, VPackSlice validator2) {
   if (validator1.isObject() || validator2.isObject()) {
     TRI_ASSERT(validator1.isObject() != validator2.isObject());
     // validator1 is an object, but validator2 isn't (or vice versa),
-    // so they must be different
+    // so they must be different.
     return false;
   }
 

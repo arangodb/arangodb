@@ -53,8 +53,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestCursorHandler::RestCursorHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
-    arangodb::aql::QueryRegistry* queryRegistry)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _queryKilled(false),
       _queryRegistry(queryRegistry),
@@ -298,12 +298,11 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
 
-  auto const snippets = queryBuilder.slice().get("nodes");
-  auto const querySlice = velocypack::Slice::emptyObjectSlice();
   auto const viewsSlice = velocypack::Slice::noneSlice();
   query->prepareFromVelocyPackWithoutInstantiate(
-      querySlice, collections, viewsSlice, variables, snippets);
-  co_await query->instantiatePlan(snippets);
+      velocypack::Slice::emptyObjectSlice(), collections, viewsSlice,
+      variables);
+  co_await query->instantiatePlan(queryBuilder.slice());
 
   if (stream) {
     if (count) {

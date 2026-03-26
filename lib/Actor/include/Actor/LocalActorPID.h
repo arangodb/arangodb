@@ -40,7 +40,7 @@ struct LocalActorPID {
 
 // TODO - remove in favor of inspection::json()
 template<>
-struct fmt::formatter<arangodb::actor::LocalActorPID>
+struct std::formatter<arangodb::actor::LocalActorPID>
     : arangodb::inspection::inspection_formatter {};
 
 namespace std {

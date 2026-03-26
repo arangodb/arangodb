@@ -23,12 +23,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "RestServer/arangod.h"
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace application_features {
@@ -46,34 +48,39 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef std::shared_ptr<RestHandler> (*create_fptr)(ArangodServer&,
-                                                      GeneralRequest*,
-                                                      GeneralResponse*,
-                                                      void* data);
+  typedef std::shared_ptr<RestHandler> (*create_fptr)(
+      application_features::ApplicationServer&, GeneralRequest*,
+      GeneralResponse*, void* data);
 
-  RestHandlerFactory();
+  explicit RestHandlerFactory(uint32_t maxApiVersion);
 
   // creates a new handler
+  // if nullptr is returned, errorBuilder will contain error information
   std::shared_ptr<RestHandler> createHandler(
-      ArangodServer&, std::unique_ptr<GeneralRequest>,
-      std::unique_ptr<GeneralResponse>) const;
+      application_features::ApplicationServer&, std::unique_ptr<GeneralRequest>,
+      std::unique_ptr<GeneralResponse>,
+      velocypack::Builder& errorBuilder) const;
 
   // adds a path and constructor to the factory
-  void addHandler(std::string const& path, create_fptr, void* data = nullptr);
+  void addHandler(std::string const& path, create_fptr,
+                  std::initializer_list<uint32_t> apiVersions,
+                  void* data = nullptr);
 
   // adds a prefix path and constructor to the factory
   void addPrefixHandler(std::string const& path, create_fptr,
+                        std::initializer_list<uint32_t> apiVersions,
                         void* data = nullptr);
 
   // make the factory read-only (i.e. no new handlers can be added)
   void seal();
 
  private:
-  // list of constructors
-  std::unordered_map<std::string, std::pair<create_fptr, void*>> _constructors;
+  // list of constructors per API version
+  std::vector<std::unordered_map<std::string, std::pair<create_fptr, void*>>>
+      _constructors;
 
-  // list of prefix handlers
-  std::vector<std::string> _prefixes;
+  // list of prefix handlers per API version
+  std::vector<std::vector<std::string>> _prefixes;
 
   // whether or not handlers can be added (sealed = false)
   bool _sealed;

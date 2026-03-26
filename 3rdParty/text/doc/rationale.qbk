@@ -1,0 +1,76 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section Rationale]
+
+[heading _t_, _r_ Are Implicitly Convertible from `char const *`.]
+
+I find that the syntactic overhead of bringing UDLs into scope and then using
+them to be too high in some cases.  Aggregate initialization including
+string-like objects is one of those:
+
+[table Explicit vs. Implicit Conversion from `char const *`
+    [[Explicit] [Implicit]]
+    [[``
+    using namespace boost::text::literals;
+
+    std::array<boost::text::text, 3> = {{ "foo"_t, "bar"_t, "baz"_t }};
+``]
+    [``
+    std::array<boost::text::text, 3> = {{ "foo", "bar", "baz" }};
+``]]
+]
+
+I find the implicit-conversion code much more natural.
+
+
+[heading Unicode Algorithm Tailoring]
+
+The behavior of some of the Unicode algorithms is intended to be tailorable.
+_Text_ provides customization of some of its Unicode algorithm implementations
+for this purpose.  Some possible tailorings are not available.
+
+* Grapheme breaks are not tailorable, because they are fundamental to how a
+  large part of _Text_ operates; everyone must have the same sense of what a
+  _gr_ is for this to work.
+
+* Word breaks are tailorable.  The tailorings available via _Text_'s word
+  breaking API should be enough handle most of the shortcomings listed in the
+  _text_seg_notes_.  The shortcomings not covered by _Text_'s API require
+  dictionary lookups (very much out of scope) or extra _cp_ properties (for
+  breaking on script boundaries; also out of scope).
+
+* Sentence breaks are not tailorable, because the suggested tailorings require
+  a large amount of context, and possibly dictionary-style lookups.
+
+* Line breaks are not tailorable, because all the suggested tailorings involve
+  multiple modes of behavior (e.g. for Korean text) or dictionary lookups.
+
+* For bidirectional ordering, Unicode lays out certain tailorings it refers to
+  as _bidi_h_tailorings_.  _Text_ directly supports HL1 and HL4.  HL2 is
+  unsupported because it frankly doesn't seem very important.  HL3 and HL5 can
+  be accomplished by manually adding directional formatting characters or
+  other desired _cps_ to segments of text.  HL6 is completely unsupported,
+  because it also seems like a very low-frequency use case.
+
+
+[heading _Text_ Does Not Use allocators]
+
+Allocators are too low gain for the cost they impose.  How many
+`std::basic_string` template instantiations in the code bases of the world
+involve a non-default allocator?  I would be surprised if it was as high as
+1%.  Allocators may once have served an important function, but in modern C++
+are a perfect example of not sticking to "Don't pay for what you don't use."
+
+As a concrete example, consider `std::vector`.  This is a type whose sole
+purpose is to manage the allocations and reallocations of a heap-allocated
+array for you.  Its interface allows me, via its allocator template parameter,
+to change its behavior to be a stack-allocated array of fixed size, but with a
+`std::vector` interface.  This has a large impact on the properties of the
+type, the `noexcept`-ness of and time complexity of `swap()` to name just
+one. I don't consider this to be a feature of the `std::vector` design, but a
+bug.
+
+[endsect]

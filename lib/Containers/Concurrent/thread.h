@@ -56,5 +56,5 @@ auto inspect(Inspector& f, ThreadInfo& x) {
 }  // namespace arangodb::basics
 
 template<>
-struct fmt::formatter<arangodb::basics::ThreadId>
+struct std::formatter<arangodb::basics::ThreadId>
     : arangodb::inspection::inspection_formatter {};

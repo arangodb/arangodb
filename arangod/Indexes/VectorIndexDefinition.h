@@ -23,12 +23,11 @@
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <vector>
-#include <cstdint>
 
 #include "Inspection/Status.h"
-#include "fmt/format.h"
 
 namespace arangodb {
 

@@ -24,15 +24,33 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/BootstrapFeatureOptions.h"
 
 namespace arangodb {
+#ifdef USE_V8
+class V8DealerFeature;
+#endif
+class ClusterUpgradeFeature;
+class SystemDatabaseFeature;
+class DatabaseFeature;
+class EngineSelectorFeature;
+class ClusterFeature;
 
-class BootstrapFeature final : public ArangodFeature {
+class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Bootstrap"; }
 
-  explicit BootstrapFeature(Server& server);
+  explicit BootstrapFeature(application_features::ApplicationServer& server,
+                            ClusterFeature& clusterFeature,
+                            EngineSelectorFeature& engineSelectorFeature,
+                            DatabaseFeature& databaseFeature,
+                            SystemDatabaseFeature* systemDatabaseFeature,
+                            ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+                            ,
+                            V8DealerFeature* v8DealerFeature
+#endif
+  );
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
@@ -41,14 +59,29 @@ class BootstrapFeature final : public ArangodFeature {
 
   bool isReady() const;
 
+  ClusterFeature& clusterFeature();
+  EngineSelectorFeature& engineSelectorFeature();
+  DatabaseFeature& databaseFeature();
+  SystemDatabaseFeature* systemDatabaseFeature();
+  ClusterUpgradeFeature* clusterUpgradeFeature();
+
  private:
   void killRunningQueries();
   void waitForHealthEntry();
   /// @brief wait for databases to appear in Plan and Current
   void waitForDatabases() const;
 
+  ClusterFeature& _clusterFeature;
+  EngineSelectorFeature& _engineSelectorFeature;
+  DatabaseFeature& _databaseFeature;
+  SystemDatabaseFeature* _systemDatabaseFeature{};
+  ClusterUpgradeFeature* _clusterUpgradeFeature{};
+#ifdef USE_V8
+  V8DealerFeature* _v8DealerFeature{};
+#endif
+
+  BootstrapFeatureOptions _options;
   bool _isReady;
-  bool _bark;
 };
 
 }  // namespace arangodb

@@ -31,11 +31,13 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/IResearchViewExecutor.h"
 #include "Aql/Executor/IResearchViewHeapSortExecutor.h"
 #include "Aql/Executor/IResearchViewMergeExecutor.h"
 #include "Aql/Executor/NoResultsExecutor.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
@@ -1067,6 +1069,70 @@ constexpr size_t getExecutorIndex(bool sorted, bool ordered, bool heapsort,
   return index;
 }
 
+//
+// Note: one would be tempted to think this is the same as `getLoop`
+// on ExecutionNode, but it is not!  getLoop returns nullptr when it
+// hits the Singleton of a subquery which hasDependencies below would
+// interpret as a variable not having an enclosing loop (being
+// "immutable"; note this interpretation is also over-eager)
+//
+auto findEnclosingLoop(aql::ExecutionPlan const* plan,
+                       aql::ExecutionNode const* node)
+    -> aql::ExecutionNode const* {
+  using EN = arangodb::aql::ExecutionNode;
+
+  containers::FlatHashMap<aql::ExecutionNode const*, aql::ExecutionNode const*>
+      subqueries{};
+  {
+    containers::SmallVector<aql::ExecutionNode*, 8> subs;
+    plan->findNodesOfType(subs, aql::ExecutionNode::SUBQUERY, true);
+
+    // we build a map of the top-most nodes of each subquery to the outer
+    // subquery node
+    for (auto& it : subs) {
+      auto sub = aql::ExecutionNode::castTo<aql::SubqueryNode const*>(it)
+                     ->getSubquery();
+      while (sub->hasDependency()) {
+        sub = sub->getFirstDependency();
+      }
+      subqueries.emplace(sub, it);
+    }
+  }
+
+  while (node != nullptr) {
+    switch (node->getType()) {
+      case EN::SINGLETON: {
+        if (node->isInSubquery()) {
+          auto it = subqueries.find(node);
+          TRI_ASSERT(it != std::end(subqueries));
+          auto [_, sq] = *it;
+          node = sq->getFirstDependency();
+        } else {
+          TRI_ASSERT(node->id().id() == 1);
+          return nullptr;
+        }
+      } break;
+      case EN::ENUMERATE_COLLECTION:
+      case EN::INDEX:
+      case EN::TRAVERSAL:
+      case EN::ENUMERATE_LIST:
+      case EN::SHORTEST_PATH:
+      case EN::ENUMERATE_PATHS:
+      case EN::ENUMERATE_IRESEARCH_VIEW:
+      case EN::ENUMERATE_NEAR_VECTORS: {
+        return node;
+      } break;
+      default: {
+        if (!node->hasDependency()) {
+          return nullptr;
+        }
+        node = node->getFirstDependency();
+      } break;
+    }
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept {
@@ -1134,7 +1200,8 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
         }
         break;
       default:
-        if ((!setter->isDeterministic() || setter->getLoop() != nullptr) &&
+        if ((!setter->isDeterministic() ||
+             findEnclosingLoop(&plan, setter) != nullptr) &&
             callback(var)) {
           return true;
         }

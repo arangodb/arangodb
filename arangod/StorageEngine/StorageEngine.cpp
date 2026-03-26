@@ -27,9 +27,12 @@
 #include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cache/CacheManagerFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -37,10 +40,12 @@
 
 using namespace arangodb;
 
-StorageEngine::StorageEngine(Server& server, std::string_view engineName,
-                             std::string_view featureName, size_t registration,
+StorageEngine::StorageEngine(application_features::ApplicationServer& server,
+                             std::string_view engineName,
+                             std::string_view featureName,
+                             std::type_index registration,
                              std::unique_ptr<IndexFactory>&& indexFactory)
-    : ArangodFeature{server, registration, featureName},
+    : ApplicationFeature{server, registration, featureName},
       _indexFactory(std::move(indexFactory)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine

@@ -317,7 +317,7 @@ class testRunner {
         }
       };
     }
-    this.instanceManager.reconnect();
+    this.instanceManager.reconnect(false);
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;
@@ -414,6 +414,10 @@ class testRunner {
           first = false;
 
           if (this.options.loopEternal) {
+            if (reply.hasOwnProperty('status') && reply.status === false) {
+              print(RED + 'test failed, terminating' + RESET);
+              break;
+            }
             if (loopCount % this.options.loopSleepWhen === 0) {
               print('sleeping...');
               sleep(this.options.loopSleepSec);

@@ -29,13 +29,12 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Containers/FlatHashSet.h"
 #include "Logger/LoggerFeature.h"
+#include "Metrics/ClusterMetricsOptionsProvider.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 
@@ -57,8 +56,9 @@ static std::shared_ptr<ClusterMetricsFeature::Data> createEmptyData() {
   return data;
 }
 
-ClusterMetricsFeature::ClusterMetricsFeature(Server& server)
-    : ArangodFeature{server, *this}, _data{createEmptyData()} {
+ClusterMetricsFeature::ClusterMetricsFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this}, _data{createEmptyData()} {
   setOptional();
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();
@@ -67,17 +67,15 @@ ClusterMetricsFeature::ClusterMetricsFeature(Server& server)
 
 void ClusterMetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options
-      ->addOption("--server.cluster-metrics-timeout",
-                  "Cluster metrics polling timeout (in seconds).",
-                  new options::UInt32Parameter(&_timeout),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(3'10'00);
+  ClusterMetricsOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ClusterMetricsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> /*options*/) {
+    std::shared_ptr<options::ProgramOptions> options) {
+  ClusterMetricsOptionsProvider provider;
+  provider.validateOptions(options, _options);
+
   if (!ServerState::instance()->isCoordinator()) {
     _count.store(kStop);
   }
@@ -89,7 +87,7 @@ void ClusterMetricsFeature::start() {
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.initMetricsState();
-  if (_timeout != 0) {
+  if (_options.timeout != 0) {
     rescheduleTimer(0);
   }
 }
@@ -140,7 +138,7 @@ std::optional<std::string> ClusterMetricsFeature::update(
 }
 
 void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
-  TRI_ASSERT(_timeout > 0);
+  TRI_ASSERT(_options.timeout > 0);
   if (server().isStopping()) {
     return;
   }
@@ -152,7 +150,7 @@ void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
           return;
         }
         update(CollectMode::TriggerGlobal);
-        rescheduleTimer(_timeout * 1000);
+        rescheduleTimer(_options.timeout * 1000);
       });
   std::atomic_store_explicit(&_timer, std::move(h), std::memory_order_relaxed);
 }
@@ -179,7 +177,7 @@ void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeoutMs) noexcept {
         try {
           update();
         } catch (...) {
-          repeatUpdate(std::max(_timeout, 1U) * 1000);
+          repeatUpdate(std::max(_options.timeout, 1U) * 1000);
         }
       });
   std::atomic_store_explicit(&_update, std::move(h), std::memory_order_relaxed);
@@ -202,7 +200,7 @@ void ClusterMetricsFeature::update() {
           if (wasStop()) {
             return;
           }
-          uint32_t timeoutMs = std::max(_timeout, 1U) * 1000;
+          uint32_t timeoutMs = std::max(_options.timeout, 1U) * 1000;
           try {
             if (writeData(version, std::move(raw))) {
               timeoutMs = 0;  // success

@@ -1,0 +1,3 @@
+# false positive `lock-order-inversion` error
+# Because we call Begin() SwitchFlushContext() Commit()
+deadlock:SwitchFlushContext

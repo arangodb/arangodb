@@ -24,18 +24,18 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
-#include "RestServer/arangod.h"
 #include "StorageEngine/HealthData.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/OperationOrigin.h"
-#include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -98,11 +98,12 @@ class StorageSnapshot {
   virtual TRI_voc_tick_t tick() const noexcept = 0;
 };
 
-class StorageEngine : public ArangodFeature {
+class StorageEngine : public application_features::ApplicationFeature {
  public:
   // create the storage engine
-  StorageEngine(Server& server, std::string_view engineName,
-                std::string_view featureName, size_t registration,
+  StorageEngine(application_features::ApplicationServer& server,
+                std::string_view engineName, std::string_view featureName,
+                std::type_index registration,
                 std::unique_ptr<IndexFactory>&& indexFactory);
 
   virtual HealthData healthCheck() = 0;

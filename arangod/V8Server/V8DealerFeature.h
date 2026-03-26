@@ -33,14 +33,14 @@
 #include <unordered_set>
 #include <vector>
 
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
 #include "V8/JSLoader.h"
 #include "V8Server/GlobalExecutorMethods.h"
+#include "V8Server/V8DealerFeatureOptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -52,7 +52,7 @@ class JavaScriptSecurityContext;
 class Thread;
 class V8Executor;
 
-class V8DealerFeature final : public ArangodFeature {
+class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
   struct Statistics {
     size_t available;
@@ -73,7 +73,8 @@ class V8DealerFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "V8Dealer"; }
 
-  V8DealerFeature(Server& server, metrics::MetricsFeature& metrics);
+  V8DealerFeature(application_features::ApplicationServer& server,
+                  metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
@@ -93,42 +94,22 @@ class V8DealerFeature final : public ArangodFeature {
   ErrorCode createBaseApplicationDirectory(std::string const& appPath,
                                            std::string const& type);
 
-  double _gcFrequency;
-  uint64_t _gcInterval;
-  double _maxExecutorAge;
-  std::string _appPath;
-  std::string _startupDirectory;
+  V8DealerFeatureOptions _options;
   std::string _nodeModulesDirectory;
-  std::vector<std::string> _moduleDirectories;
-  // maximum number of executors to create
-  uint64_t _nrMaxExecutors;
-  // minimum number of executors to keep
-  uint64_t _nrMinExecutors;
   // number of executors currently in creation
   uint64_t _nrInflightExecutors;
-  // maximum number of V8 context invocations
-  uint64_t _maxExecutorInvocations;
-
-  // copy JavaScript files into database directory on startup
-  bool _copyInstallation;
-  // enable /_admin/execute API
-  bool _allowAdminExecute;
-  // allow JavaScript transactions?
-  bool _allowJavaScriptTransactions;
-  // allow JavaScript user-defined functions?
-  bool _allowJavaScriptUdfs;
-  // allow JavaScript tasks (tasks module)?
-  bool _allowJavaScriptTasks;
-  // enable JavaScript globally
-  bool _enableJS;
 
  public:
-  bool allowAdminExecute() const noexcept { return _allowAdminExecute; }
+  bool allowAdminExecute() const noexcept { return _options.allowAdminExecute; }
   bool allowJavaScriptTransactions() const noexcept {
-    return _allowJavaScriptTransactions;
+    return _options.allowJavaScriptTransactions;
   }
-  bool allowJavaScriptUdfs() const noexcept { return _allowJavaScriptUdfs; }
-  bool allowJavaScriptTasks() const noexcept { return _allowJavaScriptTasks; }
+  bool allowJavaScriptUdfs() const noexcept {
+    return _options.allowJavaScriptUdfs;
+  }
+  bool allowJavaScriptTasks() const noexcept {
+    return _options.allowJavaScriptTasks;
+  }
 
   bool addGlobalExecutorMethod(GlobalExecutorMethods::MethodType type);
   void collectGarbage();
@@ -147,14 +128,14 @@ class V8DealerFeature final : public ArangodFeature {
   void exitExecutor(V8Executor* executor);
 
   void setMinimumExecutors(size_t nr) {
-    if (nr > _nrMinExecutors) {
-      _nrMinExecutors = nr;
+    if (nr > _options.nrMinExecutors) {
+      _options.nrMinExecutors = nr;
     }
   }
 
-  uint64_t maximumExecutors() const noexcept { return _nrMaxExecutors; }
+  uint64_t maximumExecutors() const noexcept { return _options.nrMaxExecutors; }
 
-  void setMaximumExecutors(size_t nr) noexcept { _nrMaxExecutors = nr; }
+  void setMaximumExecutors(size_t nr) noexcept { _options.nrMaxExecutors = nr; }
 
   Statistics getCurrentExecutorStatistics();
   std::vector<DetailedExecutorStatistics> getCurrentExecutorDetails();
@@ -167,7 +148,7 @@ class V8DealerFeature final : public ArangodFeature {
     _definedDoubles[name] = value;
   }
 
-  std::string const& appPath() const { return _appPath; }
+  std::string const& appPath() const { return _options.appPath; }
 
   static bool javascriptRequestedViaOptions(
       std::shared_ptr<options::ProgramOptions> const& options);

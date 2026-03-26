@@ -29,7 +29,7 @@
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
-#include "Graph/Queues/ExpansionMarker.h"
+#include "Graph/Types/VertexRef.h"
 
 namespace arangodb {
 
@@ -66,8 +66,6 @@ class OneSidedEnumerator final : public TraversalEnumerator {
   using ResultPathType = SingleProviderPathResult<Provider, Store, Step>;
 
  private:
-  using VertexRef = velocypack::HashedStringRef;
-
   using ResultList = typename std::conditional_t<
       std::is_same_v<Step, enterprise::SmartGraphStep>,
       enterprise::SmartGraphResponse<Provider>, std::vector<Step>>;
@@ -163,7 +161,6 @@ class OneSidedEnumerator final : public TraversalEnumerator {
  private:
   [[nodiscard]] auto searchDone() const -> bool;
 
-  auto popFromQueue() -> QueueEntry<Step>;
   auto computeNeighbourhoodOfNextVertex() -> void;
 
   // Ensure that we have fetched all vertices in the _results list.
@@ -189,7 +186,6 @@ class OneSidedEnumerator final : public TraversalEnumerator {
   aql::TraversalStats _stats{};
 
   typename Configuration::Queue _queue;  // The next elements to process
-  CursorId _nextCursorId = 0;
   typename Configuration::Provider _provider;
   typename Configuration::Store _interior;  // This stores all paths processed
   typename Configuration::Validator _validator;

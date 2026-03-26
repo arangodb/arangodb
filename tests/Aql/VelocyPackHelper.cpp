@@ -22,25 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VelocyPackHelper.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::velocypack;
 using namespace arangodb::tests;
-
-VPackBufferPtr arangodb::tests::vpackFromJsonString(char const* c) {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  VPackParser parser(&options);
-  parser.parse(c);
-
-  std::shared_ptr<VPackBuilder> builder = parser.steal();
-
-  return builder->steal();
-}
-
-VPackBufferPtr arangodb::tests::operator"" _vpack(const char* json, size_t) {
-  return vpackFromJsonString(json);
-}
 
 void arangodb::tests::VPackToAqlItemBlock(VPackSlice data, RegisterCount nrRegs,
                                           AqlItemBlock& block) {

@@ -29,7 +29,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
-#include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"

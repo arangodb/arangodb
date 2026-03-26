@@ -130,7 +130,8 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
-uint64_t getCurrentPlanVersion(arangodb::ArangodServer&);
+uint64_t getCurrentPlanVersion(
+    arangodb::application_features::ApplicationServer&);
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature);
 
@@ -244,15 +245,16 @@ VPackBuilder getInvertedIndexPropertiesSlice(
     std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr,
     std::string_view name = "");
 
-arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server,
-                                        std::string const& name, uint64_t id);
+arangodb::CreateDatabaseInfo createInfo(
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& name, uint64_t id);
 arangodb::CreateDatabaseInfo systemDBInfo(
-    arangodb::ArangodServer& server,
+    arangodb::application_features::ApplicationServer& server,
     std::string const& name = arangodb::StaticStrings::SystemDatabase,
     uint64_t id = 1);
-arangodb::CreateDatabaseInfo testDBInfo(arangodb::ArangodServer& server,
-                                        std::string const& name = "testVocbase",
-                                        uint64_t id = 2);
+arangodb::CreateDatabaseInfo testDBInfo(
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& name = "testVocbase", uint64_t id = 2);
 arangodb::CreateDatabaseInfo unknownDBInfo(
-    arangodb::ArangodServer& server, std::string const& name = "unknownVocbase",
-    uint64_t id = 3);
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& name = "unknownVocbase", uint64_t id = 3);

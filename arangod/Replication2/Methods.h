@@ -23,13 +23,13 @@
 #pragma once
 
 #include "Agency/AgencyCommon.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/ReplicatedLog/LogPayload.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/StateMachines/BlackHole/BlackHoleStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "VocBase/vocbase.h"
 
 #include <string>
@@ -170,7 +170,8 @@ struct ReplicatedLogMethods {
 
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<ReplicatedLogMethods>;
-  static auto createInstance(DatabaseID database, ArangodServer& server)
+  static auto createInstance(DatabaseID database,
+                             application_features::ApplicationServer& server)
       -> std::shared_ptr<ReplicatedLogMethods>;
 
   [[nodiscard]] virtual auto replaceParticipant(

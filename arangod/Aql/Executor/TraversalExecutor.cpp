@@ -523,8 +523,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       traversalEnumerator()->prepareIndexExpressions(&_ast);
 
       // start actual search
-      traversalEnumerator()->reset(toHashedStringRef(
-          sourceString));  // TODO [GraphRefactor]: check sourceString memory
+      traversalEnumerator()->reset(VertexRef{toHashedStringRef(
+          sourceString)});  // TODO [GraphRefactor]: check sourceString memory
       TRI_ASSERT(_inputRow.isInitialized());
       return true;
     }

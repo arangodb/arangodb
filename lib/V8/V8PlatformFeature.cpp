@@ -154,7 +154,7 @@ void V8PlatformFeature::collectOptions(
 
   options
       ->addOption("--javascript.v8-options", "Options to pass to V8.",
-                  new VectorParameter<StringParameter>(&_v8Options),
+                  new VectorParameter<StringParameter>(&_options.v8Options),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(You can optionally pass arguments to the V8
@@ -185,13 +185,13 @@ harmful for the regular database operation.)");
 
   options->addOption("--javascript.v8-max-heap",
                      "The maximal heap size (in MiB).",
-                     new UInt64Parameter(&_v8MaxHeap));
+                     new UInt64Parameter(&_options.v8MaxHeap));
 }
 
 void V8PlatformFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
-  if (!_v8Options.empty()) {
-    _v8CombinedOptions = StringUtils::join(_v8Options, " ");
+  if (!_options.v8Options.empty()) {
+    _v8CombinedOptions = StringUtils::join(_options.v8Options, " ");
 
     if (_v8CombinedOptions == "help" || _v8CombinedOptions == "--help") {
       std::string_view help = "--help";
@@ -269,11 +269,11 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   v8::Isolate::CreateParams createParams;
   createParams.array_buffer_allocator = _allocator.get();
 
-  if (_v8MaxHeap > 0) {
-    // note: _v8HeapMax is specified in megabytes
+  if (_options.v8MaxHeap > 0) {
+    // note: v8MaxHeap is specified in megabytes
     createParams.constraints.ConfigureDefaultsFromHeapSize(
         /*initial_heap_size_in_bytes*/ 0,
-        /*maximum_heap_size_in_bytes*/ _v8MaxHeap * 1024 * 1024);
+        /*maximum_heap_size_in_bytes*/ _options.v8MaxHeap * 1024 * 1024);
   }
 
   auto isolate = v8::Isolate::New(createParams);

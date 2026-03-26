@@ -34,7 +34,8 @@ namespace iresearch {
 
 class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
  public:
-  explicit IResearchRocksDBInvertedIndexFactory(ArangodServer& server);
+  explicit IResearchRocksDBInvertedIndexFactory(
+      application_features::ApplicationServer& server);
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const final;

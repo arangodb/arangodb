@@ -83,9 +83,9 @@ bool isOutdated(
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestMetricsHandler::RestMetricsHandler(ArangodServer& server,
-                                       GeneralRequest* request,
-                                       GeneralResponse* response)
+RestMetricsHandler::RestMetricsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 auto RestMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {

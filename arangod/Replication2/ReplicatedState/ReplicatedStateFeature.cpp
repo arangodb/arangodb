@@ -31,6 +31,7 @@
 #include "Basics/debugging.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Metrics/MetricsFeature.h"
@@ -55,10 +56,9 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
         std::move(gid), std::move(log), std::move(lc), iter->second.metrics,
         std::move(scheduler));
   }
-  using namespace fmt::literals;
   throw basics::Exception::fmt(
       ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_STATE_IMPLEMENTATION_NOT_FOUND,
-      "type"_a = name);
+      name);
 }
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
@@ -91,8 +91,8 @@ auto replicated_state::ReplicatedStateFeature::createMetricsObject(
 }
 
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
-    Server& server)
-    : ArangodFeature{server, *this} {
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<ReplicatedLogFeature>();
   onlyEnabledWith<ReplicatedLogFeature>();

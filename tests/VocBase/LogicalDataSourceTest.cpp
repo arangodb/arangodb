@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -101,7 +102,7 @@ class LogicalDataSourceTest : public ::testing::Test {
         false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(),
                           false);

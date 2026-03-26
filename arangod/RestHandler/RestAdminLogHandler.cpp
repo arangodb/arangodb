@@ -53,9 +53,9 @@ namespace arangodb {
 
 using namespace basics;
 
-RestAdminLogHandler::RestAdminLogHandler(arangodb::ArangodServer& server,
-                                         GeneralRequest* request,
-                                         GeneralResponse* response)
+RestAdminLogHandler::RestAdminLogHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 arangodb::Result RestAdminLogHandler::verifyPermitted() {

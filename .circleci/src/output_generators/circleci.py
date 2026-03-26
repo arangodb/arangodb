@@ -37,7 +37,7 @@ class CircleCIGenerator(OutputGenerator):
 
     # Job-specific bucket overrides
     # replication_sync: YAML specifies 2 buckets (for Jenkins compatibility),
-    # but CircleCI needs 5 for better parallelization. See tests/test-definitions.yml:74
+    # but CircleCI needs 5 for better parallelization. See tests/tests.yml:74
     BUCKET_OVERRIDES = {
         "replication_sync": 5,
     }
@@ -202,6 +202,9 @@ class CircleCIGenerator(OutputGenerator):
     def _create_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create compilation job definition."""
         preset = "enterprise-pr"
+
+        if build_config.architecture == Architecture.AARCH64:
+            preset += "-arm"
 
         preset += build_config.build_variant.get_suffix()
 
@@ -535,11 +538,13 @@ class CircleCIGenerator(OutputGenerator):
             job, deployment_type, build_config, replication_version
         )
 
-        # Create filter criteria with current workflow's architecture
+        # Create filter criteria with current workflow's architecture and build variant
         from dataclasses import replace
 
         criteria = replace(
-            self.config.filter_criteria, architecture=build_config.architecture
+            self.config.filter_criteria,
+            architecture=build_config.architecture,
+            build_variant=build_config.build_variant,
         )
 
         filtered_suites = filter_suites(job, criteria)

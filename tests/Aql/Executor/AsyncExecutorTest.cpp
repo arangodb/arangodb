@@ -36,6 +36,7 @@
 #include "Aql/Executor/AsyncExecutor.h"
 #include "Aql/SharedQueryState.h"
 
+#include <format>
 #include <random>
 #include <stdexcept>
 #include <thread>
@@ -227,7 +228,7 @@ TEST_F(AsyncExecutorTest, sleepingBeautyRandom) {
   // Make the seed available when the test fails, so a failure can be reproduced
   // deterministically.
   RecordProperty("seed", seed);
-  SCOPED_TRACE(fmt::format("seed={}", seed));
+  SCOPED_TRACE(std::format("seed={}", seed));
 
   auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
                                      RegIdFlatSet{}, RegIdFlatSetStack{{0}});

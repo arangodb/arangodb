@@ -29,6 +29,7 @@
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Types/ValidationResult.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <velocypack/Builder.h>
 
@@ -57,7 +58,6 @@ template<class Provider, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 class PathValidator {
-  using VertexRef = arangodb::velocypack::HashedStringRef;
   using Step = typename Provider::Step;
 
  public:

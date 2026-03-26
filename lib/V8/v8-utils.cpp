@@ -3950,6 +3950,71 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ES256 signs a message @FA{text}.
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_Es256Sign(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 2 || !args[0]->IsString() || !args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("es256sign(<private key pem>, <to sign>)");
+  }
+
+  std::string key = TRI_ObjectToString(isolate, args[0]);
+  std::string message = TRI_ObjectToString(isolate, args[1]);
+  std::string sign;
+  std::string error;
+
+  auto res = SslInterface::signES256(key, message, sign, error);
+
+  if (res == 0) {
+    sign = absl::WebSafeBase64Escape(sign);
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, error);
+  }
+
+  v8::Handle<v8::String> signStr =
+      TRI_V8_PAIR_STRING(isolate, sign.c_str(), sign.size());
+
+  TRI_V8_RETURN(signStr);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ES256 verifies a signature.
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_Es256Verify(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 3 || !args[0]->IsString() || !args[1]->IsString() ||
+      !args[2]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "es256verify(<public key pem>, <message>, <signature>)");
+  }
+
+  std::string publicKey = TRI_ObjectToString(isolate, args[0]);
+  std::string message = TRI_ObjectToString(isolate, args[1]);
+  std::string signatureBase64 = TRI_ObjectToString(isolate, args[2]);
+
+  std::string signature;
+  if (!absl::WebSafeBase64Unescape(signatureBase64, &signature)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Invalid base64 signature");
+  }
+
+  bool valid =
+      SslInterface::verifyES256Signature(publicKey, message, signature);
+
+  TRI_V8_RETURN(v8::Boolean::New(isolate, valid));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sleeps
 ///
 /// @FUN{internal.sleep(@FA{seconds})}
@@ -6009,6 +6074,10 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SHA1"), JS_Sha1);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RSAPRIVSIGN"), JS_RsaPrivSign);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ES256SIGN"), JS_Es256Sign);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ES256VERIFY"), JS_Es256Verify);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SHA224"), JS_Sha224);
   TRI_AddGlobalFunctionVocbase(

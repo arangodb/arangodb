@@ -138,14 +138,14 @@ class AsyncAgencyCommManager final {
  public:
   static std::unique_ptr<AsyncAgencyCommManager> INSTANCE;
 
-  static void initialize(ArangodServer& server) {
+  static void initialize(application_features::ApplicationServer& server) {
     INSTANCE = std::make_unique<AsyncAgencyCommManager>(server);
   }
 
   static bool isEnabled() { return INSTANCE != nullptr; }
   static AsyncAgencyCommManager& getInstance();
 
-  explicit AsyncAgencyCommManager(ArangodServer&);
+  explicit AsyncAgencyCommManager(application_features::ApplicationServer&);
 
   void addEndpoint(std::string const& endpoint);
   void updateEndpoints(std::vector<std::string> const& endpoints);
@@ -167,7 +167,7 @@ class AsyncAgencyCommManager final {
   network::ConnectionPool* pool() const { return _pool; }
   void pool(network::ConnectionPool* pool) { _pool = pool; }
 
-  ArangodServer& server();
+  application_features::ApplicationServer& server();
 
   uint64_t nextRequestId() {
     return _nextRequestId.fetch_add(1, std::memory_order_relaxed);
@@ -179,7 +179,7 @@ class AsyncAgencyCommManager final {
  private:
   std::atomic<bool> _isStopping = false;
   std::atomic<bool> _skipScheduler = true;
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
   network::ConnectionPool* _pool = nullptr;

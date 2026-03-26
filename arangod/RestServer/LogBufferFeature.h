@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "RestServer/LogBufferFeatureOptions.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogLevel.h"
 
@@ -31,9 +32,6 @@
 #include <memory>
 #include <vector>
 
-namespace application_features {
-class ApplicationServer;
-}
 namespace options {
 class ProgramOptions;
 }
@@ -50,13 +48,13 @@ struct LogBuffer {
   LogBuffer();
 };
 
-class LogBufferFeature final : public ArangodFeature {
+class LogBufferFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "LogBuffer"; }
 
   static constexpr uint32_t BufferSize = 2048;
 
-  explicit LogBufferFeature(Server& server);
+  explicit LogBufferFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
@@ -71,8 +69,7 @@ class LogBufferFeature final : public ArangodFeature {
  private:
   std::shared_ptr<LogAppender> _inMemoryAppender;
   std::shared_ptr<LogAppender> _metricsCounter;
-  std::string _minInMemoryLogLevel;
-  bool _useInMemoryAppender;
+  LogBufferFeatureOptions _options;
 };
 
 }  // namespace arangodb

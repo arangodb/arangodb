@@ -23,11 +23,12 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
-
 #include <memory>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace rest {
 class RestHandler;
 }
@@ -39,15 +40,19 @@ class RestHandlerCreator : public H {
  public:
   template<typename D>
   static std::shared_ptr<rest::RestHandler> createData(
-      ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
-      void* data) {
-    return std::make_shared<H>(server, request, response, (D)data);
+      application_features::ApplicationServer& server, GeneralRequest* request,
+      GeneralResponse* response, void* data) {
+    auto h = std::make_shared<H>(server, request, response, (D)data);
+    h->startActivity();
+    return h;
   }
 
   static std::shared_ptr<rest::RestHandler> createNoData(
-      ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
-      void*) {
-    return std::make_shared<H>(server, request, response);
+      application_features::ApplicationServer& server, GeneralRequest* request,
+      GeneralResponse* response, void*) {
+    auto h = std::make_shared<H>(server, request, response);
+    h->startActivity();
+    return h;
   }
 
   // TODO consolidate methods using variadic templates

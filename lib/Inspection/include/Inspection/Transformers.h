@@ -30,7 +30,7 @@
 #include "Inspection/Status.h"
 
 #include "date/date.h"
-#include "fmt/core.h"
+#include <format>
 
 namespace arangodb::inspection {
 
@@ -50,7 +50,7 @@ struct TimeStampTransformer {
 
     if (in.fail()) {
       return inspection::Status(
-          fmt::format("failed to parse timestamp `{}` using format string `{}`",
+          std::format("failed to parse timestamp `{}` using format string `{}`",
                       source, formatString));
     } else {
       return {};

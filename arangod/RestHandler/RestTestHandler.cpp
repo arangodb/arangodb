@@ -38,8 +38,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTestHandler::RestTestHandler(ArangodServer& server, GeneralRequest* request,
-                                 GeneralResponse* response)
+RestTestHandler::RestTestHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestTestHandler::~RestTestHandler() = default;

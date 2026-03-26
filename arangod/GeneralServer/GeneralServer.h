@@ -65,7 +65,7 @@ class GeneralServer {
   SslServerFeature::SslContextList sslContexts();
   SSL_CTX* getSSL_CTX(size_t index);
 
-  ArangodServer& server() const;
+  application_features::ApplicationServer& server() const;
 
   Result reloadTLS();
 

@@ -362,7 +362,7 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
 }
 
 TEST_F(InternalRestTraverserHandlerEdgeTest,
-       resets_cursor_to_new_given_vertex_for_request_with_new_input_variables) {
+       all_cursors_that_exist_can_be_queried) {
   MockGraph g;
   g.addEdge(0, 1);
   g.addEdge(0, 2);
@@ -371,8 +371,10 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   g.addEdge(1, 3);
   auto engineId = createEngine(g);
 
-  {  // request two neighbours of v/0
-    std::unordered_multiset<std::string> toVertices;
+  std::unordered_multiset<std::string> v0_toVertices;
+  std::unordered_multiset<std::string> v1_toVertices;
+
+  {  // request two out of the three neighbours of v/0
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
@@ -388,13 +390,12 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     EXPECT_FALSE(edges.isNone());
     for (VPackSlice edge : VPackArrayIterator(edges)) {
       EXPECT_EQ(edge.get("_from").copyString(), "v/0");
-      toVertices.emplace(edge.get("_to").copyString());
+      v0_toVertices.emplace(edge.get("_to").copyString());
     }
-    EXPECT_EQ(toVertices.size(), 2);
+    EXPECT_EQ(v0_toVertices.size(), 2);
   }
 
-  std::unordered_multiset<std::string> toVertices;
-  {  // request one neighbour of v/1 (resetting cursor)
+  {  // requests one neighbour of v/1 (creating a new cursor)
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
@@ -410,9 +411,27 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     EXPECT_FALSE(edges.isNone());
     for (VPackSlice edge : VPackArrayIterator(edges)) {
       EXPECT_EQ(edge.get("_from").copyString(), "v/1");
-      toVertices.emplace(edge.get("_to").copyString());
+      v1_toVertices.emplace(edge.get("_to").copyString());
     }
-    EXPECT_EQ(toVertices.size(), 1);
+    EXPECT_EQ(v1_toVertices.size(), 1);
+  }
+
+  {  // continue with v/0 in between
+    auto response =
+        requestHandler(arangodb::rest::RequestType::PUT,
+                       {"edge", basics::StringUtils::itoa(engineId)},
+                       VPackBuilder(R"({"cursorId": 0, "batchId": 1})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
+    EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 0);
+    EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 1);
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      EXPECT_EQ(edge.get("_from").copyString(), "v/0");
+      v0_toVertices.emplace(edge.get("_to").copyString());
+    }
   }
 
   {  // continue with v/1
@@ -429,11 +448,14 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     EXPECT_FALSE(edges.isNone());
     for (VPackSlice edge : VPackArrayIterator(edges)) {
       EXPECT_EQ(edge.get("_from").copyString(), "v/1");
-      toVertices.emplace(edge.get("_to").copyString());
+      v1_toVertices.emplace(edge.get("_to").copyString());
     }
-    EXPECT_EQ(toVertices.size(), 2);
   }
-  EXPECT_EQ(toVertices, (std::unordered_multiset<std::string>{"v/2", "v/3"}));
+
+  EXPECT_EQ(v1_toVertices,
+            (std::unordered_multiset<std::string>{"v/2", "v/3"}));
+  EXPECT_EQ(v0_toVertices,
+            (std::unordered_multiset<std::string>{"v/1", "v/2", "v/0"}));
 
   destroyEngine(engineId);
 }
@@ -443,8 +465,9 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   MockGraph g;
   g.addEdge(0, 1);
   g.addEdge(0, 2);
-  g.addEdge(0, 0);
+  g.addEdge(1, 1);
   g.addEdge(1, 2);
+  g.addEdge(1, 0);
   auto engineId = createEngine(g);
 
   std::unordered_multimap<std::string, std::string> fromAndToVertices;
@@ -468,14 +491,14 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     EXPECT_EQ(fromAndToVertices.size(), 2);
   }
 
-  {  // continue with neighbours of v/0 and v/1
+  {  // continue with next two neighbours of v/0 and v/1
     auto response =
         requestHandler(arangodb::rest::RequestType::PUT,
                        {"edge", basics::StringUtils::itoa(engineId)},
                        VPackBuilder(R"({"cursorId": 0, "batchId": 1})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
-    EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
+    EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
     EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 0);
     EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 1);
     auto edges = response->_payload.slice().get("edges");
@@ -486,10 +509,33 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     }
     EXPECT_EQ(fromAndToVertices.size(), 4);
   }
+
+  {  // continue next neighbours of v/0 and v/1 (last one)
+    auto response =
+        requestHandler(arangodb::rest::RequestType::PUT,
+                       {"edge", basics::StringUtils::itoa(engineId)},
+                       VPackBuilder(R"({"cursorId": 0, "batchId": 2})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
+    EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 0);
+    EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 2);
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      fromAndToVertices.emplace(edge.get("_from").copyString(),
+                                edge.get("_to").copyString());
+    }
+    EXPECT_EQ(fromAndToVertices.size(), 5);
+  }
+
   EXPECT_EQ(
       fromAndToVertices,
-      (std::unordered_multimap<std::string, std::string>{
-          {"v/0", "v/0"}, {"v/0", "v/1"}, {"v/0", "v/2"}, {"v/1", "v/2"}}));
+      (std::unordered_multimap<std::string, std::string>{{"v/0", "v/1"},
+                                                         {"v/0", "v/2"},
+                                                         {"v/1", "v/0"},
+                                                         {"v/1", "v/1"},
+                                                         {"v/1", "v/2"}}));
 
   destroyEngine(engineId);
 }

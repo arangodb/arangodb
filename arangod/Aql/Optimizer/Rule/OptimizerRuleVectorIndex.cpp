@@ -35,8 +35,10 @@
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleVectorIndexHelpers.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"
 #include "Aql/QueryContext.h"
@@ -57,33 +59,6 @@ namespace arangodb::aql {
 
 using EN = arangodb::aql::ExecutionNode;
 
-bool checkFunctionNameMatchesIndexMetric(
-    std::string_view const functionName,
-    UserVectorIndexDefinition const& definition) {
-  switch (definition.metric) {
-    case SimilarityMetric::kL2: {
-      return functionName == "APPROX_NEAR_L2";
-    }
-    case SimilarityMetric::kCosine: {
-      return functionName == "APPROX_NEAR_COSINE";
-    }
-    case SimilarityMetric::kInnerProduct: {
-      return functionName == "APPROX_NEAR_INNER_PRODUCT";
-    }
-  }
-}
-
-// Vector index can only have a single covered attribute
-bool checkIfIndexedFieldIsSameAsSearched(
-    auto const& vectorIndex,
-    std::vector<basics::AttributeName>& attributeName) {
-  // vector index can be only on single field
-  TRI_ASSERT(vectorIndex->fields().size() == 1);
-  auto const& indexedVectorField = vectorIndex->fields()[0];
-
-  return attributeName == indexedVectorField;
-}
-
 bool checkApproxNearVariableInput(auto const& vectorIndex,
                                   auto const* approxFunctionParam,
                                   auto* outVariable) {
@@ -94,92 +69,81 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
                                                          false)) {
     return false;
   }
-  // check if APPROX_NEAR function parameter is on indexed field
-  if (!checkIfIndexedFieldIsSameAsSearched(vectorIndex,
-                                           attributeAccessResult.second)) {
+  TRI_ASSERT(vectorIndex->fields().size() == 1);
+  if (attributeAccessResult.second != vectorIndex->fields()[0]) {
     return false;
   }
 
-  // check if APPROX function parameter is the same one as being outputted by
   return outVariable == attributeAccessResult.first;
 }
 
-// We return nullptr for AstNode if the check has failed, in that case the bool
-// is meaningless
-std::pair<AstNode const*, bool> getApproxNearExpression(
-    auto const* sortNode, std::unique_ptr<ExecutionPlan>& plan,
-    std::shared_ptr<Index> const& vectorIndex) {
+// Extract APPROX_NEAR expression used in sort node
+std::pair<AstNode const*, std::optional<SortElement>>
+getApproxNearExpressionAndSortElement(auto const* sortNode,
+                                      std::unique_ptr<ExecutionPlan>& plan) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
   // simple
   if (sortFields.size() != 1) {
-    return {nullptr, false};
+    return {nullptr, std::nullopt};
   }
   auto const& sortField = sortFields[0];
-  bool ascending = sortField.ascending;
-
-  // Check if the SORT node has a correct order:
-  // L2: ASC
-  // Cosine: DESC
-  // InnerProduct: DESC
-  switch (vectorIndex->getVectorIndexDefinition().metric) {
-    // L2 metric can only be in ascending order
-    case SimilarityMetric::kL2:
-      if (!sortField.ascending) {
-        return {nullptr, ascending};
-      }
-      break;
-    // Cosine similarity can only be in descending order
-    case SimilarityMetric::kCosine:
-      if (sortField.ascending) {
-        return {nullptr, ascending};
-      }
-      break;
-    case SimilarityMetric::kInnerProduct:
-      if (sortField.ascending) {
-        return {nullptr, ascending};
-      }
-      break;
-  }
 
   // check if SORT node contains APPROX function
   auto const* executionNode = plan->getVarSetBy(sortField.var->id);
   if (executionNode == nullptr || executionNode->getType() != EN::CALCULATION) {
-    return {nullptr, ascending};
+    return {nullptr, sortField};
   }
   auto const* calculationNode =
       ExecutionNode::castTo<CalculationNode const*>(executionNode);
   auto const* calculationNodeExpression = calculationNode->expression();
   if (calculationNodeExpression == nullptr) {
-    return {nullptr, ascending};
+    return {nullptr, sortField};
   }
   AstNode const* calculationNodeExpressionNode =
       calculationNodeExpression->node();
   if (calculationNodeExpressionNode == nullptr ||
       calculationNodeExpressionNode->type != AstNodeType::NODE_TYPE_FCALL) {
-    return {nullptr, ascending};
-  }
-  if (auto const functionName =
-          aql::functions::getFunctionName(*calculationNodeExpressionNode);
-      !checkFunctionNameMatchesIndexMetric(
-          functionName, vectorIndex->getVectorIndexDefinition())) {
-    return {nullptr, ascending};
+    return {nullptr, sortField};
   }
 
-  return {calculationNodeExpressionNode, ascending};
+  return {calculationNodeExpressionNode, sortField};
+}
+
+bool checkApproxNearAscending(std::shared_ptr<Index> const& vectorIndex,
+                              bool ascending) {
+  if (!checkAscendingMatchesMetric(vectorIndex, ascending)) {
+    return false;
+  }
+  return true;
+}
+
+// Check if the function name APPROX_NEAR matches vector index metric definition
+bool checkApproxNearExpressionMatchesVectorIndex(
+    std::unique_ptr<ExecutionPlan>& plan,
+    std::shared_ptr<Index> const& vectorIndex, SortElement const& sortElement,
+    AstNode const* approxNearExpression) {
+  if (auto const functionName =
+          aql::functions::getFunctionName(*approxNearExpression);
+      !checkFunctionNameMatchesIndexMetric(
+          functionName, vectorIndex->getVectorIndexDefinition())) {
+    return false;
+  }
+
+  LOG_RULE << ADB_HERE << " has passed";
+  return true;
 }
 
 // Currently this only returns nProbe, in the future it might be possible to
 // set other search parameters
 SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
                                      ResourceMonitor& resourceMonitor) {
-  auto const* approxFunctionParameters =
-      calculationNodeExpressionNode->getMember(0);
+  ast::FunctionCallNode fcall(calculationNodeExpressionNode);
+  auto approxFunctionParameters = fcall.getArguments().getElements();
 
-  if (approxFunctionParameters->numMembers() == 3 &&
-      approxFunctionParameters->getMemberUnchecked(2)->isObject()) {
-    auto const searchParametersNode =
-        approxFunctionParameters->getMemberUnchecked(2);
+  if (approxFunctionParameters.size() == 3 &&
+      approxFunctionParameters[2]->isObject()) {
+    auto const searchParametersNode = approxFunctionParameters[2];
 
     SearchParameters searchParameters;
     // Buffer won't escape from this function's scope
@@ -191,7 +155,7 @@ SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
         !res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_PARSE,
-          fmt::format("error parsing searchParameters: {}!", res.error()));
+          std::format("error parsing searchParameters: {}!", res.error()));
     }
 
     return searchParameters;
@@ -204,18 +168,16 @@ AstNode* getApproxNearAttributeExpression(
     auto const* calculationNodeExpressionNode,
     std::shared_ptr<Index> const& vectorIndex, const auto* outVariable) {
   // one of the params must be a documentField and the other a query point
-  auto const* approxFunctionParameters =
-      calculationNodeExpressionNode->getMember(0);
-  TRI_ASSERT(approxFunctionParameters->numMembers() > 1 &&
-             approxFunctionParameters->numMembers() < 4)
+  ast::FunctionCallNode fcall(calculationNodeExpressionNode);
+  auto approxFunctionParameters = fcall.getArguments().getElements();
+  TRI_ASSERT(approxFunctionParameters.size() > 1 &&
+             approxFunctionParameters.size() < 4)
       << "There can be only two or three arguments to APPROX_NEAR"
       << ", currently there are "
       << calculationNodeExpressionNode->numMembers();
 
-  auto* approxFunctionParamLeft =
-      approxFunctionParameters->getMemberUnchecked(0);
-  auto* approxFunctionParamRight =
-      approxFunctionParameters->getMemberUnchecked(1);
+  auto* approxFunctionParamLeft = approxFunctionParameters[0];
+  auto* approxFunctionParamRight = approxFunctionParameters[1];
 
   if (approxFunctionParamLeft->type ==
       arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -306,15 +268,6 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     auto* enumerateCollectionNode =
         ExecutionNode::castTo<EnumerateCollectionNode*>(node);
 
-    // check if there are vector indexes on collection
-    auto const& colNodeHints = enumerateCollectionNode->hint();
-    // We will prioritize the hinted indexes
-    auto const vectorIndexes =
-        getVectorIndexes(enumerateCollectionNode, colNodeHints);
-    if (vectorIndexes.empty()) {
-      continue;
-    }
-
     auto* currentNode = enumerateCollectionNode->getFirstParent();
     const auto skipOverCalculationNodes = [&currentNode] {
       while (currentNode != nullptr &&
@@ -355,12 +308,31 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       continue;
     }
 
+    // Check if APPROX_NEAR function exists
+    auto const [approxNearExpression, sortField] =
+        getApproxNearExpressionAndSortElement(sortNode, plan);
+    if (approxNearExpression == nullptr) {
+      LOG_RULE << "APPROX_NEAR expression is not found";
+      continue;
+    }
+    TRI_ASSERT(sortField != std::nullopt);
+
+    // check if there are vector indexes on collection
+    // this part has to happen last otherwise we check for hints where it does
+    // not make sense
+    auto const& colNodeHints = enumerateCollectionNode->hint();
+    // We will prioritize the hinted indexes
+    auto const vectorIndexes =
+        getVectorIndexes(enumerateCollectionNode, colNodeHints);
+    if (vectorIndexes.empty()) {
+      continue;
+    }
+
     for (auto const& index : vectorIndexes) {
       TRI_ASSERT(index != nullptr);
-
-      auto const [approxNearExpression, ascending] =
-          getApproxNearExpression(sortNode, plan, index);
-      if (approxNearExpression == nullptr) {
+      if (!checkApproxNearAscending(index, sortField->ascending) ||
+          !checkApproxNearExpressionMatchesVectorIndex(plan, index, *sortField,
+                                                       approxNearExpression)) {
         LOG_RULE << "Query expression not valid";
         continue;
       }
@@ -369,6 +341,14 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       if (approximatedAttributeExpression == nullptr) {
         LOG_RULE << "Function parameters not valid";
         continue;
+      }
+
+      if (!index->isVectorIndexReady()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+            std::format(
+                "vector index '{}' on collection '{}' is not yet trained",
+                index->name(), enumerateCollectionNode->collection()->name()));
       }
 
       auto searchParameters = getSearchParameters(
@@ -393,7 +373,7 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
-          documentIdVariable, distanceVariable, limit, ascending,
+          documentIdVariable, distanceVariable, limit, sortField->ascending,
           limitNode->offset(), std::move(searchParameters),
           enumerateCollectionNode->collection(), index, nullptr, false);
 

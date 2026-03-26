@@ -24,15 +24,14 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/operating-system.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "V8/V8PlatformFeatureOptions.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include <v8-platform.h>
 #include <v8.h>
@@ -49,8 +48,7 @@ class ProgramOptions;
 class V8PlatformFeature final
     : public application_features::ApplicationFeature {
  public:
-  template<typename Server>
-  explicit V8PlatformFeature(Server& server)
+  explicit V8PlatformFeature(application_features::ApplicationServer& server)
       : ApplicationFeature{server, *this}, _binaryPath(server.getBinaryPath()) {
     setOptional(true);
   }
@@ -97,8 +95,7 @@ class V8PlatformFeature final
 
   char const* _binaryPath;
 
-  std::vector<std::string> _v8Options;
-  uint64_t _v8MaxHeap = TRI_V8_MAXHEAP;
+  V8PlatformFeatureOptions _options;
 
   std::unique_ptr<v8::Platform> _platform;
   std::unique_ptr<v8::ArrayBuffer::Allocator> _allocator;

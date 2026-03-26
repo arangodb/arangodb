@@ -85,10 +85,11 @@ void EnumerateNearVectorsExecutor::fillInput(
   if (vectorComponentsCount != dimension) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-        fmt::format("a vector must be of dimension {}, but is {}", dimension,
+        std::format("a vector must be of dimension {}, but is {}", dimension,
                     vectorComponentsCount));
   }
   ++_processedInputs;
+  _reportedCurrentRowForFullCount = false;
 
   searchResults();
 }
@@ -102,7 +103,7 @@ void EnumerateNearVectorsExecutor::searchResults() {
 
   std::tie(_labels, _distances) = vectorIndex->readBatch(
       _inputRowConverted, _infos.searchParameters, mthds, &_trx,
-      _collection->getCollection(), 1, _infos.getNumberOfResults(),
+      _collection->getCollection(), _infos.getNumberOfResults(),
       _infos.filterExpression, &_inputRow, _infos.queryContext,
       _infos.getVarsToRegister(), _infos.documentVariable,
       _infos.isCoveredByStoredValues);
@@ -136,7 +137,7 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 
 std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
     AqlCall::Limit toSkip) noexcept {
-  auto skipped = 0;
+  std::uint64_t skipped = 0;
 
   while (skipped < toSkip && _currentProcessedResultCount < _labels.size()) {
     // there are no results anymore for this input, so we can skip to next input
@@ -164,6 +165,10 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     if (hasResults()) {
       fillOutput(output);
     }
+  }
+
+  if (inputRange.hasDataRow() || hasResults()) {
+    return {ExecutorState::HASMORE, {}, {}};
   }
 
   return {inputRange.upstreamState(), {}, /*output.getClientCall()*/ {}};
@@ -202,19 +207,24 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   } else if (call.needSkipMore()) {
     TRI_ASSERT(call.needsFullCount());
     auto skipped = skipOutput(AqlCall::Infinity{});
-    skipped += (_collectionCount - _currentProcessedResultCount);
 
     TRI_ASSERT(!hasResults());
     auto remainingRows = inputRange.countAndSkipAllRemainingDataRows();
+    if (_processedInputs > 0 && !_reportedCurrentRowForFullCount) {
+      skipped += _collectionCount - _currentProcessedResultCount;
+      _reportedCurrentRowForFullCount = true;
+    }
     skipped += remainingRows * _collectionCount;
     call.didSkip(skipped);
 
-    LOG_INTERNAL << fmt::format(
-        "skipped={}, remainingRows={}, currentProcessed={}, nr={}, state={}, "
-        "hasResults={}, call={}, colCount={}",
-        skipped, remainingRows, _currentProcessedResultCount,
-        _infos.getNumberOfResults(), state(), hasResults(), to_string(call),
-        _collectionCount);
+    LOG_INTERNAL << ADB_HERE
+                 << std::format(
+                        ": skipped={}, remainingRows={}, currentProcessed={}, "
+                        "nr={}, state={}, "
+                        "hasResults={}, call={}, colCount={}",
+                        skipped, remainingRows, _currentProcessedResultCount,
+                        _infos.getNumberOfResults(), state(), hasResults(),
+                        to_string(call), _collectionCount);
 
     auto upstreamCall = AqlCall{};
 

@@ -33,8 +33,10 @@
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/SharedSlice.h>
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 using namespace arangodb::tests;
+using namespace arangodb::velocypack;
 
 class QueryCursorTest : public ::testing::Test {
  public:
@@ -46,18 +48,6 @@ class QueryCursorTest : public ::testing::Test {
  protected:
   static inline std::unique_ptr<mocks::MockRestAqlServer> server;
 };
-
-namespace {
-arangodb::velocypack::SharedSlice operator"" _vpack(const char* json,
-                                                    size_t len) {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  options.validateUtf8Strings = true;
-  VPackParser parser(&options);
-  parser.parse(json, len);
-  return parser.steal()->sharedSlice();
-}
-}  // namespace
 
 TEST_F(QueryCursorTest, resultCursorResultArrayIndexSingleBatch) {
   auto& vocbase = server->getSystemDatabase();

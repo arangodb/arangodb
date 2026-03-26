@@ -123,14 +123,13 @@ class AqlCallStack {
 
   auto needToSkipSubquery() const noexcept -> bool;
   /**
-   * @brief This is only valid if needToCountSubquery is true.
-   *        It will resolve to the heighest subquery level
-   *        (outermost) that needs to be skipped.
-   *
+   * @brief This will resolve to the highest subquery level
+   *        (outermost) that needs to be skipped or std::nullopt
+   *        if no stack entry has skip or limit.
    *
    * @return size_t Depth of the subquery that asks to be skipped.
    */
-  auto shadowRowDepthToSkip() const -> size_t;
+  auto shadowRowDepthToSkip() const -> std::optional<size_t>;
 
   /**
    * @brief Get a reference to the call at the given shadowRowDepth

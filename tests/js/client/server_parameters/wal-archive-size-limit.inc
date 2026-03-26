@@ -62,6 +62,12 @@ function WalArchiveSizeLimitSuite() {
   };
 }
 let getLogLines = function() {
+  for (let i = 0; i < 10; i++) {
+    if (fs.exists(IM.arangods[0].logFile)) {
+      break;
+    }
+    require('internal').sleep(1);
+  }
   let content = fs.readFileSync(IM.arangods[0].logFile, 'ascii');
   let lines = content.split('\n');
 
@@ -73,7 +79,7 @@ let getLogLines = function() {
 
 exports.WalArchiveSizeLimitSuite = WalArchiveSizeLimitSuite;
 exports.sendLargeServerOperation = function(maxWaitTime) {
-  logServer("testmann: start");
+  logServer("testmann: start", "error");
   let time = require("internal").time;
   let tEnd = time() + maxWaitTime;
   let checkCount = 0;

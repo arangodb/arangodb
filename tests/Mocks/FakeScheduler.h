@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb::tests {
@@ -49,7 +50,7 @@ struct FakeScheduler : Scheduler {
   bool isStopping() override;
 
   // FakeScheduler specific methods
-  explicit FakeScheduler(ArangodServer& server);
+  explicit FakeScheduler(application_features::ApplicationServer& server);
   ~FakeScheduler();
   bool queueEmpty();
   std::size_t queueSize();

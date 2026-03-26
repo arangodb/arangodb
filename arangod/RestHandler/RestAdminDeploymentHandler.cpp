@@ -40,7 +40,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestAdminDeploymentHandler::RestAdminDeploymentHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 std::string const RestAdminDeploymentHandler::Id = "id";

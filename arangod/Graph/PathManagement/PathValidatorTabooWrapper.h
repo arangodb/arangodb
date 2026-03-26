@@ -28,6 +28,7 @@
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <velocypack/Builder.h>
 
@@ -47,7 +48,6 @@ class ValidationResult;
 template<class PathValidatorImplementation>
 class PathValidatorTabooWrapper {
  public:
-  using VertexRef = arangodb::velocypack::HashedStringRef;
   using Edge =
       typename PathValidatorImplementation::ProviderImpl::Step::EdgeType;
   using ProviderImpl = typename PathValidatorImplementation::ProviderImpl;

@@ -73,7 +73,7 @@
 #include "utils/string.hpp"
 #include <filesystem>
 
-#include "../3rdParty/iresearch/tests/tests_config.hpp"
+#include "iresearch/tests/tests_config.hpp"
 
 #ifdef USE_V8
 #include <libplatform/libplatform.h>
@@ -470,8 +470,8 @@ std::string const AnalyzerCollectionName("_analyzers");
 std::string testResourceDir;
 
 static void findIResearchTestResources() {
-  std::string toBeFound = basics::FileUtils::buildFilename(
-      "3rdParty", "iresearch", "tests", "resources");
+  std::string toBeFound =
+      basics::FileUtils::buildFilename("iresearch", "tests", "resources");
 
   // peek into environment variable first
   char const* dir = getenv("IRESEARCH_TEST_RESOURCE_DIR");
@@ -640,7 +640,8 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
   return query;
 }
 
-uint64_t getCurrentPlanVersion(arangodb::ArangodServer& server) {
+uint64_t getCurrentPlanVersion(
+    arangodb::application_features::ApplicationServer& server) {
   auto const result = arangodb::AgencyComm(server).getValues("Plan");
   auto const planVersionSlice = result.slice()[0].get<std::string>(
       {arangodb::AgencyCommHelper::path(), "Plan", "Version"});
@@ -1247,8 +1248,8 @@ VPackBuilder getInvertedIndexPropertiesSlice(
   return vpack;
 }
 
-CreateDatabaseInfo createInfo(ArangodServer& server, std::string const& name,
-                              uint64_t id) {
+CreateDatabaseInfo createInfo(application_features::ApplicationServer& server,
+                              std::string const& name, uint64_t id) {
   CreateDatabaseInfo info(server, ExecContext::current());
   auto rv = info.load(name, id);
   if (rv.fail()) {
@@ -1257,17 +1258,18 @@ CreateDatabaseInfo createInfo(ArangodServer& server, std::string const& name,
   return info;
 }
 
-CreateDatabaseInfo systemDBInfo(ArangodServer& server, std::string const& name,
-                                uint64_t id) {
+CreateDatabaseInfo systemDBInfo(application_features::ApplicationServer& server,
+                                std::string const& name, uint64_t id) {
   return createInfo(server, name, id);
 }
 
-CreateDatabaseInfo testDBInfo(ArangodServer& server, std::string const& name,
-                              uint64_t id) {
+CreateDatabaseInfo testDBInfo(application_features::ApplicationServer& server,
+                              std::string const& name, uint64_t id) {
   return createInfo(server, name, id);
 }
 
-CreateDatabaseInfo unknownDBInfo(ArangodServer& server, std::string const& name,
-                                 uint64_t id) {
+CreateDatabaseInfo unknownDBInfo(
+    application_features::ApplicationServer& server, std::string const& name,
+    uint64_t id) {
   return createInfo(server, name, id);
 }

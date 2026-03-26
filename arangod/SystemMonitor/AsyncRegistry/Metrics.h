@@ -25,6 +25,8 @@
 #include "Containers/Concurrent/metrics.h"
 #include "Metrics/Fwd.h"
 
+namespace arangodb::async_registry {
+
 struct RegistryMetrics : arangodb::containers::Metrics {
   RegistryMetrics(
       std::shared_ptr<arangodb::metrics::Counter> promises_total,
@@ -60,3 +62,5 @@ struct RegistryMetrics : arangodb::containers::Metrics {
   std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
       existing_thread_registries = nullptr;
 };
+
+}  // namespace arangodb::async_registry

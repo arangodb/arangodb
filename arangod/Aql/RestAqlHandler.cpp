@@ -58,8 +58,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::aql;
+using application_features::ApplicationServer;
 
-RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
+RestAqlHandler::RestAqlHandler(ApplicationServer& server,
+                               GeneralRequest* request,
                                GeneralResponse* response, QueryRegistry* qr)
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(qr),

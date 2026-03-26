@@ -46,7 +46,7 @@ void DocumentStateMachineFeature::prepare() {
 }
 
 void DocumentStateMachineFeature::start() {
-  ArangodServer& s = server();
+  auto& s = server();
   auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
   auto& networkFeature = s.getFeature<NetworkFeature>();
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
@@ -62,8 +62,9 @@ void DocumentStateMachineFeature::start() {
       *transaction::ManagerFeature::manager());
 }
 
-DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)
-    : ArangodFeature{server, *this} {
+DocumentStateMachineFeature::DocumentStateMachineFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();

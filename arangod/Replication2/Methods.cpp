@@ -250,14 +250,14 @@ struct ReplicatedLogMethodsDBServer final
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_HTTP_FORBIDDEN,
-            fmt::format("/insert API is only allowed on leaders; while "
+            std::format("/insert API is only allowed on leaders; while "
                         "trying to insert into state machine {} on {}.",
                         id, ServerState::instance()->getId()));
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_HTTP_FORBIDDEN,
-          fmt::format(
+          std::format(
               "/insert API is only allowed for state machines of the "
               "`black-hole` type. The requested state {} is of type {}.",
               id, stateBase.get()->type()));
@@ -298,14 +298,14 @@ struct ReplicatedLogMethodsDBServer final
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_HTTP_FORBIDDEN,
-            fmt::format("/insert API is only allowed on leaders; while "
+            std::format("/insert API is only allowed on leaders; while "
                         "trying to insert into state machine {} on {}.",
                         id, ServerState::instance()->getId()));
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_HTTP_FORBIDDEN,
-          fmt::format(
+          std::format(
               "/insert API is only allowed for state machines of the "
               "`black-hole` type. The requested state {} is of type {}.",
               id, stateBase.get()->type()));
@@ -327,14 +327,14 @@ struct ReplicatedLogMethodsDBServer final
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_HTTP_FORBIDDEN,
-            fmt::format("/insert API is only allowed on leaders; while "
+            std::format("/insert API is only allowed on leaders; while "
                         "trying to insert into state machine {} on {}.",
                         id, ServerState::instance()->getId()));
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_HTTP_FORBIDDEN,
-          fmt::format(
+          std::format(
               "/insert API is only allowed for state machines of the "
               "`black-hole` type. The requested state {} is of type {}.",
               id, stateBase.get()->type()));
@@ -367,14 +367,14 @@ struct ReplicatedLogMethodsDBServer final
       } else {
         return Result(
             TRI_ERROR_HTTP_FORBIDDEN,
-            fmt::format("/release API is only allowed on leaders; while "
+            std::format("/release API is only allowed on leaders; while "
                         "trying to release state machine {} on {}.",
                         id, ServerState::instance()->getId()));
       }
     } else {
       return Result(
           TRI_ERROR_HTTP_FORBIDDEN,
-          fmt::format(
+          std::format(
               "/release API is only allowed for state machines of the "
               "`black-hole` type. The requested state {} is of type {}.",
               id, stateBase.get()->type()));
@@ -631,7 +631,7 @@ struct ReplicatedLogMethodsCoordinator final
     if (!col) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          fmt::format("Collection {} not found", cid));
+          std::format("Collection {} not found", cid));
     }
 
     // Find the shards corresponding to the collection
@@ -639,7 +639,7 @@ struct ReplicatedLogMethodsCoordinator final
     if (!shardMap) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          fmt::format("Shards of collection {} not found", cid));
+          std::format("Shards of collection {} not found", cid));
     }
     std::vector<ShardID> shards;
     shards.reserve(shardMap->size());
@@ -653,7 +653,7 @@ struct ReplicatedLogMethodsCoordinator final
     if (!group) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          fmt::format("Collection group {} not found", col->groupID().id()));
+          std::format("Collection group {} not found", col->groupID().id()));
     }
 
     // Get all the leaders of these logs
@@ -1040,8 +1040,8 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
-  explicit ReplicatedLogMethodsCoordinator(DatabaseID vocbase,
-                                           ArangodServer& server)
+  explicit ReplicatedLogMethodsCoordinator(
+      DatabaseID vocbase, application_features::ApplicationServer& server)
       : vocbaseName(std::move(vocbase)),
         clusterFeature(server.getFeature<ClusterFeature>()),
         clusterInfo(clusterFeature.clusterInfo()),
@@ -1273,8 +1273,8 @@ auto ReplicatedLogMethods::createInstance(TRI_vocbase_t& vocbase)
   }
 }
 
-auto ReplicatedLogMethods::createInstance(DatabaseID database,
-                                          ArangodServer& server)
+auto ReplicatedLogMethods::createInstance(
+    DatabaseID database, application_features::ApplicationServer& server)
     -> std::shared_ptr<ReplicatedLogMethods> {
   switch (ServerState::instance()->getRole()) {
     case ServerState::ROLE_COORDINATOR:

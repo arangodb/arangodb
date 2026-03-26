@@ -42,6 +42,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/Optimizer.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Projections.h"
@@ -129,27 +130,26 @@ void pushFuncToBack(AstNode& condition, Function const* starts_with) {
     if (current->type == AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
         numAndMembers > 1) {
       size_t movePoint = numAndMembers - 1;
+      auto isFunctionCall = [starts_with](AstNode const* node) -> bool {
+        if (node->type != AstNodeType::NODE_TYPE_FCALL) return false;
+        ast::FunctionCallNode fcall(node);
+        return fcall.getFunction() == starts_with;
+      };
       do {
         auto candidate = current->getMemberUnchecked(movePoint);
-        if (candidate->type != AstNodeType::NODE_TYPE_FCALL ||
-            static_cast<Function const*>(candidate->getData()) != starts_with) {
+        if (!isFunctionCall(candidate)) {
           break;
         }
       } while ((--movePoint) != 0);
       for (size_t andMemberIdx = 0; andMemberIdx < movePoint; ++andMemberIdx) {
         auto andMember = current->getMemberUnchecked(andMemberIdx);
-        if (andMember->type == AstNodeType::NODE_TYPE_FCALL &&
-            static_cast<Function const*>(andMember->getData()) == starts_with) {
+        if (isFunctionCall(andMember)) {
           TEMPORARILY_UNLOCK_NODE(current);
           auto tmp = current->getMemberUnchecked(movePoint);
           current->changeMember(movePoint--, andMember);
           current->changeMember(andMemberIdx, tmp);
           while (movePoint > andMemberIdx &&
-                 current->getMemberUnchecked(movePoint)->type ==
-                     AstNodeType::NODE_TYPE_FCALL &&
-                 static_cast<Function const*>(
-                     current->getMemberUnchecked(movePoint)->getData()) ==
-                     starts_with) {
+                 isFunctionCall(current->getMemberUnchecked(movePoint))) {
             --movePoint;
           }
         } else {
@@ -343,8 +343,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
           case AstNodeType::NODE_TYPE_REFERENCE: {
             // something produced by during search function replacement.
             // e.g. it is expected to be LET sortVar = scorerVar;
-            auto sortVariable =
-                reinterpret_cast<Variable const*>(astCalcNode->getData());
+            auto sortVariable = ast::ReferenceNode(astCalcNode).getVariable();
             TRI_ASSERT(sortVariable);
             auto const s = std::find_if(
                 std::begin(scorers), std::end(scorers),
@@ -416,6 +415,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         return false;
     }
   }
+
   if (!attrs.empty()) {
     if (latematerialized::attributesMatch<true>(
             primarySort, storedValues, attrs, usedColumns, columnsCount)) {
@@ -431,12 +431,12 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         TRI_ASSERT(sortBucket.postfix.empty());
         TRI_ASSERT(a.afData.field);
         auto const fieldSize = a.afData.field->size();
-        TRI_ASSERT(fieldSize > a.afData.postfix);
-        for (size_t i = a.afData.postfix + 1; i < fieldSize; ++i) {
-          if (i != a.afData.postfix + 1) {
-            sortBucket.postfix += ".";
+
+        if (fieldSize < a.attr.size()) {
+          sortBucket.postfix = a.attr[fieldSize].name;
+          for (size_t i = fieldSize + 1; i < a.attr.size(); i++) {
+            sortBucket.postfix += ("." + a.attr[i].name);
           }
-          sortBucket.postfix += a.afData.field->at(i).name;
         }
       }
     } else {
@@ -754,12 +754,14 @@ enum class SearchFuncType { kInvalid, kScorer, kOffsetInfo };
 std::pair<Variable const*, SearchFuncType> resolveSearchFunc(
     AstNode const& node) {
   if (NODE_TYPE_FCALL == node.type || NODE_TYPE_FCALL_USER == node.type) {
-    auto* impl = static_cast<Function*>(node.getData());
+    ast::FunctionCallNode fcall(&node);
+    auto* impl = fcall.getFunction();
 
     if (isScorer(*impl)) {
-      return {getSearchFuncRef(node.getMember(0)), SearchFuncType::kScorer};
+      return {getSearchFuncRef(fcall.getArguments()), SearchFuncType::kScorer};
     } else if (isOffsetInfo(*impl)) {
-      return {getSearchFuncRef(node.getMember(0)), SearchFuncType::kOffsetInfo};
+      return {getSearchFuncRef(fcall.getArguments()),
+              SearchFuncType::kOffsetInfo};
     }
   }
 
@@ -1173,6 +1175,7 @@ void immutableSearchCondition(Optimizer* opt,
                     });
     if (mutableVars.empty()) {
       view.setImmutableParts(std::numeric_limits<uint32_t>::max());
+      modified = true;
       continue;
     }
     uint32_t count = 0;
@@ -1194,6 +1197,9 @@ void immutableSearchCondition(Optimizer* opt,
       });
       TRI_ASSERT(count != numMembers);
       break;
+    }
+    if (count > 0) {
+      modified = true;
     }
     view.setImmutableParts(count);
   }

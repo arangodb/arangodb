@@ -24,6 +24,9 @@
 
 #include "gtest/gtest.h"
 
+#include <span>
+#include <typeindex>
+
 #include "utils/misc.hpp"
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
@@ -98,7 +101,7 @@ class IResearchFeatureTest
     server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
     server.addFeature<arangodb::FlushFeature>(false);
     server.addFeature<arangodb::QueryRegistryFeature>(
-        false, server.template getFeature<arangodb::metrics::MetricsFeature>());
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.addFeature<arangodb::ServerSecurityFeature>(false);
     server.startFeatures();
   }
@@ -1826,8 +1829,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr,
-                                                       std::vector<size_t>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(
+      nullptr, std::span<const std::type_index>{});
 
   auto& feature =
       server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
@@ -1935,8 +1938,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr,
-                                                       std::vector<size_t>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(
+      nullptr, std::span<const std::type_index>{});
 
   auto& feature =
       server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();

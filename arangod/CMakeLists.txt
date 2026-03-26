@@ -50,7 +50,7 @@ target_link_libraries(${BIN_ARANGOD}
   arango_iresearch)
 
 if (USE_JEMALLOC)
-  target_link_libraries(${BIN_ARANGOD} ${JEMALLOC_LIB})
+  target_link_libraries(${BIN_ARANGOD} jemalloc)
 endif ()
 
 add_dependencies(${BIN_ARANGOD} zlibstatic)
@@ -58,9 +58,6 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(${BIN_ARANGOD} v8_build)
 endif ()
 add_dependencies(${BIN_ARANGOD} iculegacy_build)
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOD} jemalloc_build)
-endif ()
 add_dependencies(${BIN_ARANGOD} man)
 
 target_include_directories(${BIN_ARANGOD} PRIVATE
@@ -101,6 +98,10 @@ get_target_property(IRESEARCH_INCLUDE
   iresearch-static INCLUDE_DIRECTORIES)
 
 include(arangoserver.cmake)
+# Ensure OpenAPI files are generated before building arangoserver
+add_dependencies(arangoserver openapi-hex-files)
+# Add binary directory to include path so generated files can be found
+target_include_directories(arangoserver PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/RestHandler)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)

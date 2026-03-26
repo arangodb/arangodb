@@ -170,7 +170,8 @@ class DFSFinderTest
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> DFSFinder {
-    arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth};
+    arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth,
+                                                       *_query.get()};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return DFSFinder(
         {*_query.get(),
@@ -262,7 +263,7 @@ TEST_P(DFSFinderTest, no_path_exists) {
   VPackBuilder result;
   auto source = vId(91);
   auto finder = pathFinder(0, 0);
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -296,7 +297,7 @@ TEST_P(DFSFinderTest, path_depth_0) {
   // Source
   auto source = vId(1);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -330,7 +331,7 @@ TEST_P(DFSFinderTest, path_depth_1) {
   // Source
   auto source = vId(1);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -370,7 +371,7 @@ TEST_P(DFSFinderTest, path_depth_2) {
 
   auto source = vId(1);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -408,7 +409,7 @@ TEST_P(DFSFinderTest, path_depth_3) {
   auto finder = pathFinder(3, 3);
   auto source = vId(1);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -447,7 +448,7 @@ TEST_P(DFSFinderTest, path_diamond) {
   auto finder = pathFinder(2, 2);
   auto source = vId(5);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -504,7 +505,7 @@ TEST_P(DFSFinderTest, path_depth_1_to_2) {
   auto finder = pathFinder(1, 2);
   auto source = vId(10);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -569,7 +570,7 @@ TEST_P(DFSFinderTest, path_depth_1_to_2_skip) {
   auto finder = pathFinder(1, 2);
   auto source = vId(10);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -633,7 +634,7 @@ TEST_P(DFSFinderTest, path_loop) {
   // Source and target are direct neighbors, there is only one path between them
   auto source = vId(20);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -672,7 +673,7 @@ TEST_P(DFSFinderTest, triangle_loop) {
   auto finder = pathFinder(1, 10);
   auto source = vId(30);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -736,7 +737,7 @@ TEST_P(DFSFinderTest, triangle_loop_skip) {
   auto finder = pathFinder(1, 10);
   auto source = vId(30);
 
-  finder.reset(toHashedStringRef(source));
+  finder.reset(VertexRef{toHashedStringRef(source)});
 
   EXPECT_FALSE(finder.isDone());
   {

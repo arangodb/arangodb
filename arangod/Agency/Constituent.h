@@ -29,7 +29,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 
 #include <list>
 #include <mutex>
@@ -50,7 +49,7 @@ class Agent;
 // RAFT leader election
 class Constituent : public Thread {
  public:
-  explicit Constituent(ArangodServer&);
+  explicit Constituent(application_features::ApplicationServer&);
 
   // clean up and exit election
   virtual ~Constituent();

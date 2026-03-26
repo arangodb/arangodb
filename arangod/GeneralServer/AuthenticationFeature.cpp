@@ -24,6 +24,7 @@
 #include "AuthenticationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Auth/Handler.h"
 #include "Auth/TokenCache.h"
 #include "Auth/UserManagerImpl.h"
@@ -41,24 +42,71 @@
 
 #include <limits>
 
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+
 using namespace arangodb::options;
 
 namespace arangodb {
 
+namespace {
+/// @brief Check if a string contains a PEM-formatted key
+bool isPemFormat(std::string const& content) {
+  return content.find("-----BEGIN") != std::string::npos &&
+         content.find("-----END") != std::string::npos;
+}
+
+/// @brief Check if a PEM file contains an EC private key
+bool isEcPrivateKey(std::string const& pemContent) {
+  BIO* bio =
+      BIO_new_mem_buf(pemContent.c_str(), static_cast<int>(pemContent.size()));
+  if (!bio) {
+    return false;
+  }
+
+  EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
+  BIO_free(bio);
+
+  if (!pkey) {
+    return false;
+  }
+
+  bool isEc = EVP_PKEY_base_id(pkey) == EVP_PKEY_EC;
+  EVP_PKEY_free(pkey);
+
+  return isEc;
+}
+
+/// @brief Check if a PEM file contains an EC public key
+bool isEcPublicKey(std::string const& pemContent) {
+  BIO* bio =
+      BIO_new_mem_buf(pemContent.c_str(), static_cast<int>(pemContent.size()));
+  if (!bio) {
+    return false;
+  }
+
+  EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
+  BIO_free(bio);
+
+  if (!pkey) {
+    return false;
+  }
+
+  bool isEc = EVP_PKEY_base_id(pkey) == EVP_PKEY_EC;
+  EVP_PKEY_free(pkey);
+
+  return isEc;
+}
+}  // namespace
+
 std::atomic<AuthenticationFeature*> AuthenticationFeature::INSTANCE = nullptr;
 
-AuthenticationFeature::AuthenticationFeature(Server& server)
-    : ArangodFeature{server, *this},
+AuthenticationFeature::AuthenticationFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _userManager(nullptr),
-      _authCache(nullptr),
-      _authenticationUnixSockets(true),
-      _authenticationSystemOnly(true),
-      _active(true),
-      _authenticationTimeout(0.0),
-      _sessionTimeout(static_cast<double>(1 * std::chrono::hours(1) /
-                                          std::chrono::seconds(1))),  // 1 hour
-      _minimalJwtExpiryTime(10.0),     // 10 seconds
-      _maximalJwtExpiryTime(3600.0) {  // 3600 seconds
+      _authCache(nullptr) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -67,6 +115,8 @@ AuthenticationFeature::~AuthenticationFeature() = default;
 
 void AuthenticationFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
+  using namespace arangodb::options;
+
   options->addObsoleteOption(
       "server.disable-authentication",
       "Whether to use authentication for all client requests.", false);
@@ -80,7 +130,7 @@ void AuthenticationFeature::collectOptions(
   options
       ->addOption("--server.authentication",
                   "Whether to use authentication for all client requests.",
-                  new BooleanParameter(&_active))
+                  new BooleanParameter(&_options.active))
       .setLongDescription(R"(You can set this option to `false` to turn off
 authentication on the server-side, so that all clients can execute any action
 without authorization and privilege checks. You should only do this if you bind
@@ -89,7 +139,7 @@ the server to `localhost` to not expose it to the public internet)");
   options->addOption("--server.authentication-timeout",
                      "The timeout for the authentication cache "
                      "(in seconds, 0 = indefinitely).",
-                     new DoubleParameter(&_authenticationTimeout));
+                     new DoubleParameter(&_options.authenticationTimeout));
 
   options
       ->addOption(
@@ -97,7 +147,8 @@ the server to `localhost` to not expose it to the public internet)");
           "The lifetime for tokens (in seconds) that can be obtained from "
           "the `POST /_open/auth` endpoint. Used by the web interface "
           "for JWT-based sessions.",
-          new DoubleParameter(&_sessionTimeout, /*base*/ 1.0, /*minValue*/ 1.0,
+          new DoubleParameter(&_options.sessionTimeout, /*base*/ 1.0,
+                              /*minValue*/ 1.0,
                               /*maxValue*/ std::numeric_limits<double>::max(),
                               /*minInclusive*/ false),
           arangodb::options::makeFlags(
@@ -115,7 +166,7 @@ using it.)");
           "--auth.minimal-jwt-expiry-time",
           "The minimal expiry time (in seconds) allowed for JWT tokens "
           "requested via the `POST /_open/auth` endpoint.",
-          new DoubleParameter(&_minimalJwtExpiryTime, /*base*/ 1.0,
+          new DoubleParameter(&_options.minimalJwtExpiryTime, /*base*/ 1.0,
                               /*minValue*/ 1.0,
                               /*maxValue*/ std::numeric_limits<double>::max(),
                               /*minInclusive*/ false),
@@ -133,7 +184,7 @@ endpoint. Requests with expiry times below this value will be rejected.)");
           "--auth.maximal-jwt-expiry-time",
           "The maximal expiry time (in seconds) allowed for JWT tokens "
           "requested via the `POST /_open/auth` endpoint.",
-          new DoubleParameter(&_maximalJwtExpiryTime, /*base*/ 1.0,
+          new DoubleParameter(&_options.maximalJwtExpiryTime, /*base*/ 1.0,
                               /*minValue*/ 1.0,
                               /*maxValue*/ std::numeric_limits<double>::max(),
                               /*minInclusive*/ false),
@@ -146,6 +197,25 @@ endpoint. Requests with expiry times below this value will be rejected.)");
 requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth`
 endpoint. Requests with expiry times above this value will be rejected.)");
 
+  options
+      ->addOption("--server.external-rbac-service",
+                  "Enable role-based access control (RBAC) and set the "
+                  "external RBAC service endpoint. If the string is empty, "
+                  "RBAC is disabled.",
+                  new StringParameter(&_options.externalRBACservice),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental))
+      .setLongDescription(
+          R"(When set to a non-empty string, this must be the HTTP or HTTPS
+endpoint of an external RBAC authorization service for use by coordinators and single
+servers. In this case, all requests with use role-based-access-control (RBAC) via the
+specified service for authorization decisions. When set to an empty string, RBAC is
+disabled and instead the old permission system is used.)");
+
   options->addObsoleteOption(
       "--server.local-authentication",
       "Whether to use ArangoDB's built-in authentication system.", false);
@@ -154,7 +224,7 @@ endpoint. Requests with expiry times above this value will be rejected.)");
       ->addOption("--server.authentication-system-only",
                   "Use HTTP authentication only for requests to /_api and "
                   "/_admin endpoints.",
-                  new BooleanParameter(&_authenticationSystemOnly))
+                  new BooleanParameter(&_options.authenticationSystemOnly))
       .setLongDescription(R"(If you set this option to `true`, then HTTP
 authentication is only required for requests going to URLs starting with `/_`,
 but not for other endpoints. You can thus use this option to expose custom APIs
@@ -175,7 +245,7 @@ ArangoDB APIs and the web interface. Only setting
       ->addOption(
           "--server.authentication-unix-sockets",
           "Whether to use authentication for requests via UNIX domain sockets.",
-          new BooleanParameter(&_authenticationUnixSockets),
+          new BooleanParameter(&_options.authenticationUnixSockets),
           arangodb::options::makeFlags())
       .setLongDescription(R"(If you set this option to `false`, authentication
 for requests coming in via UNIX domain sockets is turned off on the server-side.
@@ -187,7 +257,7 @@ other means (e.g. TCP/IP) are not affected by this option.)");
   options
       ->addOption("--server.jwt-secret",
                   "The secret to use when doing JWT authentication.",
-                  new StringParameter(&_jwtSecretProgramOption))
+                  new StringParameter(&_options.jwtSecretProgramOption))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 
@@ -195,7 +265,7 @@ other means (e.g. TCP/IP) are not affected by this option.)");
       ->addOption("--server.jwt-secret-keyfile",
                   "A file containing the JWT secret to use when doing JWT "
                   "authentication.",
-                  new StringParameter(&_jwtSecretKeyfileProgramOption))
+                  new StringParameter(&_options.jwtSecretKeyfileProgramOption))
       .setLongDescription(R"(ArangoDB uses JSON Web Tokens to authenticate
 requests. Using this option lets you specify a JWT secret stored in a file.
 The secret must be at most 64 bytes long.
@@ -229,9 +299,7 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
           "--server.jwt-secret-folder",
           "A folder containing one or more JWT secret files to use for JWT "
           "authentication.",
-          new StringParameter(&_jwtSecretFolderProgramOption),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Enterprise))
+          new StringParameter(&_options.jwtSecretFolderProgramOption))
       .setLongDescription(R"(Files are sorted alphabetically, the first secret
 is used for signing + verifying JWT tokens (_active_ secret), and all other
 secrets are only used to validate incoming JWT tokens (_passive_ secrets).
@@ -244,27 +312,30 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
 
 void AuthenticationFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (!_jwtSecretKeyfileProgramOption.empty() &&
-      !_jwtSecretFolderProgramOption.empty()) {
+  if (!_options.jwtSecretKeyfileProgramOption.empty() &&
+      !_options.jwtSecretFolderProgramOption.empty()) {
     LOG_TOPIC("d3515", FATAL, Logger::STARTUP)
         << "please specify either '--server.jwt-"
            "secret-keyfile' or '--server.jwt-secret-folder' but not both.";
     FATAL_ERROR_EXIT();
   }
 
-  if (!_jwtSecretKeyfileProgramOption.empty() ||
-      !_jwtSecretFolderProgramOption.empty()) {
+  if (!_options.jwtSecretKeyfileProgramOption.empty() ||
+      !_options.jwtSecretFolderProgramOption.empty()) {
     Result res = loadJwtSecretsFromFile();
     if (res.fail()) {
       LOG_TOPIC("d3617", FATAL, Logger::STARTUP) << res.errorMessage();
       FATAL_ERROR_EXIT();
     }
   }
-  if (!_jwtSecretProgramOption.empty()) {
-    if (_jwtSecretProgramOption.length() > kMaxSecretLength) {
+  if (!_options.jwtSecretProgramOption.empty()) {
+    // Only check length for non-PEM (HS256) secrets
+    // ES256 keys in PEM format can be longer
+    if (!_options.jwtSecretIsES256 &&
+        _options.jwtSecretProgramOption.length() > kMaxSecretLength) {
       LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
           << "Given JWT secret too long. Max length is " << kMaxSecretLength
-          << " have " << _jwtSecretProgramOption.length();
+          << " have " << _options.jwtSecretProgramOption.length();
       FATAL_ERROR_EXIT();
     }
   }
@@ -276,12 +347,23 @@ void AuthenticationFeature::validateOptions(
   }
 
   // Validate JWT expiry time settings
-  if (_minimalJwtExpiryTime > _maximalJwtExpiryTime) {
+  if (_options.minimalJwtExpiryTime > _options.maximalJwtExpiryTime) {
     LOG_TOPIC("a4b5c", FATAL, Logger::STARTUP)
-        << "--auth.minimal-jwt-expiry-time (" << _minimalJwtExpiryTime
+        << "--auth.minimal-jwt-expiry-time (" << _options.minimalJwtExpiryTime
         << ") must not be greater than --auth.maximal-jwt-expiry-time ("
-        << _maximalJwtExpiryTime << ")";
+        << _options.maximalJwtExpiryTime << ")";
     FATAL_ERROR_EXIT();
+  }
+
+  // Validate RBAC service endpoint
+  if (!_options.externalRBACservice.empty()) {
+    if (!_options.externalRBACservice.starts_with("http://") &&
+        !_options.externalRBACservice.starts_with("https://")) {
+      LOG_TOPIC("1aaaf", FATAL, arangodb::Logger::AUTHENTICATION)
+          << "--server.external-rbac-service must start with http:// or "
+             "https://";
+      FATAL_ERROR_EXIT();
+    }
   }
 }
 
@@ -303,24 +385,23 @@ void AuthenticationFeature::prepare() {
   }
 
   TRI_ASSERT(_authCache == nullptr);
-  _authCache = std::make_unique<auth::TokenCache>(_userManager.get(),
-                                                  _authenticationTimeout);
+  _authCache = std::make_unique<auth::TokenCache>(
+      _userManager.get(), _options.authenticationTimeout);
 
-  if (_jwtSecretProgramOption.empty()) {
+  if (_options.jwtSecretProgramOption.empty()) {
     LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
     uint16_t m = 254;
     for (size_t i = 0; i < kMaxSecretLength; i++) {
-      _jwtSecretProgramOption +=
+      _options.jwtSecretProgramOption +=
           static_cast<char>(1 + RandomGenerator::interval(m));
     }
+    _options.jwtSecretIsES256 = false;  // generated secrets are always HS256
   }
 
-#ifdef USE_ENTERPRISE
-  _authCache->setJwtSecrets(_jwtSecretProgramOption, _jwtPassiveSecrets);
-#else
-  _authCache->setJwtSecret(_jwtSecretProgramOption);
-#endif
+  _authCache->setJwtSecrets(_options.jwtSecretProgramOption,
+                            _options.jwtPassiveSecrets,
+                            _options.jwtSecretIsES256);
 
   INSTANCE.store(this, std::memory_order_release);
 }
@@ -329,18 +410,24 @@ void AuthenticationFeature::start() {
   TRI_ASSERT(isEnabled());
   std::ostringstream out;
 
-  out << "Authentication is turned " << (_active ? "on" : "off");
+  out << "Authentication is turned " << (_options.active ? "on" : "off");
 
-  if (_active && _authenticationSystemOnly) {
+  if (_options.active && _options.authenticationSystemOnly) {
     out << " (system only)";
   }
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   out << ", authentication for unix sockets is turned "
-      << (_authenticationUnixSockets ? "on" : "off");
+      << (_options.authenticationUnixSockets ? "on" : "off");
 #endif
 
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
+}
+
+void AuthenticationFeature::stop() {
+  if (_userManager) {
+    _userManager->shutdown();
+  }
 }
 
 void AuthenticationFeature::unprepare() {
@@ -352,15 +439,19 @@ AuthenticationFeature* AuthenticationFeature::instance() noexcept {
 }
 
 bool AuthenticationFeature::isActive() const noexcept {
-  return _active && isEnabled();
+  return _options.active && isEnabled();
 }
 
 bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
-  return _authenticationUnixSockets;
+  return _options.authenticationUnixSockets;
 }
 
 bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
-  return _authenticationSystemOnly;
+  return _options.authenticationSystemOnly;
+}
+
+std::string_view AuthenticationFeature::externalRBACservice() const noexcept {
+  return _options.externalRBACservice;
 }
 
 /// @return Cache to deal with authentication tokens
@@ -377,23 +468,22 @@ auth::UserManager* AuthenticationFeature::userManager() const noexcept {
 
 bool AuthenticationFeature::hasUserdefinedJwt() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  return !_jwtSecretProgramOption.empty();
+  return !_options.jwtSecretProgramOption.empty();
 }
 
-#ifdef USE_ENTERPRISE
 /// verification only secrets
-std::pair<std::string, std::vector<std::string>>
+std::tuple<std::string, std::vector<std::string>, bool>
 AuthenticationFeature::jwtSecrets() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  return {_jwtSecretProgramOption, _jwtPassiveSecrets};
+  return {_options.jwtSecretProgramOption, _options.jwtPassiveSecrets,
+          _options.jwtSecretIsES256};
 }
-#endif
 
 Result AuthenticationFeature::loadJwtSecretsFromFile() {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  if (!_jwtSecretFolderProgramOption.empty()) {
+  if (!_options.jwtSecretFolderProgramOption.empty()) {
     return loadJwtSecretFolder();
-  } else if (!_jwtSecretKeyfileProgramOption.empty()) {
+  } else if (!_options.jwtSecretKeyfileProgramOption.empty()) {
     return loadJwtSecretKeyfile();
   }
   return Result(TRI_ERROR_BAD_PARAMETER, "no JWT secret file was specified");
@@ -414,11 +504,41 @@ Result AuthenticationFeature::loadJwtSecretKeyfile() {
     // though, so the bytes count as given. Zero bytes might be a problem
     // here.
     std::string contents =
-        basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption);
-    _jwtSecretProgramOption = basics::StringUtils::trim(contents, " \t\n\r");
+        basics::FileUtils::slurp(_options.jwtSecretKeyfileProgramOption);
+    _options.jwtSecretProgramOption =
+        basics::StringUtils::trim(contents, " \t\n\r");
+
+    // Check if this is an ES256 key (PEM format)
+    if (isPemFormat(_options.jwtSecretProgramOption)) {
+      // The active secret must be a private key for signing JWT tokens
+      if (isEcPrivateKey(_options.jwtSecretProgramOption)) {
+        _options.jwtSecretIsES256 = true;
+        LOG_TOPIC("4923e", INFO, arangodb::Logger::AUTHENTICATION)
+            << "Detected ES256 private key in JWT secret keyfile (for signing "
+               "and "
+               "verification)";
+      } else if (isEcPublicKey(_options.jwtSecretProgramOption)) {
+        return Result(
+            TRI_ERROR_BAD_PARAMETER,
+            "JWT secret keyfile contains an ES256 public key, but a "
+            "private key is required for signing JWT tokens needed for "
+            "intra-cluster communication");
+      } else {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "PEM file detected but does not contain a valid EC key");
+      }
+    } else {
+      // Non-PEM format, must be HS256
+      _options.jwtSecretIsES256 = false;
+      // Check length limit for HS256 secrets
+      if (_options.jwtSecretProgramOption.length() > kMaxSecretLength) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "Given JWT secret too long. Max length is 64");
+      }
+    }
   } catch (std::exception const& ex) {
     std::string msg("unable to read content of jwt-secret file '");
-    msg.append(_jwtSecretKeyfileProgramOption)
+    msg.append(_options.jwtSecretKeyfileProgramOption)
         .append("': ")
         .append(ex.what())
         .append(". please make sure the file/directory is readable for the ")
@@ -430,12 +550,14 @@ Result AuthenticationFeature::loadJwtSecretKeyfile() {
 
 /// load JWT secrets from folder
 Result AuthenticationFeature::loadJwtSecretFolder() try {
-  TRI_ASSERT(!_jwtSecretFolderProgramOption.empty());
+  TRI_ASSERT(!_options.jwtSecretFolderProgramOption.empty());
 
   LOG_TOPIC("4922f", INFO, arangodb::Logger::AUTHENTICATION)
-      << "loading JWT secrets from folder " << _jwtSecretFolderProgramOption;
+      << "loading JWT secrets from folder "
+      << _options.jwtSecretFolderProgramOption;
 
-  auto list = basics::FileUtils::listFiles(_jwtSecretFolderProgramOption);
+  auto list =
+      basics::FileUtils::listFiles(_options.jwtSecretFolderProgramOption);
 
   // filter out empty filenames, hidden files, tmp files and symlinks
   list.erase(std::remove_if(list.begin(), list.end(),
@@ -447,7 +569,7 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
                                 return true;
                               }
                               auto p = basics::FileUtils::buildFilename(
-                                  _jwtSecretFolderProgramOption, file);
+                                  _options.jwtSecretFolderProgramOption, file);
                               if (basics::FileUtils::isSymbolicLink(p)) {
                                 return true;
                               }
@@ -460,8 +582,8 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
   }
 
   auto slurpy = [&](std::string const& file) {
-    auto p =
-        basics::FileUtils::buildFilename(_jwtSecretFolderProgramOption, file);
+    auto p = basics::FileUtils::buildFilename(
+        _options.jwtSecretFolderProgramOption, file);
     std::string contents = basics::FileUtils::slurp(p);
     return basics::StringUtils::trim(contents, " \t\n\r");
   };
@@ -469,37 +591,93 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
   std::sort(std::begin(list), std::end(list));
   std::string activeSecret = slurpy(list[0]);
 
+  // Check if the active secret is in PEM format (ES256) or raw bytes (HS256)
+  bool isES256 = false;
+  if (isPemFormat(activeSecret)) {
+    // The active secret must be a private key for signing JWT tokens
+    if (isEcPrivateKey(activeSecret)) {
+      isES256 = true;
+      LOG_TOPIC("4922e", INFO, arangodb::Logger::AUTHENTICATION)
+          << "Detected ES256 private key in JWT secret file (for signing and "
+             "verification)";
+    } else if (isEcPublicKey(activeSecret)) {
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          "First JWT secret file (active secret) contains an ES256 "
+          "public key, but a private key is required for signing JWT "
+          "tokens needed for intra-cluster communication. Public keys "
+          "can only be used as passive secrets for verification.");
+    } else {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "PEM file detected but does not contain a valid EC key");
+    }
+  }
+
   const std::string msg = "Given JWT secret too long. Max length is 64";
-  if (activeSecret.length() > kMaxSecretLength) {
+  if (!isES256 && activeSecret.length() > kMaxSecretLength) {
     return Result(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
-#ifdef USE_ENTERPRISE
+  _options.jwtSecretIsES256 = isES256;
+
   std::vector<std::string> passiveSecrets;
   if (list.size() > 1) {
     list.erase(list.begin());
     for (auto const& file : list) {
       std::string secret = slurpy(file);
+
+      if (secret.empty()) {
+        continue;  // ignore empty files
+      }
+
+      // Check if this is a PEM file
+      if (isPemFormat(secret)) {
+        // Accept both ES256 private and public keys for verification
+        // Private keys can now be used for signature verification too
+        if (isEcPrivateKey(secret)) {
+          LOG_TOPIC("4922c", INFO, arangodb::Logger::AUTHENTICATION)
+              << "Adding ES256 private key to passive secrets for "
+                 "verification: "
+              << file;
+          passiveSecrets.push_back(std::move(secret));
+          continue;
+        }
+
+        // Accept ES256 public keys for verification
+        if (isEcPublicKey(secret)) {
+          LOG_TOPIC("4922b", INFO, arangodb::Logger::AUTHENTICATION)
+              << "Adding ES256 public key to passive secrets for verification: "
+              << file;
+          passiveSecrets.push_back(std::move(secret));
+          continue;
+        }
+
+        // PEM file but not a valid EC key
+        LOG_TOPIC("4922a", WARN, arangodb::Logger::AUTHENTICATION)
+            << "Ignoring PEM file that does not contain a valid EC key: "
+            << file;
+        continue;
+      }
+
+      // For non-PEM (HS256) secrets, check the length limit
       if (secret.length() > kMaxSecretLength) {
         return Result(TRI_ERROR_BAD_PARAMETER, msg);
       }
-      if (!secret.empty()) {  // ignore
-        passiveSecrets.push_back(std::move(secret));
-      }
+
+      passiveSecrets.push_back(std::move(secret));
     }
   }
-  _jwtPassiveSecrets = std::move(passiveSecrets);
+  _options.jwtPassiveSecrets = std::move(passiveSecrets);
 
   LOG_TOPIC("4a34f", INFO, arangodb::Logger::AUTHENTICATION)
-      << "have " << _jwtPassiveSecrets.size() << " passive JWT secrets";
-#endif
+      << "have " << _options.jwtPassiveSecrets.size() << " passive JWT secrets";
 
-  _jwtSecretProgramOption = std::move(activeSecret);
+  _options.jwtSecretProgramOption = std::move(activeSecret);
 
   return Result();
 } catch (basics::Exception const& ex) {
   std::string msg("unable to read content of jwt-secret-folder '");
-  msg.append(_jwtSecretFolderProgramOption)
+  msg.append(_options.jwtSecretFolderProgramOption)
       .append("': ")
       .append(ex.what())
       .append(". please make sure the file/directory is readable for the ")

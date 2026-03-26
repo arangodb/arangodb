@@ -1,0 +1,48 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+////////////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
+namespace arangodb {
+
+struct ReplicationTimeoutFeatureOptions {
+  // these limits configure the timeouts for synchronous replication (all in
+  // seconds)
+  double timeoutFactor = 1.0;
+  double timeoutPer4k = 0.1;
+  // minimum wait time for sync replication (default: 900 seconds)
+  double lowerLimit = 900.0;
+  // maximum wait time for sync replication (default: 3600 seconds)
+  double upperLimit = 3600.0;
+
+  // timeout (in seconds) for shard synchronization attempts.
+  // if the timeout is reached, this will not count as a synchronization
+  // failure. instead, the synchronization will be retried shortly after. the
+  // rationale for setting a timeout here is that splitting the synchronization
+  // of a large collection in one go would require the leader to keep its WAL
+  // files for the synchronization snapshot for a very long time. breaking up
+  // the synchronization into smaller pieces will allow the leader to release
+  // the snapshots earlier, which mitigates potential WAL file pileups.
+  double shardSynchronizationAttemptTimeout = 20.0 * 60.0;
+};
+
+}  // namespace arangodb

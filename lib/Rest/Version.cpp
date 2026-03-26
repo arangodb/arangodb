@@ -47,7 +47,7 @@
 #include "Basics/debugging.h"
 #include "BuildId/BuildId.h"
 
-#include "../3rdParty/iresearch/core/utils/version_defines.hpp"
+#include "iresearch/core/utils/version_defines.hpp"
 
 using namespace arangodb;
 using namespace arangodb::rest;

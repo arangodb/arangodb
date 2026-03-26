@@ -3,6 +3,7 @@ add_library(arango_network STATIC
   ConnectionPool.cpp
   Methods.cpp
   NetworkFeature.cpp
+  NetworkOptions.cpp
   Utils.cpp)
 
 target_link_libraries(arango_network

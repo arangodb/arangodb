@@ -27,7 +27,7 @@ var internal = require('internal');
 var print = internal.print;
 var fs = require('fs');
 var console = require('console');
-var minimatch = require('minimatch');
+var { minimatch } = require('minimatch');
 
 var TOTAL = 0;
 var PASSED = 0;

@@ -26,12 +26,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "IResearch/IResearchDataStore.h"
 #include "Metrics/Guard.h"
-#include "RestServer/arangod.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Metrics/Batch.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/Guard.h"
-#include "Metrics/MetricsFeature.h"
 #include "IResearch/ResourceManager.hpp"
 
 namespace arangodb::iresearch {

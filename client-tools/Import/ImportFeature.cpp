@@ -55,8 +55,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ImportFeature::ImportFeature(Server& server, int* result)
-    : ArangoImportFeature{server, *this},
+ImportFeature::ImportFeature(application_features::ApplicationServer& server,
+                             int* result)
+    : ApplicationFeature{server, *this},
       _useBackslash(false),
       _convert(true),
       _autoChunkSize(false),
@@ -161,10 +162,10 @@ void ImportFeature::collectOptions(
           new UInt64Parameter(&_maxErrors))
       .setIntroducedIn(31200)
       .setLongDescription(R"(The maximum number of errors after which the
-import is stopped. 
+import is stopped.
 
 Note that this is not an exact limit for the number of errors.
-arangoimport will send data to the server in batches, and likely also in parallel. 
+arangoimport will send data to the server in batches, and likely also in parallel.
 The server will process these in-flight batches regardless of the maximum number
 of errors configured here. arangoimport will however stop processing more input
 data once the server reported at least this many errors back.)");
@@ -513,11 +514,10 @@ void ImportFeature::start() {
   _httpClient->disconnect();  // we do not reuse this anymore
 
   EncryptionFeature* encryption{};
-  if constexpr (Server::contains<EncryptionFeature>()) {
-    if (server().hasFeature<EncryptionFeature>()) {
-      encryption = &server().getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+  encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
   SimpleHttpClientParams params = _httpClient->params();
   params.setCompressRequestThreshold(

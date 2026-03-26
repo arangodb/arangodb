@@ -56,9 +56,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestTransactionHandler::RestTransactionHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr) {}
 
 RequestLane RestTransactionHandler::lane() const {

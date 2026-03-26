@@ -37,7 +37,7 @@
 
 namespace arangodb {
 
-HotBackup::HotBackup(ArangodServer& server)
+HotBackup::HotBackup(application_features::ApplicationServer& server)
 #ifdef USE_ENTERPRISE
     : _server(server) {
 #else

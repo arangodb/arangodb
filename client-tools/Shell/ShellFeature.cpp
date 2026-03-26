@@ -40,8 +40,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ShellFeature::ShellFeature(Server& server, int* result)
-    : ArangoshFeature(server, *this),
+ShellFeature::ShellFeature(application_features::ApplicationServer& server,
+                           int* result)
+    : ApplicationFeature(server, *this),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
   setOptional(false);

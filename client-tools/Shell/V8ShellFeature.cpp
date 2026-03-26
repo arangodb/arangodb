@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangosh.h"
-
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -50,7 +48,6 @@
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/ShellConsoleFeature.h"
-#include "Shell/V8ClientConnection.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
@@ -84,8 +81,9 @@ std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
 namespace arangodb {
 
-V8ShellFeature::V8ShellFeature(Server& server, std::string const& name)
-    : ArangoshFeature(server, *this),
+V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
+                               std::string const& name)
+    : ApplicationFeature(server, *this),
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
       _currentModuleDirectory(true),
@@ -363,7 +361,7 @@ void V8ShellFeature::copyInstallationFiles() {
   _startupDirectory = _copyDirectory;
 }
 
-bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
+bool V8ShellFeature::printHello() {
   ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
   bool promptError = false;
 
@@ -410,17 +408,17 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
     ClientFeature& client =
         server().getFeature<HttpEndpointProvider, ClientFeature>();
 
-    if (v8connection != nullptr) {
-      if (v8connection->isConnected() &&
-          v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
+    if (_connection != nullptr) {
+      if (_connection->isConnected() &&
+          _connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
         std::string msg = ClientFeature::buildConnectedMessage(
-            v8connection->endpointSpecification(), v8connection->version(),
-            v8connection->role(), v8connection->mode(),
-            v8connection->databaseName(), v8connection->username());
+            _connection->endpointSpecification(), _connection->version(),
+            _connection->role(), _connection->mode(),
+            _connection->databaseName(), _connection->username());
         console.printLine(msg);
 
-        if (v8connection->role() == "PRIMARY" ||
-            v8connection->role() == "DBSERVER") {
+        if (_connection->role() == "PRIMARY" ||
+            _connection->role() == "DBSERVER") {
           std::string msg(
               "WARNING: You connected to a DBServer node, but operations in a "
               "cluster should be carried out via a Coordinator");
@@ -433,15 +431,15 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
       } else if (client.endpoint() != "none") {
         std::ostringstream is;
         is << "Could not connect to endpoint '" << client.endpoint()
-           << "', database: '" << v8connection->databaseName()
-           << "', username: '" << v8connection->username() << "'";
+           << "', database: '" << _connection->databaseName()
+           << "', username: '" << _connection->username() << "'";
 
         console.printErrorLine(is.str());
 
-        if (!v8connection->lastErrorMessage().empty()) {
+        if (!_connection->lastErrorMessage().empty()) {
           std::ostringstream is2;
 
-          is2 << "Error message: '" << v8connection->lastErrorMessage() << "'";
+          is2 << "Error message: '" << _connection->lastErrorMessage() << "'";
 
           console.printErrorLine(is2.str());
         }
@@ -457,20 +455,19 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 }
 
 // the result is wrapped in a JavaScript variable SYS_ARANGO
-std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
-    v8::Local<v8::Context>& context, bool createConnection,
-    std::vector<std::string> const& positionals, bool* promptError) {
-  std::shared_ptr<V8ClientConnection> v8connection;
-
+void V8ShellFeature::setup(v8::Local<v8::Context>& context,
+                           bool createConnection,
+                           std::vector<std::string> const& positionals,
+                           bool* promptError) {
   bool haveClient = false;
   if (createConnection) {
     if (server().hasFeature<HttpEndpointProvider>()) {
       haveClient = true;
       ClientFeature& client =
           server().getFeature<HttpEndpointProvider, ClientFeature>();
-      v8connection = std::make_shared<V8ClientConnection>(server(), client);
+      _connection = std::make_shared<V8ClientConnection>(server(), client);
       if (client.isEnabled()) {
-        v8connection->connect();
+        _connection->connect();
       }
     }
   }
@@ -478,17 +475,15 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
   initMode(ShellFeature::RunMode::INTERACTIVE, positionals);
 
   if (createConnection && haveClient) {
-    v8connection->initServer(_isolate, context);
+    _connection->initServer(_isolate, context);
   }
 
-  bool pe = printHello(v8connection.get());
+  bool pe = printHello();
   loadModules(ShellFeature::RunMode::INTERACTIVE);
 
   if (promptError != nullptr) {
     *promptError = pe;
   }
-
-  return v8connection;
 }
 
 ErrorCode V8ShellFeature::runShell(
@@ -507,14 +502,14 @@ ErrorCode V8ShellFeature::runShell(
   v8::Context::Scope context_scope{context};
 
   bool promptError;
-  auto v8connection = setup(context, true, positionals, &promptError);
+  setup(context, true, positionals, &promptError);
 
   V8LineEditor v8LineEditor(
       _isolate, context, console.useHistory() ? "." + _name + ".history" : "");
 
-  if (v8connection != nullptr) {
+  if (_connection != nullptr) {
     v8LineEditor.setSignalFunction(
-        [v8connection]() { v8connection->setInterrupted(true); });
+        [this]() { this->_connection->setInterrupted(true); });
   }
 
   v8LineEditor.open(console.autoComplete());
@@ -604,8 +599,8 @@ ErrorCode V8ShellFeature::runShell(
       promptError = true;
     }
 
-    if (v8connection != nullptr && v8connection->isConnected()) {
-      v8connection->setInterrupted(false);
+    if (_connection != nullptr && _connection->isConnected()) {
+      _connection->setInterrupted(false);
     }
 
     console.stopPager();
@@ -650,7 +645,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 
   v8::Context::Scope context_scope{context};
 
-  auto v8connection = setup(context, execute, positionals);
+  setup(context, execute, positionals);
 
   bool ok = true;
 
@@ -738,7 +733,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 
   v8::Context::Scope context_scope{context};
 
-  auto v8connection = setup(context, true, positionals);
+  setup(context, true, positionals);
 
   bool ok = true;
   for (auto const& script : strings) {
@@ -783,7 +778,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   v8::Context::Scope context_scope{context};
 
-  auto v8connection = setup(context, true, positionals);
+  setup(context, true, positionals);
   bool ok = true;
 
   // set-up unit tests array
@@ -994,7 +989,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangoshServer);
+  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
   ShellFeature& shell = v8g->server().getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));

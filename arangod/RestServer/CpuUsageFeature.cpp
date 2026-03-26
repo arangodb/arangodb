@@ -23,10 +23,8 @@
 
 #include "CpuUsageFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/debugging.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 
-#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
@@ -103,8 +101,9 @@ size_t CpuUsageFeature::SnapshotProvider::readStatFile(
   return offset;
 }
 
-CpuUsageFeature::CpuUsageFeature(Server& server)
-    : ArangodFeature{server, *this},
+CpuUsageFeature::CpuUsageFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _snapshotProvider(),
       _updateInProgress(false) {
   setOptional(true);

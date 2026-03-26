@@ -29,9 +29,9 @@
 #include "Auth/User.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "RestServer/arangod.h"
 
 #include <thread>
 #include <velocypack/Builder.h>
@@ -47,14 +47,14 @@ namespace auth {
 
 class UserManagerImpl final : public UserManager {
  public:
-  explicit UserManagerImpl(ArangodServer&);
+  explicit UserManagerImpl(application_features::ApplicationServer&);
   ~UserManagerImpl() override;
 
   void loadUserCacheAndStartUpdateThread() noexcept override;
   void setGlobalVersion(uint64_t version) noexcept override;
   [[nodiscard]] uint64_t globalVersion() const noexcept override;
 
-  static void triggerGlobalReload(ArangodServer&);
+  static void triggerGlobalReload(application_features::ApplicationServer&);
   void triggerGlobalReload() const override;
   void triggerCacheRevalidation() override;
   void createRootUser() override;
@@ -124,7 +124,7 @@ class UserManagerImpl final : public UserManager {
   Result extractUsername(std::string const& token, std::string& username) const;
 
   // underlying application server
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 
   // Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;

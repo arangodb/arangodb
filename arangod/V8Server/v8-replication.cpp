@@ -26,7 +26,6 @@
 #endif
 
 #include "v8-replication.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
@@ -39,7 +38,6 @@
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"

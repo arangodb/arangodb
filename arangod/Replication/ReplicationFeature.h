@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Cluster/ServerState.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
+#include "Replication/ReplicationOptions.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 
 struct TRI_vocbase_t;
@@ -38,11 +38,13 @@ class ApplicationServer;
 class GeneralResponse;
 class GlobalReplicationApplier;
 
-class ReplicationFeature final : public ArangodFeature {
+class ReplicationFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Replication"; }
 
-  explicit ReplicationFeature(Server& server);
+  explicit ReplicationFeature(application_features::ApplicationServer& server,
+                              metrics::MetricsFeature& metrics);
   ~ReplicationFeature();
 
   void collectOptions(
@@ -108,12 +110,14 @@ class ReplicationFeature final : public ArangodFeature {
 
   /// @brief get max document num for quick call to _api/replication/keys to get
   /// actual keys or only doc count
-  uint64_t quickKeysLimit() const { return _quickKeysLimit; }
+  uint64_t quickKeysLimit() const { return _options.quickKeysLimit; }
 
   /// @brief return a reference to the "number of clients" metric
   metrics::Gauge<uint64_t>& clientsMetric() { return _clients; }
 
  private:
+  ReplicationOptions _options;
+
   /// @brief connection timeout for replication requests
   double _connectTimeout;
 
@@ -128,28 +132,13 @@ class ReplicationFeature final : public ArangodFeature {
   /// used this is true only if the user set the request timeout at startup
   bool _forceRequestTimeout;
 
-  bool _replicationApplierAutoStart;
-
-  /// Use the revision-based replication protocol
-  bool _syncByRevision;
-
-  /// automatically repair revision trees of shards after too many failed
-  /// shard synchronization attempts
-  bool _autoRepairRevisionTrees;
-
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;
 
   /// @brief number of currently operating tailing operations
   std::atomic<uint64_t> _parallelTailingInvocations;
 
-  /// @brief maximum number of parallel tailing operations invocations
-  uint64_t _maxParallelTailingInvocations;
-
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
-
-  /// @brief quick replication keys limit
-  uint64_t _quickKeysLimit;
 
   metrics::Counter& _inventoryRequests;
 

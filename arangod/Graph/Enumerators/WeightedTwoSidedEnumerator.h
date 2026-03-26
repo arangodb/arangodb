@@ -31,9 +31,11 @@
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathValidator.h"
-#include "Graph/Queues/WeightedQueue.h"
+#include "Graph/Queues/CursorWeightedQueue.h"
 #include "Graph/Types/ForbiddenVertices.h"
 #include "Graph/Types/UniquenessLevel.h"
+#include "Graph/Types/VertexRef.h"
+#include "Graph/Types/VertexSet.h"
 #include "Containers/FlatHashMap.h"
 
 #include <limits>
@@ -41,10 +43,6 @@
 #include <deque>
 
 namespace arangodb {
-
-using VertexRef = arangodb::velocypack::HashedStringRef;
-using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                                std::equal_to<VertexRef>>;
 
 namespace aql {
 class TraversalStats;
@@ -85,7 +83,8 @@ template<class ProviderType>
 class WeightedTwoSidedEnumerator {
  private:
   using Step = typename ProviderType::Step;
-  using QueueType = WeightedQueue<Step>;
+  using QueueType =
+      CursorWeightedQueue<Step, typename ProviderType::NeighbourCursor>;
   using PathStoreType = PathStore<Step>;
   using PathValidatorType =
       PathValidator<ProviderType, PathStoreType, VertexUniquenessLevel::PATH,
@@ -95,9 +94,7 @@ class WeightedTwoSidedEnumerator {
 
   enum Direction { FORWARD, BACKWARD };
 
-  using VertexRef = arangodb::velocypack::HashedStringRef;
-
-  using Edge = ProviderType::Step::EdgeType;
+  using Edge = typename ProviderType::Step::EdgeType;
   using EdgeSet =
       arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 
@@ -267,8 +264,7 @@ class WeightedTwoSidedEnumerator {
     ProviderType _provider;
 
     PathValidatorType _validator;
-    containers::FlatHashMap<typename Step::VertexType, std::vector<size_t>>
-        _visitedNodes;
+    containers::FlatHashMap<VertexRef, std::vector<size_t>> _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();

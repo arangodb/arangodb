@@ -25,14 +25,9 @@
 
 #include "Agency/Agent.h"
 #include "Agency/Node.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/arangod.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Compare.h>
@@ -40,7 +35,6 @@
 #include <velocypack/Slice.h>
 
 #include <ctime>
-#include <iomanip>
 #include <string_view>
 
 using namespace arangodb::consensus;

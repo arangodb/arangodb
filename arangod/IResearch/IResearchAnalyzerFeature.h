@@ -46,9 +46,9 @@
 #include "Basics/Identifier.h"  // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
 #include "Containers/FlatHashMap.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 #include "Transaction/OperationOrigin.h"
 
@@ -58,9 +58,8 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-}  // namespace arangodb
+class DatabaseFeature;
 
-namespace arangodb {
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,7 +265,8 @@ class AnalyzerPool : private irs::util::noncopyable {
 ///              invalidates all AnalyzerPool instances previously provided
 ///              by the deallocated feature instance
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchAnalyzerFeature final : public ArangodFeature {
+class IResearchAnalyzerFeature final
+    : public application_features::ApplicationFeature {
  public:
   /// first == vocbase name, second == analyzer name
   /// EMPTY == system vocbase
@@ -277,7 +277,8 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
     return "ArangoSearchAnalyzer";
   }
 
-  explicit IResearchAnalyzerFeature(Server& server);
+  explicit IResearchAnalyzerFeature(
+      application_features::ApplicationServer& server);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions

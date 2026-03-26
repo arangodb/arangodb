@@ -43,6 +43,8 @@ using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::rest;
 
+#define LOG_TRAVERSAL LOG_DEVEL_IF(false)
+
 namespace {
 
 struct StartEdgeQuery {
@@ -179,8 +181,8 @@ auto InternalRestTraverserHandler::get_engine(uint64_t engineId)
 }
 
 InternalRestTraverserHandler::InternalRestTraverserHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
-    aql::QueryRegistry* engineRegistry)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, aql::QueryRegistry* engineRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);
@@ -302,34 +304,26 @@ void InternalRestTraverserHandler::queryEngine() {
         }
 
         auto startQuery = query.get().query;
+        size_t cursorId;
         if (std::holds_alternative<StartEdgeQuery>(startQuery)) {
           auto q = std::get<StartEdgeQuery>(startQuery);
           if (q.batchSize.has_value()) {
-            eng->rearm(q.depth, q.batchSize.value(), std::move(q.vertexKeys),
-                       q.variables);
+            cursorId =
+                eng->createNewCursor(q.depth, q.batchSize.value(),
+                                     std::move(q.vertexKeys), q.variables);
           } else {
             // old behaviour
-            eng->injectVariables(q.variables);
-            eng->allEdges(q.vertexKeys, q.depth, result);
+            eng->allEdges(q.vertexKeys, q.depth, q.variables, result);
             generateResult(ResponseCode::OK, result.slice(), engine->context());
             return;
           }
-
-        } else if (std::holds_alternative<Continue>(startQuery)) {
+        } else {
           auto q = std::get<Continue>(startQuery);
-          if (not eng->_cursor.has_value() ||
-              q.cursorId != eng->_cursor->_cursorId) {
-            generateError(
-                ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                fmt::format(
-                    "cursor id {} does not exist in traverser engine {}",
-                    q.cursorId, engineId));
-            return;
-          }
+          cursorId = q.cursorId;
         }
 
         result.openObject();
-        auto res = eng->nextEdgeBatch(query.get().batchId, result);
+        auto res = eng->nextEdgeBatch(cursorId, query.get().batchId, result);
         if (res.fail()) {
           generateError(ResponseCode::BAD, res.errorNumber(),
                         res.errorMessage());
@@ -337,6 +331,8 @@ void InternalRestTraverserHandler::queryEngine() {
         }
         eng->addAndClearStatistics(result);
         result.close();
+        LOG_TRAVERSAL << "--- " << inspection::json(body) << " | "
+                      << inspection::json(result);
 
         generateResult(ResponseCode::OK, result.slice(), engine->context());
         return;
@@ -381,9 +377,7 @@ void InternalRestTraverserHandler::queryEngine() {
       return;
     }
     engine->getVertexData(keysSlice, result, !depthSlice.isNone());
-  } else if (option == "smartSearch" || option == "smartSearchBFS" ||
-             option == "smartSearchWeighted" ||
-             option == "smartSearchUnified") {
+  } else if (option == "smartSearchUnified") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "this engine does not support the requested operation.");
@@ -394,16 +388,13 @@ void InternalRestTraverserHandler::queryEngine() {
     TRI_ASSERT(eng != nullptr);
 
     try {
-      if (option == "smartSearchUnified") {
-        eng->smartSearchUnified(body, result);
-      } else {
-        // TODO: Take deprecation path!
-        eng->smartSearch(body, result);
-      }
+      eng->smartSearchUnified(body, result);
     } catch (arangodb::basics::Exception const& ex) {
       generateError(ResponseCode::BAD, ex.code(), ex.what());
       return;
     }
+    LOG_TRAVERSAL << "--- " << inspection::json(body) << " | "
+                  << inspection::json(result);
   } else {
     // PATH Info wrong other error
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");

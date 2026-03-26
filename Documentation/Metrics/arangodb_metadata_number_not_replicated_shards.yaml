@@ -1,0 +1,41 @@
+name: arangodb_metadata_number_not_replicated_shards
+introducedIn: "3.12.8"
+help: |
+  Number of not replicated shards.
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  Number of shards that are not replicated across collections of all databases.
+troubleshoot: |
+  This metric indicates shards that should have followers according to the Plan
+  (replicationFactor > 1) but only have a leader (or no servers) in Current. This
+  represents a single point of failure and reduced resilience.
+
+  **Common Causes:**
+  - Collection creation in progress: Followers may not yet be created by supervision
+  - DBServer failures: Followers may be missing if their DBServers are down or unreachable
+  - Network issues: Connectivity problems preventing follower creation or synchronization
+  - Supervision delays: The supervision process may need time to create missing followers
+  - Collection deletion in progress: Shards may be in transition during deletion
+
+  **Impact:**
+  - Reduced data resilience: Data loss risk if the leader fails
+  - Single point of failure: No redundancy for affected shards
+  - May indicate cluster health issues if persistent
+
+  **Recommendations:**
+  - During normal operations: Wait and observe, as supervision should create followers automatically
+  - If persistent: Check DBServer health and availability
+  - Verify network connectivity between DBServers
+  - Check supervision logs for errors preventing follower creation
+  - During upgrades or restarts: Temporary non-zero values are expected
+  - If the situation persists: Investigate supervision issues or contact ArangoDB support
+
+  **See also:**
+  - Related metrics: `arangodb_metadata_number_out_of_sync_shards` (broader sync issues),
+    `arangodb_metadata_shard_followers_out_of_sync_number` (follower sync state)
+  - DBServer perspective: `arangodb_shards_not_replicated` (leader's view)

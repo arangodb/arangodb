@@ -1,371 +1,272 @@
-/**
- * @depend util/core.js
- * @depend extend.js
- */
-/**
- * Stub behavior
- *
- * @author Christian Johansen (christian@cjohansen.no)
- * @author Tim Fischbach (mail@timfischbach.de)
- * @license BSD
- *
- * Copyright (c) 2010-2013 Christian Johansen
- */
-(function (sinonGlobal) {
-    "use strict";
+"use strict";
 
-    var slice = Array.prototype.slice;
-    var join = Array.prototype.join;
-    var useLeftMostCallback = -1;
-    var useRightMostCallback = -2;
+const arrayProto = require("@sinonjs/commons").prototypes.array;
+const extend = require("./util/core/extend");
+const functionName = require("@sinonjs/commons").functionName;
+const nextTick = require("./util/core/next-tick");
+const valueToString = require("@sinonjs/commons").valueToString;
+const exportAsyncBehaviors = require("./util/core/export-async-behaviors");
 
-    var nextTick = (function () {
-        if (typeof process === "object" && typeof process.nextTick === "function") {
-            return process.nextTick;
+const concat = arrayProto.concat;
+const join = arrayProto.join;
+const reverse = arrayProto.reverse;
+const slice = arrayProto.slice;
+
+const useLeftMostCallback = -1;
+const useRightMostCallback = -2;
+
+function getCallback(behavior, args) {
+    const callArgAt = behavior.callArgAt;
+
+    if (callArgAt >= 0) {
+        return args[callArgAt];
+    }
+
+    let argumentList;
+
+    if (callArgAt === useLeftMostCallback) {
+        argumentList = args;
+    }
+
+    if (callArgAt === useRightMostCallback) {
+        argumentList = reverse(slice(args));
+    }
+
+    const callArgProp = behavior.callArgProp;
+
+    for (let i = 0, l = argumentList.length; i < l; ++i) {
+        if (!callArgProp && typeof argumentList[i] === "function") {
+            return argumentList[i];
         }
 
-        if (typeof setImmediate === "function") {
-            return setImmediate;
+        if (
+            callArgProp &&
+            argumentList[i] &&
+            typeof argumentList[i][callArgProp] === "function"
+        ) {
+            return argumentList[i][callArgProp];
         }
+    }
 
-        return function (callback) {
-            setTimeout(callback, 0);
-        };
-    })();
+    return null;
+}
 
-    function throwsException(error, message) {
-        if (typeof error === "string") {
-            this.exception = new Error(message || "");
-            this.exception.name = error;
-        } else if (!error) {
-            this.exception = new Error("Error");
+function getCallbackError(behavior, func, args) {
+    if (behavior.callArgAt < 0) {
+        let msg;
+
+        if (behavior.callArgProp) {
+            msg = `${functionName(
+                behavior.stub,
+            )} expected to yield to '${valueToString(
+                behavior.callArgProp,
+            )}', but no object with such a property was passed.`;
         } else {
-            this.exception = error;
+            msg = `${functionName(
+                behavior.stub,
+            )} expected to yield, but no callback was passed.`;
         }
 
-        return this;
+        if (args.length > 0) {
+            msg += ` Received [${join(args, ", ")}]`;
+        }
+
+        return msg;
     }
 
-    function getCallback(behavior, args) {
-        var callArgAt = behavior.callArgAt;
+    return `argument at index ${behavior.callArgAt} is not a function: ${func}`;
+}
 
-        if (callArgAt >= 0) {
-            return args[callArgAt];
-        }
+function ensureArgs(name, behavior, args) {
+    // map function name to internal property
+    //   callsArg => callArgAt
+    const property = name.replace(/sArg/, "ArgAt");
+    const index = behavior[property];
 
-        var argumentList;
-
-        if (callArgAt === useLeftMostCallback) {
-            argumentList = args;
-        }
-
-        if (callArgAt === useRightMostCallback) {
-            argumentList = slice.call(args).reverse();
-        }
-
-        var callArgProp = behavior.callArgProp;
-
-        for (var i = 0, l = argumentList.length; i < l; ++i) {
-            if (!callArgProp && typeof argumentList[i] === "function") {
-                return argumentList[i];
-            }
-
-            if (callArgProp && argumentList[i] &&
-                typeof argumentList[i][callArgProp] === "function") {
-                return argumentList[i][callArgProp];
-            }
-        }
-
-        return null;
+    if (index >= args.length) {
+        throw new TypeError(
+            `${name} failed: ${index + 1} arguments required but only ${
+                args.length
+            } present`,
+        );
     }
+}
 
-    function makeApi(sinon) {
-        function getCallbackError(behavior, func, args) {
-            if (behavior.callArgAt < 0) {
-                var msg;
+function callCallback(behavior, args) {
+    if (typeof behavior.callArgAt === "number") {
+        ensureArgs("callsArg", behavior, args);
+        const func = getCallback(behavior, args);
 
-                if (behavior.callArgProp) {
-                    msg = sinon.functionName(behavior.stub) +
-                        " expected to yield to '" + behavior.callArgProp +
-                        "', but no object with such a property was passed.";
-                } else {
-                    msg = sinon.functionName(behavior.stub) +
-                        " expected to yield, but no callback was passed.";
-                }
-
-                if (args.length > 0) {
-                    msg += " Received [" + join.call(args, ", ") + "]";
-                }
-
-                return msg;
-            }
-
-            return "argument at index " + behavior.callArgAt + " is not a function: " + func;
+        if (typeof func !== "function") {
+            throw new TypeError(getCallbackError(behavior, func, args));
         }
 
-        function callCallback(behavior, args) {
-            if (typeof behavior.callArgAt === "number") {
-                var func = getCallback(behavior, args);
-
-                if (typeof func !== "function") {
-                    throw new TypeError(getCallbackError(behavior, func, args));
-                }
-
-                if (behavior.callbackAsync) {
-                    nextTick(function () {
-                        func.apply(behavior.callbackContext, behavior.callbackArguments);
-                    });
-                } else {
-                    func.apply(behavior.callbackContext, behavior.callbackArguments);
-                }
-            }
-        }
-
-        var proto = {
-            create: function create(stub) {
-                var behavior = sinon.extend({}, sinon.behavior);
-                delete behavior.create;
-                behavior.stub = stub;
-
-                return behavior;
-            },
-
-            isPresent: function isPresent() {
-                return (typeof this.callArgAt === "number" ||
-                        this.exception ||
-                        typeof this.returnArgAt === "number" ||
-                        this.returnThis ||
-                        this.returnValueDefined);
-            },
-
-            invoke: function invoke(context, args) {
-                callCallback(this, args);
-
-                if (this.exception) {
-                    throw this.exception;
-                } else if (typeof this.returnArgAt === "number") {
-                    return args[this.returnArgAt];
-                } else if (this.returnThis) {
-                    return context;
-                }
-
-                return this.returnValue;
-            },
-
-            onCall: function onCall(index) {
-                return this.stub.onCall(index);
-            },
-
-            onFirstCall: function onFirstCall() {
-                return this.stub.onFirstCall();
-            },
-
-            onSecondCall: function onSecondCall() {
-                return this.stub.onSecondCall();
-            },
-
-            onThirdCall: function onThirdCall() {
-                return this.stub.onThirdCall();
-            },
-
-            withArgs: function withArgs(/* arguments */) {
-                throw new Error(
-                    "Defining a stub by invoking \"stub.onCall(...).withArgs(...)\" " +
-                    "is not supported. Use \"stub.withArgs(...).onCall(...)\" " +
-                    "to define sequential behavior for calls with certain arguments."
+        if (behavior.callbackAsync) {
+            nextTick(function () {
+                func.apply(
+                    behavior.callbackContext,
+                    behavior.callbackArguments,
                 );
-            },
+            });
+        } else {
+            return func.apply(
+                behavior.callbackContext,
+                behavior.callbackArguments,
+            );
+        }
+    }
 
-            callsArg: function callsArg(pos) {
-                if (typeof pos !== "number") {
-                    throw new TypeError("argument index is not number");
-                }
+    return undefined;
+}
 
-                this.callArgAt = pos;
-                this.callbackArguments = [];
-                this.callbackContext = undefined;
-                this.callArgProp = undefined;
-                this.callbackAsync = false;
+const proto = {
+    create: function create(stub) {
+        const behavior = extend({}, proto);
+        delete behavior.create;
+        delete behavior.addBehavior;
+        delete behavior.createBehavior;
+        behavior.stub = stub;
 
-                return this;
-            },
-
-            callsArgOn: function callsArgOn(pos, context) {
-                if (typeof pos !== "number") {
-                    throw new TypeError("argument index is not number");
-                }
-                if (typeof context !== "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAt = pos;
-                this.callbackArguments = [];
-                this.callbackContext = context;
-                this.callArgProp = undefined;
-                this.callbackAsync = false;
-
-                return this;
-            },
-
-            callsArgWith: function callsArgWith(pos) {
-                if (typeof pos !== "number") {
-                    throw new TypeError("argument index is not number");
-                }
-
-                this.callArgAt = pos;
-                this.callbackArguments = slice.call(arguments, 1);
-                this.callbackContext = undefined;
-                this.callArgProp = undefined;
-                this.callbackAsync = false;
-
-                return this;
-            },
-
-            callsArgOnWith: function callsArgWith(pos, context) {
-                if (typeof pos !== "number") {
-                    throw new TypeError("argument index is not number");
-                }
-                if (typeof context !== "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAt = pos;
-                this.callbackArguments = slice.call(arguments, 2);
-                this.callbackContext = context;
-                this.callArgProp = undefined;
-                this.callbackAsync = false;
-
-                return this;
-            },
-
-            yields: function () {
-                this.callArgAt = useLeftMostCallback;
-                this.callbackArguments = slice.call(arguments, 0);
-                this.callbackContext = undefined;
-                this.callArgProp = undefined;
-                this.callbackAsync = false;
-
-                return this;
-            },
-
-            yieldsRight: function () {
-                this.callArgAt = useRightMostCallback;
-                this.callbackArguments = slice.call(arguments, 0);
-                this.callbackContext = undefined;
-                this.callArgProp = undefined;
-                this.callbackAsync = false;
-
-                return this;
-            },
-
-            yieldsOn: function (context) {
-                if (typeof context !== "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAt = useLeftMostCallback;
-                this.callbackArguments = slice.call(arguments, 1);
-                this.callbackContext = context;
-                this.callArgProp = undefined;
-                this.callbackAsync = false;
-
-                return this;
-            },
-
-            yieldsTo: function (prop) {
-                this.callArgAt = useLeftMostCallback;
-                this.callbackArguments = slice.call(arguments, 1);
-                this.callbackContext = undefined;
-                this.callArgProp = prop;
-                this.callbackAsync = false;
-
-                return this;
-            },
-
-            yieldsToOn: function (prop, context) {
-                if (typeof context !== "object") {
-                    throw new TypeError("argument context is not an object");
-                }
-
-                this.callArgAt = useLeftMostCallback;
-                this.callbackArguments = slice.call(arguments, 2);
-                this.callbackContext = context;
-                this.callArgProp = prop;
-                this.callbackAsync = false;
-
-                return this;
-            },
-
-            throws: throwsException,
-            throwsException: throwsException,
-
-            returns: function returns(value) {
-                this.returnValue = value;
-                this.returnValueDefined = true;
-                this.exception = undefined;
-
-                return this;
-            },
-
-            returnsArg: function returnsArg(pos) {
-                if (typeof pos !== "number") {
-                    throw new TypeError("argument index is not number");
-                }
-
-                this.returnArgAt = pos;
-
-                return this;
-            },
-
-            returnsThis: function returnsThis() {
-                this.returnThis = true;
-
-                return this;
-            }
-        };
-
-        function createAsyncVersion(syncFnName) {
-            return function () {
-                var result = this[syncFnName].apply(this, arguments);
-                this.callbackAsync = true;
-                return result;
-            };
+        if (stub.defaultBehavior && stub.defaultBehavior.promiseLibrary) {
+            behavior.promiseLibrary = stub.defaultBehavior.promiseLibrary;
         }
 
-        // create asynchronous versions of callsArg* and yields* methods
-        for (var method in proto) {
-            // need to avoid creating anotherasync versions of the newly added async methods
-            if (proto.hasOwnProperty(method) && method.match(/^(callsArg|yields)/) && !method.match(/Async/)) {
-                proto[method + "Async"] = createAsyncVersion(method);
-            }
+        return behavior;
+    },
+
+    isPresent: function isPresent() {
+        return (
+            typeof this.callArgAt === "number" ||
+            this.exception ||
+            this.exceptionCreator ||
+            typeof this.returnArgAt === "number" ||
+            this.returnThis ||
+            typeof this.resolveArgAt === "number" ||
+            this.resolveThis ||
+            typeof this.throwArgAt === "number" ||
+            this.fakeFn ||
+            this.returnValueDefined
+        );
+    },
+
+    /*eslint complexity: ["error", 20]*/
+    invoke: function invoke(context, args) {
+        /*
+         * callCallback (conditionally) calls ensureArgs
+         *
+         * Note: callCallback intentionally happens before
+         * everything else and cannot be moved lower
+         */
+        const returnValue = callCallback(this, args);
+
+        if (this.exception) {
+            throw this.exception;
+        } else if (this.exceptionCreator) {
+            this.exception = this.exceptionCreator();
+            this.exceptionCreator = undefined;
+            throw this.exception;
+        } else if (typeof this.returnArgAt === "number") {
+            ensureArgs("returnsArg", this, args);
+            return args[this.returnArgAt];
+        } else if (this.returnThis) {
+            return context;
+        } else if (typeof this.throwArgAt === "number") {
+            ensureArgs("throwsArg", this, args);
+            throw args[this.throwArgAt];
+        } else if (this.fakeFn) {
+            return this.fakeFn.apply(context, args);
+        } else if (typeof this.resolveArgAt === "number") {
+            ensureArgs("resolvesArg", this, args);
+            return (this.promiseLibrary || Promise).resolve(
+                args[this.resolveArgAt],
+            );
+        } else if (this.resolveThis) {
+            return (this.promiseLibrary || Promise).resolve(context);
+        } else if (this.resolve) {
+            return (this.promiseLibrary || Promise).resolve(this.returnValue);
+        } else if (this.reject) {
+            return (this.promiseLibrary || Promise).reject(this.returnValue);
+        } else if (this.callsThrough) {
+            const wrappedMethod = this.effectiveWrappedMethod();
+
+            return wrappedMethod.apply(context, args);
+        } else if (this.callsThroughWithNew) {
+            // Get the original method (assumed to be a constructor in this case)
+            const WrappedClass = this.effectiveWrappedMethod();
+            // Turn the arguments object into a normal array
+            const argsArray = slice(args);
+            // Call the constructor
+            const F = WrappedClass.bind.apply(
+                WrappedClass,
+                concat([null], argsArray),
+            );
+            return new F();
+        } else if (typeof this.returnValue !== "undefined") {
+            return this.returnValue;
+        } else if (typeof this.callArgAt === "number") {
+            return returnValue;
         }
 
-        sinon.behavior = proto;
-        return proto;
-    }
+        return this.returnValue;
+    },
 
-    var isNode = typeof module !== "undefined" && module.exports && typeof require === "function";
-    var isAMD = typeof define === "function" && typeof define.amd === "object" && define.amd;
+    effectiveWrappedMethod: function effectiveWrappedMethod() {
+        for (let stubb = this.stub; stubb; stubb = stubb.parent) {
+            if (stubb.wrappedMethod) {
+                return stubb.wrappedMethod;
+            }
+        }
+        throw new Error("Unable to find wrapped method");
+    },
 
-    function loadDependencies(require, exports, module) {
-        var sinon = require("./util/core");
-        require("./extend");
-        module.exports = makeApi(sinon);
-    }
+    onCall: function onCall(index) {
+        return this.stub.onCall(index);
+    },
 
-    if (isAMD) {
-        define(loadDependencies);
-        return;
-    }
+    onFirstCall: function onFirstCall() {
+        return this.stub.onFirstCall();
+    },
 
-    if (isNode) {
-        loadDependencies(require, module.exports, module);
-        return;
-    }
+    onSecondCall: function onSecondCall() {
+        return this.stub.onSecondCall();
+    },
 
-    if (sinonGlobal) {
-        makeApi(sinonGlobal);
-    }
-}(
-    typeof sinon === "object" && sinon // eslint-disable-line no-undef
-));
+    onThirdCall: function onThirdCall() {
+        return this.stub.onThirdCall();
+    },
+
+    withArgs: function withArgs(/* arguments */) {
+        throw new Error(
+            'Defining a stub by invoking "stub.onCall(...).withArgs(...)" ' +
+                'is not supported. Use "stub.withArgs(...).onCall(...)" ' +
+                "to define sequential behavior for calls with certain arguments.",
+        );
+    },
+};
+
+function createBehavior(behaviorMethod) {
+    return function () {
+        this.defaultBehavior = this.defaultBehavior || proto.create(this);
+        this.defaultBehavior[behaviorMethod].apply(
+            this.defaultBehavior,
+            arguments,
+        );
+        return this;
+    };
+}
+
+function addBehavior(stub, name, fn) {
+    proto[name] = function () {
+        fn.apply(this, concat([this], slice(arguments)));
+        return this.stub || this;
+    };
+
+    stub[name] = createBehavior(name);
+}
+
+proto.addBehavior = addBehavior;
+proto.createBehavior = createBehavior;
+
+const asyncBehaviors = exportAsyncBehaviors(proto);
+
+module.exports = extend.nonEnum({}, proto, asyncBehaviors);

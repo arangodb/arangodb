@@ -40,7 +40,6 @@ add_library(arango_aql STATIC
   DocumentExpressionContext.cpp
   DocumentProducingHelper.cpp
   EdgeConditionBuilder.cpp
-  EdgeConditionBuilderContainer.cpp
   EngineInfoContainerCoordinator.cpp
   EngineInfoContainerDBServerServerBased.cpp
   ExecutionBlock.cpp
@@ -72,6 +71,7 @@ add_library(arango_aql STATIC
   Optimizer.cpp
   OptimizerRules.cpp
   OptimizerRulesFeature.cpp
+  OptimizerRulesOptionsProvider.cpp
   OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   Parser.cpp
@@ -125,7 +125,7 @@ add_library(arango_aql STATIC
   tokens.cpp
 )
 
-if (USE_V8) 
+if (USE_V8)
   target_sources(arango_aql PRIVATE
     V8ErrorHandler.cpp)
 endif()

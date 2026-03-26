@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Basics/DownCast.h"
 #include "Containers/FlatHashMap.h"
@@ -32,32 +33,33 @@
 #include "Metrics/IBatch.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
+#include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
 
 #include <map>
 #include <shared_mutex>
 
+namespace arangodb {
+class QueryRegistryFeature;
+class StatisticsFeature;
+class EngineSelectorFeature;
+class ClusterFeature;
+}  // namespace arangodb
 namespace arangodb::metrics {
 
-class MetricsFeature final : public ApplicationFeature {
+class ClusterMetricsFeature;
+
+class MetricsFeature final : public application_features::ApplicationFeature {
  public:
-  enum class UsageTrackingMode {
-    // no tracking
-    kDisabled,
-    // tracking per shard (one-dimensional)
-    kEnabledPerShard,
-    // tracking per shard and per user (two-dimensional)
-    kEnabledPerShardPerUser,
-  };
+  // Maintain backward compatibility for existing code
+  using UsageTrackingMode = metrics::UsageTrackingMode;
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
-  template<typename Server>
   explicit MetricsFeature(
-      Server& server,
+      application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
           lazyQueryRegistryFeatureRef,
       LazyApplicationFeatureReference<StatisticsFeature>
@@ -168,14 +170,7 @@ class MetricsFeature final : public ApplicationFeature {
   mutable bool hasShortname = false;
   mutable bool hasRole = false;
 
-  bool _export;
-  bool _exportReadWriteMetrics;
-  // ensure that there is whitespace before the reported value, regardless
-  // of whether it is preceeded by labels or not.
-  bool _ensureWhitespace;
-
-  std::string _usageTrackingModeString;
-  UsageTrackingMode _usageTrackingMode;
+  MetricsOptions _options;
 };
 
 }  // namespace arangodb::metrics

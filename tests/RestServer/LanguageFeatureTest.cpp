@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -89,9 +90,10 @@ void checkCollatorSettings(std::string_view language, bool isDefaultLanguage) {
   ASSERT_FALSE(U_FAILURE(status));
 }
 
-void checkLanguageFile(const arangodb::ArangodServer& server,
-                       std::string_view expectedLang,
-                       std::string_view expectedParameter, bool shouldBeEqual) {
+void checkLanguageFile(
+    const arangodb::application_features::ApplicationServer& server,
+    std::string_view expectedLang, std::string_view expectedParameter,
+    bool shouldBeEqual) {
   std::string key = expectedParameter.data();
   if (key == "default-language") {
     // Because value for 'default-language' parameter store

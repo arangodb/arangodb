@@ -15,7 +15,7 @@ interface EngineResponse extends ArangojsResponse {
 }
 
 export const useSupportedIndexTypes = () => {
-  const { data, ...rest } = useSWR<EngineResponse>(`/engine`, path => {
+  const { data, ...rest } = useSWR<EngineResponse>(`/engine`, (path: string) => {
     return getApiRouteForCurrentDB().get(
       path
     ) as any as Promise<EngineResponse>;

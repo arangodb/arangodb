@@ -41,3 +41,6 @@ max_line_length = off
 
 [.nycrc]
 indent_style = tab
+
+[tea.yaml]
+indent_size = 2

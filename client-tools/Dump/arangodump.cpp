@@ -21,8 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangodump.h"
-
 #include "Basics/signals.h"
 #include "Basics/directories.h"
 
@@ -75,46 +73,34 @@ int main(int argc, char* argv[]) {
             argv[0], "Usage: arangodump [<options>]",
             "For more information use:", BIN_DIRECTORY));
 
-    ArangoDumpServer server(options, BIN_DIRECTORY);
+    application_features::ApplicationServer server(options, BIN_DIRECTORY);
 
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-#ifdef TRI_HAVE_GETRLIMIT
-        [](ArangoDumpServer& server, TypeTag<BumpFileDescriptorsFeature>) {
-          return std::make_unique<BumpFileDescriptorsFeature>(
-              server, "--descriptors-minimum");
-        },
-#endif
-        [](ArangoDumpServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
+    // Add features in order
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+    server.addFeature<VersionFeature>();
+    server.addFeature<HttpEndpointProvider, ClientFeature>(
+        true, std::numeric_limits<size_t>::max());
+    server.addFeature<ConfigFeature>(context.binaryName());
+    server.addFeature<FileSystemFeature>();
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<OptionsCheckFeature>();
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::array{std::type_index(typeid(DumpFeature))});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&context](ArangoDumpServer& server,
-                   TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
+    server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
 #endif
-        [&context](ArangoDumpServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoDumpServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [](ArangoDumpServer& server, TypeTag<HttpEndpointProvider>) {
-          return std::make_unique<ClientFeature>(
-              server, true, std::numeric_limits<size_t>::max());
-        },
-        [&ret](ArangoDumpServer& server, TypeTag<DumpFeature>) {
-          return std::make_unique<DumpFeature>(server, ret);
-        },
-        [](ArangoDumpServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoDumpServer::id<DumpFeature>()});
-        }});
+    server.addFeature<SslFeature>();
+#ifdef TRI_HAVE_GETRLIMIT
+    server.addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
+#endif
+#ifdef USE_ENTERPRISE
+    server.addFeature<EncryptionFeature>();
+#endif
+    server.addFeature<DumpFeature>(ret);
 
     try {
       server.run(argc, argv);

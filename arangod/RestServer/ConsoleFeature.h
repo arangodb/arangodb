@@ -29,18 +29,17 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
-#include "RestServer/arangod.h"
 #include "RestServer/ConsoleThread.h"
 
 #include <memory>
 
 namespace arangodb {
 
-class ConsoleFeature final : public ArangodFeature {
+class ConsoleFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Console"; }
 
-  explicit ConsoleFeature(Server& server);
+  explicit ConsoleFeature(application_features::ApplicationServer& server);
 
   void start() override final;
   void beginShutdown() override final;

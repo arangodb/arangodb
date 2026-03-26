@@ -128,7 +128,8 @@ void IResearchLinkCoordinator::toVelocyPack(
   builder.close();
 }
 
-IResearchLinkCoordinator::IndexFactory::IndexFactory(ArangodServer& server)
+IResearchLinkCoordinator::IndexFactory::IndexFactory(
+    application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchLinkCoordinator::IndexFactory::equal(
@@ -160,7 +161,8 @@ Result IResearchLinkCoordinator::IndexFactory::normalize(
 }
 
 std::shared_ptr<IResearchLinkCoordinator::IndexFactory>
-IResearchLinkCoordinator::createFactory(ArangodServer& server) {
+IResearchLinkCoordinator::createFactory(
+    application_features::ApplicationServer& server) {
   return std::make_shared<IResearchLinkCoordinator::IndexFactory>(server);
 }
 

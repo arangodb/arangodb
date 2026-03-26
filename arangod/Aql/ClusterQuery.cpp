@@ -27,6 +27,7 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/QueryActivity.h"
 #include "Aql/Timing.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
@@ -44,6 +45,7 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -114,6 +116,41 @@ void ClusterQuery::buildTraverserEngines(velocypack::Slice traverserSlice,
   }
 }
 
+namespace {
+void updateActivity(query_activity::AqlQueryActivity::HandleType activity,
+                    velocypack::Slice querySlice, velocypack::Slice collections,
+                    velocypack::Slice variables, velocypack::Slice snippets,
+                    velocypack::Slice traverserSlice, bool fastPathLocking) {
+  velocypack::Builder b;
+  {
+    b.clear();
+    b.add(querySlice);
+    activity->setQuerySlice(b.sharedSlice());
+  }
+  {
+    b.clear();
+    b.add(collections);
+    activity->setCollections(b.sharedSlice());
+  }
+  {
+    b.clear();
+    b.add(variables);
+    activity->setVariables(b.sharedSlice());
+  }
+  {
+    b.clear();
+    b.add(snippets);
+    activity->setSnippets(b.sharedSlice());
+  }
+  {
+    b.clear();
+    b.add(traverserSlice);
+    activity->setTraverserEngines(b.sharedSlice());
+  }
+  activity->setFastPathLocking(fastPathLocking);
+}
+}  // namespace
+
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on a DB server.
 /// never call this on a single server or coordinator!
@@ -129,6 +166,9 @@ async<void> ClusterQuery::prepareFromVelocyPack(
       << elapsedSince(_startTime)
       << " ClusterQuery::prepareFromVelocyPackWithoutInstantiate"
       << " this: " << (uintptr_t)this;
+
+  updateActivity(_activity, querySlice, collections, variables, snippets,
+                 traverserSlice, fastPathLocking);
 
   // track memory usage
   ResourceUsageScope scope(*_resourceMonitor);
@@ -206,8 +246,7 @@ async<void> ClusterQuery::prepareFromVelocyPack(
 
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](velocypack::Slice snippet) -> async<void> {
-    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet,
-                                                         /*simple*/ false);
+    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
 
     // Note that instantiateFromPlan only does something async on a Coordinator.
