@@ -452,43 +452,6 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the distribution
-////////////////////////////////////////////////////////////////////////////////
-
-static void FillDistribution(VPackBuilder& b, std::string const& name,
-                             statistics::Distribution const& dist) {
-  b.add(name, VPackValue(VPackValueType::Object, true));
-  b.add("sum", VPackValue(dist._total));
-  b.add("count", VPackValue(dist._count));
-  b.add("counts", VPackValue(VPackValueType::Array, true));
-  for (auto const& it : dist._counts) {
-    b.add(VPackValue(it));
-  }
-  b.close();
-  b.close();
-}
-
-void stats::Descriptions::clientStatistics(
-    velocypack::Builder& b, RequestStatisticsSource source) const {
-  // FIXME why are httpConnections in here ?
-  ConnectionStatistics::Snapshot connectionStats;
-  ConnectionStatistics::getSnapshot(connectionStats);
-
-  b.add("httpConnections", VPackValue(connectionStats.httpConnections.get()));
-  FillDistribution(b, "connectionTime", connectionStats.connectionTime);
-
-  RequestStatistics::Snapshot requestStats;
-  RequestStatistics::getSnapshot(requestStats, source);
-
-  FillDistribution(b, "totalTime", requestStats.totalTime);
-  FillDistribution(b, "requestTime", requestStats.requestTime);
-  FillDistribution(b, "queueTime", requestStats.queueTime);
-  FillDistribution(b, "ioTime", requestStats.ioTime);
-  FillDistribution(b, "bytesSent", requestStats.bytesSent);
-  FillDistribution(b, "bytesReceived", requestStats.bytesReceived);
-}
-
 void stats::Descriptions::httpStatistics(velocypack::Builder& b) const {
   ConnectionStatistics::Snapshot stats;
   ConnectionStatistics::getSnapshot(stats);
