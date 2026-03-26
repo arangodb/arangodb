@@ -1663,10 +1663,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string abs =
-      std::filesystem::absolute(std::filesystem::path(cwd.result()) /
-                                std::string(*name, name.length()))
-          .string();
-
+      std::filesystem::absolute(std::string(*name, name.length()));
   v8::Handle<v8::String> res;
 
   if (!abs.empty()) {

@@ -110,8 +110,7 @@ void DaemonFeature::validateOptions(
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();
   std::string absoluteFile =
-      std::filesystem::absolute(std::filesystem::path(currentDir) /
-                                _options.pidFile)
+      std::filesystem::absolute(std::filesystem::path(_options.pidFile))
           .string();
 
   if (!absoluteFile.empty()) {

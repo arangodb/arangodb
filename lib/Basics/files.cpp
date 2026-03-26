@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <memory>
 #include <thread>
 #include <type_traits>
@@ -143,11 +144,8 @@ static constexpr bool IsDirSeparatorChar(char c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_NormalizePath(std::string& path) {
-  for (auto& it : path) {
-    if (IsDirSeparatorChar(it)) {
-      it = TRI_DIR_SEPARATOR_CHAR;
-    }
-  }
+  std::filesystem::path p(path);
+  path = p.make_preferred().string();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -650,11 +650,8 @@ void makePathAbsolute(std::string& path) {
   if (path.empty()) {
     path = cwd;
   } else {
-    std::string p =
+    path =
         std::filesystem::absolute(std::filesystem::path(cwd) / path).string();
-    if (!p.empty()) {
-      path = p;
-    }
   }
 }
 
