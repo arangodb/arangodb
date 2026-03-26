@@ -93,8 +93,11 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::DELETE_REQ) {
-    if (suffixes.empty() ||
-        (suffixes.size() == 1 && suffixes[0] == "entries")) {
+    if (suffixes.empty()) {
+      generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,
+                    "This endpoint has been removed. Please use DELETE "
+                    "`/_admin/log/entries` instead.");
+    } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
       clearLogs();
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       // reset log levels to defaults
@@ -103,13 +106,15 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "superfluous suffix, expecting /_admin/log/<suffix>, "
-                    "where suffix can be either omitted or 'level'");
+                    "where suffix can be either 'entries' or 'level'");
     }
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
-      co_await reportLogs(/*newFormat*/ false);
+      generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE,
+                    "This endpoint has been removed. Please use GET "
+                    "`/_admin/log/entries` instead.");
     } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
-      co_await reportLogs(/*newFormat*/ true);
+      co_await reportLogs();
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       co_await handleLogLevel();
     } else if (suffixes.size() == 1 && suffixes[0] == "structured") {
@@ -159,7 +164,7 @@ void RestAdminLogHandler::clearLogs() {
   generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
 }
 
-auto RestAdminLogHandler::reportLogs(bool newFormat) -> async<void> {
+auto RestAdminLogHandler::reportLogs() -> async<void> {
   bool foundServerIdParameter;
   std::string const& serverId =
       _request->value("serverId", foundServerIdParameter);
@@ -294,135 +299,37 @@ auto RestAdminLogHandler::reportLogs(bool newFormat) -> async<void> {
 
   VPackBuilder result;
 
-  if (newFormat) {
-    // new log format - introduced in 3.8.0.
-    // this format is more intuitive and useful than the old format.
-    // the new format because it groups all attributes of a message together
-    // in an object, whereas in the old format, the attributes of a message
-    // were split into multiple top-level arrays (one array per attribute).
-    size_t start = 0;
-    if (offset > 0) {
-      start += static_cast<uint64_t>(offset);
-      start = std::min<size_t>(start, entries.size());
+  size_t beginIndex = 0;
+  if (offset > 0) {
+    beginIndex += static_cast<uint64_t>(offset);
+    beginIndex = std::min<size_t>(beginIndex, entries.size());
+  }
+
+  result.openObject();
+  result.add("total", VPackValue(entries.size()));
+
+  result.add("messages", VPackValue(VPackValueType::Array));
+  for (size_t i = beginIndex; i < entries.size(); ++i) {
+    if (i - beginIndex >= size) {
+      // produced enough results
+      break;
     }
+    auto& buf = entries[i];
 
     result.openObject();
-    result.add("total", VPackValue(entries.size()));
-
-    result.add("messages", VPackValue(VPackValueType::Array));
-    for (size_t i = start; i < entries.size(); ++i) {
-      if (i - start >= size) {
-        // produced enough results
-        break;
-      }
-      auto& buf = entries[i];
-
-      result.openObject();
-      result.add("id", VPackValue(buf._id));
-      result.add("topic", VPackValue(LogTopic::lookup(buf._topicId)));
-      LogLevel lvl =
-          (buf._level == LogLevel::DEFAULT ? LogLevel::INFO : buf._level);
-      result.add("level", VPackValue(Logger::translateLogLevel(lvl)));
-      result.add("date", VPackValue(TRI_StringTimeStamp(
-                             buf._timestamp, Logger::getUseLocalTime())));
-      result.add("message", VPackValue(buf._message));
-      result.close();
-    }
-
-    result.close();  // messages
+    result.add("id", VPackValue(buf._id));
+    result.add("topic", VPackValue(LogTopic::lookup(buf._topicId)));
+    LogLevel lvl =
+        (buf._level == LogLevel::DEFAULT ? LogLevel::INFO : buf._level);
+    result.add("level", VPackValue(Logger::translateLogLevel(lvl)));
+    result.add("date", VPackValue(TRI_StringTimeStamp(
+                           buf._timestamp, Logger::getUseLocalTime())));
+    result.add("message", VPackValue(buf._message));
     result.close();
-  } else {
-    // old log format
-    size_t length = entries.size();
+  }
 
-    result.openObject();
-    result.add("totalAmount", VPackValue(length));
-
-    if (offset < 0) {
-      offset = 0;
-    } else if (offset >= static_cast<int64_t>(length)) {
-      length = 0;
-      offset = 0;
-    } else if (offset > 0) {
-      length -= static_cast<size_t>(offset);
-    }
-
-    // restrict to at most <size> elements
-    if (length > size) {
-      length = static_cast<size_t>(size);
-    }
-
-    // For now we build the arrays one after the other first id
-    result.add("lid", VPackValue(VPackValueType::Array));
-
-    for (size_t i = 0; i < length; ++i) {
-      try {
-        auto& buf = entries.at(i + static_cast<size_t>(offset));
-        result.add(VPackValue(buf._id));
-      } catch (...) {
-      }
-    }
-
-    result.close();
-
-    result.add("topic", VPackValue(VPackValueType::Array));
-
-    for (size_t i = 0; i < length; ++i) {
-      try {
-        auto& buf = entries.at(i + static_cast<size_t>(offset));
-        result.add(VPackValue(LogTopic::lookup(buf._topicId)));
-      } catch (...) {
-      }
-    }
-    result.close();
-
-    // second level
-    result.add("level", VPackValue(VPackValueType::Array));
-
-    for (size_t i = 0; i < length; ++i) {
-      try {
-        auto& buf = entries.at(i + static_cast<size_t>(offset));
-
-        if (buf._level == LogLevel::DEFAULT) {
-          result.add(VPackValue(3));  // INFO
-        } else {
-          TRI_ASSERT(static_cast<uint32_t>(buf._level) > 0);
-          result.add(VPackValue(static_cast<uint32_t>(buf._level) - 1));
-        }
-      } catch (...) {
-      }
-    }
-
-    result.close();
-
-    // third timestamp
-    result.add("timestamp", VPackValue(VPackValueType::Array));
-
-    for (size_t i = 0; i < length; ++i) {
-      try {
-        auto& buf = entries.at(i + static_cast<size_t>(offset));
-        result.add(VPackValue(static_cast<size_t>(buf._timestamp)));
-      } catch (...) {
-      }
-    }
-
-    result.close();
-
-    // fourth text
-    result.add("text", VPackValue(VPackValueType::Array));
-
-    for (size_t i = 0; i < length; ++i) {
-      try {
-        auto& buf = entries.at(i + static_cast<size_t>(offset));
-        result.add(VPackValue(buf._message));
-      } catch (...) {
-      }
-    }
-
-    result.close();
-
-    result.close();  // Close the result object
-  }                  // format end
+  result.close();  // messages
+  result.close();  // result
 
   generateResult(rest::ResponseCode::OK, result.slice());
   co_return;
