@@ -120,6 +120,8 @@ class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
+  ValueType sum() const { return _sum.load(std::memory_order_relaxed); }
+
   void toPrometheus(std::string& result, std::string_view globals,
                     bool ensureWhitespace) const final {
     std::string ls;
