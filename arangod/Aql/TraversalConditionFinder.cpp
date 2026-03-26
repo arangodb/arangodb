@@ -165,8 +165,8 @@ bool isSupportedNode(Ast const* ast, Variable const* pathVar,
       // the following types of expressions are not supported
       //   p.edges[0]._from  op  whatever attribute access
       //   whatever attribute access  op  p.edges[0]._from
-      AstNode const* lhs = ast::BinaryOperatorNode(node).getLeft();
-      AstNode const* rhs = ast::BinaryOperatorNode(node).getRight();
+      AstNode const* lhs = node->getMember(0);
+      AstNode const* rhs = node->getMember(1);
 
       if (lhs->isAttributeAccessForVariable(pathVar, true)) {
         // p.xxx  op  whatever

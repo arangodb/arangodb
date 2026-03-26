@@ -574,7 +574,7 @@ AstNode const* ConditionPart::lowerBound() const {
     // return first item from IN array.
     // this requires IN arrays to be sorted, which they should be when
     // we get here
-    return ast::BinaryOperatorNode(valueNode).getLeft();
+    return valueNode->getMember(0);
   }
 
   return nullptr;

@@ -117,8 +117,8 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
       return false;
     }
 
-    auto lhs = ast::BinaryOperatorNode(operand).getLeft();
-    auto rhs = ast::BinaryOperatorNode(operand).getRight();
+    auto lhs = operand->getMember(0);
+    auto rhs = operand->getMember(1);
 
     if (lhs->type == aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS) {
       result.first = nullptr;
@@ -812,8 +812,8 @@ void extractNonConstPartsOfLeafNode(
 
   // We only support binary conditions
   TRI_ASSERT(leaf->numMembers() == 2);
-  AstNode* lhs = ast::BinaryOperatorNode(leaf).getLeft();
-  AstNode* rhs = ast::BinaryOperatorNode(leaf).getRight();
+  AstNode* lhs = leaf->getMember(0);
+  AstNode* rhs = leaf->getMember(1);
   if (lhs->isAttributeAccessForVariable(indexVariable, false)) {
     // Index is responsible for the left side, check if right side
     // has to be evaluated
