@@ -221,13 +221,11 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 
   size_t const n = right.length();
 
-  ast::BinaryOperatorNode binOpNode(node);
-  auto type = binOpNode.getType();
   if (n >= AstNode::kSortNumberThreshold &&
-      (binOpNode.getRight()->isSorted() ||
-       ((type == NODE_TYPE_OPERATOR_BINARY_IN ||
-         type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
-        binOpNode.getBoolValue()))) {
+      (node->getMember(1)->isSorted() ||
+       ((node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
+        node->getBoolValue()))) {
     // node values are sorted. can use binary search
     size_t l = 0;
     size_t r = n - 1;
@@ -1192,12 +1190,12 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     ExpressionContext& ctx, AstNode const* node, bool& mustDestroy) {
   auto const& vopts = ctx.trx().vpackOptions();
 
-  AqlValue left = executeSimpleExpression(
-      ctx, ast::BinaryOperatorNode(node).getLeft(), mustDestroy, false);
+  AqlValue left =
+      executeSimpleExpression(ctx, node->getMember(0), mustDestroy, false);
   AqlValueGuard guardLeft(left, mustDestroy);
 
-  AqlValue right = executeSimpleExpression(
-      ctx, ast::BinaryOperatorNode(node).getRight(), mustDestroy, false);
+  AqlValue right =
+      executeSimpleExpression(ctx, node->getMember(1), mustDestroy, false);
   AqlValueGuard guardRight(right, mustDestroy);
 
   mustDestroy = false;  // we're returning a boolean only
@@ -1339,8 +1337,8 @@ AqlValue Expression::executeSimpleExpressionTernary(ExpressionContext& ctx,
                                                     AstNode const* node,
                                                     bool& mustDestroy) {
   if (node->numMembers() == 2) {
-    AqlValue condition = executeSimpleExpression(
-        ctx, ast::TernaryOperatorNode(node).getCondition(), mustDestroy, true);
+    AqlValue condition =
+        executeSimpleExpression(ctx, node->getMember(0), mustDestroy, true);
     AqlValueGuard guard(condition, mustDestroy);
 
     if (condition.toBoolean()) {
@@ -1353,8 +1351,8 @@ AqlValue Expression::executeSimpleExpressionTernary(ExpressionContext& ctx,
 
   TRI_ASSERT(node->numMembers() == 3);
 
-  AqlValue condition = executeSimpleExpression(
-      ctx, ast::TernaryOperatorNode(node).getCondition(), mustDestroy, false);
+  AqlValue condition =
+      executeSimpleExpression(ctx, node->getMember(0), mustDestroy, false);
 
   AqlValueGuard guardCondition(condition, mustDestroy);
 
@@ -1390,15 +1388,15 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     TRI_ASSERT(!isBoolean);
 
     bool localMustDestroy;
-    AqlValue subOffset = executeSimpleExpression(
-        ctx, ast::LimitNode(limitNode).getOffset(), localMustDestroy, false);
+    AqlValue subOffset = executeSimpleExpression(ctx, limitNode->getMember(0),
+                                                 localMustDestroy, false);
     offset = subOffset.toInt64();
     if (localMustDestroy) {
       subOffset.destroy();
     }
 
-    AqlValue subCount = executeSimpleExpression(
-        ctx, ast::LimitNode(limitNode).getCount(), localMustDestroy, false);
+    AqlValue subCount = executeSimpleExpression(ctx, limitNode->getMember(1),
+                                                localMustDestroy, false);
     count = subCount.toInt64();
     if (localMustDestroy) {
       subCount.destroy();
@@ -1694,8 +1692,7 @@ AqlValue Expression::executeSimpleExpressionIterator(ExpressionContext& ctx,
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  return executeSimpleExpression(ctx, ast::IteratorNode(node).getExpression(),
-                                 mustDestroy, true);
+  return executeSimpleExpression(ctx, node->getMember(1), mustDestroy, true);
 }
 
 // execute an expression of type ExpressionType::kSimple with BINARY_* (+, -, *

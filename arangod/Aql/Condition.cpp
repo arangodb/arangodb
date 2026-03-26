@@ -392,9 +392,9 @@ ConditionPart::ConditionPart(Variable const* variable,
       valueNode(nullptr),
       data(data) {
   if (side == ATTRIBUTE_LEFT) {
-    valueNode = ast::BinaryOperatorNode(operatorNode).getRight();
+    valueNode = operatorNode->getMember(1);
   } else {
-    valueNode = ast::BinaryOperatorNode(operatorNode).getLeft();
+    valueNode = operatorNode->getMember(0);
     if (Ast::isReversibleOperator(operatorType)) {
       operatorType = Ast::reverseOperator(operatorType);
     }

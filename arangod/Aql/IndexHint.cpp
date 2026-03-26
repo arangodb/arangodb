@@ -106,7 +106,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
 
         if (name == StaticStrings::IndexHintOption) {
           // indexHint
-          AstNode const* value = ast::ObjectElementNode(child).getValue();
+          AstNode const* value = child->getMember(0);
 
           bool ok = true;
           if (!handleStringOrArray(value, [&](AstNode const* value) {
@@ -139,7 +139,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
           }
         } else if (name == StaticStrings::IndexHintDisableIndex) {
           // disableIndex
-          AstNode const* value = ast::ObjectElementNode(child).getValue();
+          AstNode const* value = child->getMember(0);
 
           if (value->isBoolValue()) {
             // disableIndex: bool
@@ -162,7 +162,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
           handled = true;
         } else if (name == StaticStrings::IndexLookahead) {
           TRI_ASSERT(child->numMembers() > 0);
-          AstNode const* value = ast::ObjectElementNode(child).getValue();
+          AstNode const* value = child->getMember(0);
 
           if (value->isIntValue()) {
             _lookahead = value->getIntValue();
@@ -182,7 +182,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
 
         if (!handled) {
           VPackBuilder builder;
-          ast::ObjectElementNode(child).getValue()->toVelocyPackValue(builder);
+          child->getMember(0)->toVelocyPackValue(builder);
           ExecutionPlan::invalidOptionAttribute(
               query, absl::StrCat("invalid value ", builder.toJson(), " in"),
               "FOR", name);
@@ -456,7 +456,7 @@ bool IndexHint::parseNestedHint(AstNode const* node,
 
     std::string_view collectionName(child->getStringView());
 
-    AstNode const* sub = ast::ObjectElementNode(child).getValue();
+    AstNode const* sub = child->getMember(0);
 
     if (sub->type != NODE_TYPE_OBJECT) {
       return false;
@@ -480,7 +480,7 @@ bool IndexHint::parseNestedHint(AstNode const* node,
 
       auto& ref = hint[collectionName][directionName];
 
-      AstNode const* sub = ast::ObjectElementNode(child).getValue();
+      AstNode const* sub = child->getMember(0);
 
       if (hasLevels) {
         if (sub->type != NODE_TYPE_OBJECT) {
@@ -502,7 +502,7 @@ bool IndexHint::parseNestedHint(AstNode const* node,
             return false;
           }
 
-          AstNode const* value = ast::ObjectElementNode(level).getValue();
+          AstNode const* value = child->getMember(0);
 
           if (!handleStringOrArray(value, [&](AstNode const* value) {
                 TRI_ASSERT(value->isStringValue());
