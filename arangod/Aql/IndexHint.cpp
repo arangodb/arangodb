@@ -24,7 +24,6 @@
 #include "IndexHint.h"
 
 #include "Aql/AstNode.h"
-#include "Aql/TypedAstNodes.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Basics/NumberUtils.h"
@@ -501,7 +500,7 @@ bool IndexHint::parseNestedHint(AstNode const* node,
             return false;
           }
 
-          AstNode const* value = child->getMember(0);
+          AstNode const* value = level->getMember(0);
 
           if (!handleStringOrArray(value, [&](AstNode const* value) {
                 TRI_ASSERT(value->isStringValue());
