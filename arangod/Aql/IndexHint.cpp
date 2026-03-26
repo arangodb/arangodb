@@ -24,6 +24,7 @@
 #include "IndexHint.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Basics/NumberUtils.h"
@@ -105,7 +106,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
 
         if (name == StaticStrings::IndexHintOption) {
           // indexHint
-          AstNode const* value = child->getMember(0);
+          AstNode const* value = ast::ObjectElementNode(child).getValue();
 
           bool ok = true;
           if (!handleStringOrArray(value, [&](AstNode const* value) {
@@ -138,7 +139,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
           }
         } else if (name == StaticStrings::IndexHintDisableIndex) {
           // disableIndex
-          AstNode const* value = child->getMember(0);
+          AstNode const* value = ast::ObjectElementNode(child).getValue();
 
           if (value->isBoolValue()) {
             // disableIndex: bool
@@ -161,7 +162,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
           handled = true;
         } else if (name == StaticStrings::IndexLookahead) {
           TRI_ASSERT(child->numMembers() > 0);
-          AstNode const* value = child->getMember(0);
+          AstNode const* value = ast::ObjectElementNode(child).getValue();
 
           if (value->isIntValue()) {
             _lookahead = value->getIntValue();
@@ -181,7 +182,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
 
         if (!handled) {
           VPackBuilder builder;
-          child->getMember(0)->toVelocyPackValue(builder);
+          ast::ObjectElementNode(child).getValue()->toVelocyPackValue(builder);
           ExecutionPlan::invalidOptionAttribute(
               query, absl::StrCat("invalid value ", builder.toJson(), " in"),
               "FOR", name);
@@ -211,7 +212,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node, bool hasLevels) {
 
         if (name == StaticStrings::IndexHintOption) {
           // indexHint
-          AstNode const* value = child->getMember(0);
+          AstNode const* value = ast::ObjectElementNode(child).getValue();
 
           if (value->type == AstNodeType::NODE_TYPE_OBJECT) {
             _hint = NestedContents{};
@@ -222,7 +223,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node, bool hasLevels) {
           }
           if (empty()) {
             VPackBuilder builder;
-            child->getMember(0)->toVelocyPackValue(builder);
+            ast::ObjectElementNode(child).getValue()->toVelocyPackValue(
+                builder);
             ExecutionPlan::invalidOptionAttribute(
                 query, absl::StrCat("invalid value ", builder.toJson(), " in"),
                 "TRAVERSAL", name);
@@ -454,7 +456,7 @@ bool IndexHint::parseNestedHint(AstNode const* node,
 
     std::string_view collectionName(child->getStringView());
 
-    AstNode const* sub = child->getMember(0);
+    AstNode const* sub = ast::ObjectElementNode(child).getValue();
 
     if (sub->type != NODE_TYPE_OBJECT) {
       return false;
@@ -478,7 +480,7 @@ bool IndexHint::parseNestedHint(AstNode const* node,
 
       auto& ref = hint[collectionName][directionName];
 
-      AstNode const* sub = child->getMember(0);
+      AstNode const* sub = ast::ObjectElementNode(child).getValue();
 
       if (hasLevels) {
         if (sub->type != NODE_TYPE_OBJECT) {
@@ -500,7 +502,7 @@ bool IndexHint::parseNestedHint(AstNode const* node,
             return false;
           }
 
-          AstNode const* value = level->getMember(0);
+          AstNode const* value = ast::ObjectElementNode(level).getValue();
 
           if (!handleStringOrArray(value, [&](AstNode const* value) {
                 TRI_ASSERT(value->isStringValue());

@@ -66,6 +66,7 @@
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -158,8 +159,8 @@ size_t estimateListLength(ExecutionPlan const* plan, Variable const* var) {
           length = node->numMembers();
         }
         if (node->type == NODE_TYPE_RANGE) {
-          auto low = node->getMember(0);
-          auto high = node->getMember(1);
+          auto low = ast::RangeNode(node).getStart();
+          auto high = ast::RangeNode(node).getEnd();
 
           if (low->isConstant() && high->isConstant() &&
               (low->isValueType(VALUE_TYPE_INT) ||

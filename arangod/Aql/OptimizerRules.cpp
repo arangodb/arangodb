@@ -3310,7 +3310,7 @@ struct SortToIndexNode final
         auto root = cond->root();
 
         if (root != nullptr) {
-          auto condNode = root->getMember(0);
+          auto condNode = ast::IndexedAccessNode(root).getObject();
 
           if (condNode->isOnlyEqualityMatch()) {
             // now check if the index fields are the same as the sort condition

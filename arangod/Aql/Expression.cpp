@@ -26,6 +26,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
@@ -220,11 +221,13 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 
   size_t const n = right.length();
 
+  ast::BinaryOperatorNode binOpNode(node);
+  auto type = binOpNode.getType();
   if (n >= AstNode::kSortNumberThreshold &&
-      (node->getMember(1)->isSorted() ||
-       ((node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
-         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
-        node->getBoolValue()))) {
+      (binOpNode.getRight()->isSorted() ||
+       ((type == NODE_TYPE_OPERATOR_BINARY_IN ||
+         type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
+        binOpNode.getBoolValue()))) {
     // node values are sorted. can use binary search
     size_t l = 0;
     size_t r = n - 1;
@@ -714,8 +717,9 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
     // process attribute key, taking into account duplicates
     if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
       bool localMustDestroy;
-      AqlValue result = executeSimpleExpression(ctx, member->getMember(0),
-                                                localMustDestroy, false);
+      AqlValue result = executeSimpleExpression(
+          ctx, ast::CalculatedObjectElementNode(member).getKey(),
+          localMustDestroy, false);
       AqlValueGuard guard(result, localMustDestroy);
 
       // make sure key is a string, and convert it if not
@@ -745,7 +749,8 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       }
 
       // value
-      member = member->getMember(1);
+      member = const_cast<AstNode*>(
+          ast::CalculatedObjectElementNode(member).getValue());
     } else {
       TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
 
@@ -771,7 +776,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       }
 
       // value
-      member = member->getMember(0);
+      member = ast::ObjectElementNode(member).getValue();
     }
 
     // add the attribute value
@@ -818,8 +823,8 @@ AqlValue Expression::executeSimpleExpressionReference(ExpressionContext& ctx,
 AqlValue Expression::executeSimpleExpressionRange(ExpressionContext& ctx,
                                                   AstNode const* node,
                                                   bool& mustDestroy) {
-  auto low = node->getMember(0);
-  auto high = node->getMember(1);
+  auto low = ast::RangeNode(node).getStart();
+  auto high = ast::RangeNode(node).getEnd();
   mustDestroy = false;
 
   AqlValue resultLow = executeSimpleExpression(ctx, low, mustDestroy, false);
@@ -1187,12 +1192,12 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     ExpressionContext& ctx, AstNode const* node, bool& mustDestroy) {
   auto const& vopts = ctx.trx().vpackOptions();
 
-  AqlValue left =
-      executeSimpleExpression(ctx, node->getMember(0), mustDestroy, false);
+  AqlValue left = executeSimpleExpression(
+      ctx, ast::BinaryOperatorNode(node).getLeft(), mustDestroy, false);
   AqlValueGuard guardLeft(left, mustDestroy);
 
-  AqlValue right =
-      executeSimpleExpression(ctx, node->getMember(1), mustDestroy, false);
+  AqlValue right = executeSimpleExpression(
+      ctx, ast::BinaryOperatorNode(node).getRight(), mustDestroy, false);
   AqlValueGuard guardRight(right, mustDestroy);
 
   mustDestroy = false;  // we're returning a boolean only
@@ -1334,8 +1339,8 @@ AqlValue Expression::executeSimpleExpressionTernary(ExpressionContext& ctx,
                                                     AstNode const* node,
                                                     bool& mustDestroy) {
   if (node->numMembers() == 2) {
-    AqlValue condition =
-        executeSimpleExpression(ctx, node->getMember(0), mustDestroy, true);
+    AqlValue condition = executeSimpleExpression(
+        ctx, ast::TernaryOperatorNode(node).getCondition(), mustDestroy, true);
     AqlValueGuard guard(condition, mustDestroy);
 
     if (condition.toBoolean()) {
@@ -1348,8 +1353,8 @@ AqlValue Expression::executeSimpleExpressionTernary(ExpressionContext& ctx,
 
   TRI_ASSERT(node->numMembers() == 3);
 
-  AqlValue condition =
-      executeSimpleExpression(ctx, node->getMember(0), mustDestroy, false);
+  AqlValue condition = executeSimpleExpression(
+      ctx, ast::TernaryOperatorNode(node).getCondition(), mustDestroy, false);
 
   AqlValueGuard guardCondition(condition, mustDestroy);
 
@@ -1385,15 +1390,15 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     TRI_ASSERT(!isBoolean);
 
     bool localMustDestroy;
-    AqlValue subOffset = executeSimpleExpression(ctx, limitNode->getMember(0),
-                                                 localMustDestroy, false);
+    AqlValue subOffset = executeSimpleExpression(
+        ctx, ast::LimitNode(limitNode).getOffset(), localMustDestroy, false);
     offset = subOffset.toInt64();
     if (localMustDestroy) {
       subOffset.destroy();
     }
 
-    AqlValue subCount = executeSimpleExpression(ctx, limitNode->getMember(1),
-                                                localMustDestroy, false);
+    AqlValue subCount = executeSimpleExpression(
+        ctx, ast::LimitNode(limitNode).getCount(), localMustDestroy, false);
     count = subCount.toInt64();
     if (localMustDestroy) {
       subCount.destroy();
@@ -1421,10 +1426,11 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
       TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
 
-      quantifierNode = quantifierAndFilterNode->getMember(0);
+      quantifierNode =
+          ast::ArrayFilterNode(quantifierAndFilterNode).getQuantifier();
       TRI_ASSERT(quantifierNode != nullptr);
 
-      filterNode = quantifierAndFilterNode->getMember(1);
+      filterNode = ast::ArrayFilterNode(quantifierAndFilterNode).getFilter();
 
       if (!isBoolean && filterNode->isConstant()) {
         if (filterNode->isTrue()) {
@@ -1604,8 +1610,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       // range
       TRI_ASSERT(quantifierNode->numMembers() == 2);
 
-      minRequiredItems = getRangeBound(quantifierNode->getMember(0));
-      maxRequiredItems = getRangeBound(quantifierNode->getMember(1));
+      minRequiredItems =
+          getRangeBound(ast::RangeNode(quantifierNode).getStart());
+      maxRequiredItems = getRangeBound(ast::RangeNode(quantifierNode).getEnd());
     } else {
       // exact value
       minRequiredItems = maxRequiredItems = getRangeBound(quantifierNode);
@@ -1687,7 +1694,8 @@ AqlValue Expression::executeSimpleExpressionIterator(ExpressionContext& ctx,
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  return executeSimpleExpression(ctx, node->getMember(1), mustDestroy, true);
+  return executeSimpleExpression(ctx, ast::IteratorNode(node).getExpression(),
+                                 mustDestroy, true);
 }
 
 // execute an expression of type ExpressionType::kSimple with BINARY_* (+, -, *

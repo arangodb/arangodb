@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Aql/TypedAstNodes.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -33,6 +34,7 @@
 #include <cmath>
 
 using namespace arangodb;
+using namespace arangodb::aql;
 
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes)
@@ -118,10 +120,12 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       // EQ is symmetric
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
-                          reference, nonNullAttributes, false) ||
-          accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
-                          reference, nonNullAttributes, false)) {
+      if (accessFitsIndex(index, ast::BinaryOperatorNode(op).getLeft(),
+                          ast::BinaryOperatorNode(op).getRight(), op, reference,
+                          nonNullAttributes, false) ||
+          accessFitsIndex(index, ast::BinaryOperatorNode(op).getRight(),
+                          ast::BinaryOperatorNode(op).getLeft(), op, reference,
+                          nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
         node->clearMembers();
@@ -132,8 +136,9 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
 
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
-                          reference, nonNullAttributes, false)) {
+      if (accessFitsIndex(index, ast::BinaryOperatorNode(op).getLeft(),
+                          ast::BinaryOperatorNode(op).getRight(), op, reference,
+                          nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
         node->clearMembers();
