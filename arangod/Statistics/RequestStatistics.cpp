@@ -185,110 +185,29 @@ void RequestStatistics::release() noexcept {
 // -----------------------------------------------------------------------------
 
 void RequestStatistics::process(RequestStatistics* statistics) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(statisticsEnabled);
-#endif
-
-  TRI_ASSERT(statistics != nullptr);
-
-  statistics::TotalRequests.incCounter();
-
-  if (statistics->_async) {
-    statistics::AsyncRequests.incCounter();
-  }
-
-  statistics::MethodRequests[(size_t)statistics->_requestType].incCounter();
-
-  // check that the request was completely received and transmitted
-  if (statistics->_readStart != 0.0 &&
-      (statistics->_async || statistics->_writeEnd != 0.0)) {
-    double totalTime;
-
-    if (statistics->_async) {
-      totalTime = statistics->_requestEnd - statistics->_readStart;
-    } else {
-      totalTime = statistics->_writeEnd - statistics->_readStart;
-    }
-
-    bool const isSuperuser = statistics->_superuser;
-    if (isSuperuser) {
-      statistics::TotalRequestsSuperuser.incCounter();
-    } else {
-      statistics::TotalRequestsUser.incCounter();
-    }
-
-    statistics::RequestFigures& figures =
-        isSuperuser ? statistics::SuperuserRequestFigures
-                    : statistics::UserRequestFigures;
-
-    figures.totalTimeDistribution.addFigure(totalTime);
-
-    double requestTime = statistics->_requestEnd - statistics->_requestStart;
-    figures.requestTimeDistribution.addFigure(requestTime);
-
-    double queueTime = 0.0;
-    if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-      queueTime = statistics->_queueEnd - statistics->_queueStart;
-      figures.queueTimeDistribution.addFigure(queueTime);
-    }
-
-    double ioTime = totalTime - requestTime - queueTime;
-    if (ioTime >= 0.0) {
-      figures.ioTimeDistribution.addFigure(ioTime);
-    }
-
-    figures.bytesSentDistribution.addFigure(statistics->_sentBytes);
-    figures.bytesReceivedDistribution.addFigure(statistics->_receivedBytes);
-
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(statisticsEnabled);
+  #endif
+    TRI_ASSERT(statistics != nullptr);
+  
     if (::gApplicationServer != nullptr &&
-      ::gApplicationServer->hasFeature<GeneralServerFeature>()) {
-    ::gApplicationServer->getFeature<GeneralServerFeature>()
-        .recordHttpRequestStatistics(
-            statistics->_async, statistics->_requestType,
-            statistics->_superuser, statistics->_readStart,
-            statistics->_requestEnd, statistics->_writeEnd,
-            statistics->_queueStart, statistics->_queueEnd,
-            statistics->_requestStart, statistics->_sentBytes,
-            statistics->_receivedBytes);
+        ::gApplicationServer->hasFeature<GeneralServerFeature>()) {
+      ::gApplicationServer->getFeature<GeneralServerFeature>()
+          .recordHttpRequestStatistics(
+              statistics->_async, statistics->_requestType,
+              statistics->_superuser, statistics->_readStart,
+              statistics->_requestEnd, statistics->_writeEnd,
+              statistics->_queueStart, statistics->_queueEnd,
+              statistics->_requestStart, statistics->_sentBytes,
+              statistics->_receivedBytes);
+    }
+  
+    // clear statistics
+    statistics->reset();
+  
+    // put statistics item back onto the freelist
+    ::enqueueItem(::freeList, statistics);
   }
-  }
-
-  // clear statistics
-  statistics->reset();
-
-  // put statistics item back onto the freelist
-  ::enqueueItem(::freeList, statistics);
-}
-
-void RequestStatistics::getSnapshot(Snapshot& snapshot,
-                                    stats::RequestStatisticsSource source) {
-  statistics::RequestFigures& figures =
-      source == stats::RequestStatisticsSource::USER
-          ? statistics::UserRequestFigures
-          : statistics::SuperuserRequestFigures;
-
-  snapshot.totalTime = figures.totalTimeDistribution;
-  snapshot.requestTime = figures.requestTimeDistribution;
-  snapshot.queueTime = figures.queueTimeDistribution;
-  snapshot.ioTime = figures.ioTimeDistribution;
-  snapshot.bytesSent = figures.bytesSentDistribution;
-  snapshot.bytesReceived = figures.bytesReceivedDistribution;
-
-  if (source == stats::RequestStatisticsSource::ALL) {
-    TRI_ASSERT(&figures == &statistics::SuperuserRequestFigures);
-    snapshot.totalTime.add(
-        statistics::UserRequestFigures.totalTimeDistribution);
-    snapshot.requestTime.add(
-        statistics::UserRequestFigures.requestTimeDistribution);
-    snapshot.queueTime.add(
-        statistics::UserRequestFigures.queueTimeDistribution);
-    snapshot.ioTime.add(statistics::UserRequestFigures.ioTimeDistribution);
-    snapshot.bytesSent.add(
-        statistics::UserRequestFigures.bytesSentDistribution);
-    snapshot.bytesReceived.add(
-        statistics::UserRequestFigures.bytesReceivedDistribution);
-  }
-}
 
 std::string RequestStatistics::Item::timingsCsv() const {
   TRI_ASSERT(_stat != nullptr);

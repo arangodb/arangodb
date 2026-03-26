@@ -26,7 +26,6 @@
 #include "Rest/CommonDefines.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/figures.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -182,18 +181,6 @@ class RequestStatistics {
 
   RequestStatistics() noexcept { reset(); }
   static Item acquire() noexcept;
-
-  struct Snapshot {
-    statistics::Distribution totalTime;
-    statistics::Distribution requestTime;
-    statistics::Distribution queueTime;
-    statistics::Distribution ioTime;
-    statistics::Distribution bytesSent;
-    statistics::Distribution bytesReceived;
-  };
-
-  static void getSnapshot(Snapshot& snapshot,
-                          stats::RequestStatisticsSource source);
 
  private:
   static void process(RequestStatistics*);
