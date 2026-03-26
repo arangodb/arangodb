@@ -99,7 +99,6 @@
 #include "RestHandler/RestTimeHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestTtlHandler.h"
-#include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsageMetricsHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
@@ -571,9 +570,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::INDEX_PATH,
                      RestHandlerCreator<RestIndexHandler>::createNoData, {1});
-
-  f.addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                     RestHandlerCreator<RestUploadHandler>::createNoData, {1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
                      RestHandlerCreator<RestUsersHandler>::createNoData, {1});
