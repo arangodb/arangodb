@@ -415,6 +415,7 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST WINDOW node
   ExecutionNode* fromNodeWindow(ExecutionNode*, AstNode const*);
+  ExecutionNode* fromNodeMatch(ExecutionNode*, AstNode const*);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);

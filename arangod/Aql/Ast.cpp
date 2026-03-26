@@ -1969,6 +1969,109 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
   return node;
 }
 
+AstNode* Ast::createPatternLabel(std::string_view label) {
+  ADB_PROD_ASSERT(label.starts_with(":")) << "Invalid pattern label: " << label;
+  label.remove_prefix(1);
+  auto node = createNode(NODE_TYPE_PATTERN_LABEL);
+  node->setStringValue(label.data(), label.size());
+  return node;
+}
+
+AstNode* Ast::createPatternLabelAnd(AstNode const* left, AstNode const* right) {
+  auto node = createNode(NODE_TYPE_OPERATOR_BINARY_AND);
+  node->addMember(left);
+  node->addMember(right);
+  return node;
+}
+
+AstNode* Ast::createPatternEdge(AstNode const* outVariable, AstNode const* label,
+                               AstNode const* properties,
+                               AstNode const* filterExpression, bool isInbound,
+                               bool isOutbound) {
+  auto node = createNode(NODE_TYPE_PATTERN_EDGE);
+  node->addMember(outVariable ? outVariable : createNodeValueNull());
+  node->addMember(label ? label : createNodeValueNull());
+  node->addMember(properties ? properties : createNodeNop());
+  node->addMember(filterExpression ? filterExpression : createNodeNop());
+  if (isInbound && isOutbound) {
+    // usage of user-defined functions is disallowed
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        "found pattern edge having both inbound and outbound operator");
+  }
+
+  node->addMember(createNodeValueInt(!isInbound << 1 | !isOutbound));
+  return node;
+}
+AstNode* Ast::createPatternNodePattern(AstNode const* outVariable,
+                                      AstNode const* labels,
+                                      AstNode const* properties,
+                                      AstNode const* filterExpression) {
+  auto node = createNode(NODE_TYPE_PATTERN_NODE_PATTERN);
+  node->addMember(outVariable ? outVariable : createNodeValueNull());
+  node->addMember(labels ? labels : createNodeValueNull());
+  node->addMember(properties ? properties : createNodeNop());
+  node->addMember(filterExpression ? filterExpression : createNodeNop());
+  return node;
+}
+
+AstNode* Ast::createPatternSegment(AstNode const* edge, AstNode const* node) {
+  auto n = createNode(NODE_TYPE_PATTERN_SEGMENT);
+  n->addMember(edge);
+  n->addMember(node);
+  return n;
+}
+
+AstNode* Ast::createPatternPathVariable(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (_scopes.existsVariable(name)) {
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
+  }
+
+  auto variable = _variables.createVariable(name, true);
+  _scopes.addVariable(variable);
+
+  auto n = createNode(NODE_TYPE_PATTERN_PATH_VARIABLE);
+  n->setData(variable);
+  return n;
+}
+
+AstNode* Ast::createNodeMatch() {
+  if (not query().queryOptions().isMatchStatementEnabled()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "the MATCH statement is an experimental feature. If you want to use "
+        "it, please specify `matchStatement: 'experimental'` in the query "
+        "options.");
+  }
+
+  return createNode(NODE_TYPE_MATCH);
+}
+
+AstNode* Ast::createNodeMatchExpr() {
+  return createNode(NODE_TYPE_PATTERN_MATCH_EXPRESSION);
+}
+
+AstNode* Ast::createNodeVariableOrReference(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (auto var = _scopes.getVariable(name)) {
+    return createNodeReference(var);
+  }
+
+  auto variable = _variables.createVariable(name, true);
+  _scopes.addVariable(variable);
+
+  AstNode* node = createNode(NODE_TYPE_VARIABLE);
+  node->setData(variable);
+  return node;
+}
+
 /// @brief injects first-stage bind parameter values into the AST
 /// (i.e. collection bind parameters and bound attribute names,
 /// e.g. @@foo and `doc.@attr`).
