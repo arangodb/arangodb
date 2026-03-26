@@ -764,8 +764,9 @@ std::vector<std::vector<basics::AttributeName>> Condition::getConstAttributes(
     if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       ::clearAttributeAccess(parts);
 
-      auto lhs = ast::BinaryOperatorNode(member).getLeft();
-      auto rhs = ast::BinaryOperatorNode(member).getRight();
+      ast::BinaryOperatorNode binOpNode(member);
+      auto lhs = binOpNode.getLeft();
+      auto rhs = binOpNode.getRight();
 
       if (lhs->isAttributeAccessForVariable(parts) &&
           parts.first == reference) {
@@ -818,9 +819,10 @@ Condition::getNonNullAttributes(Variable const* reference) const {
         member->type == NODE_TYPE_OPERATOR_BINARY_LT) {
       ::clearAttributeAccess(parts);
 
-      AstNode const* lhs = ast::BinaryOperatorNode(member).getLeft();
-      AstNode const* rhs = ast::BinaryOperatorNode(member).getRight();
-      ;
+      ast::BinaryOperatorNode binOpNode(member);
+      AstNode const* lhs = binOpNode.getLeft();
+      AstNode const* rhs = binOpNode.getRight();
+
       AstNode const* check = nullptr;
 
       if (lhs->isConstant() && lhs->isNullValue() &&
@@ -1064,8 +1066,9 @@ void Condition::collectOverlappingMembers(
          operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
       // look   for != null   and   > null
       // these can be removed if we are working with a sparse index!
-      auto lhs = ast::BinaryOperatorNode(operand).getLeft();
-      auto rhs = ast::BinaryOperatorNode(operand).getRight();
+      ast::BinaryOperatorNode binOpNode(operand);
+      auto lhs = binOpNode.getLeft();
+      auto rhs = binOpNode.getRight();
 
       lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
       rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));

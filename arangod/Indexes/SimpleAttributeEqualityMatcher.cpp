@@ -116,16 +116,16 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
 
   for (size_t i = 0; i < n; ++i) {
     auto op = node->getMemberUnchecked(i);
+    ast::BinaryOperatorNode binOpNode(op);
 
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
+
       // EQ is symmetric
-      if (accessFitsIndex(index, ast::BinaryOperatorNode(op).getLeft(),
-                          ast::BinaryOperatorNode(op).getRight(), op, reference,
-                          nonNullAttributes, false) ||
-          accessFitsIndex(index, ast::BinaryOperatorNode(op).getRight(),
-                          ast::BinaryOperatorNode(op).getLeft(), op, reference,
-                          nonNullAttributes, false)) {
+      if (accessFitsIndex(index, binOpNode.getLeft(), binOpNode.getRight(), op,
+                          reference, nonNullAttributes, false) ||
+          accessFitsIndex(index, binOpNode.getRight(), binOpNode.getLeft(), op,
+                          reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
         node->clearMembers();
@@ -136,9 +136,8 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
 
-      if (accessFitsIndex(index, ast::BinaryOperatorNode(op).getLeft(),
-                          ast::BinaryOperatorNode(op).getRight(), op, reference,
-                          nonNullAttributes, false)) {
+      if (accessFitsIndex(index, binOpNode.getLeft(), binOpNode.getRight(), op,
+                          reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
         node->clearMembers();

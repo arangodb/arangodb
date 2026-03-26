@@ -715,9 +715,9 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
     // process attribute key, taking into account duplicates
     if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
       bool localMustDestroy;
-      AqlValue result = executeSimpleExpression(
-          ctx, ast::CalculatedObjectElementNode(member).getKey(),
-          localMustDestroy, false);
+      ast::CalculatedObjectElementNode calObjNode(member);
+      AqlValue result = executeSimpleExpression(ctx, calObjNode.getKey(),
+                                                localMustDestroy, false);
       AqlValueGuard guard(result, localMustDestroy);
 
       // make sure key is a string, and convert it if not
@@ -747,8 +747,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       }
 
       // value
-      member = const_cast<AstNode*>(
-          ast::CalculatedObjectElementNode(member).getValue());
+      member = const_cast<AstNode*>(calObjNode.getValue());
     } else {
       TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
 
@@ -821,8 +820,9 @@ AqlValue Expression::executeSimpleExpressionReference(ExpressionContext& ctx,
 AqlValue Expression::executeSimpleExpressionRange(ExpressionContext& ctx,
                                                   AstNode const* node,
                                                   bool& mustDestroy) {
-  auto low = ast::RangeNode(node).getStart();
-  auto high = ast::RangeNode(node).getEnd();
+  ast::RangeNode rangeNode(node);
+  auto low = rangeNode.getStart();
+  auto high = rangeNode.getEnd();
   mustDestroy = false;
 
   AqlValue resultLow = executeSimpleExpression(ctx, low, mustDestroy, false);
@@ -1424,11 +1424,11 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
       TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
 
-      quantifierNode =
-          ast::ArrayFilterNode(quantifierAndFilterNode).getQuantifier();
+      ast::ArrayFilterNode arrFilterNode(quantifierAndFilterNode);
+      quantifierNode = arrFilterNode.getQuantifier();
       TRI_ASSERT(quantifierNode != nullptr);
 
-      filterNode = ast::ArrayFilterNode(quantifierAndFilterNode).getFilter();
+      filterNode = arrFilterNode.getFilter();
 
       if (!isBoolean && filterNode->isConstant()) {
         if (filterNode->isTrue()) {
@@ -1608,9 +1608,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       // range
       TRI_ASSERT(quantifierNode->numMembers() == 2);
 
-      minRequiredItems =
-          getRangeBound(ast::RangeNode(quantifierNode).getStart());
-      maxRequiredItems = getRangeBound(ast::RangeNode(quantifierNode).getEnd());
+      ast::RangeNode rangeNode(quantifierNode);
+      minRequiredItems = getRangeBound(rangeNode.getStart());
+      maxRequiredItems = getRangeBound(rangeNode.getEnd());
     } else {
       // exact value
       minRequiredItems = maxRequiredItems = getRangeBound(quantifierNode);

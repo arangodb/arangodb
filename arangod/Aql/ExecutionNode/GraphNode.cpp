@@ -225,8 +225,9 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 
       if (col->type == NODE_TYPE_DIRECTION) {
         // We have a collection with special direction.
-        dir = parseDirection(ast::DirectionNode(col).getDirection());
-        col = const_cast<AstNode*>(ast::DirectionNode(col).getSteps());
+        ast::DirectionNode directionNode(col);
+        dir = parseDirection(directionNode.getDirection());
+        col = const_cast<AstNode*>(directionNode.getSteps());
       } else {
         dir = _defaultDirection;
       }

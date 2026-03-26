@@ -159,8 +159,9 @@ size_t estimateListLength(ExecutionPlan const* plan, Variable const* var) {
           length = node->numMembers();
         }
         if (node->type == NODE_TYPE_RANGE) {
-          auto low = ast::RangeNode(node).getStart();
-          auto high = ast::RangeNode(node).getEnd();
+          ast::RangeNode rangeNode(node);
+          auto low = rangeNode.getStart();
+          auto high = rangeNode.getEnd();
 
           if (low->isConstant() && high->isConstant() &&
               (low->isValueType(VALUE_TYPE_INT) ||
