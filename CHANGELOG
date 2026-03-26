@@ -2,6 +2,9 @@
 ------------------
 * Remove `GET | DELETE /_admin/log` (superseded by `GET | DELETE /_admin/log/entries`).
 
+* COR-353: Removed deprecated JS index creation functions `ensureUniqueConstraint()`,
+  `ensureGeoIndex()`, and `ensureGeoConstraint()` from collection objects.
+
 * COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
 
 * Removed leftover range() method from collection objects in JavaScript API
