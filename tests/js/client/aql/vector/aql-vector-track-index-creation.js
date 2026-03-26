@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, fail */
+/*global assertEqual, assertFalse, assertTrue, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -34,6 +34,7 @@ const {
 const errors = internal.errors;
 const {
   generateDocs,
+  waitForVectorIndexState,
   VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
 
@@ -97,13 +98,16 @@ function VectorTrackIndexCreationForegroundSuite() {
       const docs = generateDocs(gen, docCount, dimension);
       collection.insert(docs);
 
-      createIndex(collection, /*inBackground*/ false);
+      const result = createIndex(collection, /*inBackground*/ false);
 
       // ensureIndex should have blocked until the index is trained.
-      // No polling — check the state right away.
+      // The returned object must already carry the up-to-date state.
+      assertEqual(VectorIndexTrainingState.kReady, result.trainingState,
+        "Foreground ensureIndex response should have trainingState 'ready'");
+
+      // Double-check via a separate index lookup.
       const idx = collection.indexes().find(i => i.name === "vec_l2");
-      assertEqual(VectorIndexTrainingState.kReady, idx.trainingState,
-        "Foreground vector index should be ready immediately after ensureIndex");
+      assertEqual(VectorIndexTrainingState.kReady, idx.trainingState);
     },
   };
 }
@@ -133,17 +137,26 @@ function VectorTrackIndexCreationBackgroundSuite() {
       db._dropDatabase(dbName);
     },
 
-    testBackgroundIndexIsReadyImmediately: function () {
+    testBackgroundIndexDoesNotBlock: function () {
       const gen = randomNumberGeneratorFloat(seed);
       const docs = generateDocs(gen, docCount, dimension);
       collection.insert(docs);
 
-      createIndex(collection, /*inBackground*/ true);
+      const result = createIndex(collection, /*inBackground*/ true);
 
-      // ensureIndex should have blocked until the index is trained.
-      const idx = collection.indexes().find(i => i.name === "vec_l2");
-      assertEqual(VectorIndexTrainingState.kReady, idx.trainingState,
-        "Background vector index should be ready immediately after ensureIndex");
+      // inBackground: true — ensureIndex returns without waiting for
+      // training, so the response must still show the original unusable
+      // state (proving it did not block).
+      assertEqual("vector", result.type);
+      assertFalse(result.trainingState === VectorIndexTrainingState.kReady,
+        "Background ensureIndex response should NOT have trainingState " +
+        "'ready' — it should return before training completes");
+
+      // The build manager will train it eventually.
+      assertTrue(
+        waitForVectorIndexState(
+          collection, "vec_l2", VectorIndexTrainingState.kReady, 120),
+        "Background vector index should eventually become ready");
     },
   };
 }

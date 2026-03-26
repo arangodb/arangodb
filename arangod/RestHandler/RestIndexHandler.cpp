@@ -711,9 +711,10 @@ async<void> RestIndexHandler::createIndex() {
 
     if (result.ok()) {
       TRI_ASSERT(response.slice().isObject());
-      if (auto type = response.slice().get("type");
-          type.isString() &&
-          type.stringView() == StaticStrings::IndexNameVector) {
+      bool const inBackground = body.get("inBackground").isTrue();
+      if (!inBackground && response.slice().get("type").isString() &&
+          response.slice().get("type").stringView() ==
+              StaticStrings::IndexNameVector) {
         auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
         if (vectorIndexFeature.isVectorIndexEnabled()) {
           auto idSlice = response.slice().get("id");
@@ -728,6 +729,14 @@ async<void> RestIndexHandler::createIndex() {
               if (res.fail()) {
                 generateError(res);
                 co_return;
+              }
+              // Re-fetch the index so the response reflects the
+              // current training state (the original slice is stale).
+              VPackBuilder refreshed;
+              auto getRes = co_await methods::Indexes::getIndex(*coll, idSlice,
+                                                                refreshed);
+              if (getRes.ok()) {
+                response = std::move(refreshed);
               }
             }
           }
