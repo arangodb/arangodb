@@ -159,12 +159,6 @@ VPackBuilder enrichVectorIndexes(
   return result;
 }
 
-// Polling interval when waiting for vector index readiness on Coordinator.
-constexpr auto kCoordinatorPollInterval = std::chrono::seconds(3);
-
-// Maximum time to wait for vector index readiness on Coordinator.
-constexpr auto kCoordinatorWaitTimeout = std::chrono::seconds(300);
-
 }  // namespace
 
 RestIndexHandler::RestIndexHandler(
@@ -664,6 +658,11 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
 
 futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
     std::shared_ptr<LogicalCollection> const& coll, IndexId indexId) {
+  // Polling interval when waiting for vector index readiness on Coordinator.
+  static constexpr auto kCoordinatorPollInterval = std::chrono::seconds(3);
+  // Maximum time to wait for vector index readiness on Coordinator.
+  static constexpr auto kCoordinatorWaitTimeout = std::chrono::seconds(300);
+
   // DBServer / SingleServer: delegate to build manager.
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
