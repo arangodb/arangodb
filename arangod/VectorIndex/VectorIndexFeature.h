@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string_view>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -50,17 +51,17 @@ class VectorIndexFeature final
 
   bool isVectorIndexEnabled() const;
 
-  // Wait until the given vector index is trained. On single server, returns
-  // a future that resolves when the build manager finishes (or fails) the
-  // build.  On coordinator the future resolves immediately (training happens
-  // on DBServers).
+  // Wait until the given vector index is trained. On single server or
+  // DBServer, returns a future that resolves when the build manager finishes
+  // (or fails) the build. If the build manager is not initialized (e.g. on
+  // Coordinator), returns an immediate success.
   futures::Future<Result> waitForIndexReady(IndexId indexId);
 
  private:
   bool shouldRunBuildManager() const;
 
   VectorIndexFeatureOptions _options;
-  VectorIndexBuildManager _buildManager;
+  std::optional<VectorIndexBuildManager> _buildManager;
 };
 
 }  // namespace arangodb

@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/async.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -38,6 +37,7 @@
 #include "Network/NetworkFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -158,6 +158,12 @@ VPackBuilder enrichVectorIndexes(
   }
   return result;
 }
+
+// Polling interval when waiting for vector index readiness on Coordinator.
+constexpr auto kCoordinatorPollInterval = std::chrono::seconds(3);
+
+// Maximum time to wait for vector index readiness on Coordinator.
+constexpr auto kCoordinatorWaitTimeout = std::chrono::seconds(300);
 
 }  // namespace
 
@@ -656,6 +662,69 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
+futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
+    std::shared_ptr<LogicalCollection> const& coll, IndexId indexId) {
+  // DBServer / SingleServer: delegate to build manager.
+  if (ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isSingleServer()) {
+    auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
+    co_return co_await vectorIndexFeature.waitForIndexReady(indexId);
+  }
+
+  // Coordinator: poll shard training states until all report "ready".
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+
+  auto bareIndexId = std::to_string(indexId.id());
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto planIdStr = std::to_string(coll->planId().id());
+
+  auto const deadline =
+      std::chrono::steady_clock::now() + kCoordinatorWaitTimeout;
+
+  while (true) {
+    if (server().isStopping()) {
+      co_return Result(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::shared_ptr<CollectionInfoCurrent> collCurrent =
+        ci.getCollectionCurrent(_vocbase.name(), planIdStr);
+
+    if (collCurrent) {
+      auto const shardIds = coll->shardIds();
+      if (shardIds) {
+        auto const states =
+            getVectorIndexShardStates(*collCurrent, *shardIds, bareIndexId);
+        auto const aggregateState = aggregateTrainingState(states);
+
+        if (aggregateState == StaticStrings::IndexTrainingStateReady) {
+          co_return Result();
+        }
+
+        // "unusable" with an explicit shard error is a permanent failure.
+        if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
+          for (auto const& [shardId, shardState] : states) {
+            if (!shardState.error.empty()) {
+              co_return Result(
+                  TRI_ERROR_INTERNAL,
+                  absl::StrCat("vector index training failed on shard ",
+                               static_cast<std::string>(shardId), ": ",
+                               shardState.error));
+            }
+          }
+        }
+      }
+    }
+
+    if (std::chrono::steady_clock::now() >= deadline) {
+      co_return Result(TRI_ERROR_LOCK_TIMEOUT,
+                       "timed out waiting for vector index to become ready");
+    }
+
+    co_await SchedulerFeature::SCHEDULER->delay("wait-vec-idx-ready",
+                                                kCoordinatorPollInterval);
+  }
+}
+
 async<void> RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
@@ -719,23 +788,47 @@ async<void> RestIndexHandler::createIndex() {
         if (vectorIndexFeature.isVectorIndexEnabled()) {
           auto idSlice = response.slice().get("id");
           if (idSlice.isString()) {
-            auto const idStr = idSlice.stringView();
-            if (auto const pos = idStr.find('/');
-                pos != std::string_view::npos) {
-              auto const numericId = basics::StringUtils::uint64(
-                  idStr.data() + pos + 1, idStr.size() - pos - 1);
-              auto const res = co_await vectorIndexFeature.waitForIndexReady(
-                  IndexId{numericId});
-              if (res.fail()) {
-                generateError(res);
-                co_return;
-              }
-              // Re-fetch the index so the response reflects the
-              // current training state (the original slice is stale).
-              VPackBuilder refreshed;
-              auto getRes = co_await methods::Indexes::getIndex(*coll, idSlice,
-                                                                refreshed);
-              if (getRes.ok()) {
+            auto const indexId = IndexId::fromString(idSlice.stringView());
+            if (indexId.fail()) {
+              generateError(indexId.result());
+              co_return;
+            }
+            auto const res =
+                co_await waitForVectorIndexReady(coll, indexId.get());
+            if (res.fail()) {
+              generateError(res);
+              co_return;
+            }
+            // Re-fetch the index so the response reflects the
+            // current training state (the original slice is stale).
+            VPackBuilder refreshed;
+            auto getRes =
+                co_await methods::Indexes::getIndex(*coll, idSlice, refreshed);
+            if (getRes.ok()) {
+              if (ServerState::instance()->isCoordinator()) {
+                // On Coordinator, getIndex does not include trainingState.
+                // Enrich the response with per-shard training state.
+                auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+                std::shared_ptr<CollectionInfoCurrent> collCurrent;
+                try {
+                  collCurrent = ci.getCollectionCurrent(
+                      _vocbase.name(), std::to_string(coll->planId().id()));
+                } catch (...) {
+                }
+                auto const shardIds = coll->shardIds();
+                VPackBuilder arr;
+                {
+                  VPackArrayBuilder a(&arr);
+                  arr.add(refreshed.slice());
+                }
+                auto enriched = enrichVectorIndexes(arr.slice(), collCurrent,
+                                                    shardIds, false);
+                TRI_ASSERT(enriched.slice().isArray() &&
+                           enriched.slice().length() == 1);
+                VPackBuilder single;
+                single.add(enriched.slice().at(0));
+                response = std::move(single);
+              } else {
                 response = std::move(refreshed);
               }
             }

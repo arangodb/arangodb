@@ -30,6 +30,7 @@
 
 #include "Basics/Result.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 #include <velocypack/Builder.h>
 
@@ -53,6 +54,13 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   async<void> createIndex();
   async<void> dropIndex();
   void syncCaches();
+
+  // Wait for a vector index to become ready. On DBServer/SingleServer
+  // delegates to VectorIndexBuildManager. On Coordinator, polls shard
+  // training states from CollectionInfoCurrent until all report "ready"
+  // or a timeout is reached.
+  [[nodiscard]] futures::Future<Result> waitForVectorIndexReady(
+      std::shared_ptr<LogicalCollection> const& coll, IndexId indexId);
 
   std::shared_ptr<LogicalCollection> collection(std::string const& cName);
 };

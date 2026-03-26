@@ -41,6 +41,7 @@ namespace arangodb {
 
 class DatabaseFeature;
 class MaintenanceFeature;
+class Scheduler;
 
 /// Single background thread that periodically scans for untrained vector
 /// indexes and builds them one at a time. The same thread scans and builds.
@@ -51,7 +52,8 @@ class VectorIndexBuildManager {
 
   explicit VectorIndexBuildManager(DatabaseFeature& dbFeature,
                                    MaintenanceFeature& maintenance,
-                                   metrics::MetricsFeature& metrics);
+                                   metrics::MetricsFeature& metrics,
+                                   Scheduler& scheduler);
 
   void start();
   void beginShutdown();
@@ -84,6 +86,7 @@ class VectorIndexBuildManager {
 
   DatabaseFeature& _dbFeature;
   MaintenanceFeature& _maintenance;
+  Scheduler& _scheduler;
   std::jthread _thread;
 
   metrics::Gauge<uint64_t>& _untrainedCount;

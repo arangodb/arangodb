@@ -38,6 +38,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
+#include "Scheduler/Scheduler.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -77,9 +78,10 @@ namespace arangodb {
 
 VectorIndexBuildManager::VectorIndexBuildManager(
     DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
-    metrics::MetricsFeature& metrics)
+    metrics::MetricsFeature& metrics, Scheduler& scheduler)
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
+      _scheduler(scheduler),
       _untrainedCount(metrics.add(arangodb_vector_index_unusable{})),
       _trainingOngoingCount(
           metrics.add(arangodb_vector_index_training_ongoing{})),
@@ -124,8 +126,13 @@ void VectorIndexBuildManager::fulfillWaiters(IndexId indexId,
     waiters = std::move(it->second);
     _waiters.erase(it);
   }
+  // Post setValue onto the scheduler so continuations don't run on the
+  // build manager thread (which could cause deadlocks).
   for (auto& p : waiters) {
-    p.setValue(result);
+    _scheduler.queue(RequestLane::CONTINUATION,
+                     [promise = std::move(p), result]() mutable {
+                       promise.setValue(result);
+                     });
   }
 }
 
@@ -139,7 +146,10 @@ void VectorIndexBuildManager::fulfillAllWaiters(Result const& result) {
   }
   for (auto& [_, promises] : waiters) {
     for (auto& p : promises) {
-      p.setValue(result);
+      _scheduler.queue(RequestLane::CONTINUATION,
+                       [promise = std::move(p), result]() mutable {
+                         promise.setValue(result);
+                       });
     }
   }
 }
@@ -199,10 +209,13 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
   // Collect objectIds seen this scan to prune stale entries from
   // failedBuilds (e.g. indexes that were dropped since the last scan).
   std::unordered_set<std::uint64_t> seenObjectIds;
+  // All vector IndexIds seen during the scan (regardless of state).
+  std::unordered_set<IndexId::BaseType> seenIndexIds;
   // Track IndexIds of unusable indexes that have pending waiters but
   // could not be built in this scan (below threshold or in backoff).
   std::unordered_set<IndexId::BaseType> skippedWaiters;
   uint64_t unusableIndexesCount = 0;
+  bool scanCompletedFully = false;
 
   _dbFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
     if (stopToken.stop_requested()) {
@@ -217,8 +230,14 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
           continue;
         }
         auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
-        if (vecIdx.trainingState() != VectorIndexTrainingState::kUnusable) {
+        seenIndexIds.insert(vecIdx.id().id());
+        if (vecIdx.trainingState() == VectorIndexTrainingState::kReady) {
           fulfillWaiters(vecIdx.id(), Result{});
+          continue;
+        }
+        if (vecIdx.trainingState() != VectorIndexTrainingState::kUnusable) {
+          // kTraining or kIngesting — build in progress, keep waiters
+          // pending until it finishes.
           continue;
         }
 
@@ -314,6 +333,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
     }
   });
 
+  scanCompletedFully = true;
   _untrainedCount.store(unusableIndexesCount, std::memory_order_relaxed);
 
   // Prune failed build entries for indexes that no longer exist.
@@ -326,7 +346,26 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
   for (auto indexId : skippedWaiters) {
     fulfillWaiters(IndexId{indexId},
                    Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-                          "not enough training data for vector index"});
+                          "vector index not ready"});
+  }
+
+  // Fulfill waiters for indexes that no longer exist (dropped while a
+  // request was waiting).  Only safe when the scan visited every
+  // database/collection without an early return.
+  if (scanCompletedFully) {
+    std::vector<IndexId::BaseType> orphaned;
+    {
+      std::lock_guard lock(_waitersMutex);
+      for (auto const& [id, _] : _waiters) {
+        if (!seenIndexIds.contains(id)) {
+          orphaned.push_back(id);
+        }
+      }
+    }
+    for (auto id : orphaned) {
+      fulfillWaiters(IndexId{id}, Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                                         "index was dropped"});
+    }
   }
 }
 
