@@ -6,17 +6,45 @@ jobs:
       size:
         type: string
     docker:
-      - image: cimg/base:current
+      - image: arangodb/ubuntubuildarangodb-devel:20
     resource_class: << parameters.size >>
     steps:
-      - run: echo "<< parameters.size >>"
-      - run: cat /sys/fs/cgroup/cpu.max
-      - run: cat /sys/fs/cgroup/cpu.stat
-      - run: cat /sys/fs/cgroup/memory.max
-      - run: nproc
-      - run: cat /proc/self/status | grep Cpus_allowed_list
-      - run: cat /proc/cpuinfo
+      - run:
+          command: |
+            set -o xtrace
+            echo "<< parameters.size >>"
+            cat /sys/fs/cgroup/cpu.max
+            cat /sys/fs/cgroup/cpuset.cpus.effective
+            cat /sys/fs/cgroup/cpu.stat
+            cat /sys/fs/cgroup/memory.max
+            nproc
+            cat /proc/cpuinfo | grep processor | wc -l
+            echo "----"
+            cat /proc/version
+            cat /proc/sys/kernel/osrelease
+            cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+            cat /sys/kernel/mm/transparent_hugepage/enabled
+            taskset -pc $$
+      - run:
+          name: sysctrl
+          command: sysctl -a
+      - run:
+          command: |
+            set -o xtrace
+            cat /proc/self/status
+      - run:
+          name: cpuinfo
+          command: |
+            set -o xtrace
+            cat /proc/cpuinfo
 
+      - run:
+          name: concurrency
+          command: |
+            set -o xtrace
+            printf '#include <iostream>\n#include <thread>\n#include <unistd.h>\nint main() { std::cout \x3c\x3c "hardware_concurrency: " \x3c\x3c std::thread::hardware_concurrency() \x3c\x3c std::endl; std::cout \x3c\x3c "sysconf(_SC_NPROCESSORS_ONLN): " \x3c\x3c sysconf(_SC_NPROCESSORS_ONLN) \x3c\x3c std::endl; }\n' > /tmp/concurrency.cpp
+            g++ -std=c++20 -pthread -o /tmp/concurrency /tmp/concurrency.cpp
+            /tmp/concurrency
 
 workflows:
   setup:
