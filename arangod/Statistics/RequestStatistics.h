@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Rest/CommonDefines.h"
-#include "Statistics/Descriptions.h"
 #include "Statistics/StatisticsFeature.h"
 
 #include <cstddef>

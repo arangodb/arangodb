@@ -64,24 +64,6 @@ constexpr size_t MethodRequestsStatisticsSize =
 using MethodRequestCounters = std::array<Counter, MethodRequestsStatisticsSize>;
 extern MethodRequestCounters MethodRequests;
 extern Distribution ConnectionTimeDistribution;
-
-struct RequestFigures {
-  RequestFigures();
-
-  RequestFigures(RequestFigures const&) = delete;
-  RequestFigures(RequestFigures&&) = delete;
-  RequestFigures& operator=(RequestFigures const&) = delete;
-  RequestFigures& operator=(RequestFigures&&) = delete;
-
-  Distribution bytesReceivedDistribution;
-  Distribution bytesSentDistribution;
-  Distribution ioTimeDistribution;
-  Distribution queueTimeDistribution;
-  Distribution requestTimeDistribution;
-  Distribution totalTimeDistribution;
-};
-extern RequestFigures SuperuserRequestFigures;
-extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 
 class StatisticsFeature final

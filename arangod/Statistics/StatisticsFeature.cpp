@@ -420,17 +420,6 @@ Counter TotalRequestsSuperuser;
 Counter TotalRequestsUser;
 MethodRequestCounters MethodRequests;
 Distribution ConnectionTimeDistribution(ConnectionTimeDistributionCuts);
-
-RequestFigures::RequestFigures()
-    : bytesReceivedDistribution(BytesReceivedDistributionCuts),
-      bytesSentDistribution(BytesSentDistributionCuts),
-      ioTimeDistribution(RequestTimeDistributionCuts),
-      queueTimeDistribution(RequestTimeDistributionCuts),
-      requestTimeDistribution(RequestTimeDistributionCuts),
-      totalTimeDistribution(RequestTimeDistributionCuts) {}
-
-RequestFigures SuperuserRequestFigures;
-RequestFigures UserRequestFigures;
 }  // namespace statistics
 }  // namespace arangodb
 

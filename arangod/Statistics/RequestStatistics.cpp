@@ -190,6 +190,21 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   #endif
     TRI_ASSERT(statistics != nullptr);
   
+    statistics::TotalRequests.incCounter();
+  if (statistics->_async) {
+    statistics::AsyncRequests.incCounter();
+  }
+  statistics::MethodRequests[(size_t)statistics->_requestType].incCounter();
+
+  if (statistics->_readStart != 0.0 &&
+      (statistics->_async || statistics->_writeEnd != 0.0)) {
+    bool const isSuperuser = statistics->_superuser;
+    if (isSuperuser) {
+      statistics::TotalRequestsSuperuser.incCounter();
+    } else {
+      statistics::TotalRequestsUser.incCounter();
+    }
+
     if (::gApplicationServer != nullptr &&
         ::gApplicationServer->hasFeature<GeneralServerFeature>()) {
       ::gApplicationServer->getFeature<GeneralServerFeature>()
@@ -201,12 +216,10 @@ void RequestStatistics::process(RequestStatistics* statistics) {
               statistics->_requestStart, statistics->_sentBytes,
               statistics->_receivedBytes);
     }
-  
-    // clear statistics
-    statistics->reset();
-  
-    // put statistics item back onto the freelist
-    ::enqueueItem(::freeList, statistics);
+  }
+
+  statistics->reset();
+  ::enqueueItem(::freeList, statistics);
   }
 
 std::string RequestStatistics::Item::timingsCsv() const {
