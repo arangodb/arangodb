@@ -170,7 +170,7 @@ function createVectorIndex(collection, sparse) {
         name: "vec_l2",
         type: "vector",
         fields: ["vector"],
-        inBackground: false,
+        inBackground: true,
         sparse: sparse || false,
         params: {metric: "l2", dimension, nLists},
     });
