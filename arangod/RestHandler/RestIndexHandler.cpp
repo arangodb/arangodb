@@ -704,7 +704,7 @@ futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
           for (auto const& [shardId, shardState] : states) {
             if (!shardState.error.empty()) {
               co_return Result(
-                  TRI_ERROR_INTERNAL,
+                  TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
                   absl::StrCat("vector index training failed on shard ",
                                static_cast<std::string>(shardId), ": ",
                                shardState.error));
@@ -809,11 +809,8 @@ async<void> RestIndexHandler::createIndex() {
                 // Enrich the response with per-shard training state.
                 auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
                 std::shared_ptr<CollectionInfoCurrent> collCurrent;
-                try {
-                  collCurrent = ci.getCollectionCurrent(
-                      _vocbase.name(), std::to_string(coll->planId().id()));
-                } catch (...) {
-                }
+                collCurrent = ci.getCollectionCurrent(
+                    _vocbase.name(), std::to_string(coll->planId().id()));
                 auto const shardIds = coll->shardIds();
                 VPackBuilder arr;
                 {

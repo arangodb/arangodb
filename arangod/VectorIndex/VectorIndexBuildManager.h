@@ -37,10 +37,14 @@
 #include "Metrics/Fwd.h"
 #include "VocBase/Identifiers/IndexId.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 
 class DatabaseFeature;
+class LogicalCollection;
 class MaintenanceFeature;
+class RocksDBVectorIndex;
 class Scheduler;
 
 /// Single background thread that periodically scans for untrained vector
@@ -79,10 +83,21 @@ class VectorIndexBuildManager {
                               std::int64_t currentDocCount);
 
   void run(std::stop_token stopToken);
+
   void scanAndBuild(std::stop_token const& stopToken,
                     FailedBuildsMap& failedBuilds);
+
   void fulfillWaiters(IndexId indexId, Result const& result);
+
   void fulfillAllWaiters(Result const& result);
+
+  void reportIndexError(TRI_vocbase_t const& vocbase,
+                        LogicalCollection const& coll,
+                        RocksDBVectorIndex const& vecIdx, Result const& error);
+
+  void clearIndexError(TRI_vocbase_t const& vocbase,
+                       LogicalCollection const& coll,
+                       RocksDBVectorIndex const& vecIdx);
 
   DatabaseFeature& _dbFeature;
   MaintenanceFeature& _maintenance;

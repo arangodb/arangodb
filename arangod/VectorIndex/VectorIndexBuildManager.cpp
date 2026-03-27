@@ -279,48 +279,13 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
           failedBuilds[vecIdx.objectId()] = {std::chrono::steady_clock::now(),
                                              numDocs};
 
-          // Report the error via MaintenanceFeature so it flows to the
-          // agency Current section and becomes visible on the Coordinator.
-          auto const& database = vocbase.name();
-          auto const collection = std::to_string(coll->planId().id());
-          auto const& shard = coll->name();
-          auto const indexId = std::to_string(vecIdx.id().id());
-
-          // Serialize the full index definition so that Current in the
-          // agency carries the complete vector-index metadata, not just
-          // the error/training-state fields.
-          VPackBuilder indexBuilder;
-          vecIdx.toVelocyPack(
-              indexBuilder,
-              static_cast<std::underlying_type<Index::Serialize>::type>(
-                  Index::Serialize::Basics));
-
-          VPackBuilder eb;
-          {
-            VPackObjectBuilder o(&eb);
-            for (auto const& it : VPackObjectIterator(indexBuilder.slice())) {
-              eb.add(it.key.stringView(), it.value);
-            }
-            eb.add(StaticStrings::Error, VPackValue(true));
-            eb.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
-            eb.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
-          }
-          _maintenance.storeIndexError(database, collection, shard, indexId,
-                                       eb.steal());
-
+          reportIndexError(vocbase, *coll, vecIdx, res);
           continue;
         }
 
         fulfillWaiters(vecIdx.id(), Result{});
 
-        // Clear any previous error for this index.
-        {
-          auto const& database = vocbase.name();
-          auto const collection = std::to_string(coll->planId().id());
-          auto const& shard = coll->name();
-          auto const indexId = std::to_string(vecIdx.id().id());
-          _maintenance.clearIndexError(database, collection, shard, indexId);
-        }
+        clearIndexError(vocbase, *coll, vecIdx);
         failedBuilds.erase(vecIdx.objectId());
 
         // Built one index — return to the scan loop so we sleep
@@ -328,7 +293,6 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         _untrainedCount.store(
             unusableIndexesCount > 0 ? unusableIndexesCount - 1 : 0,
             std::memory_order_relaxed);
-        return;
       }
     }
   });
@@ -367,6 +331,47 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
                                          "index was dropped"});
     }
   }
+}
+
+void VectorIndexBuildManager::reportIndexError(TRI_vocbase_t const& vocbase,
+                                               LogicalCollection const& coll,
+                                               RocksDBVectorIndex const& vecIdx,
+                                               Result const& error) {
+  auto const& database = vocbase.name();
+  auto const collection = std::to_string(coll.planId().id());
+  auto const& shard = coll.name();
+  auto const indexId = std::to_string(vecIdx.id().id());
+
+  // Serialize the full index definition so that Current in the agency
+  // carries the complete vector-index metadata, not just the
+  // error/training-state fields.
+  VPackBuilder indexBuilder;
+  vecIdx.toVelocyPack(indexBuilder,
+                      static_cast<std::underlying_type<Index::Serialize>::type>(
+                          Index::Serialize::Basics));
+
+  VPackBuilder eb;
+  {
+    VPackObjectBuilder o(&eb);
+    for (auto const& it : VPackObjectIterator(indexBuilder.slice())) {
+      eb.add(it.key.stringView(), it.value);
+    }
+    eb.add(StaticStrings::Error, VPackValue(true));
+    eb.add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
+    eb.add(StaticStrings::ErrorNum, VPackValue(error.errorNumber()));
+  }
+  _maintenance.storeIndexError(database, collection, shard, indexId,
+                               eb.steal());
+}
+
+void VectorIndexBuildManager::clearIndexError(
+    TRI_vocbase_t const& vocbase, LogicalCollection const& coll,
+    RocksDBVectorIndex const& vecIdx) {
+  auto const& database = vocbase.name();
+  auto const collection = std::to_string(coll.planId().id());
+  auto const& shard = coll.name();
+  auto const indexId = std::to_string(vecIdx.id().id());
+  _maintenance.clearIndexError(database, collection, shard, indexId);
 }
 
 }  // namespace arangodb
