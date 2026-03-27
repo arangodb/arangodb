@@ -407,17 +407,6 @@ function withClauseTestSuite() {
       assertEqual(actual, [ "VertexCollection1/A", "VertexCollection2/ONE" ]);
     },
 
-    //testWithClauseNotNeededShortestPathOptions: function() {
-    //  const startNode = vertexCollectionName1 + "/A";
-    //  const endNode = vertexCollectionName2 + "/ONE";
-    //  const query = `FOR p IN OUTBOUND SHORTEST_PATH "${startNode}" TO "${endNode}" ${edgeCollectionName} 
-    //                   OPTIONS { vertexCollections: [ "${vertexCollectionName1}" ] }
-    //                   RETURN p._id`;
-    //
-    //  const actual = db._query(query).toArray();
-    //  assertEqual(actual, [ "VertexCollection1/A", "VertexCollection2/ONE" ]);
-    //},
-
     testWithClauseNotNeededKShortestPaths: function() {
       const startNode = vertexCollectionName1 + "/A";
       const endNode = vertexCollectionName2 + "/ONE";
@@ -427,17 +416,6 @@ function withClauseTestSuite() {
       const actual = db._query(query).toArray();
       assertEqual(actual, [ [ "VertexCollection1/A", "VertexCollection2/ONE" ] ]);
     },
-
-    //testWithClauseNotNeededKShortestPathsOptions: function() {
-    //  const startNode = vertexCollectionName1 + "/A";
-    //  const endNode = vertexCollectionName2 + "/ONE";
-    //  const query = `FOR p IN OUTBOUND K_SHORTEST_PATHS "${startNode}" TO "${endNode}" ${edgeCollectionName} 
-    //                   OPTIONS { vertexCollections: [ "${vertexCollectionName1}" ] }
-    //                   RETURN p.vertices[*]._id`;
-    //
-    //  const actual = db._query(query).toArray();
-    //  assertEqual(actual, [ [ "VertexCollection1/A", "VertexCollection2/ONE" ] ]);
-    //},
 
     testWithClauseNotNeededKPaths: function() {
       const startNode = vertexCollectionName1 + "/A";
@@ -449,17 +427,6 @@ function withClauseTestSuite() {
       assertEqual(actual, [ [ "VertexCollection1/A", "VertexCollection2/ONE" ] ]);
     },
 
-    //testWithClauseNotNeededKPathsOptions: function() {
-    //  const startNode = vertexCollectionName1 + "/A";
-    //  const endNode = vertexCollectionName2 + "/ONE";
-    //  const query = `FOR p IN 1..1 OUTBOUND K_PATHS "${startNode}" TO "${endNode}" ${edgeCollectionName} 
-    //                   OPTIONS { vertexCollections: [ "${vertexCollectionName1}" ] }
-    //                   RETURN p.vertices[*]._id`;
-    //
-    //  const actual = db._query(query).toArray();
-    //  assertEqual(actual, [ [ "VertexCollection1/A", "VertexCollection2/ONE" ] ]);
-    //},
-
     testWithClauseNotNeededAllShortestPaths: function() {
       const startNode = vertexCollectionName1 + "/A";
       const endNode = vertexCollectionName2 + "/ONE";
@@ -469,17 +436,6 @@ function withClauseTestSuite() {
       const actual = db._query(query).toArray();
       assertEqual(actual, [ [ "VertexCollection1/A", "VertexCollection2/ONE" ] ]); 
     },
-
-    //testWithClauseNotNeededAllShortestPathsOptions: function() {
-    //  const startNode = vertexCollectionName1 + "/A";
-    //  const endNode = vertexCollectionName2 + "/ONE";
-    //  const query = `FOR p IN OUTBOUND ALL_SHORTEST_PATHS "${startNode}" TO "${endNode}" ${edgeCollectionName} 
-    //                   OPTIONS { vertexCollections: [ "${vertexCollectionName1}" ] }
-    //                   RETURN p.vertices[*]._id`;
-    //
-    //  const actual = db._query(query).toArray();
-    //  assertEqual(actual, [ [ "VertexCollection1/A", "VertexCollection2/ONE" ] ]); 
-    //},
   };
 }
 
