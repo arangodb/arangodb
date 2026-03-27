@@ -21,6 +21,8 @@
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <filesystem>
+
 #include "TemporaryStorageFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -53,7 +55,9 @@ namespace {
 // characters, and making it end with a directory separator
 std::string normalizePath(std::string const& currentDir,
                           std::string const& path) {
-  std::string absolute = TRI_GetAbsolutePath(path, currentDir);
+  std::string absolute =
+      std::filesystem::absolute(std::filesystem::path(currentDir) / path)
+          .string();
   TRI_NormalizePath(absolute);
   if (!absolute.empty() && absolute.back() != TRI_DIR_SEPARATOR_CHAR) {
     absolute.push_back(TRI_DIR_SEPARATOR_CHAR);

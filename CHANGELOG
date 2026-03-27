@@ -1,5 +1,8 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+* Vector index creation with `inBackground: false` now blocks until training
+  completes and returns the current `trainingState` in the response.
+
 * Lowered the vector index training threshold from
   `nLists * max_points_per_centroid` to `nLists`, allowing vector indexes
   to be trained with fewer documents in the collection.
