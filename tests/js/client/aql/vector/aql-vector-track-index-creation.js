@@ -101,6 +101,9 @@ function VectorTrackIndexCreationForegroundSuite() {
 
       const result = createIndex(collection, /*inBackground*/ false);
 
+      assertTrue(result.isNewlyCreated,
+        "Foreground ensureIndex should report isNewlyCreated: true");
+
       // ensureIndex with inBackground: false blocks until trained,
       // both on single server and on coordinator.
       assertEqual(VectorIndexTrainingState.kReady, result.trainingState,
@@ -143,6 +146,9 @@ function VectorTrackIndexCreationBackgroundSuite() {
       collection.insert(docs);
 
       const result = createIndex(collection, /*inBackground*/ true);
+
+      assertTrue(result.isNewlyCreated,
+        "Background ensureIndex should report isNewlyCreated: true");
 
       // inBackground: true — ensureIndex returns without waiting for
       // training.

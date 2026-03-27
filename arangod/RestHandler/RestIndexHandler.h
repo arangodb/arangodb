@@ -62,6 +62,12 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   [[nodiscard]] futures::Future<Result> waitForVectorIndexReady(
       std::shared_ptr<LogicalCollection> const& coll, IndexId indexId);
 
+  // If the created index is a synchronous vector index, wait for training
+  // and refresh the response with up-to-date training state.
+  [[nodiscard]] futures::Future<Result> awaitAndRefreshVectorIndex(
+      std::shared_ptr<LogicalCollection> const& coll, VPackSlice body,
+      velocypack::Builder& response);
+
   std::shared_ptr<LogicalCollection> collection(std::string const& cName);
 };
 }  // namespace arangodb

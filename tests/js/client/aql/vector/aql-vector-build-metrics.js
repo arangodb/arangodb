@@ -112,7 +112,6 @@ function VectorIndexBuildMetricsSuite() {
     },
 
     testMetricsAfterSuccessfulBuild: function () {
-      let newCollection =
       collection.ensureIndex({
         name: "vec_l2",
         type: "vector",

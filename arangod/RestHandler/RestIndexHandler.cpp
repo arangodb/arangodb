@@ -724,6 +724,74 @@ futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
   }
 }
 
+futures::Future<Result> RestIndexHandler::awaitAndRefreshVectorIndex(
+    std::shared_ptr<LogicalCollection> const& coll, VPackSlice body,
+    velocypack::Builder& response) {
+  bool const inBackground = body.get("inBackground").isTrue();
+  if (inBackground || !response.slice().get("type").isString() ||
+      response.slice().get("type").stringView() !=
+          StaticStrings::IndexNameVector) {
+    co_return Result{};
+  }
+
+  auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
+  if (!vectorIndexFeature.isVectorIndexEnabled()) {
+    co_return Result{};
+  }
+
+  auto idSlice = response.slice().get("id");
+  if (!idSlice.isString()) {
+    co_return Result{};
+  }
+
+  auto const indexId = IndexId::fromString(idSlice.stringView());
+  if (indexId.fail()) {
+    co_return indexId.result();
+  }
+
+  auto res = co_await waitForVectorIndexReady(coll, indexId.get());
+  if (res.fail()) {
+    co_return res;
+  }
+
+  // Preserve isNewlyCreated before re-fetching — getIndex doesn't return it.
+  bool const isNewlyCreated = response.slice().get("isNewlyCreated").isTrue();
+
+  // Re-fetch so the response reflects current training state.
+  VPackBuilder refreshed;
+  auto getRes = co_await methods::Indexes::getIndex(*coll, idSlice, refreshed);
+  if (getRes.ok()) {
+    if (ServerState::instance()->isCoordinator()) {
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto collCurrent = ci.getCollectionCurrent(
+          _vocbase.name(), std::to_string(coll->planId().id()));
+      auto const shardIds = coll->shardIds();
+      VPackBuilder arr;
+      {
+        VPackArrayBuilder a(&arr);
+        arr.add(refreshed.slice());
+      }
+      auto enriched =
+          enrichVectorIndexes(arr.slice(), collCurrent, shardIds, false);
+      TRI_ASSERT(enriched.slice().isArray() && enriched.slice().length() == 1);
+      VPackBuilder single;
+      single.add(enriched.slice().at(0));
+      response = std::move(single);
+    } else {
+      response = std::move(refreshed);
+    }
+
+    // Re-inject isNewlyCreated into the refreshed response.
+    VPackBuilder flag;
+    flag.openObject();
+    flag.add("isNewlyCreated", VPackValue(isNewlyCreated));
+    flag.close();
+    response = VPackCollection::merge(response.slice(), flag.slice(), false);
+  }
+
+  co_return Result{};
+}
+
 async<void> RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
@@ -779,57 +847,10 @@ async<void> RestIndexHandler::createIndex() {
 
     if (result.ok()) {
       TRI_ASSERT(response.slice().isObject());
-      bool const inBackground = body.get("inBackground").isTrue();
-      if (!inBackground && response.slice().get("type").isString() &&
-          response.slice().get("type").stringView() ==
-              StaticStrings::IndexNameVector) {
-        auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
-        if (vectorIndexFeature.isVectorIndexEnabled()) {
-          auto idSlice = response.slice().get("id");
-          if (idSlice.isString()) {
-            auto const indexId = IndexId::fromString(idSlice.stringView());
-            if (indexId.fail()) {
-              generateError(indexId.result());
-              co_return;
-            }
-            auto const res =
-                co_await waitForVectorIndexReady(coll, indexId.get());
-            if (res.fail()) {
-              generateError(res);
-              co_return;
-            }
-            // Re-fetch the index so the response reflects the
-            // current training state (the original slice is stale).
-            VPackBuilder refreshed;
-            auto getRes =
-                co_await methods::Indexes::getIndex(*coll, idSlice, refreshed);
-            if (getRes.ok()) {
-              if (ServerState::instance()->isCoordinator()) {
-                // On Coordinator, getIndex does not include trainingState.
-                // Enrich the response with per-shard training state.
-                auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-                std::shared_ptr<CollectionInfoCurrent> collCurrent;
-                collCurrent = ci.getCollectionCurrent(
-                    _vocbase.name(), std::to_string(coll->planId().id()));
-                auto const shardIds = coll->shardIds();
-                VPackBuilder arr;
-                {
-                  VPackArrayBuilder a(&arr);
-                  arr.add(refreshed.slice());
-                }
-                auto enriched = enrichVectorIndexes(arr.slice(), collCurrent,
-                                                    shardIds, false);
-                TRI_ASSERT(enriched.slice().isArray() &&
-                           enriched.slice().length() == 1);
-                VPackBuilder single;
-                single.add(enriched.slice().at(0));
-                response = std::move(single);
-              } else {
-                response = std::move(refreshed);
-              }
-            }
-          }
-        }
+      auto vecRes = co_await awaitAndRefreshVectorIndex(coll, body, response);
+      if (vecRes.fail()) {
+        generateError(vecRes);
+        co_return;
       }
 
       VPackSlice const created = response.slice().get("isNewlyCreated");
