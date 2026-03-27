@@ -379,21 +379,35 @@ bool createDirectory(std::string const& name, int mask,
     *errorNumber = TRI_ERROR_NO_ERROR;
   }
 
-  auto result = TRI_MKDIR(name.c_str(), static_cast<mode_t>(mask));
-
-  if (result != 0) {
-    int res = errno;
-    if (res == EEXIST && isDirectory(name)) {
-      result = 0;
-    } else {
-      auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      if (errorNumber != nullptr) {
-        *errorNumber = errorCode;
+  std::filesystem::path const p(name);
+  std::error_code ec;
+  bool const created = std::filesystem::create_directory(p, ec);
+  if (!ec) {
+    if (created) {
+      std::error_code pec;
+      std::filesystem::permissions(
+          p, static_cast<std::filesystem::perms>(mask & 07777),
+          std::filesystem::perm_options::replace, pec);
+      if (pec) {
+        errno = pec.value();
+        auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        if (errorNumber != nullptr) {
+          *errorNumber = errorCode;
+        }
+        return false;
       }
     }
+    return true;
   }
-
-  return result == 0;
+  if (isDirectory(name)) {
+    return true;
+  }
+  errno = ec.value();
+  auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  if (errorNumber != nullptr) {
+    *errorNumber = errorCode;
+  }
+  return false;
 }
 
 /// @brief will not copy files/directories for which the filter function
@@ -602,31 +616,21 @@ std::string stripExtension(std::string const& path,
 }
 
 FileResult changeDirectory(std::string const& path) {
-  int res = TRI_CHDIR(path.c_str());
-
-  if (res == 0) {
-    return FileResult();
-  } else {
-    return FileResult(errno);
+  std::error_code ec;
+  std::filesystem::current_path(path, ec);
+  if (ec) {
+    return FileResult(ec.value());
   }
+  return FileResult();
 }
 
 FileResultString currentDirectory() {
-  size_t len = 1000;
-  std::unique_ptr<char[]> current(new char[len]);
-
-  while (TRI_GETCWD(current.get(), (int)len) == nullptr) {
-    if (errno == ERANGE) {
-      len += 1000;
-      current.reset(new char[len]);
-    } else {
-      return FileResultString(errno, ".");
-    }
+  std::error_code ec;
+  std::filesystem::path const cwd = std::filesystem::current_path(ec);
+  if (ec) {
+    return FileResultString(ec.value(), ".");
   }
-
-  std::string result = current.get();
-
-  return FileResultString(result);
+  return FileResultString(cwd.string());
 }
 
 std::string homeDirectory() { return TRI_HomeDirectory(); }
