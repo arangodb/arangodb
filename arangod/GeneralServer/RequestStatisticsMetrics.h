@@ -2,10 +2,21 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Shared Prometheus metric builders for HTTP request / connection timing and
-/// byte histograms, and HTTP method counters. Registered in GeneralServerFeature;
-/// included from StatisticsFeature for maintainer-mode statBuilder checks.
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -43,22 +54,20 @@ struct RequestStatisticsConnectionTimeScale {
 
 struct RequestStatisticsRequestTimeScale {
   static metrics::FixScale<double> scale() {
-    static std::initializer_list<double> const cuts{
-        0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 5.0, 15.0, 30.0};
+    static std::initializer_list<double> const cuts{0.01, 0.05, 0.1,  0.2, 0.5,
+                                                    1.0,  5.0,  15.0, 30.0};
     return {0.01, 30.0, cuts};
   }
 };
 
-DECLARE_HISTOGRAM(
-    arangodb_client_connection_statistics_bytes_received,
-    RequestStatisticsBytesReceivedScale, "Bytes received for requests");
+DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_received,
+                  RequestStatisticsBytesReceivedScale,
+                  "Bytes received for requests");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_sent,
-                  RequestStatisticsBytesSentScale,
-                  "Bytes sent for responses");
-DECLARE_HISTOGRAM(
-    arangodb_client_user_connection_statistics_bytes_received,
-    RequestStatisticsBytesReceivedScale,
-    "Bytes received for requests, only user traffic");
+                  RequestStatisticsBytesSentScale, "Bytes sent for responses");
+DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_received,
+                  RequestStatisticsBytesReceivedScale,
+                  "Bytes received for requests, only user traffic");
 DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_sent,
                   RequestStatisticsBytesSentScale,
                   "Bytes sent for responses, only user traffic");

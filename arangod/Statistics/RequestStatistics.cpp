@@ -107,7 +107,8 @@ uint64_t RequestStatistics::memoryUsage() noexcept {
   return ::memoryUsage.load(std::memory_order_relaxed);
 }
 
-void RequestStatistics::initialize(application_features::ApplicationServer* appServer) {
+void RequestStatistics::initialize(
+    application_features::ApplicationServer* appServer) {
   gApplicationServer = appServer;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!statisticsEnabled);
@@ -185,12 +186,12 @@ void RequestStatistics::release() noexcept {
 // -----------------------------------------------------------------------------
 
 void RequestStatistics::process(RequestStatistics* statistics) {
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(statisticsEnabled);
-  #endif
-    TRI_ASSERT(statistics != nullptr);
-  
-    statistics::TotalRequests.incCounter();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(statisticsEnabled);
+#endif
+  TRI_ASSERT(statistics != nullptr);
+
+  statistics::TotalRequests.incCounter();
   if (statistics->_async) {
     statistics::AsyncRequests.incCounter();
   }
@@ -220,7 +221,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
 
   statistics->reset();
   ::enqueueItem(::freeList, statistics);
-  }
+}
 
 std::string RequestStatistics::Item::timingsCsv() const {
   TRI_ASSERT(_stat != nullptr);
