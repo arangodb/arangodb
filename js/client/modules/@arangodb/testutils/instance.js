@@ -1164,7 +1164,6 @@ class instance {
         this.serverCrashedLocal = true;
         counters.shutdownSuccess = false;
       }
-      crashUtils.stopProcdump(this.options, this);
     } else {
       if (!this.isAgent()) {
         counters.nonAgenciesCount--;
@@ -1172,7 +1171,6 @@ class instance {
       if (!this.options.noStartStopLogs) {
         print(Date() + ' Server "' + this.name + '" shutdown: Success: pid', this.pid);
       }
-      crashUtils.stopProcdump(this.options, this);
       return false;
     }
   }
