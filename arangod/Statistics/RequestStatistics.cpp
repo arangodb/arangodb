@@ -222,17 +222,3 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   statistics->reset();
   ::enqueueItem(::freeList, statistics);
 }
-
-std::string RequestStatistics::Item::timingsCsv() const {
-  TRI_ASSERT(_stat != nullptr);
-  std::stringstream ss;
-
-  ss << std::setprecision(9) << std::fixed << "read,"
-     << (_stat->_readEnd - _stat->_readStart) << ",queue,"
-     << (_stat->_queueEnd - _stat->_queueStart) << ",queue-size,"
-     << _stat->_queueSize << ",request,"
-     << (_stat->_requestEnd - _stat->_requestStart) << ",total,"
-     << (StatisticsFeature::time() - _stat->_readStart);
-
-  return ss.str();
-}

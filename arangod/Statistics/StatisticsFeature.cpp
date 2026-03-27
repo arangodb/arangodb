@@ -551,65 +551,8 @@ void StatisticsFeature::start() {
 
 void StatisticsFeature::stop() {
   // no-op
-}
-
-VPackBuilder StatisticsFeature::fillDistribution(
-    statistics::Distribution const& dist) {
-  VPackBuilder builder;
-  builder.openObject();
-
-  builder.add("sum", VPackValue(dist._total));
-  builder.add("count", VPackValue(dist._count));
-
-  builder.add("counts", VPackValue(VPackValueType::Array));
-  for (auto const& val : dist._counts) {
-    builder.add(VPackValue(val));
-  }
-  builder.close();
-
-  builder.close();
-
-  return builder;
-}
-
-void StatisticsFeature::appendHistogram(
-    std::string& result, statistics::Distribution const& dist,
-    std::string const& label, std::initializer_list<std::string> const& les,
-    bool isInteger, std::string_view globals, bool ensureWhitespace) {
-  VPackBuilder tmp = fillDistribution(dist);
-  VPackSlice slc = tmp.slice();
-  VPackSlice counts = slc.get("counts");
-
-  auto const& stat = statStrings.at(label);
-  auto const name = stat[0];
-  auto const type = stat[1];
-  auto const help = stat[2];
-
-  metrics::Metric::addInfo(result, name, help, type);
-  TRI_ASSERT(les.size() == counts.length());
-  size_t i = 0;
-  uint64_t sum = 0;
-  for (auto const& le : les) {
-    sum += counts.at(i++).getNumber<uint64_t>();
-    absl::StrAppend(&result, name, "_bucket{le=\"", le, "\"",
-                    (globals.empty() ? "" : ","), globals, "}",
-                    (ensureWhitespace ? " " : ""), sum, "\n");
-  }
-  absl::StrAppend(&result, name, "_count{", globals, "}",
-                  (ensureWhitespace ? " " : ""), sum, "\n");
-  if (isInteger) {
-    uint64_t v = slc.get("sum").getNumber<uint64_t>();
-    absl::StrAppend(&result, name, "_sum{", globals, "}",
-                    (ensureWhitespace ? " " : ""), v, "\n");
-  } else {
-    double v = slc.get("sum").getNumber<double>();
-    // must use std::to_string() here because it produces a different
-    // string representation of large floating-point numbers than absl
-    // does. absl uses scientific notation for numbers that exceed 6
-    // digits, and std::to_string() doesn't.
-    absl::StrAppend(&result, name, "_sum{", globals, "}",
-                    (ensureWhitespace ? " " : ""), std::to_string(v), "\n");
-  }
+  // This function needs to be present since it needs to override
+  // ApplicationFeature::stop() method.
 }
 
 void StatisticsFeature::appendMetric(std::string& result,
@@ -659,7 +602,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
     _requestStatisticsMemoryUsage.store(RequestStatistics::memoryUsage(),
                                         std::memory_order_relaxed);
     _connectionStatisticsMemoryUsage.store(ConnectionStatistics::memoryUsage(),
-        std::memory_order_relaxed);
+                                           std::memory_order_relaxed);
   }
 
   ProcessInfo info = TRI_ProcessInfoSelf();

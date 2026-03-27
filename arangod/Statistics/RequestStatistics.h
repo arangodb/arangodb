@@ -172,8 +172,6 @@ class RequestStatistics {
       }
     }
 
-    std::string timingsCsv() const;
-
    private:
     RequestStatistics* _stat;
   };

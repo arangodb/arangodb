@@ -84,9 +84,6 @@ class StatisticsFeature final
 
   stats::Descriptions const& descriptions() const { return _descriptions; }
 
-  static arangodb::velocypack::Builder fillDistribution(
-      statistics::Distribution const& dist);
-
   bool allDatabases() const noexcept { return _statisticsAllDatabases; }
 
  private:
@@ -101,12 +98,6 @@ class StatisticsFeature final
                                         std::string_view globals,
                                         bool ensureWhitespace);
 
-  static void appendHistogram(std::string& result,
-                              statistics::Distribution const& dist,
-                              std::string const& label,
-                              std::initializer_list<std::string> const& les,
-                              bool isInteger, std::string_view globals,
-                              bool ensureWhitespace);
   bool _statistics;
   bool _statisticsAllDatabases;
   StatisticsFeatureOptions _options;
