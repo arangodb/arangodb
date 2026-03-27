@@ -288,8 +288,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         clearIndexError(vocbase, *coll, vecIdx);
         failedBuilds.erase(vecIdx.objectId());
 
-        // Built one index — return to the scan loop so we sleep
-        // before starting the next one.
+        // Update the untrained count after each successful build.
         _untrainedCount.store(
             unusableIndexesCount > 0 ? unusableIndexesCount - 1 : 0,
             std::memory_order_relaxed);
@@ -297,7 +296,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
     }
   });
 
-  scanCompletedFully = true;
+  scanCompletedFully = !stopToken.stop_requested();
   _untrainedCount.store(unusableIndexesCount, std::memory_order_relaxed);
 
   // Prune failed build entries for indexes that no longer exist.
