@@ -1164,7 +1164,6 @@ class instance {
         this.serverCrashedLocal = true;
         counters.shutdownSuccess = false;
       }
-      crashUtils.stopProcdump(this.options, this);
     } else {
       if (!this.isAgent()) {
         counters.nonAgenciesCount--;
@@ -1172,7 +1171,6 @@ class instance {
       if (!this.options.noStartStopLogs) {
         print(Date() + ' Server "' + this.name + '" shutdown: Success: pid', this.pid);
       }
-      crashUtils.stopProcdump(this.options, this);
       return false;
     }
   }
@@ -1470,6 +1468,55 @@ class instance {
     }
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
   }
+
+  toThisInstance(callback) {
+    let handle = arango.getConnectionHandle();
+    this.connect();
+    let reconnected = false;
+    let ret;
+    try {
+      ret = callback();
+    } finally {
+      reconnected = arango.connectHandle(handle);
+    }
+    if (!reconnected) {
+      throw new Error(`failed to restore connection to ${handle}`);
+    }
+    return ret;
+  }
+
+  getRawMetric(tags) {
+    return this.toThisInstance(() => {
+      return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
+    });
+  }
+
+  getAllMetric(tags) {
+    let res = this.getRawMetric(tags);
+    if (res.code !== 200) {
+      throw "error fetching metric";
+    }
+    return res.body;
+  }
+
+  getMetricName(text, name) {
+    let re = new RegExp("^" + name);
+    let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+    if (!matches.length) {
+      throw "Metric " + name + " not found";
+    }
+    let res = 0; // Sum up values from all matches
+    for(let i = 0; i < matches.length; i+= 1) {
+      res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+    }
+    return res;
+  }
+
+  getMetric(name) {
+    let text = this.getAllMetric('');
+    return this.getMetricName(text, name);
+  }
+  
   debugGetFailurePoints() {
     this.connect();
     let haveFailAt = arango.GET("/_admin/debug/failat") === true;

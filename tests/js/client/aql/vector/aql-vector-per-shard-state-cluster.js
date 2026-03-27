@@ -37,11 +37,11 @@ const {
 } = require("@arangodb/testutils/vector-index-common");
 const dbName = "vectorPerShardStateDB";
 const dimension = 100;
-const nLists = 1;
-// Training threshold is max(nLists * 39, 1000) = 1000 with nLists=1.
+const nLists = 10;
+// Training threshold is nLists.
 // Use 1200 per shard to comfortably exceed the threshold.
 const docsAboveThreshold = 1200;
-const docsBelowThreshold = 500;
+const docsBelowThreshold = nLists - 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Helpers
@@ -170,7 +170,7 @@ function createVectorIndex(collection, sparse) {
         name: "vec_l2",
         type: "vector",
         fields: ["vector"],
-        inBackground: false,
+        inBackground: true,
         sparse: sparse || false,
         params: {metric: "l2", dimension, nLists},
     });
