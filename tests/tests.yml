@@ -135,7 +135,7 @@
       priority: 250
       parallelity: 2
       type: single
-      size: circleci-large
+      size: medium
 
 - shell_client_transaction:
     options:
@@ -214,7 +214,6 @@
       priority: 250
       type: single
       suffix: _large
-      size: circleci-large
     args:
       # TODO: BTS-2283
       encryptionAtRest: false
@@ -399,7 +398,7 @@
 - shell_client_aql_large:
     options:
       priority: 1000
-      size: circleci-large
+      size: medium+
       type: cluster
       buckets: 4
       suffix: _large
@@ -419,7 +418,7 @@
     options:
       priority: 500
       type: cluster
-      size: circleci-large
+      size: large
       buckets: 6
     args:
       dumpAgencyOnError: true
