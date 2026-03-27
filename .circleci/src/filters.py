@@ -159,7 +159,7 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     # if we should filter for a name:
     if (criteria.test_suite is not None and
         criteria.test_suite != "" and
-        not (job.name.find(criteria.test_suite) >= 0)):
+        criteria.test_suite not in job.name):
         return False
 
     # Check deployment type filter
