@@ -79,7 +79,7 @@ exactly what is specified.
 For RBAC enabled, we can then verify the new implementation and thus exactly know
 to what new permissions the old system maps.
 
-Finally, we can add extensive tests.
+Finally, we must add extensive tests.
 
 
 ### Where to check authorization
@@ -119,16 +119,50 @@ Philosophy: "Keep the authorization in ´arangod` as much as possible
 as it is without RBAC, with the following modifications, if RBAC is
 enabled:
 
- - Database and collection access is controlled by RBAC instead of the _users collection
- - We split "Collection RW" into two separate access levels:
-   "RW data" (which includes reading the collection meta
-   data and data!) and "RW all" (which additionally includes
-   creating, dropping, and modifying the collection meta data)
- - There are three RBAC actions for collections: `db:ReadCollection`, `db:WriteCollectionData`
-   and `db:WriteCollectionMeta`. To reach level `RO` for a collection, one
-   only needs "allow" for `db:ReadCollection`. To reach level `RW data` one
-   needs "allow" for `db:ReadCollection` and `db:WriteCollectionData`. To reach
-   level `RW all` one needs "allow" on all three actions.
+ - Database and collection access is controlled by RBAC instead of data
+   in the _users collection.
+ - It is also a bit more fine-grained (in particular for collections).
+ - For databases, we have three access levels:
+    1. NONE
+    2. RO
+    3. RW
+   These are controlled by two RBAC actions:
+    - `db.ReadDatabase` (with a database as resource `db:database:<name>`)
+    - `db.WriteDatabase` (with a database as resource `db:database:<name>`)
+   The first governs if an identity can use the database at all, at
+   the same time it governs, whether or one can see a database in the
+   listing of all accessible databases (`GET /_api/database/user`). The
+   second governs creating and dropping, as well as changing properties
+   of a database. This is very similar to the classic system, except that
+   creating and dropping of database "d" used to be regulated by RW access
+   to the `_system` database ("container principle"). Now, we have more
+   fine grained authorization with resource patterns. The `_system` database
+   is no longer so special.
+   This means, one has at least level "RO", if one has `db.ReadDatabase` for
+   a database, and one has level "RW", if one has both `db.ReadDatabase` and
+   `db.WriteDatabase` for the database.
+ - For collections, we split "Collection RW" into two separate access
+   levels: "RWDATA" (which includes reading the collection meta data and
+   data!) and "RW" (which additionally includes creating, dropping,
+   and modifying the collection meta data), so we have these access
+   levels:
+    1. NONE
+    2. RO
+    3. RWDATA
+    4. RW
+ - There are three RBAC actions for collections: `db:ReadCollection`,
+   `db:WriteCollectionData` and `db:WriteCollectionMeta`. To reach
+   level `Read` for a collection, one only needs "allow" for
+   `db:ReadCollection`. To reach level `RW data` one needs "allow" for
+   `db:ReadCollection` and `db:WriteCollectionData`. To reach level `RW
+   all` one needs "allow" on all three actions.
+ - For views, there are three levels:
+    1. NONE
+    2. RO
+    3. RW
+   There are two RBAC actions for views: `db:ReadView` and `db:WriteView`.
+   One needs `db:ReadView` to achieve at least level RO and one needs
+   noth `db:ReadView` and `db:WriteView` to achieve level RW.
  - All places that previously required RW access to the `_system`
    database are assigned to exactly one of the actions with the prefix
    `db:Admin`, for which one needs "allow" to execute the operation.
@@ -147,8 +181,61 @@ This philosophy helps in the following ways:
  - maintains the "spirit" of RBAC that a "deny" should trump any potentially
    contradicting "allow" (which is why we cannot use OR conditions)
  
- 
+
+### Abstraction in `ExecContext` to check these permissions
+
+The `ExecContext` offers the following checking methods:
+
+ - `canUseAdminAction(rbac::Category::Any const action) -> bool`
+ - `canUseHardenedAction(rbac::Category::Any const action) -> bool`
+
+ - `canSeeDatabase(std::string_view db) -> bool`
+ - `canCreateDatabase(std::string_view db) -> bool`
+ - `canDropDatabase(std::string_view db) -> bool`
+ - `canUseDatabase(std::string_view db, AccessLevel const level) -> bool`
+
+ - `canSeeCollection(std::string_view db, std::string_view coll) -> bool`
+ - `canCreateCollection(std::string_view db, std::string_view coll) -> bool`
+ - `canDropCollection(std::string_view db, std::string_view coll) -> bool`
+ - `canUseCollection(std::string_view db, std::string_view view, AccessLevel const level) -> bool`
+
+ - `canSeeView(std::string_view db, std::string_view view) -> bool`
+ - `canCreateView(std::string_view db, std::string_view view) -> bool`
+ - `canDropView(std::string_view db, std::string_view view) -> bool`
+ - `canUseView(std::string_view db, std::string_view view) -> bool`
+
+ - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> bool`
+ - `canCreateAnalyzer(std::string_view db, std::string_view analyzer) -> bool`
+ - `canDropAnalyzer(std::string_view db, std::string_view analyzer) -> bool`
+ - `canUseAnalyzer(std::string_view db, std::string_view analyzer) -> bool`
+
+Note that for now, `canSee*` is equivalent to `canUse*(RO)` and
+`canCreate*` and `canDrop*` are equivalent to `canUse*(RW)`. For
+collections `canUseCollection(RWDATA)` is needed to write data. However,
+we keep the semantic checks separate in case we want to split things
+further later.
+
+There is one subtlety, though. If we separate `canSee*` from
+`canUse*(RO)` later, then we want that if a user cannot see a collection
+(say) and cannot read it, then the error when trying to access it should
+be "NOTFOUND", to not give away the information that the collection
+exists!
+
+Therefore, a common pattern in the code will be:
+
+```
+if (!canSee*(db, coll)) {
+  return NOTFOUND;
+}
+if (!canUse*(db, coll, RO)) {
+  return FORBIDDEN;
+}
+```
+
+
 ## Complete Endpoint–Action Reference Table
+
+(still being edited)
 
 Ideas:
 
@@ -175,28 +262,8 @@ in a lot of cases these have 3 possible values: `SUPERUSER`, `ADMIN`, `ANY`, som
 it is possible to switch off the API entirely. These switches remain and take precedence.
 RBAC will only be considered if the switch is on `ADMIN`.
 
-## Implementation plan
 
-We already have an RbacFeature which has the Service instantiated.
-It is available as a singleton, it can be used once RbacFeature::prepare is finished.
-
-The HTTP service is only started in GeneralServerFeature::start, so we are good.
-
- 1. Split canUseCollection into canUseCollectionMeta and canUseCollectionData.
- 2. Adjust all call sites.
- 3. Split collectionAuthLevel into collectionAuthLevelMeta and collectionAuthLevelData.
- 4. Adjust all call sites.
- 5. Implement RBAC behaviour in `ExecContext`.
- 5. Add an RBAC action argument to `isAdminUser`. Implement RBAC switch.
- 6. Add an RBAC action argument to `canAccessHardenedAPI`. Implement RBAC switch.
- 7. Check all 250 permission checks.
- 8. Add testing for non-RBAC behaviour for all 250 permission checks.
- 9. Add testing for RBAC-behaviour for all 250 permission checks.
- 10. Revisit critical things: jobs API
- 11. Revisit user API in particular w.r.t. password change self.
- 12. ???
-
- ## New table of paths and authentification
+## Table of paths and authentification
  
 Meanings of abbreviations:
 
