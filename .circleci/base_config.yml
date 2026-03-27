@@ -64,6 +64,9 @@ parameters:
   config-definitions:
     type: string
     default: ""
+  filter-testsuite:
+    type: string
+    default: ""
   config-definitions-branches:
     type: string
     default: ""
