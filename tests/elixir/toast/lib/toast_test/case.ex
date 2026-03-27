@@ -49,8 +49,16 @@ defmodule ToastTest.Case do
     end
   end
 
+  setup_all context do
+    build_deployment_context(context.module)
+  end
+
   setup context do
-    suite_key = resolve_suite_key(context.module)
+    build_deployment_context(context.module)
+  end
+
+  defp build_deployment_context(module) do
+    suite_key = resolve_suite_key(module)
     deployment = ToastTest.DeploymentRegistry.get(suite_key)
     extra_context = ToastTest.DeploymentRegistry.get_extra_context(suite_key)
 

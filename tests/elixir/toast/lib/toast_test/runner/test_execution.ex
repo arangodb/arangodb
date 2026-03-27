@@ -103,8 +103,22 @@ defmodule ToastTest.Runner.TestExecution do
         {test_module, remaining_tests, finished_tests}
 
       {:error, test_module} ->
+        log_setup_all_failure(test_module, length(tests))
         {test_module, Enum.map(tests, &%{&1 | state: {:invalid, test_module}}), []}
     end
+  end
+
+  defp log_setup_all_failure(%ExUnit.TestModule{name: module, state: {:failed, failures}}, count) do
+    formatted =
+      Enum.map_join(failures, "\n", fn {kind, error, stack} ->
+        Exception.format(kind, error, stack)
+      end)
+
+    test_word = if count == 1, do: "test", else: "tests"
+
+    Logger.error(
+      "setup_all failed for #{inspect(module)} — #{count} #{test_word} invalidated\n#{formatted}"
+    )
   end
 
   defp run_setup_all(
