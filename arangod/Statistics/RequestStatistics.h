@@ -30,8 +30,8 @@
 #include <cstdint>
 
 namespace arangodb {
-namespace application_features{
-  class ApplicationServer;
+namespace application_features {
+class ApplicationServer;
 };
 
 class RequestStatistics {
