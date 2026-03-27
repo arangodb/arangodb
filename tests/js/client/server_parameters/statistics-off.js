@@ -52,12 +52,11 @@ function testSuite() {
     },
 
     testHttpMetrics : function() {
-      try {
-        getMetric("arangodb_http_request_statistics_total_requests_total");
-        fail();
-      } catch (err) {
-        assertEqual("Metric arangodb_http_request_statistics_total_requests_total not found", err);
-      }
+      // HTTP request metrics are still registered on MetricsFeature,
+      // hence always exported. These metrics will always be present
+      // once StatisticsFeature is fully removed.
+      let value = getMetric("arangodb_http_request_statistics_total_requests_total");
+      assertEqual(0, value);
     },
 
     testMemoryUsage : function() {

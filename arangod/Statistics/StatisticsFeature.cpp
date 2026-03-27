@@ -658,8 +658,6 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
     // arangodb_connection_statistics_memory_usage metrics
     _requestStatisticsMemoryUsage.store(RequestStatistics::memoryUsage(),
                                         std::memory_order_relaxed);
-    _connectionStatisticsMemoryUsage.store(ConnectionStatistics::memoryUsage(),
-                                           std::memory_order_relaxed);
   }
 
   ProcessInfo info = TRI_ProcessInfoSelf();
