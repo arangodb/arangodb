@@ -134,7 +134,9 @@ defmodule Toast.Env do
 
   defp resolve_sanitizers(values) do
     sanitizer_override =
-      values.sanitizer_override || Sanitizer.detect_from_build_dir(values.build_dir)
+      values.sanitizer_override
+      |> normalize_sanitizer()
+      |> then(&(&1 || Sanitizer.detect_from_build_dir(values.build_dir)))
 
     active_sanitizers = Sanitizer.detect(sanitizer_override)
 
@@ -242,6 +244,13 @@ defmodule Toast.Env do
               "Invalid #{var}: #{inspect(other)} (expected \"cluster\" or \"single_server\")"
     end
   end
+
+  defp normalize_sanitizer("tsan"), do: :tsan
+  defp normalize_sanitizer("alubsan"), do: :alubsan
+  defp normalize_sanitizer(atom) when atom in [nil, :tsan, :alubsan], do: atom
+
+  defp normalize_sanitizer(other),
+    do: raise(ArgumentError, "invalid sanitizer: #{inspect(other)}, expected :tsan or :alubsan")
 
   defp read_sanitizer(var) do
     case env(var) do
