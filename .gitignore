@@ -34,7 +34,7 @@ Thumbs.db
 
 cppcheck.xml
 
-enterprise
+# enterprise
 upgrade-data-tests
 compile_commands.json
 instanceinfo.json

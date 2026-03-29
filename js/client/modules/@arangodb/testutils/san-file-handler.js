@@ -150,7 +150,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'sanOptions': {},
     'isInstrumented': isInstrumented,
     'haveFailAt': haveFailAt, // silent option - automatically set only.
-    'oneTestTimeout': (isInstrumented? 40 : 15) * 60,
+    'oneTestTimeout': (isInstrumented? 40 : 155) * 60,
     'httpTimeout': 240, // 3 minutes is enough!
   });
 

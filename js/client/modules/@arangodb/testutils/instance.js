@@ -961,6 +961,7 @@ class instance {
     }
     this.getInstanceProcessStatus();
     this.serverCrashedLocal = true;
+    print(`${(new Date()).toISOString()}  DBG: pid: ${pid}`)
     if (this.pid === null) {
       this.pid = pid;
       const killCause = (this.exitStatus.status === "ABORTED" && this.exitStatus.hasOwnProperty('signal') && this.exitStatus.signal === 9) ?

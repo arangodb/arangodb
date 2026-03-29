@@ -79,6 +79,8 @@ exports.checkRequestResult = function (requestResult) {
     });
   }
 
+  internal.print(`DBG: requestResult: ${JSON.stringify(requestResult)}`);
+
   if (requestResult.hasOwnProperty('error')) {
     if (requestResult.error) {
       if (requestResult.hasOwnProperty('parsedBody') && requestResult.parsedBody.error) {

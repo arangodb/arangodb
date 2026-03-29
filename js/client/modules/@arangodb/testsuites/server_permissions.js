@@ -152,6 +152,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                 ex.errorNum === internal.errors.ERROR_DISABLED.code) {
               forceTerminate = true;
             }
+            print(`${(new Date()).toISOString()}  DBG: shutdownInstance 1`);
             shutdownStatus = this.instanceManager.shutdownInstance(forceTerminate);                               // stop
             this.instanceManager.destructor(false);
             this.results[te] = {
@@ -161,6 +162,8 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
             this.results.status = false;
             return this.results;
           }
+
+          print(`${(new Date()).toISOString()}  DBG: shutdownInstance 2`);
           if (this.instanceManager.shutdownInstance(forceTerminate)) {                                            // stop
             this.instanceManager.arangods.forEach(function(arangod) {
               arangod.pid = null;
@@ -189,6 +192,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                 status: false,
               };
               this.results.status = false;
+              print(`${(new Date()).toISOString()}  DBG: shutdownInstance 3`);
               this.instanceManager.shutdownInstance(true);
               return this.results;
             }
@@ -223,6 +227,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                 status: false,
               };
               this.results.status = false;
+              print(`${(new Date()).toISOString()}  DBG: shutdownInstance 4`);
               this.instanceManager.shutdownInstance(true);
               this.instanceManager.destructor(false);
               return this.results;
@@ -236,6 +241,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
               status: false,
             };
             this.results.status = false;
+            print(`${(new Date()).toISOString()}  DBG: shutdownInstance 5`);
             this.instanceManager.shutdownInstance(true);
             this.instanceManager.destructor(false);
             return this.results;
@@ -253,6 +259,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
                            this.instanceManager.addArgs["server.jwt-secret"]);
         }
         this.results.status = this.results.status && this.results[te].status;
+        print(`${(new Date()).toISOString()}  DBG: shutdownInstance 6`);
         shutdownStatus = this.instanceManager.shutdownInstance(false);
         this.results['shutdown'] = {
           status: this.results['shutdown'] && shutdownStatus,

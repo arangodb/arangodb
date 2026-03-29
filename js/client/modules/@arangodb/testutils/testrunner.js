@@ -343,6 +343,7 @@ class testRunner {
     for (let i = 0; i < this.testList.length; i++) {
       let te = this.testList[i];
       let filtered = {};
+      print(`${(new Date()).toISOString()}  DBG: Test ${te}`)
 
       if (this.filter(te, filtered)) {
         let first = true;
@@ -362,6 +363,9 @@ class testRunner {
           
           print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '... ' + count, RESET);
           let reply = this.runOneTest(te);
+
+          print(`${(new Date()).toISOString()}  DBG: Test ${te} reply: ${JSON.stringify(reply)}`)
+
           if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
             this.moreReason += "test told us that we should forceTerminate.";
             this.results[this.translateResult(te)] = reply;
@@ -439,6 +443,7 @@ class testRunner {
         };
       }
     }
+    print(`${(new Date()).toISOString()}  DBG: Finished executing tests`)
 
     if (count === 0) {
       this.results['ALLTESTS'] = {
@@ -479,6 +484,8 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
+    print(`${(new Date()).toISOString()}  DBG: shutdownInstance 6`);
+
     this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, this.moreReason);
     if (!this.results.shutdown) {
       this.results.status = false;

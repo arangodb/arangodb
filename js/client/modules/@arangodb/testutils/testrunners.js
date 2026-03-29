@@ -280,6 +280,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
 
     let startTime = time();
     try {
+      require("internal").print(`${(new Date()).toISOString()}  DBG: options.oneTestTimeout: ${this.options.oneTestTimeout}`)
       SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
       arango.timeout(this.options.httpTimeout);
       let result = testFunc();

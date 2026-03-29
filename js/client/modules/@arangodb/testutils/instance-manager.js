@@ -705,6 +705,7 @@ class instanceManager {
     this.agencyMgr.dumpAgencyIfNotYet(forceTerminate, timeoutReached);
     try {
       if (forceTerminate) {
+        print(`${(new Date()).toISOString()}  DBG: forceTerminate 1`);
         return this._forceTerminate(moreReason);
       } else {
         return this._shutdownInstance();
@@ -717,6 +718,7 @@ class instanceManager {
           print(RED + Date() + ' Deadline reached during shutdown! Forcefully shutting down NOW!' + RESET);
           moreReason += "Deadline reached! ";
         }
+        print(`${(new Date()).toISOString()}  DBG: forceTerminate 2`);
         return this._forceTerminate(true, moreReason);
       } else {
         print("caught error during shutdown: " + e);
@@ -781,6 +783,7 @@ class instanceManager {
         allAlive = false;
       }});
     if (!allAlive) {
+      print(`${(new Date()).toISOString()}  DBG: forceTerminate 3`);
       return this._forceTerminate("not all instances are alive!");
     }
 
@@ -818,6 +821,7 @@ class instanceManager {
       this.agencyMgr.dumpAgency();
     }
     if (forceTerminate) {
+      print(`${(new Date()).toISOString()}  DBG: forceTerminate 4`);
       return this._forceTerminate(moreReason);
     }
 
@@ -1070,6 +1074,7 @@ class instanceManager {
       print(ex, ex.stack);
       print(RESET);
       this.cleanup = false;
+      print(`${(new Date()).toISOString()}  DBG: forceTerminate 5`);
       return this._forceTerminate("Abort during Health Check SUT netstat gathering " + moreReason);
     }
 
