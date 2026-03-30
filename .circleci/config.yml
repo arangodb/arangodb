@@ -45,6 +45,32 @@ jobs:
             printf '#include <iostream>\n#include <thread>\n#include <unistd.h>\nint main() { std::cout \x3c\x3c "hardware_concurrency: " \x3c\x3c std::thread::hardware_concurrency() \x3c\x3c std::endl; std::cout \x3c\x3c "sysconf(_SC_NPROCESSORS_ONLN): " \x3c\x3c sysconf(_SC_NPROCESSORS_ONLN) \x3c\x3c std::endl; }\n' > /tmp/concurrency.cpp
             g++ -std=c++20 -pthread -o /tmp/concurrency /tmp/concurrency.cpp
             /tmp/concurrency
+      - run:
+          name: more info
+          command: |
+            set -o xtrace
+            set +e
+            cat /sys/kernel/debug/sched/preempt
+            cat /proc/sys/kernel/numa_balancing
+            cat /sys/kernel/mm/transparent_hugepage/enabled
+            cat /sys/kernel/mm/transparent_hugepage/defrag
+            cat /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
+            cat /sys/devices/system/cpu/nohz_full
+            cat /sys/devices/system/cpu/isolated
+            cat /sys/devices/system/cpu/smt/control
+            ls /proc/sys/kernel | grep futex
+            cat /proc/sys/kernel/futex_requeue_pi
+            cat /sys/kernel/mm/lru_gen/enabled
+            cat /proc/sys/vm/compact_memory
+            cat /proc/sys/vm/compaction_proactiveness
+            cat /proc/sys/vm/overcommit_memory
+            cat /proc/sys/vm/overcommit_ratio
+            cat /proc/sys/vm/user_reserve_kbytes
+            cat /proc/sys/kernel/timer_migration
+            cat /proc/sys/kernel/sched_migration_cost_ns
+            cat /proc/sys/kernel/watchdog
+            cat /proc/sys/kernel/watchdog_thresh
+            grep PREEMPT /boot/config-$(uname -r)
 
 workflows:
   setup:
