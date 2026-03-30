@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Removed leftover unit test and handling of `@arangodb/locals` module that was
+  only used for Foxx.
+
 * Remove `GET | DELETE /_admin/log` (superseded by `GET | DELETE /_admin/log/entries`).
 
 * Remove deprecated `Timestamp` attribute from `GET /_admin/cluster/health`.
