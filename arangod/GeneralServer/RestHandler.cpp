@@ -42,7 +42,6 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
@@ -65,7 +64,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
     : _request(request),
       _response(response),
       _server(server),
-      _statistics(),
+      _timingData(),
       _handlerId(0),
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
@@ -158,11 +157,17 @@ RequestLane RestHandler::determineRequestLane() {
 
 void RestHandler::trackQueueStart() noexcept {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  _statistics.SET_QUEUE_START(
-      SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+  if (_timingData.active) {
+    _timingData.queueStart = StatisticsFeature::time();
+    _timingData.queueSize = SchedulerFeature::SCHEDULER->queueStatistics()._queued;
+  }
 }
 
-void RestHandler::trackQueueEnd() noexcept { _statistics.SET_QUEUE_END(); }
+void RestHandler::trackQueueEnd() noexcept { 
+  if (_timingData.active) {
+    _timingData.queueEnd = StatisticsFeature::time();
+  }
+}
 
 void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);
@@ -176,7 +181,7 @@ void RestHandler::trackTaskStart() noexcept {
 
 void RestHandler::trackTaskEnd() noexcept {
   // the queueing time in seconds
-  double queueTime = _statistics.ELAPSED_WHILE_QUEUED();
+  double queueTime = _timingData.elapsedWhileQueued();
 
   if (_trackedAsOngoingLowPrio) {
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
@@ -211,12 +216,12 @@ void RestHandler::startActivity() {
                                         _request->requestType())}}});
 }
 
-RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
-  return std::move(_statistics);
+RequestTimingData&& RestHandler::stealTimingData() {
+  return std::move(_timingData);
 }
 
-void RestHandler::setRequestStatistics(RequestStatistics::Item&& stat) {
-  _statistics = std::move(stat);
+void RestHandler::setTimingData(RequestTimingData&& data) {
+  _timingData = std::move(data);
 }
 
 futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
@@ -416,7 +421,9 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
 auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   auto fail = [&]() {
     TRI_ASSERT(_state == HandlerState::FAILED);
-    _statistics.SET_REQUEST_END();
+    if (_timingData.active) {
+      _timingData.requestEnd = StatisticsFeature::time();
+    }
     // Callback may stealStatistics!
     _sendResponseCallback(this);
 
@@ -439,7 +446,9 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   }
 
   TRI_ASSERT(_state == HandlerState::FINALIZE);
-  _statistics.SET_REQUEST_END();
+  if (_timingData.active) {
+    _timingData.requestEnd = StatisticsFeature::time();
+  }
 
   // shutdownExecute is noexcept
   shutdownExecute(true);  // may not be moved down
@@ -458,7 +467,10 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 
 void RestHandler::prepareEngine() {
   // set end immediately so we do not get negative statistics
-  _statistics.SET_REQUEST_START_END();
+  if (_timingData.active) {
+    _timingData.requestStart = StatisticsFeature::time();
+    _timingData.requestEnd = _timingData.requestStart;
+  }
 
   if (_canceled) {
     _state = HandlerState::FAILED;

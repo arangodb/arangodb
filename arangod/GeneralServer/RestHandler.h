@@ -30,11 +30,11 @@
 #include "Basics/ResultT.h"
 #include "Futures/Unit.h"
 #include "GeneralServer/RequestLane.h"
+#include "GeneralServer/RequestTimingData.h"
 #include "Logger/LogContext.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Metrics/GaugeCounterGuard.h"
 #include "Rest/GeneralResponse.h"
-#include "Statistics/RequestStatistics.h"
 
 #include <atomic>
 #include <concepts>
@@ -59,7 +59,6 @@ template<typename>
 struct async;
 
 class GeneralRequest;
-class RequestStatistics;
 class Result;
 
 enum class RestStatus { DONE, WAITING };
@@ -105,12 +104,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return _server;
   }
 
-  [[nodiscard]] RequestStatistics::Item const& requestStatistics()
-      const noexcept {
-    return _statistics;
+  [[nodiscard]] RequestTimingData const& timingData() const noexcept {
+    return _timingData;
   }
-  [[nodiscard]] RequestStatistics::Item&& stealRequestStatistics();
-  void setRequestStatistics(RequestStatistics::Item&& stat);
+  [[nodiscard]] RequestTimingData&& stealTimingData();
+  void setTimingData(RequestTimingData&& data);
 
   void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
@@ -228,7 +226,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
   application_features::ApplicationServer& _server;
-  RequestStatistics::Item _statistics;
+  RequestTimingData _timingData;
 
  private:
   mutable std::mutex _executionMutex;
@@ -239,9 +237,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // RestHandler::wakeupHandler() does that, and can be called e.g. by the
   // SharedQueryState's wakeup handler (for AQL-related code).
   template<typename F>
-  requires requires(F f) {
-    { f() } -> std::same_as<RestStatus>;
-  }
+    requires requires(F f) {
+      { f() } -> std::same_as<RestStatus>;
+    }
   [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<void> {
     co_await arangodb::waitingFunToCoro(_suspensionCounter,
                                         [&]() -> std::optional<std::monostate> {
@@ -255,9 +253,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
 
   template<typename F, typename T = std::invoke_result_t<F>::value_type>
-  requires requires(F f) {
-    { f() } -> std::same_as<std::optional<T>>;
-  }
+    requires requires(F f) {
+      { f() } -> std::same_as<std::optional<T>>;
+    }
   [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<T> {
     co_return co_await arangodb::waitingFunToCoro(_suspensionCounter,
                                                   std::forward<F>(fun));
