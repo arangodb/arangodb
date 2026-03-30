@@ -332,10 +332,10 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   };
 
   struct BlockCounters {
-    std::atomic<uint64_t> readProduceBlocked{0};
-    std::atomic<uint64_t> encodeProduceBlocked{0};
-    std::atomic<uint64_t> encodeConsumeBlocked{0};
-    std::atomic<uint64_t> writeConsumeBlocked{0};
+    uint64_t readProduceBlocked{0};
+    uint64_t encodeProduceBlocked{0};
+    uint64_t encodeConsumeBlocked{0};
+    uint64_t writeConsumeBlocked{0};
   } counters;
 
   BoundedChannel<DocumentVectors> documentChannel{5};
