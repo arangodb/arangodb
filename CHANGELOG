@@ -1,5 +1,9 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+* Fix vector index creation in cluster producing duplicate indexes when
+  `storedValues` differs between definitions (e.g., one with and one without
+  `storedValues`). The comparison now correctly ignores `storedValues`.
+
 * Fix vector index creation in cluster when inBackground is false reports the error
   that there is insufficient data in collection.
 
