@@ -1,3 +1,64 @@
+# Integration test: exercises Case's actual callback chain to verify that
+# a module's setup_all additions are not overwritten by a per-test setup.
+# Separate module because it must `use ToastTest.Case` (CaseContextTest uses ExUnit.Case).
+defmodule ToastTest.CaseContextSurvivalTest do
+  defmodule Suite do
+    @moduledoc false
+
+    @deployment %Toast.Deployment{
+      id: "context-survival-test",
+      controller: nil,
+      servers: %{
+        "single" => %Toast.Deployment.ServerInfo{
+          id: "single",
+          role: :single,
+          port: 8529,
+          endpoint: "http://localhost:8529"
+        }
+      }
+    }
+
+    @extra_context %{registry_key: "from_registry"}
+
+    def __toast_suite__ do
+      ensure_registered()
+      __MODULE__
+    end
+
+    defp ensure_registered do
+      alias ToastTest.DeploymentRegistry
+      DeploymentRegistry.ensure_init()
+
+      case :ets.lookup(:toast_deployment_registry, __MODULE__) do
+        [{_, _}] ->
+          :ok
+
+        [] ->
+          DeploymentRegistry.put(__MODULE__, @deployment)
+          DeploymentRegistry.put_extra_context(__MODULE__, @extra_context)
+      end
+    end
+  end
+
+  use ToastTest.Case, async: false
+
+  def __toast_suite__, do: Suite.__toast_suite__()
+
+  setup_all _context do
+    {:ok, %{registry_key: "modified_by_module"}}
+  end
+
+  test "setup_all context additions survive to test", context do
+    assert context[:registry_key] == "modified_by_module"
+  end
+
+  test "base deployment context is available", context do
+    assert context[:deployment] != nil
+    assert context[:endpoint] != nil
+    assert context[:client] != nil
+  end
+end
+
 defmodule ToastTest.CaseContextTest do
   use ExUnit.Case, async: false
 
