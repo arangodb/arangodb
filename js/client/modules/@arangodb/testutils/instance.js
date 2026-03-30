@@ -1639,8 +1639,11 @@ class instance {
       this.exitStatus = res;
       this.pid = null;
       if (res.hasOwnProperty('signal')) {
-        if (signal_to_expect !== undefined && res.signal !== signal_to_expect) {
-          throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)} !== ${signal_to_expect}`);
+        if (signal_to_expect !== undefined) {
+          if (res.signal !== signal_to_expect) {
+            throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)} !== ${signal_to_expect}`);
+          }
+          return true;
         } else if ((res.signal !== 6) && (res.signal !== 9)) {
           throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
         }
@@ -1666,8 +1669,8 @@ class instance {
         if (ex instanceof ArangoError && (
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
             (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
-          print(`Terminated instance ${this.name} - ${ex.message}`);
-          return this.checkDebugTerminated(true);
+          print(`Terminated instance ${this.name} - ${ex.message} ${signal_to_expect}`);
+          return this.checkDebugTerminated(true, signal_to_expect);
         }
         throw new Error(`Failed to crash ${this.name}: ${ex.message}`);
       }
