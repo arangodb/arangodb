@@ -1626,6 +1626,14 @@ class instance {
     return reply.parsedBody === true;
   }
 
+  removeCoredump() {
+    if (crashUtils.locateCoreDump(this.options, this)) {
+      print(`${Date()} ${this.name}: deleting coredump for PID ${this.pid} ${this.options.coreDirectory}`);
+      fs.remove(this.options.coreDirectory);
+    } else {
+      print(`${Date()} ${this.name}: no coredump for PID ${this.pid} found`);
+    }
+  }
   checkDebugTerminated(waitForExit, signal_to_expect) {
     let res = statusExternal(this.pid, waitForExit);
     if (res.status === 'NOT-FOUND') {
