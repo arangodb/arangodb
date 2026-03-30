@@ -379,8 +379,8 @@ class instanceManager {
     });
     this.reconnectMe();
   }
-  debugTerminate(msg) {
-    this.arangods.forEach(arangod => {arangod.debugTerminate(msg);});
+  debugTerminate(msg, signal_to_expect) {
+    this.arangods.forEach(arangod => {arangod.debugTerminate(msg, signal_to_expect);});
     return 0;
   }
   checkDebugTerminated() {

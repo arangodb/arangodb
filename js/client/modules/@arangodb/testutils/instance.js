@@ -1626,7 +1626,7 @@ class instance {
     return reply.parsedBody === true;
   }
 
-  checkDebugTerminated(waitForExit) {
+  checkDebugTerminated(waitForExit, signal_to_expect) {
     let res = statusExternal(this.pid, waitForExit);
     if (res.status === 'NOT-FOUND') {
       print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
@@ -1638,9 +1638,12 @@ class instance {
       // the test may have abortet by itself already, using SIG_ARBRT or SIG_KILL.
       this.exitStatus = res;
       this.pid = null;
-      if (res.hasOwnProperty('signal') &&
-          (res.signal !== 6)&&(res.signal !== 9)) {
-        throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+      if (res.hasOwnProperty('signal')) {
+        if (signal_to_expect !== undefined && res.signal !== signal_to_expect) {
+          throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)} !== ${signal_to_expect}`);
+        } else if ((res.signal !== 6) && (res.signal !== 9)) {
+          throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+        }
       }
       return true;
     }

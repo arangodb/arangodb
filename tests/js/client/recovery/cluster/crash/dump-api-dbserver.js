@@ -54,7 +54,7 @@ if (runSetup === true) {
   }
   
   // Crash only the dbserver
-  dbserver.debugTerminate('CRASH-HANDLER-TEST-SEGFAULT');
+  dbserver.debugTerminate('CRASH-HANDLER-TEST-SEGFAULT', 11);
   
   return 0;
 }
