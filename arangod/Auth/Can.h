@@ -34,6 +34,17 @@ struct AuthMode;
 
 namespace arangodb::auth {
 
+// TODO List:
+//      * We need a batched API that allows to check multiple different
+//        permissions in a single call. Other APIs may stay for convenience, or
+//        be removed.
+//      * We need to provide a reason, or reasons, for a deny, appropriate for
+//        a reply to the user or logging. It should be a Result, or trivially
+//        convertible to one.
+//      * All APIs must be made asynchronous.
+//      * After the structure has settled, revisit whether this should stay
+//        as a separate struct, or be merged into ExecContext.
+
 // Collected things we have authorization checks for
 struct Can {
   explicit Can(AuthMode const& authMode);
