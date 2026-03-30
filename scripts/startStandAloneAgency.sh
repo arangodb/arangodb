@@ -8,7 +8,6 @@ function help() {
   echo ""
   echo "OPTIONS:"
   echo "  -a/--agency-size     Agency size (odd integer      default: 3))"
-  echo "  -p/--pool-size       Pool size   (>= agency size   default: [agency size])"
   echo "  -t/--transport       Protocol    (ssl|tcp          default: tcp)"
   echo "  -l/--log-level       Log level   (INFO|DEBUG|TRACE default: INFO)"
   echo "  -w/--wait-for-sync   Boolean     (true|false       default: true)"
@@ -23,8 +22,8 @@ function help() {
   echo ""
   echo "EXAMPLES:"
   echo "  scripts/startStandaloneAgency.sh"
-  echo "  scripts/startStandaloneAgency.sh -a 5 -p 10 -t ssl"
-  echo "  scripts/startStandaloneAgency.sh --agency-size 3 --pool-size 5"
+  echo "  scripts/startStandaloneAgency.sh -a 5 -t ssl"
+  echo "  scripts/startStandaloneAgency.sh --agency-size 3"
   
 }
 
@@ -51,7 +50,6 @@ function isuint () {
 }
 
 NRAGENTS=3
-POOLSZ=""
 TRANSPORT="tcp"
 LOG_LEVEL=""
 WAIT_FOR_SYNC="true"
@@ -72,9 +70,6 @@ while [[ ${1} ]]; do
       INTERACTIVE_MODE=${2}
       shift
       ;;
-    -p|--pool-size)
-      POOLSZ=${2}
-      shift;;
     -t|--transport)
       TRANSPORT=${2}
       shift;;
@@ -137,10 +132,6 @@ if [ "$LOG_LEVEL" == "" ];  then
   LOG_LEVEL="--log.level agency=info"
 fi
 
-if [ "$POOLSZ" == "" ]; then
-  POOLSZ=$NRAGENTS
-fi
-
 if [ "$TRANSPORT" == "ssl" ]; then
   SSLKEYFILE="--ssl.keyfile etc/testing/server.pem"
   CURL="curl --insecure -ks https://"
@@ -151,7 +142,6 @@ fi
 
 printf "Starting agency ... \n"
 printf "    agency-size: %s," "$NRAGENTS"
-printf " pool-size: %s," "$POOLSZ"
 printf " transport: %s," "$TRANSPORT"
 printf " log-level: %s," "$LOG_LEVEL"
 printf "\n"
@@ -203,7 +193,7 @@ fi
 mkdir -p agency
 PIDS=""
 
-aaid=(`seq 0 $(( $POOLSZ - 1 ))`)
+aaid=(`seq 0 $(( $NRAGENTS - 1 ))`)
 #shuffle
 
 count=1
@@ -236,7 +226,6 @@ for aid in "${aaid[@]}"; do
     --agency.my-address $TRANSPORT://[::1]:$port \
     --agency.compaction-step-size $COMP \
     --agency.compaction-keep-size $KEEP \
-    --agency.pool-size $POOLSZ \
     --agency.size $NRAGENTS \
     --agency.supervision true \
     --agency.supervision-frequency $SFRE \
@@ -258,7 +247,7 @@ for aid in "${aaid[@]}"; do
   if [ "$GOSSIP_MODE" == "1" ]; then
     GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://[::1]:$port"
   fi
-  if [ $count -lt $POOLSZ ]; then
+  if [ $count -lt $NRAGENTS ]; then
     if isuint $START_DELAYS; then
       printf "fixed delay %02ds " "$START_DELAYS"
       sleep $START_DELAYS
