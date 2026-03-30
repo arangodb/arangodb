@@ -157,14 +157,6 @@ bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
 
-  auto storedValues =
-      Index::parseFields(info.get(StaticStrings::IndexStoredValues),
-                         /*allowEmpty*/ true,
-                         /*allowExpansion*/ false);
-  if (storedValues != _storedValues) {
-    return false;
-  }
-
   return true;
 }
 
