@@ -710,7 +710,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
   arangodb::velocypack::StringSink adapter(buffer.get());
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMemberUnchecked(i);
+    AstNode const* member = node->getMemberUnchecked(i);
 
     // process attribute key, taking into account duplicates
     if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
@@ -747,7 +747,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       }
 
       // value
-      member = const_cast<AstNode*>(calObjNode.getValue());
+      member = calObjNode.getValue();
     } else {
       TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
 
@@ -1421,8 +1421,6 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     if (quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER) {
       // 3.10 format: we get an ARRAY_FILTER node, which contains
       // both a quantifier and the filter condition
-      TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
-      TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
 
       ast::ArrayFilterNode arrFilterNode(quantifierAndFilterNode);
       quantifierNode = arrFilterNode.getQuantifier();
@@ -1606,8 +1604,6 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
                                       static_cast<size_t>(atLeast));
     } else if (quantifierNode->type == NODE_TYPE_RANGE) {
       // range
-      TRI_ASSERT(quantifierNode->numMembers() == 2);
-
       ast::RangeNode rangeNode(quantifierNode);
       minRequiredItems = getRangeBound(rangeNode.getStart());
       maxRequiredItems = getRangeBound(rangeNode.getEnd());

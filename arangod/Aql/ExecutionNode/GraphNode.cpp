@@ -168,7 +168,6 @@ TRI_edge_direction_e parseDirection(AstNode const* node) {
   TRI_ASSERT(node->isIntValue() || node->type == NODE_TYPE_DIRECTION);
   AstNode const* dirNode = node;
   if (node->type == NODE_TYPE_DIRECTION) {
-    TRI_ASSERT(node->numMembers() == 2);
     dirNode = ast::DirectionNode(node).getDirection();
   }
   TRI_ASSERT(dirNode->isIntValue());
@@ -220,14 +219,14 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
-      auto col = graph->getMember(i);
+      AstNode const* col = graph->getMember(i);
       TRI_edge_direction_e dir = TRI_EDGE_ANY;
 
       if (col->type == NODE_TYPE_DIRECTION) {
         // We have a collection with special direction.
         ast::DirectionNode directionNode(col);
         dir = parseDirection(directionNode.getDirection());
-        col = const_cast<AstNode*>(directionNode.getSteps());
+        col = directionNode.getSteps();
       } else {
         dir = _defaultDirection;
       }

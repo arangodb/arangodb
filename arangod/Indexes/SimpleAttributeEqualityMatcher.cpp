@@ -116,15 +116,14 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
 
   for (size_t i = 0; i < n; ++i) {
     auto op = node->getMemberUnchecked(i);
-    ast::BinaryOperatorNode binOpNode(op);
 
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
 
       // EQ is symmetric
-      if (accessFitsIndex(index, binOpNode.getLeft(), binOpNode.getRight(), op,
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, nonNullAttributes, false) ||
-          accessFitsIndex(index, binOpNode.getRight(), binOpNode.getLeft(), op,
+          accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
@@ -136,7 +135,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
 
-      if (accessFitsIndex(index, binOpNode.getLeft(), binOpNode.getRight(), op,
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
