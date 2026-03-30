@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -19,21 +19,13 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "Activities/registry.h"
-#include "Activities/activity.h"
+#include <memory>
 
 namespace arangodb::activities {
 
-Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
-    ActivityId activity) noexcept {
-  _oldExecutingActivity = Registry::currentlyExecutingActivity();
-  Registry::setCurrentlyExecutingActivity(activity);
-}
-
-Registry::ScopedCurrentlyExecutingActivity::
-    ~ScopedCurrentlyExecutingActivity() {
-  Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
-}
+struct Activity;
+using ActivityHandle = std::shared_ptr<Activity>;
 
 }  // namespace arangodb::activities

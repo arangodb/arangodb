@@ -144,7 +144,15 @@ arangodb.acquireHostList=true
     const cwd = fs.normalize(fs.makeAbsolute(this.options.javasource));
     const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
     if (rc.exit !== 0) {
+      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
       status = false;
+    }
+    let txtfile = fs.join(cwd, "test-functional/target/unicode_names.txt");
+    if (fs.exists(txtfile)) {
+      print(`copying ${txtfile}`);
+      fs.copyFile(txtfile, this.instanceManager.rootDir);
+    } else {
+      print(`${txtfile} not found!`);
     }
     this.getAllureResults(testResultsDir, results, status, 'javadriver');
     return results;
@@ -219,6 +227,7 @@ class runInKafkaTest extends runWithAllureReport {
     const cwd = fs.normalize(fs.makeAbsolute(this.options.kafkasource));
     const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
     if (rc.exit !== 0) {
+      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
       status = false;
     }
     this.getAllureResults(testResultsDir, results, status, 'kafkadriver');
@@ -263,8 +272,8 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     let rx = /.*:\/\//gi;
     let args = [
       'test',
-      '-Pscala-2.12',
-      '-Pspark-3.5',
+      '-Pscala-2.13.18',
+      '-Pspark-4.1',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
       '-Dmaven.wagon.http.retryHandler.count=10',
@@ -287,6 +296,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     const cwd = fs.normalize(fs.makeAbsolute(this.options.sparksource));
     const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
     if (rc.exit !== 0) {
+      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
       status = false;
     }
     this.getAllureResults(testResultsDir, results, status, 'sparkdriver');
@@ -352,6 +362,7 @@ class runInSpringDataTest extends runWithAllureReport {
     const cwd = fs.normalize(fs.makeAbsolute(this.options.springsource));
     const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
     if (rc.exit !== 0) {
+      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
       status = false;
     }
     this.getAllureResults(testResultsDir, results, status, 'springdatatest');
@@ -420,6 +431,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
     const cwd = fs.normalize(fs.makeAbsolute(this.options.tinkerpopsource));
     const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
     if (rc.exit !== 0) {
+      print(`${RED}${Date()} test execution returned non-zero result: ${JSON.stringify(rc)}${RESET}`);
       status = false;
     }
     this.getAllureResults(testResultsDir, results, status, 'tinkerpopdriver');

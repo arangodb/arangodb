@@ -86,7 +86,7 @@ for (let iteration = 0; iteration < 15; ++iteration) {
 }
 c.insert({ _key: "done${i}", value: true });
 `;
-        clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreateDrop" + i)});
+        clients.push(launchPlainSnippetInBG(command, "UnitTestsIndexCreateDrop" + i));
       }
 
       // wait for insertion tasks to complete

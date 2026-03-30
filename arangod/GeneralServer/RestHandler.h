@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "Activities/activity.h"
+#include "Activities/Activity.h"
+#include "Activities/GenericActivity.h"
 #include "Async/SuspensionCounter.h"
 #include "Async/async.h"
 #include "Basics/ResultT.h"
@@ -279,7 +280,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;
 
   std::atomic<bool> _canceled;
-  std::unique_ptr<activities::Activity> _activity;
+
+  std::shared_ptr<activities::GenericActivity> _activity;
 };
 
 }  // namespace rest

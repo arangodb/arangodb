@@ -378,9 +378,7 @@ void InternalRestTraverserHandler::queryEngine() {
       return;
     }
     engine->getVertexData(keysSlice, result, !depthSlice.isNone());
-  } else if (option == "smartSearch" || option == "smartSearchBFS" ||
-             option == "smartSearchWeighted" ||
-             option == "smartSearchUnified") {
+  } else if (option == "smartSearchUnified") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "this engine does not support the requested operation.");
@@ -391,12 +389,7 @@ void InternalRestTraverserHandler::queryEngine() {
     TRI_ASSERT(eng != nullptr);
 
     try {
-      if (option == "smartSearchUnified") {
-        eng->smartSearchUnified(body, result);
-      } else {
-        // TODO: Take deprecation path!
-        eng->smartSearch(body, result);
-      }
+      eng->smartSearchUnified(body, result);
     } catch (arangodb::basics::Exception const& ex) {
       generateError(ResponseCode::BAD, ex.code(), ex.what());
       return;

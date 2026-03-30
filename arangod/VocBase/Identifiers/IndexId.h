@@ -24,8 +24,10 @@
 #pragma once
 
 #include <limits>
+#include <string_view>
 
 #include "Basics/Identifier.h"
+#include "Basics/ResultT.h"
 
 namespace arangodb {
 /// @brief server id type
@@ -58,6 +60,10 @@ class IndexId : public arangodb::basics::Identifier {
 
   /// @brief create an id for an edge _to index
   static constexpr IndexId edgeTo() { return IndexId{2}; }
+
+  /// @brief parse an IndexId from a string that is either a plain numeric
+  ///        id ("12345") or a "collection/id" handle ("mycoll/12345").
+  static ResultT<IndexId> fromString(std::string_view str);
 };
 
 static_assert(sizeof(IndexId) == sizeof(IndexId::BaseType),

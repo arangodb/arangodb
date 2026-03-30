@@ -23,7 +23,8 @@
 
 #include "RestDumpHandler.h"
 
-#include "Activities/registry.h"
+#include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
@@ -206,7 +207,9 @@ void RestDumpHandler::handleCommandDumpNext() {
   // immediately prolong lifetime of context, so it doesn't get invalidated
   // while we are using it.
 
-  activities::Activity fetch{"RocksDBDumpNext", {{"id", id}}};
+  auto fetch = activities::makeWithParent<activities::GenericActivity>(
+      context->activity(), "RocksDBDumpNext",
+      std::unordered_map<std::string, std::string>{{"id", id}});
 
   context->extendLifetime();
 

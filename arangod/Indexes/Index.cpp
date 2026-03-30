@@ -1021,6 +1021,8 @@ bool Index::covers(aql::Projections& projections) const {
 
 bool Index::canWarmup() const noexcept { return false; }
 
+bool Index::isVectorIndexReady() const noexcept { return false; }
+
 UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(

@@ -25,7 +25,7 @@
 
 #include "CommTask.h"
 
-#include "Activities/registry.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Rbac/RbacFeature.h"
 #include "Auth/UserManager.h"
@@ -203,13 +203,6 @@ CommTask::Flow CommTask::prepareExecution(
     return !ServerState::isCoordinatorId(_requestSource) &&
            !ServerState::isDBServerId(_requestSource);
   });
-
-  // Detect and strip API version prefix (/_arango/vX or /_arango/experimental)
-  if (Result res = req.detectAndStripApiVersion(); res.fail()) {
-    sendErrorResponse(rest::ResponseCode::BAD, req.contentTypeResponse(),
-                      req.messageId(), res.errorNumber(), res.errorMessage());
-    return Flow::Abort;
-  }
 
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
@@ -480,7 +473,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   }
 
   auto activityGuard = activities::Registry::ScopedCurrentlyExecutingActivity(
-      handler->_activity->id());
+      handler->_activity);
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase
@@ -841,7 +834,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
 #endif
 
     // TODO Revisit this in face of RBAC.
-    //      - Can we remove it in 4.0, together with `--server.authentication-system-only`?
+    //      - Can we remove it in 4.0, together with
+    //      `--server.authentication-system-only`?
     //      - Shouldn't the forceSuperuser be done as part of the responsible
     //        RestHandler (i.e. RestActionHandler) instead of here?
     if (result == Flow::Abort && _auth->authenticationSystemOnly()) {

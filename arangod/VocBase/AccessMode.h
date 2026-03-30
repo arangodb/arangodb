@@ -90,6 +90,15 @@ struct AccessMode {
   }
 };
 
+// TODO deduplicate inspection and to/from string above?
+template<typename Inspector>
+auto inspect(Inspector& f, AccessMode::Type& t) {
+  return f.enumeration(t).values(AccessMode::Type::EXCLUSIVE, "exclusive",  //
+                                 AccessMode::Type::READ, "read",            //
+                                 AccessMode::Type::WRITE, "write",          //
+                                 AccessMode::Type::NONE, "none");
+}
+
 }  // namespace arangodb
 
 namespace std {

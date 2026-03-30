@@ -41,6 +41,9 @@ class FilterCriteria:
     # Feature flags
     enterprise: bool = True
 
+    # filter for testsuites if commanded
+    test_suite: str = ""
+
     @property
     def is_full_run(self) -> bool:
         """Check if this is a full run."""
@@ -70,8 +73,7 @@ def is_gtest_suite(suite: SuiteConfig) -> bool:
     return suite.name.startswith(GTEST_PREFIX)
 
 
-def _check_requirements_match(
-    requires: TestRequirements, criteria: FilterCriteria
+def _check_requirements_match(requires: TestRequirements, criteria: FilterCriteria
 ) -> bool:
     """
     Check if test requirements match filter criteria.
@@ -152,6 +154,12 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     """
     # Check common requirements (architecture, full, instrumentation)
     if not _check_requirements_match(job.requires, criteria):
+        return False
+
+    # if we should filter for a name:
+    if (criteria.test_suite is not None and
+        criteria.test_suite != "" and
+        criteria.test_suite not in job.name):
         return False
 
     # Check deployment type filter

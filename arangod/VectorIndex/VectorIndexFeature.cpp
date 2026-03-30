@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -19,12 +19,18 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Futures/Utilities.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Metrics/MetricsFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Parameters.h"
+#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb {
 
@@ -55,8 +61,47 @@ leave the option enabled.)");
   options->addOldOption("--experimental-vector-index", "--vector-index");
 }
 
+bool VectorIndexFeature::shouldRunBuildManager() const {
+  return isVectorIndexEnabled() && (ServerState::instance()->isDBServer() ||
+                                    ServerState::instance()->isSingleServer());
+}
+
+void VectorIndexFeature::start() {
+  if (!shouldRunBuildManager()) {
+    return;
+  }
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  _buildManager.emplace(server().getFeature<DatabaseFeature>(),
+                        server().getFeature<MaintenanceFeature>(),
+                        server().getFeature<metrics::MetricsFeature>(),
+                        *SchedulerFeature::SCHEDULER);
+  _buildManager->start();
+}
+
+void VectorIndexFeature::beginShutdown() {
+  if (!_buildManager.has_value()) {
+    return;
+  }
+  _buildManager->beginShutdown();
+}
+
+void VectorIndexFeature::stop() {
+  if (!_buildManager.has_value()) {
+    return;
+  }
+  _buildManager->stop();
+}
+
 bool VectorIndexFeature::isVectorIndexEnabled() const {
   return _options.useVectorIndex;
+}
+
+futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
+  if (!_buildManager.has_value()) {
+    // Build manager is not initialized (e.g. on Coordinator).
+    return futures::makeFuture(Result{});
+  }
+  return _buildManager->waitForIndexReady(indexId);
 }
 
 }  // namespace arangodb

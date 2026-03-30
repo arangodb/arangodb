@@ -29,6 +29,13 @@ const {
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 
+const VectorIndexTrainingState = Object.freeze({
+    kUnusable: "unusable",
+    kTraining: "training",
+    kIngesting: "ingesting",
+    kReady: "ready",
+});
+
 const DistanceFunctions = {
     cosineSimilarity: function(vec1, vec2) {
         if (vec1.length !== vec2.length) {
@@ -88,10 +95,10 @@ const DistanceFunctions = {
     }
 };
 
-// When similarity scores/distances are too close to each other,  
-// vector search results can become non-deterministic due to floating-point 
-// precision issues. This causes test failures where document ordering 
-// changes between test runs. We ensure minimum distance separation between 
+// When similarity scores/distances are too close to each other,
+// vector search results can become non-deterministic due to floating-point
+// precision issues. This causes test failures where document ordering
+// changes between test runs. We ensure minimum distance separation between
 // vectors' distances function values from the query point to guarantee deterministic results.
 function createVectorGenerator(options) {
     const {
@@ -113,7 +120,7 @@ function createVectorGenerator(options) {
     const gen = randomGenerator(seed);
 
     function findProximity(targetDistance) {
-        return distancesFromRandomPoint.some(existingDistance => 
+        return distancesFromRandomPoint.some(existingDistance =>
             Math.abs(existingDistance - targetDistance) <= floatEpsilon
         );
     }
@@ -226,5 +233,135 @@ function createVectorGenerator(options) {
     };
 }
 
+const sleepIntervalSec = 0.1;
+
+// Checks whether a single vector index has the expected training state.
+// Single server: the index has a top-level `trainingState` field.
+// Cluster: the index has a `shards` object where each shard has a `trainingState` field.
+function indexMatchesState(idx, state) {
+    if (idx.trainingState !== undefined) {
+        // Single server: top-level trainingState.
+        return idx.trainingState === state;
+    }
+    if (idx.shards !== undefined) {
+        // Cluster: every shard must match.
+        const shardEntries = Object.values(idx.shards);
+        return shardEntries.length > 0 &&
+            shardEntries.every(s => s.trainingState === state);
+    }
+    return false;
+}
+
+// Checks whether the given vector indexes match the expected state.
+// If indexName is provided, only that index is checked; otherwise all vector indexes.
+function vectorIndexesMatchState(indexes, state, indexName) {
+    const vectorIndexes = indexes.filter(idx => idx.type === 'vector');
+    if (indexName !== undefined) {
+        const idx = vectorIndexes.find(ix => ix.name === indexName);
+        return idx !== undefined && indexMatchesState(idx, state);
+    }
+    return vectorIndexes.length > 0 &&
+        vectorIndexes.every(idx => indexMatchesState(idx, state));
+}
+
+// Waits until vector index(es) on the collection reach the given state.
+// Uses collection.indexes(true, true) to include per-shard details in cluster mode.
+// If indexName is provided, only that single index is checked.
+function waitForState(collection, state, timeoutSec, indexName) {
+    const internal = require("internal");
+    const isCluster = internal.isCluster();
+    const iterations = Math.floor(timeoutSec / sleepIntervalSec);
+    for (let i = 0; i < iterations; i++) {
+        const indexes = isCluster ? collection.indexes(true, true) : collection.indexes();
+        if (vectorIndexesMatchState(indexes, state, indexName)) {
+            return true;
+        }
+        internal.sleep(sleepIntervalSec);
+    }
+    return false;
+}
+
+/**
+ * Inserts docs in batches, calling ensureIndex() at a random batch slot
+ * determined by the seed. This tests that index creation works regardless of
+ * whether it happens before, during, or after data insertion.
+ *
+ * @param {object} opts
+ * @param {ArangoCollection} opts.collection
+ * @param {Array} opts.docs - documents to insert
+ * @param {number} opts.seed - random seed (used to pick ensureIndex slot)
+ * @param {function} opts.ensureIndex - callback that creates the index(es)
+ * @param {number} [opts.batchSize=100]
+ * @param {function} [opts.onBatchInserted] - called with insert result per batch
+ */
+function insertDocsAndEnsureIndex({collection, docs, seed, ensureIndex,
+                                    batchSize = 100, onBatchInserted}) {
+    const numBatches = Math.ceil(docs.length / batchSize);
+    const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
+
+    for (let i = 0; i < numBatches; i++) {
+        if (i === ensureIndexSlot) {
+            ensureIndex();
+        }
+        const start = i * batchSize;
+        const end = Math.min(start + batchSize, docs.length);
+        const result = collection.insert(docs.slice(start, end));
+        if (onBatchInserted) {
+            onBatchInserted(result);
+        }
+    }
+    if (ensureIndexSlot === numBatches) {
+        ensureIndex();
+    }
+}
+
+/**
+ * Waits until a single named vector index on the collection reaches the
+ * expected training state. Handles both cluster and single-server modes.
+ *
+ * @param {ArangoCollection} collection
+ * @param {string} indexName - name of the vector index to wait for
+ * @param {string} expectedState - ready, training, ingesting, ready
+ * @param {number} [timeoutSec=60]
+ * @returns {boolean}
+ */
+function waitForVectorIndexState(collection, indexName, expectedState, timeoutSec = 60) {
+    return waitForState(collection, expectedState, timeoutSec, indexName);
+}
+
+/**
+ * Waits until all vector indexes on the collection reach the expected training
+ * state. Handles both cluster and single-server modes.
+ *
+ * @param {ArangoCollection} collection
+ * @param {string} expectedState - ready, training, ingesting, ready
+ * @param {number} [timeoutSec=60]
+ * @returns {boolean}
+ */
+function waitForAllVectorIndexesState(collection, expectedState, timeoutSec = 60) {
+    return waitForState(collection, expectedState, timeoutSec);
+}
+
+/**
+ * Generates simple documents each containing a random vector field.
+ *
+ * @param {function} gen - random float generator (e.g. from randomNumberGeneratorFloat)
+ * @param {number} count - number of documents to generate
+ * @param {number} dimension - vector dimension
+ * @returns {Array} array of {vector: [...]} documents
+ */
+function generateDocs(gen, count, dimension) {
+    const docs = [];
+    for (let i = 0; i < count; ++i) {
+        docs.push({vector: Array.from({length: dimension}, () => gen())});
+    }
+    return docs;
+}
+
+exports.generateDocs = generateDocs;
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
+exports.VectorIndexTrainingState = VectorIndexTrainingState;
+exports.waitForVectorIndexState = waitForVectorIndexState;
+exports.waitForAllVectorIndexesState = waitForAllVectorIndexesState;
+exports.insertDocsAndEnsureIndex = insertDocsAndEnsureIndex;

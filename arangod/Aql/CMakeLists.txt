@@ -40,7 +40,6 @@ add_library(arango_aql STATIC
   DocumentExpressionContext.cpp
   DocumentProducingHelper.cpp
   EdgeConditionBuilder.cpp
-  EdgeConditionBuilderContainer.cpp
   EngineInfoContainerCoordinator.cpp
   EngineInfoContainerDBServerServerBased.cpp
   ExecutionBlock.cpp

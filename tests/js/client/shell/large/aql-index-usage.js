@@ -69,7 +69,7 @@ function IndexUsageSuite () {
     },
 
     testIndexUsage : function () {
-      clients.push({client: launchPlainSnippetInBG(`
+      clients.push(launchPlainSnippetInBG(`
           require('jsunity').jsUnity.attachAssertions();
           let db = require("internal").db;
           let comm = db["${cnComm}"];
@@ -94,7 +94,7 @@ function IndexUsageSuite () {
                          err.errorNum === errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
             }
           } while (time() - start < 10.0);
-        `, 'testIndexUsage')});
+        `, 'testIndexUsage'));
 
       let comm = db[cnComm];
       comm.insert({ _key: "runner2" });
@@ -125,7 +125,7 @@ function IndexUsageSuite () {
       if (IM.debugCanUseFailAt()) {
         IM.debugSetFailAt("RocksDBCollection::read-delay");
 
-      clients.push({client: launchPlainSnippetInBG(`
+        clients.push(launchPlainSnippetInBG(`
             require('jsunity').jsUnity.attachAssertions();
             const {db, time} = require("internal");
             const comm = db["${cnComm}"];
@@ -141,7 +141,7 @@ function IndexUsageSuite () {
             do {
               comm.update("runner1", { value: ++cnt });
             } while (time() - start < 10.0);
-        `, 'testPrimaryIndexLookupConsistency')});
+        `, 'testPrimaryIndexLookupConsistency'));
 
         const comm = db[cnComm];
         comm.insert({ _key: "runner2" });

@@ -57,7 +57,7 @@ def zipp_this(filenames, target_dir):
     # pylint: disable=consider-using-with
     for corefile in filenames:
         try:
-            print(f"zipping {corefile}")
+            print(f"{str(datetime.now())} zipping {corefile}")
             zipfile.ZipFile(
                 str(target_dir / (corefile.name + ".xz")),
                 mode="w",
@@ -458,28 +458,7 @@ class TestingRunner:
         except Exception as ex:
             logging.info(f"Failed to create {verb} zip: {str(ex)}")
             self.append_report_txt(f"Failed to create {verb} zip: {str(ex)}")
-
-    def cleanup_unneeded_binary_files(self):
-        """delete all files not needed for the crashreport binaries"""
-        shutil.rmtree(str(self.cfg.bin_dir / "tzdata"))
-        needed = [
-            "fuertetest",
-            "arangobackup",
-            "arangosh",
-            "arangoexport",
-            "arangoinspect",
-            "arangoimport",
-            "arangoimp",
-            "arangorestore",
-            "arangobench",
-            # 'arangodbtests', we do not need arangodbtests since these tests are executed in a separate job
-            "arangod",
-            "arangodump",
-        ]
-        for one_file in self.cfg.bin_dir.iterdir():
-            if one_file.suffix == ".lib" or (one_file.stem not in needed):
-                logging.info("Deleting %s", str(one_file))
-                one_file.unlink(missing_ok=True)
+        shutil.rmtree(zip_dir)
 
     def generate_crash_report(self):
         """crash report zips"""
@@ -490,7 +469,6 @@ class TestingRunner:
         core_dir = Path.cwd()
         core_pattern = "core*"
         system_corefiles = []
-        self.cleanup_unneeded_binary_files()
         if "COREDIR" in os.environ:
             core_dir = Path(os.environ["COREDIR"])
         else:
@@ -518,30 +496,10 @@ class TestingRunner:
             self.success = False
             core_zip_dir = get_workspace() / "coredumps"
             core_zip_dir.mkdir(parents=True, exist_ok=True)
-            zip_slots = psutil.cpu_count(logical=False)
-            count = 0
-            zip_slot_array = []
-            for _ in range(zip_slots):
-                zip_slot_array.append([])
+            coredumps = []
             for one_file in core_files_list:
                 if one_file.exists():
-                    zip_slot_array[count % zip_slots].append(one_file)
-                    count += 1
-            zippers = []
-            logging.info("coredump launching zipper sub processes %s", zip_slot_array)
-            for zip_slot in zip_slot_array:
-                if len(zip_slot) > 0:
-                    proc = Process(target=zipp_this, args=(zip_slot, core_zip_dir))
-                    proc.start()
-                    zippers.append(proc)
-            for zipper in zippers:
-                zipper.join()
-            logging.info("compressing files done")
-
-            for one_file in core_files_list:
-                if one_file.is_file():
-                    one_file.unlink(missing_ok=True)
-
+                    coredumps.append(one_file)
             crash_report_file = get_workspace() / datetime.now(tz=None).strftime(
                 f"crashreport-{self.cfg.datetime_format}"
             )
@@ -550,20 +508,10 @@ class TestingRunner:
                 str(crash_report_file),
                 str(core_files_list),
             )
-            sys.stdout.flush()
-            try:
-                shutil.make_archive(
-                    str(crash_report_file),
-                    "tar",
-                    (core_zip_dir / "..").resolve(),
-                    core_zip_dir.name,
-                    True,
-                )
-            except Exception as ex:
-                logging.info("Failed to create binaries zip: %s", str(ex))
-                self.append_report_txt("Failed to create binaries zip: " + str(ex))
-
-            shutil.rmtree(str(core_zip_dir), ignore_errors=True)
+            self.mp_zip_tar(coredumps, core_zip_dir, crash_report_file, 'crash report', 'crashreport')
+            for one_file in coredumps:
+                one_file.unlink(missing_ok=True)
+            
         if self.crashed:
             binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
                 f"binaries-{self.cfg.datetime_format}"
@@ -571,7 +519,20 @@ class TestingRunner:
             logging.info(
                 "creating crashreport binary support zip: %s", str(binary_report_file)
             )
-            bin_files_list = [f for f in self.cfg.bin_dir.glob('*') if not f.is_symlink()]
+            bin_files_list = [
+                "fuertetest",
+                "arangobackup",
+                "arangosh",
+                "arangoexport",
+                "arangoinspect",
+                "arangoimport",
+                "arangoimp",
+                "arangorestore",
+                "arangobench",
+                'arangodbtests',
+                "arangod",
+                "arangodump",
+            ]
             self.mp_zip_tar(bin_files_list, self.cfg.bin_dir, binary_report_file, 'binary support', 'binreport')
 
     def generate_test_report(self):

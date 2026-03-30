@@ -17,32 +17,26 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <memory>
-#include <string_view>
+#include <cstdint>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/VectorIndexFeatureOptions.h"
+// This abstract interface for activity metrics is needed because
+// the concrete metrics are created in arangod code and the registry
+// code is inside the lib folder.
+//
+// Registry metrics are created as part of the feature and injected into
+// the registry after the feature is started.
+namespace arangodb::activities {
 
-namespace arangodb {
-
-class VectorIndexFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "VectorIndex"; }
-
-  explicit VectorIndexFeature(application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  bool isVectorIndexEnabled() const;
-
- private:
-  VectorIndexFeatureOptions _options;
+struct IRegistryMetrics {
+  virtual ~IRegistryMetrics() = default;
+  virtual auto increment_total_nodes() -> void = 0;
+  virtual auto increment_registered_nodes() -> void = 0;
+  virtual auto store_registered_nodes(std::uint64_t count) -> void = 0;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::activities

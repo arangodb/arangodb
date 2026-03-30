@@ -72,7 +72,8 @@ AqlValue LateMaterializedExpressionContext::getVariableValue(
         TRI_ASSERT(regId != RegisterId::maxRegisterId);
         if (regId != RegisterId::maxRegisterId) {
           // we can only get here in a post-filter expression
-          TRI_ASSERT(regId < _inputRow.getNumRegisters());
+          TRI_ASSERT(regId.isConstRegister() ||
+                     regId < _inputRow.getNumRegisters());
           if (doCopy) {
             return _inputRow.getValue(regId).clone();
           }

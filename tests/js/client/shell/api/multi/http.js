@@ -423,14 +423,6 @@ function API_versioningSuite () {
       assertCspHeaders(doc);
     },
 
-    test_checks_version_endpoint_with_v1_prefix: function() {
-      let cmd = "/_arango/v1/_api/version";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-      assertCspHeaders(doc);
-    },
-
     test_checks_version_endpoint_with_v0_prefix: function() {
       let cmd = "/_arango/v0/_api/version";
       let doc = arango.GET_RAW(cmd);
@@ -444,7 +436,7 @@ function API_versioningSuite () {
       let doc = arango.GET_RAW(cmd);
 
       // Should error because version number is missing
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, 404);
       assertTrue(doc.parsedBody.error);
       assertCspHeaders(doc);
     },
@@ -454,36 +446,8 @@ function API_versioningSuite () {
       let doc = arango.GET_RAW(cmd);
 
       // Should error because version number is not numeric
-      assertEqual(doc.code, 400);
+      assertEqual(doc.code, 404);
       assertTrue(doc.parsedBody.error);
-      assertCspHeaders(doc);
-    },
-
-    test_checks_version_endpoint_with_invalid_prefix_wrong_path: function() {
-      let cmd = "/_arango/version/_api/version";
-      let doc = arango.GET_RAW(cmd);
-
-      // Should error because prefix format is wrong (should be /vN, not /version)
-      assertEqual(doc.code, 400);
-      assertTrue(doc.parsedBody.error);
-      assertCspHeaders(doc);
-    },
-
-    test_checks_version_endpoint_with_v1_prefix_POST: function() {
-      let cmd = "/_arango/v1/_api/version";
-      let doc = arango.POST_RAW(cmd, {});
-
-      // POST should also work with versioned prefix
-      assertEqual(doc.code, 200);
-      assertCspHeaders(doc);
-    },
-
-    test_checks_version_endpoint_with_v1_prefix_HEAD: function() {
-      let cmd = "/_arango/v1/_api/version";
-      let doc = arango.HEAD_RAW(cmd);
-
-      // HEAD should also work with versioned prefix
-      assertEqual(doc.code, 200);
       assertCspHeaders(doc);
     },
 
@@ -494,16 +458,6 @@ function API_versioningSuite () {
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('requestedApiVersion'));
       assertEqual(doc.parsedBody.requestedApiVersion, "v0");
-      assertCspHeaders(doc);
-    },
-
-    test_checks_version_endpoint_reports_requested_api_version_v1: function() {
-      let cmd = "/_arango/v1/_api/version";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-      assertTrue(doc.parsedBody.hasOwnProperty('requestedApiVersion'));
-      assertEqual(doc.parsedBody.requestedApiVersion, "v1");
       assertCspHeaders(doc);
     },
 

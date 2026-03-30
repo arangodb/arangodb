@@ -25,7 +25,7 @@
 #include "Async/Registry/promise.h"
 #include "Logger/LogContext.h"
 #include "Utils/ExecContext.h"
-#include "Activities/registry.h"
+#include "Activities/Registry.h"
 
 namespace arangodb {
 
@@ -40,7 +40,7 @@ struct Context {
   std::shared_ptr<ExecContext const> _execContext;
   async_registry::CurrentRequester _requester;
   LogContext _logContext;
-  activities::ActivityId _currentlyExecutingActivity;
+  activities::ActivityHandle _currentlyExecutingActivity;
 
   Context()
       : _execContext{ExecContext::currentAsShared()},

@@ -62,7 +62,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -414,6 +414,7 @@ std::string const RestReplicationHandler::LoggerState = "logger-state";
 std::string const RestReplicationHandler::LoggerTickRanges =
     "logger-tick-ranges";
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
+std::string const RestReplicationHandler::LoggerLast = "logger-last";
 std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
@@ -482,6 +483,14 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_return;
       }
       handleCommandLoggerFirstTick();
+    } else if (command == LoggerLast) {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      if (isCoordinatorError()) {
+        co_return;
+      }
+      handleCommandLoggerLast();
     } else if (command == LoggerFollow) {
       if (type != rest::RequestType::GET && type != rest::RequestType::PUT) {
         goto BAD_CALL;
@@ -3073,6 +3082,22 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief return the first tick available in a logfile
+/// @route GET logger-last
+/// @caller js/client/modules/@arangodb/replication.js
+/// @response VPackObject with minTick of LogfileManager->lastLogger()
+//////////////////////////////////////////////////////////////////////////////
+void RestReplicationHandler::handleCommandLoggerLast() {
+  VPackBuilder builder;
+  auto tickStart = _request->parsedValue("tickStart", uint64_t(0));
+  auto tickEnd = _request->parsedValue("tickEnd", uint64_t(0xbadbadbadbadULL));
+
+  Result res = server().getFeature<EngineSelectorFeature>().engine().lastLogger(
+      _vocbase, tickStart, tickEnd, builder);
+  generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief return the available logfile range
 /// @route GET logger-tick-ranges
 /// @caller js/client/modules/@arangodb/replication.js
@@ -3266,7 +3291,7 @@ void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
 ///           * ranges, VPackArray of VPackArray of revisions
 ///           * resume, optional, if response is chunked; revision resume
 ///                     point to specify on subsequent requests
-//////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////// ///////////////////////////////
 
 void RestReplicationHandler::handleCommandRevisionRanges() {
   RevisionOperationContext ctx;
