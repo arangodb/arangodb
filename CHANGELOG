@@ -1,5 +1,9 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+* Fixed vector index creation in cluster producing duplicate indexes when
+  `storedValues` differs between definitions (e.g., one with and one without
+  `storedValues`). The comparison now correctly ignores `storedValues`.
+
 * Vector index creation with `inBackground: false` now blocks until training
   completes and returns the current `trainingState` in the response.
 
