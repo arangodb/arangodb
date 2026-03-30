@@ -40,7 +40,7 @@ function IndexInBackgroundFailuresSuite () {
   let run = function(insertData) {
     for (let i = 0; i < 8; ++i) {
       insertData();
-      internal.wal.flush(true, false);
+      internal.wal.flush(true, true);
     }
   };
 
