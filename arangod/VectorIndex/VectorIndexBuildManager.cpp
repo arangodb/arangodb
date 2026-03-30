@@ -45,6 +45,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include <format>
 #include <unordered_set>
 
 DECLARE_GAUGE(arangodb_vector_index_unusable, uint64_t,
@@ -250,6 +251,13 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
             static_cast<std::int64_t>(rcoll->meta().numberDocuments());
         if (numDocs < vecIdx.trainingThreshold()) {
           skippedWaiters.insert(vecIdx.id().id());
+          reportIndexError(
+              vocbase, *coll, vecIdx,
+              Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                     std::format("not enough training data for vector "
+                                 "index, need at least {} documents "
+                                 "but only {} present",
+                                 vecIdx.trainingThreshold(), numDocs)});
           continue;
         }
 
