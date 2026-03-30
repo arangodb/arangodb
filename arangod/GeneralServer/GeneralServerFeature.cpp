@@ -157,7 +157,7 @@ struct ConnectionTimeScale {
     return {0.1, 60.0, ConnectionTimeDistributionCuts};
   }
 };
-}
+}  // namespace
 
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_connection_time,
                   ConnectionTimeScale, "Total connection time of a client");
@@ -175,8 +175,10 @@ GeneralServerFeature::GeneralServerFeature(
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
       _http2Connections(metrics.add(arangodb_http2_connections_total{})),
-_connectionDuration(metrics.add(arangodb_client_connection_statistics_connection_time{})),
-_connectionHttp(metrics.add(arangodb_client_connection_statistics_client_connections{})){
+      _connectionDuration(
+          metrics.add(arangodb_client_connection_statistics_connection_time{})),
+      _connectionHttp(metrics.add(
+          arangodb_client_connection_statistics_client_connections{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 

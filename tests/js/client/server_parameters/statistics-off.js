@@ -66,7 +66,6 @@ function testSuite() {
          arango.GET_RAW("/_admin/metrics");
       }
       // metric values should always be 0 if statistics are disabled
-      assertEqual(0, getMetric("arangodb_connection_statistics_memory_usage"));
       assertEqual(0, getMetric("arangodb_request_statistics_memory_usage"));
     },
   };

@@ -32,7 +32,7 @@ namespace arangodb::metrics {
 
 template<typename ValueType>
 class HistogramBase : public Metric {
-public:
+ public:
   using Metric::Metric;
   void count(ValueType t) noexcept { count(t, 1); }
   virtual void count(ValueType t, uint64_t n) noexcept = 0;

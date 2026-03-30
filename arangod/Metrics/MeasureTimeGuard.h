@@ -24,37 +24,34 @@
 #include <chrono>
 #include "Histogram.h"
 
-namespace arangodb::metrics
-{
-    template<typename ValueType>
-    struct MeasureTimeGuard {
-        explicit MeasureTimeGuard(
-            metrics::HistogramBase<ValueType>& histogram) noexcept :
-      _start(std::chrono::steady_clock::now()), _histogram(&histogram) {}
-        MeasureTimeGuard(MeasureTimeGuard const&) = delete;
-        MeasureTimeGuard(MeasureTimeGuard&&) = default;
-        ~MeasureTimeGuard() {
-          fire();
-        }
+namespace arangodb::metrics {
+template<typename ValueType>
+struct MeasureTimeGuard {
+  explicit MeasureTimeGuard(
+      metrics::HistogramBase<ValueType>& histogram) noexcept
+      : _start(std::chrono::steady_clock::now()), _histogram(&histogram) {}
+  MeasureTimeGuard(MeasureTimeGuard const&) = delete;
+  MeasureTimeGuard(MeasureTimeGuard&&) = default;
+  ~MeasureTimeGuard() { fire(); }
 
-        void fire() {
-          if (_histogram) {
-            auto const endTime = std::chrono::steady_clock::now();
-            auto const duration =
-                std::chrono::duration_cast<std::chrono::microseconds>(endTime - _start);
-            _histogram->count(duration.count());
-            _histogram.reset();
-          }
-        }
+  void fire() {
+    if (_histogram) {
+      auto const endTime = std::chrono::steady_clock::now();
+      auto const duration =
+          std::chrono::duration_cast<std::chrono::microseconds>(endTime -
+                                                                _start);
+      _histogram->count(duration.count());
+      _histogram.reset();
+    }
+  }
 
-    private:
-        std::chrono::steady_clock::time_point const _start;
-        struct noop {
-            template<typename T>
-            void operator()(T*) {}
-        };
+ private:
+  std::chrono::steady_clock::time_point const _start;
+  struct noop {
+    template<typename T>
+    void operator()(T*) {}
+  };
 
-        std::unique_ptr<HistogramBase<ValueType>, noop>
-            _histogram;
-    };
-}
+  std::unique_ptr<HistogramBase<ValueType>, noop> _histogram;
+};
+}  // namespace arangodb::metrics
