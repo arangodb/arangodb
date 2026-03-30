@@ -38,17 +38,6 @@
 #include "VocBase/LogicalView.h"
 #include "Logger/LogMacros.h"
 
-namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @return the specified vocbase is granted 'level' access
-////////////////////////////////////////////////////////////////////////////////
-bool canUse(arangodb::AccessLevel level, TRI_vocbase_t const& vocbase) {
-  return arangodb::ExecContext::current().canUseDatabase(vocbase.name(), level);
-}
-
-}  // namespace
-
 using namespace arangodb::basics;
 
 namespace arangodb {
@@ -72,9 +61,10 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!view->canUse(AccessLevel::Read)) {  // check auth after ensuring that the
-                                           // view exists
-    // auth after ensuring that the view exists
+  if (!ExecContext::current().can().readView(view->vocbase().name(),
+                                             view->name())) {
+    // check auth after ensuring that the view exists
+    // TODO Should this be NOT_FOUND instead?
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get view"));
 
@@ -199,7 +189,8 @@ void RestViewHandler::createView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(AccessLevel::WriteMeta, _vocbase)) {
+  if (auto const& can = ExecContext::current().can();
+      !can.createView(_vocbase.name(), nameSlice.stringView())) {
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to create view"));
     events::CreateView(_vocbase.name(), nameSlice.copyString(),
@@ -303,10 +294,17 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     }
   }
 
-  // check auth after ensuring that the view exists
-  if (!view->canUse(AccessLevel::WriteMeta)) {
-    return generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                         "insufficient rights to modify view");
+  auto const& can = ExecContext::current().can();
+  if (isRename) {
+    if (!can.renameView(_vocbase.name(), name, body.stringView())) {
+      return generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                           "insufficient rights to rename view");
+    }
+  } else {
+    if (!can.modifyView(_vocbase.name(), name)) {
+      return generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                           "insufficient rights to modify view");
+    }
   }
   velocypack::Builder builder;
   // skip views for which the full view definition cannot be generated, as
@@ -383,8 +381,9 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!view->canUse(AccessLevel::WriteMeta)) {  // check auth after ensuring
-                                                // that the view exists
+  auto const& can = ExecContext::current().can();
+  if (!can.dropView(_vocbase.name(), name)) {  // check auth after ensuring
+                                               // that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
 
@@ -440,12 +439,14 @@ void RestViewHandler::getViews() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(AccessLevel::Read, _vocbase)) {
-    generateError(
-        Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get views"));
-
-    return;
-  }
+  // TODO check access right per view
+  //  if (auto const& can = ExecContext::current().can();
+  //  can.readView(_vocbase.name(), name)) {
+  //    generateError(
+  //        Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get views"));
+  //
+  //    return;
+  //  }
 
   std::vector<LogicalView::ptr> views;
 
@@ -466,8 +467,10 @@ void RestViewHandler::getViews() {
 
   for (auto view : views) {
     if (view && (!excludeSystem || !view->system())) {
-      if (!view->canUse(AccessLevel::Read)) {  // check auth after ensuring that
-                                               // the view exists
+      if (!ExecContext::current().canUseView(
+              view->vocbase().name(), view->name(),
+              ViewAccessLevel::Read)) {  // check auth after ensuring that
+                                         // the view exists
         continue;  // skip views that are not authorized to be read
       }
 

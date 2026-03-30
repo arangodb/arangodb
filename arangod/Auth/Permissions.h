@@ -30,26 +30,37 @@
 
 namespace arangodb {
 
-// TODO Use AccessLevel instead of auth::Level in these permissions!
-enum class AccessLevel { None = 0, Read, WriteData, WriteMeta };
+enum class CollectionAccessLevel { None = 0, Read, WriteData, WriteMeta };
+enum class DatabaseAccessLevel { None = 0, Read, Write };
+// create and modify are basically the same, and not ordered; maybe fuse them
+enum class ViewAccessLevel { None = 0, Read, Drop, Create, Modify };
 
-std::string_view convertFromAccessLevel(AccessLevel level);
+using AccessLevel = CollectionAccessLevel;
+
+auto to_string(CollectionAccessLevel level) -> std::string_view;
+auto to_string(DatabaseAccessLevel level) -> std::string_view;
+auto to_string(ViewAccessLevel level) -> std::string_view;
 
 struct Permission {
   struct Database {
     std::string name;
-    AccessLevel level;
+    DatabaseAccessLevel level;
   };
-  struct DataSource {
+  struct Collection {
     std::string database;
     std::string name;
-    AccessLevel level;
+    CollectionAccessLevel level;
+  };
+  struct View {
+    std::string database;
+    std::string name;
+    ViewAccessLevel level;
   };
   struct Admin {
     // TODO
   };
 
-  using Any = std::variant<Database, DataSource, Admin>;
+  using Any = std::variant<Database, Collection, View, Admin>;
 
   Any permission;
 };

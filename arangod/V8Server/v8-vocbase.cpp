@@ -1323,8 +1323,9 @@ static void JS_QueryPlanCacheInvalidate(
 
   auto& vocbase = GetContextVocBase(isolate);
 
+  // TODO Should this be a separate permission/action?
   if (!ExecContext::current().canUseDatabase(vocbase.name(),
-                                             AccessLevel::WriteMeta)) {
+                                             DatabaseAccessLevel::Write)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1343,8 +1344,9 @@ static void JS_QueryPlanCachePlans(
 
   auto& vocbase = GetContextVocBase(isolate);
 
+  // TODO Should this be a separate permission/action?
   if (!ExecContext::current().canUseDatabase(vocbase.name(),
-                                             AccessLevel::Read)) {
+                                             DatabaseAccessLevel::Read)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1354,8 +1356,12 @@ static void JS_QueryPlanCachePlans(
       // check if non-superusers have at least read permissions on all
       // collections/views used in the query
       for (auto const& dataSource : value.dataSources) {
+        // TODO Should this be a separate permission/action?
+        // TODO `dataSource` can be either a collection or view; we need to
+        //      distinguish what it is to determine its permissions!
         if (!ExecContext::current().canUseCollection(
-                vocbase.name(), dataSource.second.name, AccessLevel::Read)) {
+                vocbase.name(), dataSource.second.name,
+                CollectionAccessLevel::Read)) {
           return false;
         }
       }

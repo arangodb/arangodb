@@ -97,7 +97,8 @@ struct Category {
   struct AdminTasks {};
   struct AdminReadReplicatedLog {};
   struct AdminWriteReplicatedLog {};
-  struct AdminDump {};
+  struct AdminDump {
+  };  // Do we want this in RBAC, or just internally for Classic compatibility?
   struct AdminRestore {};
   struct AdminReplication {};
   struct AdminWalAccess {};

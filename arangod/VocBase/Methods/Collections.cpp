@@ -598,7 +598,7 @@ Collections::create(         // create collection
 
   // Let's first check if we are allowed to create the collections
   auto const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(vocbase.name(), AccessLevel::WriteMeta)) {
+  if (!exec.canUseDatabase(vocbase.name(), DatabaseAccessLevel::Write)) {
     for (auto const& col : collections) {
       events::CreateCollection(vocbase.name(), col.name, TRI_ERROR_FORBIDDEN);
     }
@@ -1033,7 +1033,7 @@ futures::Future<Result> Collections::updateProperties(
       collection.vocbase().name(), collection.name(), AccessLevel::WriteMeta);
 
   if (!canModify || !exec.canUseDatabase(collection.vocbase().name(),
-                                         AccessLevel::WriteMeta)) {
+                                         DatabaseAccessLevel::Write)) {
     co_return {TRI_ERROR_FORBIDDEN,
                absl::StrCat("insufficient write permissions to collection meta "
                             "data for collection '",
@@ -1158,7 +1158,7 @@ Result Collections::rename(LogicalCollection& collection,
 
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(collection.vocbase().name(),
-                           AccessLevel::WriteMeta) ||
+                           DatabaseAccessLevel::Write) ||
       !exec.canUseCollection(collection.vocbase().name(), collection.name(),
                              AccessLevel::WriteMeta)) {
     return {TRI_ERROR_FORBIDDEN,
@@ -1239,7 +1239,7 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
     CollectionDropOptions options) {
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(coll.vocbase().name(),
-                           AccessLevel::WriteMeta) ||  // vocbase modifiable
+                           DatabaseAccessLevel::Write) ||  // vocbase modifiable
       !exec.canUseCollection(
           coll.vocbase().name(), coll.name(),
           AccessLevel::WriteMeta)) {  // collection modifiable

@@ -72,19 +72,18 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
             auto const level = std::min(storedLevel, maxLevel);
 
             switch (database.level) {
-              case AccessLevel::None:
+              case DatabaseAccessLevel::None:
                 return true;
-              case AccessLevel::Read:
+              case DatabaseAccessLevel::Read:
                 return level >= auth::Level::RO;
-              case AccessLevel::WriteData:
-              case AccessLevel::WriteMeta:
+              case DatabaseAccessLevel::Write:
                 return level >= auth::Level::RW;
             }
             ADB_PROD_CRASH();
           },
-          [&](Permission::DataSource const& datasource) -> bool {
+          [&](Permission::Collection const& collection) -> bool {
             auto const storedLevel = _userManager.collectionAuthLevel(
-                username(), datasource.database, datasource.name, true);
+                username(), collection.database, collection.name, true);
             auto const maxLevel =
                 ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
             auto const level = std::min(storedLevel, maxLevel);
@@ -111,13 +110,32 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
             //    }  // intentional fall through
             //  }
 
-            switch (datasource.level) {
+            switch (collection.level) {
               case AccessLevel::None:
                 return true;
               case AccessLevel::Read:
                 return level >= auth::Level::RO;
               case AccessLevel::WriteData:
               case AccessLevel::WriteMeta:
+                return level >= auth::Level::RW;
+            }
+            ADB_PROD_CRASH();
+          },
+          [&](Permission::View const& view) -> bool {
+            auto const storedLevel = _userManager.collectionAuthLevel(
+                username(), view.database, view.name, true);
+            auto const maxLevel =
+                ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
+            auto const level = std::min(storedLevel, maxLevel);
+
+            switch (view.level) {
+              case ViewAccessLevel::None:
+                return true;
+              case ViewAccessLevel::Read:
+                return level >= auth::Level::RO;
+              case ViewAccessLevel::Drop:
+              case ViewAccessLevel::Create:
+              case ViewAccessLevel::Modify:
                 return level >= auth::Level::RW;
             }
             ADB_PROD_CRASH();
@@ -132,7 +150,7 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
 
 bool AuthMode::Classic::isAdmin() const {
   return canUse({Permission::Database{.name = StaticStrings::SystemDatabase,
-                                      .level = AccessLevel::WriteMeta}});
+                                      .level = DatabaseAccessLevel::Write}});
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {
@@ -157,9 +175,11 @@ auto AuthMode::Unauthenticated::canUse(Permission permission) const -> bool {
       [](auto const& perm) -> bool {
         using T = std::decay_t<decltype(perm)>;
         if constexpr (std::is_same_v<T, Permission::Database>) {
-          return perm.level <= AccessLevel::None;
-        } else if constexpr (std::is_same_v<T, Permission::DataSource>) {
-          return perm.level <= AccessLevel::None;
+          return perm.level <= DatabaseAccessLevel::None;
+        } else if constexpr (std::is_same_v<T, Permission::Collection>) {
+          return perm.level <= CollectionAccessLevel::None;
+        } else if constexpr (std::is_same_v<T, Permission::View>) {
+          return perm.level <= ViewAccessLevel::None;
         } else {
           return false;
         }

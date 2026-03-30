@@ -1136,33 +1136,31 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   };
 }
 
-bool IResearchAnalyzerFeature::canUseVocbase(std::string_view vocbaseName,
-                                             AccessLevel const& level) {
+bool IResearchAnalyzerFeature::canUseVocbase(
+    std::string_view vocbaseName, CollectionAccessLevel const& level) {
   TRI_ASSERT(!vocbaseName.empty());
   auto& ctx = ExecContext::current();
   auto const nameStr = static_cast<std::string>(vocbaseName);
-  return ctx.canUseDatabase(nameStr, level) &&  // can use vocbase
-         ctx.canUseCollection(nameStr,
-                              arangodb::StaticStrings::AnalyzersCollection,
-                              level);  // can use analyzers
+  return ctx.canUseCollection(
+      nameStr, arangodb::StaticStrings::AnalyzersCollection, level);
 }
 
 bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
-                                      AccessLevel const& level) {
+                                      CollectionAccessLevel const& level) {
   return canUseVocbase(vocbase.name(), level);
 }
 
 bool IResearchAnalyzerFeature::canUse(std::string_view name,
-                                      AccessLevel const& level) {
+                                      CollectionAccessLevel const& level) {
   // TODO This methods does not make sense to me.
   // First:
-  // ctx.canUseCollection(vocbaseName, arangodb::StaticStrings::AnalyzersCollection, level)
-  // will fallback to the database permissions, because it is a system collection.
-  // So it will always be the same as ctx.canUseDatabase(vocbaseName, level).
-  // Second:
-  // Whether it's a static analyzer is checked first by looking it up in a map,
-  // but then again by checking whether the database name (the part before `::`)
-  // is empty. One or either of those should be unnecessary.
+  // ctx.canUseCollection(vocbaseName,
+  // arangodb::StaticStrings::AnalyzersCollection, level) will fallback to the
+  // database permissions, because it is a system collection. So it will always
+  // be the same as ctx.canUseDatabase(vocbaseName, level). Second: Whether it's
+  // a static analyzer is checked first by looking it up in a map, but then
+  // again by checking whether the database name (the part before `::`) is
+  // empty. One or either of those should be unnecessary.
 
   auto& staticAnalyzers = getStaticAnalyzers();
 
@@ -1175,10 +1173,9 @@ bool IResearchAnalyzerFeature::canUse(std::string_view name,
   auto const vocbaseName = static_cast<std::string>(split.first);
   auto& ctx = ExecContext::current();
   return irs::IsNull(split.first)  // static analyzer (always allowed)
-         || (ctx.canUseDatabase(vocbaseName, level)  // can use vocbase
-             && ctx.canUseCollection(
-                    vocbaseName, arangodb::StaticStrings::AnalyzersCollection,
-                    level));  // can use analyzers
+         || (ctx.canUseCollection(vocbaseName,
+                                  arangodb::StaticStrings::AnalyzersCollection,
+                                  level));  // can use analyzers
 }
 
 Result IResearchAnalyzerFeature::copyAnalyzerPool(AnalyzerPool::ptr& analyzer,
@@ -2069,7 +2066,7 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
     return {};
   }
   Result res{};
-  if (canUseVocbase(dbName, AccessLevel::Read)) {
+  if (canUseVocbase(dbName, CollectionAccessLevel::Read)) {
     res = loadAnalyzers(operationOrigin, dbName);
     if (res.fail()) {
       return res;
@@ -2077,7 +2074,7 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
   }
   if (dbName != arangodb::StaticStrings::SystemDatabase &&
       canUseVocbase(arangodb::StaticStrings::SystemDatabase,
-                    AccessLevel::Read)) {
+                    CollectionAccessLevel::Read)) {
     // System is available for all other databases. So reload its analyzers too
     res =
         loadAnalyzers(operationOrigin, arangodb::StaticStrings::SystemDatabase);

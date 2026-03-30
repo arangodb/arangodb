@@ -30,33 +30,33 @@ using namespace arangodb;
 thread_local std::shared_ptr<ExecContext const> ExecContext::CURRENT = nullptr;
 
 std::shared_ptr<ExecContext const> const ExecContext::Superuser =
-    std::make_shared<ExecContext const>(ExecContext::ConstructorToken{},
+    std::make_shared<ExecContext const>(ConstructorToken{},
                                         AuthMode{AuthMode::Superuser{}});
 
 /// Should always contain a reference to current user context
-/*static*/ ExecContext const& ExecContext::current() {
-  if (ExecContext::CURRENT != nullptr) {
-    return *ExecContext::CURRENT;
+ExecContext const& ExecContext::current() {
+  if (CURRENT != nullptr) {
+    return *CURRENT;
   }
-  return *ExecContext::Superuser;
+  return *Superuser;
 }
 /// Note that this intentionally returns CURRENT, even if it is a nullptr: This
 /// makes it suitable to set CURRENT in another thread.
-/*static*/ std::shared_ptr<ExecContext const> ExecContext::currentAsShared() {
-  return ExecContext::CURRENT;
+std::shared_ptr<ExecContext const> ExecContext::currentAsShared() {
+  return CURRENT;
 }
 
 /// @brief an internal superuser context, is
 ///        a singleton instance, deleting is an error
-/*static*/ ExecContext const& ExecContext::superuser() {
-  return *ExecContext::Superuser;
-}
-/*static*/ std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
-  return ExecContext::Superuser;
+ExecContext const& ExecContext::superuser() { return *Superuser; }
+std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
+  return Superuser;
 }
 
-ExecContext::ExecContext(ExecContext::ConstructorToken, AuthMode authMode)
-    : _authMode(std::move(authMode)) {}
+auto ExecContext::can() const -> auth::Can const& { return _can; }
+
+ExecContext::ExecContext(ConstructorToken, AuthMode authMode)
+    : _authMode(std::move(authMode)), _can(_authMode) {}
 
 // TODO make this non-static, use _authenticationFeature instead
 bool ExecContext::isAuthEnabled() {
@@ -65,10 +65,10 @@ bool ExecContext::isAuthEnabled() {
   return af->isActive();
 }
 
-bool ExecContext::canUseDatabase(std::string const& db,
-                                 AccessLevel requested) const {
+bool ExecContext::canUseDatabase(std::string_view db,
+                                 DatabaseAccessLevel requested) const {
   return _authMode.getIAuth().canUse(
-      {Permission::Database{.name = db, .level = requested}});
+      {Permission::Database{.name = std::string{db}, .level = requested}});
 }
 
 /// @brief returns auth level for user
@@ -115,9 +115,25 @@ auth::Level ExecContext::collectionAuthLevel(std::string_view dbname,
 }
 
 /// @brief returns AccessLevel for user
-AccessLevel ExecContext::collectionAccessLevel(
+CollectionAccessLevel ExecContext::collectionAccessLevel(
     std::string_view dbname, std::string_view collection) const {
   std::abort();
+}
+
+bool ExecContext::canUseCollection(std::string_view db, std::string_view coll,
+                                   CollectionAccessLevel requested) const {
+  return _authMode.getIAuth().canUse(
+      {Permission::Collection{.database = std::string(db),
+                              .name = std::string(coll),
+                              .level = requested}});
+}
+
+bool ExecContext::canUseView(std::string_view db, std::string_view viewName,
+                             ViewAccessLevel requested) const {
+  return _authMode.getIAuth().canUse(
+      {Permission::View{.database = std::string(db),
+                        .name = std::string(viewName),
+                        .level = requested}});
 }
 
 /// @brief returns true if the user can be read

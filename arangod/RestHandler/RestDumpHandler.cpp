@@ -167,9 +167,12 @@ void RestDumpHandler::handleCommandDumpStart() {
 
   // adjust permissions in single server case, so that the behavior
   // is identical to non-parallel dumps
-  ExecContextSuperuserScope escope(ExecContext::current().canUseDatabase(
-                                       "_system", AccessLevel::WriteMeta) &&
-                                   ServerState::instance()->isSingleServer());
+  // TODO What permission should this check? It was _system RW (admin) check
+  //      before. Should it be specific to `database`?
+  //      Should isSingleServer() be part of the permission check?
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isAdminUser(rbac::Category::AdminDump{}) &&
+      ServerState::instance()->isSingleServer());
 
   auto guard =
       _dumpManager->createContext(std::move(opts), user, database, useVPack);

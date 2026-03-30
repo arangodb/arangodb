@@ -138,18 +138,15 @@ struct AuthMode {
 
     // If you don't want Mockable to own the mock, pass a raw pointer to this
     // constructor:
-    Mockable(IAuth* mock)
-        : mock(mock, [](auto*){}) {}
+    Mockable(IAuth* mock) : mock(mock, [](auto*) {}) {}
 
     // construct from any compatible unique_ptr:
     template<typename T, typename D>
-      requires std::derived_from<T, IAuth>
-    Mockable(std::unique_ptr<T, D> mock)
+    requires std::derived_from<T, IAuth> Mockable(std::unique_ptr<T, D> mock)
         : mock(std::move(mock)) {}
 
     // construct from a shared_ptr
-    Mockable(std::shared_ptr<IAuth> mock)
-        : mock(std::move(mock)) {}
+    Mockable(std::shared_ptr<IAuth> mock) : mock(std::move(mock)) {}
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
     [[nodiscard]] auto canUse(Permission permission) const -> bool override;
@@ -159,8 +156,8 @@ struct AuthMode {
 #define MOCKABLE
 #endif
 
-  using Any =
-      std::variant<Superuser, Classic, Rbac, Unauthenticated, Disabled MOCKABLE>;
+  using Any = std::variant<Superuser, Classic, Rbac, Unauthenticated,
+                           Disabled MOCKABLE>;
 
   [[nodiscard]] auto getIAuth() -> IAuth&;
   [[nodiscard]] auto getIAuth() const -> IAuth const&;
@@ -170,8 +167,8 @@ struct AuthMode {
   [[nodiscard]] bool isSuperuser() const noexcept;
 
   template<typename T, typename... Args>
-  void reset(Args&& ...args) {
-        authMode.emplace<T>(std::forward<Args>(args)...);
+  void reset(Args&&... args) {
+    authMode.emplace<T>(std::forward<Args>(args)...);
   }
 };
 

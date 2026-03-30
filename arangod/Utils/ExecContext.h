@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Auth/AuthMode.h"
+#include "Auth/Can.h"
 #include "Auth/Common.h"
 #include "Auth/Rbac/Actions.h"
 #include "Auth/Permissions.h"
@@ -74,6 +75,8 @@ class ExecContext : public RequestContext {
   static ExecContext const& superuser();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
+  [[nodiscard]] auto can() const -> auth::Can const&;
+
   bool isInternal() const noexcept {
     std::abort();  // TODO remove this method
   }
@@ -86,58 +89,74 @@ class ExecContext : public RequestContext {
 
   bool isAdminUser(
       arangodb::rbac::Category::Any const& rbacAction) const noexcept {
-    std::abort();  // TODO remove this method
+    return can().admin(rbacAction);
   }
 
   /// @brief tells you if this execution was canceled
+  // TODO I think it's strange to to have this in ExecContext. It's implemented
+  //      in the VocbaseContext.
+  //      It is set to true exclusively from RestVocbaseBaseHandler::cancel().
+  //      The cancel() method on the RestHandler is used exclusively from the
+  //      AsyncJobManager.
+  //      It is read exclusively in transaction::Methods::commitInternal,
+  //      to abort right before a commit.
+  //      So its kind of used to abort transactions, but only those that happen
+  //      to be committed under this ExecContext, and only at commit time.
+  //      Except they are not aborted, just the commit fails; though that might
+  //      lead to the transaction being aborted later, e.g. when the Methods
+  //      object goes out of scope. Probably not for streaming transactions,
+  //      though, which might or might not be desirable.
   virtual bool isCanceled() const { return false; }
 
   /// @brief current user, may be empty for internal users
   std::string_view user() const { return _authMode.getIAuth().username(); }
 
-  std::string const& database() const {
+  [[deprecated]] std::string const& database() const {
     std::abort();  // TODO remove this method
   }
 
   /// @brief authentication level on _system. Always RW for superuser
-  auth::Level systemAuthLevel() const noexcept {
+  [[deprecated]] auth::Level systemAuthLevel() const noexcept {
     std::abort();  // TODO remove this method
   }
 
   /// @brief Authentication level on database selected in the current
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP
-  auth::Level databaseAuthLevel() const noexcept {
+  [[deprecated]] auth::Level databaseAuthLevel() const noexcept {
     std::abort();  // TODO remove this method
   }
 
   /// @brief returns true if auth level is above or equal `requested`
-  bool canUseDatabase(std::string const& db, AccessLevel requested) const;
+  bool canUseDatabase(std::string_view db, DatabaseAccessLevel requested) const;
 
   /// @brief returns true if a database can be created or dropped
   bool canCreateOrDropDatabase(std::string_view db) const;
 
   /// @brief returns auth level for user
-  auth::Level collectionAuthLevel(std::string_view dbname,
-                                  std::string_view collection) const;
+  [[deprecated]] auth::Level collectionAuthLevel(
+      std::string_view dbname, std::string_view collection) const;
 
   /// @brief returns AccessLevel for user
-  AccessLevel collectionAccessLevel(std::string_view dbname,
-                                    std::string_view collection) const;
+  [[deprecated]] CollectionAccessLevel collectionAccessLevel(
+      std::string_view dbname, std::string_view collection) const;
 
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseCollection(std::string_view db, std::string_view coll,
-                        AccessLevel requested) const {
-    return _authMode.getIAuth().canUse(
-        {Permission::DataSource{.database = std::string(db),
-                                .name = std::string(coll),
-                                .level = requested}});
-  }
+                        CollectionAccessLevel requested) const;
+
+  // TODO This is insufficient. We can check whether the caller is allowed to
+  //      read or drop a view; but to decide whether they are allowed to create
+  //      or modify it, we would need the list of linked collections as well.
+  bool canUseView(std::string_view db, std::string_view viewName,
+                  ViewAccessLevel requested) const;
 
   /// @brief returns true if the user can be read
   bool canReadUser(std::string_view user) const;
 
   /// @brief returns true for each user which can be read
+  // TODO Can we use a parameter type that forces fewer copies, like
+  //      std::span<std::string_view> or something?
   std::vector<bool> canReadUsers(std::vector<std::string> users) const;
 
   /// @brief returns true if the user can be modified, note that everybody
@@ -158,6 +177,7 @@ class ExecContext : public RequestContext {
 
  protected:
   AuthMode _authMode;
+  auth::Can _can;
 
  private:
   static std::shared_ptr<ExecContext const> const Superuser;

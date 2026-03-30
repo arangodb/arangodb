@@ -36,15 +36,17 @@ namespace arangodb::tests {
 
 struct TestExecContext : public ExecContext {
   TestExecContext(std::string const& user, std::string const& database,
-                  AccessLevel systemLevel, AccessLevel dbLevel,
-                  bool isAdminUser, std::vector<std::string> const& roles = {},
+                  CollectionAccessLevel systemLevel,
+                  CollectionAccessLevel dbLevel, bool isAdminUser,
+                  std::vector<std::string> const& roles = {},
                   std::string const& jwtToken = "")
       : ExecContext(ConstructorToken{}, Type::Default, user, database,
                     systemLevel, dbLevel, isAdminUser, roles, jwtToken) {}
 
   TestExecContext(bool isInternal, std::string const& user,
-                  std::string const& database, AccessLevel systemLevel,
-                  AccessLevel dbLevel, bool isAdminUser)
+                  std::string const& database,
+                  CollectionAccessLevel systemLevel,
+                  CollectionAccessLevel dbLevel, bool isAdminUser)
       : ExecContext(ConstructorToken{},
                     isInternal ? Type::Internal : Type::Default, user, database,
                     systemLevel, dbLevel, isAdminUser) {}
@@ -53,13 +55,13 @@ struct TestExecContext : public ExecContext {
 // --- Construction ---
 
 TEST(ExecContextTest, basic_construction) {
-  TestExecContext ctx("testuser", "testdb", AccessLevel::WriteMeta,
-                      AccessLevel::WriteMeta, true);
+  TestExecContext ctx("testuser", "testdb", CollectionAccessLevel::WriteMeta,
+                      CollectionAccessLevel::WriteMeta, true);
 
   EXPECT_EQ(ctx.user(), "testuser");
   EXPECT_EQ(ctx.database(), "testdb");
-  EXPECT_EQ(ctx.systemAuthLevel(), AccessLevel::WriteMeta);
-  EXPECT_EQ(ctx.databaseAuthLevel(), AccessLevel::WriteMeta);
+  EXPECT_EQ(ctx.systemAuthLevel(), CollectionAccessLevel::WriteMeta);
+  EXPECT_EQ(ctx.databaseAuthLevel(), CollectionAccessLevel::WriteMeta);
   EXPECT_TRUE(ctx.isAdminUser());
   EXPECT_FALSE(ctx.isInternal());
   EXPECT_FALSE(ctx.isSuperuser());
@@ -158,44 +160,45 @@ TEST(ExecContextTest, default_ro_ro_is_not_superuser_not_readonly) {
 // --- canUseDatabase (two-arg: internal and same-database paths) ---
 
 TEST(ExecContextTest, canUseDatabase_internal_uses_dbAuthLevel) {
-  TestExecContext ctx(true, "", "", AccessLevel::WriteMeta,
-                      AccessLevel::WriteMeta, true);
+  TestExecContext ctx(true, "", "", CollectionAccessLevel::WriteMeta,
+                      CollectionAccessLevel::WriteMeta, true);
 
-  EXPECT_TRUE(ctx.canUseDatabase("anydb", AccessLevel::WriteMeta));
-  EXPECT_TRUE(ctx.canUseDatabase("anotherdb", AccessLevel::Read));
+  EXPECT_TRUE(ctx.canUseDatabase("anydb", CollectionAccessLevel::WriteMeta));
+  EXPECT_TRUE(ctx.canUseDatabase("anotherdb", CollectionAccessLevel::Read));
 }
 
 TEST(ExecContextTest, canUseDatabase_internal_ro_rejects_rw) {
-  TestExecContext ctx(true, "", "", AccessLevel::Read, AccessLevel::Read,
-                      false);
+  TestExecContext ctx(true, "", "", CollectionAccessLevel::Read,
+                      CollectionAccessLevel::Read, false);
 
-  EXPECT_TRUE(ctx.canUseDatabase("anydb", AccessLevel::Read));
-  EXPECT_FALSE(ctx.canUseDatabase("anydb", AccessLevel::WriteMeta));
+  EXPECT_TRUE(ctx.canUseDatabase("anydb", CollectionAccessLevel::Read));
+  EXPECT_FALSE(ctx.canUseDatabase("anydb", CollectionAccessLevel::WriteMeta));
 }
 
 TEST(ExecContextTest, canUseDatabase_same_db_uses_dbAuthLevel) {
-  TestExecContext ctx("user", "mydb", AccessLevel::WriteMeta, AccessLevel::Read,
-                      false);
+  TestExecContext ctx("user", "mydb", CollectionAccessLevel::WriteMeta,
+                      CollectionAccessLevel::Read, false);
 
-  EXPECT_TRUE(ctx.canUseDatabase("mydb", AccessLevel::Read));
-  EXPECT_FALSE(ctx.canUseDatabase("mydb", AccessLevel::WriteMeta));
+  EXPECT_TRUE(ctx.canUseDatabase("mydb", CollectionAccessLevel::Read));
+  EXPECT_FALSE(ctx.canUseDatabase("mydb", CollectionAccessLevel::WriteMeta));
 }
 
 // --- collectionAuthLevel (internal path) ---
 
 TEST(ExecContextTest, collectionAuthLevel_internal_returns_dbAuthLevel) {
-  TestExecContext ctx(true, "", "", AccessLevel::WriteMeta,
-                      AccessLevel::WriteMeta, true);
+  TestExecContext ctx(true, "", "", CollectionAccessLevel::WriteMeta,
+                      CollectionAccessLevel::WriteMeta, true);
 
   EXPECT_EQ(ctx.collectionAuthLevel("anydb", "anycoll"),
-            AccessLevel::WriteMeta);
+            CollectionAccessLevel::WriteMeta);
 }
 
 TEST(ExecContextTest, collectionAuthLevel_internal_ro_returns_ro) {
-  TestExecContext ctx(true, "", "", AccessLevel::Read, AccessLevel::Read,
-                      false);
+  TestExecContext ctx(true, "", "", CollectionAccessLevel::Read,
+                      CollectionAccessLevel::Read, false);
 
-  EXPECT_EQ(ctx.collectionAuthLevel("anydb", "anycoll"), AccessLevel::Read);
+  EXPECT_EQ(ctx.collectionAuthLevel("anydb", "anycoll"),
+            CollectionAccessLevel::Read);
 }
 
 // --- Static superuser singleton ---
@@ -232,8 +235,9 @@ TEST(ExecContextTest, current_returns_superuser_when_no_context_set) {
 TEST(ExecContextTest, set_swaps_and_returns_old_value) {
   auto old = ExecContext::set(nullptr);
 
-  auto ctx = std::make_shared<TestExecContext>("u", "db", AccessLevel::Read,
-                                               AccessLevel::Read, false);
+  auto ctx =
+      std::make_shared<TestExecContext>("u", "db", CollectionAccessLevel::Read,
+                                        CollectionAccessLevel::Read, false);
   auto prev = ExecContext::set(ctx);
   EXPECT_EQ(prev, nullptr);
   EXPECT_EQ(ExecContext::currentAsShared(), ctx);
@@ -249,7 +253,8 @@ TEST(ExecContextTest, scope_sets_and_restores_current) {
   auto original = ExecContext::currentAsShared();
 
   auto ctx = std::make_shared<TestExecContext>(
-      "scoped", "db", AccessLevel::WriteMeta, AccessLevel::WriteMeta, false);
+      "scoped", "db", CollectionAccessLevel::WriteMeta,
+      CollectionAccessLevel::WriteMeta, false);
   {
     ExecContextScope scope(ctx);
     EXPECT_EQ(ExecContext::current().user(), "scoped");
@@ -263,9 +268,11 @@ TEST(ExecContextTest, nested_scopes_restore_correctly) {
   auto original = ExecContext::currentAsShared();
 
   auto ctx1 = std::make_shared<TestExecContext>(
-      "outer", "db", AccessLevel::WriteMeta, AccessLevel::WriteMeta, false);
+      "outer", "db", CollectionAccessLevel::WriteMeta,
+      CollectionAccessLevel::WriteMeta, false);
   auto ctx2 = std::make_shared<TestExecContext>(
-      "inner", "db", AccessLevel::Read, AccessLevel::Read, false);
+      "inner", "db", CollectionAccessLevel::Read, CollectionAccessLevel::Read,
+      false);
   {
     ExecContextScope outer(ctx1);
     EXPECT_EQ(ExecContext::current().user(), "outer");
@@ -285,7 +292,8 @@ TEST(ExecContextTest, superuser_scope_sets_and_restores) {
   auto original = ExecContext::currentAsShared();
 
   auto ctx = std::make_shared<TestExecContext>(
-      "regular", "db", AccessLevel::Read, AccessLevel::Read, false);
+      "regular", "db", CollectionAccessLevel::Read, CollectionAccessLevel::Read,
+      false);
   {
     ExecContextScope setup(ctx);
     EXPECT_EQ(ExecContext::current().user(), "regular");
@@ -303,7 +311,8 @@ TEST(ExecContextTest, superuser_scope_false_is_noop) {
   auto original = ExecContext::currentAsShared();
 
   auto ctx = std::make_shared<TestExecContext>(
-      "regular", "db", AccessLevel::Read, AccessLevel::Read, false);
+      "regular", "db", CollectionAccessLevel::Read, CollectionAccessLevel::Read,
+      false);
   {
     ExecContextScope setup(ctx);
     EXPECT_EQ(ExecContext::current().user(), "regular");

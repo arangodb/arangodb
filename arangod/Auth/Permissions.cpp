@@ -22,18 +22,47 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Permissions.h"
 
+#include <Assertions/ProdAssert.h>
+
 namespace arangodb {
 
-std::string_view convertFromAccessLevel(AccessLevel level) {
+auto to_string(CollectionAccessLevel level) -> std::string_view {
   switch (level) {
-    case AccessLevel::None:
+    case CollectionAccessLevel::None:
       return "none";
-    case AccessLevel::Read:
+    case CollectionAccessLevel::Read:
       return "read";
-    case AccessLevel::WriteData:
+    case CollectionAccessLevel::WriteData:
       return "writedata";
-    case AccessLevel::WriteMeta:
+    case CollectionAccessLevel::WriteMeta:
       return "writemeta";
+  }
+  ADB_PROD_CRASH();
+}
+
+auto to_string(DatabaseAccessLevel level) -> std::string_view {
+  switch (level) {
+    case DatabaseAccessLevel::None:
+      return "none";
+    case DatabaseAccessLevel::Read:
+      return "read";
+    case DatabaseAccessLevel::Write:
+      return "write";
+  }
+}
+
+auto to_string(ViewAccessLevel level) -> std::string_view {
+  switch (level) {
+    case ViewAccessLevel::None:
+      return "none";
+    case ViewAccessLevel::Read:
+      return "read";
+    case ViewAccessLevel::Create:
+      return "create";
+    case ViewAccessLevel::Modify:
+      return "modify";
+    case ViewAccessLevel::Drop:
+      return "drop";
   }
 }
 
