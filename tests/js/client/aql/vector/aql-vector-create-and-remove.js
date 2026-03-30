@@ -411,6 +411,41 @@ function VectorIndexTestCreationWithVectors() {
             }
         },
 
+        testCreatingSameVectorIndexWithAndWithoutStoredValues: function() {
+            collection.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: 1,
+                    trainingIterations: 10,
+                },
+            });
+
+            collection.ensureIndex({
+                name: "vector_l2_stored",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                storedValues: ["name", "value"],
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: 1,
+                    trainingIterations: 10,
+                },
+            });
+
+            const vectorIndexes = collection.getIndexes().filter(
+                idx => idx.type === "vector"
+            );
+            assertEqual(1, vectorIndexes.length,
+                "Should have only one vector index, not two");
+        },
+
         testCreatingVectorIndexNoFields: function() {
             let gen = randomNumberGeneratorFloat(seed);
 
