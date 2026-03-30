@@ -1645,20 +1645,23 @@ class instance {
     if (!running) {
       // the test may have abortet by itself already, using SIG_ARBRT or SIG_KILL.
       this.exitStatus = res;
-      this.pid = null;
       if (res.hasOwnProperty('signal')) {
         if (signal_to_expect !== undefined) {
           if (res.signal !== signal_to_expect) {
+            this.pid = null;
             throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)} !== ${signal_to_expect}`);
           }
           if (signal_to_expect === 11) {
             this.removeCoredump();
           }
+          this.pid = null;
           return true;
         } else if ((res.signal !== 6) && (res.signal !== 9)) {
+          this.pid = null;
           throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
         }
       }
+      this.pid = null;
       return true;
     }
     return false;
