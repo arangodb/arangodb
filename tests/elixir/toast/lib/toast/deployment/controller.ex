@@ -19,6 +19,8 @@ defmodule Toast.Deployment.Controller do
   alias Toast.Diagnostics.AgencyDump
   alias Toast.Process.ServerProcess
 
+  @intentional_exit_signals [nil, 15]
+
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
 
   @type deployment_error ::
@@ -237,13 +239,7 @@ defmodule Toast.Deployment.Controller do
   end
 
   def handle_call({:verify_crash, server_id, timeout}, from, state) do
-    case ServerLifecycle.verify_crash(server_id, timeout, state.expected_crashes, from) do
-      {:reply, result, expected_crashes} ->
-        {:reply, result, %{state | expected_crashes: expected_crashes}}
-
-      {:noreply, expected_crashes} ->
-        {:noreply, %{state | expected_crashes: expected_crashes}}
-    end
+    verify_crash(server_id, timeout, state, from)
   end
 
   def handle_call({:resolve_target, target}, _from, state) do
@@ -251,8 +247,7 @@ defmodule Toast.Deployment.Controller do
   end
 
   def handle_call(:dump_agency, _from, state) do
-    agents = get_living_agents(state)
-    dump = AgencyDump.capture(agents: agents)
+    dump = AgencyDump.capture(endpoints: get_endpoints_for_role(state, :agent))
     {:reply, dump, %{state | agency_dump: dump}}
   end
 
@@ -260,83 +255,33 @@ defmodule Toast.Deployment.Controller do
   def handle_info({:server_crashed, server_id, crash_info}, state) do
     %ServerInstance{} = server = state.servers[server_id]
 
-    crash_ctx = %{deployment_id: state.id, event_listener: state.event_listener}
+    case handle_crash(server_id, crash_info, server, state) do
+      {:expected, state} ->
+        {:noreply, %{state | status: derive_status(state.servers)}}
 
-    case ServerLifecycle.handle_crash(
-           server_id,
-           crash_info,
-           state.expected_crashes,
-           server,
-           crash_ctx
-         ) do
-      {:expected, expected_crashes} ->
-        state = %{state | expected_crashes: expected_crashes}
-
-        state =
-          update_server(state, server_id,
-            operational_state: :crashed,
-            expecting_exit: true
-          )
-
-        state = %{state | status: derive_status(state.servers)}
+      {:intentional_exit, state} ->
         {:noreply, state}
 
-      :intentional_exit ->
+      {:failed, state} ->
         {:noreply, state}
-
-      :crash_during_intentional_stop ->
-        stop_health_monitor(state, server_id)
-
-        state =
-          update_server(state, server_id,
-            operational_state: :crashed,
-            expecting_exit: false,
-            health_monitor: nil
-          )
-
-        {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
-
-      :unexpected_crash ->
-        Logger.debug(
-          "Deployment status: #{state.status} -> :failed (server #{server_id} crashed)"
-        )
-
-        stop_health_monitor(state, server_id)
-
-        state = update_server(state, server_id, operational_state: :crashed, health_monitor: nil)
-
-        {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
     end
   end
 
   def handle_info({:server_unhealthy, server_id}, state) do
     Logger.error("Server #{server_id} is unresponsive, sending SIGABRT for crash backtrace")
     server = state.servers[server_id]
-
-    crash_ctx = %{deployment_id: state.id, event_listener: state.event_listener}
-    ServerLifecycle.handle_unhealthy_server(server_id, server, crash_ctx)
-
+    if server && server.server_pid, do: ServerProcess.send_signal(server.server_pid, :sigabrt)
     state = update_server(state, server_id, operational_state: :killed, expecting_exit: true)
     Logger.debug("Deployment status: #{state.status} -> :failed")
     {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}
   end
 
   def handle_info({:expect_crash_timeout, server_id}, state) do
-    server = Map.get(state.servers, server_id)
-
-    expected_crashes =
-      ServerLifecycle.handle_expect_crash_timeout(server_id, state.expected_crashes, server)
-
-    {:noreply, %{state | expected_crashes: expected_crashes}}
+    {:noreply, handle_expect_crash_timeout(server_id, state)}
   end
 
   def handle_info({:verify_crash_timeout, server_id}, state) do
-    server = Map.get(state.servers, server_id)
-
-    expected_crashes =
-      ServerLifecycle.handle_verify_crash_timeout(server_id, state.expected_crashes, server)
-
-    {:noreply, %{state | expected_crashes: expected_crashes}}
+    {:noreply, handle_verify_crash_timeout(server_id, state)}
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, state)
@@ -470,11 +415,167 @@ defmodule Toast.Deployment.Controller do
 
   defp do_expect_crash(server_id, acc, timeout) do
     with {:ok, server} <- fetch_server(acc, server_id),
-         {:ok, expected_crashes} <-
-           ServerLifecycle.expect_crash(server_id, timeout, acc.expected_crashes, server) do
-      {:ok, %{acc | expected_crashes: expected_crashes}}
+         {:ok, acc} <- expect_crash(server_id, timeout, server, acc) do
+      {:ok, acc}
     end
   end
+
+  # --- Crash handling ---
+
+  defp handle_crash(server_id, crash_info, server, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      %{timer: _timer} = entry ->
+        handle_expected_crash(server_id, crash_info, entry, state)
+
+      nil ->
+        handle_unexpected_crash(server_id, crash_info, server, state)
+    end
+  end
+
+  defp handle_expected_crash(server_id, crash_info, entry, state) do
+    Logger.info("Server #{server_id} crashed as expected")
+    notify_crash_event(state, server_id, crash_info, true)
+
+    state =
+      update_server(state, server_id, operational_state: :crashed, expecting_exit: true)
+
+    case entry.waiter do
+      {from, verify_timer} ->
+        Process.cancel_timer(verify_timer)
+        Process.cancel_timer(entry.timer)
+        GenServer.reply(from, {:ok, crash_info})
+        {:expected, %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}}
+
+      nil ->
+        entry = %{entry | crash_info: crash_info}
+
+        {:expected,
+         %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}}
+    end
+  end
+
+  defp handle_unexpected_crash(
+         server_id,
+         %{signal: signal} = _crash_info,
+         %ServerInstance{expecting_exit: true},
+         state
+       )
+       when signal in @intentional_exit_signals do
+    Logger.debug("Server #{server_id} exited intentionally (signal=#{inspect(signal)})")
+
+    {:intentional_exit, state}
+  end
+
+  defp handle_unexpected_crash(
+         server_id,
+         crash_info,
+         %ServerInstance{expecting_exit: true},
+         state
+       ) do
+    Logger.error(
+      "Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}"
+    )
+
+    fail_server(server_id, crash_info, state)
+  end
+
+  defp handle_unexpected_crash(server_id, crash_info, _server, state) do
+    Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
+    fail_server(server_id, crash_info, state)
+  end
+
+  defp fail_server(server_id, crash_info, state) do
+    notify_crash_event(state, server_id, crash_info, false)
+    state.event_listener.on_crash(server_id, crash_info)
+    stop_health_monitor(state, server_id)
+
+    state =
+      update_server(state, server_id,
+        operational_state: :crashed,
+        expecting_exit: false,
+        health_monitor: nil
+      )
+
+    {:failed, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
+  end
+
+  defp notify_crash_event(state, server_id, crash_info, expected) do
+    state.event_listener.on_event(%{
+      event: :server_crashed,
+      deployment_id: state.id,
+      server_id: server_id,
+      pid: crash_info.os_pid,
+      crash_info: crash_info,
+      expected: expected,
+      timestamp: Toast.get_timestamp()
+    })
+  end
+
+  # --- Expect / verify crash protocol ---
+
+  defp expect_crash(server_id, timeout, server, state) do
+    if is_map_key(state.expected_crashes, server_id) do
+      {:error, :already_expected}
+    else
+      Logger.debug("Registered expected crash for #{server_id} (timeout=#{timeout}ms)")
+      ServerLifecycle.suspend_health_monitor(server)
+      timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, timeout)
+      entry = %{timer: timer, crash_info: nil, waiter: nil}
+      {:ok, %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}}
+    end
+  end
+
+  defp verify_crash(server_id, timeout, state, from) do
+    case Map.get(state.expected_crashes, server_id) do
+      nil ->
+        {:reply, {:error, :no_expectation}, state}
+
+      %{crash_info: nil} = entry ->
+        verify_timer = Process.send_after(self(), {:verify_crash_timeout, server_id}, timeout)
+        entry = %{entry | waiter: {from, verify_timer}}
+        {:noreply, %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}}
+
+      %{crash_info: crash_info, timer: timer} ->
+        Process.cancel_timer(timer)
+
+        {:reply, {:ok, crash_info},
+         %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}}
+    end
+  end
+
+  defp handle_expect_crash_timeout(server_id, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      %{crash_info: nil} = entry ->
+        Logger.warning("Expected crash for #{server_id} timed out")
+        notify_waiter_timeout(entry)
+        server = Map.get(state.servers, server_id)
+        ServerLifecycle.resume_health_monitor(server)
+        %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+
+      _ ->
+        state
+    end
+  end
+
+  defp handle_verify_crash_timeout(server_id, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      %{waiter: {from, _}} ->
+        GenServer.reply(from, {:error, :timeout})
+        server = Map.get(state.servers, server_id)
+        ServerLifecycle.resume_health_monitor(server)
+        %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+
+      _ ->
+        state
+    end
+  end
+
+  defp notify_waiter_timeout(%{waiter: {from, verify_timer}}) do
+    Process.cancel_timer(verify_timer)
+    GenServer.reply(from, {:error, :timeout})
+  end
+
+  defp notify_waiter_timeout(_), do: :ok
 
   # --- Server state helpers ---
 
@@ -495,11 +596,12 @@ defmodule Toast.Deployment.Controller do
     Enum.find(state.servers, fn {_id, server} -> server.health_monitor == pid end)
   end
 
-  defp get_living_agents(state) do
+  defp get_endpoints_for_role(state, role) do
     for {_id, server} <- state.servers,
-        server.role == :agent,
-        server.operational_state in [:running, nil] do
-      %{id: server.id, endpoint: server.endpoint}
+        server.role == role,
+        server.operational_state in [:running, nil],
+        server.endpoint != nil do
+      server.endpoint
     end
   end
 

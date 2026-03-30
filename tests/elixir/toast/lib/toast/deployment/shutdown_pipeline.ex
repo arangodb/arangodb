@@ -54,9 +54,12 @@ defmodule Toast.Deployment.ShutdownPipeline do
 
     expected_crashes =
       Enum.reduce(running_servers, state.expected_crashes, fn {server_id, server}, acc ->
-        case ServerLifecycle.expect_crash(server_id, @abort_timeout, acc, server) do
-          {:ok, updated} -> updated
-          {:error, :already_expected} -> acc
+        if is_map_key(acc, server_id) do
+          acc
+        else
+          ServerLifecycle.suspend_health_monitor(server)
+          timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, @abort_timeout)
+          Map.put(acc, server_id, %{timer: timer, crash_info: nil, waiter: nil})
         end
       end)
 
