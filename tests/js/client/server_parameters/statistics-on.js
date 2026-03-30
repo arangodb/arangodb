@@ -25,6 +25,8 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+// TODO(listunov): Does this test still make any sense ?
+
 if (getOptions === true) {
   return {};
 }

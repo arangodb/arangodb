@@ -75,7 +75,6 @@ class StatisticsFeature final
 
   static double time();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void stop() override final;

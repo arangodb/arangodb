@@ -484,19 +484,6 @@ StatisticsFeature::StatisticsFeature(
 
 /*static*/ double StatisticsFeature::time() { return TRI_microtime(); }
 
-void StatisticsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption(
-          "--server.statistics-all-databases",
-          "Provide cluster statistics in the web interface for all databases.",
-          new BooleanParameter(&_options.statisticsAllDatabases),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30800);
-}
-
 void StatisticsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
   // initialize counters for all HTTP request types

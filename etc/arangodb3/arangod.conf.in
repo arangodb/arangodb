@@ -36,6 +36,7 @@ authentication = true
 # maximal-threads = 0
 
 # gather server statistics
+# TODO(listunov): whats that?
 statistics = true
 
 # the user and group are normally set in the start script
