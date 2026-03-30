@@ -35,16 +35,6 @@
 #include <string_view>
 #include <vector>
 
-namespace v8 {
-
-template<class T>
-class Local;
-template<class T>
-using Handle = Local<T>;
-class Value;
-class Isolate;
-
-}  // namespace v8
 namespace arangodb {
 
 class CollectionNameResolver;
@@ -431,12 +421,6 @@ struct AqlValue final {
 
   /// @brief return the range value
   Range const* range() const;
-
-  /// @brief construct a V8 value as input for the expression execution in V8
-#ifdef USE_V8
-  v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
-                             velocypack::Options const*) const;
-#endif
 
   /// @brief materializes a value into the builder
   void toVelocyPack(velocypack::Options const*, velocypack::Builder&,

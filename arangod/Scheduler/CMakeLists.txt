@@ -17,8 +17,3 @@ target_link_libraries(arango_scheduler
   arango_basic_errors
 )
 
-if (USE_V8)
-  target_link_libraries(arango_scheduler PUBLIC ${V8_LIBS})
-  target_link_libraries(arango_scheduler PUBLIC v8_interface)
-endif()
-

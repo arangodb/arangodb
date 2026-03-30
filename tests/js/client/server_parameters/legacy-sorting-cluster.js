@@ -70,24 +70,24 @@ function createVPackIndexes(databasename, collname, attrA, attrB) {
                  name:"persistent_non_unique"});
   c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: true,
                  name:"persistent_unique"});
-  c.ensureIndex({type:"hash", fields: [attrA, attrB], unique: false,
+  c.ensureIndex({type:"persistent", fields: [attrB, attrA], unique: false,
                  name:"hash_non_unique"});
-  c.ensureIndex({type:"hash", fields: [attrA, attrB], unique: true,
+  c.ensureIndex({type:"persistent", fields: [attrB, attrA], unique: true,
                  name:"hash_unique"});
-  c.ensureIndex({type:"skiplist", fields: [attrA, attrB], unique: false,
+  c.ensureIndex({type:"persistent", fields: [attrA], unique: false,
                  name:"skiplist_non_unique"});
-  c.ensureIndex({type:"skiplist", fields: [attrA, attrB], unique: true,
+  c.ensureIndex({type:"persistent", fields: [attrB], unique: false,
                  name:"skiplist_unique"});
-  let nr = 6;
   try {
     c.ensureIndex({type:"mdi-prefixed", fields: ["x", "y"], prefixFields:[attrA, attrB],
                    name:"mdi_non_unique", fieldValueTypes: "double", unique: false});
     c.ensureIndex({type:"mdi-prefixed", fields: ["x", "y"], prefixFields:[attrA, attrB],
                    name:"mdi_unique", fieldValueTypes: "double", unique: true});
-    nr += 2;
   } catch(e) {
-    // Smile it away on 3.11
+    // mdi-prefixed not supported on 3.11
   }
+  // Count actual created indexes (excluding primary index at position 0)
+  let nr = c.indexes().length - 1;
   db._useDatabase("_system");
   return nr;
 }

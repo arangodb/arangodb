@@ -122,10 +122,6 @@ class GroupedSortExecutor;
 class EnumerateNearVectorsExecutor;
 }  // namespace aql
 
-namespace graph {
-class KShortestPathsFinderInterface;
-}
-
 namespace iresearch {
 // only available in Enterprise
 class OffsetMaterializeExecutor;
@@ -142,9 +138,6 @@ using AllShortestPaths = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using KShortestPaths = arangodb::graph::KShortestPathsEnumerator<
-    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
 using YenPaths = arangodb::graph::YenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
@@ -159,10 +152,6 @@ using WeightedYenPaths = arangodb::graph::WeightedYenEnumeratorWithProvider<
 using WeightedYenPathsCluster =
     arangodb::graph::WeightedYenEnumeratorWithProvider<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using WeightedKShortestPaths =
-    arangodb::graph::WeightedKShortestPathsEnumerator<
-        arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 using ShortestPath = arangodb::graph::ShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
@@ -179,13 +168,6 @@ using KPathCluster = arangodb::graph::KPathEnumerator<
 
 using AllShortestPathsCluster = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using KShortestPathsCluster = arangodb::graph::KShortestPathsEnumerator<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using WeightedKShortestPathsCluster =
-    arangodb::graph::WeightedKShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using ShortestPathCluster = arangodb::graph::ShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
@@ -808,10 +790,6 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   EnumeratePathsExecutor<KPathCluster>,
                   EnumeratePathsExecutor<AllShortestPaths>,
                   EnumeratePathsExecutor<AllShortestPathsCluster>,
-                  EnumeratePathsExecutor<KShortestPaths>,
-                  EnumeratePathsExecutor<KShortestPathsCluster>,
-                  EnumeratePathsExecutor<WeightedKShortestPaths>,
-                  EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
                   EnumeratePathsExecutor<YenPaths>,
                   EnumeratePathsExecutor<YenPathsCluster>,
                   EnumeratePathsExecutor<WeightedYenPaths>,

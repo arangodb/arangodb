@@ -82,12 +82,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       var prefixIndexCollection = db._create(prefixIndexCollectionName, { numberOfShards: 3 });
 
       for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let type;
-        if (i < numOfCollectionIndexes / 2) {
-          type = "hash";
-        } else {
-          type = "skiplist";
-        }
+        let type = "persistent";
 
         collections[i].ensureIndex({type: type, fields: ["obj.a", "obj.b", "obj.c"]});
         for (j = 0; j < numOfExpCollections; ++j) {
@@ -100,12 +95,12 @@ function lateDocumentMaterializationRuleTestSuite () {
           expCollections[i * numOfCollectionIndexes + j].ensureIndex({type: type, fields: fields});
         }
       }
-      severalIndexesCollection.ensureIndex({type: "hash", fields: ["a"]});
-      severalIndexesCollection.ensureIndex({type: "hash", fields: ["b"]});
+      severalIndexesCollection.ensureIndex({type: "persistent", fields: ["a"]});
+      severalIndexesCollection.ensureIndex({type: "persistent", fields: ["b"]});
 
-      projectionsCoveredByIndexCollection.ensureIndex({type: "hash", fields: ["a", "b", "c"]});
+      projectionsCoveredByIndexCollection.ensureIndex({type: "persistent", fields: ["a", "b", "c"]});
 
-      prefixIndexCollection.ensureIndex({type: "hash", fields: ["obj.a", "obj.b"]});
+      prefixIndexCollection.ensureIndex({type: "persistent", fields: ["obj.a", "obj.b"]});
 
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         collections[i].save({_key: 'c0',  "obj": {"a": "a_val", "b": "b_val", "c": "c_val", "d": "d_val"}});

@@ -1018,12 +1018,6 @@ function OtherIndexesSuite () {
       });
     },
     
-    testFulltextIndex : function () {
-      // fulltext index should not show the "cacheEnabled" property
-      [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "fulltext", fields: ["value1"], minLength: 3 }, value);
-      });
-    },
   };
 }
 

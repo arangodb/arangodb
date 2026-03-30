@@ -35,12 +35,15 @@ namespace arangodb {
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
-        "default",    "Documents",   "PrimaryIndex",  "EdgeIndex",
-        "VPackIndex", "GeoIndex",    "FulltextIndex", "ReplicatedLogs",
-        "ZkdIndex",   "MdiPrefixed", "VectorIndex"};  // We have to keep
-                                                      // `ZkdIndex` cf name for
-                                                      // backwards
-                                                      // compatibility.
+        "default", "Documents", "PrimaryIndex", "EdgeIndex", "VPackIndex",
+        "GeoIndex", "FulltextIndex",
+        "ReplicatedLogs",  // Fulltext indexes are removed in 4.0,
+                           // but the column family is kept.
+        "ZkdIndex", "MdiPrefixed", "VectorIndex"};  // We have to keep
+                                                    // `ZkdIndex` cf
+                                                    // name for
+                                                    // backwards
+                                                    // compatibility.
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>

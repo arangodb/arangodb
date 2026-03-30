@@ -157,8 +157,6 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   auto context = ArangoGlobalContext::CONTEXT;
   std::string basename = progname;
-  bool checkArangoImp = (progname == "arangoimport");
-
   if (!basename.ends_with(".conf")) {
     basename += ".conf";
   }
@@ -201,18 +199,6 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
           << "found config file '" << name << "'";
       filename = name;
       break;
-    }
-
-    if (checkArangoImp) {
-      name = FileUtils::buildFilename(location, "arangoimp.conf");
-      LOG_TOPIC("b629e", TRACE, Logger::CONFIG)
-          << "checking config file '" << name << "'";
-      if (FileUtils::exists(name)) {
-        LOG_TOPIC("fc54e", DEBUG, Logger::CONFIG)
-            << "found config file '" << name << "'";
-        filename = name;
-        break;
-      }
     }
   }
 

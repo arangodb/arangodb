@@ -36,10 +36,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 
-#ifdef USE_V8
-#include "V8/v8-globals.h"
-#endif
-
 namespace arangodb::aql {
 
 CalculationExecutorInfos::CalculationExecutorInfos(
@@ -101,8 +97,7 @@ CalculationExecutor<calculationType>::produceRows(
 
     // _hasEnteredExecutor implies the query has entered the context, but not
     // the other way round because it may be owned by exterior.
-    TRI_ASSERT(!_hasEnteredExecutor ||
-               _infos.getQuery().hasEnteredV8Executor());
+    TRI_ASSERT(!_hasEnteredExecutor);
 
     // The following only affects V8Conditions. If we should exit the V8 context
     // between blocks, because we might have to wait for client or upstream,
@@ -124,26 +119,6 @@ CalculationExecutor<calculationType>::produceRows(
 
   return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
 }
-
-#ifdef USE_V8
-template<CalculationType calculationType>
-template<CalculationType U, typename>
-void CalculationExecutor<calculationType>::enterContext() {
-  _infos.getQuery().enterV8Executor();
-  _hasEnteredExecutor = true;
-}
-
-template<CalculationType calculationType>
-template<CalculationType U, typename>
-void CalculationExecutor<calculationType>::exitContext() noexcept {
-  if (shouldExitContextBetweenBlocks()) {
-    // must invalidate the expression now as we might be called from
-    // different threads
-    _infos.getQuery().exitV8Executor();
-    _hasEnteredExecutor = false;
-  }
-}
-#endif
 
 template<CalculationType calculationType>
 bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks()
@@ -194,58 +169,9 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
   output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
 }
 
-#ifdef USE_V8
-template<>
-void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
-    InputAqlItemRow& input, OutputAqlItemRow& output) {
-  // must have a V8 context here to protect Expression::execute().
-
-  // enterContext is safe to call even if we've already entered.
-
-  // If we should exit the context between two blocks, because client or
-  // upstream might send us to sleep, it is expected that we enter the context
-  // exactly on the first row of every block.
-  TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
-             _hasEnteredExecutor == !input.isFirstDataRowInBlock());
-
-  enterContext();
-  auto contextGuard = scopeGuard([this]() noexcept { exitContext(); });
-
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  v8::HandleScope scope(isolate);  // do not delete this!
-  // execute the expression
-  ExecutorExpressionContext ctx(
-      _trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
-      _infos.getVarToRegs(), _infos.getQuery().resourceMonitor());
-
-  bool mustDestroy;  // will get filled by execution
-  AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
-  AqlValueGuard guard(a, mustDestroy);
-
-  TRI_IF_FAILURE("CalculationBlock::executeExpression") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
-
-  if (input.blockHasMoreDataRowsAfterThis()) {
-    // We will be called again before the fetcher needs to get a new block.
-    // So we keep the context open.
-    // This works because this block allows pass through, i.e. produces exactly
-    // one output row per input row.
-    contextGuard.cancel();
-  }
-}
-#endif
-
 template class CalculationExecutor<CalculationType::Condition>;
 template class ExecutionBlockImpl<
     CalculationExecutor<CalculationType::Reference>>;
-#ifdef USE_V8
-template class CalculationExecutor<CalculationType::V8Condition>;
-template class ExecutionBlockImpl<
-    CalculationExecutor<CalculationType::V8Condition>>;
-#endif
 template class CalculationExecutor<CalculationType::Reference>;
 template class ExecutionBlockImpl<
     CalculationExecutor<CalculationType::Condition>>;

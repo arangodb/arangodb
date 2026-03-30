@@ -374,7 +374,7 @@ describe('_admin/metrics', () => {
     };
 
     const loadMetrics = (role, idx) =>  {
-      const url = `${servers.get(role)[idx]}/_admin/metrics/v2`;
+      const url = `${servers.get(role)[idx]}/_admin/metrics`;
 
       const res = request({
         json: true,
@@ -477,7 +477,7 @@ describe('_admin/metrics', () => {
          new ShardFollowerCountWatcher(9), new ShardOutOfSyncCountWatcher(0), new ShardNotReplicatedCountWatcher(0)]
         );
         runTest(() => {
-          db["UnitTestCollection"].ensureIndex({ type: "hash", fields: ["temp"] });
+          db["UnitTestCollection"].ensureIndex({ type: "persistent", fields: ["temp"] });
         },
         [new MaintenanceWatcher()]
         );

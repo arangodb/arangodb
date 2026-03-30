@@ -2560,9 +2560,6 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (_config.applier._includeSystem) {
     url += "&includeSystem=true";
   }
-  if (_config.applier._includeFoxxQueues) {
-    url += "&includeFoxxQueues=true";
-  }
 
   // use an optmization here for shard synchronization: only fetch the
   // inventory including a single shard. this can greatly reduce the size of
@@ -2653,8 +2650,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
     }
 
     if (TRI_ExcludeCollectionReplication(leaderName,
-                                         _config.applier._includeSystem,
-                                         _config.applier._includeFoxxQueues)) {
+                                         _config.applier._includeSystem)) {
       continue;
     }
 

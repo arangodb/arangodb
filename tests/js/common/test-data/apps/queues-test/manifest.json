@@ -1,6 +1,0 @@
-{
-  "main": "index.js",
-  "scripts": {
-    "job": "job.js"
-  }
-}

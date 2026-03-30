@@ -40,9 +40,6 @@ function admin_statuSuite () {
       let cmd = "/_admin/status";
       let doc = arango.GET(cmd);
       assertEqual(doc["server"], "arango", doc);
-      assertTrue(doc.hasOwnProperty("mode")); // to be removed;
-      assertTrue(doc.hasOwnProperty("operationMode"));
-      assertEqual(doc["mode"], doc["operationMode"]);
       assertTrue(doc.hasOwnProperty("version"));
       assertTrue(doc.hasOwnProperty("pid"));
       assertTrue(doc.hasOwnProperty("license"));
@@ -52,9 +49,7 @@ function admin_statuSuite () {
       let info = doc["serverInfo"];
       assertTrue(info.hasOwnProperty("maintenance"));
       assertTrue(info.hasOwnProperty("role"));
-      assertTrue(info.hasOwnProperty("writeOpsEnabled")); // to be removed;
       assertTrue(info.hasOwnProperty("readOnly"));
-      assertEqual(info["writeOpsEnabled"], !info["readOnly"]);
     }
   };
 }

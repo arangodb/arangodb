@@ -122,7 +122,7 @@
     removedSingleIndices: 1,
     removedModulo: 10,
     // testIndexes
-    indexesCount: 9,
+    indexesCount: 8,
     // testKeygenAutoInc
     keygenAutoInc: 42049,
     autoIncDocCount: 1001,
@@ -419,7 +419,7 @@
         assertEqual("edge", c.indexes()[1].type);
         if (args.edgesIndexCount > 2) {
           // Backup and restore:
-          assertEqual("hash", c.indexes()[2].type);
+          assertEqual("persistent", c.indexes()[2].type);
         }
         assertEqual(10, c.count());
 
@@ -515,48 +515,44 @@
         assertEqual(args.indexesCount, c.indexes().length, `We found following indexes: ${JSON.stringify(c.indexes())}`);
         assertEqual("primary", c.indexes()[0].type);
 
-        assertEqual("hash", c.indexes()[1].type);
+        assertEqual("persistent", c.indexes()[1].type);
         assertTrue(c.indexes()[1].unique);
         assertFalse(c.indexes()[1].sparse);
         assertEqual(["a_uc"], c.indexes()[1].fields);
 
-        assertEqual("skiplist", c.indexes()[2].type);
+        assertEqual("persistent", c.indexes()[2].type);
         assertFalse(c.indexes()[2].unique);
         assertFalse(c.indexes()[2].sparse);
         assertEqual(["a_s1", "a_s2"], c.indexes()[2].fields);
 
-        assertEqual("hash", c.indexes()[3].type);
+        assertEqual("persistent", c.indexes()[3].type);
         assertFalse(c.indexes()[3].unique);
         assertFalse(c.indexes()[3].sparse);
         assertEqual(["a_h1", "a_h2"], c.indexes()[3].fields);
 
-        assertEqual("skiplist", c.indexes()[4].type);
+        assertEqual("persistent", c.indexes()[4].type);
         assertTrue(c.indexes()[4].unique);
         assertFalse(c.indexes()[4].sparse);
         assertEqual(["a_su"], c.indexes()[4].fields);
 
-        assertEqual("hash", c.indexes()[5].type);
+        assertEqual("persistent", c.indexes()[5].type);
         assertFalse(c.indexes()[5].unique);
         assertTrue(c.indexes()[5].sparse);
         assertEqual(["a_hs1", "a_hs2"], c.indexes()[5].fields);
 
-        assertEqual("skiplist", c.indexes()[6].type);
+        assertEqual("persistent", c.indexes()[6].type);
         assertFalse(c.indexes()[6].unique);
         assertTrue(c.indexes()[6].sparse);
         assertEqual(["a_ss1", "a_ss2"], c.indexes()[6].fields);
 
+        assertEqual("geo", c.indexes()[7].type);
+        assertEqual(["a_la", "a_lo"], c.indexes()[7].fields);
         assertFalse(c.indexes()[7].unique);
-        assertEqual("fulltext", c.indexes()[7].type);
-        assertEqual(["a_f"], c.indexes()[7].fields);
 
-        assertEqual("geo", c.indexes()[8].type);
-        assertEqual(["a_la", "a_lo"], c.indexes()[8].fields);
-        assertFalse(c.indexes()[8].unique);
-
-        if (args.indexesCount > 9) {
-          assertEqual("hash", c.indexes()[9].type);
-          assertEqual(["abc"], c.indexes()[9].fields);
-          assertFalse(c.indexes()[9].unique);
+        if (args.indexesCount > 8) {
+          assertEqual("persistent", c.indexes()[8].type);
+          assertEqual(["abc"], c.indexes()[8].fields);
+          assertFalse(c.indexes()[8].unique);
         }
         assertEqual(0, c.count());
       },
@@ -790,64 +786,6 @@
       },
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test committed trx
-      ////////////////////////////////////////////////////////////////////////////////
-
-      testTransactionCommit: function () {
-        if (!IM.options.skipServerJS) {
-          var c = getCollection("UnitTestsDumpTransactionCommit");
-
-          assertEqual(1000, c.count());
-
-          for (var i = 0; i < 1000; ++i) {
-            var doc = c.document("test" + i);
-
-            assertEqual(i, doc.value1);
-            assertEqual("this is a test", doc.value2);
-            assertEqual("test" + i, doc.value3);
-          }
-        }
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test committed trx
-      ////////////////////////////////////////////////////////////////////////////////
-
-      testTransactionUpdate: function () {
-        if (!IM.options.skipServerJS) {
-          var c = getCollection("UnitTestsDumpTransactionUpdate");
-
-          assertEqual(1000, c.count());
-
-          for (var i = 0; i < 1000; ++i) {
-            var doc = c.document("test" + i);
-
-            assertEqual(i, doc.value1);
-            assertEqual("this is a test", doc.value2);
-            if (i % 2 === 0) {
-              assertEqual(i, doc.value3);
-            } else {
-              assertEqual("test" + i, doc.value3);
-            }
-          }
-        }
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test aborted trx
-      ////////////////////////////////////////////////////////////////////////////////
-
-      testTransactionAbort: function () {
-        if (!IM.options.skipServerJS) {
-          var c = getCollection("UnitTestsDumpTransactionAbort");
-
-          assertEqual(1, c.count());
-
-          assertTrue(c.exists("foo"));
-        }
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////
       /// @brief test persistent
       ////////////////////////////////////////////////////////////////////////////////
 
@@ -1069,11 +1007,6 @@
         res.forEach(function (e) {
           assertEqual(e[0], e[1]);
         });
-      },
-
-      testJobsAndQueues: function () {
-        assertEqual("test", db._jobs.document("test")._key);
-        assertEqual("test", db._queues.document("test")._key);
       },
 
       testReplicationFactor: function () {

@@ -38,7 +38,6 @@ struct NetworkOptions {
 
   enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };
 
-  std::string protocol;
   uint64_t maxOpenConnections = 0;
   uint64_t idleTtlMilli = 0;
   uint32_t numIOThreads = 0;

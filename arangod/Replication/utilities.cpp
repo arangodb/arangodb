@@ -139,8 +139,8 @@ arangodb::Result handleLeaderStateResponse(
   std::string const versionString(version.copyString());
   auto v = arangodb::rest::Version::parseFullVersionString(versionString);
 
-  if (v.major != 3) {
-    // we can connect to 3.x only
+  if (v.major < 3) {
+    // we can connect to >= 3.x only
     return Result(TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE,
                   std::string("got incompatible leader version") +
                       endpointString + ": '" + versionString + "'");

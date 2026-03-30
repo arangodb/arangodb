@@ -50,8 +50,8 @@ function runSetup () {
     }
   }
 
-  c.ensureIndex({ type: "hash", fields: ["value"] });
-  c.ensureIndex({ type: "hash", fields: ["value", "_to"], unique: true });
+  c.ensureIndex({ type: "persistent", fields: ["value"] });
+  c.ensureIndex({ type: "persistent", fields: ["value", "_to"], unique: true });
  
   // should trigger range deletion
   c.truncate();
@@ -91,7 +91,7 @@ function recoverySuite () {
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
-          case 'hash':
+          case 'persistent':
           case 'edge':
             assertEqual(i.selectivityEstimate, 1, JSON.stringify(indexes));
             break;

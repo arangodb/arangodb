@@ -289,7 +289,7 @@ function CollectionTruncateFailuresSuite() {
 
   const docs = [];
   for (let i = 0; i < 10000; ++i) {
-    docs.push({value: i % 250, value2: i % 100});
+    docs.push({value: i % 250});
   }
 
   return {
@@ -297,8 +297,7 @@ function CollectionTruncateFailuresSuite() {
     setUp: function () {
       cleanUp();
       c = db._create(cn);
-      c.ensureIndex({ type: "hash", fields: ["value"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
 
       // Add two packs of 10.000 Documents.
       // Intermediate commits will commit after 10.000 removals
@@ -330,7 +329,7 @@ function CollectionTruncateFailuresSuite() {
         assertEqual(res.length, 0);
       }
 
-      // Test Hash
+      // Test Persistent
       {
         let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
         for (let i = 0; i < 250; ++i) {
@@ -344,20 +343,6 @@ function CollectionTruncateFailuresSuite() {
         assertEqual(res2.length, 0);
       }
 
-      // Test Skiplist
-      {
-        let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
-        for (let i = 0; i < 100; ++i) {
-          // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertEqual(res.length, 0);
-        }
-
-        // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
-        assertEqual(res2.length, 0);
-      }
-
       // Test Selectivity Estimates
       {
         waitForEstimatorSync();  // make sure estimates are consistent
@@ -367,10 +352,7 @@ function CollectionTruncateFailuresSuite() {
             case 'primary':
               assertEqual(i.selectivityEstimate, 1);
               break;
-            case 'hash':
-              assertEqual(i.selectivityEstimate, 1);
-              break;
-            case 'skiplist':
+            case 'persistent':
               assertEqual(i.selectivityEstimate, 1);
               break;
             default:
@@ -381,8 +363,7 @@ function CollectionTruncateFailuresSuite() {
     },
 
     testTruncateFailsBeforeCommit: function () {
-      const docsWithEqHash = 20000 / 250;
-      const docsWithEqSkip = 20000 / 100;
+      const docsWithEqPersistent = 20000 / 250;
       IM.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
         c.truncate();
@@ -402,31 +383,17 @@ function CollectionTruncateFailuresSuite() {
         assertEqual(res.length, 20000);
       }
 
-      // Test Hash
+      // Test Persistent
       {
         let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
         for (let i = 0; i < 250; ++i) {
           // This validates that all documents can be found again
           let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertEqual(res.length, docsWithEqHash);
+          assertEqual(res.length, docsWithEqPersistent);
         }
 
         // just validate that no other values are inserted.
         let res2 = db._query(q, {"@c": cn, i: 251}).toArray();
-        assertEqual(res2.length, 0);
-      }
-
-      // Test Skiplist
-      {
-        let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
-        for (let i = 0; i < 100; ++i) {
-          // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertEqual(res.length, docsWithEqSkip);
-        }
-
-        // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
         assertEqual(res2.length, 0);
       }
 
@@ -439,13 +406,10 @@ function CollectionTruncateFailuresSuite() {
             case 'primary':
               assertEqual(i.selectivityEstimate, 1);
               break;
-            case 'hash':
+            case 'persistent':
               assertEqual(i.selectivityEstimate, 0.0125);
               break;
-            case 'skiplist':
-              assertEqual(i.selectivityEstimate, 0.005);
-              break;
-              default:
+            default:
               fail();
           }
         }
@@ -455,8 +419,7 @@ function CollectionTruncateFailuresSuite() {
 
     testTruncateFailsBetweenCommits: function () {
       IM.debugSetFailAt("FailAfterIntermediateCommit");
-      const docsWithEqHash = 20000 / 250;
-      const docsWithEqSkip = 20000 / 100;
+      const docsWithEqPersistent = 20000 / 250;
 
       try {
         c.truncate();
@@ -476,37 +439,20 @@ function CollectionTruncateFailuresSuite() {
         assertEqual(res.length, 10000);
       }
 
-      // Test Hash
+      // Test Persistent
       {
         let sum = 0;
         let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
         for (let i = 0; i < 250; ++i) {
           // This validates that all documents can be found again
           let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertTrue(res.length < docsWithEqHash);
+          assertTrue(res.length < docsWithEqPersistent);
           sum += res.length;
         }
         assertEqual(sum, 10000);
 
         // just validate that no other values are inserted.
         let res2 = db._query(q, {"@c": cn, i: 251}).toArray();
-        assertEqual(res2.length, 0);
-      }
-
-      // Test Skiplist
-      {
-        let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
-        let sum = 0;
-        for (let i = 0; i < 100; ++i) {
-          // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertTrue(res.length <  docsWithEqSkip);
-          sum += res.length;
-        }
-        assertEqual(sum, 10000);
-
-        // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
         assertEqual(res2.length, 0);
       }
 
@@ -520,11 +466,8 @@ function CollectionTruncateFailuresSuite() {
             case 'primary':
               assertEqual(i.selectivityEstimate, 1);
               break;
-            case 'hash':
+            case 'persistent':
               assertEqual(i.selectivityEstimate, 0.025);
-              break;
-            case 'skiplist':
-              assertEqual(i.selectivityEstimate, 0.01);
               break;
             default:
               fail();

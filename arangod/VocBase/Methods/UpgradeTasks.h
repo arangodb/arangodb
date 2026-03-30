@@ -36,8 +36,6 @@ namespace arangodb::methods {
 struct UpgradeTasks {
   static Result createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
                                                   velocypack::Slice slice);
-  static Result createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
-                                                      velocypack::Slice slice);
   static Result addDefaultUserOther(TRI_vocbase_t& vocbase,
                                     velocypack::Slice slice);
   static Result renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
@@ -46,6 +44,16 @@ struct UpgradeTasks {
                                               velocypack::Slice slice);
   static Result dropPregelQueriesCollection(TRI_vocbase_t& vocbase,
                                             velocypack::Slice slice);
+  static Result dropOldStatisticsCollections(TRI_vocbase_t& vocbase,
+                                             velocypack::Slice slice);
+  static Result dropFulltextIndexes(TRI_vocbase_t& vocbase,
+                                    velocypack::Slice slice);
+  static Result migrateHashSkiplistToPersistent(TRI_vocbase_t& vocbase,
+                                                velocypack::Slice slice);
+  // Version 4.* wants to drop legacy geo1/geo2 indexes, so 5.* can safely
+  // remove geo1/geo2 implementations from the codebase
+  static Result dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
+                                     velocypack::Slice /*slice*/);
 };
 
 }  // namespace arangodb::methods

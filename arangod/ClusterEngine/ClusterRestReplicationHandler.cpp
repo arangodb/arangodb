@@ -39,10 +39,6 @@ ClusterRestReplicationHandler::handleCommandBatch() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void ClusterRestReplicationHandler::handleCommandLoggerFollow() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 /// @brief run the command that determines which transactions were open at
 /// a given tick value
 /// this is an internal method use by ArangoDB's replication that should not

@@ -58,24 +58,47 @@ function testSuite() {
     setUp: function() {},
     tearDown: function() {},
 
-    testCanAccessAdminLogRw : function() {
+    testCanAccessAdminLogEntriesRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
-      let result = arango.GET("/_admin/log");
-      assertTrue(result.hasOwnProperty("topic"));
-      assertTrue(result.hasOwnProperty("level"));
-      assertTrue(result.hasOwnProperty("timestamp"));
-      assertTrue(result.hasOwnProperty("text"));
+      let result = arango.GET("/_admin/log/entries");
+      assertFalse(result.error);
+      assertTrue(result.hasOwnProperty("total"));
+      assertTrue(result.hasOwnProperty("messages"));
+      assertTrue(Array.isArray(result.messages));
+      result.messages.forEach((message) => {
+        assertTrue(message.hasOwnProperty("id"));
+        assertTrue(message.hasOwnProperty("topic"));
+        assertTrue(message.hasOwnProperty("level"));
+        assertTrue(message.hasOwnProperty("date"));
+        assertTrue(message.hasOwnProperty("message"));
+      });
     },
 
-    testCanAccessAdminLogRo : function() {
+    testCanAccessAdminLogEntriesRo : function() {
+      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      let result = arango.GET("/_admin/log/entries");
+      assertTrue(result.error);
+      assertEqual(403, result.code);
+      assertFalse(result.hasOwnProperty("total"));
+      assertFalse(result.hasOwnProperty("messages"));
+    },
+
+    testCanAccessDeprecatedAdminLogRw : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      let result = arango.GET("/_admin/log");
+      assertTrue(result.error);
+      assertEqual(410, result.code);
+      assertFalse(result.hasOwnProperty("total"));
+      assertFalse(result.hasOwnProperty("messages"));
+    },
+
+    testCanAccessDeprecatedAdminLogRo : function() {
       arango.reconnect(endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/log");
       assertTrue(result.error);
       assertEqual(403, result.code);
-      assertFalse(result.hasOwnProperty("topic"));
-      assertFalse(result.hasOwnProperty("level"));
-      assertFalse(result.hasOwnProperty("timestamp"));
-      assertFalse(result.hasOwnProperty("text"));
+      assertFalse(result.hasOwnProperty("total"));
+      assertFalse(result.hasOwnProperty("messages"));
     },
 
     testCanAccessAdminLogLevelRw : function() {

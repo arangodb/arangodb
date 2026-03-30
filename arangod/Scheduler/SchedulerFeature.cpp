@@ -43,9 +43,6 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/ThreadPoolScheduler.h"
-#ifdef USE_V8
-#include "VocBase/Methods/Tasks.h"
-#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -251,16 +248,6 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
               std::unordered_set<std::string>{"supervised", "threadpools"}),
           arangodb::options::makeFlags(arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31201);
-
-  // obsolete options
-  options->addObsoleteOption("--server.threads", "number of threads", true);
-
-  options->addObsoleteOption(
-      "--server.max-number-detached-threads",
-      "The maximum number of detached scheduler threads.", true);
-
-  // renamed options
-  options->addOldOption("scheduler.threads", "server.maximal-threads");
 }
 
 void SchedulerFeature::validateOptions(
@@ -368,9 +355,6 @@ void SchedulerFeature::start() {
 
 void SchedulerFeature::stop() {
   // shutdown user jobs again, in case new ones appear
-#ifdef USE_V8
-  arangodb::Task::shutdownTasks();
-#endif
   signalStuffDeinit();
   _scheduler->shutdown();
 }

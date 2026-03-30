@@ -41,9 +41,3 @@ add_dependencies(${BIN_ARANGOIMPORT} zlibstatic)
 add_dependencies(${BIN_ARANGOIMPORT} iculegacy_build)
 
 add_dependencies(${BIN_ARANGOIMPORT} man)
-
-install_command_alias(${BIN_ARANGOIMPORT}
-  ${CMAKE_INSTALL_BINDIR}
-  arangoimp
-)
-

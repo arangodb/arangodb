@@ -50,7 +50,7 @@ function optimizerSparseTestSuite () {
     },
 
     testSparseHashEq : function () {
-      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == 10 RETURN doc";
       let results = db._query(query).toArray();
@@ -64,7 +64,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseHashEqNull : function () {
-      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == null RETURN doc";
       let results = db._query(query).toArray();
@@ -77,7 +77,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseHashNeNull : function () {
-      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null RETURN doc";
       let results = db._query(query).toArray();
@@ -91,7 +91,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseHashEqFunc : function () {
-      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) RETURN doc";
       let results = db._query(query).toArray();
@@ -104,7 +104,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseHashEqFuncNeNull : function () {
-      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 != null RETURN doc";
       let results = db._query(query).toArray();
@@ -118,7 +118,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseHashEqFuncGtNull : function () {
-      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 > null RETURN doc";
       let results = db._query(query).toArray();
@@ -132,7 +132,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseHashEqFuncGeNull : function () {
-      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 >= null RETURN doc";
       let results = db._query(query).toArray();
@@ -145,7 +145,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistEq : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == 10 RETURN doc";
       let results = db._query(query).toArray();
@@ -159,7 +159,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistGt : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 > 10 RETURN doc";
       let results = db._query(query).toArray();
@@ -173,7 +173,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistGe : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 >= 10 RETURN doc";
       let results = db._query(query).toArray();
@@ -187,7 +187,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistLt : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 < 10 RETURN doc";
       let results = db._query(query).toArray();
@@ -200,7 +200,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistLe : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 <= 10 RETURN doc";
       let results = db._query(query).toArray();
@@ -213,7 +213,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistLeNeNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 <= 10 && doc.value1 != null RETURN doc";
       let results = db._query(query).toArray();
@@ -227,7 +227,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistLtNeNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 < 10 && doc.value1 != null RETURN doc";
       let results = db._query(query).toArray();
@@ -241,7 +241,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistGeNullRange : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 >= null && doc.value1 <= 10 RETURN doc";
       let results = db._query(query).toArray();
@@ -254,7 +254,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistGeNullRangeNeNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 >= null && doc.value1 <= 10 && doc.value1 != null RETURN doc";
       let results = db._query(query).toArray();
@@ -268,7 +268,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistGtNullRange : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 > null && doc.value1 <= 10 RETURN doc";
       let results = db._query(query).toArray();
@@ -282,7 +282,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistEqNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == null RETURN doc";
       let results = db._query(query).toArray();
@@ -295,7 +295,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistNeNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null RETURN doc";
       let results = db._query(query).toArray();
@@ -309,7 +309,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistGtNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 > null RETURN doc";
       let results = db._query(query).toArray();
@@ -323,7 +323,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistGeNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 >= null RETURN doc";
       let results = db._query(query).toArray();
@@ -336,7 +336,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistEqFunc : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) RETURN doc";
       let results = db._query(query).toArray();
@@ -349,7 +349,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistEqFuncNeNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 != null RETURN doc";
       let results = db._query(query).toArray();
@@ -363,7 +363,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistEqFuncGtNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 > null RETURN doc";
       let results = db._query(query).toArray();
@@ -377,7 +377,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseSkiplistEqFuncGeNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 >= null RETURN doc";
       let results = db._query(query).toArray();
@@ -390,7 +390,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseJoin : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
 
       let query = `
         FOR doc1 IN ${c.name()}
@@ -410,7 +410,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseJoinFunc : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let opt = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
       let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 RETURN doc1";
@@ -431,7 +431,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseJoinFuncNeNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let opt = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
       let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 != null RETURN doc1";
@@ -454,7 +454,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseJoinFuncNeNullNeNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
 
       let query = `
         FOR doc1 IN ${c.name()}
@@ -477,7 +477,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseJoinFuncGtNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let opt = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
       let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 > null RETURN doc1";
@@ -500,7 +500,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseJoinFuncGtNullGtNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       
       let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 > null FILTER doc2.value1 > null RETURN doc1";
       let results = db._query(query).toArray();
@@ -514,7 +514,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalGreaterThan : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 > 1995 SORT doc.value1 RETURN doc.value1";
       let results = db._query(query).toArray();
@@ -540,7 +540,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalNotNull : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null SORT doc.value1 RETURN doc.value1";
       let results = db._query(query).toArray();
@@ -566,7 +566,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalNotNullReverse : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null SORT doc.value1 DESC RETURN doc.value1";
       let results = db._query(query).toArray();
@@ -592,7 +592,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalCorrectCondition1 : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
       let results = db._query(query).toArray();
@@ -616,7 +616,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalCorrectConditionNoMoveFilters1 : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
       let results = db._query(query, null, opt).toArray();
@@ -643,8 +643,8 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalCorrectCondition2 : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
-      c.ensureIndex({ type: "skiplist", fields: ["value1.foobar"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1.foobar"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
       let results = db._query(query).toArray();
@@ -668,8 +668,8 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalCorrectConditionNoMoveFilters2 : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
-      c.ensureIndex({ type: "skiplist", fields: ["value1.foobar"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1.foobar"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
       let results = db._query(query, null, opt).toArray();
@@ -696,7 +696,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalCorrectCondition3 : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc._key != null SORT doc.value1 RETURN doc.value1";
       let results = db._query(query).toArray();
@@ -720,7 +720,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalCorrectConditionNoMoveFilters3 : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc._key != null SORT doc.value1 RETURN doc.value1";
       let results = db._query(query, null, opt).toArray();
@@ -747,7 +747,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalCorrectConditionDescending : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
       let results = db._query(query).toArray();
@@ -771,7 +771,7 @@ function optimizerSparseTestSuite () {
     },
     
     testSparseConditionRemovalCorrectConditionDescendingNoMoveFilters : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
         
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
       let results = db._query(query, null, opt).toArray();

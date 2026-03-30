@@ -110,7 +110,6 @@ exports.HELP = exports.createHelpHeadline('Help') +
 'Predefined objects:                                                ' + '\n' +
 '  arango:                               ArangoConnection           ' + '\n' +
 '  db:                                   ArangoDatabase             ' + '\n' +
-'  fm:                                   FoxxManager                ' + '\n' +
 'Examples:                                                          ' + '\n' +
 ' > db._collections()                    list all collections       ' + '\n' +
 ' > db._query(<query>).toArray()         execute an AQL query       ' + '\n' +

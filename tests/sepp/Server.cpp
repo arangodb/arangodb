@@ -39,14 +39,12 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 constexpr auto kNonServerFeatures =
-    std::array{ArangodServer::id<ActionFeature>(),
-               ArangodServer::id<AgencyFeature>(),
+    std::array{ArangodServer::id<AgencyFeature>(),
                ArangodServer::id<ClusterFeature>(),
 #ifdef ARANGODB_HAVE_FORK
                ArangodServer::id<SupervisorFeature>(),
                ArangodServer::id<DaemonFeature>(),
 #endif
-               ArangodServer::id<FoxxFeature>(),
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
                ArangodServer::id<HttpEndpointProvider>(),
@@ -141,14 +139,8 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<ClusterFeaturePhase>();
   _server.addFeature<DatabaseFeaturePhase>();
   _server.addFeature<FinalFeaturePhase>();
-#ifdef USE_V8
-  _server.addFeature<FoxxFeaturePhase>();
-#endif
   _server.addFeature<GreetingsFeaturePhase>(std::false_type{});
   _server.addFeature<ServerFeaturePhase>();
-#ifdef USE_V8
-  _server.addFeature<V8FeaturePhase>();
-#endif
 
   // Features
   auto& metrics = _server.addFeature<metrics::MetricsFeature>(
@@ -159,7 +151,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
   _server.addFeature<VersionFeature>();
-  _server.addFeature<ActionFeature>();
   auto& agency = _server.addFeature<AgencyFeature>();
   _server.addFeature<ApiRecordingFeature>();
   _server.addFeature<AqlFeature>();
@@ -178,9 +169,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& database = _server.addFeature<DatabaseFeature>();
   _server.addFeature<ClusterUpgradeFeature>(database);
   _server.addFeature<ConfigFeature>(name);
-#ifdef USE_V8
-  _server.addFeature<ConsoleFeature>();
-#endif
   _server.addFeature<CpuUsageFeature>();
   auto& databasePath = _server.addFeature<DatabasePathFeature>();
   auto& dumpLimits = _server.addFeature<DumpLimitsFeature>();
@@ -190,10 +178,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<FileSystemFeature>();
   auto& flush = _server.addFeature<FlushFeature>();
   _server.addFeature<FortuneFeature>();
-#ifdef USE_V8
-  _server.addFeature<FoxxFeature>();
-  _server.addFeature<FrontendFeature>();
-#endif
   _server.addFeature<GeneralServerFeature>(metrics);
   _server.addFeature<GreetingsFeature>();
   _server.addFeature<InitDatabaseFeature>(kNonServerFeatures);
@@ -207,7 +191,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<MaxMapCountFeature>();
   _server.addFeature<NetworkFeature>(metrics,
                                      network::ConnectionPool::Config{});
-  _server.addFeature<NonceFeature>();
   _server.addFeature<OptionsCheckFeature>();
   _server.addFeature<PrivilegeFeature>();
   _server.addFeature<QueryRegistryFeature>(metrics);
@@ -221,22 +204,14 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _server.addFeature<ProcessEnvironmentFeature>(name);
 #endif
-#ifdef USE_V8
-  _server.addFeature<ScriptFeature>(&result);
-#endif
   _server.addFeature<ServerFeature>(&result);
   _server.addFeature<ServerIdFeature>();
   _server.addFeature<ServerSecurityFeature>();
   _server.addFeature<ShardingFeature>();
   _server.addFeature<SharedPRNGFeature>();
   _server.addFeature<ShellColorsFeature>();
-#ifdef USE_V8
-  _server.addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(ScriptFeature))});
-#else
   _server.addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(AgencyFeaturePhase))});
-#endif
   _server.addFeature<SoftShutdownFeature>();
   _server.addFeature<SslFeature>();
   _server.addFeature<StatisticsFeature>();
@@ -246,11 +221,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<TemporaryStorageFeature>();
   _server.addFeature<TtlFeature>();
   _server.addFeature<UpgradeFeature>(&result, kNonServerFeatures);
-#ifdef USE_V8
-  _server.addFeature<V8DealerFeature>(metrics);
-  _server.addFeature<V8PlatformFeature>();
-  _server.addFeature<V8SecurityFeature>();
-#endif
   _server.addFeature<transaction::ManagerFeature>();
   _server.addFeature<ViewTypesFeature>();
   _server.addFeature<aql::AqlFunctionFeature>();

@@ -32,9 +32,6 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#ifdef USE_V8
-#include "Transaction/V8Context.h"
-#endif
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
@@ -195,12 +192,7 @@ auto DocumentStateShardHandler::lockShard(ShardID const& shard,
                               shard, _vocbase.name(), origin.description)};
   }
 
-#ifdef USE_V8
-  auto ctx =
-      transaction::V8Context::createWhenRequired(_vocbase, origin, false);
-#else
   auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
-#endif
 
   // Not replicating this transaction
   transaction::Options options;

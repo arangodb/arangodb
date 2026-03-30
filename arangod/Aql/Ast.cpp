@@ -52,9 +52,6 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 
 #include <absl/strings/str_cat.h>
 
@@ -1920,24 +1917,10 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
       _functionsMayAccessDocuments = true;
     }
   } else {
-#ifdef USE_V8
-    // user-defined function (UDF)
-    if (_query.vocbase().server().hasFeature<V8DealerFeature>() &&
-        !_query.vocbase()
-             .server()
-             .getFeature<V8DealerFeature>()
-             .allowJavaScriptUdfs()) {
-      // usage of user-defined functions is disallowed
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     "usage of AQL user-defined functions "
-                                     "(UDFs) is disallowed via configuration");
-    }
-#else
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
         "usage of AQL user-defined functions "
         "(UDFs) is not possible in this build of ArangoDB");
-#endif
 
     node = createNode(NODE_TYPE_FCALL_USER);
     // register the function name

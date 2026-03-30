@@ -138,11 +138,6 @@ void QueryContext::addDataSource(LogicalDataSource const& ds) {
 
 aql::Ast* QueryContext::ast() const { return _ast.get(); }
 
-void QueryContext::enterV8Executor() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "V8 support not implemented");
-}
-
 QueryContext::QueryApiSynchronicity QueryContext::queryApiSynchronicity()
     const noexcept {
   return _queryApiSynchronicity;

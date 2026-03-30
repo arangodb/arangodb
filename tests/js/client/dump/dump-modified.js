@@ -43,9 +43,6 @@ jsunity.run(function dump_single_testsuite() {
   let clusterBlacklist = [];
   if (internal.isCluster()) {
     clusterBlacklist = [
-      "testTransactionCommit",
-      "testTransactionUpdate",
-      "testTransactionAbort",
       "testLatestId"
     ];
   }
@@ -69,7 +66,7 @@ jsunity.run(function dump_single_testsuite() {
       removedSingleIndices: 2,
       removedModulo: 5,
       // testKeygenAutoInc
-      indexesCount: 10,
+      indexesCount: 9,
       keygenAutoInc: 84049,
       autoIncDocCount: 2001,
       // testKeygenPadded

@@ -561,7 +561,7 @@ function WindowDateRangeTestSuite() {
     testDateRangesWithIndex: function () {
 
       // add sorted index on time
-      c.ensureIndex({ type: 'skiplist', fields: ['time'] });
+      c.ensureIndex({ type: 'persistent', fields: ['time'] });
 
       let actual = db._createStatement({query: q, bindVars: { '@cc': cname, preceding: "P1D", following: "P1D" }}).explain();
       let nodes = actual.plan.nodes;

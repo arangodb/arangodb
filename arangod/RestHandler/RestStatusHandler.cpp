@@ -66,6 +66,10 @@ RestStatusHandler::RestStatusHandler(
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
@@ -100,14 +104,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   result.add("license", VPackValue("community"));
 #endif
 
-  auto& serverFeature = server().getFeature<ServerFeature>();
-  result.add(
-      "mode",
-      VPackValue(serverFeature
-                     .operationModeString()));  // to be deprecated - 3.3 compat
-  result.add("operationMode", VPackValue(serverFeature.operationModeString()));
-  result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
-
   std::string host = ServerState::instance()->getHost();
 
   if (!host.empty()) {
@@ -140,9 +136,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
                VPackValue(serverState->isStartupOrMaintenance()));
     result.add("role",
                VPackValue(ServerState::roleToString(serverState->getRole())));
-    result.add(
-        "writeOpsEnabled",
-        VPackValue(!serverState->readOnly()));  // to be deprecated - 3.3 compat
     result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!isStartup && !serverState->isSingleServer()) {
@@ -175,15 +168,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
         result.add("endpoint", VPackValue(agent->endpoint()));
         result.add("leaderId", VPackValue(agent->leaderID()));
         result.add("leading", VPackValue(agent->leading()));
-
-        result.close();
-      }
-
-      if (serverState->isCoordinator()) {
-        result.add("coordinator", VPackValue(VPackValueType::Object));
-
-        result.add("foxxmaster", VPackValue(serverState->getFoxxmaster()));
-        result.add("isFoxxmaster", VPackValue(serverState->isFoxxmaster()));
 
         result.close();
       }

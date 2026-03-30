@@ -265,7 +265,12 @@ void buildHealthResult(
       {
         VPackObjectBuilder obMember(&builder, serverId);
 
-        builder.add(VPackObjectIterator(member.value));
+        for (auto const& agentIter : VPackObjectIterator(member.value)) {
+          if (!agentIter.key.isEqualString("Timestamp")) {
+            builder.add(agentIter.key.copyString(), agentIter.value);
+          }
+        }
+
         if (ClusterHelpers::isDBServerName(serverId)) {
           builder.add("Role", VPackValue("DBServer"));
           builder.add("CanBeDeleted",
@@ -334,8 +339,6 @@ std::string const RestAdminClusterHandler::UniqId = "uniqId";
 std::string const RestAdminClusterHandler::Maintenance = "maintenance";
 std::string const RestAdminClusterHandler::NodeVersion = "nodeVersion";
 std::string const RestAdminClusterHandler::NodeEngine = "nodeEngine";
-std::string const RestAdminClusterHandler::NodeStatistics = "nodeStatistics";
-std::string const RestAdminClusterHandler::Statistics = "statistics";
 std::string const RestAdminClusterHandler::ShardDistribution =
     "shardDistribution";
 std::string const RestAdminClusterHandler::CollectionShardDistribution =
@@ -412,12 +415,6 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
       co_return;
     } else if (command == NodeEngine) {
       co_await handleNodeEngine();
-      co_return;
-    } else if (command == NodeStatistics) {
-      co_await handleNodeStatistics();
-      co_return;
-    } else if (command == Statistics) {
-      co_await handleStatistics();
       co_return;
     } else if (command == ShardDistribution) {
       handleShardDistribution();
@@ -1372,16 +1369,8 @@ async<void> RestAdminClusterHandler::handleNodeVersion() {
   co_return co_await handleProxyGetRequest("/_api/version", "ServerID");
 }
 
-async<void> RestAdminClusterHandler::handleNodeStatistics() {
-  co_return co_await handleProxyGetRequest("/_admin/statistics", "ServerID");
-}
-
 async<void> RestAdminClusterHandler::handleNodeEngine() {
   co_return co_await handleProxyGetRequest("/_api/engine", "ServerID");
-}
-
-async<void> RestAdminClusterHandler::handleStatistics() {
-  co_return co_await handleProxyGetRequest("/_admin/statistics", "DBserver");
 }
 
 void RestAdminClusterHandler::handleShardDistribution() {
@@ -1475,12 +1464,6 @@ void RestAdminClusterHandler::handleCollectionShardDistribution() {
 }
 
 async<void> RestAdminClusterHandler::handleGetMaintenance() {
-  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "not allowed on single servers");
-    co_return;
-  }
-
   auto maintenancePath = arangodb::cluster::paths::root()
                              ->arango()
                              ->supervision()
@@ -1503,12 +1486,6 @@ async<void> RestAdminClusterHandler::handleGetMaintenance() {
 
 async<void> RestAdminClusterHandler::handleGetDBServerMaintenance(
     std::string const& serverId) {
-  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "not allowed on single servers");
-    co_return;
-  }
-
   auto maintenancePath = arangodb::cluster::paths::root()
                              ->arango()
                              ->current()
@@ -1746,12 +1723,6 @@ async<void> RestAdminClusterHandler::setDBServerMaintenance(
 }
 
 async<void> RestAdminClusterHandler::handlePutMaintenance() {
-  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "not allowed on single servers");
-    co_return;
-  }
-
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -1830,16 +1801,9 @@ async<void> RestAdminClusterHandler::handleMaintenance() {
     co_return;
   }
 
-  if (!ServerState::instance()->isCoordinator() &&
-      !ServerState::instance()->isSingleServer()) {
+  if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server and coordinators");
-    co_return;
-  }
-
-  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "not allowed on single servers");
+                  "only allowed on coordinators");
     co_return;
   }
 
@@ -1883,12 +1847,6 @@ async<void> RestAdminClusterHandler::handleDBServerMaintenance(
 }
 
 async<void> RestAdminClusterHandler::handleGetNumberOfServers() {
-  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "not allowed on single servers");
-    co_return;
-  }
-
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
 
   VPackBuffer<uint8_t> trx;
@@ -1937,12 +1895,6 @@ async<void> RestAdminClusterHandler::handleGetNumberOfServers() {
 async<void> RestAdminClusterHandler::handlePutNumberOfServers() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    co_return;
-  }
-
-  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "not allowed on single servers");
     co_return;
   }
 
@@ -2110,12 +2062,6 @@ async<void> RestAdminClusterHandler::handleUniqId() {
 // Both cases return a range of reserved keys.
 
 async<void> RestAdminClusterHandler::handlePutUniqId() {
-  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "not allowed on single servers");
-    co_return;
-  }
-
   // Parse query parameters
   auto& req = *request();
 
@@ -2247,16 +2193,9 @@ async<void> RestAdminClusterHandler::handleHealth() {
     co_return;
   }
 
-  if (!ServerState::instance()->isCoordinator() &&
-      !ServerState::instance()->isSingleServer()) {
+  if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server and coordinators");
-    co_return;
-  }
-
-  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "not allowed on single servers");
+                  "only allowed on coordinators");
     co_return;
   }
 

@@ -41,17 +41,16 @@ let api = "/_api/collection";
 // reading all collections;
 ////////////////////////////////////////////////////////////////////////////////;
 function all_collectionsSuite () {
-  let cid;
   let cols = ["units", "employees", "locations" ];
   return {
-    setUp: function() {
+    setUpAll: function () {
       cols.forEach(cn => {
         db._drop(cn);
         db._create(cn);
       });
     },
 
-    tearDown: function() {
+    tearDownAll: function () {
       cols.forEach(cn => {
         db._drop(cn);
       });
@@ -65,8 +64,6 @@ function all_collectionsSuite () {
       assertEqual(doc.headers['content-type'], contentType);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
-
-      let collections = doc.parsedBody["result"];;
 
       let total = 0;
       let realCollections = [ ];
@@ -89,7 +86,6 @@ function all_collectionsSuite () {
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
 
-      let collections = doc.parsedBody["result"];
       let realCollections = [ ];
 
       let total = 0;
@@ -111,17 +107,6 @@ function all_collectionsSuite () {
 
 function error_handlingSuite () {
   return {
-    test_returns_an_error_if_collection_identifier_is_unknown: function() {
-      let cmd = api + "/123456";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 404);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], 404);
-    },
-
     test_creating_a_collection_without_body: function () {
       let cmd = api;
       let doc = arango.POST_RAW(cmd, "");
@@ -159,17 +144,20 @@ function error_handlingSuite () {
 
     test_creating_a_collection_with_a_duplicate_name: function() {
       let cn = "UnitTestsCollectionBasics";
-      let cid = db._create(cn);
+      db._create(cn);
+      try {
+        let cmd = api;
+        let body = `{ \"name\" : \"${cn}\" }`;
+        let doc = arango.POST_RAW(cmd, body);
 
-      let cmd = api;
-      let body = `{ \"name\" : \"${cn}\" }`;
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, 409);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 409);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DUPLICATE_NAME.code);
+        assertEqual(doc.code, 409);
+        assertEqual(doc.headers['content-type'], contentType);
+        assertTrue(doc.parsedBody['error']);
+        assertEqual(doc.parsedBody['code'], 409);
+        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DUPLICATE_NAME.code);
+      } finally {
+        db._drop(cn);
+      }
     },
 
     test_creating_a_collection_with_an_illegal_body: function() {
@@ -250,11 +238,11 @@ function schema_validationSuite () {
 
       sleep(2);
       body = "{ \"name\": { \"first\": \"test\", \"last\": \"test\" }, \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 202);
 
       body = "{ \"name\": { \"first\": \"a\", \"last\": \"b\" }, \"status\": \"inactive\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 202);
     },
 
@@ -266,35 +254,103 @@ function schema_validationSuite () {
       sleep(2);
 
       body = "{ \"name\": { \"first\" : \"\", \"last\": \"test\" }, \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"name\": { \"first\" : \"\", \"last\": \"\" }, \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"name\": { \"first\" : \"test\", \"last\": \"test\" } }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"name\": { \"first\" : \"test\", \"last\": \"test\" }, \"status\": \"foo\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"name\": { }, \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"first\": \"abc\", \"last\": \"test\", \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
     }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////;
+// numeric collection id rejection;
+////////////////////////////////////////////////////////////////////////////////;
+function numeric_collection_id_rejectionSuite () {
+  let cn = "UnitTestsCollectionBasics";
+  let cid;
+  return {
+    setUpAll: function () {
+      db._drop(cn);
+      cid = db._create(cn);
+    },
+
+    tearDownAll: function () {
+      db._drop(cn);
+    },
+
+    test_get_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id;
+      let doc = arango.GET_RAW(cmd);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
+
+    test_get_count_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id + "/count";
+      let doc = arango.GET_RAW(cmd);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
+    
+    test_put_truncate_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id + "/truncate";
+      let doc = arango.PUT_RAW(cmd, "");
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
+
+    test_put_properties_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id + "/properties";
+      let doc = arango.PUT_RAW(cmd, "");
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
+
+    test_delete_with_numeric_collection_id_is_rejected: function() {
+      let cmd = api + "/" + cid._id;
+      let doc = arango.DELETE_RAW(cmd);
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
+    },
   };
 }
 
@@ -315,38 +371,6 @@ function readingSuite () {
     },
 
     // get;
-    test_finds_the_collection_by_identifier: function() {
-      let cmd = api + `/${cid._id}`;
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200, doc);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-
-      let cmd2 = api + "/" + cn + "/unload";
-      doc = arango.PUT_RAW(cmd2, "");
-
-      doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      // effectively the status does not play any role for the RocksDB engine,
-      // so it is ok if any of the following statuses gets returned;
-      // 2 = unloaded, 3 = loaded, 4 = unloading;
-      // additionally, in a cluster there is no such thing as one status for a;
-      // collection, as each shard can have a different status;
-      assertTrue([2,3,4].includes(doc.parsedBody['status']));
-    },
-
-    // get;
     test_finds_the_collection_by_name: function() {
       let cmd = api + "/" + cn;
       let doc = arango.GET_RAW(cmd);
@@ -358,24 +382,6 @@ function readingSuite () {
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
       assertEqual(doc.parsedBody['status'], 3);
-
-      let cmd2 = api + "/" + cn + "/unload";
-      doc = arango.PUT_RAW(cmd2, "");
-
-      doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      // effectively the status does not play any role for the RocksDB engine,
-      // so it is ok if any of the following statuses gets returned;
-      // 2 = unloaded, 3 = loaded, 4 = unloading;
-      // additionally, in a cluster there is no such thing as one status for a;
-      // collection, as each shard can have a different status;
-      assertTrue([2,3,4].includes(doc.parsedBody['status']));
     },
 
     // get count;
@@ -479,33 +485,6 @@ function readingSuite () {
         assertEqual(typeof doc.parsedBody['figures']['cacheLifeTimeHitRate'], 'double');
         assertEqual(typeof doc.parsedBody['figures']['cacheWindowedHitRate'], 'double');
       }
-      if (!IM.options.skipServerJS) {
-        // delete a few documents, this should change counts;
-        let body = "{ \"collection\" : \"" + cn + "\", \"example\": { \"test\" : 5 } }";
-        doc = arango.PUT_RAW("/_api/simple/remove-by-example", body);
-        // should delete 2 docuemnts:
-        assertEqual(doc.parsedBody['deleted'], 2);
-        body = "{ \"collection\" : \"" + cn + "\", \"example\": { \"test3\" : 1 } }";
-        doc = arango.PUT_RAW("/_api/simple/remove-by-example", body);
-        // should delete no documents:
-        assertEqual(doc.parsedBody['deleted'], 0);
-
-        doc = arango.GET_RAW(cmd);
-        assertEqual(doc.code, 200);
-        assertEqual(doc.headers['content-type'], contentType);
-        assertFalse(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['code'], 200);
-        assertEqual(typeof doc.parsedBody['count'], 'number');
-        assertEqual(doc.parsedBody['count'], 18);
-        assertEqual(typeof doc.parsedBody['figures']['cacheSize'], 'number');
-        assertEqual(typeof doc.parsedBody['figures']['cacheInUse'], 'boolean');
-        assertEqual(typeof doc.parsedBody['figures']['cacheUsage'], 'number');
-        assertEqual(typeof doc.parsedBody['figures']['documentsSize'], 'number');
-        if (doc.parsedBody['figures']['cacheInUse']) {
-          assertEqual(typeof doc.parsedBody['figures']['cacheLifeTimeHitRate'], 'double');
-          assertEqual(typeof doc.parsedBody['figures']['cacheWindowedHitRate'], 'double');
-        }
-      }
     },
 
     // get revision id
@@ -526,7 +505,7 @@ function readingSuite () {
 
       // create a new document;
       let body = "{ \"test\" : 1 }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
 
       // fetch revision again;
       doc = arango.GET_RAW(cmd);
@@ -542,7 +521,7 @@ function readingSuite () {
       assertNotEqual(r1, r2);;
 
       // create another document;
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
 
       // fetch revision again;
       doc = arango.GET_RAW(cmd);
@@ -582,24 +561,6 @@ function readingSuite () {
 function deletingSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    test_delete_an_existing_collection_by_identifier: function() {
-      let cid = db._create(cn);
-      let cmd = api + "/" + cn;
-      let doc = arango.DELETE_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-
-      cmd = api + "/" + cn;
-      doc = arango.GET_RAW(cmd);
-
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 404);
-    },
-
     test_delete_an_existing_collection_by_name: function() {
       let cid = db._create(cn);
       let cmd = api + "/" + cn;
@@ -704,193 +665,6 @@ function creatingSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////;
-// load a collection;
-////////////////////////////////////////////////////////////////////////////////;
-function loadingSuite () {
-  let cn = "UnitTestsCollectionBasics";
-  return {
-    test_load_a_collection_by_identifier: function() {
-      db._drop(cn);
-      let cid = db._create(cn);
-
-      let cmd = api + "/" + cn + "/load";
-      let doc = arango.PUT_RAW(cmd, '');
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-      assertEqual(typeof doc.parsedBody['count'], 'number');
-      assertEqual(doc.parsedBody['count'], 0);
-
-      db._drop(cn);
-    },
-
-    test_load_a_collection_by_name: function() {
-      db._drop(cn);
-      let cid = db._create(cn);
-
-      let cmd = api + "/" + cn + "/load";
-      let doc = arango.PUT_RAW(cmd, '');
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-      assertEqual(typeof doc.parsedBody['count'], 'number');
-      assertEqual(doc.parsedBody['count'], 0);
-
-      db._drop(cn);
-    },
-
-    test_load_a_collection_by_name_with_explicit_count: function() {
-      db._drop(cn);
-      let cid = db._create(cn);
-
-      let docs = [];
-      for (let i = 0; i < 10; i++){
-        docs.push({ "hello" : "world"});
-      }
-      db[cn].save(docs);
-
-      let cmd = api + "/" + cn + "/load";
-      let body = "{ \"count\" : true }";
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-      assertEqual(typeof doc.parsedBody['count'], 'number');
-      assertEqual(doc.parsedBody['count'], 10);
-
-      db._drop(cn);
-    },
-
-    test_load_a_collection_by_name_without_count: function() {
-      db._drop(cn);
-      let cid = db._create(cn);
-
-      let cmd = `/_api/document?collection=${cn}`;
-      let body = "{ \"Hallo\" : \"World\" }";
-      let doc = arango.POST_RAW(cmd, body);
-
-      cmd = api + "/" + cn + "/load";
-      body = "{ \"count\" : false }";
-      doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-      assertEqual(doc.parsedBody['count'], undefined);
-
-      db._drop(cn);
-    }
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////;
-// unloading a collection;
-////////////////////////////////////////////////////////////////////////////////;
-
-function unloadingSuite () {
-  let cn = "UnitTestsCollectionBasics";
-  return {
-    test_unload_a_collection_by_identifier: function() {
-      db._drop(cn);
-      let cid = db._create(cn);
-
-      let cmd = api + "/" + cn + "/unload";
-      let doc = arango.PUT_RAW(cmd, '');
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-
-      db._drop(cn);
-    },
-
-    test_unload_a_collection_by_name: function() {
-      db._drop(cn);
-      let cid = db._create(cn);
-
-      let cmd = api + "/" + cn + "/unload";
-      let doc = arango.PUT_RAW(cmd, '');
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-
-      db._drop(cn);
-    },
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////;
-// truncate a collection;
-////////////////////////////////////////////////////////////////////////////////;
-function truncatingSuite () {
-  let cn = "UnitTestsCollectionBasics";
-  let cid;
-  return {
-    setUp: function() {
-      cid = db._create(cn);
-    },
-
-    tearDown: function() {
-      db._drop(cn);
-    },
-
-    test_truncate_a_collection_by_identifier: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
-      let docs = [];
-      for (let i = 0; i < 10; i++){
-        docs.push({ "hello" : "world"});
-      }
-      db[cn].save(docs);
-
-      assertEqual(cid.count(), 10);
-
-      cmd = api + "/" + cn + "/truncate";
-      let doc = arango.PUT_RAW(cmd, '');
-      
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-
-      assertEqual(cid.count(), 0);
-
-      db._drop(cn);
-    }
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////;
 // properties of a collection;
 ////////////////////////////////////////////////////////////////////////////////;
 function propertiesSuite () {
@@ -899,51 +673,6 @@ function propertiesSuite () {
     tearDown: function() {
       db._drop(cn);
     },      
-    test_changing_the_properties_of_a_collection_by_identifier: function() {
-      let cid = db._create(cn);
-
-      let cmd = `/_api/document?collection=${cid._id}`;
-      let docs = [];
-      for (let i = 0; i < 10; i++){
-        docs.push({ "hello" : "world"});
-      }
-      db[cn].save(docs);
-
-      assertEqual(cid.count(), 10);
-
-      cmd = api + "/" + cn + "/properties";
-      let body = "{ \"waitForSync\" : true }";
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200, doc);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-      assertTrue(doc.parsedBody['waitForSync']);
-      assertFalse(doc.parsedBody['isSystem']);
-      assertEqual(doc.parsedBody['keyOptions']['type'], "traditional");
-      assertTrue(doc.parsedBody['keyOptions']['allowUserKeys']);
-
-      cmd = api + "/" + cn + "/properties";
-      body = "{ \"waitForSync\" : false }";
-      doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-      assertFalse(doc.parsedBody['waitForSync']);
-      assertFalse(doc.parsedBody['isSystem']);
-      assertEqual(doc.parsedBody['keyOptions']['type'], "traditional");
-      assertTrue(doc.parsedBody['keyOptions']['allowUserKeys']);
-
-    },
 
     test_create_collection_with_explicit_keyOptions_property__traditional_keygen: function() {
       let cmd = "/_api/collection";
@@ -999,12 +728,10 @@ function propertiesSuite () {
 jsunity.run(all_collectionsSuite);
 jsunity.run(error_handlingSuite);
 jsunity.run(schema_validationSuite);
+jsunity.run(numeric_collection_id_rejectionSuite);
 jsunity.run(readingSuite);
 jsunity.run(deletingSuite);
 jsunity.run(creatingSuite);
-jsunity.run(loadingSuite);
-jsunity.run(unloadingSuite);
-jsunity.run(truncatingSuite);
 jsunity.run(propertiesSuite);
 
 return jsunity.done();

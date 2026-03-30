@@ -49,8 +49,8 @@ function nestedArraySimpleSuite () {
     var result = db._query(q).toArray().sort();
     assertEqual(expected, result);
 
-    // try with hash index on value
-    var idx = c.ensureIndex({ type: "hash", fields: [ "value" ] });
+    // try with persistent index on value
+    var idx = c.ensureIndex({ type: "persistent", fields: [ "value" ] });
     assertEqual(2, c.indexes().length);
     
     result = db._query(q).toArray().sort();
@@ -60,8 +60,8 @@ function nestedArraySimpleSuite () {
     c.dropIndex(idx);
     assertEqual(1, c.indexes().length);
     
-    // try with hash index on value[*]
-    idx = c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
+    // try with persistent index on value[*]
+    idx = c.ensureIndex({ type: "persistent", fields: [ "value[*]" ] });
     assertEqual(2, c.indexes().length);
     
     result = db._query(q).toArray().sort();
@@ -70,25 +70,6 @@ function nestedArraySimpleSuite () {
     
     c.dropIndex(idx);
     assertEqual(1, c.indexes().length);
-    
-    // try with skiplist ndex on value
-    idx = c.ensureIndex({ type: "skiplist", fields: [ "value" ] });
-    assertEqual(2, c.indexes().length);
-    
-    result = db._query(q).toArray().sort();
-    assertEqual(expected, result);
-    assertEqual(useIndexForSimple, indexUsed(q));
-    
-    c.dropIndex(idx);
-    assertEqual(1, c.indexes().length);
-    
-    // try with skiplist index on value[*]
-    c.ensureIndex({ type: "skiplist", fields: [ "value[*]" ] });
-    assertEqual(2, c.indexes().length);
-    
-    result = db._query(q).toArray().sort();
-    assertEqual(expected, result);
-    assertEqual(useIndexForArray, indexUsed(q));
   };
 
   return {
@@ -171,8 +152,8 @@ function nestedArrayIndexSuite () {
       db._drop(cn);
     },
 
-    testIndexUsageHashFlat : function () {
-      c.ensureIndex({ type: "hash", fields: [ "tags[*]" ] });
+    testIndexUsagePersistentFlat : function () {
+      c.ensureIndex({ type: "persistent", fields: [ "tags[*]" ] });
       c.insert({ tags: [ "foo", "bar", "baz" ] });
       c.insert({ tags: [ "foobar", "quetzalcoatl", "bark" ] });
       c.insert({ tags: [ "b0rk", "bar", "bark" ] });
@@ -191,63 +172,8 @@ function nestedArrayIndexSuite () {
       });
     },
     
-    testIndexUsageHashNested : function () {
-      c.ensureIndex({ type: "hash", fields: [ "tags[*].name" ] });
-      c.insert({ tags: [ { name: "foo" }, { name: "bar" }, { name: "baz" } ] });
-      c.insert({ tags: [ { name: "foobar" }, { name: "quetzalcoatl" }, { name: "bark" } ] });
-      c.insert({ tags: [ { name: "b0rk" }, { name: "bar" }, { name: "bark" } ] });
-
-      var result;
-
-      [
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags[*].name RETURN doc", { value: "bar" }, 2 ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags[*].name RETURN doc", { value: "bark" }, 2 ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags[*].name RETURN doc", { value: "quetzal" }, 0 ]
-      ].forEach(function(query) {
-        result = db._query(query[0], query[1]).toArray();
-        assertEqual(query[2], result.length);
-        assertTrue(indexUsed(query[0], query[1]));
-      });
-      
-      [
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags.name RETURN doc", { value: "bar" } ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags.name RETURN doc", { value: "bark" } ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags.name RETURN doc", { value: "quetzal" } ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags.name[*] RETURN doc", { value: "bar" } ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags.name[*] RETURN doc", { value: "bark" } ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags.name[*] RETURN doc", { value: "quetzal" } ],
-        [ "FOR doc IN " + cn + " FILTER doc.tags[*].name IN [ @value ] RETURN doc", { value: "bar" } ],
-        [ "FOR doc IN " + cn + " FILTER doc.tags.name[*] IN [ @value ] RETURN doc", { value: "bar" } ],
-        [ "FOR doc IN " + cn + " FILTER doc.tags[*].name IN NOOPT(PASSTHRU(@value)) RETURN doc", { value: "bar" } ],
-        [ "FOR doc IN " + cn + " FILTER doc.tags.name[*] IN NOOPT(PASSTHRU(@value)) RETURN doc", { value: "bar" } ]
-      ].forEach(function(query) {
-        result = db._query(query[0], query[1]).toArray();
-        assertFalse(indexUsed(query[0], query[1]), query[0]);
-      });
-    },
-    
-    testIndexUsageSkiplistFlat : function () {
-      c.ensureIndex({ type: "skiplist", fields: [ "tags[*]" ] });
-      c.insert({ tags: [ "foo", "bar", "baz" ] });
-      c.insert({ tags: [ "foobar", "quetzalcoatl", "bark" ] });
-      c.insert({ tags: [ "b0rk", "bar", "bark" ] });
-
-      [
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags[*] RETURN doc", { value: "bar" }, 2 ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags RETURN doc", { value: "bar" }, 2 ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags[*] RETURN doc", { value: "bark" }, 2 ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags RETURN doc", { value: "bark" }, 2 ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags[*] RETURN doc", { value: "quetzal" }, 0 ],
-        [ "FOR doc IN " + cn + " FILTER @value IN doc.tags RETURN doc", { value: "quetzal" }, 0 ]
-      ].forEach(function(query) {
-        var result = db._query(query[0], query[1]).toArray();
-        assertEqual(query[2], result.length);
-        assertTrue(indexUsed(query[0], query[1]));
-      });
-    },
-    
-    testIndexUsageSkiplistNested : function () {
-      c.ensureIndex({ type: "skiplist", fields: [ "tags[*].name" ] });
+    testIndexUsagePersistentNested : function () {
+      c.ensureIndex({ type: "persistent", fields: [ "tags[*].name" ] });
       c.insert({ tags: [ { name: "foo" }, { name: "bar" }, { name: "baz" } ] });
       c.insert({ tags: [ { name: "foobar" }, { name: "quetzalcoatl" }, { name: "bark" } ] });
       c.insert({ tags: [ { name: "b0rk" }, { name: "bar" }, { name: "bark" } ] });
@@ -282,7 +208,7 @@ function nestedArrayIndexSuite () {
         assertFalse(indexUsed(query[0], query[1]), query[0]);
       });
     },
-
+    
     testNestedSubAttribute : function () {
       c.insert({ tags: [ { name: "foo" }, { name: "bar" }, { name: "baz" } ] });
       c.insert({ tags: [ { name: "quux" } ] });
@@ -314,7 +240,7 @@ function nestedArrayIndexSuite () {
       });
 
       // now try again with an the index
-      c.ensureIndex({ type: "hash", fields: [ "tags[*].name" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "tags[*].name" ] });
 
       tests.forEach(function(value) {
         var result = db._query(query, { value: value[0] }).toArray();
@@ -352,7 +278,7 @@ function nestedArrayIndexSuite () {
       });
 
       // now try again with an index
-      c.ensureIndex({ type: "hash", fields: [ "persons[*].gender" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "persons[*].gender" ] });
 
       tests.forEach(function(value) {
         var result = db._query(query, { value: value[0] }).toArray();
@@ -394,7 +320,7 @@ function nestedArrayIndexSuite () {
       });
 
       // now try again with an index
-      c.ensureIndex({ type: "hash", fields: [ "persons[*].name.first" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "persons[*].name.first" ] });
 
       tests.forEach(function(value) {
         var result = db._query(query, { value: value[0] }).toArray();
@@ -458,7 +384,7 @@ function nestedArrayInArraySuite () {
       assertEqual(expected.sort(), result.toArray().sort());
       assertEqual(0, result.getExtra().warnings.length);
       
-      c2.ensureIndex({ type: "hash", fields: [ "values[*]" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "values[*]" ] });
       result = db._createStatement({query: query, bindVars: { "@c1" : cn1, "@c2" : cn2 }}).execute();
       assertEqual(expected.sort(), result.toArray().sort());
       assertEqual(0, result.getExtra().warnings.length);

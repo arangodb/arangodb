@@ -58,10 +58,6 @@ struct Backup {
   static constexpr std::string_view name = "backup";
   static constexpr LogLevel defaultLevel = LogLevel::DEFAULT;
 };
-struct Bench {
-  static constexpr std::string_view name = "bench";
-  static constexpr LogLevel defaultLevel = LogLevel::DEFAULT;
-};
 struct Cache {
   static constexpr std::string_view name = "cache";
   static constexpr LogLevel defaultLevel = LogLevel::INFO;
@@ -157,10 +153,6 @@ struct Restore {
 struct Rocksdb {
   static constexpr std::string_view name = "rocksdb";
   static constexpr LogLevel defaultLevel = LogLevel::WARN;
-};
-struct Security {
-  static constexpr std::string_view name = "security";
-  static constexpr LogLevel defaultLevel = LogLevel::INFO;
 };
 struct Ssl {
   static constexpr std::string_view name = "ssl";
@@ -259,17 +251,16 @@ struct HotBackup {
 
 using TopicList = meta::TypeList<
     topic::Agency, topic::Agencycomm, topic::Agencystore, topic::Aql,
-    topic::Authentication, topic::Authorization, topic::Backup, topic::Bench,
-    topic::Cache, topic::Cluster, topic::Communication, topic::Config,
-    topic::Crash, topic::Development, topic::Dump, topic::Engines, topic::Fixme,
-    topic::Flush, topic::Graphs, topic::Heartbeat, topic::Httpclient,
-    topic::License, topic::Maintenance, topic::Memory, topic::Queries,
-    topic::Replication, topic::Replication2, topic::ReplicatedState,
-    topic::ReplicatedWal, topic::Requests, topic::Restore, topic::Rocksdb,
-    topic::Security, topic::Ssl, topic::Startup, topic::Statistics,
-    topic::Supervision, topic::Syscall, topic::Threads, topic::Trx, topic::Ttl,
-    topic::Validation, topic::V8, topic::Views, topic::Deprecation,
-    topic::ArangoSearch, topic::LibIResearch
+    topic::Authentication, topic::Authorization, topic::Backup, topic::Cache,
+    topic::Cluster, topic::Communication, topic::Config, topic::Crash,
+    topic::Development, topic::Dump, topic::Engines, topic::Fixme, topic::Flush,
+    topic::Graphs, topic::Heartbeat, topic::Httpclient, topic::License,
+    topic::Maintenance, topic::Memory, topic::Queries, topic::Replication,
+    topic::Replication2, topic::ReplicatedState, topic::ReplicatedWal,
+    topic::Requests, topic::Restore, topic::Rocksdb, topic::Ssl, topic::Startup,
+    topic::Statistics, topic::Supervision, topic::Syscall, topic::Threads,
+    topic::Trx, topic::Ttl, topic::Validation, topic::V8, topic::Views,
+    topic::Deprecation, topic::ArangoSearch, topic::LibIResearch
 #ifdef USE_ENTERPRISE
     ,
     audit::Authentication, audit::Authorization, audit::Database,

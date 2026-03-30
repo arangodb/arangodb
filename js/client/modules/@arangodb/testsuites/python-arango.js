@@ -98,8 +98,7 @@ class runInPythonTest extends runWithAllureReport {
       '--log-cli-level', 'DEBUG',
       '--host', '127.0.0.1',
       '--port', `${this.instanceManager.endpointPort}`,
-      '--alluredir', testResultsDir,
-      // TODO: '--foxx-app-source', fs.join(this.options.pythonsource, '/tests/static'),
+      '--alluredir', testResultsDir
     ];
 
     let testSkipList = [];
@@ -107,7 +106,6 @@ class runInPythonTest extends runWithAllureReport {
       testSkipList.push('backup');
     }
     if (true) { //!SYS_IS_V8_BUILD) {
-      testSkipList.push('foxx');
       //testSkipList.push('tasks');
       testSkipList.push('js-transactions');
     }

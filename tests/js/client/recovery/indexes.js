@@ -34,8 +34,8 @@ if (runSetup === true) {
 
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
-  c.ensureIndex({ type: "hash", fields: ["value1"] });
-  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+  c.ensureIndex({ type: "persistent", fields: ["value1"] });
+  c.ensureIndex({ type: "persistent", fields: ["value2"] });
 
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -84,12 +84,12 @@ function recoverySuite () {
       assertEqual(3, idx.length);
 
       assertEqual('primary', idx[0].type);
-      assertEqual('hash', idx[1].type);
+      assertEqual('persistent', idx[1].type);
       assertFalse(idx[1].unique);
       assertFalse(idx[1].sparse);
       assertEqual([ 'value1' ], idx[1].fields);
 
-      assertEqual('skiplist', idx[2].type);
+      assertEqual('persistent', idx[2].type);
       assertFalse(idx[2].unique);
       assertFalse(idx[2].sparse);
       assertEqual([ 'value2' ], idx[2].fields);

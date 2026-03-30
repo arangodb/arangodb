@@ -163,14 +163,16 @@ describe('Readonly mode api', function() {
     expect(resp.code).to.equal(200);
   });
   
-  it('can still access cluster/nodeStatistics API when readonly', function() {
+  it('can still access cluster metrics by serverId when readonly', function() {
     if (!isCluster) {
       return;
     }
     
     let server = setReadOnlyAndGetDBServer();
-    let resp = download(endpoint + '/_admin/cluster/nodeStatistics?ServerID=' + server);
+    let resp = download(endpoint + '/_admin/metrics?serverId=' + server);
     expect(resp.code).to.equal(200);
+    const body = typeof resp.body === 'string' ? resp.body : String(resp.body);
+    expect(body).to.include('arangodb_server_statistics_server_uptime_total');
   });
   
   it('cannot create a database when readonly', function() {

@@ -32,7 +32,6 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -54,12 +53,7 @@ std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
-#ifdef USE_V8
-  startsAfter<V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
-
   startsAfter<AqlFeature>();
 }
 
@@ -144,12 +138,6 @@ void OptimizerRulesFeature::addRules() {
   // lower level values mean earlier rule execution
 
   // note that levels must be unique
-
-  registerRule("replace-function-with-index", replaceNearWithinFulltextRule,
-               OptimizerRule::replaceNearWithinFulltext,
-               OptimizerRule::makeFlags(),
-               R"(Replace deprecated index functions such as `FULLTEXT()`,
-`NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
 
   registerRule("replace-like-with-range", replaceLikeWithRangeRule,
                OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
@@ -715,8 +703,8 @@ data modification node) only affects a single shard.
 
 This optimization can be applied for queries that access a collection only once
 in the query, and that do not use traversals, shortest path queries, and that
-do not access collection data dynamically using the `DOCUMENT()`, `FULLTEXT()`,
-`NEAR()` or `WITHIN()` AQL functions. Additionally, the optimizer can only
+do not access collection data dynamically using the `DOCUMENT()`
+AQL functions. Additionally, the optimizer can only
 apply this optimization if it can safely determine the values of all the
 collection's shard keys from the query, and when the shard keys are covered by
 a single index (this is always true if the shard key is the default `_key`).)");

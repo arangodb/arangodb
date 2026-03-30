@@ -51,9 +51,6 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#ifdef USE_V8
-#include "V8Server/FoxxFeature.h"
-#endif
 
 #include <string_view>
 
@@ -63,11 +60,8 @@ using namespace arangodb::rest;
 
 namespace {
 // some static URL path prefixes
-constexpr std::string_view pathPrefixApi("/_api/");
 constexpr std::string_view pathPrefixApiUser("/_api/user/");
 constexpr std::string_view pathPrefixApiToken("/_api/token/");
-constexpr std::string_view pathPrefixAdmin("/_admin/");
-constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
 
 VocbasePtr lookupDatabaseFromRequest(
@@ -227,7 +221,7 @@ CommTask::Flow CommTask::prepareExecution(
 
       // passed authentication!
       TRI_ASSERT(allowEarlyConnections);
-      if (path == "/_api/version" || path == "/_admin/version" ||
+      if (path == "/_api/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
           path.starts_with("/_admin/debug/") ||
 #endif
@@ -243,12 +237,11 @@ CommTask::Flow CommTask::prepareExecution(
     }
 
     case ServerState::Mode::MAINTENANCE: {
-      if (allowEarlyConnections &&
-          (path == "/_api/version" || path == "/_admin/version" ||
+      if (allowEarlyConnections && (path == "/_api/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-           path.starts_with("/_admin/debug/") ||
+                                    path.starts_with("/_admin/debug/") ||
 #endif
-           path == "/_admin/status")) {
+                                    path == "/_admin/status")) {
         return Flow::Continue;
       }
 
@@ -315,24 +308,6 @@ CommTask::Flow CommTask::prepareExecution(
                       TRI_ERROR_FORBIDDEN,
                       "not authorized to execute this request");
     return Flow::Abort;
-  }
-
-  if (ServerState::instance()->isSingleServerOrCoordinator()) {
-#ifdef USE_V8
-    auto& ff = _server.server().getFeature<FoxxFeature>();
-    bool foxxEnabled = ff.foxxEnabled();
-#else
-    constexpr bool foxxEnabled = false;
-#endif
-    if (!foxxEnabled && !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
-                          path.starts_with(::pathPrefixApi) ||
-                          path.starts_with(::pathPrefixOpen))) {
-      sendErrorResponse(rest::ResponseCode::FORBIDDEN,
-                        req.contentTypeResponse(), req.messageId(),
-                        TRI_ERROR_FORBIDDEN,
-                        "access to Foxx apps is turned off on this instance");
-      return Flow::Abort;
-    }
   }
 
   // Step 5: Update global HLC timestamp from authenticated requests
@@ -827,26 +802,10 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     }
 #endif
 
-    if (result == Flow::Abort && _auth->authenticationSystemOnly()) {
-      // authentication required, but only for /_api, /_admin etc.
-      if (!path.empty()) {
-        // check if path starts with /_
-        // or path begins with /
-        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
-          // simon: upgrade rights for Foxx apps. FIXME
-          result = Flow::Continue;
-          vc->forceSuperuser();
-          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
-              << "Upgrading rights for " << path;
-        }
-      }
-    }
-
     if (result == Flow::Abort) {
       std::string const& username = req.user();
 
       if (path == "/" || path.starts_with(::pathPrefixOpen) ||
-          path.starts_with(::pathPrefixAdminAardvark) ||
           path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated

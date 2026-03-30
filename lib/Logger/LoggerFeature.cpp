@@ -71,8 +71,9 @@ LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   using namespace arangodb::options;
 
-  options->addOldOption("log.tty", "log.foreground-tty");
   options->addOldOption("log.escape", "log.escape-control-chars");
+
+  options->addSection("log", "logging");
 
   options
       ->addOption("--log",
@@ -85,8 +86,6 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
-
-  options->addSection("log", "logging");
 
   options->addOption(
       "--log.color", "Use colors for TTY logging.",
@@ -328,26 +327,6 @@ downwards-compatibility with previous arangod versions, which did not restrict
 the maximum size of log messages.)");
 
   options
-      ->addOption("--log.use-local-time",
-                  "Use the local timezone instead of UTC.",
-                  new BooleanParameter(&_options.useLocalTime),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500)
-      .setLongDescription(R"(This option is deprecated.
-Use `--log.time-format local-datestring` instead.)");
-
-  options
-      ->addOption("--log.use-microtime",
-                  "Use Unix timestamps in seconds with microsecond precision.",
-                  new BooleanParameter(&_options.useMicrotime),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500)
-      .setLongDescription(R"(This option is deprecated.
-Use `--log.time-format timestamp-micros` instead.)");
-
-  options
       ->addOption("--log.time-format", "The time format to use in logs.",
                   new DiscreteValuesParameter<StringParameter>(
                       &_options.timeFormatString,
@@ -414,10 +393,10 @@ data, this API has to be secured properly. By default, the API is accessible
 for admin users (administrative access to the `_system` database).
 However, you can restrict it further to the superuser or disable it altogether:
 
- - `true`: The `/_admin/log` API is accessible for admin users.
- - `jwt`: The `/_admin/log` API is accessible for the superuser only
+ - `true`: The `/_admin/log/entries` API is accessible for admin users.
+ - `jwt`: The `/_admin/log/entries` API is accessible for the superuser only
    (authentication with JWT superuser token and empty username).
- - `false`: The `/_admin/log` API is not accessible at all.)");
+ - `false`: The `/_admin/log/entries` API is not accessible at all.)");
   }
 
   options
@@ -513,14 +492,6 @@ If you set this option to `auto`, the hostname is automatically determined.)");
       new BooleanParameter(&_options.threadName),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--log.performance",
-                  "Shortcut for `--log.level performance=trace`.",
-                  new BooleanParameter(&_options.performance),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500);
-
   if (_threaded) {
     // this option only makes sense for arangod, not for arangosh etc.
     options->addOption("--log.keep-logrotate",
@@ -570,11 +541,6 @@ full, log entries are written synchronously until the queue has space again.)");
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&_options.logRequestParameters),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addObsoleteOption("log.content-filter", "", true);
-  options->addObsoleteOption("log.source-filter", "", true);
-  options->addObsoleteOption("log.application", "", true);
-  options->addObsoleteOption("log.facility", "", true);
 }
 
 void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,
@@ -595,10 +561,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
 
     _options.output.push_back(definition);
-  }
-
-  if (_options.performance) {
-    _options.levels.push_back("performance=trace");
   }
 
   if (options->processingResult().touched("log.time-format") &&

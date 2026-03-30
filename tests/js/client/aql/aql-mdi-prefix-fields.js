@@ -341,7 +341,7 @@ function optimizerRuleMdiTraversal() {
     testMdiTraversal: function () {
       const query = `
         for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
-        options {bfs: true, uniqueVertices: "path"}
+        options {order: "bfs", uniqueVertices: "path"}
           filter p.edges[*].x all >= 5 and p.edges[*].y all <= 7
           filter p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].foo == "bar"
           return p
@@ -366,7 +366,7 @@ function optimizerRuleMdiTraversal() {
     testMdiTraversalSparse: function () {
       const query = `
         for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
-        options {bfs: true, uniqueVertices: "path"}
+        options {order: "bfs", uniqueVertices: "path"}
           filter p.edges[*].a all >= 5 and p.edges[*].b all <= 7 and p.edges[*].b all != NULL
           filter p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].y != NULL and p.edges[2].foo == "bar"
           return p
@@ -390,7 +390,7 @@ function optimizerRuleMdiTraversal() {
     testMdiTraversalOnlyOneLevel: function () {
       const query = `
         for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
-        options {bfs: true, uniqueVertices: "path"}
+        options {order: "bfs", uniqueVertices: "path"}
           filter p.edges[2].x >= 5 and p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].foo == "bar"
           return p
       `;

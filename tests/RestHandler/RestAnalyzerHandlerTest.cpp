@@ -44,9 +44,6 @@
 #include "IResearch/IResearchCommon.h"
 #include "RestHandler/RestAnalyzerHandler.h"
 #include "RestServer/DatabaseFeature.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 

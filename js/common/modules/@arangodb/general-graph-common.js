@@ -432,30 +432,21 @@ var bindEdgeCollections = function (self, edgeCollections) {
       self.__collectionsToLock[edgeCollection] = 1;
       removeEdge(graphs, edgeCollection, edgeId, self);
 
+      var trx = db._createTransaction({
+        collections: { write: Object.keys(self.__collectionsToLock) }
+      });
       try {
-        db._executeTransaction({
-          collections: {
-            write: Object.keys(self.__collectionsToLock)
-          },
-          embed: true,
-          action: function (params) {
-            var db = require('internal').db;
-            params.ids.forEach(
-              function (edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-          },
-          params: {
-            ids: Object.keys(self.__idsToRemove),
-            options: options
+        var ids = Object.keys(self.__idsToRemove);
+        ids.forEach(function (edgeId) {
+          if (options) {
+            trx.collection(edgeId.split('/')[0]).remove(edgeId.split('/')[1], options);
+          } else {
+            trx.collection(edgeId.split('/')[0]).remove(edgeId.split('/')[1]);
           }
         });
+        trx.commit();
       } catch (e) {
+        try { trx.abort(); } catch (ignored) {}
         self.__idsToRemove = {};
         self.__collectionsToLock = {};
         throw e;
@@ -508,36 +499,28 @@ var bindVertexCollections = function (self, vertexCollections) {
         }
       );
 
+      var trx = db._createTransaction({
+        collections: { write: Object.keys(self.__collectionsToLock) }
+      });
       try {
-        db._executeTransaction({
-          collections: {
-            write: Object.keys(self.__collectionsToLock)
-          },
-          embed: true,
-          action: function (params) {
-            var db = require('internal').db;
-            params.ids.forEach(
-              function (edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-            if (params.options) {
-              db._remove(params.vertexId, params.options);
-            } else {
-              db._remove(params.vertexId);
-            }
-          },
-          params: {
-            ids: Object.keys(self.__idsToRemove),
-            options: options,
-            vertexId: vertexId
+        var ids = Object.keys(self.__idsToRemove);
+        ids.forEach(function (edgeId) {
+          var parts = edgeId.split('/');
+          if (options) {
+            trx.collection(parts[0]).remove(parts[1], options);
+          } else {
+            trx.collection(parts[0]).remove(parts[1]);
           }
         });
+        var vtxParts = vertexId.split('/');
+        if (options) {
+          trx.collection(vtxParts[0]).remove(vtxParts[1], options);
+        } else {
+          trx.collection(vtxParts[0]).remove(vtxParts[1]);
+        }
+        trx.commit();
       } catch (e) {
+        try { trx.abort(); } catch (ignored) {}
         self.__idsToRemove = {};
         self.__collectionsToLock = {};
         throw e;
@@ -828,7 +811,7 @@ class AbstractGraph {
       ${transformExampleToAQL(vertexExample, Object.keys(this.__vertexCollections), bindVars, 'start')}
       FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || 'ANY'} start
       ${buildEdgeCollectionRestriction(options.edgeCollectionRestriction, bindVars, this)}
-      OPTIONS {bfs: true}
+      OPTIONS {order: 'bfs'}
       ${buildFilter(options.neighborExamples, bindVars, 'v')}
       ${buildFilter(options.edgeExamples, bindVars, 'e')}
       ${Array.isArray(options.vertexCollectionRestriction) && options.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(options.vertexCollectionRestriction, 'v') : ''}
@@ -855,14 +838,14 @@ class AbstractGraph {
       ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, 'left')}
         LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || 'ANY'} left
           ${buildEdgeCollectionRestriction(optionsVertex1.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"}
+          OPTIONS {order: "bfs", uniqueVertices: "global"}
           ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
         ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, 'right')}
           FILTER right != left
           LET rightNeighbors = (FOR v IN ${optionsVertex2.minDepth || 1}..${optionsVertex2.maxDepth || 1} ${optionsVertex2.direction || 'ANY'} right
           ${buildEdgeCollectionRestriction(optionsVertex2.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"}
+          OPTIONS {order: "bfs", uniqueVertices: "global"}
           ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
           LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)
@@ -1337,14 +1320,14 @@ class AbstractGraph {
       ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, 'left')}
         LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || 'ANY'} left
           ${buildEdgeCollectionRestriction(optionsVertex1.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"}
+          OPTIONS {order: "bfs", uniqueVertices: "global"}
           ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
         ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, 'right')}
           FILTER right != left
           LET rightNeighbors = (FOR v IN ${optionsVertex2.minDepth || 1}..${optionsVertex2.maxDepth || 1} ${optionsVertex2.direction || 'ANY'} right
           ${buildEdgeCollectionRestriction(optionsVertex2.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"}
+          OPTIONS {order: "bfs", uniqueVertices: "global"}
           ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
           LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)

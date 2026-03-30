@@ -69,7 +69,6 @@ const doNotKillTests = [
 
 function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   let additionalParams= {
-    'foxx.queues': 'false',
     'server.statistics': 'false',
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!

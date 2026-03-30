@@ -2106,7 +2106,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
                                  velocypack::Slice doc,
                                  OperationOptions const& options) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
-    if (type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+    if (type() == Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
       // intentionally  break index removal
       return Result(TRI_ERROR_INTERNAL,
                     "BreakHashIndexRemove failure point triggered");
@@ -2400,14 +2400,6 @@ Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
-  TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
-    // mmfiles failure point compat
-    // the hash index is a derived type of the vpack index...
-    if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-
   return SortedIndexAttributeMatcher::supportsFilterCondition(
       allIndexes, this, node, reference, itemsInIndex);
 }
@@ -2504,12 +2496,6 @@ void RocksDBVPackIndex::buildSearchValues(
   TRI_IF_FAILURE("PersistentIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("HashIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
 
   if (format == RocksDBVPackIndexSearchValueFormat::kDetect) {
     // if we haven't seen any complex condition, we can go with the
@@ -2594,12 +2580,6 @@ void RocksDBVPackIndex::buildSearchValuesInner(
       TRI_IF_FAILURE("PersistentIndex::permutationEQ") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      TRI_IF_FAILURE("HashIndex::permutationEQ") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
     } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // complex condition. adjust format!
       format = RocksDBVPackIndexSearchValueFormat::kOperatorsAndValues;
@@ -2608,12 +2588,6 @@ void RocksDBVPackIndex::buildSearchValuesInner(
       if (isAttributeExpanded(usedFields)) {
         searchValues.add(VPackValue(StaticStrings::IndexEq));
         TRI_IF_FAILURE("PersistentIndex::permutationArrayIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       } else {

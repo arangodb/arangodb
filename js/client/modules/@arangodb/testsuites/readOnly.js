@@ -88,12 +88,12 @@ function readOnly (options) {
   const requests = [
     [200, 'post', '/_api/collection', 'root', {name: 'testcol'}],
     [202, 'post', '/_api/document/testcol', 'root', {_key: 'abcd'}],
-    [201, 'post', '/_api/index?collection=testcol', 'root', {fields: ['abc'], type: 'hash'}],
+    [201, 'post', '/_api/index?collection=testcol', 'root', {fields: ['abc'], type: 'persistent'}],
     [200, 'get', '/_api/index?collection=testcol', 'root', {}],
 
     // create and delete index
     [403, 'delete', '/_api/index/', 'test', {}],
-    [403, 'post', '/_api/index?collection=testcol', 'test', {fields: ['xyz'], type: 'hash'}],
+    [403, 'post', '/_api/index?collection=testcol', 'test', {fields: ['xyz'], type: 'persistent'}],
 
     // create, delete, truncate collection
     [403, 'post', '/_api/collection', 'test', {name: 'testcol2'}],

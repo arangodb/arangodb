@@ -48,7 +48,7 @@ function optimizerRuleTestSuite () {
           docs = [];
         }
       }
-      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
     },
 
     tearDownAll : function () {

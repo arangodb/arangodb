@@ -141,7 +141,7 @@ function ahuacatlProfilerTestSuite () {
 
     testIndexBlockSlow1 : function () {
       const col = db._create(colName);
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.ensureIndex({ type: "persistent", fields: [ "value" ] });
       const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {

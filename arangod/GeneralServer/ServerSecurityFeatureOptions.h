@@ -25,10 +25,7 @@
 namespace arangodb {
 
 struct ServerSecurityFeatureOptions {
-  bool enableFoxxApi = true;
-  bool enableFoxxStore = true;
   bool hardenedRestApi = false;
-  bool foxxAllowInstallFromRemote = false;
 };
 
 }  // namespace arangodb

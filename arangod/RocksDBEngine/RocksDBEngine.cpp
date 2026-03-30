@@ -116,7 +116,6 @@
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
-#include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
@@ -688,11 +687,6 @@ on the write rate.)");
                          arangodb::options::Flags::Enterprise));
 #endif
 
-  // range deletes are now always enabled
-  options->addObsoleteOption(
-      "--rocksdb.use-range-delete-in-wal",
-      "Enable range delete markers in the write-ahead log (WAL).", false);
-
   options
       ->addOption("--rocksdb.debug-logging",
                   "Whether to enable RocksDB debug logging.",
@@ -709,10 +703,6 @@ RocksDB's actions into the logfile written by ArangoDB (if the
 
 This option is turned off by default, but you can enable it for debugging
 RocksDB internals and performance.)");
-
-  options->addObsoleteOption("--rocksdb.edge-cache",
-                             "Whether to use the in-memory cache for edges",
-                             false);
 
   options
       ->addOption("--rocksdb.verify-sst",
@@ -1161,6 +1151,7 @@ void RocksDBEngine::start() {
 
   rocksdb::BlockBasedTableOptions tableOptions =
       _optionsProvider.getTableOptions();
+
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
   auto addFamily = [this,
@@ -1177,13 +1168,13 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::EdgeIndex);
   addFamily(RocksDBColumnFamilyManager::Family::VPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
+  // Fulltext indexes were removed in 4.0, but we keep the column family.
+  // Existing fulltext indexes are dropped by the upgrade task.
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
-  if (isVectorIndexEnabled()) {
-    addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
-  }
+  addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -2422,14 +2413,6 @@ Result RocksDBEngine::compactAll(bool changeLevel,
 void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   RocksDBOptimizerRules::registerResources(feature);
 }
-
-#ifdef USE_V8
-/// @brief Add engine-specific V8 functions
-void RocksDBEngine::addV8Functions() {
-  // there are no specific V8 functions here
-  RocksDBV8Functions::registerResources(*this);
-}
-#endif
 
 /// @brief Add engine-specific REST handlers
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
@@ -3747,13 +3730,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::EdgeIndex);
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
-  addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addCf(RocksDBColumnFamilyManager::Family::MdiIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
-  if (isVectorIndexEnabled()) {
-    addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
-  }
+  addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
   builder.close();
 
   if (_throttleListener) {

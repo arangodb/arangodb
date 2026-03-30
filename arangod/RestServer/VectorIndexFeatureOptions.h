@@ -25,7 +25,7 @@
 namespace arangodb {
 
 struct VectorIndexFeatureOptions {
-  bool useVectorIndex = false;
+  bool useVectorIndex = true;
 };
 
 }  // namespace arangodb

@@ -83,40 +83,6 @@ ClusterFeature::~ClusterFeature() { shutdown(); }
 void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("cluster", "cluster");
 
-  options->addObsoleteOption("--cluster.username",
-                             "username used for cluster-internal communication",
-                             true);
-  options->addObsoleteOption("--cluster.password",
-                             "password used for cluster-internal communication",
-                             true);
-  options->addObsoleteOption("--cluster.disable-dispatcher-kickstarter",
-                             "The dispatcher feature isn't available anymore; "
-                             "Use ArangoDBStarter for this now!",
-                             true);
-  options->addObsoleteOption("--cluster.disable-dispatcher-frontend",
-                             "The dispatcher feature isn't available anymore; "
-                             "Use ArangoDB Starter for this now!",
-                             true);
-  options->addObsoleteOption(
-      "--cluster.dbserver-config",
-      "The dbserver-config is not available anymore, Use ArangoDBStarter",
-      true);
-  options->addObsoleteOption(
-      "--cluster.coordinator-config",
-      "The coordinator-config is not available anymore, Use ArangoDBStarter",
-      true);
-  options->addObsoleteOption("--cluster.data-path",
-                             "path to cluster database directory", true);
-  options->addObsoleteOption("--cluster.log-path",
-                             "path to log directory for the cluster", true);
-  options->addObsoleteOption("--cluster.arangod-path",
-                             "path to the arangod for the cluster", true);
-  options->addObsoleteOption("--cluster.my-local-info",
-                             "this server's local info", false);
-  options->addObsoleteOption("--cluster.my-id", "this server's id", false);
-
-  options->addObsoleteOption("--cluster.agency-prefix", "agency prefix", false);
-
   options->addOption(
       "--cluster.require-persisted-id",
       "If set to `true`, then the instance only starts if a UUID file is found "

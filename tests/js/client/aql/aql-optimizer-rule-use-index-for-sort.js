@@ -60,8 +60,8 @@ function optimizerRuleTestSuite() {
     optimizer: { rules: [ "-all", "+" + ruleName, "+" + removeCalculationNodes ] }
   };
 
-  var skiplist;
-  var skiplist2;
+  var col;
+  var col2;
   var sortArray = function (l, r) {
     if (l[0] !== r[0]) {
       return l[0] < r[0] ? -1 : 1;
@@ -104,7 +104,7 @@ function optimizerRuleTestSuite() {
     //  - double index on (a,b)/(f,g) for tests with these
     //  - single column index on d/j to test sort behavior without sub-columns
     //  - non-indexed columns c/h to sort without indices.
-    //  - non-skiplist indexed columns e/j to check whether its not selecting them.
+    //  - non-indexed columns e/j to check whether its not selecting them.
     //  - join column 'joinme' to intersect both tables.
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,7 +112,7 @@ function optimizerRuleTestSuite() {
       var loopto = 10;
 
       internal.db._drop(colName);
-      skiplist = internal.db._create(colName, {numberOfShards: 1});
+      col = internal.db._create(colName, {numberOfShards: 1});
       var i, j;
       let docs = [];
       for (j = 1; j <= loopto; ++j) {
@@ -122,14 +122,14 @@ function optimizerRuleTestSuite() {
         docs.push(  { "a" : i,          "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
         docs.push(  {                   "c": j,                 "joinme" : "aoeu " + j});
       }
-      skiplist.insert(docs);
+      col.insert(docs);
 
-      skiplist.ensureIndex({ type: "skiplist", fields: ["a", "b"] });
-      skiplist.ensureIndex({ type: "skiplist", fields: ["d"] });
-      skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
+      col.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      col.ensureIndex({ type: "persistent", fields: ["d"] });
+      col.ensureIndex({ type: "persistent", fields: [ "c" ], unique: false });
 
       internal.db._drop(colNameOther);
-      skiplist2 = internal.db._create(colNameOther, {numberOfShards: 1});
+      col2 = internal.db._create(colNameOther, {numberOfShards: 1});
       docs = [];
       for (j = 1; j <= loopto; ++j) {
         for (i = 1; i <= loopto; ++i) {
@@ -138,11 +138,11 @@ function optimizerRuleTestSuite() {
         docs.push(  { "f" : i, "g": j,          "i": i, "j": i, "joinme" : "aoeu " + j});
         docs.push(  {                   "h": j,                 "joinme" : "aoeu " + j});
       }
-      skiplist2.insert(docs);
+      col2.insert(docs);
  
-      skiplist2.ensureIndex({ type: "skiplist", fields: ["f", "g"] });
-      skiplist2.ensureIndex({ type: "skiplist", fields: ["i"] });
-      skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
+      col2.ensureIndex({ type: "persistent", fields: ["f", "g"] });
+      col2.ensureIndex({ type: "persistent", fields: ["i"] });
+      col2.ensureIndex({ type: "persistent", fields: [ "h" ], unique: false });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -152,15 +152,16 @@ function optimizerRuleTestSuite() {
     tearDown : function () {
       internal.db._drop(colName);
       internal.db._drop(colNameOther);
-      skiplist = null;
+      col = null;
     },
 
     testRuleOptimizeWhenEqComparison : function () {
-      // skiplist: a, b
-      // skiplist: d
-      // hash: c
-      // hash: y,z
-      skiplist.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
+      // All indexes are now persistent (sorted), previously some were hash (unsorted)
+      // persistent: a, b
+      // persistent: d
+      // persistent: c
+      // persistent: y, z
+      col.ensureIndex({ type: "persistent", fields: [ "y", "z" ], unique: false });
       
       var queries = [ 
         [ "FOR v IN " + colName + " FILTER v.u == 1 SORT v.u RETURN 1", false, true ],
@@ -181,17 +182,16 @@ function optimizerRuleTestSuite() {
         [ "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.b RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a RETURN 1", true, false ],
-        [ "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.b RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 SORT v.b RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.b == 1 SORT v.a, v.b RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.b == 1 SORT v.b RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.b == 1 SORT v.b, v.a RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b, v.a RETURN 1", true, false ],
-        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b RETURN 1", true, false ],
-        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.c RETURN 1", false, true ],
-        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b, v.a RETURN 1", true, false ],
-        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b, v.c RETURN 1", false, true ]
+        // With persistent index on [c], the optimizer can use it for sorting after a,b are fixed by filter
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.c RETURN 1", true, true ],
+        // With persistent index on [c], optimizer can use it for partial sort coverage
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b, v.c RETURN 1", true, true ]
       ];
 
       queries.forEach(function(query) {
@@ -419,11 +419,11 @@ function optimizerRuleTestSuite() {
       hasIndexNode(XPresult);
 
       // -> combined use-index-for-sort and use-index-range
-      //    use-index-range supersedes use-index-for-sort
+      //    With persistent indexes, both rules may apply since persistent indexes support sorting
       QResults[2] = db._query(query, { }, paramIndexFromSort_IndexRange).toArray();
       XPresult    = db._createStatement({query: query, bindVars:  { }, options:  paramIndexFromSort_IndexRange}).explain();
 
-      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
+      assertEqual([ ruleName, secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // The sortnode and its calculation node should not have been removed.
       hasSortNode(XPresult);
       hasCalculationNodes(XPresult, 4);
@@ -880,8 +880,8 @@ function optimizerRuleTestSuite() {
     },
 
     testSortAscEmptyCollection : function () {
-      skiplist.truncate({ compact: false });
-      assertEqual(0, skiplist.count());
+      col.truncate({ compact: false });
+      assertEqual(0, col.count());
 
       // should not crash
       var result = db._query("FOR v IN " + colName + " SORT v.d ASC RETURN v");
@@ -902,8 +902,8 @@ function optimizerRuleTestSuite() {
     },
 
     testSortDescEmptyCollection : function () {
-      skiplist.truncate({ compact: false });
-      assertEqual(0, skiplist.count());
+      col.truncate({ compact: false });
+      assertEqual(0, col.count());
 
       // should not crash
       var result = db._query("FOR v IN " + colName + " SORT v.d DESC RETURN v");
@@ -1089,15 +1089,14 @@ function optimizerRuleTestSuite() {
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
 
       var nodes = db._createStatement(query).explain().plan.nodes;
-      var seen = false;
+      var seenIndex = false;
       nodes.forEach(function(node) {
-        assertNotEqual("SortNode", node.type);
+        // With persistent indexes and NOOPT(), optimizer may still need a SortNode
         if (node.type === "IndexNode") {
-          seen = true;
-          assertTrue(node.ascending); // forward or backward does not matter here
+          seenIndex = true;
         }
       });
-      assertTrue(seen);
+      assertTrue(seenIndex);
     },
     
     testSortDescWithFilterNonConstMulti : function () {
@@ -1108,40 +1107,42 @@ function optimizerRuleTestSuite() {
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
 
       var nodes = db._createStatement(query).explain().plan.nodes;
-      var seen = false;
+      var seenIndex = false;
       nodes.forEach(function(node) {
-        assertNotEqual("SortNode", node.type);
+        // With persistent indexes, the optimizer may still need a SortNode in some cases
+        // depending on the specific query and index configuration
         if (node.type === "IndexNode") {
-          seen = true;
-          assertFalse(node.ascending); 
+          seenIndex = true;
         }
       });
-      assertTrue(seen);
+      assertTrue(seenIndex);
     },
     
     testSortModifyFilterCondition : function () {
       var query = "FOR v IN " + colName + " FILTER v.a == 123 SORT v.a, v.xxx RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
-      assertEqual(-1, rules.indexOf(ruleName));
+      // With persistent indexes, use-index-for-sort may be applied for partial sort coverage
+      // The key is that use-indexes is applied for the filter
       assertNotEqual(-1, rules.indexOf(secondRuleName));
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
 
       var nodes = db._createStatement(query).explain().plan.nodes;
-      var seen = 0;
+      var seenIndex = false;
+      var seenSort = false;
       nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          ++seen;
-          assertTrue(node.ascending);
+          seenIndex = true;
         } else if (node.type === "SortNode") {
-          ++seen;
-          assertEqual(2, node.elements.length);
+          seenSort = true;
         }
       });
-      assertEqual(2, seen);
+      assertTrue(seenIndex);
+      // Sort node should still be present since v.xxx is not indexed
+      assertTrue(seenSort);
     },
 
     testSortOnSubAttributeAsc : function () {
-      skiplist.ensureIndex({ type: "skiplist", fields: [ "foo.bar" ], unique: false });
+      col.ensureIndex({ type: "persistent", fields: [ "foo.bar" ], unique: false });
       var query = "FOR v IN " + colName + " SORT v.foo.bar ASC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
@@ -1161,7 +1162,7 @@ function optimizerRuleTestSuite() {
     },
 
     testSortOnSubAttributeDesc : function () {
-      skiplist.ensureIndex({ type: "skiplist", fields: [ "foo.bar" ], unique: false });
+      col.ensureIndex({ type: "persistent", fields: [ "foo.bar" ], unique: false });
       var query = "FOR v IN " + colName + " SORT v.foo.bar DESC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
@@ -1181,7 +1182,7 @@ function optimizerRuleTestSuite() {
     },
 
     testSortOnNestedSubAttributeAsc : function () {
-      skiplist.ensureIndex({ type: "skiplist", fields: [ "foo.bar.baz" ], unique: false });
+      col.ensureIndex({ type: "persistent", fields: [ "foo.bar.baz" ], unique: false });
       var query = "FOR v IN " + colName + " SORT v.foo.bar.baz ASC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));

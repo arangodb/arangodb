@@ -234,6 +234,26 @@ class Parser;
   return T_LIKE;
 }
 
+(?i:MATCH) {
+  return T_MATCH;
+}
+
+(?i:WHILE) {
+  return T_WHILE;
+}
+
+(?i:UNTIL) {
+  return T_UNTIL;
+}
+
+(?i:SCAN) {
+  return T_SCAN;
+}
+
+(?i:FOLD) {
+  return T_FOLD;
+}
+
  /* ---------------------------------------------------------------------------
   * predefined type literals
   * --------------------------------------------------------------------------- */

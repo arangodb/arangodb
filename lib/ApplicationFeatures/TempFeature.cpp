@@ -38,16 +38,13 @@ using namespace arangodb::options;
 namespace arangodb {
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("temp-path", "temp.path");
-
   options->addSection("temp", "temporary files");
 
   options
       ->addOption("--temp.path", "The path for temporary files.",
                   new StringParameter(&_options.path))
       .setLongDescription(R"(ArangoDB uses the path for storing temporary
-files, for extracting data from uploaded zip files (e.g. for Foxx services),
-and other things.
+files, for extracting data from uploaded zip files and other things.
 
 Ideally, the temporary path is set to an instance-specific subdirectory of the
 operating system's temporary directory. To avoid data loss, the temporary path

@@ -79,13 +79,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     } else if (tmp == StaticStrings::GraphQueryOrderDFS) {
       mode = Order::DFS;
     }
-  } else {
-    bool useBreadthFirst = VPackHelper::getBooleanValue(obj, "bfs", false);
-    if (useBreadthFirst) {
-      mode = Order::BFS;
-    }
   }
-
   useNeighbors = VPackHelper::getBooleanValue(obj, "neighbors", false);
 
   TRI_ASSERT(!useNeighbors || isUseBreadthFirst());
@@ -222,14 +216,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       default:
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "Bad mode parameter value");
-    }
-  } else {
-    read = info.get("bfs");
-    if (read.isBoolean()) {
-      bool useBreadthFirst = read.getBool();
-      if (useBreadthFirst) {
-        mode = Order::BFS;
-      }
     }
   }
 

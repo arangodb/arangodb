@@ -162,10 +162,10 @@ function testSuite() {
       let docid = `${cn}/500`;
       let trx = db._createTransaction({ collections: { write: [c] } });
       trx.query(aql`LET d = DOCUMENT(${docid})
-                        UPDATE d WITH { "aaa": "aaa" } IN ${c}
+                        UPDATE d WITH { "aaa": "aaa" } IN ${aql.literal(cn)}
                         RETURN true`);
       trx.commit();
-      let doc = c.byExample({_key: '500'}).toArray()[0];
+      let doc = c.document('500');
       assertTrue(doc.hasOwnProperty('aaa'), JSON.stringify(doc));
     },
     testStreamTransactionCluster: function () {

@@ -61,7 +61,7 @@ describe('General graph creation', function () {
     // Extract desired values, if absent use defaults
     const replicationFactor =
       options.replicationFactor || defaultReplicationFactor;
-    const minReplicationFactor = options.minReplicationFactor || 1;
+    const writeConcern = options.writeConcern || 1;
     const numberOfShards = options.numberOfShards || 1;
 
     // Assert that we do not tests defaults again if we want to overwrite
@@ -69,8 +69,8 @@ describe('General graph creation', function () {
     if (options.hasOwnProperty("replicationFactor")) {
       expect(replicationFactor).to.not.equal(defaultReplicationFactor);
     }
-    if (options.hasOwnProperty("minReplicationFactor")) {
-      expect(minReplicationFactor).to.not.equal(1);
+    if (options.hasOwnProperty("writeConcern")) {
+      expect(writeConcern).to.not.equal(1);
     }
     if (options.hasOwnProperty("numberOfShards")) {
       expect(numberOfShards).to.not.equal(1);
@@ -79,7 +79,7 @@ describe('General graph creation', function () {
     const validateProperties = (collectionName) => {
       let props = db._collection(collectionName).properties();
       expect(props.replicationFactor).to.equal(replicationFactor);
-      expect(props.minReplicationFactor).to.equal(minReplicationFactor);
+      expect(props.writeConcern).to.equal(writeConcern);
       expect(props.numberOfShards).to.equal(numberOfShards);
     };
 
@@ -115,7 +115,7 @@ describe('General graph creation', function () {
       it("should be stored in the internal document", function () {
         let gdoc = db._collection("_graphs").document(gn);
         expect(gdoc.replicationFactor).to.equal(replicationFactor);
-        expect(gdoc.minReplicationFactor).to.equal(minReplicationFactor);
+        expect(gdoc.writeConcern).to.equal(writeConcern);
         expect(gdoc.numberOfShards).to.equal(numberOfShards);
       });
 
@@ -206,7 +206,7 @@ describe('General graph creation', function () {
 
   describe("with defaults", testSuite.bind(this, {}));
 
-  let opts = { minReplicationFactor: 2 };
+  let opts = { writeConcern: 2 };
   if (defaultReplicationFactor === 1) {
     opts.replicationFactor = 2;
   }

@@ -45,9 +45,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -56,27 +53,13 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 ServerFeature::ServerFeature(ApplicationServer& server, int* res)
-    : ApplicationFeature{server, *this},
-      _result(res),
-      _operationMode(OperationMode::MODE_SERVER) {
+    : ApplicationFeature{server, *this}, _result(res) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption("--console",
-                  "Start the server with a JavaScript emergency console.",
-                  new BooleanParameter(&_options.console))
-      .setLongDescription(R"(In this exclusive emergency mode, all networking
-and HTTP interfaces of the server are disabled. No requests can be made to the
-server in this mode, and the only way to work with the server in this mode is by
-using the emergency console.
-
-The server cannot be started in this mode if it is already running in this or
-another mode.)");
-
   options->addSection("server", "server features");
 
   options->addOption(
@@ -90,105 +73,15 @@ another mode.)");
       "data.",
       new BooleanParameter(&_options.validateUtf8Strings),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption("--javascript.script", "Run the script and exit.",
-                     new VectorParameter<StringParameter>(&_options.scripts));
-
-  // add obsolete MMFiles WAL options (obsoleted in 3.7)
-  options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
-  options->addObsoleteOption(
-      "--wal.allow-oversize-entries",
-      "allow entries that are bigger than '--wal.logfile-size'", false);
-  options->addObsoleteOption("--wal.use-mlock",
-                             "mlock WAL logfiles in memory (may require "
-                             "elevated privileges or limits)",
-                             false);
-  options->addObsoleteOption("--wal.directory", "logfile directory", true);
-  options->addObsoleteOption(
-      "--wal.historic-logfiles",
-      "maximum number of historic logfiles to keep after collection", true);
-  options->addObsoleteOption(
-      "--wal.ignore-logfile-errors",
-      "ignore logfile errors. this will read recoverable data from corrupted "
-      "logfiles but ignore any unrecoverable data",
-      false);
-  options->addObsoleteOption(
-      "--wal.ignore-recovery-errors",
-      "continue recovery even if re-applying operations fails", false);
-  options->addObsoleteOption("--wal.flush-timeout",
-                             "flush timeout (in milliseconds)", true);
-  options->addObsoleteOption("--wal.logfile-size",
-                             "size of each logfile (in bytes)", true);
-  options->addObsoleteOption("--wal.open-logfiles",
-                             "maximum number of parallel open logfiles", true);
-  options->addObsoleteOption("--wal.reserve-logfiles",
-                             "maximum number of reserve logfiles to maintain",
-                             true);
-  options->addObsoleteOption("--wal.slots", "number of logfile slots to use",
-                             true);
-  options->addObsoleteOption(
-      "--wal.sync-interval",
-      "interval for automatic, non-requested disk syncs (in milliseconds)",
-      true);
-  options->addObsoleteOption(
-      "--wal.throttle-when-pending",
-      "throttle writes when at least this many operations are waiting for "
-      "collection (set to 0 to deactivate write-throttling)",
-      true);
-  options->addObsoleteOption(
-      "--wal.throttle-wait",
-      "maximum wait time per operation when write-throttled (in milliseconds)",
-      true);
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  int count = 0;
-
-  if (_options.console) {
-    _operationMode = OperationMode::MODE_CONSOLE;
-    ++count;
-  }
-
-  if (!_options.scripts.empty()) {
-    _operationMode = OperationMode::MODE_SCRIPT;
-    ++count;
-  }
-
-  if (1 < count) {
-    LOG_TOPIC("353cd", FATAL, arangodb::Logger::FIXME)
-        << "cannot combine '--console', '--javascript.unit-tests' and "
-        << "'--javascript.script'";
-    FATAL_ERROR_EXIT();
-  }
-
   DatabaseFeature& db = server().getFeature<DatabaseFeature>();
 
-  if (_operationMode == OperationMode::MODE_SERVER && !_options.restServer &&
-      !db.upgrade() &&
+  if (!_options.restServer && !db.upgrade() &&
       !options->processingResult().touched("rocksdb.verify-sst")) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
-        << "need at least '--console', '--javascript.unit-tests' or"
-        << "'--javascript.script if rest-server is disabled";
-    FATAL_ERROR_EXIT();
-  }
-
-  bool supportsV8 = false;
-#ifdef USE_V8
-  V8DealerFeature& v8dealer = server().getFeature<V8DealerFeature>();
-
-  if (v8dealer.isEnabled()) {
-    if (_operationMode == OperationMode::MODE_SCRIPT) {
-      v8dealer.setMinimumExecutors(2);
-    } else {
-      v8dealer.setMinimumExecutors(1);
-    }
-    supportsV8 = true;
-  }
-#endif
-  if (!supportsV8 && _operationMode != OperationMode::MODE_SERVER) {
-    LOG_TOPIC("a114b", FATAL, arangodb::Logger::FIXME)
-        << "Options '--console', '--javascript.unit-tests'"
-        << " or '--javascript.script' are not supported without V8";
+        << "Rest server cannot be disabled any more, because it is pointless.";
     FATAL_ERROR_EXIT();
   }
 
@@ -215,17 +108,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
   }
 
-#ifdef USE_V8
-  if (_operationMode == OperationMode::MODE_CONSOLE) {
-    disableDeamonAndSupervisor();
-    v8dealer.setMinimumExecutors(2);
-  }
-#endif
-
-  if (_operationMode == OperationMode::MODE_SERVER ||
-      _operationMode == OperationMode::MODE_CONSOLE) {
-    server().getFeature<ShutdownFeature>().disable();
-  }
+  server().getFeature<ShutdownFeature>().disable();
 }
 
 void ServerFeature::prepare() {
@@ -239,28 +122,15 @@ void ServerFeature::start() {
 
   *_result = EXIT_SUCCESS;
 
-  switch (_operationMode) {
-    case OperationMode::MODE_SCRIPT:
-    case OperationMode::MODE_CONSOLE:
-      break;
-
-    case OperationMode::MODE_SERVER:
-      LOG_TOPIC("7031b", TRACE, Logger::STARTUP)
-          << "server operation mode: SERVER";
-      break;
-  }
-
   // flush all log output before we go on... this is sensible because any
   // of the following options may print or prompt, and pending log entries
   // might overwrite that
   Logger::flush();
 
-  if (!isConsoleMode()) {
-    // install CTRL-C handlers
-    server().registerStartupCallback([this]() {
-      server().getFeature<SchedulerFeature>().buildControlCHandler();
-    });
-  }
+  // install CTRL-C handlers
+  server().registerStartupCallback([this]() {
+    server().getFeature<SchedulerFeature>().buildControlCHandler();
+  });
 }
 
 void ServerFeature::beginShutdown() { _isStopping = true; }
@@ -284,19 +154,6 @@ void ServerFeature::waitForHeartbeat() {
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-}
-
-std::string ServerFeature::operationModeString(OperationMode mode) {
-  switch (mode) {
-    case OperationMode::MODE_CONSOLE:
-      return "console";
-    case OperationMode::MODE_SCRIPT:
-      return "script";
-    case OperationMode::MODE_SERVER:
-      return "server";
-    default:
-      return "unknown";
   }
 }
 

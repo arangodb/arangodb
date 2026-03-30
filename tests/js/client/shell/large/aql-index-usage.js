@@ -110,7 +110,7 @@ function IndexUsageSuite () {
         if (indexes.length > 1) {
           db[cnData].dropIndex(indexes[1]);
         }
-        db[cnData].ensureIndex({ type: "hash", fields: ["value"], inBackground: true });
+        db[cnData].ensureIndex({ type: "persistent", fields: ["value"], inBackground: true });
         ++success;
       } while (time() - start < 10.0);
 

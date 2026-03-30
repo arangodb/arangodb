@@ -234,7 +234,6 @@ static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
     "/Current/ServersRegistered";
-static std::string const foxxmaster = "/Current/Foxxmaster";
 
 void Supervision::upgradeOne(Builder& builder) {
   // "/arango/Agency/Definition" not exists or is 0
@@ -458,50 +457,9 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot,
         VPackObjectBuilder b(&create);
         // unconditionally increase reboot id and plan version
         Job::addIncreaseRebootId(create, serverID);
-
-        // if the current foxxmaster server failed => reset the value to ""
-        if (auto fx = snapshot.hasAsString(foxxmaster);
-            fx && fx.value() == serverID) {
-          create.add(foxxmaster, VPackValue(""));
-        }
       }
     }
     singleWriteTransaction(agent, create, false);
-  }
-}
-
-void handleOnStatusSingle(Agent* agent, Node const& snapshot,
-                          HealthRecord& persisted, HealthRecord& transisted,
-                          std::string const& serverID, uint64_t const& jobId,
-                          std::shared_ptr<VPackBuilder>& envelope) {
-  std::string failedServerPath = failedServersPrefix + "/" + serverID;
-  // New condition GOOD:
-  if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
-    if (snapshot.has(failedServerPath)) {
-      envelope = std::make_shared<VPackBuilder>();
-      {
-        VPackArrayBuilder a(envelope.get());
-        {
-          VPackObjectBuilder operations(envelope.get());
-          envelope->add(VPackValue(failedServerPath));
-          {
-            VPackObjectBuilder ccc(envelope.get());
-            envelope->add("op", VPackValue("delete"));
-          }
-        }
-      }
-    }
-  } else if (  // New state: FAILED persisted: GOOD (-> BAD)
-      persisted.status == Supervision::HEALTH_STATUS_GOOD &&
-      transisted.status != Supervision::HEALTH_STATUS_GOOD) {
-    transisted.status = Supervision::HEALTH_STATUS_BAD;
-  } else if (  // New state: FAILED persisted: BAD (-> Job)
-      persisted.status == Supervision::HEALTH_STATUS_BAD &&
-      transisted.status == Supervision::HEALTH_STATUS_FAILED) {
-    if (!snapshot.has(failedServerPath)) {
-      TRI_ASSERT(false) << "we should only get here in active failover case, "
-                           "which is disabled";
-    }
   }
 }
 
@@ -517,9 +475,6 @@ void handleOnStatus(
                            delayFailedFollower, failedLeaderAddsFollower);
   } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
-  } else if (serverID.starts_with("SNGL")) {
-    handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID,
-                         jobId, envelope);
   } else {
     LOG_TOPIC("86191", ERR, Logger::SUPERVISION)
         << "Unknown server type. No supervision action taken. " << serverID;
@@ -541,8 +496,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     if ((type == "DBServers" &&
          ClusterHelpers::isDBServerName(machine.first)) ||
         (type == "Coordinators" &&
-         ClusterHelpers::isCoordinatorName(machine.first)) ||
-        (type == "Singles" && machine.first.starts_with("SNGL"))) {
+         ClusterHelpers::isCoordinatorName(machine.first))) {
       // Put only those on list which are no longer planned:
       if (machinesPlanned.find(machine.first) == nullptr) {
         todelete.push_back(machine.first);

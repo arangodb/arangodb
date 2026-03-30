@@ -167,29 +167,6 @@ class TestCreateBuildJob:
         assert params["name"] == "build-x64-tsan"
         assert params["preset"] == "enterprise-pr-tsan"
 
-    def test_create_frontend_build_job(self):
-        """Test creating frontend build job."""
-        gen = self.create_generator()
-        build_config = BuildConfig(architecture=Architecture.X64)
-
-        job = gen._create_frontend_build_job(build_config)
-
-        assert "build-frontend" in job
-        assert job["build-frontend"]["name"] == "build-x64-frontend"
-
-    def test_create_frontend_build_job_with_sanitizer(self):
-        """Test creating frontend build job with sanitizer."""
-        gen = self.create_generator()
-        build_config = BuildConfig(
-            architecture=Architecture.X64,
-            build_variant=BuildVariant.ALUBSAN,
-        )
-
-        job = gen._create_frontend_build_job(build_config)
-
-        assert job["build-frontend"]["name"] == "build-x64-alubsan-frontend"
-
-
 class TestDockerImageJob:
     """Test docker image job creation."""
 
@@ -937,43 +914,6 @@ class TestSanitizerSuffixInJobNames:
             result_alubsan["run-linux-tests"]["name"]
             == "test-cluster-resilience-x64-alubsan"
         )
-
-    def test_rta_job_names_include_sanitizer_suffix(self):
-        """Test that RTA UI job names include sanitizer suffix."""
-        gen = self.create_generator()
-        job = TestJob(
-            name="ui_tests",
-            suites=[SuiteConfig(name="UserPageTestSuite")],
-            options=TestOptions(),
-            job_type="run-rta-tests",
-        )
-
-        # Test TSAN - should have -tsan suffix
-        build_config_tsan = BuildConfig(
-            architecture=Architecture.X64, build_variant=BuildVariant.TSAN
-        )
-        result_tsan = gen._create_rta_test_jobs(job, build_config_tsan, ["build-job"])
-
-        assert len(result_tsan) == 2
-        assert result_tsan[0]["run-rta-tests"]["name"] == "test-single-UI-x64-tsan"
-        assert result_tsan[1]["run-rta-tests"]["name"] == "test-cluster-UI-x64-tsan"
-
-        # Test ALUBSAN - should have -alubsan suffix
-        build_config_alubsan = BuildConfig(
-            architecture=Architecture.X64, build_variant=BuildVariant.ALUBSAN
-        )
-        result_alubsan = gen._create_rta_test_jobs(
-            job, build_config_alubsan, ["build-job"]
-        )
-
-        assert len(result_alubsan) == 2
-        assert (
-            result_alubsan[0]["run-rta-tests"]["name"] == "test-single-UI-x64-alubsan"
-        )
-        assert (
-            result_alubsan[1]["run-rta-tests"]["name"] == "test-cluster-UI-x64-alubsan"
-        )
-
 
 class TestJobLevelArchitectureFiltering:
     """Test job-level architecture filtering in _add_test_jobs."""

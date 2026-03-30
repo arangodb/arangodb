@@ -29,32 +29,41 @@
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "ClusterEngine/ClusterEngine.h"
+#include "Cluster/AgencyCache.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
+#include <format>
+#include <optional>
+#include <rocksdb/db.h>
+#include <rocksdb/write_batch.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -64,69 +73,6 @@ using basics::VelocyPackHelper;
 // Note: this entire file should run with superuser rights
 
 namespace {
-
-arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
-                                  arangodb::LogicalCollection& collection,
-                                  arangodb::RocksDBIndex* oldIndex) {
-  IndexId iid = oldIndex->id();
-
-  VPackBuilder oldDesc;
-  oldIndex->toVelocyPack(oldDesc, Index::makeFlags());
-  VPackBuilder overw;
-
-  overw.openObject();
-  overw.add(arangodb::StaticStrings::IndexType,
-            arangodb::velocypack::Value(
-                arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
-  overw.close();
-
-  VPackBuilder newDesc =
-      VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
-  arangodb::Result res = collection.dropIndex(iid);
-
-  if (res.fail()) {
-    return res;
-  }
-
-  bool created = false;
-  auto newIndex = collection.getPhysical()
-                      ->createIndex(newDesc.slice(), /*restore*/ true, created)
-                      .waitAndGet();
-
-  if (!created) {
-    res.reset(TRI_ERROR_INTERNAL);
-  }
-
-  TRI_ASSERT(newIndex->id() == iid);  // will break cluster otherwise
-  TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
-
-  return res;
-}
-
-Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
-  auto collections = vocbase.collections(false);
-
-  for (auto const& collection : collections) {
-    auto indexes = collection->getPhysical()->getReadyIndexes();
-    for (auto const& index : indexes) {
-      auto* rIndex = basics::downCast<RocksDBIndex>(index.get());
-      if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
-          index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-        LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
-            << "Upgrading legacy geo index '" << rIndex->id().id() << "'";
-
-        auto res = ::recreateGeoIndex(vocbase, *collection, rIndex);
-
-        if (res.fail()) {
-          LOG_TOPIC("5550a", ERR, Logger::STARTUP)
-              << "Error upgrading geo indexes " << res.errorMessage();
-          return res;
-        }
-      }
-    }
-  }
-  return {};
-}
 
 Result createSystemCollections(
     TRI_vocbase_t& vocbase,
@@ -164,25 +110,16 @@ Result createSystemCollections(
     // NOTE: We could hard-code this on compile-time
     // List of _system database only collections
     systemCollections.push_back(StaticStrings::UsersCollection);
-    systemCollections.push_back(StaticStrings::StatisticsCollection);
-    systemCollections.push_back(StaticStrings::Statistics15Collection);
-    systemCollections.push_back(StaticStrings::StatisticsRawCollection);
     // All others are available in all other Databases as well.
   }
 
   systemCollections.push_back(StaticStrings::GraphsCollection);
   systemCollections.push_back(StaticStrings::AnalyzersCollection);
-  systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
-  systemCollections.push_back(StaticStrings::QueuesCollection);
-  systemCollections.push_back(StaticStrings::JobsCollection);
-  systemCollections.push_back(StaticStrings::AppsCollection);
-  systemCollections.push_back(StaticStrings::AppBundlesCollection);
-  systemCollections.push_back(StaticStrings::FrontendCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     std::vector<CreateCollectionBody> testSystemCollectionsToCreate;
     std::vector<std::string> testSystemCollections = {
-        StaticStrings::GraphsCollection, StaticStrings::AqlFunctionsCollection};
+        StaticStrings::GraphsCollection};
 
     auto config = vocbase.getDatabaseConfiguration();
     // Override lookup for leading CollectionName
@@ -303,42 +240,6 @@ Result createSystemCollections(
   return {TRI_ERROR_NO_ERROR};
 }
 
-Result createSystemStatisticsCollections(
-    TRI_vocbase_t& vocbase,
-    std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  if (vocbase.isSystem()) {
-    std::vector<CollectionCreationInfo> systemCollectionsToCreate;
-    // the order of systemCollections is important. If we're in _system db, the
-    // UsersCollection needs to be first, otherwise, the GraphsCollection must
-    // be first.
-    std::array<std::string, 3> systemCollections{
-        StaticStrings::StatisticsCollection,
-        StaticStrings::Statistics15Collection,
-        StaticStrings::StatisticsRawCollection,
-    };
-    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
-    Result res;
-    OperationOptions options{};
-    for (auto const& collection : systemCollections) {
-      // No need to batch this.
-      // Fresh databases will have a batch run for those collections already.
-      // We only hit this on databases that do not have statistics collections
-      // yet. Which have to be somewhere from the 2.X series, and never had an
-      // upgrade task.
-      std::shared_ptr<LogicalCollection> col;
-      res = methods::Collections::createSystem(vocbase, options, collection,
-                                               false, col);
-      if (res.fail()) {
-        return res;
-      }
-      TRI_ASSERT(col) << "Create system collection did not fail but also did "
-                         "not create a collection.";
-      createdCollections.emplace_back(std::move(col));
-    }
-  }
-  return {TRI_ERROR_NO_ERROR};
-}
-
 Result createIndex(
     std::string const& name, Index::IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
@@ -361,73 +262,19 @@ Result createIndex(
       .waitAndGet();
 }
 
-Result createSystemStatisticsIndices(
-    TRI_vocbase_t& vocbase,
-    std::vector<std::shared_ptr<LogicalCollection>>& collections) {
-  Result res;
-  if (vocbase.isSystem()) {
-    res = ::createIndex(StaticStrings::StatisticsCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
-    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-    res = ::createIndex(StaticStrings::Statistics15Collection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
-    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-    res = ::createIndex(StaticStrings::StatisticsRawCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
-    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-  }
-  return res;
-}
-
 Result createSystemCollectionsIndices(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
   if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::UsersCollection,
-                        arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
-                        true, true, collections);
-    if (!res.ok()) {
-      return res;
-    }
-
-    res = ::createSystemStatisticsIndices(vocbase, collections);
+                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
+                        {"user"}, true, true, collections);
     if (!res.ok()) {
       return res;
     }
   }
 
-  res = upgradeGeoIndexes(vocbase);
-  if (!res.ok()) {
-    return res;
-  }
-
-  res = ::createIndex(StaticStrings::AppsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"}, true,
-                      true, collections);
-  if (!res.ok()) {
-    return res;
-  }
-  res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                      {"queue", "status", "delayUntil"}, false, false,
-                      collections);
-  if (!res.ok()) {
-    return res;
-  }
-  res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                      {"status", "queue", "delayUntil"}, false, false,
-                      collections);
   if (!res.ok()) {
     return res;
   }
@@ -468,32 +315,6 @@ Result UpgradeTasks::createSystemCollectionsAndIndices(
   res = ::createSystemCollectionsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
     LOG_TOPIC("fedc0", ERR, Logger::STARTUP)
-        << "could not create indices for system collections"
-        << ": error: " << res.errorMessage();
-    return res;
-  }
-
-  return {};
-}
-
-Result UpgradeTasks::createStatisticsCollectionsAndIndices(
-    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
-  // This vector should after the call to ::createSystemCollections contain
-  // a LogicalCollection for *every* (required) system collection.
-  std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
-  Result res =
-      ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
-
-  if (res.fail()) {
-    LOG_TOPIC("2824e", ERR, Logger::STARTUP)
-        << "could not create system collections"
-        << ": error: " << res.errorMessage();
-    return res;
-  }
-
-  res = ::createSystemStatisticsIndices(vocbase, presentSystemCollections);
-  if (res.fail()) {
-    LOG_TOPIC("dffbd", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return res;
@@ -663,4 +484,350 @@ Result UpgradeTasks::dropPregelQueriesCollection(
     res.reset();
   }
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops old statistics collections: '_statistics', '_statistics15',
+/// '_statisticsRaw'
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropOldStatisticsCollections(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
+  // Drop collection will revoke the rights of all the users that had rights
+  // on it, so we need a working UserManager here.
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->loadUserCacheAndStartUpdateThread();
+  }
+
+  CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                    .allowDropGraphCollection = true};
+
+  // List of old statistics collections to drop
+  std::vector<std::string> collectionsToDrop = {"_statistics", "_statistics15",
+                                                "_statisticsRaw"};
+
+  Result res;
+  for (auto const& collectionName : collectionsToDrop) {
+    std::shared_ptr<arangodb::LogicalCollection> col;
+    auto lookupRes =
+        arangodb::methods::Collections::lookup(vocbase, collectionName, col);
+    if (col) {
+      auto dropRes = arangodb::methods::Collections::drop(*col, dropOptions);
+      if (dropRes.fail()) {
+        if (!dropRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+          // Only propagate non-expected errors
+          res = dropRes;
+        }
+      }
+    }
+    // If collection doesn't exist (col == nullptr), that's fine, just continue
+    // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND from lookup is also expected
+  }
+
+  // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND is expected if collections don't
+  // exist
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    res.reset();
+  }
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops all fulltext indexes (no longer supported since 4.0)
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
+                                         velocypack::Slice /*upgradeParams*/) {
+  // On a coordinator, vocbase.collections() returns empty because collections
+  // live in ClusterInfo. Use methods::Collections which handles both cases.
+  auto collections = methods::Collections::sorted(vocbase);
+
+  // Drop all fulltext indexes from all collections.
+  // Uses methods::Indexes::drop which on a coordinator propagates the
+  // drop through the agency so that DBServers pick up the change.
+  for (auto const& collection : collections) {
+    auto indexes = collection->getPhysical()->getReadyIndexes();
+    for (auto const& index : indexes) {
+      if (index->type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        LOG_TOPIC("d4e3f", WARN, Logger::STARTUP)
+            << "Dropping obsolete fulltext index '" << index->id().id()
+            << "' from collection '" << collection->name()
+            << "' - fulltext indexes are no longer supported";
+
+        auto res =
+            methods::Indexes::drop(*collection, index->id()).waitAndGet();
+
+        if (res.fail()) {
+          LOG_TOPIC("d4e40", ERR, Logger::STARTUP)
+              << "Error dropping fulltext index: " << res.errorMessage();
+          return res;
+        }
+      }
+    }
+  }
+
+  return {};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief On DB/single server: rewrite collection definitions in the RocksDB
+/// definitions column family to change hash/skiplist index types to persistent.
+/// On coordinator: update agency plan to change hash/skiplist index types to
+/// persistent in a single transaction.
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+
+/// Rewrites a single VPack index array, changing any "hash"/"skiplist" type
+/// entries to "persistent" and appending "_migrated" to their name.
+/// Returns std::nullopt if no changes were needed.
+std::optional<velocypack::Builder> rewriteIndexTypesInArray(
+    velocypack::Slice indexesSlice) {
+  TRI_ASSERT(indexesSlice.isArray());
+  bool hasChange = false;
+  velocypack::Builder out;
+  {
+    VPackArrayBuilder arrayGuard(&out);
+    for (velocypack::Slice idx : VPackArrayIterator(indexesSlice)) {
+      if (!idx.isObject()) {
+        out.add(idx);
+        continue;
+      }
+      auto typeSlice = idx.get(StaticStrings::IndexType);
+      if (!typeSlice.isString()) {
+        out.add(idx);
+        continue;
+      }
+      std::string_view typeStr = typeSlice.stringView();
+      if (typeStr != "hash" && typeStr != "skiplist") {
+        out.add(idx);
+        continue;
+      }
+      hasChange = true;
+      {
+        VPackObjectBuilder objectGuard(&out);
+        for (auto it : VPackObjectIterator(idx)) {
+          std::string_view key = it.key.stringView();
+          if (key == StaticStrings::IndexType) {
+            out.add(key, velocypack::Value("persistent"));
+          } else if (key == StaticStrings::IndexName) {
+            std::string newName = it.value.copyString() + "_migrated";
+            out.add(key, velocypack::Value(newName));
+          } else {
+            out.add(key, it.value);
+          }
+        }
+      }
+    }
+  }
+  if (!hasChange) {
+    return std::nullopt;
+  }
+  return out;
+}
+
+Result convertHashSkiplistInDefinitionsColumnFamily(TRI_vocbase_t& vocbase) {
+  auto& selectorFeature = vocbase.server().getFeature<EngineSelectorFeature>();
+  if (!selectorFeature.isRocksDB()) {
+    return {};
+  }
+  auto& engine = selectorFeature.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
+  auto* cf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
+
+  rocksdb::ReadOptions readOptions;
+  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(readOptions, cf));
+
+  auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
+  rocksdb::WriteBatch batch;
+  bool hasBatchEntries = false;
+
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
+       iter->Next()) {
+    auto collSlice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    if (basics::VelocyPackHelper::getBooleanValue(
+            collSlice, StaticStrings::DataSourceDeleted, false)) {
+      continue;
+    }
+
+    velocypack::Slice indexesSlice = collSlice.get("indexes");
+    if (!indexesSlice.isArray()) {
+      continue;
+    }
+
+    auto newIndexes = rewriteIndexTypesInArray(indexesSlice);
+    if (!newIndexes) {
+      continue;
+    }
+
+    std::string collName = VelocyPackHelper::getStringValue(
+        collSlice, StaticStrings::DataSourceName, "");
+    LOG_TOPIC("a1b2c", INFO, Logger::STARTUP) << std::format(
+        "Rewriting hash/skiplist index types to persistent in definitions "
+        "for collection {}",
+        collName);
+
+    velocypack::Builder overwrite;
+    overwrite.openObject();
+    overwrite.add("indexes", newIndexes->slice());
+    overwrite.close();
+
+    velocypack::Builder newCollDef =
+        VPackCollection::merge(collSlice, overwrite.slice(), false);
+
+    auto value = RocksDBValue::Collection(newCollDef.slice());
+    batch.Put(cf, iter->key(), value.string());
+    hasBatchEntries = true;
+  }
+
+  if (hasBatchEntries) {
+    rocksdb::WriteOptions wo;
+    rocksdb::Status s = db->GetRootDB()->Write(wo, &batch);
+    if (!s.ok()) {
+      return Result(
+          TRI_ERROR_INTERNAL,
+          std::format("failed to rewrite hash/skiplist index definitions: {}",
+                      s.ToString()));
+    }
+  }
+
+  return {};
+}
+
+Result migrateCollectionIndexesInPlan(AgencyComm& ac, AgencyCache& agencyCache,
+                                      std::string const& dbName,
+                                      std::string const& collId) {
+  constexpr static size_t kMaxRetries = 10;
+  auto const indexesPath =
+      std::format("Plan/Collections/{}/{}/indexes", dbName, collId);
+
+  for (size_t attempt = 0; attempt < kMaxRetries; ++attempt) {
+    auto const [acb, readIdx] = agencyCache.read(
+        std::vector<std::string>{AgencyCommHelper::path(indexesPath)});
+
+    velocypack::Slice indexesSlice =
+        acb->slice()[0].get(std::initializer_list<std::string_view>{
+            AgencyCommHelper::path(), "Plan", "Collections", dbName, collId,
+            "indexes"});
+
+    if (!indexesSlice.isArray()) {
+      return {};
+    }
+
+    auto newIndexes = rewriteIndexTypesInArray(indexesSlice);
+    if (!newIndexes) {
+      return {};
+    }
+
+    AgencyOperation setIndexes(indexesPath, AgencyValueOperationType::SET,
+                               newIndexes->slice());
+    AgencyOperation incrVersion("Plan/Version",
+                                AgencySimpleOperationType::INCREMENT_OP);
+    AgencyPrecondition pre(indexesPath, AgencyPrecondition::Type::VALUE,
+                           indexesSlice);
+    AgencyWriteTransaction trx({std::move(setIndexes), std::move(incrVersion)},
+                               std::move(pre));
+    AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
+
+    if (result.successful()) {
+      return {};
+    }
+
+    LOG_TOPIC("b3c4d", WARN, Logger::STARTUP) << std::format(
+        "Failed to migrate indexes for collection {} in database {} "
+        "(attempt {}/{}): {}",
+        collId, dbName, attempt + 1, kMaxRetries, result.errorMessage());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Wait for cache update
+    agencyCache.waitForLatestCommitIndex().wait();
+  }
+
+  return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
+                std::format("failed to migrate hash/skiplist indexes for "
+                            "collection {} in database {} after {} attempts",
+                            collId, dbName, kMaxRetries));
+}
+
+Result convertHashSkiplistIndexesInPlanCoordinator(
+    TRI_vocbase_t& vocbase, arangodb::ClusterFeature& clusterFeature) {
+  std::string const dbName = vocbase.name();
+  std::string const path = std::format("Plan/Collections/{}", dbName);
+  auto& agencyCache = clusterFeature.agencyCache();
+  auto const [acb, idx] =
+      agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(path)});
+
+  velocypack::Slice collectionsSlice =
+      acb->slice()[0].get(std::initializer_list<std::string_view>{
+          AgencyCommHelper::path(), "Plan", "Collections", dbName});
+
+  if (!collectionsSlice.isObject()) {
+    return {};
+  }
+
+  AgencyComm ac(vocbase.server());
+
+  for (auto const collEntry : VPackObjectIterator(collectionsSlice)) {
+    auto const collId = collEntry.key.copyString();
+    auto const res =
+        migrateCollectionIndexesInPlan(ac, agencyCache, dbName, collId);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  return {};
+}
+
+}  // namespace
+
+Result UpgradeTasks::migrateHashSkiplistToPersistent(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
+  if (ServerState::instance()->isCoordinator()) {
+    auto& clusterFeature = vocbase.server().getFeature<ClusterFeature>();
+    return convertHashSkiplistIndexesInPlanCoordinator(vocbase, clusterFeature);
+  }
+  return convertHashSkiplistInDefinitionsColumnFamily(vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops legacy geo1/geo2 indexes
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
+                                          velocypack::Slice /*slice*/) {
+  // On a coordinator, vocbase.collections() returns empty because collections
+  // live in ClusterInfo. Use methods::Collections which handles both cases.
+  auto collections = methods::Collections::sorted(vocbase);
+
+  // Drop all geo1/geo2 indexes from all collections.
+  // Uses methods::Indexes::drop which on a coordinator propagates the
+  // drop through the agency so that DBServers pick up the change.
+  for (auto const& collection : collections) {
+    auto indexes = collection->getPhysical()->getReadyIndexes();
+    for (auto const& index : indexes) {
+      if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
+          index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+        LOG_TOPIC("5550a", WARN, Logger::STARTUP)
+            << "Dropping obsolete geo1/geo2 index '" << index->id().id()
+            << "' from collection '" << collection->name()
+            << "' - geo1/geo2 indexes are no longer supported";
+
+        auto res =
+            methods::Indexes::drop(*collection, index->id()).waitAndGet();
+
+        if (res.fail()) {
+          LOG_TOPIC("5550b", ERR, Logger::STARTUP)
+              << "Error dropping obsolete geo1/geo2 index: "
+              << res.errorMessage();
+          return res;
+        }
+      }
+    }
+  }
+  return {};
 }

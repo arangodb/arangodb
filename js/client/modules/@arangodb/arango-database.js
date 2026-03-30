@@ -234,7 +234,6 @@ const helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help
   '  _name()                               name of the current database      ' + '\n' +
   '                                                                          ' + '\n' +
   'Query / Transaction Functions:                                            ' + '\n' +
-  '  _executeTransaction(<transaction>)    execute transaction               ' + '\n' +
   '  _query(<query>)                       execute AQL query                 ' + '\n' +
   '  _createStatement(<data>)              create and return AQL query       ' + '\n' +
   '                                                                          ' + '\n' +
@@ -329,7 +328,14 @@ ArangoDatabase.prototype._collections = function () {
 
     // add all collections to object
     for (let i = 0;  i < collections.length;  ++i) {
-      let collection = new ArangoCollection(this, collections[i]);
+      const col = collections[i];
+      if (col.name === undefined || col.name === null) {
+        throw new ArangoError({
+          errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
+          errorMessage: "Invalid response from server: collection in list has no name"
+        });
+      }
+      let collection = new ArangoCollection(this, col);
       this[collection._name] = collection;
       result.push(collection);
     }
@@ -347,15 +353,15 @@ ArangoDatabase.prototype._collections = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return a single collection, identified by its id or name
+// / @brief return a single collection, identified by its name; id is not allowed
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._collection = function (id) {
-  if (typeof id !== 'number' &&
-      this.hasOwnProperty(id) && this[id] && this[id] instanceof ArangoCollection) {
-    return this[id];
+ArangoDatabase.prototype._collection = function (cname) {
+  if (typeof cname !== 'number' &&
+      this.hasOwnProperty(cname) && this[cname] && this[cname] instanceof ArangoCollection) {
+    return this[cname];
   }
-  let requestResult = this._connection.GET(this._collectionurl(id));
+  let requestResult = this._connection.GET(this._collectionurl(cname));
 
   // return null in case of not found
   if (requestResult !== null
@@ -554,8 +560,6 @@ ArangoDatabase.prototype._flushCache = function () {
 
       if (collOrView instanceof ArangoCollection ||
          collOrView instanceof ArangoView) {
-        // reset the collection status
-        collOrView._status = null;
         this[name] = undefined;
       }
     }
@@ -1183,89 +1187,6 @@ ArangoDatabase.prototype._useDatabase = function (name) {
 
   return true;
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief lists all endpoints
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._endpoints = function () {
-  let requestResult = this._connection.GET('/_api/endpoint');
-  if (requestResult !== null && requestResult.error === true) {
-    throw new ArangoError(requestResult);
-  }
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief execute a transaction
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._executeTransaction = function (data) {
-  if (!data || typeof (data) !== 'object') {
-    throw new ArangoError({
-      error: true,
-      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
-      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: 'usage: _executeTransaction(<object>)'
-    });
-  }
-
-  data = Object.assign({}, data);
-
-  if (!data.collections || typeof data.collections !== 'object') {
-    throw new ArangoError({
-      error: true,
-      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
-      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: 'missing/invalid collections definition for transaction'
-    });
-  }
-
-  data.collections = Object.assign({}, data.collections);
-  if (data.collections.read) {
-    if (!Array.isArray(data.collections.read)) {
-      data.collections.read = [data.collections.read];
-    }
-    data.collections.read = data.collections.read.map(
-      col => col.isArangoCollection ? col.name() : col
-    );
-  }
-  if (data.collections.write) {
-    if (!Array.isArray(data.collections.write)) {
-      data.collections.write = [data.collections.write];
-    }
-    data.collections.write = data.collections.write.map(
-      col => col.isArangoCollection ? col.name() : col
-    );
-  }
-
-  if (!data.action ||
-    (typeof (data.action) !== 'string' && typeof (data.action) !== 'function')) {
-    throw new ArangoError({
-      error: true,
-      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
-      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: 'missing/invalid action definition for transaction'
-    });
-  }
-
-  if (typeof (data.action) === 'function') {
-    data.action = String(data.action);
-  }
-
-  let requestResult = this._connection.POST('/_api/transaction', data);
-  if (requestResult !== null && requestResult.error === true) {
-    throw new ArangoError(requestResult);
-  }
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.result;
-};
-
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief create a transaction

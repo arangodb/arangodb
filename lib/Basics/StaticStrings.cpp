@@ -69,7 +69,6 @@ std::string const StaticStrings::VersionAttributeString("versionAttribute");
 std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
-std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::Compact("compact");
 std::string const StaticStrings::DontWaitForCommit("dontWaitForCommit");
@@ -106,16 +105,7 @@ std::string const StaticStrings::LegacyAnalyzersCollection(
     "_iresearch_analyzers");
 std::string const StaticStrings::UsersCollection("_users");
 std::string const StaticStrings::GraphsCollection("_graphs");
-std::string const StaticStrings::AqlFunctionsCollection("_aqlfunctions");
-std::string const StaticStrings::QueuesCollection("_queues");
-std::string const StaticStrings::JobsCollection("_jobs");
-std::string const StaticStrings::AppsCollection("_apps");
-std::string const StaticStrings::AppBundlesCollection("_appbundles");
-std::string const StaticStrings::FrontendCollection("_frontend");
 std::string const StaticStrings::QueriesCollection("_queries");
-std::string const StaticStrings::StatisticsCollection("_statistics");
-std::string const StaticStrings::Statistics15Collection("_statistics15");
-std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
 
 // analyzers names
 std::string const StaticStrings::AnalyzersRevision("revision");
@@ -178,7 +168,6 @@ std::string const StaticStrings::ForceOneShardAttributeValue(
     "forceOneShardAttributeValue");
 std::string const StaticStrings::JoinStrategyType("joinStrategyType");
 std::string const StaticStrings::Algorithm("algorithm");
-std::string const StaticStrings::Legacy("legacy");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -401,7 +390,6 @@ std::string const StaticStrings::AttrIsBuilding("isBuilding");
 
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");
-std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");
 
 std::string const StaticStrings::RebootId("rebootId");
 

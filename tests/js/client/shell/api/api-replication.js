@@ -89,7 +89,6 @@ const makePropertiesToTest = () => {
     shardKeys: "array",
     numberOfShards: "integer",
     replicationFactor: "integer",
-    minReplicationFactor: "integer",
     shardingStrategy: "string",
     isDisjoint: "bool",
     distributeShardsLike: "string"
@@ -132,7 +131,6 @@ const getDefaultProps = () => {
         "type": "traditional"
       },
       "replicationFactor": 2,
-      "minReplicationFactor": 1,
       "writeConcern": 1,
       "shardingStrategy": "hash",
       "cacheEnabled": false,
@@ -186,11 +184,6 @@ const validateProperties = (overrides, colName, type, keepClusterSpecificAttribu
   assertEqual(col.name(), colName);
   assertEqual(col.type(), type);
   const expectedProps = {...defaultProps, ...overrides};
-  if (keepClusterSpecificAttributes && !isCluster) {
-    // In some cases minReplicationFactor is returned
-    // but is not part of the expected list. So let us add it
-    expectedProps.minReplicationFactor = expectedProps.writeConcern;
-  }
   if (isCluster && db._properties().replicationVersion === "2") {
     // Replication 2 always exposes the group id
     assertTrue(props.hasOwnProperty("groupId"), `${JSON.stringify(props)} is missing groupId`);
@@ -405,16 +398,15 @@ function RestoreCollectionsSuite() {
             }
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            // MinReplicationFactor is forced to 0 on satellites
             // NOTE: SingleServer Enterprise for some reason this restore returns MORE properties, then the others.
             if (!isCluster) {
               if (replicationFactor === 0) {
                 validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
               } else {
-                validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0, isSmart: false, shardKeys: ["_key"], numberOfShards: 1, isDisjoint: false}, collname, 2, true);
+                validateProperties({replicationFactor: "satellite", writeConcern: 0, isSmart: false, shardKeys: ["_key"], numberOfShards: 1, isDisjoint: false}, collname, 2, true);
               }
             } else {
-              validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0}, collname, 2);
+              validateProperties({replicationFactor: "satellite", writeConcern: 0}, collname, 2);
             }
           }
         } finally {
@@ -427,27 +419,7 @@ function RestoreCollectionsSuite() {
       const res = tryRestore({name: collname, writeConcern: 2, replicationFactor: 3});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (isCluster) {
-          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
-        } else {
-          // SingleServer does not expose minReplicationFactor
-          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
-        }
-      } finally {
-        db._drop(collname);
-      }
-    },
-
-    testMinReplicationFactor: function () {
-      const res = tryRestore({name: collname, minReplicationFactor: 2, replicationFactor: 3});
-      try {
-        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (isCluster) {
-          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
-        } else {
-          // SingleServer does not expose minReplicationFactor, but uses it as input
-          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
-        }
+        validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
       } finally {
         db._drop(collname);
       }
@@ -1151,12 +1123,7 @@ function RestoreCollectionsSuite() {
         const res = tryRestore({name: collname});
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          // Assert that default values are taken.
-          if (isCluster) {
-            validateProperties({replicationFactor: 3, writeConcern: 2, minReplicationFactor: 2}, collname, 2);
-          } else {
-            validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
-          }
+          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
         } finally {
           db._drop(collname);
         }
@@ -1176,12 +1143,7 @@ function RestoreCollectionsSuite() {
         const res = tryRestore({name: collname, replicationFactor: 2, writeConcern: 2});
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          // No matter what is configured on the Database, explicit values win.
-          if (isCluster) {
-            validateProperties({replicationFactor: 2, writeConcern: 2, minReplicationFactor: 2}, collname, 2);
-          } else {
-            validateProperties({replicationFactor: 2, writeConcern: 2}, collname, 2);
-          }
+          validateProperties({replicationFactor: 2, writeConcern: 2}, collname, 2);
         } finally {
           db._drop(collname);
         }
@@ -1194,7 +1156,7 @@ function RestoreCollectionsSuite() {
     testRestoreSatelliteWithWriteConcernZero: function () {
       // Special case handling, if we are a satellite collection we can have writeConcern 0.
       for (const replicationFactor of ["satellite", 0]) {
-        for (const wcKey of ["minReplicationFactor", "writeConcern"]) {
+        for (const wcKey of ["writeConcern"]) {
           for (const includeIllegal of [false, true]) {
             // We include shards key, to trigger rewrite of input.
             const input = includeIllegal ? {
@@ -1215,7 +1177,6 @@ function RestoreCollectionsSuite() {
                   validateProperties({
                     replicationFactor: "satellite",
                     writeConcern: 0,
-                    minReplicationFactor: 0
                   }, collname, 2);
                 } else {
                   if (replicationFactor === 0 || !isEnterprise) {
@@ -1226,7 +1187,6 @@ function RestoreCollectionsSuite() {
                   } else {
                     validateProperties({
                       replicationFactor: "satellite",
-                      minReplicationFactor: 0,
                       writeConcern: 0,
                       isSmart: false,
                       shardKeys: ["_key"],
@@ -1263,7 +1223,6 @@ function RestoreCollectionsSuite() {
               validateProperties({
                 replicationFactor: "satellite",
                 writeConcern: 0,
-                minReplicationFactor: 0,
                 isSmart: false,
                 shardKeys: ["_key"],
                 numberOfShards: 1,
@@ -1284,7 +1243,6 @@ function RestoreCollectionsSuite() {
                 validateProperties({
                   replicationFactor: "satellite",
                   writeConcern: 0,
-                  minReplicationFactor: 0,
                   distributeShardsLike: collname,
                   isSmart: false,
                   shardKeys: ["_key"],
@@ -1379,8 +1337,7 @@ function IgnoreIllegalTypesSuite() {
               break;
             }
             case "replicationFactor":
-            case "writeConcern":
-            case "minReplicationFactor": {
+            case "writeConcern": {
               if (isCluster) {
                 if (typeof ignoredValue === "number") {
                   // We take doubles for integers
@@ -1427,7 +1384,7 @@ function IgnoreIllegalTypesSuite() {
 function RestoreInOneShardSuite() {
   const collname = "UnitTestCollection";
   const oneShardLeader = "_graphs";
-  const fixedOneShardValues = ["numberOfShards", "replicationFactor", "minReplicationFactor", "writeConcern"];
+  const fixedOneShardValues = ["numberOfShards", "replicationFactor", "writeConcern"];
   const getOneShardShardingValues = () => {
     const props = _.pick(db[oneShardLeader].properties(), fixedOneShardValues);
     // NOTE: For some reason one-shard uses HASH sharding strategy.
@@ -1465,33 +1422,25 @@ function RestoreInOneShardSuite() {
         // all are numeric values. None of them can be modified in one shard.
         const res = tryRestore({name: collname, [v]: 2});
         try {
-          if (isCluster && db._properties().replicationVersion === "2" && (v === "minReplicationFactor" || v === "writeConcern")) {
+          if (isCluster && db._properties().replicationVersion === "2" && v === "writeConcern") {
             // For Replication2 the writeConcern is per CollectionGroup. We cannot create a follower with a different one.
             assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
             isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {[v]: 2});
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             if (isCluster) {
-              if (v === "minReplicationFactor" || v === "writeConcern") {
+              if (v === "writeConcern") {
                 // On Replication1 writeConcern is allowed to differ per Collection.
                 // On Replication2 it is not.
                 validateProperties({
                   ...getOneShardShardingValues(),
                   writeConcern: 2,
-                  minReplicationFactor: 2
                 }, collname, 2);
               } else {
                 validateProperties(getOneShardShardingValues(), collname, 2);
               }
             } else {
-              // OneShard has no meaning in single server, just assert values are taken
-              if (v === "minReplicationFactor") {
-                // On Single Server only writeConcern is exposed.
-                // But can be configured with minReplicationFactor
-                validateProperties({writeConcern: 2}, collname, 2);
-              } else {
-                validateProperties({[v]: 2}, collname, 2);
-              }
+              validateProperties({[v]: 2}, collname, 2);
             }
           }
         } finally {

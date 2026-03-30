@@ -28,10 +28,8 @@
 namespace arangodb {
 
 struct ServerFeatureOptions {
-  bool console = false;
   bool restServer = true;
   bool validateUtf8Strings = true;
-  std::vector<std::string> scripts;
 };
 
 }  // namespace arangodb

@@ -37,9 +37,9 @@ var replication = require("@arangodb/replication");
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ReplicationLoggerSuite () {
+function ReplicationLoggerSuite() {
   'use strict';
-  var cn  = "UnitTestsReplication";
+  var cn = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
 
   var getLastLogTick = function () {
@@ -54,20 +54,15 @@ function ReplicationLoggerSuite () {
   };
 
   var getLogEntries = function (tick, type) {
-    var result = [ ];
+    var result = [];
     getLastLogTick();
 
-    var exclude = function(name) {
-      return (name.substr(0, 11) === '_statistics' ||
-              name === '_apps' ||
-              name === '_foxxlog' ||
-              name === '_jobs' ||
-              name === '_queues' ||
-              name === '_sessions');
+    var exclude = function (name) {
+      return (name === '_sessions');
     };
     var entries = replication.logger.lastLogTick(tick, "9999999999999999999");
     if (Array.isArray(type)) {
-      entries.forEach(function(e) {
+      entries.forEach(function (e) {
         if ((e.type === 2300 || e.type === 2302) && e.cname && exclude(e.cname)) {
           // exclude statistics markers here
           return;
@@ -78,7 +73,7 @@ function ReplicationLoggerSuite () {
       });
     }
     else {
-      entries.forEach(function(e) {
+      entries.forEach(function (e) {
         if ((e.type === 2300 || e.type === 2302) && e.cname && exclude(e.cname)) {
           // exclude statistics markers here
           return;
@@ -120,27 +115,27 @@ function ReplicationLoggerSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn);
       db._drop(cn2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get ticks
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief get ticks
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testGetLoggerTicks : function () {
+    testGetLoggerTicks: function () {
       var state, tick;
 
       getLastLogTick();
@@ -154,11 +149,11 @@ function ReplicationLoggerSuite () {
       assertMatch(/^\d+$/, state.lastLogTick);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get state
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief get state
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testGetLoggerState : function () {
+    testGetLoggerState: function () {
       var state, tick, server;
 
       getLastLogTick();
@@ -183,11 +178,11 @@ function ReplicationLoggerSuite () {
       assertMatch(/^\d+$/, server.serverId);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test logging disabled
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test logging disabled
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testDisabledLogger : function () {
+    testDisabledLogger: function () {
       var state, tick, events;
 
       state = replication.logger.state().state;
@@ -200,7 +195,7 @@ function ReplicationLoggerSuite () {
 
       // do something that will cause logging (if it was enabled...)
       var c = db._create(cn);
-      c.save({ "test" : 1 });
+      c.save({ "test": 1 });
 
       waitForTick(tick);
 
@@ -211,11 +206,11 @@ function ReplicationLoggerSuite () {
       assertTrue(state.totalEvents > events);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test logging enabled
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test logging enabled
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testEnabledLogger : function () {
+    testEnabledLogger: function () {
       var state, tick, events;
 
       state = replication.logger.state().state;
@@ -228,7 +223,7 @@ function ReplicationLoggerSuite () {
 
       // do something that will cause logging
       var c = db._create(cn);
-      c.save({ "test" : 1 });
+      c.save({ "test": 1 });
 
       waitForTick(tick);
 
@@ -241,11 +236,11 @@ function ReplicationLoggerSuite () {
       assertTrue(state.totalEvents > events);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test first tick
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test first tick
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testFirstTick : function () {
+    testFirstTick: function () {
       var state = replication.logger.state().state;
       assertTrue(state.running);
       var tick = state.lastLogTick;
@@ -258,11 +253,11 @@ function ReplicationLoggerSuite () {
       assertEqual(-1, compareTicks(firstTick, tick));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test tick ranges
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test tick ranges
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testTickRanges : function () {
+    testTickRanges: function () {
       var state = replication.logger.state().state;
       assertTrue(state.running);
       var tick = state.lastLogTick;
@@ -290,11 +285,11 @@ function ReplicationLoggerSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateCollection : function () {
+    testLoggerCreateCollection: function () {
       var tick = getLastLogTick();
 
       var c = db._create(cn);
@@ -308,11 +303,11 @@ function ReplicationLoggerSuite () {
       assertEqual(cn, entry.data.name);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerDropCollection : function () {
+    testLoggerDropCollection: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -324,11 +319,11 @@ function ReplicationLoggerSuite () {
       assertEqual(c._id, entry.cid);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerRenameCollection : function () {
+    testLoggerRenameCollection: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -341,11 +336,11 @@ function ReplicationLoggerSuite () {
       assertEqual(cn2, entry.data.name);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerPropertiesCollection : function () {
+    testLoggerPropertiesCollection: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -361,11 +356,11 @@ function ReplicationLoggerSuite () {
       assertEqual(false, entry.data.deleted);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerIncludedSystemCollection1 : function () {
+    testLoggerIncludedSystemCollection1: function () {
       var c = db._collection("_graphs");
 
       var tick = getLastLogTick();
@@ -384,11 +379,11 @@ function ReplicationLoggerSuite () {
       assertEqual(doc._key, entry.data._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerIncludedSystemCollection2 : function () {
+    testLoggerIncludedSystemCollection2: function () {
       var c = db._collection("_users");
 
       var tick = getLastLogTick();
@@ -407,17 +402,17 @@ function ReplicationLoggerSuite () {
       assertEqual(doc._key, entry.data._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerSystemCollection : function () {
+    testLoggerSystemCollection: function () {
       db._useDatabase('_system');
-      db._drop("_unittests", { isSystem: true});
+      db._drop("_unittests", { isSystem: true });
 
       var tick = getLastLogTick();
 
-      var c = db._create("_unittests", { isSystem : true });
+      var c = db._create("_unittests", { isSystem: true });
 
       try {
         var entry = getLogEntries(tick, 2000)[0];
@@ -427,7 +422,7 @@ function ReplicationLoggerSuite () {
         assertEqual(c.name(), entry.data.name);
 
         tick = getLastLogTick();
-        c.properties({ waitForSync : true });
+        c.properties({ waitForSync: true });
 
         entry = getLogEntries(tick, 2003)[0];
         assertEqual(2003, entry.type);
@@ -437,15 +432,15 @@ function ReplicationLoggerSuite () {
         tick = getLastLogTick();
       } finally {
         db._useDatabase('_system');
-        db._drop("_unittests", { isSystem: true});
+        db._drop("_unittests", { isSystem: true });
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTruncateCollection1 : function () {
+    testLoggerTruncateCollection1: function () {
       var c = db._create(cn);
       c.save({ "test": 1, "_key": "abc" });
 
@@ -469,11 +464,11 @@ function ReplicationLoggerSuite () {
       assertEqual("abc", entry[0].data._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTruncateCollection2 : function () {
+    testLoggerTruncateCollection2: function () {
       var i;
 
       var c = db._create(cn);
@@ -484,7 +479,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
       c.truncate({ compact: false });
       getLastLogTick();
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2302 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2302]);
 
       assertEqual(102, entry.length);
       // trx start
@@ -493,7 +488,7 @@ function ReplicationLoggerSuite () {
       var tid = entry[0].tid;
 
       // remove
-      var keys = { };
+      var keys = {};
       for (i = 0; i < 100; ++i) {
         assertEqual(2302, entry[i + 1].type);
         assertEqual(tid, entry[i + 1].tid);
@@ -507,11 +502,11 @@ function ReplicationLoggerSuite () {
       assertEqual(tid, entry[101].tid);
     },
 
-    testLoggerTruncateCollectionRocksDB : function () {
+    testLoggerTruncateCollectionRocksDB: function () {
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < 32769; ++i) {
-        docs.push({ "_key": "test" + i ,value: i });
+        docs.push({ "_key": "test" + i, value: i });
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
@@ -529,11 +524,11 @@ function ReplicationLoggerSuite () {
       assertEqual(2004, entry[0].type);
     },
 
-    testLoggerTruncateCollectionAndThenSomeRocksDB : function () {
+    testLoggerTruncateCollectionAndThenSomeRocksDB: function () {
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < 32769; ++i) {
-        docs.push({ "_key": "test" + i ,value: i });
+        docs.push({ "_key": "test" + i, value: i });
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
@@ -554,59 +549,59 @@ function ReplicationLoggerSuite () {
       assertEqual("aha", entry[1].data._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexHash1 : function () {
+    testLoggerCreateIndexPersistent1: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true });
       var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("hash", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(true, entry.data.unique);
       assertEqual(false, entry.data.sparse);
-      assertEqual([ "a", "b" ], entry.data.fields);
+      assertEqual(["a", "b"], entry.data.fields);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexHash2 : function () {
+    testLoggerCreateIndexPersistent2: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "hash", fields: ["a"] });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
       var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("hash", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(false, entry.data.sparse);
-      assertEqual([ "a" ], entry.data.fields);
+      assertEqual(["a"], entry.data.fields);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSparseHash1 : function () {
+    testLoggerCreateIndexSparsePersistent1: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true, sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true, sparse: true });
 
       var idx = c.indexes()[1];
 
@@ -614,44 +609,44 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("hash", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(true, entry.data.unique);
       assertEqual(true, entry.data.sparse);
-      assertEqual([ "a", "b" ], entry.data.fields);
+      assertEqual(["a", "b"], entry.data.fields);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSparseHash2 : function () {
+    testLoggerCreateIndexSparsePersistent2: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "hash", fields: ["a"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a"], sparse: true });
 
       var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("hash", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
-      assertEqual([ "a" ], entry.data.fields);
+      assertEqual(["a"], entry.data.fields);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSkiplist1 : function () {
+    testLoggerCreateIndexPersistent3: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
 
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
@@ -659,44 +654,44 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("skiplist", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(false, entry.data.sparse);
-      assertEqual([ "a", "b", "c" ], entry.data.fields);
+      assertEqual(["a", "b", "c"], entry.data.fields);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSkiplist2 : function () {
+    testLoggerCreateIndexPersistent4: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
 
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("skiplist", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(true, entry.data.unique);
       assertEqual(false, entry.data.sparse);
-      assertEqual([ "a" ], entry.data.fields);
+      assertEqual(["a"], entry.data.fields);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSparseSkiplist1 : function () {
+    testLoggerCreateIndexSparsePersistent3: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b", "c"], sparse: true });
 
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
@@ -704,60 +699,39 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("skiplist", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
-      assertEqual([ "a", "b", "c" ], entry.data.fields);
+      assertEqual(["a", "b", "c"], entry.data.fields);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSparseSkiplist2 : function () {
+    testLoggerCreateIndexSparsePersistent4: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true, sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a"], unique: true, sparse: true });
 
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("skiplist", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(true, entry.data.unique);
       assertEqual(true, entry.data.sparse);
-      assertEqual([ "a" ], entry.data.fields);
+      assertEqual(["a"], entry.data.fields);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexFulltext1 : function () {
-      var c = db._create(cn);
-
-      var tick = getLastLogTick();
-      c.ensureIndex({ type: "fulltext", fields: ["a"], minLength: 5 });
-      var idx = c.indexes()[1];
-
-      var entry = getLogEntries(tick, 2100)[0];
-      assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
-      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("fulltext", entry.data.type);
-      assertEqual(false, entry.data.unique);
-      assertEqual(5, entry.data.minLength);
-      assertEqual([ "a" ], entry.data.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerCreateIndexGeo1 : function () {
+    testLoggerCreateIndexGeo1: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -771,14 +745,14 @@ function ReplicationLoggerSuite () {
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
-      assertEqual([ "a", "b" ], entry.data.fields);
+      assertEqual(["a", "b"], entry.data.fields);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexGeo2 : function () {
+    testLoggerCreateIndexGeo2: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -792,15 +766,15 @@ function ReplicationLoggerSuite () {
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
-      assertEqual([ "a" ], entry.data.fields);
+      assertEqual(["a"], entry.data.fields);
       assertTrue(entry.data.geoJson);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexGeo3 : function () {
+    testLoggerCreateIndexGeo3: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -815,15 +789,15 @@ function ReplicationLoggerSuite () {
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
-      assertEqual([ "a", "b" ], entry.data.fields);
+      assertEqual(["a", "b"], entry.data.fields);
       assertFalse(entry.data.geoJson);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexGeo4 : function () {
+    testLoggerCreateIndexGeo4: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -838,15 +812,15 @@ function ReplicationLoggerSuite () {
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
-      assertEqual([ "a", "b" ], entry.data.fields);
+      assertEqual(["a", "b"], entry.data.fields);
       assertFalse(entry.data.geoJson);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexGeo5 : function () {
+    testLoggerCreateIndexGeo5: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -861,17 +835,17 @@ function ReplicationLoggerSuite () {
       assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
-      assertEqual([ "a" ], entry.data.fields);
+      assertEqual(["a"], entry.data.fields);
       assertTrue(entry.data.geoJson);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerDropIndex : function () {
+    testLoggerDropIndex: function () {
       var c = db._create(cn);
-      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true });
 
       var tick = getLastLogTick();
 
@@ -885,11 +859,11 @@ function ReplicationLoggerSuite () {
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerSaveDocument : function () {
+    testLoggerSaveDocument: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -906,7 +880,7 @@ function ReplicationLoggerSuite () {
 
       tick = getLastLogTick();
 
-      c.save({ "test": 2, "foo" : "bar", "_key": "12345" });
+      c.save({ "test": 2, "foo": "bar", "_key": "12345" });
       rev = c.document("12345")._rev;
 
       entry = getLogEntries(tick, 2300)[0];
@@ -929,11 +903,11 @@ function ReplicationLoggerSuite () {
       assertEqual(1, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerSaveDocuments : function () {
+    testLoggerSaveDocuments: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -946,11 +920,11 @@ function ReplicationLoggerSuite () {
       assertEqual(100, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerDeleteDocument : function () {
+    testLoggerDeleteDocument: function () {
       var c = db._create(cn);
       c.save({ "test": 1, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
@@ -986,17 +960,17 @@ function ReplicationLoggerSuite () {
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerUpdateDocument : function () {
+    testLoggerUpdateDocument: function () {
       var c = db._create(cn);
       var tick = getLastLogTick();
       c.save({ "test": 2, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
 
-      c.update("abc", { "test" : 2 });
+      c.update("abc", { "test": 2 });
       var entry = getLogEntries(tick, 2300);
 
       assertEqual(2300, entry[0].type);
@@ -1013,7 +987,7 @@ function ReplicationLoggerSuite () {
 
 
       tick = getLastLogTick();
-      c.update("abc", { "test" : 3 });
+      c.update("abc", { "test": 3 });
       entry = getLogEntries(tick, 2300)[0];
 
       assertEqual(2300, entry.type);
@@ -1024,16 +998,16 @@ function ReplicationLoggerSuite () {
 
       tick = getLastLogTick();
 
-      c.update("abc", { "test" : 3 });
-      c.update("12345", { "test" : 2 });
-      c.update("abc", { "test" : 4 });
+      c.update("abc", { "test": 3 });
+      c.update("12345", { "test": 2 });
+      c.update("abc", { "test": 4 });
       entry = getLogEntries(tick, 2300);
       assertEqual(3, entry.length);
 
       tick = getLastLogTick();
 
       try {
-        c.update("thefoxx", { });
+        c.update("thefoxx", {});
         fail();
       }
       catch (err) {
@@ -1043,17 +1017,17 @@ function ReplicationLoggerSuite () {
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerReplaceDocument : function () {
+    testLoggerReplaceDocument: function () {
       var c = db._create(cn);
       var tick = getLastLogTick();
       c.save({ "test": 2, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
 
-      c.replace("abc", { "test" : 2 });
+      c.replace("abc", { "test": 2 });
       var entry = getLogEntries(tick, 2300);
       assertEqual(2300, entry[0].type);
       assertEqual(c._id, entry[0].cid);
@@ -1068,10 +1042,10 @@ function ReplicationLoggerSuite () {
       assertEqual(1, entry[1].data.test);
 
       tick = getLastLogTick();
-      c.replace("abc", { "test" : 3 });
-      c.replace("abc", { "test" : 3 });
-      c.replace("12345", { "test" : 2 });
-      c.replace("abc", { "test" : 4 });
+      c.replace("abc", { "test": 3 });
+      c.replace("abc", { "test": 3 });
+      c.replace("12345", { "test": 2 });
+      c.replace("abc", { "test": 4 });
 
       entry = getLogEntries(tick, 2300);
       assertEqual(4, entry.length);
@@ -1079,7 +1053,7 @@ function ReplicationLoggerSuite () {
       tick = getLastLogTick();
 
       try {
-        c.replace("thefoxx", { });
+        c.replace("thefoxx", {});
         fail();
       }
       catch (err) {
@@ -1089,11 +1063,11 @@ function ReplicationLoggerSuite () {
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerSaveEdge : function () {
+    testLoggerSaveEdge: function () {
       var c = db._create(cn);
       var e = db._createEdgeCollection(cn2);
 
@@ -1111,7 +1085,7 @@ function ReplicationLoggerSuite () {
       assertEqual(1, entry.data.test);
 
       tick = getLastLogTick();
-      e.save(cn + "/test3", cn + "/test4", { "test": [ 99, false ], "_key": "12345" });
+      e.save(cn + "/test3", cn + "/test4", { "test": [99, false], "_key": "12345" });
       entry = getLogEntries(tick, 2300)[0];
 
       assertEqual(2300, entry.type);
@@ -1120,7 +1094,7 @@ function ReplicationLoggerSuite () {
       assertEqual("12345", entry.data._key);
       assertEqual(c.name() + "/test3", entry.data._from);
       assertEqual(c.name() + "/test4", entry.data._to);
-      assertEqual([ 99, false ], entry.data.test);
+      assertEqual([99, false], entry.data.test);
 
       tick = getLastLogTick();
 
@@ -1135,11 +1109,11 @@ function ReplicationLoggerSuite () {
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerDeleteEdge : function () {
+    testLoggerDeleteEdge: function () {
       db._create(cn);
       var e = db._createEdgeCollection(cn2);
 
@@ -1171,18 +1145,18 @@ function ReplicationLoggerSuite () {
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerUpdateEdge : function () {
+    testLoggerUpdateEdge: function () {
       var c = db._create(cn);
       var e = db._createEdgeCollection(cn2);
       var tick = getLastLogTick();
       e.save(cn + "/test1", cn + "/test2", { "test": 2, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
 
-      e.update("abc", { "test" : 2 });
+      e.update("abc", { "test": 2 });
       var entry = getLogEntries(tick, 2300);
       assertEqual(2300, entry[0].type);
       assertEqual(e._id, entry[0].cid);
@@ -1202,9 +1176,9 @@ function ReplicationLoggerSuite () {
 
       tick = getLastLogTick();
 
-      e.update("abc", { "test" : 3 });
-      e.update("12345", { "test" : 2 });
-      e.update("abc", { "test" : 4 });
+      e.update("abc", { "test": 3 });
+      e.update("12345", { "test": 2 });
+      e.update("abc", { "test": 4 });
       entry = getLogEntries(tick, 2300);
 
       assertEqual(3, entry.length);
@@ -1212,7 +1186,7 @@ function ReplicationLoggerSuite () {
       tick = getLastLogTick();
 
       try {
-        e.update("thefoxx", { });
+        e.update("thefoxx", {});
         fail();
       }
       catch (err) {
@@ -1222,11 +1196,11 @@ function ReplicationLoggerSuite () {
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerReplaceEdge : function () {
+    testLoggerReplaceEdge: function () {
       var c = db._create(cn);
       var e = db._createEdgeCollection(cn2);
       var tick = getLastLogTick();
@@ -1234,7 +1208,7 @@ function ReplicationLoggerSuite () {
       e.save(cn + "/test1", cn + "/test2", { "test": 2, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
 
-      e.replace("abc", { _from: c.name() + "/test1", _to: c.name() + "/test2", "test" : 2 });
+      e.replace("abc", { _from: c.name() + "/test1", _to: c.name() + "/test2", "test": 2 });
       var entry = getLogEntries(tick, 2300);
       assertEqual(2300, entry[0].type);
       assertEqual(e._id, entry[0].cid);
@@ -1254,10 +1228,10 @@ function ReplicationLoggerSuite () {
 
       tick = getLastLogTick();
 
-      e.replace("abc", { _from: cn + "/test1", _to: cn + "/test2", "test" : 3 });
-      e.replace("abc", { _from: cn + "/test1", _to: cn + "/test2", "test" : 3 });
-      e.replace("12345", { _from: cn + "/test3", _to: cn + "/test4", "test" : 2 });
-      e.replace("abc", { _from: cn + "/test1", _to: cn + "/test2", "test" : 4 });
+      e.replace("abc", { _from: cn + "/test1", _to: cn + "/test2", "test": 3 });
+      e.replace("abc", { _from: cn + "/test1", _to: cn + "/test2", "test": 3 });
+      e.replace("12345", { _from: cn + "/test3", _to: cn + "/test4", "test": 2 });
+      e.replace("abc", { _from: cn + "/test1", _to: cn + "/test2", "test": 4 });
 
       entry = getLogEntries(tick, 2300);
       assertEqual(4, entry.length);
@@ -1265,7 +1239,7 @@ function ReplicationLoggerSuite () {
       tick = getLastLogTick();
 
       try {
-        e.replace("thefoxx", { });
+        e.replace("thefoxx", {});
         fail();
       }
       catch (err) {
@@ -1275,11 +1249,11 @@ function ReplicationLoggerSuite () {
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionEmpty : function () {
+    testLoggerTransactionEmpty: function () {
       db._create(cn);
 
       var tick = getLastLogTick();
@@ -1293,7 +1267,7 @@ function ReplicationLoggerSuite () {
         });
         assertTrue(actual);
       } else {
-        let trx = db._createTransaction({collections:{}});
+        let trx = db._createTransaction({ collections: {} });
         let res = trx.commit();
         assertEqual(res.status, "committed", res);
       }
@@ -1301,13 +1275,13 @@ function ReplicationLoggerSuite () {
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionRead1 : function () {
+    testLoggerTransactionRead1: function () {
       var c = db._create(cn);
-      c.save({ "test" : 1 });
+      c.save({ "test": 1 });
 
       var tick = getLastLogTick();
 
@@ -1322,7 +1296,7 @@ function ReplicationLoggerSuite () {
         });
         assertTrue(actual);
       } else {
-        let trx = db._createTransaction({collections:{read: cn}});
+        let trx = db._createTransaction({ collections: { read: cn } });
         let res = trx.commit();
         assertEqual(res.status, "committed", res);
       }
@@ -1330,13 +1304,13 @@ function ReplicationLoggerSuite () {
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionRead2 : function () {
+    testLoggerTransactionRead2: function () {
       var c = db._create(cn);
-      c.save({ "test" : 1, "_key": "abc" });
+      c.save({ "test": 1, "_key": "abc" });
 
       var tick = getLastLogTick();
 
@@ -1358,22 +1332,22 @@ function ReplicationLoggerSuite () {
         });
         assertTrue(actual);
       } else {
-        let trx = db._createTransaction({collections:{read: cn}});
+        let trx = db._createTransaction({ collections: { read: cn } });
         let tc = trx.collection(cn);
         tc.document("abc");
         let res = trx.commit();
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202]);
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionRead3 : function () {
+    testLoggerTransactionRead3: function () {
       db._create(cn);
 
       var tick = getLastLogTick();
@@ -1387,7 +1361,7 @@ function ReplicationLoggerSuite () {
             action: function (params) {
               var c = require("internal").db._collection(params.cn);
 
-              c.save({ "foo" : "bar" });
+              c.save({ "foo": "bar" });
 
               return true;
             },
@@ -1401,25 +1375,25 @@ function ReplicationLoggerSuite () {
         catch (err) {
         }
       } else {
-        let trx = db._createTransaction({collections:{read:cn}});
+        let trx = db._createTransaction({ collections: { read: cn } });
         let tc = trx.collection(cn);
         try {
-          tc.save({"foo": "bar"});
+          tc.save({ "foo": "bar" });
           fail();
-        } catch(err) {
+        } catch (err) {
           trx.abort();
         }
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202]);
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionWrite1 : function () {
+    testLoggerTransactionWrite1: function () {
       db._create(cn);
       var tick = getLastLogTick();
 
@@ -1434,20 +1408,20 @@ function ReplicationLoggerSuite () {
         });
         assertTrue(actual);
       } else {
-        let trx = db._createTransaction({collections:{write: cn}});
+        let trx = db._createTransaction({ collections: { write: cn } });
         let res = trx.commit();
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202]);
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionWrite2 : function () {
+    testLoggerTransactionWrite2: function () {
       var c = db._create(cn);
       var tick = getLastLogTick();
 
@@ -1459,7 +1433,7 @@ function ReplicationLoggerSuite () {
           action: function (params) {
             var c = require("internal").db._collection(params.cn);
 
-            c.save({ "test" : 2, "_key": "abc" });
+            c.save({ "test": 2, "_key": "abc" });
             return true;
           },
           params: {
@@ -1468,14 +1442,14 @@ function ReplicationLoggerSuite () {
         });
         assertTrue(actual);
       } else {
-        let trx = db._createTransaction({collections:{write: cn}});
+        let trx = db._createTransaction({ collections: { write: cn } });
         let tc = trx.collection(cn);
-        tc.save({ "test" : 2, "_key": "abc" });
+        tc.save({ "test": 2, "_key": "abc" });
         let res = trx.commit();
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300]);
       assertEqual(3, entry.length);
       assertEqual(2200, entry[0].type);
       assertEqual(2300, entry[1].type);
@@ -1489,11 +1463,11 @@ function ReplicationLoggerSuite () {
       assertEqual(2, entry[1].data.test);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionWrite4 : function () {
+    testLoggerTransactionWrite4: function () {
       db._create(cn);
       db._create(cn2);
 
@@ -1509,7 +1483,7 @@ function ReplicationLoggerSuite () {
               var c2 = require("internal").db._collection(params.cn2);
 
               // we're using a wrong collection here
-              c2.save({ "test" : 2, "_key": "abc" });
+              c2.save({ "test": 2, "_key": "abc" });
             },
             params: {
               cn2: cn2
@@ -1520,26 +1494,26 @@ function ReplicationLoggerSuite () {
         catch (err) {
         }
       } else {
-        let trx = db._createTransaction({collections:{write: cn}});
+        let trx = db._createTransaction({ collections: { write: cn } });
         let tc = trx.collection(cn2);
         // we're using a wrong collection here
         try {
-          tc.save({ "test" : 2, "_key": "abc" });
+          tc.save({ "test": 2, "_key": "abc" });
           fail();
         } catch (err) {
           let res = trx.abort();
         }
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300]);
       assertEqual(0, entry.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionWrite5 : function () {
+    testLoggerTransactionWrite5: function () {
       db._create(cn);
       db._create(cn2);
 
@@ -1548,29 +1522,29 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn, cn2 ]
+            write: [cn, cn2]
           },
           action: function (params) {
             var c2 = require("internal").db._collection(params.cn);
 
-            c2.save({ "test" : 1, "_key": "12345" });
-            c2.save({ "test" : 2, "_key": "abc" });
+            c2.save({ "test": 1, "_key": "12345" });
+            c2.save({ "test": 2, "_key": "abc" });
           },
           params: {
             cn: cn
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let trx = db._createTransaction({ collections: { write: [cn, cn2] } });
         let tc = trx.collection(cn);
         // we're using a wrong collection here
-        tc.save({ "test" : 1, "_key": "12345" });
-        tc.save({ "test" : 2, "_key": "abc" });
+        tc.save({ "test": 1, "_key": "12345" });
+        tc.save({ "test": 2, "_key": "abc" });
         let res = trx.commit();
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300]);
       assertEqual(4, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -1583,11 +1557,11 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[2].tid, entry[3].tid);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionWrite6 : function () {
+    testLoggerTransactionWrite6: function () {
       var c1 = db._create(cn);
       var c2 = db._create(cn2);
 
@@ -1596,14 +1570,14 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn, cn2 ]
+            write: [cn, cn2]
           },
           action: function (params) {
             var c1 = require("internal").db._collection(params.cn);
             var c2 = require("internal").db._collection(params.cn2);
 
-            c1.save({ "test" : 1, "_key": "12345" });
-            c2.save({ "test" : 2, "_key": "abc" });
+            c1.save({ "test": 1, "_key": "12345" });
+            c2.save({ "test": 2, "_key": "abc" });
           },
           params: {
             cn: cn,
@@ -1611,16 +1585,16 @@ function ReplicationLoggerSuite () {
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let trx = db._createTransaction({ collections: { write: [cn, cn2] } });
         let tc = trx.collection(cn);
         let tc2 = trx.collection(cn2);
         // we're using a wrong collection here
-        tc.save({ "test" : 1, "_key": "12345" });
-        tc2.save({ "test" : 2, "_key": "abc" });
+        tc.save({ "test": 1, "_key": "12345" });
+        tc2.save({ "test": 2, "_key": "abc" });
         let res = trx.commit();
         assertEqual(res.status, "committed", res);
       }
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300]);
       assertEqual(4, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -1635,11 +1609,11 @@ function ReplicationLoggerSuite () {
       assertEqual(c2._id, entry[2].cid);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionUpdate : function () {
+    testLoggerTransactionUpdate: function () {
       var c1 = db._create(cn);
 
       c1.insert({ _key: "foo", value: 1 });
@@ -1649,7 +1623,7 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn ]
+            write: [cn]
           },
           action: function (params) {
             var c1 = require("internal").db._collection(params.cn);
@@ -1662,7 +1636,7 @@ function ReplicationLoggerSuite () {
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [ cn ]}});
+        let trx = db._createTransaction({ collections: { write: [cn] } });
         let tc = trx.collection(cn);
         tc.update("foo", { value: 2 });
         tc.insert({ _key: "foo2", value: 3 });
@@ -1670,7 +1644,7 @@ function ReplicationLoggerSuite () {
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300]);
       assertEqual(4, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -1691,11 +1665,11 @@ function ReplicationLoggerSuite () {
       assertEqual(3, entry[2].data.value);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionReplace : function () {
+    testLoggerTransactionReplace: function () {
       var c1 = db._create(cn);
 
       c1.insert({ _key: "foo", value: 1 });
@@ -1705,7 +1679,7 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn ]
+            write: [cn]
           },
           action: function (params) {
             var c1 = require("internal").db._collection(params.cn);
@@ -1718,7 +1692,7 @@ function ReplicationLoggerSuite () {
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [ cn ]}});
+        let trx = db._createTransaction({ collections: { write: [cn] } });
         let tc = trx.collection(cn);
         tc.replace("foo", { value2: 2 });
         tc.insert({ _key: "foo2", value2: 3 });
@@ -1726,7 +1700,7 @@ function ReplicationLoggerSuite () {
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300]);
       assertEqual(4, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -1749,11 +1723,11 @@ function ReplicationLoggerSuite () {
       assertFalse(entry[2].data.hasOwnProperty("value"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionRemove : function () {
+    testLoggerTransactionRemove: function () {
       var c1 = db._create(cn);
 
       c1.insert({ _key: "foo", value: 1 });
@@ -1763,7 +1737,7 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn ]
+            write: [cn]
           },
           action: function (params) {
             var c1 = require("internal").db._collection(params.cn);
@@ -1776,7 +1750,7 @@ function ReplicationLoggerSuite () {
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [cn]}});
+        let trx = db._createTransaction({ collections: { write: [cn] } });
         let tc = trx.collection(cn);
         tc.replace("foo", { value2: 2 });
         tc.remove("foo");
@@ -1784,7 +1758,7 @@ function ReplicationLoggerSuite () {
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300, 2302]);
       assertEqual(4, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -1805,11 +1779,11 @@ function ReplicationLoggerSuite () {
       assertEqual("foo", entry[2].data._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionMultiRemove : function () {
+    testLoggerTransactionMultiRemove: function () {
       var c1 = db._create(cn), i;
 
       let docs = [];
@@ -1823,7 +1797,7 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn ]
+            write: [cn]
           },
           action: function (params) {
             var c1 = require("internal").db._collection(params.cn);
@@ -1837,7 +1811,7 @@ function ReplicationLoggerSuite () {
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [cn]}});
+        let trx = db._createTransaction({ collections: { write: [cn] } });
         let tc = trx.collection(cn);
         for (var j = 0; j < 100; ++j) {
           tc.remove("test" + j);
@@ -1846,7 +1820,7 @@ function ReplicationLoggerSuite () {
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300, 2302]);
       assertEqual(102, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -1859,11 +1833,11 @@ function ReplicationLoggerSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionMultiCollectionUpdate : function () {
+    testLoggerTransactionMultiCollectionUpdate: function () {
       var c1 = db._create(cn);
       var c2 = db._create(cn2);
 
@@ -1875,7 +1849,7 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn, cn2 ]
+            write: [cn, cn2]
           },
           action: function (params) {
             var c1 = require("internal").db._collection(params.cn);
@@ -1893,7 +1867,7 @@ function ReplicationLoggerSuite () {
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let trx = db._createTransaction({ collections: { write: [cn, cn2] } });
         let tc1 = trx.collection(cn);
         let tc2 = trx.collection(cn2);
         tc1.replace("foo", { value: 2 });
@@ -1905,7 +1879,7 @@ function ReplicationLoggerSuite () {
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300]);
       assertEqual(6, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -1938,11 +1912,11 @@ function ReplicationLoggerSuite () {
       assertEqual("C", entry[4].data.value);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionMultiCollectionRemove : function () {
+    testLoggerTransactionMultiCollectionRemove: function () {
       var c1 = db._create(cn);
       var c2 = db._create(cn2);
 
@@ -1954,7 +1928,7 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn, cn2 ]
+            write: [cn, cn2]
           },
           action: function (params) {
             var c1 = require("internal").db._collection(params.cn);
@@ -1972,7 +1946,7 @@ function ReplicationLoggerSuite () {
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let trx = db._createTransaction({ collections: { write: [cn, cn2] } });
         let tc1 = trx.collection(cn);
         let tc2 = trx.collection(cn2);
         tc1.replace("foo", { value: 2 });
@@ -1984,7 +1958,7 @@ function ReplicationLoggerSuite () {
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300, 2302]);
       assertEqual(6, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -2015,11 +1989,11 @@ function ReplicationLoggerSuite () {
       assertEqual("bar", entry[4].data._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test actions
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionMultiCollectionReplace : function () {
+    testLoggerTransactionMultiCollectionReplace: function () {
       var c1 = db._create(cn);
       var c2 = db._create(cn2);
 
@@ -2031,7 +2005,7 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn, cn2 ]
+            write: [cn, cn2]
           },
           action: function (params) {
             var c1 = require("internal").db._collection(params.cn);
@@ -2049,7 +2023,7 @@ function ReplicationLoggerSuite () {
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let trx = db._createTransaction({ collections: { write: [cn, cn2] } });
         let tc1 = trx.collection(cn);
         let tc2 = trx.collection(cn2);
         tc1.update("foo", { value2: 2 });
@@ -2061,7 +2035,7 @@ function ReplicationLoggerSuite () {
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300]);
       assertEqual(6, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -2098,11 +2072,11 @@ function ReplicationLoggerSuite () {
       assertFalse(entry[4].data.hasOwnProperty("value"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test collection exclusion
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test collection exclusion
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionExcluded : function () {
+    testLoggerTransactionExcluded: function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
@@ -2110,13 +2084,13 @@ function ReplicationLoggerSuite () {
       if (SYS_IS_V8_BUILD) {
         db._executeTransaction({
           collections: {
-            write: [ cn, "_users" ]
+            write: [cn, "_users"]
           },
           action: function (params) {
             var c = require("internal").db._collection(params.cn);
             var users = require("internal").db._collection("_users");
 
-            c.save({ "test" : 2, "_key": "12345" });
+            c.save({ "test": 2, "_key": "12345" });
             users.save({ "_key": "unittests1", "foo": false });
             users.remove("unittests1");
           },
@@ -2125,17 +2099,17 @@ function ReplicationLoggerSuite () {
           }
         });
       } else {
-        let trx = db._createTransaction({collections:{write: [cn, "_users"]}});
+        let trx = db._createTransaction({ collections: { write: [cn, "_users"] } });
         let tc1 = trx.collection(cn);
         let users = trx.collection("_users");
-        tc1.save({ "test" : 2, "_key": "12345" });
+        tc1.save({ "test": 2, "_key": "12345" });
         users.save({ "_key": "unittests1", "foo": false });
         users.remove("unittests1");
         let res = trx.commit();
         assertEqual(res.status, "committed", res);
       }
 
-      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
+      var entry = getLogEntries(tick, [2200, 2201, 2202, 2300, 2302]);
       assertEqual(5, entry.length);
 
       assertEqual(2200, entry[0].type);
@@ -2153,36 +2127,34 @@ function ReplicationLoggerSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
 
-function ReplicationApplierSuite () {
+
+function ReplicationApplierSuite() {
   'use strict';
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       replication.applier.stop();
       replication.applier.forget();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       replication.applier.stop();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start applier w/o configuration
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief start applier w/o configuration
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testStartApplierNoConfig : function () {
+    testStartApplierNoConfig: function () {
       var state = replication.applier.state();
 
       assertFalse(state.state.running);
@@ -2197,11 +2169,11 @@ function ReplicationApplierSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start applier with configuration
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief start applier with configuration
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testStartApplierInvalidEndpoint1 : function () {
+    testStartApplierInvalidEndpoint1: function () {
       var state = replication.applier.state();
 
       assertFalse(state.state.running);
@@ -2246,11 +2218,11 @@ function ReplicationApplierSuite () {
       assertTrue(state.state.running);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start applier with configuration
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief start applier with configuration
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testStartApplierInvalidEndpoint2 : function () {
+    testStartApplierInvalidEndpoint2: function () {
       var state = replication.applier.state();
 
       assertFalse(state.state.running);
@@ -2279,8 +2251,8 @@ function ReplicationApplierSuite () {
         assertTrue(state.state.totalFailedConnects > 0);
         assertTrue(state.state.progress.failedConnects > 0);
         assertTrue(state.state.lastError.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
-                   state.state.lastError.errorNum === errors.ERROR_REPLICATION_LEADER_ERROR.code ||
-                   state.state.lastError.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);
+          state.state.lastError.errorNum === errors.ERROR_REPLICATION_LEADER_ERROR.code ||
+          state.state.lastError.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);
         break;
       }
 
@@ -2295,11 +2267,11 @@ function ReplicationApplierSuite () {
       assertTrue(state.state.running);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop applier
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief stop applier
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testStopApplier : function () {
+    testStopApplier: function () {
       var state = replication.applier.state();
 
       assertFalse(state.state.running);
@@ -2330,11 +2302,11 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief properties
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief properties
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testApplierProperties : function () {
+    testApplierProperties: function () {
       var properties = replication.applier.properties();
 
       assertEqual(600, properties.requestTimeout);
@@ -2346,7 +2318,7 @@ function ReplicationApplierSuite () {
       assertUndefined(properties.endpoint);
       assertTrue(properties.includeSystem);
       assertEqual("", properties.restrictType);
-      assertEqual([ ], properties.restrictCollections);
+      assertEqual([], properties.restrictCollections);
       assertEqual(15, properties.connectionRetryWaitTime);
       assertEqual(1, properties.idleMinWaitTime);
       assertEqual(2.5, properties.idleMaxWaitTime);
@@ -2354,7 +2326,7 @@ function ReplicationApplierSuite () {
       assertEqual(2, properties.autoResyncRetries);
 
       try {
-        replication.applier.properties({ });
+        replication.applier.properties({});
         fail();
       }
       catch (err) {
@@ -2389,7 +2361,7 @@ function ReplicationApplierSuite () {
         chunkSize: 65536,
         includeSystem: false,
         restrictType: "include",
-        restrictCollections: [ "_users" ],
+        restrictCollections: ["_users"],
         connectionRetryWaitTime: 60.2,
         idleMinWaitTime: 0.1,
         idleMaxWaitTime: 42.44,
@@ -2407,7 +2379,7 @@ function ReplicationApplierSuite () {
       assertFalse(properties.adaptivePolling);
       assertFalse(properties.includeSystem);
       assertEqual("include", properties.restrictType);
-      assertEqual([ "_users" ], properties.restrictCollections);
+      assertEqual(["_users"], properties.restrictCollections);
       assertEqual(60.2, properties.connectionRetryWaitTime);
       assertEqual(0.1, properties.idleMinWaitTime);
       assertEqual(42.44, properties.idleMaxWaitTime);
@@ -2421,7 +2393,7 @@ function ReplicationApplierSuite () {
         chunkSize: 128 * 1024,
         includeSystem: true,
         restrictType: "exclude",
-        restrictCollections: [ "foo", "bar", "baz" ],
+        restrictCollections: ["foo", "bar", "baz"],
         idleMinWaitTime: 7,
         autoResync: false,
         autoResyncRetries: 22
@@ -2437,7 +2409,7 @@ function ReplicationApplierSuite () {
       assertFalse(properties.adaptivePolling);
       assertTrue(properties.includeSystem);
       assertEqual("exclude", properties.restrictType);
-      assertEqual([ "bar", "baz", "foo" ], properties.restrictCollections.sort());
+      assertEqual(["bar", "baz", "foo"], properties.restrictCollections.sort());
       assertEqual(60.2, properties.connectionRetryWaitTime);
       assertEqual(7, properties.idleMinWaitTime);
       assertEqual(42.44, properties.idleMaxWaitTime);
@@ -2446,25 +2418,25 @@ function ReplicationApplierSuite () {
 
       replication.applier.properties({
         restrictType: "",
-        restrictCollections: [ ],
+        restrictCollections: [],
         idleMaxWaitTime: 33,
         autoResyncRetries: 0
       });
 
       properties = replication.applier.properties();
       assertEqual("", properties.restrictType);
-      assertEqual([ ], properties.restrictCollections);
+      assertEqual([], properties.restrictCollections);
       assertEqual(60.2, properties.connectionRetryWaitTime);
       assertEqual(7, properties.idleMinWaitTime);
       assertEqual(33, properties.idleMaxWaitTime);
       assertEqual(0, properties.autoResyncRetries);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start property change while running
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief start property change while running
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testApplierPropertiesChange : function () {
+    testApplierPropertiesChange: function () {
       replication.applier.properties({
         endpoint: "tcp://9.9.9.9:9999",
         connectTimeout: 2,
@@ -2485,11 +2457,11 @@ function ReplicationApplierSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief applier state
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief applier state
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testStateApplier : function () {
+    testStateApplier: function () {
       var state = replication.applier.state();
 
       assertFalse(state.state.running);
@@ -2510,42 +2482,42 @@ function ReplicationApplierSuite () {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ReplicationSyncSuite () {
+function ReplicationSyncSuite() {
   'use strict';
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       replication.applier.stop();
       replication.applier.forget();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server id
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief server id
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testServerId : function () {
+    testServerId: function () {
       var result = replication.serverId();
 
       assertTrue(typeof result === 'string');
       assertMatch(/^\d+$/, result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid endpoint
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief invalid endpoint
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSyncNoEndpoint2 : function () {
+    testSyncNoEndpoint2: function () {
       try {
         replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
@@ -2561,11 +2533,11 @@ function ReplicationSyncSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid response
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief invalid response
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSyncInvalidResponse : function () {
+    testSyncInvalidResponse: function () {
       try {
         replication.sync({
           endpoint: "tcp://arango.ai:80",
@@ -2576,16 +2548,16 @@ function ReplicationSyncSuite () {
         fail();
       } catch (err) {
         assertTrue(err.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
-                   err.errorNum === errors.ERROR_REPLICATION_LEADER_ERROR.code ||
-                   err.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);
+          err.errorNum === errors.ERROR_REPLICATION_LEADER_ERROR.code ||
+          err.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictType
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief invalid restrictType
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSyncRestrict1 : function () {
+    testSyncRestrict1: function () {
       try {
         replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
@@ -2598,11 +2570,11 @@ function ReplicationSyncSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictCollections
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief invalid restrictCollections
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSyncRestrict2 : function () {
+    testSyncRestrict2: function () {
       try {
         replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
@@ -2615,11 +2587,11 @@ function ReplicationSyncSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictCollections
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief invalid restrictCollections
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSyncRestrict3 : function () {
+    testSyncRestrict3: function () {
       try {
         replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
@@ -2632,15 +2604,15 @@ function ReplicationSyncSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictCollections
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief invalid restrictCollections
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSyncRestrict4 : function () {
+    testSyncRestrict4: function () {
       try {
         replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
-          restrictCollections: [ "foo" ]
+          restrictCollections: ["foo"]
         });
         fail();
       }
@@ -2649,11 +2621,11 @@ function ReplicationSyncSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalid restrictCollections
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief invalid restrictCollections
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSyncRestrict5 : function () {
+    testSyncRestrict5: function () {
       try {
         replication.sync({
           endpoint: "tcp://9.9.9.9:9999",

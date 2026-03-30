@@ -116,28 +116,6 @@ function dealing_with_cursorsSuite_error_handlingSuite() {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
     },
 
-    test_returns_an_error_if_cursor_identifier_is_missing: function () {
-      let cmd = api;
-      let doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-    },
-
-    test_returns_an_error_if_cursor_identifier_is_invalid___PUT: function () {
-      let cmd = api + "/123456";
-      let doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
-    },
-
     test_returns_an_error_if_cursor_identifier_is_invalid___POST: function () {
       let cmd = api + "/123456";
       let doc = arango.POST_RAW(cmd, "");
@@ -233,61 +211,6 @@ function dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite() {
 
     tearDownAll: function () {
       db._drop(cn);
-    },
-
-    test_creates_a_cursor_and_consumes_data_incrementally___PUT: function () {
-      let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "count": true};
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 201);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 2001);
-      assertEqual(doc.parsedBody['result'].length, 1000);
-      assertFalse(doc.parsedBody['cached']);
-
-      let id = doc.parsedBody['id'];
-
-      cmd = api + `/${id}`;
-      doc = arango.PUT_RAW(cmd, "");
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertEqual(doc.parsedBody['id'], id);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 2001);
-      assertEqual(doc.parsedBody['result'].length, 1000);
-      assertFalse(doc.parsedBody['cached']);
-
-      cmd = api + `/${id}`;
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], undefined);
-      assertFalse(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 2001);
-      assertEqual(doc.parsedBody['result'].length, 1);
-      assertFalse(doc.parsedBody['cached']);
-
-      cmd = api + `/${id}`;
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
     test_creates_a_cursor_and_consumes_data_incrementally___POST: function () {
@@ -418,62 +341,6 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
       assertFalse(doc.parsedBody['cached']);
     },
 
-    test_creates_a_usable_cursor_and_consumes_data_incrementally___PUT: function () {
-      let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 2};
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 201);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 2);
-      assertFalse(doc.parsedBody['cached']);
-
-      let id = doc.parsedBody['id'];
-
-      cmd = api + `/${id}`;
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertEqual(doc.parsedBody['id'], id);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 2);
-      assertFalse(doc.parsedBody['cached']);
-
-      cmd = api + `/${id}`;
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], undefined);
-      assertFalse(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 1);
-      assertFalse(doc.parsedBody['cached']);
-
-      cmd = api + `/${id}`;
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-    },
-
     test_creates_a_usable_cursor_and_consumes_data_incrementally___POST: function () {
       let cmd = api;
       let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 2};
@@ -528,50 +395,6 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-    },
-
-    test_creates_a_cursor_and_deletes_it_in_the_middle___PUT: function () {
-      let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 2};
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 201);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 2);
-      assertFalse(doc.parsedBody['cached']);
-
-      let id = doc.parsedBody['id'];
-
-      cmd = api + `/${id}`;
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertEqual(doc.parsedBody['id'], id);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 2);
-      assertFalse(doc.parsedBody['cached']);
-
-      cmd = api + `/${id}`;
-      doc = arango.DELETE_RAW(cmd);
-
-      assertEqual(doc.code, 202);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 202);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
     },
 
     test_creates_a_cursor_and_deletes_it_in_the_middle___POST: function () {
@@ -772,68 +595,6 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
       doc = arango.DELETE_RAW(cmd);
     },
 
-    test_creates_a_cursor_that_will_expire___PUT: function () {
-      let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 1, "ttl": 5};
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 201);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 1);
-      assertFalse(doc.parsedBody['cached']);
-
-      sleep(1);
-      let id = doc.parsedBody['id'];
-
-      cmd = api + `/${id}`;
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertEqual(doc.parsedBody['id'], id);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 1);
-      assertFalse(doc.parsedBody['cached']);
-
-      sleep(1);
-
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], id);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 1);
-      assertFalse(doc.parsedBody['cached']);
-
-      // after this, the cursor might expire eventually;
-      // the problem is that we cannot exactly determine the point in time;
-      // when it really vanishes, as this depends on thread scheduling, state     ;
-      // of the cleanup thread etc.;
-
-      sleep(8); // this should delete the cursor on the server
-      doc = arango.PUT_RAW(cmd, "");
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-    },
-
     test_creates_a_cursor_that_will_expire___POST: function () {
       let cmd = api;
       let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 1, "ttl": 5};
@@ -894,67 +655,6 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-    },
-
-    test_creates_a_cursor_that_will_not_expire___PUT: function () {
-      let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 1, "ttl": 60};
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 201);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 1);
-      assertFalse(doc.parsedBody['cached']);
-
-      sleep(1);
-      let id = doc.parsedBody['id'];
-
-      cmd = api + `/${id}`;
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(typeof doc.parsedBody['id'], "string");
-      assertMatch(reId, doc.parsedBody['id']);
-      assertEqual(doc.parsedBody['id'], id);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 1);
-      assertFalse(doc.parsedBody['cached']);
-
-      sleep(1);
-
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], id);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 1);
-      assertFalse(doc.parsedBody['cached']);
-
-      sleep(5); // this should not delete the cursor on the server;
-      doc = arango.PUT_RAW(cmd, "");
-
-      assertEqual(doc.code, 200);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], id);
-      assertTrue(doc.parsedBody['hasMore']);
-      assertEqual(doc.parsedBody['count'], 5);
-      assertEqual(doc.parsedBody['result'].length, 1);
-      assertFalse(doc.parsedBody['cached']);
     },
 
     test_creates_a_cursor_that_will_not_expire___POST: function () {
