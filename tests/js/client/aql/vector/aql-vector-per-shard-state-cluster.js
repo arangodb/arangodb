@@ -269,8 +269,8 @@ function VectorIndexPerShardStateSuite() {
             const shardStates = getPerShardStates(collection, "vec_l2");
             assertEqual(VectorIndexTrainingState.kUnusable, shardStates[starvedShard].trainingState,
                 "Starved shard should remain unusable");
-            assertEqual("", shardStates[starvedShard].error,
-                "Starved shard should have no error");
+            assertTrue(shardStates[starvedShard].error.length > 0,
+                "Starved shard should have error");
             for (const s of fullShards) {
                 assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
                     "Full shard " + s + " should be ready");
