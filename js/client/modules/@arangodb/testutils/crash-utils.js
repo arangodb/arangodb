@@ -295,29 +295,24 @@ function locateCoreDump(options, instanceInfo) {
       }
       return s;
     };
-    cp = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
     if (matchSystemdCoredump.exec(cp) !== null) {
-      cp = '/var/lib/systemd/coredump/*core*' + instanceInfo.pid + '*';
-    }
-    cp = cp.replaceAll("*", ".*");
-    let paths = cp.split(fs.pathSeparator);
-    let searchDir = ".";
-    if (paths.length > 1) {
-      searchDir = fs.join(...paths.slice(0, paths.length - 1));
-      if (cp[0] === fs.pathSeparator) {
-        searchDir = fs.pathSeparator + searchDir;
+      options.coreDirectory = '/var/lib/systemd/coredump/*core*' + instanceInfo.pid + '*';
+      return true;
+    } else if (matchVarTmp.exec(cp) !== null) {
+      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
+      return true;
+    } else {
+      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
+      if (options.coreDirectory.search('/') < 0) {
+        let rx = new RegExp(cp.replace(/%[sdeEghiItu]/, '.*').replace(/%p/, instanceInfo.pid));
+        fs.list('.').forEach((file) => {
+          if (file.match(rx) != null) {
+            options.coreDirectory = file;
+            return true;
+          }
+        });
       }
-      cp = paths[paths.length-1];
     }
-    let rx = new RegExp(cp.replace(/%[sdeEghiItu]/, '.*').replace(/%p/, instanceInfo.pid));
-    let found = false;
-    fs.list(searchDir).forEach((file) => {
-      if (file.match(rx) != null) {
-        options.coreDirectory = fs.join(searchDir, file);
-        found = true;
-      }
-    });
-    return found;
   }
   return false;
 }
