@@ -70,7 +70,68 @@ jobs:
             cat /proc/sys/kernel/sched_migration_cost_ns
             cat /proc/sys/kernel/watchdog
             cat /proc/sys/kernel/watchdog_thresh
-            grep PREEMPT /boot/config-$(uname -r)
+      - run:
+          name: even more info
+          command: |
+            set -o xtrace
+            set +e
+
+            lscpu
+            # SMT/Hyperthreading
+            cat /sys/devices/system/cpu/smt/control
+
+            # Scheduler tunables
+            cat /proc/sys/kernel/sched_migration_cost_ns 2>/dev/null
+            cat /proc/sys/kernel/sched_latency_ns 2>/dev/null
+            cat /proc/sys/kernel/sched_min_granularity_ns 2>/dev/null
+            cat /proc/sys/kernel/sched_wakeup_granularity_ns 2>/dev/null
+            cat /proc/sys/kernel/timer_migration
+
+            # Overcommit
+            cat /proc/sys/vm/overcommit_memory
+            cat /proc/sys/vm/overcommit_ratio
+
+            # Memory reservation
+            cat /proc/sys/vm/user_reserve_kbytes
+            cat /proc/sys/vm/compact_memory 2>/dev/null
+            cat /proc/sys/vm/compaction_proactiveness
+
+            # Transparent HugePages
+            cat /sys/kernel/mm/transparent_hugepage/enabled
+            cat /sys/kernel/mm/transparent_hugepage/defrag
+            cat /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
+
+            # LRU generational reclaim
+            cat /sys/kernel/mm/lru_gen/enabled 2>/dev/null
+
+            # Cgroup memory limits
+            cat /sys/fs/cgroup/memory.max           # cgroupv2
+            cat /sys/fs/cgroup/memory/memory.max   # cgroupv1
+            cat /sys/fs/cgroup/memory.swap.max     # swap limit, cgroupv2
+            cat /sys/fs/cgroup/memory/memory.swap.max # swap limit, cgroupv1
+
+            # Current usage / throttling
+            cat /sys/fs/cgroup/memory.events       # cgroupv2
+            cat /sys/fs/cgroup/memory/memory.events # cgroupv1
+
+            # NUMA balancing
+            cat /proc/sys/kernel/numa_balancing
+
+            # CPU isolation
+            cat /sys/devices/system/cpu/isolated
+            cat /sys/devices/system/cpu/nohz_full
+
+            # Futex options
+            cat /proc/sys/kernel/futex_requeue_pi 2>/dev/null
+            grep -i futex /proc/sys/kernel/*
+
+            # Watchdog timers
+            cat /proc/sys/kernel/watchdog
+            cat /proc/sys/kernel/watchdog_thresh
+
+            uname -r
+            cat /boot/config-$(uname -r) 2>/dev/null | grep PREEMPT
+            cat /boot/config-$(uname -r) 2>/dev/null | grep FREQ
 
 workflows:
   setup:
