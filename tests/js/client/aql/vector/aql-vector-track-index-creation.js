@@ -204,11 +204,6 @@ function VectorTrackIndexCreationBelowThresholdSuite() {
         // On coordinator, the wait is a no-op — ensureIndex succeeds.
         return;
       }
-      const seed = generateSeed();
-      const gen = randomNumberGeneratorFloat(seed);
-      const belowThresholdCount = trainingThreshold - 1;
-      const docs = generateDocs(gen, belowThresholdCount, dimension);
-      collection.insert(docs);
 
       try {
         createIndex(collection, /*inBackground*/ false);
