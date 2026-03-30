@@ -34,7 +34,6 @@
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 
 #include <cstring>

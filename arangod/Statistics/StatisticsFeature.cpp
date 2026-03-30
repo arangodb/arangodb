@@ -53,7 +53,6 @@
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
@@ -214,8 +213,6 @@ DECLARE_GAUGE(
     "Percentage of time that the system CPUs have been waiting for I/O");
 DECLARE_GAUGE(arangodb_request_statistics_memory_usage, uint64_t,
               "Memory used by the internal request statistics");
-DECLARE_GAUGE(arangodb_connection_statistics_memory_usage, uint64_t,
-              "Memory used by the internal connection statistics");
 
 namespace {
 // local_name: {"prometheus_name", "type", "help"}
@@ -269,15 +266,6 @@ auto const statStrings = std::map<std::string_view,
      {"arangodb_process_statistics_virtual_memory_size", "gauge",
       "This figure contains The size of the virtual memory the process is "
       "using"}},
-    {"connectionTime",
-     {"arangodb_client_connection_statistics_connection_time", "histogram",
-      "Total connection time of a client"}},
-    {"connectionTimeCount",
-     {"arangodb_client_connection_statistics_connection_time_count", "gauge",
-      "Total connection time of a client"}},
-    {"connectionTimeSum",
-     {"arangodb_client_connection_statistics_connection_time_sum", "gauge",
-      "Total connection time of a client"}},
     {"totalTime",
      {"arangodb_client_connection_statistics_total_time", "histogram",
       "Total time needed to answer a request"}},
@@ -416,8 +404,6 @@ auto const statBuilder = makeStatBuilder({
     {"residentSizePercent",
      new arangodb_process_statistics_resident_set_size_percent()},
     {"virtualSize", new arangodb_process_statistics_virtual_memory_size()},
-    {"connectionTimeCount", nullptr},
-    {"connectionTimeSum", nullptr},
     {"totalTime", new arangodb_client_connection_statistics_total_time()},
     {"totalTimeCount", nullptr},
     {"totalTimeSum", nullptr},
@@ -471,12 +457,10 @@ auto const statBuilder = makeStatBuilder({
 }  // namespace
 
 Counter AsyncRequests;
-Counter HttpConnections;
 Counter TotalRequests;
 Counter TotalRequestsSuperuser;
 Counter TotalRequestsUser;
 MethodRequestCounters MethodRequests;
-Distribution ConnectionTimeDistribution(ConnectionTimeDistributionCuts);
 
 RequestFigures::RequestFigures()
     : bytesReceivedDistribution(BytesReceivedDistributionCuts),
@@ -554,10 +538,7 @@ StatisticsFeature::StatisticsFeature(
       _descriptions(server),
       _requestStatisticsMemoryUsage{
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_request_statistics_memory_usage{})},
-      _connectionStatisticsMemoryUsage{
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_connection_statistics_memory_usage{})} {
+              arangodb_request_statistics_memory_usage{})} {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
@@ -643,7 +624,6 @@ void StatisticsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
   if (_options.statistics) {
     // initialize counters for all HTTP request types
-    ConnectionStatistics::initialize();
     RequestStatistics::initialize();
   } else {
     // turn ourselves off
@@ -792,15 +772,11 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                                      std::string_view globals,
                                      bool ensureWhitespace) {
   // these metrics should always be 0 if statistics are disabled
-  TRI_ASSERT(isEnabled() || (RequestStatistics::memoryUsage() == 0 &&
-                             ConnectionStatistics::memoryUsage() == 0));
+  TRI_ASSERT(isEnabled() || RequestStatistics::memoryUsage() == 0);
   if (isEnabled()) {
-    // update arangodb_request_statistics_memory_usage and
-    // arangodb_connection_statistics_memory_usage metrics
+    // update arangodb_request_statistics_memory_usage metric
     _requestStatisticsMemoryUsage.store(RequestStatistics::memoryUsage(),
                                         std::memory_order_relaxed);
-    _connectionStatisticsMemoryUsage.store(ConnectionStatistics::memoryUsage(),
-                                           std::memory_order_relaxed);
   }
 
   ProcessInfo info = TRI_ProcessInfoSelf();
@@ -881,9 +857,6 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
   }
 
   if (isEnabled()) {
-    ConnectionStatistics::Snapshot connectionStats;
-    ConnectionStatistics::getSnapshot(connectionStats);
-
     RequestStatistics::Snapshot requestStats;
     RequestStatistics::getSnapshot(requestStats,
                                    stats::RequestStatisticsSource::ALL);
@@ -924,55 +897,49 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
 
     // _httpStatistics()
     using rest::RequestType;
-    appendMetric(result, std::to_string(connectionStats.asyncRequests.get()),
+    appendMetric(result, std::to_string(statistics::AsyncRequests.get()),
                  "httpReqsAsync", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
-            connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()),
+            statistics::MethodRequests[(int)RequestType::DELETE_REQ].get()),
         "httpReqsDelete", globals, ensureWhitespace);
     appendMetric(
         result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::GET].get()),
+        std::to_string(statistics::MethodRequests[(int)RequestType::GET].get()),
         "httpReqsGet", globals, ensureWhitespace);
+    appendMetric(result,
+                 std::to_string(
+                     statistics::MethodRequests[(int)RequestType::HEAD].get()),
+                 "httpReqsHead", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
-            connectionStats.methodRequests[(int)RequestType::HEAD].get()),
-        "httpReqsHead", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::OPTIONS].get()),
+            statistics::MethodRequests[(int)RequestType::OPTIONS].get()),
         "httpReqsOptions", globals, ensureWhitespace);
+    appendMetric(result,
+                 std::to_string(
+                     statistics::MethodRequests[(int)RequestType::PATCH].get()),
+                 "httpReqsPatch", globals, ensureWhitespace);
+    appendMetric(result,
+                 std::to_string(
+                     statistics::MethodRequests[(int)RequestType::POST].get()),
+                 "httpReqsPost", globals, ensureWhitespace);
     appendMetric(
         result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::PATCH].get()),
-        "httpReqsPatch", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::POST].get()),
-        "httpReqsPost", globals, ensureWhitespace);
-    appendMetric(
-        result,
-        std::to_string(
-            connectionStats.methodRequests[(int)RequestType::PUT].get()),
+        std::to_string(statistics::MethodRequests[(int)RequestType::PUT].get()),
         "httpReqsPut", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
-            connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()),
+            statistics::MethodRequests[(int)RequestType::ILLEGAL].get()),
         "httpReqsOther", globals, ensureWhitespace);
-    appendMetric(result, std::to_string(connectionStats.totalRequests.get()),
+    appendMetric(result, std::to_string(statistics::TotalRequests.get()),
                  "httpReqsTotal", globals, ensureWhitespace);
     appendMetric(result,
-                 std::to_string(connectionStats.totalRequestsSuperuser.get()),
+                 std::to_string(statistics::TotalRequestsSuperuser.get()),
                  "httpReqsSuperuser", globals, ensureWhitespace);
-    appendMetric(result,
-                 std::to_string(connectionStats.totalRequestsUser.get()),
+    appendMetric(result, std::to_string(statistics::TotalRequestsUser.get()),
                  "httpReqsUser", globals, ensureWhitespace);
   }
 }

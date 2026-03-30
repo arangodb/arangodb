@@ -105,13 +105,15 @@ class GeneralServerFeature final
     return _options.startedListening;
   }
 
-  auto startConnection(){
+  auto startConnection() {
     return metrics::MeasureTimeGuard<double>{_connectionDuration};
   }
 
   auto addHttpConnection() {
     return metrics::GaugeCounterGuard{_connectionHttp, static_cast<double>(1)};
   }
+
+  double httpConnections() const noexcept { return _connectionHttp.load(); }
 
  private:
   // build HTTP server(s)

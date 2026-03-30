@@ -31,7 +31,6 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Metrics/GaugeCounterGuard.h"
 #include "Metrics/MeasureTimeGuard.h"
-#include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 
 #include <velocypack/Buffer.h>
@@ -44,7 +43,6 @@
 namespace arangodb {
 class ApiRecordingFeature;
 class AuthenticationFeature;
-class ConnectionStatistics;
 class GeneralRequest;
 class GeneralResponse;
 class GeneralServerFeature;
@@ -126,7 +124,6 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                       std::unique_ptr<GeneralResponse> response,
                       ServerState::Mode mode);
 
-  [[nodiscard]] ConnectionStatistics::Item acquireConnectionStatistics();
   [[nodiscard]] RequestStatistics::Item const& acquireRequestStatistics(
       uint64_t id);
   [[nodiscard]] RequestStatistics::Item const& requestStatistics(uint64_t id);
