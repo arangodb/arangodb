@@ -63,25 +63,27 @@ defmodule ToastTest.Attribution.TimeWindows do
     }
   end
 
+  @type phase :: :setup | :teardown | nil
+
   @doc """
   Attribute a timestamp to the most specific scope.
 
-  Returns `{scope, confidence}` where scope is one of:
-  - `{:test, module, name}` with `:high` or `:low` confidence
-  - `{:module, module}` with `nil` confidence
-  - `:suite` with `nil` confidence
+  Returns `{scope, confidence, phase}` where scope is one of:
+  - `{:test, module, name}` with `:high` or `:low` confidence, phase `nil`
+  - `{:module, module}` with `nil` confidence, phase `:setup` or `:teardown`
+  - `:suite` with `nil` confidence, phase `nil`
 
   ## Options
   - `:tolerance_us` — microseconds after test end for low-confidence match (default: 5_000_000)
   """
   @spec attribute(Toast.timestamp(), windows(), keyword()) ::
-          {ToastTest.SuiteResult.scope(), :high | :low | nil}
+          {ToastTest.SuiteResult.scope(), :high | :low | nil, phase()}
   def attribute(timestamp, windows, opts \\ []) do
     tolerance_us = Keyword.get(opts, :tolerance_us, @default_tolerance_us)
 
     with :miss <- match_test(timestamp, windows.tests, tolerance_us),
          :miss <- match_module(timestamp, windows.modules) do
-      {:suite, nil}
+      {:suite, nil, nil}
     end
   end
 
@@ -90,7 +92,7 @@ defmodule ToastTest.Attribution.TimeWindows do
   defp match_test(timestamp, tests, tolerance_us) do
     case find_high_match(timestamp, tests) do
       {:ok, {mod, name}} ->
-        {{:test, mod, name}, :high}
+        {{:test, mod, name}, :high, nil}
 
       :none ->
         find_low_match(timestamp, tests, tolerance_us)
@@ -119,7 +121,7 @@ defmodule ToastTest.Attribution.TimeWindows do
             timestamp - window.finished_at
           end)
 
-        {{:test, mod, name}, :low}
+        {{:test, mod, name}, :low, nil}
     end
   end
 
@@ -127,8 +129,11 @@ defmodule ToastTest.Attribution.TimeWindows do
 
   defp match_module(timestamp, modules) do
     Enum.find_value(modules, :miss, fn {mod, window} ->
-      if in_setup?(timestamp, window) or in_teardown?(timestamp, window),
-        do: {{:module, mod}, nil}
+      cond do
+        in_setup?(timestamp, window) -> {{:module, mod}, nil, :setup}
+        in_teardown?(timestamp, window) -> {{:module, mod}, nil, :teardown}
+        true -> nil
+      end
     end)
   end
 

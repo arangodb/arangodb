@@ -63,7 +63,7 @@ defmodule ToastTest.Attribution do
 
     {issues, coredump_reports} =
       Enum.reduce(crash_events, {[], []}, fn event, {issues_acc, dumps_acc} ->
-        {scope, confidence} = TimeWindows.attribute(event.crash_info.timestamp, windows)
+        {scope, confidence, phase} = TimeWindows.attribute(event.crash_info.timestamp, windows)
         server_artifacts = Map.get(artifacts, event.server_id)
 
         {coredump_paths, new_dumps} =
@@ -71,6 +71,7 @@ defmodule ToastTest.Attribution do
 
         detail =
           %{server: event.server_id, crash_info: event.crash_info}
+          |> maybe_put(:phase, phase)
           |> maybe_put_coredump_paths(coredump_paths)
           |> enrich_logs(server_artifacts, event.crash_info.timestamp)
 
@@ -122,6 +123,9 @@ defmodule ToastTest.Attribution do
     coredump_paths = Enum.map(reports, & &1.core_path)
     {coredump_paths, reports}
   end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   defp maybe_put_coredump_paths(detail, []), do: detail
   defp maybe_put_coredump_paths(detail, paths), do: Map.put(detail, :coredump_paths, paths)
@@ -191,19 +195,18 @@ defmodule ToastTest.Attribution do
     for {server_id, server_artifacts} <- artifacts,
         san_file <- server_artifacts.sanitizer_files,
         {:ok, result} <- [Enrichment.Sanitizer.read(san_file)] do
-      {scope, confidence} = TimeWindows.attribute(result.timestamp, windows)
+      {scope, confidence, phase} = TimeWindows.attribute(result.timestamp, windows)
 
-      %{
-        type: :sanitizer_report,
-        scope: scope,
-        confidence: confidence,
-        detail: %{
+      detail =
+        %{
           server: server_id,
           report: result.content,
           timestamp: result.timestamp,
           kind: result.kind
         }
-      }
+        |> maybe_put(:phase, phase)
+
+      %{type: :sanitizer_report, scope: scope, confidence: confidence, detail: detail}
     end
   end
 end

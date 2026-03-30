@@ -79,6 +79,10 @@ defmodule ToastTest.CLIFormatter do
     {:noreply, state}
   end
 
+  def handle_cast({:test_started, %ExUnit.Test{state: {:invalid, _}}}, state) do
+    {:noreply, state}
+  end
+
   def handle_cast({:test_started, %ExUnit.Test{} = test}, state) do
     state = ensure_module_header(state)
     name = display_name(test)
@@ -94,7 +98,9 @@ defmodule ToastTest.CLIFormatter do
     {:noreply, state}
   end
 
-  def handle_cast({:module_finished, %ExUnit.TestModule{}}, state) do
+  def handle_cast({:module_finished, %ExUnit.TestModule{} = mod}, state) do
+    state = maybe_print_module_failure(mod, state)
+
     if state.module_header_printed do
       print_module_summary(state)
     else
@@ -127,6 +133,27 @@ defmodule ToastTest.CLIFormatter do
   def handle_cast(_msg, state) do
     {:noreply, state}
   end
+
+  defp maybe_print_module_failure(
+         %ExUnit.TestModule{state: {:failed, failures}} = mod,
+         state
+       ) do
+    state = ensure_module_header(state)
+
+    IO.puts(
+      "#{timestamp()} #{colorize("[     FAILED ]", :red, state)} " <>
+        "setup_all for #{colorize(inspect(mod.name), :bold, state)}"
+    )
+
+    Enum.each(failures, fn {kind, error, stack} ->
+      IO.puts("\n#{Exception.format(kind, error, stack)}")
+    end)
+
+    IO.puts("")
+    state
+  end
+
+  defp maybe_print_module_failure(_mod, state), do: state
 
   defp print_module_summary(state) do
     elapsed = elapsed_ms(state.module_start_time)

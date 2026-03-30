@@ -91,7 +91,7 @@ defmodule ToastTest.Enrichment.SanitizerPrecisionTest do
       timestamp = to_us(DateTime.new!(~D[2026-01-15], ~T[10:00:29.820000]))
       windows = build_windows()
 
-      {scope, confidence} = TimeWindows.attribute(timestamp, windows)
+      {scope, confidence, _phase} = TimeWindows.attribute(timestamp, windows)
 
       assert scope == {:test, TestMod, :test_b}
       assert confidence == :high
@@ -103,7 +103,7 @@ defmodule ToastTest.Enrichment.SanitizerPrecisionTest do
       truncated = to_us(DateTime.new!(~D[2026-01-15], ~T[10:00:29.000000]))
       windows = build_windows()
 
-      {scope, _confidence} = TimeWindows.attribute(truncated, windows)
+      {scope, _confidence, _phase} = TimeWindows.attribute(truncated, windows)
 
       assert scope == {:test, TestMod, :test_a}
     end
@@ -111,7 +111,7 @@ defmodule ToastTest.Enrichment.SanitizerPrecisionTest do
     test "timestamp at exact boundary of test_a end is attributed to test_a" do
       windows = build_windows()
 
-      {scope, confidence} = TimeWindows.attribute(@test_a_end, windows)
+      {scope, confidence, _phase} = TimeWindows.attribute(@test_a_end, windows)
 
       assert scope == {:test, TestMod, :test_a}
       assert confidence == :high
@@ -122,7 +122,7 @@ defmodule ToastTest.Enrichment.SanitizerPrecisionTest do
       gap_timestamp = to_us(DateTime.new!(~D[2026-01-15], ~T[10:00:29.003000]))
       windows = build_windows()
 
-      {scope, confidence} = TimeWindows.attribute(gap_timestamp, windows)
+      {scope, confidence, _phase} = TimeWindows.attribute(gap_timestamp, windows)
 
       assert scope == {:test, TestMod, :test_a}
       assert confidence == :low
@@ -157,7 +157,7 @@ defmodule ToastTest.Enrichment.SanitizerPrecisionTest do
         }
       }
 
-      {scope, confidence} = TimeWindows.attribute(result.timestamp, windows)
+      {scope, confidence, _phase} = TimeWindows.attribute(result.timestamp, windows)
 
       assert scope == {:test, TestMod, :test_b}
       assert confidence == :high
