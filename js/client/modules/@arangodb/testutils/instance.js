@@ -1649,11 +1649,11 @@ class instance {
     }
     return false;
   }
-  debugTerminate(msg) {
+  debugTerminate(msg, signal_to_expect) {
     if (this.pid === null) {
       return;
     }
-    if (!this.checkDebugTerminated(false)){
+    if (!this.checkDebugTerminated(false, signal_to_expect)){
       let reply;
       try {
         this.connect();
