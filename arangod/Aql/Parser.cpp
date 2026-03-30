@@ -230,7 +230,8 @@ void Parser::pushObjectElement(AstNode* attributeName, AstNode* node) {
 void Parser::pushPatternNode(AstNode* element) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object != nullptr);
-  TRI_ASSERT(object->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION) << object->type;
+  TRI_ASSERT(object->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION)
+      << object->type;
   object->addMember(element);
 }
 

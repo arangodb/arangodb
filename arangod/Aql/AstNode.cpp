@@ -179,8 +179,10 @@ frozen::unordered_map<int, std::string_view, 88> kTypeNames{
     {static_cast<int>(NODE_TYPE_PATTERN_NODE_PATTERN), "pattern node pattern"},
     {static_cast<int>(NODE_TYPE_PATTERN_SEGMENT), "pattern segment"},
     {static_cast<int>(NODE_TYPE_PATTERN_LABEL), "pattern label"},
-    {static_cast<int>(NODE_TYPE_PATTERN_PATH_VARIABLE), "pattern path variable"},
-    {static_cast<int>(NODE_TYPE_PATTERN_MATCH_EXPRESSION), "pattern match expression"},
+    {static_cast<int>(NODE_TYPE_PATTERN_PATH_VARIABLE),
+     "pattern path variable"},
+    {static_cast<int>(NODE_TYPE_PATTERN_MATCH_EXPRESSION),
+     "pattern match expression"},
     {static_cast<int>(NODE_TYPE_MATCH), "match"},
 };
 

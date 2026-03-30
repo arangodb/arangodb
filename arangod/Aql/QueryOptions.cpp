@@ -50,9 +50,9 @@ size_t QueryOptions::defaultMaxDNFConditionMembers =
 double QueryOptions::defaultMaxRuntime = QueryOptions::defaultInitialMaxRuntime;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning =
-  QueryOptions::defaultInitialFailOnWarning;
+    QueryOptions::defaultInitialFailOnWarning;
 bool QueryOptions::allowMemoryLimitOverride =
-  QueryOptions::defaultInitialAllowMemoryLimitOverride;
+    QueryOptions::defaultInitialAllowMemoryLimitOverride;
 // empty string is considered disabled
 std::string QueryOptions::defaultEnableMatchStatement = {};
 

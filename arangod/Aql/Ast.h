@@ -461,13 +461,13 @@ class Ast {
   AstNode* createPatternLabel(std::string_view label);
   AstNode* createPatternLabelAnd(AstNode const* left, AstNode const* right);
   AstNode* createPatternEdge(AstNode const* outVariable, AstNode const* label,
-                            AstNode const* properties,
-                            AstNode const* filterExpression, bool isInbound,
-                            bool isOutbound);
+                             AstNode const* properties,
+                             AstNode const* filterExpression, bool isInbound,
+                             bool isOutbound);
   AstNode* createPatternNodePattern(AstNode const* outVariable,
-                                   AstNode const* labels,
-                                   AstNode const* properties,
-                                   AstNode const* filterExpression);
+                                    AstNode const* labels,
+                                    AstNode const* properties,
+                                    AstNode const* filterExpression);
 
   AstNode* createPatternSegment(AstNode const* edge, AstNode const* node);
   AstNode* createPatternPathVariable(std::string_view variable);
