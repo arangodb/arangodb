@@ -383,9 +383,6 @@ class instanceManager {
     try {
       this.arangods.forEach(arangod => {
         arangod.debugTerminate(msg, signal_to_expect);
-        if (signal_to_expect === 11) {
-          arangod.removeCoredump();
-        }
       });
     } catch (ex) {
       this.shutdownInstance(true, "debug terminate failed");
