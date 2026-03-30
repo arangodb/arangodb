@@ -100,17 +100,21 @@ After authentication, we perform a first authorization check: Namely, the
 identity detected (user/roles) has to have **read access** to the database
 which was specified in the `/_db/<dbname>` part of the URL path. This check
 is done globally already in the `CommTask` to error out early, since we want
-to enforce it **for all routes** (with very few exceptions).
+to enforce it **for all routes** (with very few exceptions). We want to change
+this, rather than performing this authorization check in the `CommTask`, we
+want to do it on the scheduler before we run the state machine for the
+`RestHandler`. The check should be implemented in a virtual method of the
+`RestVocbaseBaseHandler`, which is called from `runHandler`.
 
 The bulk of the authorization checks is then performed in the `RestHandlers`
 (or, for 3.12, in the server-side JavaScript functions). The idea is that
 most general permission checks are done in the `RestHandlers`, **with the
 exception of collection and view access checks**.
 
-This is the third place, where we do authorization checks: Since basically
-all collection accesses need a transaction, we enforce collection access
-permissions in the transaction code, basically, when collections/views are
-added to a transaction.
+Finally, the third place, where we do authorization checks, is this:
+Since basically all collection accesses need a transaction, we enforce
+collection access permissions in the transaction code, basically, when
+collections/views are added to a transaction.
 
 
 ### Mapping the old permissions to the new RBAC system
@@ -167,8 +171,11 @@ enabled:
    database are assigned to exactly one of the actions with the prefix
    `db:Admin`, for which one needs "allow" to execute the operation.
  - Enabled RBAC implies `--server.harden`.
+ - We move the initial read access check for the requested database to a
+   virtual method of the `RestVocbaseBaseHandler`, which is called in
+   `runHandler`, but already on the scheduler.
  - Every other change is an exception, which we (grudgingly) make because we
-   found some issue with the current system
+   found some issue with the current system.
  - There is an additional action `db:UseApiVersion` to configure, which roles
    are allowed to use which API versions (the API version is the resource)
  
@@ -184,53 +191,239 @@ This philosophy helps in the following ways:
 
 ### Abstraction in `ExecContext` to check these permissions
 
-The `ExecContext` offers the following checking methods:
+The `ExecContext` offers the following checking methods, all of which
+return a `Result`, so that a decline can return the actual reason
+(which can be different for RBAC enabled and disabled):
 
- - `canUseAdminAction(rbac::Category::Any const action) -> bool`
- - `canUseHardenedAction(rbac::Category::Any const action) -> bool`
+ - `canUseAdminAction(rbac::Category::Any const action) -> Result`
+ - `canUseHardenedAction(rbac::Category::Any const action) -> Result`
 
- - `canSeeDatabase(std::string_view db) -> bool`
- - `canCreateDatabase(std::string_view db) -> bool`
- - `canDropDatabase(std::string_view db) -> bool`
- - `canUseDatabase(std::string_view db, AccessLevel const level) -> bool`
+ - `canSeeDatabase(std::string_view db) -> Result`
+ - `canCreateDatabase(std::string_view db) -> Result`
+ - `canDropDatabase(std::string_view db) -> Result`
+ - `canUseDatabase(std::string_view db, AccessLevel const level) -> Result`
 
- - `canSeeCollection(std::string_view db, std::string_view coll) -> bool`
- - `canCreateCollection(std::string_view db, std::string_view coll) -> bool`
- - `canDropCollection(std::string_view db, std::string_view coll) -> bool`
- - `canUseCollection(std::string_view db, std::string_view view, AccessLevel const level) -> bool`
+ - `canSeeCollection(std::string_view db, std::string_view coll) -> Result`
+ - `canCreateCollection(std::string_view db, std::string_view coll) -> Result`
+ - `canDropCollection(std::string_view db, std::string_view coll) -> Result`
+ - `canUseCollection(std::string_view db, std::string_view view, AccessLevel const level) -> Result`
 
- - `canSeeView(std::string_view db, std::string_view view) -> bool`
- - `canCreateView(std::string_view db, std::string_view view) -> bool`
- - `canDropView(std::string_view db, std::string_view view) -> bool`
- - `canUseView(std::string_view db, std::string_view view) -> bool`
+ - `canSeeView(std::string_view db, std::string_view view) -> Result`
+ - `canCreateView(std::string_view db, std::string_view view) -> Result`
+ - `canDropView(std::string_view db, std::string_view view) -> Result`
+ - `canUseView(std::string_view db, std::string_view view) -> Result`
 
- - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> bool`
- - `canCreateAnalyzer(std::string_view db, std::string_view analyzer) -> bool`
- - `canDropAnalyzer(std::string_view db, std::string_view analyzer) -> bool`
- - `canUseAnalyzer(std::string_view db, std::string_view analyzer) -> bool`
+ - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+ - `canCreateAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+ - `canDropAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+ - `canUseAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
 
 Note that for now, `canSee*` is equivalent to `canUse*(RO)` and
-`canCreate*` and `canDrop*` are equivalent to `canUse*(RW)`. For
+`canCreate**` and `canDrop*` are equivalent to `canUse*(RW)`. For
 collections `canUseCollection(RWDATA)` is needed to write data. However,
 we keep the semantic checks separate in case we want to split things
 further later.
 
-There is one subtlety, though. If we separate `canSee*` from
-`canUse*(RO)` later, then we want that if a user cannot see a collection
-(say) and cannot read it, then the error when trying to access it should
-be "NOTFOUND", to not give away the information that the collection
-exists!
+There is one subtlety, though. If we ever want to separate being able
+to see `canSee*` from `canUse*(RO)` later, then we want that if a
+user cannot see a collection (say) and cannot read it, then the error
+when trying to access it should be "NOTFOUND", to not give away the
+information that the collection exists! This must be considered in the
+central implementation of these methods.
 
-Therefore, a common pattern in the code will be:
 
-```
-if (!canSee*(db, coll)) {
-  return NOTFOUND;
-}
-if (!canUse*(db, coll, RO)) {
-  return FORBIDDEN;
-}
-```
+### Implementation details for the abstract methods for RBAC disabled
+
+ - `canUseAdminAction(rbac::Category::Any const action) -> Result`
+
+   check RW access for `_system` database
+  
+ - `canUseHardenedAction(rbac::Category::Any const action) -> Result`
+
+   if hardened, check RW access for `_system` database,
+   if not hardened, no further check
+  
+ - `canSeeDatabase(std::string_view db) -> Result`
+
+   check that database authentication level is at least RO
+  
+ - `canCreateDatabase(std::string_view db) -> Result`
+
+   check RW access for `_system` database
+  
+ - `canDropDatabase(std::string_view db) -> Result`
+
+   check RW access for `_system` database
+  
+ - `canUseDatabase(std::string_view db, AccessLevel const level) -> Result`
+
+   check database auth level and use this:
+
+      - AccessLevel::Read: needs auth::Level::RO or more
+      - AccessLevel::WriteData: needs auth::Level::RW
+      - AccessLevel::WriteMeta: needs auth::Level::RW
+
+ - `canSeeCollection(std::string_view db, std::string_view coll) -> Result`
+
+   check RO access for database (that is, always return Ok, since this has been checked already)
+  
+ - `canCreateCollection(std::string_view db, std::string_view coll) -> Result`
+
+   check RW access for database
+  
+ - `canDropCollection(std::string_view db, std::string_view coll) -> Result`
+
+   check RW access for database
+
+ - `canUseCollection(std::string_view db, std::string_view view, AccessLevel const level) -> Result`
+
+   check collection auth level and use this:
+
+      - AccessLevel::Read: needs auth::Level::RO or more
+      - AccessLevel::WriteData: needs auth::Level::RW
+      - AccessLevel::WriteMeta: needs auth::Level::RW
+
+ - `canSeeView(std::string_view db, std::string_view view) -> Result`
+
+   check RO access for database (no-op)
+
+ - `canCreateView(std::string_view db, std::string_view view) -> Result`
+
+   check RW access for database
+  
+ - `canDropView(std::string_view db, std::string_view view) -> Result`
+
+   check RW access for database
+
+ - `canUseView(std::string_view db, std::string_view view) -> Result`
+
+   Just delegate to the access level of the database (as before) and use::
+  
+      - AccessLevel::Read: needs auth::Level::RO or more
+      - AccessLevel::WriteData: needs auth::Level::RW
+      - AccessLevel::WriteMeta: needs auth::Level::RW
+
+   Note that we leave the code as it is to additionally check if the user
+   has `canUseCollection(RO)` for all linked collections.
+  
+ - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+
+   check RO access for database (no-op)
+     
+ - `canCreateAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+
+   check RW access for database
+  
+ - `canDropAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+
+   check RW access for database
+
+ - `canUseAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+
+   check RO access for database: Note that the code contains some useless statements
+   which seem to check for RO access on the `_analyzers` collection, however, since
+   this is a system collection, its auth level is always equal to the one of the
+   database, so this only checks the same auth level again. So we do not change the
+   behaviour, if we change this, and everything will be simpler.
+  
+
+### Implementation details for the abstract methods for RBAC enabled
+
+ - `canUseAdminAction(rbac::Category::Any const action) -> Result`
+
+   check the given RBAC action via the authorization service
+  
+ - `canUseHardenedAction(rbac::Category::Any const action) -> Result`
+
+   default to hardened, check the given RBAC action
+  
+ - `canSeeDatabase(std::string_view db) -> Result`
+
+   check RBAC action `db:ReadDatabase`, i.e. access level for database is
+   at least "Read".
+  
+ - `canCreateDatabase(std::string_view db) -> Result`
+
+   check RBAC actions `db:ReadDatabase` and `db:WriteDatabase`, i.e. access level i
+   for database is at least RW
+  
+ - `canDropDatabase(std::string_view db) -> Result`
+
+   check RBAC actions `db:ReadDatabase` and `db:WriteDatabase`, i.e. access level i
+   for database is at least RW
+  
+ - `canUseDatabase(std::string_view db, AccessLevel const level) -> Result`
+
+   check database access level, i.e. check RBAC actions `db:ReadDatabase` and
+   `db:WriteDatabase`
+
+ - `canSeeCollection(std::string_view db, std::string_view coll) -> Result`
+
+   check collection access level to be at least RO, i.e., check RBAC action
+   `db:ReadCollection`
+  
+ - `canCreateCollection(std::string_view db, std::string_view coll) -> Result`
+
+   check collection access level to be RW, i.e., check RBAC actions
+   `db:ReadCollection` and `db:WriteCollectionData` and `db:WriteCollectionMeta`.
+  
+ - `canDropCollection(std::string_view db, std::string_view coll) -> Result`
+
+   check collection access level to be RW, i.e., check RBAC actions
+   `db:ReadCollection` and `db:WriteCollectionData` and `db:WriteCollectionMeta`.
+  
+ - `canUseCollection(std::string_view db, std::string_view view, AccessLevel const level) -> Result`
+
+   check collection access level, i.e., check RBAC actions
+   `db:ReadCollection` and `db:WriteCollectionData` and
+   `db:WriteCollectionMeta` to find NONE, or RO, or RWDATA, or RW
+
+ - `canSeeView(std::string_view db, std::string_view view) -> Result`
+
+   check view access level to be at least RO, i.e., check RBAC action
+   `db:ReadView`
+  
+ - `canCreateView(std::string_view db, std::string_view view) -> Result`
+
+   check view access level to be RW, i.e., check RBAC actions
+   `db:ReadView` and `db:WriteView`
+  
+ - `canDropView(std::string_view db, std::string_view view) -> Result`
+
+   check view access level to be RW, i.e., check RBAC actions
+   `db:ReadView` and `db:WriteView`
+  
+ - `canUseView(std::string_view db, std::string_view view) -> Result`
+
+   check view access level, i.e., check RBAC actions `db:ReadView` and
+   `db:WriteView` to find NONE, or RO, or RW
+
+   Note that we leave the code as it is to additionally check if the user
+   has `canUseCollection(RO)` for all linked collections.
+  
+ - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+
+   check analyzer access level to be at least RO, i.e., check RBAC action
+   `db:ReadAnalyzer`
+     
+ - `canCreateAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+
+   check analyzer access level to be RW, i.e., check RBAC actions
+   `db:ReadAnalyzer` and `db:WriteAnalyzer`
+  
+ - `canDropAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+
+   check analyzer access level to be RW, i.e., check RBAC actions
+   `db:ReadAnalyzer` and `db:WriteAnalyzer`
+  
+ - `canUseAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
+
+   check analyzer access level, i.e., check RBAC actions `db:ReadAnalyzer` and
+   `db:WriteAnalyzer` to find NONE, or RO, or RW
+
+   Note that this is a different behaviour from before, but it is more sensible.
+   To call the API, one has to have at least RO access to the database anyway.
+   But writing an analyzer is now done via RBAC and reading, too.
 
 
 ## Complete Endpoint–Action Reference Table
@@ -281,377 +474,377 @@ COLL RO      - At least Read auth level for the collection
 S/A          - API is switchable between superuser and admin access, additionally, an Admin* is specified
 
 
-| Method | Path                                                         | RestHandler                | Authorization                       | Comments                                 | Changes to before RBAC |
-|--------|--------------------------------------------------------------|----------------------------|-------------------------------------|------------------------------------------|------------------------|
-| POST   | `/_open/auth`                                                | RestAuthHandler            | OPEN                                |                                          |                        |
-| POST   | `/_open/auth/renew`                                          | RestAuthHandler            | OPEN                                |                                          |                        |
-| GET    | `/_admin/actions`                                            | MaintenanceRestHandler     | AUTHEN                              | Only really relevant on DBServers        |                        |
-| POST   | `/_admin/actions`                                            | MaintenanceRestHandler     | AUTHEN                              | Only really relevant on DBServers        |                        |
-| PUT    | `/_admin/actions`                                            | MaintenanceRestHandler     | AUTHEN                              | Only really relevant on DBServers        |                        |
-| DELETE | `/_admin/actions/{id}`                                       | MaintenanceRestHandler     | AUTHEN                              | Only really relevant on DBServers        |                        |
-| GET    | `/_admin/activities`                                         | activities::RestHandler    | S/A AdminMonitoringInternal         |                                          |                        |
-| GET    | `/_admin/async-registry`                                     | async_registry::RestHandler| S/A AdminMonitoringInternal         |                                          |                        |
-| POST   | `/_admin/auth/reload`                                        | RestAdminAuthReloadHandler | AdminAuthReload                     |                                          |                        |
-| POST   | `/_admin/backup/create`                                      | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
-| POST   | `/_admin/backup/delete`                                      | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
-| POST   | `/_admin/backup/download`                                    | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
-| POST   | `/_admin/backup/list`                                        | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
-| POST   | `/_admin/backup/upload`                                      | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
-| GET    | `/_admin/cluster/collectionShardDistribution`                | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/cancelAgencyJob`                            | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/cleanOutServer`                             | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/health`                                     | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/maintenance`                                | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/maintenance`                                | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/maintenance/{serverId}`                     | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/maintenance/{serverId}`                     | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
-| POST   | `/_admin/cluster/moveShard`                                  | RestAdminClusterHandler    | AdminMoveShards or coll RW          | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/moveShard`                                  | RestAdminClusterHandler    | AdminMoveShards or coll RW          | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/nodeEngine`                                 | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/nodeStatistics`                             | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/nodeVersion`                                | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/numberOfServers`                            | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/numberOfServers`                            | RestAdminClusterHandler    | AdminMaintenance, HARD              | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/queryAgencyJob`                             | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/rebalance`                                  | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/rebalance`                                  | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/rebalanceShards`                            | RestAdminClusterHandler    | AUTHEN + DB RW                      | (cluster only)                           |                        |
-| POST   | `/_admin/cluster/removeServer`                               | RestAdminClusterHandler    | AdminRemoveServer                   | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/resignLeadership`                           | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/shardDistribution`                          | RestAdminClusterHandler    | AdminClusterInfo                    | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/shardStatistics`                            | RestAdminClusterHandler    | AdminClusterInfo                    | (cluster only)                           |                        |
-| GET    | `/_admin/cluster/statistics`                                 | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/uniqId`                                     | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
-| PUT    | `/_admin/cluster/vpackSortMigration/{serverId}`              | RestAdminClusterHandler    | SUPER                               | (cluster only)                           |                        |
-| PUT    | `/_admin/compact`                                            | RestCompactHandler         | SUPER                               |                                          |                        |
-| GET    | `/_admin/crashes`                                            | RestCrashHandler           | AdminCrashHandler                   |                                          |                        |
-| GET    | `/_admin/crashes/{id}`                                       | RestCrashHandler           | AdminCrashHandler                   |                                          |                        |
-| DELETE | `/_admin/crashes/{id}`                                       | RestCrashHandler           | AdminCrashHandler                   |                                          |                        |
-| GET    | `/_admin/database/target-version`                            | RestAdminDatabaseHandler   | AUTHEN                              |                                          |                        |
-| GET    | `/_admin/debug/failat`                                       | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
-| GET    | `/_admin/debug/failat/all`                                   | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
-| PUT    | `/_admin/debug/failat/{name}`                                | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
-| DELETE | `/_admin/debug/failat`                                       | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
-| DELETE | `/_admin/debug/failat/{name}`                                | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
-| DELETE | `/_admin/debug/raceControl`                                  | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
-| PUT    | `/_admin/debug/crash`                                        | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
-| GET    | `/_admin/deployment/id`                                      | RestAdminDeploymentHandler | AUTHEN                              | only coordinators and single             |                        |
-| POST   | `/_admin/execute`                                            | RestAdminExecuteHandler    | AUTHEN                              | only --javascript.allow-admin-execute    |                        |
-| GET    | `/_admin/job/{id}`                                           | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| GET    | `/_admin/job/{type}`                                         | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| PUT    | `/_admin/job/{id}`                                           | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| PUT    | `/_admin/job/{id}/cancel`                                    | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| DELETE | `/_admin/job/all`                                            | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| DELETE | `/_admin/job/expired`                                        | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| DELETE | `/_admin/job/{id}`                                           | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| GET    | `/_api/job/{id}`                                             | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| GET    | `/_api/job/{type}`                                           | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| PUT    | `/_api/job/{id}`                                             | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| PUT    | `/_api/job/{id}/cancel`                                      | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| DELETE | `/_api/job/all`                                              | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| DELETE | `/_api/job/expired`                                          | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| DELETE | `/_api/job/{id}`                                             | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
-| GET    | `/_admin/license`                                            | RestLicenseHandler(EE)     | AdminLicense HARD                   |                                          |                        |
-| PUT    | `/_admin/license`                                            | RestLicenseHandler(EE)     | AdminLicense HARD                   |                                          |                        |
-| GET    | `/_admin/log`                                                | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
-| GET    | `/_admin/log/entries`                                        | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
-| GET    | `/_admin/log/level`                                          | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
-| GET    | `/_admin/log/structured`                                     | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
-| PUT    | `/_admin/log/level`                                          | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
-| PUT    | `/_admin/log/structured`                                     | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
-| DELETE | `/_admin/log`                                                | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
-| DELETE | `/_admin/log/entries`                                        | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
-| DELETE | `/_admin/log/level`                                          | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
-| GET    | `/_admin/metrics`                                            | RestMetricsHandler         | AdminMonitoring HARD                |                                          |                        |
-| GET    | `/_admin/options`                                            | RestOptionsHandler         | S/A AdminOptions                    |                                          |                        |
-| GET    | `/_admin/options-description`                                | RestOptionsHandler         | S/A AdminOptions                    |                                          |                        |
-| GET    | `/_admin/options-public`                                     | RestOptionsHandler         | AUTHEN + DB RO                      | NON_STANDARD                             |                        |
-| POST   | `/_admin/routing/reload`                                     | RestAdminRoutingHandler    | AUTHEN                              | (V8 required)                            |                        |
-| GET    | `/_admin/server/api-calls`                                   | RestAdminServerHandler     | ?/S/A AdminApiCalls                 |                                          |                        |
-| GET    | `/_admin/server/aql-queries`                                 | RestAdminServerHandler     | ?/S/A AdminAqlQueries               |                                          |                        |
-| GET    | `/_admin/server/availability`                                | RestAdminServerHandler     | OPEN                                |                                          |                        |
-| GET    | `/_admin/server/databaseDefaults`                            | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
-| GET    | `/_admin/server/id`                                          | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
-| GET    | `/_admin/server/mode`                                        | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
-| PUT    | `/_admin/server/mode`                                        | RestAdminServerHandler     | AdminMaintenance                    |                                          |                        |
-| GET    | `/_admin/server/role`                                        | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
-| GET    | `/_admin/server/tls`                                         | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
-| POST   | `/_admin/server/tls`                                         | RestAdminServerHandler     | SUPER                               |                                          |                        |
-| GET    | `/_admin/server/jwt`                                         | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
-| POST   | `/_admin/server/jwt`                                         | RestAdminServerHandler     | SUPER                               |                                          |                        |
-| GET    | `/_admin/server/encryption`                                  | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
-| POST   | `/_admin/server/encryption`                                  | RestAdminServerHandler     | SUPER                               |                                          |                        |
-| GET    | `/_admin/shutdown`                                           | RestShutdownHandler        |                                     |                                          |                        |
-| DELETE | `/_admin/shutdown`                                           | RestShutdownHandler        |                                     |                                          |                        |
-| GET    | `/_admin/statistics`                                         | RestAdminStatisticsHandler | AdminMonitoring HARD                |                                          |                        |
-| GET    | `/_admin/statistics-description`                             | RestAdminStatisticsHandler | AdminMonitoring HARD                |                                          |                        |
-| GET    | `/_admin/status`                                             | RestAdminStatusHandler     | AdminMonitoring HARD                |                                          |                        |
-| GET    | `/_admin/supervisionState`                                   | RestSupervisionStateHandler| AdminSupervisionState               | (cluster only)                           |                        |
-| GET    | `/_admin/support-info`                                       | RestSupportInfoHandler     | AdminMonitoring                     |                                          |                        |
-| GET    | `/_admin/system-report`                                      | RestSystemReportHandler    | AdminMonitoringInternal HARD        |                                          |                        |
-| GET    | `/_admin/telemetrics`                                        | RestTelemtricsHandler      | AdminMonitoringInternal             |                                          |                        |
-| DELETE | `/_admin/telemetrics`                                        | RestTelemetricsHandler     | AdminMonitoringInternal             |                                          |                        |
-| GET    | `/_admin/time`                                               | RestTimeHandler            | AUTHEN                              |                                          |                        |
-| GET    | `/_admin/usage-metrics`                                      | RestUsageMetricsHandler    | AdminMonitoringInternal HARD        |                                          |                        |
-| GET    | `/_admin/version`                                            | RestVersionhandler         | AUTHEN, details (2)                 |                                          |                        |
-| GET    | `/_admin/wal/properties`                                     | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
-| PUT    | `/_admin/wal/properties`                                     | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
-| GET    | `/_admin/wal/transactions`                                   | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
-| PUT    | `/_admin/wal/flush`                                          | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
-| PUT    | `/_admin/wal/wait_for_estimator_sync`                        | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
-| GET    | `/_admin/wal/properties`                                     | ClusterRestWalHandler      | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
-| PUT    | `/_admin/wal/properties`                                     | ClusterRestWalHandler      | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
-| GET    | `/_admin/wal/transactions`                                   | ClusterRestWalHandler      | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
-| PUT    | `/_admin/wal/flush`                                          | ClusterRestWalHandler      | AUTHEN                              | (Cluster engine) DELEGATED               |                        |
-| PUT    | `/_admin/wal/wait_for_estimator_sync`                        | ClusterRestWalHandler      | AdminWalAccess (PROD)/SUPER (MAINT) | (Cluster engine)                         |                        |
-| GET    | `/_api/aql-builtin`                                          | RestAqlFunctionsHandler    | AUTHEN                              |                                          |                        |
-| GET    | `/_api/aqlfunction`                                          | RestAqlUserFunctionsHandler| AUTHEN + COLL RO _aqlfunctions      | (V8 required)                            |                        |
-| GET    | `/_api/aqlfunction/{namespace}`                              | RestAqlUserFunctionsHandler| AUTHEN + COLL RO _aqlfunctions      | (V8 required)                            |                        |
-| POST   | `/_api/aqlfunction`                                          | RestAqlUserFunctionsHandler| AUTHEN + COLL RW _aqlfunctions      | (V8 required)                            |                        |
-| DELETE | `/_api/aqlfunction/{name}`                                   | RestAqlUserFunctionsHandler| AUTHEN + COLL RW _aqlfunctions      | (V8 required)                            |                        |
-| GET    | `/_api/analyzer`                                             | RestAnalyzerHandler        | AUTHEN + COLL RO _analyzers         | IS THIS OK???                            |                        |
-| GET    | `/_api/analyzer/{name}`                                      | RestAnalyzerHandler        | AUTHEN + COLL RO _analyzers         | IS THIS OK???                            |                        |
-| POST   | `/_api/analyzer`                                             | RestAnalyzerHandler        | AUTHEN + COLL RW _analyzers         | IS THIS OK???                            |                        |
-| DELETE | `/_api/analyzer/{name}`                                      | RestAnalyzerHandler        | AUTHEN + COLL RW _analyzers         | IS THIS OK???                            |                        |
-| GET    | `/_api/cluster/agency-cache`                                 | RestClusterHandler         | AdminReadAgency                     | (cluster only)                           | was RW/_system         |
-| GET    | `/_api/cluster/agency-dump`                                  | RestClusterHandler         | AdminReadAgency                     | (cluster only)                           |                        |
-| GET    | `/_api/cluster/cluster-info`                                 | RestClusterHandler         | AdminClusterInfo                    | (cluster only)                           |                        |
-| PUT    | `/.../flush`                                                 | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| GET    | `/.../get_collection_info/{db}/{coll}`                       | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| GET    | `/.../get_collection_info_current/{db}/{coll}/{shard}`       | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| POST   | `/.../get_responsible_servers`                               | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| POST   | `/.../get_responsible_shard/{db}/{coll}`                     | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| GET    | `/.../get_analyzers_revision/{db}`                           | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| GET    | `/.../wait_for_plan_version/{version}`                       | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| GET    | `/.../get_max_number_of_shards`                              | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| GET    | `/.../get_max_replication_factor`                            | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| GET    | `/.../get_min_replication_factor`                            | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-| GET    | `/_api/cluster/endpoints`                                    | RestClusterHandler         | AUTHEN                              | (cluster only)                           |                        |
-| GET    | `/_api/collection`                                           | RestCollectionHandler      | AUTHEN, details (3)                 |                                          |                        |
-| POST   | `/_api/collection`                                           | RestCollectionHandler      | DB RW                               | should be canCreateDropCollection        | FIXME                  |
-| GET    | `/_api/collection/{name}`                                    | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| GET    | `/_api/collection/{name}/checksum`                           | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| GET    | `/_api/collection/{name}/count`                              | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| GET    | `/_api/collection/{name}/figures`                            | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| GET    | `/_api/collection/{name}/properties`                         | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| GET    | `/_api/collection/{name}/revision`                           | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| GET    | `/_api/collection/{name}/shards`                             | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| PUT    | `/_api/collection/{name}/compact`                            | RestCollectionHandler      | canUseCollection(WriteMeta)         |                                          |                        |
-| PUT    | `/_api/collection/{name}/load`                               | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| PUT    | `/_api/collection/{name}/loadIndexesIntoMemory`              | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| PUT    | `/_api/collection/{name}/properties`                         | RestCollectionHandler      | canUseCollection(WriteMeta)         |                                          |                        |
-| PUT    | `/_api/collection/{name}/rename`                             | RestCollectionHandler      | DB RW + canUseCollection(WriteMeta) |                                          |                        |
-| PUT    | `/_api/collection/{name}/responsibleShard`                   | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| PUT    | `/_api/collection/{name}/truncate`                           | RestCollectionHandler      | canUseCollection(WriteData)         |                                          |                        |
-| PUT    | `/_api/collection/{name}/unload`                             | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
-| DELETE | `/_api/collection/{name}`                                    | RestCollectionHandler      | DB RW + canUseCollection(WriteMeta) | should be canCreateDropCollection        | FIXME                  |
-| POST   | `/_api/cursor`                                               | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-| POST   | `/_api/cursor/json`                                          | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-| POST   | `/_api/cursor/{id}`                                          | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-| POST   | `/_api/cursor/{id}/{batch-id}`                               | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-| PUT    | `/_api/cursor/{id}`                                          | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-| DELETE | `/_api/cursor/{id}`                                          | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-| GET    | `/_api/database`                                             | RestDatabaseHandler        | AUTHEN, _system, list all           |                                          | FIXME?                 |
-| GET    | `/_api/database/current`                                     | RestDatabaseHandler        | AUTHEN                              |                                          |                        |
-| GET    | `/_api/database/shardStatistics`                             | RestDatabaseHandler        | AUTHEN                              |                                          |                        |
-| GET    | `/_api/database/user`                                        | RestDatabaseHandler        | AUTHEN, _system, detail (4)         |                                          |                        |
-| POST   | `/_api/database`                                             | RestDatabaseHandler        | AUTHEN, _system, canCreateDropDB    |                                          |                        |
-| DELETE | `/_api/database/{name}`                                      | RestDatabaseHandler        | AUTHEN, _system, DB RW              | should be canCreateOrDropDatabase        | FIXME                  |
-| GET    | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Read)              |                                          |                        |
-| HEAD   | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Read)              |                                          |                        |
-| POST   | `/_api/document/{collection}`                                | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
-| PUT    | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
-| PUT    | `/_api/document/{collection}`                                | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
-| PATCH  | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
-| PATCH  | `/_api/document/{collection}`                                | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
-| DELETE | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
-| DELETE | `/_api/document/{collection}`                                | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
-| GET    | `/_api/document-state`                                       | RestDocumentStateHandler   | AdminReadReplicatedLog              |                                          |                        |
-| POST   | `/_api/document-state`                                       | RestDocumentStateHandler   | AdminWriteReplicatedLog             |                                          |                        |
-| DELETE | `/_api/document-state`                                       | RestDocumentStateHandler   | AdminWriteReplicatedLog             |                                          |                        |
-| POST   | `/_api/dump/next/{id}`                                       | RestDumpHandler            | SAME USER                           |                                          |                        |
-| POST   | `/_api/dump/start`                                           | RestDumpHandler            | AUTHEN + COLL RO                    | AdminDump + SINGLE => escalate to SUPER  | FIXME?                 |
-| DELETE | `/_api/dump/{id}`                                            | RestDumpHandler            | SAME USER                           |                                          |                        |
-| GET    | `/_api/edges/{collection}`                                   | RestEdgesHandler           | canUseCollection(Read)              |                                          |                        |
-| POST   | `/_api/edges/{collection}`                                   | RestEdgesHandler           | canUseCollection(Read)              |                                          |                        |
-| GET    | `/_api/endpoint`                                             | RestEndpointHandler        | AUTHEN, _system                     |                                          |                        |
-| GET    | `/_api/engine`                                               | RestEngineHandler          | AdminMonitoringInternal HARD        |                                          |                        |
-| GET    | `/_api/engine/stats`                                         | RestEngineHandler          | AdminMonitoringInternal HARD        |                                          |                        |
-| POST   | `/_api/explain`                                              | RestExplainHandler         | AUTHEN, colls via trx               |                                          |                        |
-| GET    | `/_api/gharial`                                              | RestGraphHandler           | canUseCollection(_graphs, RO)       |                                          |                        |
-| POST   | `/_api/gharial`                                              | RestGraphHandler           | DB RW, all cools RO                 | should be canUseCollection(_graphs, RW)? | FIXME?                 |
-| GET    | `/_api/gharial/{graph}`                                      | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
-| DELETE | `/_api/gharial/{graph}`                                      | RestGraphHandler           | _graphs(Write), DB RW for drop coll | should be canUseCollection(...)          | FIXME                  |
-| GET    | `/_api/gharial/{graph}/edge`                                 | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
-| POST   | `/_api/gharial/{graph}/edge`                                 | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| GET    | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
-| POST   | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| PUT    | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| PUT    | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| PATCH  | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| DELETE | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| DELETE | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| GET    | `/_api/gharial/{graph}/vertex`                               | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
-| POST   | `/_api/gharial/{graph}/vertex`                               | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| GET    | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
-| POST   | `/_api/gharial/{graph}/vertex/{collection}`                  | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| PUT    | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| PATCH  | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| DELETE | `/_api/gharial/{graph}/vertex/{collection}`                  | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| DELETE | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
-| GET    | `/_api/index`                                                | RestIndexHandler           | DB Read, canUseCollection(Read)     | needs API in ExecContext                 | FIXME                  |
-| GET    | `/_api/index/selectivity`                                    | RestIndexHandler           | DB Read, canUseCollection(Read)     | needs API in ExecContext                 | FIXME                  |
-| POST   | `/_api/index`                                                | RestIndexHandler           | DB Read, canUseCollection(WriteMeta)| needs API in ExecContext                 | FIXME                  |
-| POST   | `/_api/index/sync-caches`                                    | RestIndexHandler           | DB Read, canUseCollection(WriteMeta)| needs API in ExecContext                 | FIXME                  |
-| DELETE | `/_api/index/{collection}/{id}`                              | RestIndexHandler           | DB Read, canUseCollection(WriteMEta)| needs API in ExecContext                 | FIXME                  |
-| GET    | `/_api/key-generators`                                       | RestKeyGeneratorsHandler   | AUTHEN                              |                                          |                        |
-| GET    | `/_api/log`                                                  | RestLogHandler             | AdminReadReplicatedLog              | (replication2 + cluster only)            |                        |
-| POST   | `/_api/log`                                                  | RestLogHandler             | AdminWriteReplicatedLog             | (replication2 + cluster only)            |                        |
-| DELETE | `/_api/log`                                                  | RestLogHandler             | AdminWriteReplicatedLog             | (replication2 + cluster only)            |                        |
-| GET    | `/_api/log-internal`                                         | RestLogInternalHandler     | SUPER                               | (replication2 + cluster only)            |                        |
-| GET    | `/_api/query/slow`                                           | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
-| GET    | `/_api/query/current`                                        | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
-| GET    | `/_api/query/properties`                                     | RestQueryHandler           | AUTHEN                              |                                          |                        |
-| GET    | `/_api/query/registry`                                       | RestQueryHandler           | SUPER                               |                                          |                        |
-| GET    | `/_api/query/rules`                                          | RestQueryHandler           | AUTHEN                              |                                          |                        |
-| POST   | `/_api/query`                                                | RestQueryHandler           | AUTHEN                              |                                          |                        |
-| PUT    | `/_api/query`                                                | RestQueryHandler           | AUTHEN                              |                                          | FIXME                  |
-| DELETE | `/_api/query/{id}`                                           | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
-| DELETE | `/_api/query/slow`                                           | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
-| GET    | `/_api/query-cache/entries`                                  | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
-| GET    | `/_api/query-cache/properties`                               | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
-| PUT    | `/_api/query-cache/properties`                               | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
-| DELETE | `/_api/query-cache`                                          | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
-| GET    | `/_api/query-plan-cache`                                     | RestQueryPlanCacheHandler  | AUTHEN, details (5)                 | redundant check for DB RO                | FIXME                  |
-| DELETE | `/_api/query-plan-cache`                                     | RestQueryPlanCacheHandler  | AUTHEN, DB RW                       | needs an RBAC solution                   | FIXME                  |
-| DELETE | `/_api/replication/applier-state`                            | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/applier-config`                           | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/applier-state`                            | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/applier-state-all`                        | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/applier-config`                           | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/applier-start`                            | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/applier-stop`                             | RestReplicationHandler     |                                     |                                          |                        |
-| POST   | `/_api/replication/batch`                                    | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/batch`                                    | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/clusterInventory`                         | RestReplicationHandler     | AdminClusterInfo or COLL RO         |                                          |                        |
-| GET    | `/_api/replication/dump`                                     | RestReplicationHandler     | AdminDump or COLL RO                |                                          |                        |
-| DELETE | `/_api/replication/holdReadLockCollection`                   | RestReplicationHandler     |                                     |                                          |                        |
-| POST   | `/_api/replication/holdReadLockCollection`                   | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/inventory`                                | RestReplicationHandler     |                                     |                                          |                        |
-| DELETE | `/_api/replication/keys`                                     | RestReplicationHandler     |                                     |                                          |                        |
-| DELETE | `/_api/replication/keys/{id}`                                | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/keys/{id}`                                | RestReplicationHandler     |                                     |                                          |                        |
-| POST   | `/_api/replication/keys`                                     | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/keys/{id}`                                | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/logger-first-tick`                        | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/logger-follow`                            | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/logger-follow`                            | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/logger-state`                             | RestReplicationHandler     | AUTHEN                              |                                          |                        |
-| GET    | `/_api/replication/logger-tick-ranges`                       | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/make-follower`                            | RestReplicationHandler     | AdminReplication                    |                                          |                        |
-| PUT    | `/_api/replication/addFollower`                              | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/removeFollower`                           | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/restore-collection`                       | RestReplicationHandler     | AdminRestore or COLL RW (1)         |                                          |                        |
-| PUT    | `/_api/replication/restore-data`                             | RestReplicationHandler     | AdminRestore or COLL RWDATA         |                                          |                        |
-| PUT    | `/_api/replication/restore-indexes`                          | RestReplicationHandler     | AdminRestore or COLL RW (1)         |                                          |                        |
-| PUT    | `/_api/replication/restore-view`                             | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/revisions/tree`                           | RestReplicationHandler     |                                     |                                          |                        |
-| POST   | `/_api/replication/revisions/tree`                           | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/revisions/documents`                      | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/revisions/ranges`                         | RestReplicationHandler     |                                     |                                          |                        |
-| GET    | `/_api/replication/server-id`                                | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/set-the-leader`                           | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/replication/sync`                                     | RestReplicationHandler     |                                     |                                          |                        |
-| PUT    | `/_api/simple/all`                                           | RestSimpleQueryHandler     | AUTHEN, COLL RO                     |                                          |                        |
-| PUT    | `/_api/simple/all-keys`                                      | RestSimpleQueryHandler     | AUTHEN, COLL RO                     |                                          |                        |
-| PUT    | `/_api/simple/by-example`                                    | RestSimpleQueryHandler     | AUTHEN, COLL RO                     |                                          |                        |
-| PUT    | `/_api/simple/lookup-by-keys`                                | RestSimpleHandler          | AUTHEN, COLL RO                     |                                          |                        |
-| PUT    | `/_api/simple/remove-by-keys`                                | RestSimpleHandler          | AUTHEN, COLL RO                     |                                          |                        |
-| GET    | `/_api/tasks`                                                | RestTasksHandler           | AUTHEN, list only SUPER or SELF     | (V8 required)                            |                        |
-| GET    | `/_api/tasks/{id}`                                           | RestTasksHandler           | AUTHEN, SUPER or SELF               | (V8 required)                            |                        |
-| POST   | `/_api/tasks`                                                | RestTasksHandler           | DB RW                               | (V8 required), adapt to RBAC             | FIXME                  |
-| PUT    | `/_api/tasks/{id}`                                           | RestTasksHandler           | DB RW                               | (V8 required), adapt to RBAC             | FIXME                  |
-| DELETE | `/_api/tasks/{id}`                                           | RestTasksHandler           | DB RW                               | (V8 required), adapt to RBAC             | FIXME                  |
-| GET    | `/_api/token/{user}`                                         | RestAccessTokenHandler     | canReadUser                         |                                          |                        |
-| POST   | `/_api/token/{user}`                                         | RestAccessTokenHandler     | canWriteUser                        |                                          |                        |
-| DELETE | `/_api/token/{user}/{id}`                                    | RestAccessTokenHandler     | canWriteUser                        |                                          |                        |
-| GET    | `/_api/ttl/properties`                                       | RestTtlHandler             | AUTHEN, _system                     |                                          |                        |
-| GET    | `/_api/ttl/statistics`                                       | RestTtlHandler             | AUTHEN, _system                     |                                          |                        |
-| PUT    | `/_api/ttl/properties`                                       | RestTtlHandler             | AUTHEN, _system                     |                                          |                        |
-| POST   | `/_api/upload`                                               | RestUploadHandler          | AUTHEN                              | should this not be restricted further??? | FIXME                  |
-| GET    | `/_api/user`                                                 | RestUsersHandler           | AUTHEN, see only canReadUser(u)     |                                          |                        |
-| POST   | `/_api/user`                                                 | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| POST   | `/_api/user/{user}`                                          | RestUsersHandler           | AUTHEN, just check credentials      |                                          |                        |
-| GET    | `/_api/user/{user}`                                          | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
-| GET    | `/_api/user/{user}/config`                                   | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
-| GET    | `/_api/user/{user}/database`                                 | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
-| GET    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
-| GET    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
-| PUT    | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| PUT    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| PUT    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| PUT    | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| PATCH  | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| DELETE | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| DELETE | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| DELETE | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| DELETE | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
-| GET    | `/_api/version`                                              | RestVersionHandler         | AUTHEN, details (2)                 |                                          |                        |
-| GET    | `/_api/view`                                                 |                            |                                     |                                          |                        |
-| POST   | `/_api/view`                                                 |                            |                                     |                                          |                        |
-| DELETE | `/_api/view/{name}`                                          |                            |                                     |                                          |                        |
-| GET    | `/_api/view/{name}`                                          |                            |                                     |                                          |                        |
-| GET    | `/_api/view/{name}/properties`                               |                            |                                     |                                          |                        |
-| PATCH  | `/_api/view/{name}/properties`                               |                            |                                     |                                          |                        |
-| PUT    | `/_api/view/{name}/properties`                               |                            |                                     |                                          |                        |
-| PUT    | `/_api/view/{name}/rename`                                   |                            |                                     |                                          |                        |
-| GET    | `/_api/wal/lastTick`                                         |                            |                                     |                                          |                        |
-| GET    | `/_api/wal/open-transactions`                                |                            |                                     |                                          |                        |
-| GET    | `/_api/wal/range`                                            |                            |                                     |                                          |                        |
-| GET    | `/_api/wal/tail`                                             |                            |                                     |                                          |                        |
-| PUT    | `/_api/wal/tail`                                             |                            |                                     |                                          |                        |
-| DELETE | `/_api/wal/tail`                                             |                            |                                     |                                          |                        |
-| GET    | `/_api/transaction`                                          |                            |                                     |                                          |                        |
-| GET    | `/_api/transaction/{id}`                                     |                            |                                     |                                          |                        |
-| POST   | `/_api/transaction`                                          |                            |                                     |                                          |                        |
-| POST   | `/_api/transaction/begin`                                    |                            |                                     |                                          |                        |
-| PUT    | `/_api/transaction/{id}`                                     |                            |                                     |                                          |                        |
-| DELETE | `/_api/transaction/{id}`                                     |                            |                                     |                                          |                        |
-| DELETE | `/_api/transaction/write`                                    |                            |                                     |                                          |                        |
-| PUT    | `/_internal/traverser/{option}/{engine-id}`                  |                            |                                     |                                          |                        |
-| DELETE | `/_internal/traverser/{engine-id}`                           |                            |                                     |                                          |                        |
-| GET    | `/openapi.json`                                              |                            |                                     |                                          |                        |
-|--------|--------------------------------------------------------------|----------------------------|-------------------------------------|------------------------------------------|------------------------|
-| JS     | `JS_CreateQueue`                                             | v8-dispatcher.cpp          | AdminTasks                          |                                          |                        |
-| JS     | `TRI_RequestCppToV8`                                         | v8-dispatcher.cpp          | AdminFoxx                           |                                          |                        |
-| JS     | `JS_GetReplicatedLog`                                        | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
-| JS     | `JS_CreateReplicatedLog`                                     | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
-| JS     | `JS_Id`                                                      | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
-| JS     | `JS_Drop`                                                    | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
-| JS     | `JS_Insert`                                                  | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
-| JS     | `JS_Ping`                                                    | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
-| JS     | `JS_MultiInsert`                                             | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
-| JS     | `JS_Status`                                                  | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
-| JS     | `JS_GlobalStatus`                                            | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
-| JS     | `JS_Head`                                                    | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
-| JS     | `JS_Tail`                                                    | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
-| JS     | `JS_Slice`                                                   | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
-| JS     | `JS_Poll`                                                    | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
-| JS     | `JS_At`                                                      | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
-| JS     | `JS_Release`                                                 | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
-| JS     | `JS_Compact`                                                 | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
-| JS     | `JS_RemoveUser`                                              | v8-users.cpp               | canWriteUser                        |                                          |                        |
-| JS     | `JS_ReloadAuthData`                                          | v8-users.cpp               | AdminAuthReload                     |                                          |                        |
-| JS     | `JS_GrantDatabase`                                           | v8-users.cpp               | canWriteUser                        |                                          |                        |
-| JS     | `JS_RevokeDatabase`                                          | v8-users.cpp               | canWriteUser                        |                                          |                        |
-| JS     | `JS_GrantCollection`                                         | v8-users.cpp               | canWriteUser                        |                                          |                        |
-| JS     | `JS_RevokeCollection`                                        | v8-users.cpp               | canWriteUser                        |                                          |                        |
-| JS     | `StoreUser`                                                  | v8-users.cpp               | canWriteUser                        |                                          |                        |
-| JS     | `JS_UpdateUser`                                              | v8-users.cpp               | canWriteUser                        |                                          |                        |
-| JS     | `JS_GetUser`                                                 | v8-users.cpp               | canReadUser                         |                                          |                        |
-| JS     | `JS_UpdateConfigData`                                        | v8-users.cpp               | canWriteUser                        |                                          |                        |
-| JS     | `JS_GetConfigData`                                           | v8-users.cpp               | canReadUser                         |                                          |                        |
-| CPP    | `Databases::grantCurrentUser` (creation of database)         | Databases.Cpp              | canWriteUser                        |                                          |                        |
+|DONE|REVI|TEST| Method | Path                                                         | RestHandler                | Authorization                       | Comments                                 | Changes to before RBAC |
+|----|----|----|--------|--------------------------------------------------------------|----------------------------|-------------------------------------|------------------------------------------|------------------------|
+|    |    |    | POST   | `/_open/auth`                                                | RestAuthHandler            | OPEN                                |                                          |                        |
+|    |    |    | POST   | `/_open/auth/renew`                                          | RestAuthHandler            | OPEN                                |                                          |                        |
+|    |    |    | GET    | `/_admin/actions`                                            | MaintenanceRestHandler     | AUTHEN                              | Only really relevant on DBServers        |                        |
+|    |    |    | POST   | `/_admin/actions`                                            | MaintenanceRestHandler     | AUTHEN                              | Only really relevant on DBServers        |                        |
+|    |    |    | PUT    | `/_admin/actions`                                            | MaintenanceRestHandler     | AUTHEN                              | Only really relevant on DBServers        |                        |
+|    |    |    | DELETE | `/_admin/actions/{id}`                                       | MaintenanceRestHandler     | AUTHEN                              | Only really relevant on DBServers        |                        |
+|    |    |    | GET    | `/_admin/activities`                                         | activities::RestHandler    | S/A AdminMonitoringInternal         |                                          |                        |
+|    |    |    | GET    | `/_admin/async-registry`                                     | async_registry::RestHandler| S/A AdminMonitoringInternal         |                                          |                        |
+|    |    |    | POST   | `/_admin/auth/reload`                                        | RestAdminAuthReloadHandler | AdminAuthReload                     |                                          |                        |
+|    |    |    | POST   | `/_admin/backup/create`                                      | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
+|    |    |    | POST   | `/_admin/backup/delete`                                      | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
+|    |    |    | POST   | `/_admin/backup/download`                                    | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
+|    |    |    | POST   | `/_admin/backup/list`                                        | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
+|    |    |    | POST   | `/_admin/backup/upload`                                      | RestHotBackupHandler       | S/A AdminBackup                     | (EE only)                                |                        |
+|    |    |    | GET    | `/_admin/cluster/collectionShardDistribution`                | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/cancelAgencyJob`                            | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/cleanOutServer`                             | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/health`                                     | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/maintenance`                                | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/maintenance`                                | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/maintenance/{serverId}`                     | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/maintenance/{serverId}`                     | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
+|    |    |    | POST   | `/_admin/cluster/moveShard`                                  | RestAdminClusterHandler    | AdminMoveShards or coll RW          | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/moveShard`                                  | RestAdminClusterHandler    | AdminMoveShards or coll RW          | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/nodeEngine`                                 | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/nodeStatistics`                             | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/nodeVersion`                                | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/numberOfServers`                            | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/numberOfServers`                            | RestAdminClusterHandler    | AdminMaintenance, HARD              | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/queryAgencyJob`                             | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/rebalance`                                  | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/rebalance`                                  | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/rebalanceShards`                            | RestAdminClusterHandler    | AUTHEN + DB RW                      | (cluster only)                           |                        |
+|    |    |    | POST   | `/_admin/cluster/removeServer`                               | RestAdminClusterHandler    | AdminRemoveServer                   | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/resignLeadership`                           | RestAdminClusterHandler    | AdminMoveShards                     | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/shardDistribution`                          | RestAdminClusterHandler    | AdminClusterInfo                    | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/shardStatistics`                            | RestAdminClusterHandler    | AdminClusterInfo                    | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/cluster/statistics`                                 | RestAdminClusterHandler    | AUTHEN                              | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/uniqId`                                     | RestAdminClusterHandler    | AdminMaintenance                    | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/cluster/vpackSortMigration/{serverId}`              | RestAdminClusterHandler    | SUPER                               | (cluster only)                           |                        |
+|    |    |    | PUT    | `/_admin/compact`                                            | RestCompactHandler         | SUPER                               |                                          |                        |
+|    |    |    | GET    | `/_admin/crashes`                                            | RestCrashHandler           | AdminCrashHandler                   |                                          |                        |
+|    |    |    | GET    | `/_admin/crashes/{id}`                                       | RestCrashHandler           | AdminCrashHandler                   |                                          |                        |
+|    |    |    | DELETE | `/_admin/crashes/{id}`                                       | RestCrashHandler           | AdminCrashHandler                   |                                          |                        |
+|    |    |    | GET    | `/_admin/database/target-version`                            | RestAdminDatabaseHandler   | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_admin/debug/failat`                                       | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
+|    |    |    | GET    | `/_admin/debug/failat/all`                                   | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
+|    |    |    | PUT    | `/_admin/debug/failat/{name}`                                | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
+|    |    |    | DELETE | `/_admin/debug/failat`                                       | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
+|    |    |    | DELETE | `/_admin/debug/failat/{name}`                                | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
+|    |    |    | DELETE | `/_admin/debug/raceControl`                                  | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
+|    |    |    | PUT    | `/_admin/debug/crash`                                        | RestDebugHandler           | AUTHEN                              | (maintainer mode only)                   |                        |
+|    |    |    | GET    | `/_admin/deployment/id`                                      | RestAdminDeploymentHandler | AUTHEN                              | only coordinators and single             |                        |
+|    |    |    | POST   | `/_admin/execute`                                            | RestAdminExecuteHandler    | AUTHEN                              | only --javascript.allow-admin-execute    |                        |
+|    |    |    | GET    | `/_admin/job/{id}`                                           | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | GET    | `/_admin/job/{type}`                                         | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | PUT    | `/_admin/job/{id}`                                           | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | PUT    | `/_admin/job/{id}/cancel`                                    | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | DELETE | `/_admin/job/all`                                            | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | DELETE | `/_admin/job/expired`                                        | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | DELETE | `/_admin/job/{id}`                                           | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | GET    | `/_api/job/{id}`                                             | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | GET    | `/_api/job/{type}`                                           | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | PUT    | `/_api/job/{id}`                                             | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | PUT    | `/_api/job/{id}/cancel`                                      | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | DELETE | `/_api/job/all`                                              | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | DELETE | `/_api/job/expired`                                          | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | DELETE | `/_api/job/{id}`                                             | RestJobHandler             | AUTHEN                              | THIS DOES NOT SOUND RIGHT!               | ??? FIXME              |
+|    |    |    | GET    | `/_admin/license`                                            | RestLicenseHandler(EE)     | AdminLicense HARD                   |                                          |                        |
+|    |    |    | PUT    | `/_admin/license`                                            | RestLicenseHandler(EE)     | AdminLicense HARD                   |                                          |                        |
+|    |    |    | GET    | `/_admin/log`                                                | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
+|    |    |    | GET    | `/_admin/log/entries`                                        | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
+|    |    |    | GET    | `/_admin/log/level`                                          | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
+|    |    |    | GET    | `/_admin/log/structured`                                     | RestAdminLogHandler        | ?/S/A AdminReadLogs                 |                                          |                        |
+|    |    |    | PUT    | `/_admin/log/level`                                          | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
+|    |    |    | PUT    | `/_admin/log/structured`                                     | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
+|    |    |    | DELETE | `/_admin/log`                                                | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
+|    |    |    | DELETE | `/_admin/log/entries`                                        | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
+|    |    |    | DELETE | `/_admin/log/level`                                          | RestAdminLogHandler        | ?/S/A AdminSetLogLevel              |                                          |                        |
+|    |    |    | GET    | `/_admin/metrics`                                            | RestMetricsHandler         | AdminMonitoring HARD                |                                          |                        |
+|    |    |    | GET    | `/_admin/options`                                            | RestOptionsHandler         | S/A AdminOptions                    |                                          |                        |
+|    |    |    | GET    | `/_admin/options-description`                                | RestOptionsHandler         | S/A AdminOptions                    |                                          |                        |
+|    |    |    | GET    | `/_admin/options-public`                                     | RestOptionsHandler         | AUTHEN + DB RO                      | NON_STANDARD                             |                        |
+|    |    |    | POST   | `/_admin/routing/reload`                                     | RestAdminRoutingHandler    | AUTHEN                              | (V8 required)                            |                        |
+|    |    |    | GET    | `/_admin/server/api-calls`                                   | RestAdminServerHandler     | ?/S/A AdminApiCalls                 |                                          |                        |
+|    |    |    | GET    | `/_admin/server/aql-queries`                                 | RestAdminServerHandler     | ?/S/A AdminAqlQueries               |                                          |                        |
+|    |    |    | GET    | `/_admin/server/availability`                                | RestAdminServerHandler     | OPEN                                |                                          |                        |
+|    |    |    | GET    | `/_admin/server/databaseDefaults`                            | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_admin/server/id`                                          | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_admin/server/mode`                                        | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
+|    |    |    | PUT    | `/_admin/server/mode`                                        | RestAdminServerHandler     | AdminMaintenance                    |                                          |                        |
+|    |    |    | GET    | `/_admin/server/role`                                        | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_admin/server/tls`                                         | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
+|    |    |    | POST   | `/_admin/server/tls`                                         | RestAdminServerHandler     | SUPER                               |                                          |                        |
+|    |    |    | GET    | `/_admin/server/jwt`                                         | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
+|    |    |    | POST   | `/_admin/server/jwt`                                         | RestAdminServerHandler     | SUPER                               |                                          |                        |
+|    |    |    | GET    | `/_admin/server/encryption`                                  | RestAdminServerHandler     | AUTHEN                              |                                          |                        |
+|    |    |    | POST   | `/_admin/server/encryption`                                  | RestAdminServerHandler     | SUPER                               |                                          |                        |
+|    |    |    | GET    | `/_admin/shutdown`                                           | RestShutdownHandler        |                                     |                                          |                        |
+|    |    |    | DELETE | `/_admin/shutdown`                                           | RestShutdownHandler        |                                     |                                          |                        |
+|    |    |    | GET    | `/_admin/statistics`                                         | RestAdminStatisticsHandler | AdminMonitoring HARD                |                                          |                        |
+|    |    |    | GET    | `/_admin/statistics-description`                             | RestAdminStatisticsHandler | AdminMonitoring HARD                |                                          |                        |
+|    |    |    | GET    | `/_admin/status`                                             | RestAdminStatusHandler     | AdminMonitoring HARD                |                                          |                        |
+|    |    |    | GET    | `/_admin/supervisionState`                                   | RestSupervisionStateHandler| AdminSupervisionState               | (cluster only)                           |                        |
+|    |    |    | GET    | `/_admin/support-info`                                       | RestSupportInfoHandler     | AdminMonitoring                     |                                          |                        |
+|    |    |    | GET    | `/_admin/system-report`                                      | RestSystemReportHandler    | AdminMonitoringInternal HARD        |                                          |                        |
+|    |    |    | GET    | `/_admin/telemetrics`                                        | RestTelemtricsHandler      | AdminMonitoringInternal             |                                          |                        |
+|    |    |    | DELETE | `/_admin/telemetrics`                                        | RestTelemetricsHandler     | AdminMonitoringInternal             |                                          |                        |
+|    |    |    | GET    | `/_admin/time`                                               | RestTimeHandler            | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_admin/usage-metrics`                                      | RestUsageMetricsHandler    | AdminMonitoringInternal HARD        |                                          |                        |
+|    |    |    | GET    | `/_admin/version`                                            | RestVersionhandler         | AUTHEN, details (2)                 |                                          |                        |
+|    |    |    | GET    | `/_admin/wal/properties`                                     | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
+|    |    |    | PUT    | `/_admin/wal/properties`                                     | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
+|    |    |    | GET    | `/_admin/wal/transactions`                                   | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
+|    |    |    | PUT    | `/_admin/wal/flush`                                          | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
+|    |    |    | PUT    | `/_admin/wal/wait_for_estimator_sync`                        | RestWalAccessHandler       | SUPER                               | (RocksDB engine)                         |                        |
+|    |    |    | GET    | `/_admin/wal/properties`                                     | ClusterRestWalHandler      | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
+|    |    |    | PUT    | `/_admin/wal/properties`                                     | ClusterRestWalHandler      | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
+|    |    |    | GET    | `/_admin/wal/transactions`                                   | ClusterRestWalHandler      | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
+|    |    |    | PUT    | `/_admin/wal/flush`                                          | ClusterRestWalHandler      | AUTHEN                              | (Cluster engine) DELEGATED               |                        |
+|    |    |    | PUT    | `/_admin/wal/wait_for_estimator_sync`                        | ClusterRestWalHandler      | AdminWalAccess (PROD)/SUPER (MAINT) | (Cluster engine)                         |                        |
+|    |    |    | GET    | `/_api/aql-builtin`                                          | RestAqlFunctionsHandler    | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_api/aqlfunction`                                          | RestAqlUserFunctionsHandler| AUTHEN + COLL RO _aqlfunctions      | (V8 required)                            |                        |
+|    |    |    | GET    | `/_api/aqlfunction/{namespace}`                              | RestAqlUserFunctionsHandler| AUTHEN + COLL RO _aqlfunctions      | (V8 required)                            |                        |
+|    |    |    | POST   | `/_api/aqlfunction`                                          | RestAqlUserFunctionsHandler| AUTHEN + COLL RW _aqlfunctions      | (V8 required)                            |                        |
+|    |    |    | DELETE | `/_api/aqlfunction/{name}`                                   | RestAqlUserFunctionsHandler| AUTHEN + COLL RW _aqlfunctions      | (V8 required)                            |                        |
+|    |    |    | GET    | `/_api/analyzer`                                             | RestAnalyzerHandler        | AUTHEN + COLL RO _analyzers         | IS THIS OK???                            |                        |
+|    |    |    | GET    | `/_api/analyzer/{name}`                                      | RestAnalyzerHandler        | AUTHEN + COLL RO _analyzers         | IS THIS OK???                            |                        |
+|    |    |    | POST   | `/_api/analyzer`                                             | RestAnalyzerHandler        | AUTHEN + COLL RW _analyzers         | IS THIS OK???                            |                        |
+|    |    |    | DELETE | `/_api/analyzer/{name}`                                      | RestAnalyzerHandler        | AUTHEN + COLL RW _analyzers         | IS THIS OK???                            |                        |
+|    |    |    | GET    | `/_api/cluster/agency-cache`                                 | RestClusterHandler         | AdminReadAgency                     | (cluster only)                           | was RW/_system         |
+|    |    |    | GET    | `/_api/cluster/agency-dump`                                  | RestClusterHandler         | AdminReadAgency                     | (cluster only)                           |                        |
+|    |    |    | GET    | `/_api/cluster/cluster-info`                                 | RestClusterHandler         | AdminClusterInfo                    | (cluster only)                           |                        |
+|    |    |    | PUT    | `/.../flush`                                                 | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | GET    | `/.../get_collection_info/{db}/{coll}`                       | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | GET    | `/.../get_collection_info_current/{db}/{coll}/{shard}`       | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | POST   | `/.../get_responsible_servers`                               | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | POST   | `/.../get_responsible_shard/{db}/{coll}`                     | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | GET    | `/.../get_analyzers_revision/{db}`                           | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | GET    | `/.../wait_for_plan_version/{version}`                       | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | GET    | `/.../get_max_number_of_shards`                              | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | GET    | `/.../get_max_replication_factor`                            | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | GET    | `/.../get_min_replication_factor`                            | RestClusterHandler         | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+|    |    |    | GET    | `/_api/cluster/endpoints`                                    | RestClusterHandler         | AUTHEN                              | (cluster only)                           |                        |
+|    |    |    | GET    | `/_api/collection`                                           | RestCollectionHandler      | AUTHEN, details (3)                 |                                          |                        |
+|    |    |    | POST   | `/_api/collection`                                           | RestCollectionHandler      | DB RW                               | should be canCreateDropCollection        | FIXME                  |
+|    |    |    | GET    | `/_api/collection/{name}`                                    | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | GET    | `/_api/collection/{name}/checksum`                           | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | GET    | `/_api/collection/{name}/count`                              | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | GET    | `/_api/collection/{name}/figures`                            | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | GET    | `/_api/collection/{name}/properties`                         | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | GET    | `/_api/collection/{name}/revision`                           | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | GET    | `/_api/collection/{name}/shards`                             | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | PUT    | `/_api/collection/{name}/compact`                            | RestCollectionHandler      | canUseCollection(WriteMeta)         |                                          |                        |
+|    |    |    | PUT    | `/_api/collection/{name}/load`                               | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | PUT    | `/_api/collection/{name}/loadIndexesIntoMemory`              | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | PUT    | `/_api/collection/{name}/properties`                         | RestCollectionHandler      | canUseCollection(WriteMeta)         |                                          |                        |
+|    |    |    | PUT    | `/_api/collection/{name}/rename`                             | RestCollectionHandler      | DB RW + canUseCollection(WriteMeta) |                                          |                        |
+|    |    |    | PUT    | `/_api/collection/{name}/responsibleShard`                   | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | PUT    | `/_api/collection/{name}/truncate`                           | RestCollectionHandler      | canUseCollection(WriteData)         |                                          |                        |
+|    |    |    | PUT    | `/_api/collection/{name}/unload`                             | RestCollectionHandler      | canUseCollection(Read)              |                                          |                        |
+|    |    |    | DELETE | `/_api/collection/{name}`                                    | RestCollectionHandler      | DB RW + canUseCollection(WriteMeta) | should be canCreateDropCollection        | FIXME                  |
+|    |    |    | POST   | `/_api/cursor`                                               | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+|    |    |    | POST   | `/_api/cursor/json`                                          | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+|    |    |    | POST   | `/_api/cursor/{id}`                                          | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+|    |    |    | POST   | `/_api/cursor/{id}/{batch-id}`                               | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+|    |    |    | PUT    | `/_api/cursor/{id}`                                          | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+|    |    |    | DELETE | `/_api/cursor/{id}`                                          | RestCursorHandler          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+|    |    |    | GET    | `/_api/database`                                             | RestDatabaseHandler        | AUTHEN, _system, list all           |                                          | FIXME?                 |
+|    |    |    | GET    | `/_api/database/current`                                     | RestDatabaseHandler        | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_api/database/shardStatistics`                             | RestDatabaseHandler        | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_api/database/user`                                        | RestDatabaseHandler        | AUTHEN, _system, detail (4)         |                                          |                        |
+|    |    |    | POST   | `/_api/database`                                             | RestDatabaseHandler        | AUTHEN, _system, canCreateDropDB    |                                          |                        |
+|    |    |    | DELETE | `/_api/database/{name}`                                      | RestDatabaseHandler        | AUTHEN, _system, DB RW              | should be canCreateOrDropDatabase        | FIXME                  |
+|    |    |    | GET    | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Read)              |                                          |                        |
+|    |    |    | HEAD   | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Read)              |                                          |                        |
+|    |    |    | POST   | `/_api/document/{collection}`                                | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
+|    |    |    | PUT    | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
+|    |    |    | PUT    | `/_api/document/{collection}`                                | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
+|    |    |    | PATCH  | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
+|    |    |    | PATCH  | `/_api/document/{collection}`                                | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
+|    |    |    | DELETE | `/_api/document/{collection}/{key}`                          | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
+|    |    |    | DELETE | `/_api/document/{collection}`                                | RestDocumentHandler        | canUseCollection(Write)             |                                          |                        |
+|    |    |    | GET    | `/_api/document-state`                                       | RestDocumentStateHandler   | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | POST   | `/_api/document-state`                                       | RestDocumentStateHandler   | AdminWriteReplicatedLog             |                                          |                        |
+|    |    |    | DELETE | `/_api/document-state`                                       | RestDocumentStateHandler   | AdminWriteReplicatedLog             |                                          |                        |
+|    |    |    | POST   | `/_api/dump/next/{id}`                                       | RestDumpHandler            | SAME USER                           |                                          |                        |
+|    |    |    | POST   | `/_api/dump/start`                                           | RestDumpHandler            | AUTHEN + COLL RO                    | AdminDump + SINGLE => escalate to SUPER  | FIXME?                 |
+|    |    |    | DELETE | `/_api/dump/{id}`                                            | RestDumpHandler            | SAME USER                           |                                          |                        |
+|    |    |    | GET    | `/_api/edges/{collection}`                                   | RestEdgesHandler           | canUseCollection(Read)              |                                          |                        |
+|    |    |    | POST   | `/_api/edges/{collection}`                                   | RestEdgesHandler           | canUseCollection(Read)              |                                          |                        |
+|    |    |    | GET    | `/_api/endpoint`                                             | RestEndpointHandler        | AUTHEN, _system                     |                                          |                        |
+|    |    |    | GET    | `/_api/engine`                                               | RestEngineHandler          | AdminMonitoringInternal HARD        |                                          |                        |
+|    |    |    | GET    | `/_api/engine/stats`                                         | RestEngineHandler          | AdminMonitoringInternal HARD        |                                          |                        |
+|    |    |    | POST   | `/_api/explain`                                              | RestExplainHandler         | AUTHEN, colls via trx               |                                          |                        |
+|    |    |    | GET    | `/_api/gharial`                                              | RestGraphHandler           | canUseCollection(_graphs, RO)       |                                          |                        |
+|    |    |    | POST   | `/_api/gharial`                                              | RestGraphHandler           | DB RW, all cools RO                 | should be canUseCollection(_graphs, RW)? | FIXME?                 |
+|    |    |    | GET    | `/_api/gharial/{graph}`                                      | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
+|    |    |    | DELETE | `/_api/gharial/{graph}`                                      | RestGraphHandler           | _graphs(Write), DB RW for drop coll | should be canUseCollection(...)          | FIXME                  |
+|    |    |    | GET    | `/_api/gharial/{graph}/edge`                                 | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
+|    |    |    | POST   | `/_api/gharial/{graph}/edge`                                 | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | GET    | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
+|    |    |    | POST   | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | PUT    | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | PUT    | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | PATCH  | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | DELETE | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | DELETE | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | GET    | `/_api/gharial/{graph}/vertex`                               | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
+|    |    |    | POST   | `/_api/gharial/{graph}/vertex`                               | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | GET    | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | _graphs(Read)                       |                                          |                        |
+|    |    |    | POST   | `/_api/gharial/{graph}/vertex/{collection}`                  | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | PUT    | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | PATCH  | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | DELETE | `/_api/gharial/{graph}/vertex/{collection}`                  | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | DELETE | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | _graphs(Write), DB RW for colls     | should be canCreateDropCollection(...)   | FIXME                  |
+|    |    |    | GET    | `/_api/index`                                                | RestIndexHandler           | DB Read, canUseCollection(Read)     | needs API in ExecContext                 | FIXME                  |
+|    |    |    | GET    | `/_api/index/selectivity`                                    | RestIndexHandler           | DB Read, canUseCollection(Read)     | needs API in ExecContext                 | FIXME                  |
+|    |    |    | POST   | `/_api/index`                                                | RestIndexHandler           | DB Read, canUseCollection(WriteMeta)| needs API in ExecContext                 | FIXME                  |
+|    |    |    | POST   | `/_api/index/sync-caches`                                    | RestIndexHandler           | DB Read, canUseCollection(WriteMeta)| needs API in ExecContext                 | FIXME                  |
+|    |    |    | DELETE | `/_api/index/{collection}/{id}`                              | RestIndexHandler           | DB Read, canUseCollection(WriteMEta)| needs API in ExecContext                 | FIXME                  |
+|    |    |    | GET    | `/_api/key-generators`                                       | RestKeyGeneratorsHandler   | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_api/log`                                                  | RestLogHandler             | AdminReadReplicatedLog              | (replication2 + cluster only)            |                        |
+|    |    |    | POST   | `/_api/log`                                                  | RestLogHandler             | AdminWriteReplicatedLog             | (replication2 + cluster only)            |                        |
+|    |    |    | DELETE | `/_api/log`                                                  | RestLogHandler             | AdminWriteReplicatedLog             | (replication2 + cluster only)            |                        |
+|    |    |    | GET    | `/_api/log-internal`                                         | RestLogInternalHandler     | SUPER                               | (replication2 + cluster only)            |                        |
+|    |    |    | GET    | `/_api/query/slow`                                           | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
+|    |    |    | GET    | `/_api/query/current`                                        | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
+|    |    |    | GET    | `/_api/query/properties`                                     | RestQueryHandler           | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_api/query/registry`                                       | RestQueryHandler           | SUPER                               |                                          |                        |
+|    |    |    | GET    | `/_api/query/rules`                                          | RestQueryHandler           | AUTHEN                              |                                          |                        |
+|    |    |    | POST   | `/_api/query`                                                | RestQueryHandler           | AUTHEN                              |                                          |                        |
+|    |    |    | PUT    | `/_api/query`                                                | RestQueryHandler           | AUTHEN                              |                                          | FIXME                  |
+|    |    |    | DELETE | `/_api/query/{id}`                                           | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
+|    |    |    | DELETE | `/_api/query/slow`                                           | RestQueryHandler           | AUTHEN, for all DBs _system + SUPER |                                          |                        |
+|    |    |    | GET    | `/_api/query-cache/entries`                                  | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_api/query-cache/properties`                               | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
+|    |    |    | PUT    | `/_api/query-cache/properties`                               | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
+|    |    |    | DELETE | `/_api/query-cache`                                          | RestQueryCacheHandler      | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_api/query-plan-cache`                                     | RestQueryPlanCacheHandler  | AUTHEN, details (5)                 | redundant check for DB RO                | FIXME                  |
+|    |    |    | DELETE | `/_api/query-plan-cache`                                     | RestQueryPlanCacheHandler  | AUTHEN, DB RW                       | needs an RBAC solution                   | FIXME                  |
+|    |    |    | DELETE | `/_api/replication/applier-state`                            | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/applier-config`                           | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/applier-state`                            | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/applier-state-all`                        | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/applier-config`                           | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/applier-start`                            | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/applier-stop`                             | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | POST   | `/_api/replication/batch`                                    | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/batch`                                    | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/clusterInventory`                         | RestReplicationHandler     | AdminClusterInfo or COLL RO         |                                          |                        |
+|    |    |    | GET    | `/_api/replication/dump`                                     | RestReplicationHandler     | AdminDump or COLL RO                |                                          |                        |
+|    |    |    | DELETE | `/_api/replication/holdReadLockCollection`                   | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | POST   | `/_api/replication/holdReadLockCollection`                   | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/inventory`                                | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | DELETE | `/_api/replication/keys`                                     | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | DELETE | `/_api/replication/keys/{id}`                                | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/keys/{id}`                                | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | POST   | `/_api/replication/keys`                                     | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/keys/{id}`                                | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/logger-first-tick`                        | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/logger-follow`                            | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/logger-follow`                            | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/logger-state`                             | RestReplicationHandler     | AUTHEN                              |                                          |                        |
+|    |    |    | GET    | `/_api/replication/logger-tick-ranges`                       | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/make-follower`                            | RestReplicationHandler     | AdminReplication                    |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/addFollower`                              | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/removeFollower`                           | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/restore-collection`                       | RestReplicationHandler     | AdminRestore or COLL RW (1)         |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/restore-data`                             | RestReplicationHandler     | AdminRestore or COLL RWDATA         |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/restore-indexes`                          | RestReplicationHandler     | AdminRestore or COLL RW (1)         |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/restore-view`                             | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/revisions/tree`                           | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | POST   | `/_api/replication/revisions/tree`                           | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/revisions/documents`                      | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/revisions/ranges`                         | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/replication/server-id`                                | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/set-the-leader`                           | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/replication/sync`                                     | RestReplicationHandler     |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/simple/all`                                           | RestSimpleQueryHandler     | AUTHEN, COLL RO                     |                                          |                        |
+|    |    |    | PUT    | `/_api/simple/all-keys`                                      | RestSimpleQueryHandler     | AUTHEN, COLL RO                     |                                          |                        |
+|    |    |    | PUT    | `/_api/simple/by-example`                                    | RestSimpleQueryHandler     | AUTHEN, COLL RO                     |                                          |                        |
+|    |    |    | PUT    | `/_api/simple/lookup-by-keys`                                | RestSimpleHandler          | AUTHEN, COLL RO                     |                                          |                        |
+|    |    |    | PUT    | `/_api/simple/remove-by-keys`                                | RestSimpleHandler          | AUTHEN, COLL RO                     |                                          |                        |
+|    |    |    | GET    | `/_api/tasks`                                                | RestTasksHandler           | AUTHEN, list only SUPER or SELF     | (V8 required)                            |                        |
+|    |    |    | GET    | `/_api/tasks/{id}`                                           | RestTasksHandler           | AUTHEN, SUPER or SELF               | (V8 required)                            |                        |
+|    |    |    | POST   | `/_api/tasks`                                                | RestTasksHandler           | DB RW                               | (V8 required), adapt to RBAC             | FIXME                  |
+|    |    |    | PUT    | `/_api/tasks/{id}`                                           | RestTasksHandler           | DB RW                               | (V8 required), adapt to RBAC             | FIXME                  |
+|    |    |    | DELETE | `/_api/tasks/{id}`                                           | RestTasksHandler           | DB RW                               | (V8 required), adapt to RBAC             | FIXME                  |
+|    |    |    | GET    | `/_api/token/{user}`                                         | RestAccessTokenHandler     | canReadUser                         |                                          |                        |
+|    |    |    | POST   | `/_api/token/{user}`                                         | RestAccessTokenHandler     | canWriteUser                        |                                          |                        |
+|    |    |    | DELETE | `/_api/token/{user}/{id}`                                    | RestAccessTokenHandler     | canWriteUser                        |                                          |                        |
+|    |    |    | GET    | `/_api/ttl/properties`                                       | RestTtlHandler             | AUTHEN, _system                     |                                          |                        |
+|    |    |    | GET    | `/_api/ttl/statistics`                                       | RestTtlHandler             | AUTHEN, _system                     |                                          |                        |
+|    |    |    | PUT    | `/_api/ttl/properties`                                       | RestTtlHandler             | AUTHEN, _system                     |                                          |                        |
+|    |    |    | POST   | `/_api/upload`                                               | RestUploadHandler          | AUTHEN                              | should this not be restricted further??? | FIXME                  |
+|    |    |    | GET    | `/_api/user`                                                 | RestUsersHandler           | AUTHEN, see only canReadUser(u)     |                                          |                        |
+|    |    |    | POST   | `/_api/user`                                                 | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | POST   | `/_api/user/{user}`                                          | RestUsersHandler           | AUTHEN, just check credentials      |                                          |                        |
+|    |    |    | GET    | `/_api/user/{user}`                                          | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
+|    |    |    | GET    | `/_api/user/{user}/config`                                   | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
+|    |    |    | GET    | `/_api/user/{user}/database`                                 | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
+|    |    |    | GET    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
+|    |    |    | GET    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canReadUser(u)                      |                                          |                        |
+|    |    |    | PUT    | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | PUT    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | PUT    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | PUT    | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | PATCH  | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | DELETE | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | DELETE | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | DELETE | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | DELETE | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                     |                                          |                        |
+|    |    |    | GET    | `/_api/version`                                              | RestVersionHandler         | AUTHEN, details (2)                 |                                          |                        |
+|    |    |    | GET    | `/_api/view`                                                 |                            |                                     |                                          |                        |
+|    |    |    | POST   | `/_api/view`                                                 |                            |                                     |                                          |                        |
+|    |    |    | DELETE | `/_api/view/{name}`                                          |                            |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/view/{name}`                                          |                            |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/view/{name}/properties`                               |                            |                                     |                                          |                        |
+|    |    |    | PATCH  | `/_api/view/{name}/properties`                               |                            |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/view/{name}/properties`                               |                            |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/view/{name}/rename`                                   |                            |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/wal/lastTick`                                         |                            |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/wal/open-transactions`                                |                            |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/wal/range`                                            |                            |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/wal/tail`                                             |                            |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/wal/tail`                                             |                            |                                     |                                          |                        |
+|    |    |    | DELETE | `/_api/wal/tail`                                             |                            |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/transaction`                                          |                            |                                     |                                          |                        |
+|    |    |    | GET    | `/_api/transaction/{id}`                                     |                            |                                     |                                          |                        |
+|    |    |    | POST   | `/_api/transaction`                                          |                            |                                     |                                          |                        |
+|    |    |    | POST   | `/_api/transaction/begin`                                    |                            |                                     |                                          |                        |
+|    |    |    | PUT    | `/_api/transaction/{id}`                                     |                            |                                     |                                          |                        |
+|    |    |    | DELETE | `/_api/transaction/{id}`                                     |                            |                                     |                                          |                        |
+|    |    |    | DELETE | `/_api/transaction/write`                                    |                            |                                     |                                          |                        |
+|    |    |    | PUT    | `/_internal/traverser/{option}/{engine-id}`                  |                            |                                     |                                          |                        |
+|    |    |    | DELETE | `/_internal/traverser/{engine-id}`                           |                            |                                     |                                          |                        |
+|    |    |    | GET    | `/openapi.json`                                              |                            |                                     |                                          |                        |
+|----|----|----|--------|--------------------------------------------------------------|----------------------------|-------------------------------------|------------------------------------------|------------------------|
+|    |    |    | JS     | `JS_CreateQueue`                                             | v8-dispatcher.cpp          | AdminTasks                          |                                          |                        |
+|    |    |    | JS     | `TRI_RequestCppToV8`                                         | v8-dispatcher.cpp          | AdminFoxx                           |                                          |                        |
+|    |    |    | JS     | `JS_GetReplicatedLog`                                        | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | JS     | `JS_CreateReplicatedLog`                                     | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
+|    |    |    | JS     | `JS_Id`                                                      | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | JS     | `JS_Drop`                                                    | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
+|    |    |    | JS     | `JS_Insert`                                                  | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
+|    |    |    | JS     | `JS_Ping`                                                    | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
+|    |    |    | JS     | `JS_MultiInsert`                                             | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
+|    |    |    | JS     | `JS_Status`                                                  | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | JS     | `JS_GlobalStatus`                                            | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | JS     | `JS_Head`                                                    | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | JS     | `JS_Tail`                                                    | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | JS     | `JS_Slice`                                                   | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | JS     | `JS_Poll`                                                    | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | JS     | `JS_At`                                                      | v8-dispatcher.cpp          | AdminReadReplicatedLog              |                                          |                        |
+|    |    |    | JS     | `JS_Release`                                                 | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
+|    |    |    | JS     | `JS_Compact`                                                 | v8-dispatcher.cpp          | AdminWriteReplicatedLog             |                                          |                        |
+|    |    |    | JS     | `JS_RemoveUser`                                              | v8-users.cpp               | canWriteUser                        |                                          |                        |
+|    |    |    | JS     | `JS_ReloadAuthData`                                          | v8-users.cpp               | AdminAuthReload                     |                                          |                        |
+|    |    |    | JS     | `JS_GrantDatabase`                                           | v8-users.cpp               | canWriteUser                        |                                          |                        |
+|    |    |    | JS     | `JS_RevokeDatabase`                                          | v8-users.cpp               | canWriteUser                        |                                          |                        |
+|    |    |    | JS     | `JS_GrantCollection`                                         | v8-users.cpp               | canWriteUser                        |                                          |                        |
+|    |    |    | JS     | `JS_RevokeCollection`                                        | v8-users.cpp               | canWriteUser                        |                                          |                        |
+|    |    |    | JS     | `StoreUser`                                                  | v8-users.cpp               | canWriteUser                        |                                          |                        |
+|    |    |    | JS     | `JS_UpdateUser`                                              | v8-users.cpp               | canWriteUser                        |                                          |                        |
+|    |    |    | JS     | `JS_GetUser`                                                 | v8-users.cpp               | canReadUser                         |                                          |                        |
+|    |    |    | JS     | `JS_UpdateConfigData`                                        | v8-users.cpp               | canWriteUser                        |                                          |                        |
+|    |    |    | JS     | `JS_GetConfigData`                                           | v8-users.cpp               | canReadUser                         |                                          |                        |
+|    |    |    | CPP    | `Databases::grantCurrentUser` (creation of database)         | Databases.Cpp              | canWriteUser                        |                                          |                        |
 
 
 (1) For `arangorestore`, if `--overwrite=true`, then we need COLL RW, if `--overwrite=false`, we only need COLL RWDATA
