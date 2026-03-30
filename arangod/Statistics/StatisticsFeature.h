@@ -55,7 +55,6 @@ extern std::initializer_list<double> const ConnectionTimeDistributionCuts;
 extern std::initializer_list<double> const RequestTimeDistributionCuts;
 
 extern Counter AsyncRequests;
-extern Counter HttpConnections;
 extern Counter TotalRequests;
 extern Counter TotalRequestsSuperuser;
 extern Counter TotalRequestsUser;
@@ -64,7 +63,6 @@ constexpr size_t MethodRequestsStatisticsSize =
     ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
 using MethodRequestCounters = std::array<Counter, MethodRequestsStatisticsSize>;
 extern MethodRequestCounters MethodRequests;
-extern Distribution ConnectionTimeDistribution;
 
 struct RequestFigures {
   RequestFigures();
@@ -134,7 +132,6 @@ class StatisticsFeature final
   std::unique_ptr<Thread> _statisticsThread;
 
   metrics::Gauge<uint64_t>& _requestStatisticsMemoryUsage;
-  metrics::Gauge<uint64_t>& _connectionStatisticsMemoryUsage;
 };
 
 }  // namespace arangodb

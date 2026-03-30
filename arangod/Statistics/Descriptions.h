@@ -87,7 +87,6 @@ class Descriptions final {
   application_features::ApplicationServer& _server;
 
   std::vector<double> _requestTimeCuts;
-  std::vector<double> _connectionTimeCuts;
   std::vector<double> _bytesSendCuts;
   std::vector<double> _bytesReceivedCuts;
 
