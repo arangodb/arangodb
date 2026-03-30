@@ -183,6 +183,9 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     // verify that the current user has access on all linked collections
     ExecContext const& exec = ExecContext::current();
     if (!exec.isSuperuser()) {
+      // TODO This should be changed into a more semantic exec.can().... call;
+      //      but I don't know which, because I don't know where this is being
+      //      called from (createView? modifyView? both?)
       for (auto& entry : _collections) {
         if (!exec.canUseCollection(vocbase().name(),
                                    entry.second->collectionName,
@@ -366,6 +369,9 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
     auto const& exec = ExecContext::current();
     if (!exec.isSuperuser()) {  // check existing links
       std::shared_lock lock{_mutex};
+      // TODO This should be changed into a more semantic exec.can().... call;
+      //      but I don't know which, because I don't know where this is being
+      //      called from (createView? modifyView? both?)
       for (auto& entry : _collections) {
         auto const& name = vocbase().name();
         auto collection = engine.getCollection(
@@ -459,27 +465,20 @@ Result IResearchViewCoordinator::dropImpl() {
             "failure to get storage engine while dropping arangosearch view '",
             name(), "'")};
   }
-  auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
   // drop links first
   containers::FlatHashSet<DataSourceId> currentCids;
-  visitCollections([&](DataSourceId cid, LogicalView::Indexes*) {
-    currentCids.emplace(cid);
-    return true;
-  });
+  std::vector<std::string> collectionNames;
+  for (auto& it : _collections) {
+    currentCids.emplace(it.first);
+    collectionNames.emplace_back(it.second->collectionName);
+  }
   // check link auth as per https://github.com/arangodb/backlog/issues/459
-  ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    for (auto& entry : currentCids) {
-      auto const& name = vocbase().name();
-      auto collection =
-          engine.getCollection(name, absl::AlphaNum{entry.id()}.Piece());
-      if (collection &&
-          !exec.canUseCollection(name, collection->name(), AccessLevel::Read)) {
-        return {TRI_ERROR_FORBIDDEN,
-                absl::StrCat("Need read access to collection '",
-                             collection->name(), "'")};
-      }
-    }
+  auto const& can = ExecContext::current().can();
+  // TODO We probably need to communicate *why* drop access is denied (in
+  //      particular, if it's due to missing read access to a collection)
+  if (!can.dropView(vocbase().name(), name(), collectionNames)) {
+    return {TRI_ERROR_FORBIDDEN,
+            absl::StrCat("Need drop access to view '", name(), "'")};
   }
   containers::FlatHashSet<DataSourceId> collections;
   auto r = IResearchLinkHelper::updateLinks(

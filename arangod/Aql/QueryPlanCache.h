@@ -109,7 +109,7 @@ class QueryPlanCache {
     std::string name;
 
     // datasource access level. will either be read or writedata.
-    AccessLevel level;
+    CollectionAccessLevel level;
   };
 
   struct Value {

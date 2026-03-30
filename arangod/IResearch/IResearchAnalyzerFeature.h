@@ -280,13 +280,17 @@ class IResearchAnalyzerFeature final
   explicit IResearchAnalyzerFeature(
       application_features::ApplicationServer& server);
 
+  // TODO We need to review the following canUse functions, and possibly replace
+  //      calls to them with calls to ExecContext (we might need to add a
+  //      method).
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
   /// @param vocbase analyzer vocbase
   /// @param level access level
   /// @return analyzers in the specified vocbase are granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(TRI_vocbase_t const& vocbase, AccessLevel const& level);
+  static bool canUse(TRI_vocbase_t const& vocbase,
+                     CollectionAccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions for analyzer usage from vocbase by name
@@ -295,7 +299,7 @@ class IResearchAnalyzerFeature final
   /// @return analyzers in the specified vocbase are granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
   static bool canUseVocbase(std::string_view vocbaseName,
-                            AccessLevel const& level);
+                            CollectionAccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
@@ -304,7 +308,7 @@ class IResearchAnalyzerFeature final
   /// @return analyzer with the given prefixed name (or unprefixed and resides
   ///         in defaultVocbase) is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(std::string_view name, AccessLevel const& level);
+  static bool canUse(std::string_view name, CollectionAccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create new analyzer pool

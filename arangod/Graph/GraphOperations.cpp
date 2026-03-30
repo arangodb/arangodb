@@ -1176,9 +1176,8 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection,
   std::string const& databaseName = _vocbase.name();
 
   std::stringstream stringstream;
-  stringstream << "When checking " << convertFromAccessLevel(level)
-               << " permissions for " << databaseName << "." << collection
-               << ": ";
+  stringstream << "When checking " << to_string(level) << " permissions for "
+               << databaseName << "." << collection << ": ";
   std::string const logprefix = stringstream.str();
 
   ExecContext const& execContext = ExecContext::current();
@@ -1221,7 +1220,7 @@ Result GraphOperations::checkEdgeDefinitionPermissions(
   graphCollections.emplace(edgeDefinition.getName());
 
   bool canUseDatabaseRW =
-      execContext.canUseDatabase(databaseName, AccessLevel::WriteMeta);
+      execContext.canUseDatabase(databaseName, DatabaseAccessLevel::Write);
   for (auto const& col : graphCollections) {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.

@@ -76,11 +76,6 @@ class LogicalView : public LogicalDataSource {
                      bool safe) const final;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @return the current view is granted 'level' access
-  //////////////////////////////////////////////////////////////////////////////
-  bool canUse(AccessLevel const& level);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new view according to a definition
   /// @param view out-param for created view on success
   ///        on success non-null, on failure undefined
