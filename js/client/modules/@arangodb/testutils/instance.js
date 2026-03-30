@@ -1627,7 +1627,7 @@ class instance {
   }
 
   removeCoredump() {
-    if (crashUtils.locateCoreDump(this.options, this)) {
+    if (crashUtils.locateCoreDump(this.options, this) && fs.exists(this.options.coreDirectory)) {
       print(`${Date()} ${this.name}: deleting coredump for PID ${this.pid} ${this.options.coreDirectory}`);
       fs.remove(this.options.coreDirectory);
     } else {

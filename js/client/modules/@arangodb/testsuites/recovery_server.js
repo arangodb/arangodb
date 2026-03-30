@@ -141,6 +141,10 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
     0,
     params.instanceInfo);
   if (params.setup) {
+    if (params.script.search("segfault") > 0) {
+      params.instance.pid = '*';
+      params.instance.removeCoredump();
+    }
     const hasSignal = params.instanceInfo.exitStatus.hasOwnProperty('signal');
     const hasExitZero = !hasSignal && params.instanceInfo.exitStatus.exit === 0;
     const hasExitOne = !hasSignal && params.instanceInfo.exitStatus.exit === 1;
