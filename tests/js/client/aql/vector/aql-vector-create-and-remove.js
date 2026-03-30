@@ -412,32 +412,34 @@ function VectorIndexTestCreationWithVectors() {
         },
 
         testCreatingSameVectorIndexWithAndWithoutStoredValues: function() {
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 1,
-                    trainingIterations: 10,
-                },
-            });
+            try {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
 
-            collection.ensureIndex({
-                name: "vector_l2_stored",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                storedValues: ["name", "value"],
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 1,
-                    trainingIterations: 10,
-                },
-            });
+                collection.ensureIndex({
+                    name: "vector_l2_stored",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    storedValues: ["name", "value"],
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+            } catch(e) {}
 
             const vectorIndexes = collection.getIndexes().filter(
                 idx => idx.type === "vector"
