@@ -37,6 +37,7 @@ const inst = require('@arangodb/testutils/instance');
 const { agencyMgr } = require('@arangodb/testutils/agency');
 const _ = require('lodash');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 
 const toArgv = require('internal').toArgv;
 const { isEnterprise, versionHas } = require("@arangodb/test-helper");
@@ -215,6 +216,7 @@ function recovery_server (options) {
       let stateFile = fs.getTempFile();
       let exitSuccessOk = test.indexOf('-exitzero') >= 0;
       let exitFailOk = test.indexOf('-exitone') >= 0;
+      SetGlobalExecutionDeadlineTo(options.oneTestTimeout / 4);
 
       while (true) {
         ++iteration;
