@@ -380,7 +380,14 @@ class instanceManager {
     this.reconnectMe();
   }
   debugTerminate(msg, signal_to_expect) {
-    this.arangods.forEach(arangod => {arangod.debugTerminate(msg, signal_to_expect);});
+    try {
+      this.arangods.forEach(arangod => {
+        arangod.debugTerminate(msg, signal_to_expect);
+      });
+    } catch (ex) {
+      this.shutdownInstance(true, "debug terminate failed");
+      throw ex;
+    }
     return 0;
   }
   checkDebugTerminated() {

@@ -1660,26 +1660,27 @@ class instance {
         const body = {
           message: msg
         };
+        arango.timeout(this.options.httpTimeout / 4);
         reply = arango.PUT_RAW('/_admin/debug/crash', body);
       } catch(ex) {
         if (ex instanceof ArangoError && (
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
             (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
-          print(`Terminated instance ${this.name} - ${ex}`);
+          print(`Terminated instance ${this.name} - ${ex.message}`);
           return this.checkDebugTerminated(true);
         }
-        throw new Error(`Failed to crash ${this.name}: ${ex}`);
+        throw new Error(`Failed to crash ${this.name}: ${ex.message}`);
       }
       if (reply.code !== 200) {
         if (reply === undefined) {
           reply = { parsedBody: "thrown during connect"};
         }
-        throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
+        throw new Error(`Failed to crash ${this.name}: ${JSON.stringify(reply)}`);
       }
     }
     let count = 0;
     while (count < 10) {
-      if (this.checkDebugTerminated(false)) {
+      if (this.checkDebugTerminated(false, signal_to_expect)) {
         return;
       }
       count += 1;
