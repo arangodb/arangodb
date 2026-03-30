@@ -86,6 +86,15 @@ RestStatus RestAccessTokenHandler::execute() {
   }
 }
 
+async<Result> RestAccessTokenHandler::checkUserCanAccess() const {
+  // This API only requires the user to be authenticated
+  if (request()->authenticated()) {
+    co_return Result{};
+  }
+
+  co_return Result{TRI_ERROR_FORBIDDEN};
+}
+
 RestStatus RestAccessTokenHandler::showAccessTokens(auth::UserManager* um,
                                                     std::string const& user) {
   VPackBuilder tokens;

@@ -64,10 +64,7 @@ using namespace arangodb::rest;
 namespace {
 // some static URL path prefixes
 constexpr std::string_view pathPrefixApi("/_api/");
-constexpr std::string_view pathPrefixApiUser("/_api/user/");
-constexpr std::string_view pathPrefixApiToken("/_api/token/");
 constexpr std::string_view pathPrefixAdmin("/_admin/");
-constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
 
 VocbasePtr lookupDatabaseFromRequest(
@@ -800,6 +797,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     }
   }
 
+#if 0
   bool userAuthenticated = req.authenticated();
   Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
 
@@ -871,8 +869,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
       }
     }
   }
-
-  return result;
+#endif
+  return Flow::Continue;
 }
 
 /// deny credentialed requests or not (only CORS)

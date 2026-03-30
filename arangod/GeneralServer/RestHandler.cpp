@@ -431,6 +431,11 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
     shutdownExecute(false);
   };
 
+  co_await handleSpecialAccessChecks();
+  if (_state == HandlerState::FAILED) {
+    co_return fail();
+  }
+
   auto const logScopeGuard =
       LogContext::Accessor::ScopedValue(makeSharedLogContextValue());
 
@@ -661,6 +666,24 @@ void RestHandler::compressResponse() {
 
     default:
       break;
+  }
+}
+
+async<Result> RestHandler::checkUserCanAccess() const{
+    auto vc = basics::downCast<VocbaseContext>(request()->requestContext());
+    TRI_ASSERT(vc != nullptr);
+    if (vc->databaseAuthLevel() == auth::Level::NONE) {
+      co_return Result{TRI_ERROR_FORBIDDEN};
+    }
+
+    co_return Result{};
+}
+
+async<void> RestHandler::handleSpecialAccessChecks() {
+  Result authzResult = co_await checkUserCanAccess();
+  if (authzResult.fail()) {
+    _state = HandlerState::FAILED;
+    handleError(authzResult);
   }
 }
 
