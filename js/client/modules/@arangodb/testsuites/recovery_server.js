@@ -80,7 +80,7 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
       // forcefully enable crash handler, even if turned off globally
       // during testing
       require('internal').env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
-      params.cleanupCoreDump = params.script.search("segfault") > 0);
+      params.cleanupCoreDump = params.script.search("segfault") > 0;
     }
 
     // enable development debugging if extremeVerbosity is set
