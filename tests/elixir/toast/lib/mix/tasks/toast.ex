@@ -156,6 +156,9 @@ defmodule Mix.Tasks.Toast do
     Toast.Application.reconfigure_file_logger(test_config.result_dir)
     result = ToastTest.Runner.run_suites(suite_data, test_config, ex_unit_opts)
 
+    suite_results = Enum.map(result.suites, & &1.suite_result)
+    ToastTest.RunSummary.print(suite_results)
+
     abort_reason = ToastTest.Abort.reason()
 
     run_results = %{
