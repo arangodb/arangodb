@@ -138,6 +138,19 @@ jobs:
       #       cat /boot/config-$(uname -r) 2>/dev/null | grep FREQ
 
       - run:
+          name: yet more info2
+          command: |
+            set -o xtrace
+            cat /sys/kernel/mm/lru_gen/enabled
+
+            # Memory compaction settings (may or may not be readable)
+            cat /proc/sys/vm/compaction_proactiveness
+
+            # Any Amazon-specific memory features
+            cat /proc/sys/vm/overcommit_memory
+            cat /proc/sys/vm/overcommit_ratio
+
+      - run:
           name: yet more info
           command: |
             set -o xtrace
