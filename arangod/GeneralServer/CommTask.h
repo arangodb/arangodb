@@ -99,9 +99,6 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
   void setTimingData(uint64_t id, RequestTimingData&& data);
 
-  static void finalizeTimingData(
-      application_features::ApplicationServer& server, RequestTimingData& data);
-
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;

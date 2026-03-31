@@ -26,6 +26,7 @@
 #include <cstdint>
 
 namespace arangodb {
+namespace application_features { class ApplicationServer; }
 
 // Plain timing data struct carried out on CommTask (per message id)
 // and handed to RestHander during execution.
@@ -62,5 +63,8 @@ struct RequestTimingData {
     return 0.0;
   }
 };
+
+void finalizeTimingData(application_features::ApplicationServer& server,
+    RequestTimingData& data);
 
 }  // namespace arangodb

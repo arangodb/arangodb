@@ -579,8 +579,9 @@ RequestTimingData* CommTask::tryTimingData(uint64_t id) {
   return &it->second;
 }
 
-/*static*/ void CommTask::finalizeTimingData(
-    application_features::ApplicationServer& server, RequestTimingData& data) {
+namespace arangodb {
+void finalizeTimingData(application_features::ApplicationServer& server,
+                        RequestTimingData& data) {
   if (!data.active) {
     return;
   }
@@ -609,9 +610,10 @@ RequestTimingData* CommTask::tryTimingData(uint64_t id) {
 
   data.active = false;
 }
+}  // namespace arangodb
 
 void CommTask::finalizeTimingData(RequestTimingData& data) {
-  finalizeTimingData(_server.server(), data);
+  arangodb::finalizeTimingData(_server.server(), data);
 }
 
 /// @brief send error response including response body

@@ -81,7 +81,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 
 RestHandler::~RestHandler() {
   if (_timingData.active) {
-    CommTask::finalizeTimingData(_server, _timingData);
+    arangodb::finalizeTimingData(_server, _timingData);
   }
   
   if (_trackedAsOngoingLowPrio) {
