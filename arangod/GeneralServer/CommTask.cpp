@@ -796,7 +796,6 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
       return Flow::Abort;
     }
   }
-
 #if 0
   bool userAuthenticated = req.authenticated();
   Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
@@ -868,6 +867,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         result = Flow::Continue;
       }
     }
+
   }
 #endif
   return Flow::Continue;

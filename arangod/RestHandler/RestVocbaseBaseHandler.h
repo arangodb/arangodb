@@ -199,6 +199,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   futures::Future<std::shared_ptr<transaction::Context>>
   createTransactionContext(AccessMode::Type mode,
                            transaction::OperationOrigin operationOrigin) const;
+
  protected:
   // Please see the comment in RestHandler::makeSharedLogContextValue() for
   // some comments.

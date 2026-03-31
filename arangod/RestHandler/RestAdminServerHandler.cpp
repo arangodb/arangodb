@@ -80,6 +80,18 @@ RestStatus RestAdminServerHandler::execute() {
   return RestStatus::DONE;
 }
 
+async<Result> RestAdminServerHandler::checkUserCanAccess() const {
+  auto const& suffixes = _request->suffixes();
+  if (suffixes.size() == 1 && suffixes[0] == "availability") {
+    auto vc = basics::downCast<VocbaseContext>(_request->requestContext());
+    TRI_ASSERT(vc != nullptr);
+    vc->forceSuperuser();
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkUserCanAccess();
+}
+
 void RestAdminServerHandler::writeModeResult(bool readOnly) {
   VPackBuilder builder;
   {

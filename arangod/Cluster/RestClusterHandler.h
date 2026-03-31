@@ -36,6 +36,9 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
+protected:
+  async<Result> checkUserCanAccess() const override;
+
  private:
   /// _api/cluster/endpoints
   void handleCommandEndpoints();

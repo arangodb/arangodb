@@ -54,6 +54,7 @@
 #include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
 #include <unordered_map>
+#include <boost/property_tree/ptree_fwd.hpp>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -669,17 +670,63 @@ void RestHandler::compressResponse() {
   }
 }
 
-async<Result> RestHandler::checkUserCanAccess() const{
-    auto vc = basics::downCast<VocbaseContext>(request()->requestContext());
-    TRI_ASSERT(vc != nullptr);
-    if (vc->databaseAuthLevel() == auth::Level::NONE) {
-      co_return Result{TRI_ERROR_FORBIDDEN};
-    }
+async<Result> RestHandler::checkUserCanAccess() const {
+  bool userAuthenticated = request()->authenticated();
+  bool canAccess = userAuthenticated;
+  std::string const& path = request()->requestPath();
 
-    co_return Result{};
+  auto vc = basics::downCast<VocbaseContext>(request()->requestContext());
+  TRI_ASSERT(vc != nullptr);
+  // deny access to database with NONE
+  if (canAccess && vc->databaseAuthLevel() == auth::Level::NONE) {
+    canAccess = false;
+    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
+        << "Access forbidden to " << path;
+  }
+
+  // we need to check for some special cases, where users may be allowed
+  // to proceed even unauthorized
+  if (not canAccess) {
+    auto auth = AuthenticationFeature::instance();
+
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+    // check if we need to run authentication for this type of
+    // endpoint
+    ConnectionInfo const& ci = request()->connectionInfo();
+
+    if (ci.endpointType == Endpoint::DomainType::UNIX &&
+        !auth->authenticationUnixSockets()) {
+      // no authentication required for unix domain socket connections
+      canAccess = true;
+    }
+#endif
+
+    if (not canAccess && auth->authenticationSystemOnly()) { // TODO remove in 4.0
+      // authentication required, but only for /_api, /_admin etc.
+      if (!path.empty()) {
+        // check if path starts with /_
+        // or path begins with /
+        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
+          // simon: upgrade rights for Foxx apps. FIXME
+          canAccess = true;
+          vc->forceSuperuser();
+          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
+              << "Upgrading rights for " << path;
+        }
+      }
+    }
+  }
+
+  co_return canAccess ? Result() : Result(TRI_ERROR_HTTP_UNAUTHORIZED);
 }
 
 async<void> RestHandler::handleSpecialAccessChecks() {
+  auto auth = AuthenticationFeature::instance();
+  if (not auth->isActive()) {
+    // no authentication required at all
+    co_return;
+  }
+
   Result authzResult = co_await checkUserCanAccess();
   if (authzResult.fail()) {
     _state = HandlerState::FAILED;
@@ -709,7 +756,8 @@ void RestHandler::generateError(arangodb::Result const& r) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                 protected
+// methods
 // -----------------------------------------------------------------------------
 
 void RestHandler::resetResponse(rest::ResponseCode code) {
@@ -717,8 +765,8 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   _response->reset(code);
 }
 
-// Fallback implementation for old RestHandlers that implement execute() instead
-// of executeAsync().
+// Fallback implementation for old RestHandlers that implement execute()
+// instead of executeAsync().
 futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
   TRI_ASSERT(state != RestStatus::WAITING);
@@ -735,9 +783,9 @@ void RestHandler::runHandler(
   _sendResponseCallback = std::move(responseCallback);
 
   runHandlerStateMachine().
-      // Swallow all exceptions. It would be desirable to guarantee no unhandled
-      // exceptions reach this point; so let's at least die in maintainer mode
-      // for now.
+      // Swallow all exceptions. It would be desirable to guarantee no
+      // unhandled exceptions reach this point; so let's at least die in
+      // maintainer mode for now.
       thenFinal([self = shared_from_this()](auto&& tryResult) noexcept {
         try {
           std::move(tryResult).throwIfFailed();

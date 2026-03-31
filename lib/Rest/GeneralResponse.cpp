@@ -468,7 +468,8 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR):
     case static_cast<int>(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER):
       return ResponseCode::NOT_IMPLEMENTED;
-
+    case static_cast<int>(TRI_ERROR_HTTP_UNAUTHORIZED):
+      return ResponseCode::UNAUTHORIZED;
     default:
       return ResponseCode::SERVER_ERROR;
   }

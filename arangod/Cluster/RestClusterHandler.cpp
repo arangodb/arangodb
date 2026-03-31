@@ -136,6 +136,17 @@ RestStatus RestClusterHandler::execute() {
   return RestStatus::DONE;
 }
 
+async<Result> RestClusterHandler::checkUserCanAccess() const {
+  auto const& suffixes = _request->suffixes();
+  if (_request->authenticated() && suffixes.size() == 1 &&
+      suffixes[0] == "endpoints") {
+    // endpoint shall be available to all authenticated users
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkUserCanAccess();
+}
+
 void RestClusterHandler::handleAgencyDump() {
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,

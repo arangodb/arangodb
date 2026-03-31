@@ -37,6 +37,7 @@
 #include <velocypack/Builder.h>
 
 #include <format>
+#include <Basics/DownCast.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -198,6 +199,13 @@ RestStatus RestAuthHandler::execute() {
                   "Wrong credentials");
   }
   return RestStatus::DONE;
+}
+
+async<Result> RestAuthHandler::checkUserCanAccess() const {
+  auto vc = basics::downCast<VocbaseContext>(_request->requestContext());
+  TRI_ASSERT(vc != nullptr);
+  vc->forceSuperuser();
+  co_return Result{};
 }
 
 std::string RestAuthHandler::generateJwt(

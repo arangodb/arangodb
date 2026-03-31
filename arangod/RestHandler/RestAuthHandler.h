@@ -38,6 +38,9 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
+ protected:
+  async<Result> checkUserCanAccess() const override;
+
  private:
   std::string generateJwt(std::string const& username,
                           std::chrono::seconds expiryTime) const;
