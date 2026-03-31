@@ -37,6 +37,7 @@ const inst = require('@arangodb/testutils/instance');
 const { agencyMgr } = require('@arangodb/testutils/agency');
 const _ = require('lodash');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 
 const toArgv = require('internal').toArgv;
 const { isEnterprise, versionHas } = require("@arangodb/test-helper");
@@ -79,6 +80,7 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
       // forcefully enable crash handler, even if turned off globally
       // during testing
       require('internal').env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
+      params.cleanupCoreDump = params.script.search("segfault") > 0;
     }
 
     // enable development debugging if extremeVerbosity is set
@@ -140,6 +142,10 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
     0,
     params.instanceInfo);
   if (params.setup) {
+    if (params.cleanupCoreDump) {
+      params.instance.pid = '*';
+      params.instance.removeCoredump();
+    }
     const hasSignal = params.instanceInfo.exitStatus.hasOwnProperty('signal');
     const hasExitZero = !hasSignal && params.instanceInfo.exitStatus.exit === 0;
     const hasExitOne = !hasSignal && params.instanceInfo.exitStatus.exit === 1;
@@ -215,6 +221,7 @@ function recovery_server (options) {
       let stateFile = fs.getTempFile();
       let exitSuccessOk = test.indexOf('-exitzero') >= 0;
       let exitFailOk = test.indexOf('-exitone') >= 0;
+      SetGlobalExecutionDeadlineTo(options.oneTestTimeout / 4);
 
       while (true) {
         ++iteration;
@@ -225,6 +232,7 @@ function recovery_server (options) {
             rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
           },
           options: _.cloneDeep(options),
+          cleanupCoreDump: false,
           script: test,
           setup: true,
           count: count,
