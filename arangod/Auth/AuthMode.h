@@ -84,7 +84,7 @@ struct AuthMode {
 
    protected:
     // has _system RW access
-    [[nodiscard]] bool isAdmin() const;
+    [[nodiscard]] Result isAdmin() const;
   };
 
   // Role-based access control, based on an external authorization service.

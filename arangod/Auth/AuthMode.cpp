@@ -27,6 +27,7 @@
 #include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/overload.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 
@@ -75,9 +76,19 @@ auto AuthMode::Classic::canUse(Permission permission) const -> Result {
               case DatabaseAccessLevel::None:
                 return {};
               case DatabaseAccessLevel::Read:
-                return level >= auth::Level::RO;
+                if (level >= auth::Level::RO) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient database access level for '" +
+                            database.name + "'"};
               case DatabaseAccessLevel::Write:
-                return level >= auth::Level::RW;
+                if (level >= auth::Level::RW) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient database access level for '" +
+                            database.name + "'"};
             }
             ADB_PROD_CRASH();
           },
@@ -112,12 +123,24 @@ auto AuthMode::Classic::canUse(Permission permission) const -> Result {
 
             switch (collection.level) {
               case AccessLevel::None:
-                return true;
+                return {};
               case AccessLevel::Read:
-                return level >= auth::Level::RO;
+                if (level >= auth::Level::RO) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient collection access level for '" +
+                            collection.name + "' in database '" +
+                            collection.database + "'"};
               case AccessLevel::WriteData:
               case AccessLevel::WriteMeta:
-                return level >= auth::Level::RW;
+                if (level >= auth::Level::RW) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient collection access level for '" +
+                            collection.name + "' in database '" +
+                            collection.database + "'"};
             }
             ADB_PROD_CRASH();
           },
@@ -130,11 +153,21 @@ auto AuthMode::Classic::canUse(Permission permission) const -> Result {
 
             switch (view.level) {
               case ViewAccessLevel::None:
-                return true;
+                return {};
               case ViewAccessLevel::Read:
-                return level >= auth::Level::RO;
+                if (level >= auth::Level::RO) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient view access level for '" + view.name +
+                            "' in database '" + view.database + "'"};
               case ViewAccessLevel::Modify:
-                return level >= auth::Level::RW;
+                if (level >= auth::Level::RW) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient view access level for '" + view.name +
+                            "' in database '" + view.database + "'"};
             }
             ADB_PROD_CRASH();
           },
@@ -147,11 +180,23 @@ auto AuthMode::Classic::canUse(Permission permission) const -> Result {
 
             switch (analyzer.level) {
               case AnalyzerAccessLevel::None:
-                return true;
+                return {};
               case AnalyzerAccessLevel::Read:
-                return level >= auth::Level::RO;
+                if (level >= auth::Level::RO) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient analyzer access level for '" +
+                            analyzer.name + "' in database '" +
+                            analyzer.database + "'"};
               case AnalyzerAccessLevel::Modify:
-                return level >= auth::Level::RW;
+                if (level >= auth::Level::RW) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient analyzer access level for '" +
+                            analyzer.name + "' in database '" +
+                            analyzer.database + "'"};
             }
             ADB_PROD_CRASH();
           },
@@ -190,13 +235,27 @@ auto AuthMode::Unauthenticated::canUse(Permission permission) const -> Result {
       [](auto const& perm) -> Result {
         using T = std::decay_t<decltype(perm)>;
         if constexpr (std::is_same_v<T, Permission::Database>) {
-          return perm.level <= DatabaseAccessLevel::None;
+          if (perm.level <= DatabaseAccessLevel::None) {
+            return {};
+          }
+          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
         } else if constexpr (std::is_same_v<T, Permission::Collection>) {
-          return perm.level <= CollectionAccessLevel::None;
+          if (perm.level <= CollectionAccessLevel::None) {
+            return {};
+          }
+          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
         } else if constexpr (std::is_same_v<T, Permission::View>) {
-          return perm.level <= ViewAccessLevel::None;
+          if (perm.level <= ViewAccessLevel::None) {
+            return {};
+          }
+          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
+        } else if constexpr (std::is_same_v<T, Permission::Analyzer>) {
+          if (perm.level <= AnalyzerAccessLevel::None) {
+            return {};
+          }
+          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
         } else {
-          return false;
+          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
         }
       },
       permission.permission);
