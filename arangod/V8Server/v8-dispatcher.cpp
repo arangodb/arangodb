@@ -116,9 +116,17 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
 
-  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "registerTask() needs db RW permissions");
+  {
+    TRI_GET_GLOBALS();
+    TRI_vocbase_t* vocbase = v8g->_vocbase;
+    if (auto r = ExecContext::current().canUseDatabase(
+            vocbase->name(), DatabaseAccessLevel::Write);
+        r.fail()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_FORBIDDEN,
+          absl::StrCat("registerTask() needs db RW permissions: ",
+                       r.errorMessage()));
+    }
   }
 
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
@@ -187,8 +195,8 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // This option is not documented, and never worked (or at least hasn't for
     // at least 7 years). If it was set to any non-empty string except the
     // current username, an error was generated.
-    // I've left this block here for backwards compatibility with that behavior,
-    // but deleted subsequent code.
+    // I've left this block here for backwards compatibility with that
+    // behavior, but deleted subsequent code.
     std::string runAsUser;
     if (TRI_HasProperty(context, isolate, obj, "runAsUser")) {
       runAsUser = TRI_ObjectToString(
@@ -283,9 +291,17 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
 
-  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "registerTask() needs db RW permissions");
+  {
+    TRI_GET_GLOBALS();
+    TRI_vocbase_t* vocbase = v8g->_vocbase;
+    if (auto r = ExecContext::current().canUseDatabase(
+            vocbase->name(), DatabaseAccessLevel::Write);
+        r.fail()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_FORBIDDEN,
+          absl::StrCat("registerTask() needs db RW permissions: ",
+                       r.errorMessage()));
+    }
   }
 
   auto res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
@@ -343,9 +359,12 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto const& exec = ExecContext::current();
-  if (exec.databaseAuthLevel() != auth::Level::RW) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "createQueue() needs db RW permissions");
+  if (auto r = exec.canUseDatabase(vocbase->name(), DatabaseAccessLevel::Write);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        absl::StrCat("createQueue() needs db RW permissions: ",
+                     r.errorMessage()));
   }
 
   auto const runAsUser = exec.user();
@@ -412,9 +431,13 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString,
                                           VPackValue(key))();
 
-  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "deleteQueue() needs db RW permissions");
+  if (auto r = ExecContext::current().canUseDatabase(
+          vocbase->name(), DatabaseAccessLevel::Write);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        absl::StrCat("deleteQueue() needs db RW permissions: ",
+                     r.errorMessage()));
   }
 
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
@@ -445,7 +468,8 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             module initialization
+// --SECTION--                                             module
+// initialization
 // -----------------------------------------------------------------------------
 
 void TRI_InitV8Dispatcher(v8::Isolate* isolate,

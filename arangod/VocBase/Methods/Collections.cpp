@@ -976,10 +976,15 @@ futures::Future<Result> Collections::properties(Context& ctxt,
   auto coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
-  auto canRead = exec.canUseCollection(coll->vocbase().name(), coll->name(),
-                                       AccessLevel::Read);
-  if (canRead.fail() || exec.databaseAuthLevel() == auth::Level::NONE) {
-    co_return canRead;
+  if (auto r = exec.canUseDatabase(coll->vocbase().name(),
+                                   DatabaseAccessLevel::Read);
+      r.fail()) {
+    co_return r;
+  }
+  if (auto r = exec.canUseCollection(coll->vocbase().name(), coll->name(),
+                                     AccessLevel::Read);
+      r.fail()) {
+    co_return r;
   }
 
   std::unordered_set<std::string> ignoreKeys{StaticStrings::AllowUserKeys,

@@ -493,25 +493,26 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
 
   // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    auth::Level lvl = exec.databaseAuthLevel();
-    bool canModify =
-        exec.canUseCollection(collection.vocbase().name(), collection.name(),
-                              AccessLevel::WriteMeta)
-            .ok();
-    bool canRead = exec.canUseCollection(collection.vocbase().name(),
-                                         collection.name(), AccessLevel::Read)
+  bool canReadDb = exec.canUseDatabase(collection.vocbase().name(),
+                                       DatabaseAccessLevel::Read)
                        .ok();
-    if ((create && (lvl != auth::Level::RW || !canModify)) ||
-        (lvl == auth::Level::NONE || !canRead)) {
-      ensureIndexResult = TRI_ERROR_FORBIDDEN;
-      co_return Result(
-          TRI_ERROR_FORBIDDEN,
-          absl::StrCat(
-              "insufficient permissions (meta data) to create index on "
-              "collection '",
-              collection.name(), "'"));
-    }
+  bool canWriteDb = exec.canUseDatabase(collection.vocbase().name(),
+                                        DatabaseAccessLevel::Write)
+                        .ok();
+  bool canModify =
+      exec.canUseCollection(collection.vocbase().name(), collection.name(),
+                            AccessLevel::WriteMeta)
+          .ok();
+  bool canRead = exec.canUseCollection(collection.vocbase().name(),
+                                       collection.name(), AccessLevel::Read)
+                     .ok();
+  if ((create && (!canWriteDb || !canModify)) || (!canReadDb || !canRead)) {
+    ensureIndexResult = TRI_ERROR_FORBIDDEN;
+    co_return Result(
+        TRI_ERROR_FORBIDDEN,
+        absl::StrCat("insufficient permissions (meta data) to create index on "
+                     "collection '",
+                     collection.name(), "'"));
   }
 
   VPackBuilder normalized;
@@ -764,18 +765,18 @@ auto constexpr getHandle = [](LogicalCollection& collection,
 futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
                                                 velocypack::Slice indexArg) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    if (exec.databaseAuthLevel() != auth::Level::RW ||
-        exec.canUseCollection(collection.vocbase().name(), collection.name(),
-                              AccessLevel::WriteMeta)
-            .fail()) {
-      events::DropIndex(collection.vocbase().name(), collection.name(), "",
-                        TRI_ERROR_FORBIDDEN);
-      co_return {TRI_ERROR_FORBIDDEN,
-                 absl::StrCat("insufficient permissions (meta data) to drop "
-                              "index on collection '",
-                              collection.name(), "'")};
-    }
+  if (exec.canUseDatabase(collection.vocbase().name(),
+                          DatabaseAccessLevel::Write)
+          .fail() ||
+      exec.canUseCollection(collection.vocbase().name(), collection.name(),
+                            AccessLevel::WriteMeta)
+          .fail()) {
+    events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                      TRI_ERROR_FORBIDDEN);
+    co_return {TRI_ERROR_FORBIDDEN,
+               absl::StrCat("insufficient permissions (meta data) to drop "
+                            "index on collection '",
+                            collection.name(), "'")};
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -796,26 +797,26 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
 futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
                                                 IndexId indexId) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    // FIXME: canUseCollection
-    if (exec.databaseAuthLevel() != auth::Level::RW ||
-        exec.canUseCollection(collection.vocbase().name(), collection.name(),
-                              AccessLevel::WriteMeta)
-            .fail()) {
-      events::DropIndex(collection.vocbase().name(), collection.name(), "",
-                        TRI_ERROR_FORBIDDEN);
-      co_return {TRI_ERROR_FORBIDDEN,
-                 absl::StrCat("insufficient permissions (meta data) to drop "
-                              "index on collection '",
-                              collection.name(), "'")};
-    }
+  // FIXME: canUseCollection
+  if (exec.canUseDatabase(collection.vocbase().name(),
+                          DatabaseAccessLevel::Write)
+          .fail() ||
+      exec.canUseCollection(collection.vocbase().name(), collection.name(),
+                            AccessLevel::WriteMeta)
+          .fail()) {
+    events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                      TRI_ERROR_FORBIDDEN);
+    co_return {TRI_ERROR_FORBIDDEN,
+               absl::StrCat("insufficient permissions (meta data) to drop "
+                            "index on collection '",
+                            collection.name(), "'")};
   }
+}
 
-  if (ServerState::instance()->isCoordinator()) {
-    co_return co_await dropCoordinator(collection, indexId);
-  } else {
-    co_return co_await dropDBServer(collection, indexId);
-  }
+if (ServerState::instance()->isCoordinator()) {
+  co_return co_await dropCoordinator(collection, indexId);
+} else {
+  co_return co_await dropDBServer(collection, indexId);
 }
 
 futures::Future<arangodb::Result> Indexes::dropCoordinator(

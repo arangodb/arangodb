@@ -116,13 +116,6 @@ class ExecContext : public RequestContext {
     std::abort();  // TODO remove this method
   }
 
-  /// @brief Authentication level on database selected in the current
-  ///        request scope. Should almost always contain something,
-  ///        if this thread originated in v8 or from HTTP
-  [[deprecated]] auth::Level databaseAuthLevel() const noexcept {
-    std::abort();  // TODO remove this method
-  }
-
   /// @brief returns auth level for user
   [[deprecated]] auth::Level collectionAuthLevel(
       std::string_view dbname, std::string_view collection) const;
