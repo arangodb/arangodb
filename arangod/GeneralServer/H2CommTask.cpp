@@ -33,12 +33,12 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/RequestTimingData.h"
 #include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Statistics/ConnectionStatistics.h"
-#include "Statistics/RequestStatistics.h"
 
 #include <absl/strings/escaping.h>
 
@@ -79,7 +79,7 @@ struct H2Response : public HttpResponse {
       : HttpResponse(code, mid, nullptr,
                      rest::ResponseCompressionType::kUnset) {}
 
-  RequestStatistics::Item statistics;
+  RequestTimingData timingData;
 };
 
 template<SocketType T>
@@ -94,7 +94,10 @@ template<SocketType T>
   }
 
   int32_t const sid = frame->hd.stream_id;
-  me->acquireRequestStatistics(sid).SET_READ_START(TRI_microtime());
+  auto& td = me->acquireTimingData(sid);
+  if (td.active && td.readStart == 0.0) {
+    td.readStart = TRI_microtime();
+  }
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid);
   me->createStream(sid, std::move(req));
@@ -221,7 +224,11 @@ template<SocketType T>
     if (strm.response) {
       auto* h2Response = dynamic_cast<H2Response*>(strm.response.get());
       if (h2Response != nullptr) {
-        h2Response->statistics.SET_WRITE_END();
+        auto& td = h2Response->timingData;
+        if (td.active) {
+          td.writeEnd = TRI_microtime();
+        }
+        me->finalizeTimingData(h2Response->timingData);
       }
     }
     me->_streams.erase(it);
@@ -636,11 +643,13 @@ void H2CommTask<T>::processRequest(Stream& stream,
   // store origin header for later use
   stream.origin = req->header(StaticStrings::Origin);
   auto messageId = req->messageId();
-  RequestStatistics::Item const& stat = this->requestStatistics(messageId);
-  stat.SET_REQUEST_TYPE(req->requestType());
-  stat.ADD_RECEIVED_BYTES(stream.headerBuffSize + req->body().size());
-  stat.SET_READ_END();
-  stat.SET_WRITE_START();
+  auto& td = this->timingData(messageId);
+  if (td.active) {
+    td.requestType = req->requestType();
+    td.receivedBytes += stream.headerBuffSize + req->body().size();
+    td.readEnd = StatisticsFeature::time();
+    td.writeStart = StatisticsFeature::time();
+  }
 
   // OPTIONS requests currently go unauthenticated
   if (req->requestType() == rest::RequestType::OPTIONS) {
@@ -655,7 +664,9 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
   // We want to separate superuser token traffic:
   if (req->authenticated() && req->user().empty()) {
-    stat.SET_SUPERUSER();
+    if (td.active) {
+      td.superuser = true;
+    }
   }
 
   // first check whether we allow the request to continue
@@ -680,7 +691,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
 template<SocketType T>
 void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
-                                 RequestStatistics::Item stat) {
+                                 RequestTimingData data) {
   DTraceH2CommTaskSendResponse((size_t)this);
 
   unsigned n = _numProcessing.fetch_sub(1, std::memory_order_relaxed);
@@ -717,12 +728,12 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       //      <<
       //      GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
       << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode())
-      << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
-      << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
+      << "\"," << Logger::FIXED(data.elapsedSinceReadStart(), 6) << ","
+      << Logger::FIXED(data.elapsedWhileQueued(), 6);
 
   auto* h2Response = dynamic_cast<H2Response*>(tmp);
   if (h2Response != nullptr) {
-    h2Response->statistics = std::move(stat);
+    h2Response->timingData = std::move(data);
   }
 
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max
@@ -909,7 +920,9 @@ void H2CommTask<T>::queueHttp2Responses() {
     // try if upcasting works, and only if so, treat it as HTTP/2.
     auto* h2Response = dynamic_cast<H2Response*>(&res);
     if (h2Response != nullptr) {
-      h2Response->statistics.ADD_SENT_BYTES(res.bodySize());
+      if (h2Response->timingData.active) {
+        h2Response->timingData.sentBytes += res.bodySize();
+      }
     }
 
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
