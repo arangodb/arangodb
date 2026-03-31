@@ -108,7 +108,6 @@ class RocksDBIndex : public Index {
   void setupCache();
   void destroyCache() noexcept;
 
-
   /// @brief Called before the index is persisted during creation.
   /// Allows indexes to validate existing documents in the collection.
   /// Default implementation is a no-op.
