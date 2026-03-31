@@ -510,8 +510,8 @@ void HttpCommTask<T>::checkProtocolUpgrade() {
 
 #ifdef USE_DTRACE
 // Moved here to prevent multiplicity by template
-static void __attribute__((noinline)) DTraceHttpCommTaskProcessRequest(
-    size_t th) {
+static void __attribute__((noinline))
+DTraceHttpCommTaskProcessRequest(size_t th) {
   DTRACE_PROBE1(arangod, HttpCommTaskProcessRequest, th);
 }
 #else
@@ -652,8 +652,8 @@ void HttpCommTask<T>::doProcessRequest() {
 
 #ifdef USE_DTRACE
 // Moved here to prevent multiplicity by template
-static void __attribute__((noinline)) DTraceHttpCommTaskSendResponse(
-    size_t th) {
+static void __attribute__((noinline))
+DTraceHttpCommTaskSendResponse(size_t th) {
   DTRACE_PROBE1(arangod, HttpCommTaskSendResponse, th);
 }
 #else
@@ -828,12 +828,12 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
 #ifdef USE_DTRACE
 // Moved here to prevent multiplicity by template
-static void __attribute__((noinline)) DTraceHttpCommTaskWriteResponse(
-    size_t th) {
+static void __attribute__((noinline))
+DTraceHttpCommTaskWriteResponse(size_t th) {
   DTRACE_PROBE1(arangod, HttpCommTaskWriteResponse, th);
 }
-static void __attribute__((noinline)) DTraceHttpCommTaskResponseWritten(
-    size_t th) {
+static void __attribute__((noinline))
+DTraceHttpCommTaskResponseWritten(size_t th) {
   DTRACE_PROBE1(arangod, HttpCommTaskResponseWritten, th);
 }
 #else

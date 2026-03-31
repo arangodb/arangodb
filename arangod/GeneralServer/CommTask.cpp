@@ -476,9 +476,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
-    RequestTimingData stats = stealTimingData(messageId);
-    stats.async = true;
-    handler->setTimingData(std::move(stats));
+    RequestTimingData data = stealTimingData(messageId);
+    data.async = true;
+    handler->setTimingData(std::move(data));
     handler->setIsAsyncRequest();
 
     uint64_t jobId = 0;
@@ -522,7 +522,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // -----------------------------------------------------------------------------
 
 void CommTask::setTimingData(uint64_t id, RequestTimingData&& data) {
-  std::lock_guard lock{_statisticsMutex};
+  std::lock_guard guard{_statisticsMutex};
   _statisticsMap.insert_or_assign(id, std::move(data));
 }
 
@@ -553,14 +553,14 @@ RequestTimingData& CommTask::acquireTimingData(uint64_t id) {
 }
 
 RequestTimingData& CommTask::timingData(uint64_t id) {
-  std::lock_guard lock{_statisticsMutex};
+  std::lock_guard guard{_statisticsMutex};
   auto it = _statisticsMap.find(id);
   TRI_ASSERT(it != _statisticsMap.end());
   return it->second;
 }
 
 RequestTimingData CommTask::stealTimingData(uint64_t id) {
-  std::lock_guard lock{_statisticsMutex};
+  std::lock_guard guard{_statisticsMutex};
   auto it = _statisticsMap.find(id);
   if (it == _statisticsMap.end()) {
     return RequestTimingData{};  // inactive, no-op
@@ -571,7 +571,7 @@ RequestTimingData CommTask::stealTimingData(uint64_t id) {
 }
 
 RequestTimingData* CommTask::tryTimingData(uint64_t id) {
-  std::lock_guard lock{_statisticsMutex};
+  std::lock_guard guard{_statisticsMutex};
   auto it = _statisticsMap.find(id);
   if (it == _statisticsMap.end()) {
     return nullptr;
