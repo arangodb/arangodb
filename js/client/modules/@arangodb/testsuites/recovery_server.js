@@ -80,6 +80,7 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
       // forcefully enable crash handler, even if turned off globally
       // during testing
       require('internal').env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
+      params.cleanupCoreDump = params.script.search("segfault") > 0);
     }
 
     // enable development debugging if extremeVerbosity is set
@@ -141,7 +142,7 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
     0,
     params.instanceInfo);
   if (params.setup) {
-    if (params.script.search("segfault") > 0) {
+    if (params.cleanupCoreDump) {
       params.instance.pid = '*';
       params.instance.removeCoredump();
     }
@@ -231,6 +232,7 @@ function recovery_server (options) {
             rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
           },
           options: _.cloneDeep(options),
+          cleanupCoreDump: false,
           script: test,
           setup: true,
           count: count,
