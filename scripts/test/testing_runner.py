@@ -422,65 +422,16 @@ class TestingRunner:
 
     # pylint: disable=too-many-arguments disable=logging-fstring-interpolation
     def mp_zip_tar(self, fnlist, zip_dir, tarfile, verb, filetype):
-        """ use full machine to compress files in zip-tar """
-        zip_slots = psutil.cpu_count(logical=False) * 2
-        count = 0
-        zip_slot_array = []
-        for _ in range(zip_slots):
-            zip_slot_array.append([])
-        for one_file in fnlist:
-            if one_file.exists():
-                zip_slot_array[count % zip_slots].append(one_file)
-                count += 1
-        zippers = []
-        logging.info(f"{verb} launching zipper sub processes {zip_slot_array}")
-        for zip_slot in zip_slot_array:
-            if len(zip_slot) > 0:
-                proc = Process(target=zipp_this, args=(zip_slot, zip_dir))
-                proc.start()
-                zippers.append(proc)
-        for zipper in zippers:
-            zipper.join()
-        logging.info("compressing files done")
-
-        for one_file in fnlist:
-            if one_file.is_file():
-                one_file.unlink(missing_ok=True)
-
-        logging.info(f"creating {filetype}: {str(tarfile)} with {str(fnlist)}.tar")
-        sys.stdout.flush()
-        try:
-            shutil.make_archive(str(tarfile),
-                                'tar',
-                                (zip_dir / '..').resolve(),
-                                zip_dir.name,
-                                True)
-        except Exception as ex:
-            logging.info(f"Failed to create {verb} zip: {str(ex)}")
-            self.append_report_txt(f"Failed to create {verb} zip: {str(ex)}")
-        shutil.rmtree(zip_dir)
-
-    def cleanup_unneeded_binary_files(self):
-        """delete all files not needed for the crashreport binaries"""
-        shutil.rmtree(str(self.cfg.bin_dir / "tzdata"))
-        needed = [
-            "fuertetest",
-            "arangobackup",
-            "arangosh",
-            "arangoexport",
-            "arangoinspect",
-            "arangoimport",
-            "arangoimp",
-            "arangorestore",
-            "arangobench",
-            'arangodbtests',
-            "arangod",
-            "arangodump",
-        ]
-        for one_file in self.cfg.bin_dir.iterdir():
-            if one_file.suffix == ".lib" or (one_file.stem not in needed):
-                logging.info("Deleting %s", str(one_file))
-                one_file.unlink(missing_ok=True)
+      # If pythons compresslib was supporting parallelism for xz this would
+      # be fast-ish. It doesnt so it isnt.
+      # with python 3.14 theres zstd which does support setting the number
+      # of compression workers
+      #with tarfile.open(tarfile, "w:xz", preset=4) as tar:
+      #   for f in fnlist:
+      #     tar.add(f, arcname=os.path.basename("build/bin/"))
+      filenames = map(str, fnlist)
+      opts = ["tar", "-c", "-I", "zstd -5 -T0", "-f", tarfile] + list(filenames)
+      subprocess.run(opts)
 
     def generate_crash_report(self):
         """crash report zips"""
@@ -491,7 +442,6 @@ class TestingRunner:
         core_dir = Path.cwd()
         core_pattern = "core*"
         system_corefiles = []
-        self.cleanup_unneeded_binary_files()
         if "COREDIR" in os.environ:
             core_dir = Path(os.environ["COREDIR"])
         else:
@@ -542,7 +492,20 @@ class TestingRunner:
             logging.info(
                 "creating crashreport binary support zip: %s", str(binary_report_file)
             )
-            bin_files_list = [f for f in self.cfg.bin_dir.glob('*') if not f.is_symlink()]
+            bin_files_list = map(self.cfg.bin_dir.joinpath, [
+                "fuertetest",
+                "arangobackup",
+                "arangosh",
+                "arangoexport",
+                "arangoinspect",
+                "arangoimport",
+                "arangoimp",
+                "arangorestore",
+                "arangobench",
+                'arangodbtests',
+                "arangod",
+                "arangodump",
+            ])
             self.mp_zip_tar(bin_files_list, self.cfg.bin_dir, binary_report_file, 'binary support', 'binreport')
 
     def generate_test_report(self):

@@ -406,6 +406,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void GeneralServerFeature::prepare() {
+  ADB_PROD_CRASH();
   ServerState::instance()->setServerMode(ServerState::Mode::STARTUP);
 
   if (ServerState::instance()->isAgent()) {
