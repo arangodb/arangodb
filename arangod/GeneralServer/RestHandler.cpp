@@ -24,6 +24,7 @@
 #include "RestHandler.h"
 
 #include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
 #include "Basics/dtrace-wrapper.h"
@@ -43,10 +44,10 @@
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
-#include "Activities/RegistryGlobalVariable.h"
 
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
@@ -730,7 +731,10 @@ async<void> RestHandler::handleSpecialAccessChecks() {
   Result authzResult = co_await checkUserCanAccess();
   if (authzResult.fail()) {
     _state = HandlerState::FAILED;
-    handleError(authzResult);
+    events::NotAuthorized(*_request);
+    generateError(ResponseCode::UNAUTHORIZED,
+                      TRI_ERROR_FORBIDDEN,
+                      "not authorized to execute this request");
   }
 }
 
