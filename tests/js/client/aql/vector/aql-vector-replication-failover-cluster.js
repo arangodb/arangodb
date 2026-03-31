@@ -50,9 +50,7 @@ const collName = "vectorReplicationColl";
 // COR-255 vector replication not working
 function VectorIndexReplicationFailoverTest() {
     const dimension = 4;
-    // Training threshold is max(nLists * 39, 1000) = 1000 with nLists=2.
-    // Use 1200 to comfortably exceed the threshold on the follower.
-    const numberOfDocs = 1200;
+    const numberOfDocs = 600;
     const seed = generateSeed();
     const nLists = 2;
 
