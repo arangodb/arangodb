@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8ShellFeature.h"
+#include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -299,12 +300,11 @@ void V8ShellFeature::copyInstallationFiles() {
     }
   }
 
-  if (auto res = TRI_ERROR_NO_ERROR;
-      !FileUtils::createDirectory(_copyDirectory, &res)) {
-    auto err = TRI_last_error();
+  if (auto ec = std::error_code{};
+      !std::filesystem::create_directory(_copyDirectory, ec)) {
     LOG_TOPIC("6d915", FATAL, Logger::V8)
         << "Error creating JS installation path '" << _copyDirectory
-        << "': " << err;
+        << "': " << ec.message();
     FATAL_ERROR_EXIT();
   }
 
