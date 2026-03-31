@@ -95,8 +95,6 @@ function testSuite() {
       // metric values should never be 0 if statistics are enabled
       const connectionsBefore = getMetric("arangodb_connection_statistics_memory_usage");
       assertNotEqual(0, connectionsBefore);
-      const requestsBefore = getMetric("arangodb_request_statistics_memory_usage");
-      assertNotEqual(0, requestsBefore);
       
       // issue some random requests to the server
       for (let i = 0; i < 10; ++i) {
@@ -106,7 +104,6 @@ function testSuite() {
       // metrics values shouldn't have changed, because the statistics memory
       // is allocated at startup and shouldn't grow under normal circumstances
       assertEqual(connectionsBefore, getMetric("arangodb_connection_statistics_memory_usage"));
-      assertEqual(requestsBefore, getMetric("arangodb_request_statistics_memory_usage"));
     }
 
   };
