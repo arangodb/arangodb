@@ -83,7 +83,7 @@ RestHandler::~RestHandler() {
   if (_timingData.active) {
     arangodb::finalizeTimingData(_server, _timingData);
   }
-  
+
   if (_trackedAsOngoingLowPrio) {
     // someone forgot to call trackTaskEnd 🤔
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
@@ -430,7 +430,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
     if (_timingData.active) {
       _timingData.requestEnd = StatisticsFeature::time();
     }
-    // Callback may stealStatistics!
+    // Callback may stealTimingData!
     _sendResponseCallback(this);
 
     shutdownExecute(false);
@@ -463,7 +463,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 
   // compress response if required
   compressResponse();
-  // Callback may stealStatistics!
+  // Callback may stealTimingData!
   _sendResponseCallback(this);
 }
 

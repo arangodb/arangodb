@@ -108,7 +108,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_urlCorrupt = false;
   me->_headerCorrupt = false;
 
-  // acquire a new statistics entry for the request
+  // acquire a new timing data entry for the request
   auto& td = me->acquireTimingData(1UL);
   if (td.active && td.readStart == 0.0) {
     td.readStart = TRI_microtime();
@@ -359,7 +359,6 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     if (auto* td = this->tryTimingData(1UL); td && td->active) {
       td->receivedBytes += nparsed;
     }
-
 
     if (_headerCorrupt) {
       LOG_TOPIC("33324", WARN, Logger::REQUESTS)
@@ -614,7 +613,7 @@ void HttpCommTask<T>::doProcessRequest() {
 
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {
-    auto td = this->timingData(1UL);
+    auto& td = this->timingData(1UL);
     if (td.active) {
       td.superuser = true;
     }
@@ -793,7 +792,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
-  // append write buffer and statistics
   TRI_ASSERT(response.responseCode() != rest::ResponseCode::NO_CONTENT ||
              _response->empty())
       << "response code 204 requires body length to be zero";

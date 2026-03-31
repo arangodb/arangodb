@@ -26,9 +26,11 @@
 #include <cstdint>
 
 namespace arangodb {
-namespace application_features { class ApplicationServer; }
+namespace application_features {
+class ApplicationServer;
+}
 
-// Plain timing data struct carried out on CommTask (per message id)
+// Timing data struct carried out on CommTask (per message id)
 // and handed to RestHander during execution.
 struct RequestTimingData {
   double readStart = 0.0;
@@ -65,6 +67,6 @@ struct RequestTimingData {
 };
 
 void finalizeTimingData(application_features::ApplicationServer& server,
-    RequestTimingData& data);
+                        RequestTimingData& data);
 
 }  // namespace arangodb
