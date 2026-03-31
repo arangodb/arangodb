@@ -104,7 +104,6 @@ class StatisticsFeature final
 
   stats::Descriptions _descriptions;
 
-  metrics::Gauge<uint64_t>& _requestStatisticsMemoryUsage;
   metrics::Gauge<uint64_t>& _connectionStatisticsMemoryUsage;
 };
 
