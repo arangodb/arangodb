@@ -356,8 +356,9 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(nparsed);
     // And count it in the statistics:
-    if (auto* td = this->tryTimingData(1UL); td && td->active) {
-      td->receivedBytes += nparsed;
+    auto& td = this->timingData(1UL);
+    if (td.active) {
+      td.receivedBytes += nparsed;
     }
 
     if (_headerCorrupt) {

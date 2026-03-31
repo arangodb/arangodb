@@ -66,6 +66,8 @@ struct RequestTimingData {
   }
 };
 
+// @brief finalize timing data
+// We need this free function so both RestHanlder and CommTask can call it.
 void finalizeTimingData(application_features::ApplicationServer& server,
                         RequestTimingData& data);
 

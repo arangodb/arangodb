@@ -554,9 +554,7 @@ RequestTimingData& CommTask::acquireTimingData(uint64_t id) {
 
 RequestTimingData& CommTask::timingData(uint64_t id) {
   std::lock_guard guard{_statisticsMutex};
-  auto it = _statisticsMap.find(id);
-  TRI_ASSERT(it != _statisticsMap.end());
-  return it->second;
+  return _statisticsMap[id];
 }
 
 RequestTimingData CommTask::stealTimingData(uint64_t id) {
@@ -568,15 +566,6 @@ RequestTimingData CommTask::stealTimingData(uint64_t id) {
   RequestTimingData result = std::move(it->second);
   _statisticsMap.erase(it);
   return result;
-}
-
-RequestTimingData* CommTask::tryTimingData(uint64_t id) {
-  std::lock_guard guard{_statisticsMutex};
-  auto it = _statisticsMap.find(id);
-  if (it == _statisticsMap.end()) {
-    return nullptr;
-  }
-  return &it->second;
 }
 
 namespace arangodb {

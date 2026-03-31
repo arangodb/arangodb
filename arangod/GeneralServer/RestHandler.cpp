@@ -81,6 +81,8 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 
 RestHandler::~RestHandler() {
   if (_timingData.active) {
+    // An async path doesn't call stealTimingData, so we need to finalize it here.
+    // RestHandler is destroyed as soon as the execution is finished.
     arangodb::finalizeTimingData(_server, _timingData);
   }
 

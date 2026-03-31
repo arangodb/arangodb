@@ -127,8 +127,9 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   [[nodiscard]] RequestTimingData& acquireTimingData(uint64_t id);
   [[nodiscard]] RequestTimingData& timingData(uint64_t id);
   [[nodiscard]] RequestTimingData stealTimingData(uint64_t id);
-  [[nodiscard]] RequestTimingData* tryTimingData(uint64_t id);
 
+  // @brief finalize timing data, and call
+  // GeneralServerFeature::recordHttpRequestStatistics to update the statistics.
   void finalizeTimingData(RequestTimingData& data);
 
   /// @brief send response including error response body
