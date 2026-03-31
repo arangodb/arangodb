@@ -150,6 +150,9 @@ jobs:
             cat /proc/sys/vm/overcommit_memory
             cat /proc/sys/vm/overcommit_ratio
 
+            cat /proc/sys/vm/stat_interval
+            cat /proc/sys/kernel/sched_cfs_bandwidth_slice_us
+
       - run:
           name: yet more info
           command: |
