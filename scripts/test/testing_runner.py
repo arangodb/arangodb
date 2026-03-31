@@ -519,7 +519,7 @@ class TestingRunner:
             logging.info(
                 "creating crashreport binary support zip: %s", str(binary_report_file)
             )
-            bin_files_list = [
+            bin_files_list = map(p.joinpath, [
                 "fuertetest",
                 "arangobackup",
                 "arangosh",
@@ -532,7 +532,7 @@ class TestingRunner:
                 'arangodbtests',
                 "arangod",
                 "arangodump",
-            ]
+            ])
             self.mp_zip_tar(bin_files_list, self.cfg.bin_dir, binary_report_file, 'binary support', 'binreport')
 
     def generate_test_report(self):
