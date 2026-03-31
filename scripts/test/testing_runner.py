@@ -519,7 +519,7 @@ class TestingRunner:
             logging.info(
                 "creating crashreport binary support zip: %s", str(binary_report_file)
             )
-            bin_files_list = map(p.joinpath, [
+            bin_files_list = map(self.cfg.bin_dir.joinpath, [
                 "fuertetest",
                 "arangobackup",
                 "arangosh",
