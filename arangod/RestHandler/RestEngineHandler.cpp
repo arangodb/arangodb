@@ -71,10 +71,12 @@ void RestEngineHandler::handleGet() {
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
-  if (!security.canAccessHardenedApi(
-          rbac::Category::AdminMonitoringInternal{})) {
+  if (auto r = security.canAccessHardenedApi(
+          rbac::Category::AdminMonitoringInternal{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  r.errorMessage());
     return;
   }
 

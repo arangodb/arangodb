@@ -82,10 +82,11 @@ RestStatus ClusterRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #else
-    if (!ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminWalAccess{})) {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            arangodb::rbac::Category::AdminWalAccess{});
+        r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce a cluster info dump");
+                    r.errorMessage());
       return RestStatus::DONE;
     }
 #endif

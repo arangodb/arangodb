@@ -92,9 +92,11 @@ RestMetricsHandler::RestMetricsHandler(
 auto RestMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto& security = server().getFeature<ServerSecurityFeature>();
 
-  if (!security.canAccessHardenedApi(rbac::Category::AdminMonitoring{})) {
+  if (auto r = security.canAccessHardenedApi(rbac::Category::AdminMonitoring{});
+      r.fail()) {
     // don't leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 

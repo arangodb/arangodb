@@ -191,8 +191,11 @@ void RestAdminServerHandler::handleMode() {
   if (requestType == rest::RequestType::GET) {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
-    if (ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminMaintenance{})) {
+    // FIXME: canUseAdminAction - check if this condition is correct (positive
+    // check triggers error)
+    if (ExecContext::current()
+            .canUseAdminAction(arangodb::rbac::Category::AdminMaintenance{})
+            .ok()) {
       generateError(
           rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
           "You need AdminMaintenance rights for changing the server mode");
@@ -323,10 +326,11 @@ void RestAdminServerHandler::handleApiCalls() {
       return;
     }
   } else {
-    if (!ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminApiCalls{})) {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            arangodb::rbac::Category::AdminApiCalls{});
+        r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "You need admin rights for recording API operations");
+                    r.errorMessage());
       return;
     }
   }
@@ -379,10 +383,11 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
       return;
     }
   } else {
-    if (!ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminAqlQueries{})) {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            arangodb::rbac::Category::AdminAqlQueries{});
+        r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights for recording API operations");
+                    r.errorMessage());
       return;
     }
   }

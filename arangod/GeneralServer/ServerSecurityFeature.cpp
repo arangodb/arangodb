@@ -92,19 +92,15 @@ bool ServerSecurityFeature::isRestApiHardened() const noexcept {
   return _options.hardenedRestApi;
 }
 
-bool ServerSecurityFeature::canAccessHardenedApi(
+Result ServerSecurityFeature::canAccessHardenedApi(
     arangodb::rbac::Category::Any const& action) const noexcept {
   bool allowAccess = !isRestApiHardened();
 
   if (!allowAccess) {
     ExecContext const& exec = ExecContext::current();
-    if (exec.canUseAdminAction(action)) {
-      // also allow access if there is not authentication
-      // enabled or when the user is an administrator
-      allowAccess = true;
-    }
+    return exec.canUseAdminAction(action);
   }
-  return allowAccess;
+  return {};
 }
 
 bool ServerSecurityFeature::foxxAllowInstallFromRemote() const noexcept {

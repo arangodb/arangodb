@@ -55,11 +55,11 @@ RestStatus RestSupportInfoHandler::execute() {
     }
   }
 
-  if (apiPolicy == "admin" &&
-      !ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMonitoring{})) {
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMonitoring{});
+      apiPolicy == "admin" && r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficient permissions");
+                  r.errorMessage());
     return RestStatus::DONE;
   }
 

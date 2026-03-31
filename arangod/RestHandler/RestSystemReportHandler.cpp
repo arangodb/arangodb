@@ -83,10 +83,12 @@ RestStatus RestSystemReportHandler::execute() {
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
-  if (!security.canAccessHardenedApi(
-          arangodb::rbac::Category::AdminMonitoringInternal{})) {
+  if (auto r = security.canAccessHardenedApi(
+          arangodb::rbac::Category::AdminMonitoringInternal{});
+      r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  r.errorMessage());
     return RestStatus::DONE;
   }
 

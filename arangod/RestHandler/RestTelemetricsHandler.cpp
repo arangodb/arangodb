@@ -145,11 +145,11 @@ RestStatus RestTelemetricsHandler::execute() {
     }
   }
 
-  if (apiPolicy == "admin" &&
-      !ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMonitoringInternal{})) {
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMonitoringInternal{});
+      apiPolicy == "admin" && r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficient permissions");
+                  r.errorMessage());
     return RestStatus::DONE;
   }
 

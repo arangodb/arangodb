@@ -137,8 +137,9 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
     -> futures::Future<ResultT<bool>> {
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
-      (ExecContext::current().canUseAdminAction(
-           arangodb::rbac::Category::AdminRestore{}) &&
+      (ExecContext::current()
+           .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+           .ok() &&
        !ServerState::readOnly()));
 
   std::shared_ptr<LogicalCollection> col;
@@ -833,7 +834,8 @@ Result RestReplicationHandler::testPermissions() {
 
         if (!collectionName.empty()) {
           auto& exec = ExecContext::current();
-          if (!exec.canUseAdminAction(arangodb::rbac::Category::AdminDump{}) &&
+          if (exec.canUseAdminAction(arangodb::rbac::Category::AdminDump{})
+                  .fail() &&
               exec.canUseCollection(_vocbase.name(), collectionName,
                                     AccessLevel::Read)
                   .fail()) {
@@ -871,8 +873,9 @@ Result RestReplicationHandler::testPermissions() {
                   vocbase->lookupCollection(collectionName) == nullptr) {
                 // 1.) re-create collection, means: overwrite=true (rw database)
                 // OR 2.) not existing, new collection (rw database)
-                if (!exec.canUseAdminAction(
-                        arangodb::rbac::Category::AdminRestore{}) &&
+                if (exec.canUseAdminAction(
+                            arangodb::rbac::Category::AdminRestore{})
+                        .fail() &&
                     exec.canUseCollection(dbName, collectionName,
                                           AccessLevel::WriteMeta)
                         .fail()) {
@@ -886,8 +889,9 @@ Result RestReplicationHandler::testPermissions() {
               } else {
                 // 3.) Existing collection (ro database, rw collection)
                 // no overwrite. restoring into an existing collection
-                if (!exec.canUseAdminAction(
-                        arangodb::rbac::Category::AdminRestore{}) &&
+                if (exec.canUseAdminAction(
+                            arangodb::rbac::Category::AdminRestore{})
+                        .fail() &&
                     exec.canUseCollection(dbName, collectionName,
                                           AccessLevel::WriteData)
                         .fail()) {
@@ -967,8 +971,10 @@ void RestReplicationHandler::handleCommandMakeFollower() {
   configuration.validate();
 
   // allow access to _users if appropriate
-  ExecContextSuperuserScope escope(ExecContext::current().canUseAdminAction(
-      arangodb::rbac::Category::AdminReplication{}));
+  ExecContextSuperuserScope escope(
+      ExecContext::current()
+          .canUseAdminAction(arangodb::rbac::Category::AdminReplication{})
+          .ok());
 
   // forget about any existing replication applier configuration
   applier->forget();
@@ -1045,7 +1051,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
-    if (!exec.canUseAdminAction(arangodb::rbac::Category::AdminClusterInfo{}) &&
+    if (exec.canUseAdminAction(arangodb::rbac::Category::AdminClusterInfo{})
+            .fail() &&
         exec.canUseCollection(dbName, c->name(), AccessLevel::Read).fail()) {
       continue;
     }
@@ -1337,8 +1344,9 @@ futures::Future<Result> RestReplicationHandler::processRestoreData(
 #endif
 
   ExecContextSuperuserScope escope(
-      ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminRestore{}) &&
+      ExecContext::current()
+          .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+          .ok() &&
       !ServerState::readOnly());
 
   if (colName == StaticStrings::UsersCollection) {
@@ -1889,8 +1897,9 @@ Result RestReplicationHandler::processRestoreIndexes(
   Result fres;
 
   ExecContextSuperuserScope escope(
-      ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminRestore{}) &&
+      ExecContext::current()
+          .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+          .ok() &&
       !ServerState::readOnly());
 
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
@@ -3195,8 +3204,11 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
   LOG_TOPIC("6e075", TRACE, arangodb::Logger::REPLICATION)
       << "requested revision tree for collection '" << ctx.cname << "'";
 
-  ExecContextSuperuserScope escope(ExecContext::current().canUseAdminAction(
-      arangodb::rbac::Category::AdminWriteReplicatedLog{}));
+  ExecContextSuperuserScope escope(
+      ExecContext::current()
+          .canUseAdminAction(
+              arangodb::rbac::Category::AdminWriteReplicatedLog{})
+          .ok());
 
   if (auto r = ExecContext::current().canUseCollection(
           _vocbase.name(), ctx.cname, AccessLevel::Read);

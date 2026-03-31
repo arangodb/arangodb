@@ -651,9 +651,11 @@ async<void> RestAdminClusterHandler::handlePostRemoveServer(
 }
 
 async<void> RestAdminClusterHandler::handleRemoveServer() {
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminRemoveServer{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminRemoveServer{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 
@@ -687,9 +689,11 @@ async<void> RestAdminClusterHandler::handleRemoveServer() {
 }
 
 void RestAdminClusterHandler::handleShardStatistics() {
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminClusterInfo{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminClusterInfo{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     return;
   }
 
@@ -797,13 +801,15 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
 
     auto const& exec = ExecContext::current();
     bool canAccess =
-        exec.canUseAdminAction(arangodb::rbac::Category::AdminMoveShards{}) ||
+        exec.canUseAdminAction(arangodb::rbac::Category::AdminMoveShards{})
+            .ok() ||
         exec.canUseCollection(ctx->database, ctx->collection,
                               CollectionAccessLevel::WriteMeta)
             .ok();
     if (!canAccess) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "insufficient permissions on database to move shard");
+      generateError(
+          rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+          "insufficient permissions on database or collection to move shard");
       co_return;
     }
 
@@ -980,9 +986,11 @@ async<void> RestAdminClusterHandler::handlePostMoveShard(
 }
 
 async<void> RestAdminClusterHandler::handleQueryJobStatus() {
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMoveShards{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMoveShards{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 
@@ -1059,9 +1067,11 @@ async<void> RestAdminClusterHandler::handleQueryJobStatus() {
 }
 
 async<void> RestAdminClusterHandler::handleCancelJob() {
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMoveShards{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMoveShards{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 
@@ -1230,9 +1240,11 @@ async<void> RestAdminClusterHandler::handleCancelJob() {
 
 async<void> RestAdminClusterHandler::handleSingleServerJob(
     std::string const& job) {
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMaintenance{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMaintenance{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 
@@ -1400,9 +1412,11 @@ void RestAdminClusterHandler::handleShardDistribution() {
     return;
   }
 
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminClusterInfo{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminClusterInfo{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     return;
   }
 
@@ -1450,9 +1464,11 @@ void RestAdminClusterHandler::handleCollectionShardDistribution() {
     return;
   }
 
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminClusterInfo{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminClusterInfo{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     return;
   }
 
@@ -1836,9 +1852,11 @@ async<void> RestAdminClusterHandler::handlePutDBServerMaintenance(
 }
 
 async<void> RestAdminClusterHandler::handleMaintenance() {
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMaintenance{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMaintenance{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 
@@ -1869,9 +1887,11 @@ async<void> RestAdminClusterHandler::handleMaintenance() {
 
 async<void> RestAdminClusterHandler::handleDBServerMaintenance(
     std::string const& serverId) {
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMaintenance{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMaintenance{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 
@@ -1948,9 +1968,11 @@ async<void> RestAdminClusterHandler::handleGetNumberOfServers() {
 }
 
 async<void> RestAdminClusterHandler::handlePutNumberOfServers() {
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMaintenance{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMaintenance{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 
@@ -2073,10 +2095,11 @@ async<void> RestAdminClusterHandler::handleNumberOfServers() {
       (request()->requestType() != rest::RequestType::GET ||
        security.isRestApiHardened());
 
-  if (needsAdminPrivileges &&
-      !ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMaintenance{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMaintenance{});
+      needsAdminPrivileges && r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 
@@ -2100,9 +2123,11 @@ async<void> RestAdminClusterHandler::handleUniqId() {
   }
 
   // Only PUT method is allowed and always requires admin privileges
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMaintenance{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminMaintenance{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 
@@ -2550,9 +2575,10 @@ async<void> RestAdminClusterHandler::handleRebalanceShards() {
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseAdminAction(rbac::Category::AdminMoveShards{})) {
+  if (auto r = exec.canUseAdminAction(rbac::Category::AdminMoveShards{});
+      r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficient permissions");
+                  r.errorMessage());
     co_return;
   }
 
@@ -2880,9 +2906,11 @@ async<void> RestAdminClusterHandler::handleRebalance() {
     co_return;
   }
 
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminRebalance{})) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminRebalance{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     co_return;
   }
 

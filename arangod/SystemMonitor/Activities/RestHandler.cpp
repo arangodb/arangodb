@@ -44,10 +44,11 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
       co_return;
     }
   } else {
-    if (!ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminMonitoringInternal{})) {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            arangodb::rbac::Category::AdminMonitoringInternal{});
+        r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin user rights for activities operations");
+                    r.errorMessage());
       co_return;
     }
   }

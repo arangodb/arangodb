@@ -59,10 +59,11 @@ RestStatus RestClusterHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty()) {
     if (suffixes[0] == "cluster-info") {
-      if (!ExecContext::current().canUseAdminAction(
-              arangodb::rbac::Category::AdminClusterInfo{})) {
+      if (auto r = ExecContext::current().canUseAdminAction(
+              arangodb::rbac::Category::AdminClusterInfo{});
+          r.fail()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                      "you need admin rights to produce a cluster info dump");
+                      r.errorMessage());
         return RestStatus::DONE;
       }
       if (suffixes.size() == 1) {
@@ -150,10 +151,11 @@ void RestClusterHandler::handleAgencyDump() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auto const& exec = ExecContext::current();
-    if (!exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{})) {
-      generateError(
-          rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-          "you need AdminReadAgency rights to produce an agency dump");
+    if (auto r =
+            exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{});
+        r.fail()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    r.errorMessage());
       return;
     }
   }
@@ -173,9 +175,11 @@ void RestClusterHandler::handleAgencyCache() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auto const& exec = ExecContext::current();
-    if (!exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{})) {
+    if (auto r =
+            exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{});
+        r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need AdminReadAgency rights to read the agency cache");
+                    r.errorMessage());
       return;
     }
   }

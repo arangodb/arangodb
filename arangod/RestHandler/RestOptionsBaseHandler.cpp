@@ -51,10 +51,11 @@ bool RestOptionsBaseHandler::checkAuthentication() {
     }
   }
 
-  if (apiPolicy == "admin" && !ExecContext::current().canUseAdminAction(
-                                  arangodb::rbac::Category::AdminOptions{})) {
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminOptions{});
+      apiPolicy == "admin" && r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficient permissions");
+                  r.errorMessage());
     return false;
   }
 

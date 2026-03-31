@@ -258,9 +258,10 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("reload()");
   }
-  if (!ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminAuthReload{})) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminAuthReload{});
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();

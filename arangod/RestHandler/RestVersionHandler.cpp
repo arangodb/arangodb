@@ -137,7 +137,8 @@ RestStatus RestVersionHandler::execute() {
       server().getFeature<ServerSecurityFeature>();
 
   bool const allowInfo =
-      security.canAccessHardenedApi(rbac::Category::AdminMonitoringInternal{});
+      security.canAccessHardenedApi(rbac::Category::AdminMonitoringInternal{})
+          .ok();
   bool const includeDetails = _request->parsedValue("details", false);
   getVersion(server(), allowInfo, includeDetails, result,
              _request->requestedApiVersion());

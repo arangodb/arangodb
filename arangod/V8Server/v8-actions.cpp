@@ -403,8 +403,10 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
-    if (user.empty() || ExecContext::current().canUseAdminAction(
-                            arangodb::rbac::Category::AdminFoxx{})) {
+    if (user.empty() ||
+        ExecContext::current()
+            .canUseAdminAction(arangodb::rbac::Category::AdminFoxx{})
+            .ok()) {
       req->Set(context, IsAdminUser, v8::True(isolate)).FromMaybe(false);
     } else {
       req->Set(context, IsAdminUser, v8::False(isolate)).FromMaybe(false);
