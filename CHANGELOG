@@ -1,6 +1,12 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Create coredumps with correct CPU context.
+  For signals like SIGSEGV, SIGILL etc. return from the signal handler instead
+  of calling std::abort. This ensures that the coredump is created with the CPU
+  context from the time the signal was raised instead of the CPU context from
+  the std::abort call.
+
 * Updated timezone database as of 31.03.2026.
 
 * COR-374: Fix assertion failure during vector index creation in cluster when a transient
