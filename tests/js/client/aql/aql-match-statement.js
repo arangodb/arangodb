@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, print, fail */
+/*global assertEqual, assertTrue, print, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -123,6 +123,35 @@ function aqlMatchStatementTestSuite() {
             for (const [v, e, w] of result) {
                 assertEqual(v._id, e._from);
                 assertEqual(w._id, e._to);
+            }
+        },
+
+        testSelectInboundEdges: function () {
+            const result = db._query("MATCH (v :vc) <-[ e :ec ]- (w :vc) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._to);
+                assertEqual(w._id, e._from);
+            }
+        },
+
+        testSelectAnyEdges: function () {
+            const result = db._query("MATCH (v :vc) -[ e :ec ]- (w :vc) RETURN [v, e, w]", {}, options).toArray();
+            assertEqual(result.length, 100);
+
+            for (const [v, e, w] of result) {
+                assertTrue([e._from, e._to].includes(v._id));
+                assertTrue([e._from, e._to].includes(w._id));
+            }
+        },
+
+        testDoubleEndedEdgesError: function () {
+            try {
+                const result = db._query("MATCH (v :vc) <-[ e :ec ]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
             }
         },
 
