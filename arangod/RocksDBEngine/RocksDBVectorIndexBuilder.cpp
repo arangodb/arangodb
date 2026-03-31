@@ -159,11 +159,9 @@ VectorIndexTrainer::VectorIndexTrainer(
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
     std::int64_t resolvedNLists) const {
   if (_definition.factory) {
-    std::string factoryString =
-        resolveScalingFactory(*_definition.factory, resolvedNLists);
-
+    auto const factoryString = _definition.factory->c_str();
     std::shared_ptr<faiss::Index> index(
-        faiss::index_factory(_definition.dimension, factoryString.c_str(),
+        faiss::index_factory(_definition.dimension, factoryString,
                              metricToFaissMetric(_definition.metric)));
 
     auto ivfIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
@@ -290,12 +288,10 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
         resolvedDefaultNProbe);
 
     if (_definition.factory) {
-      std::string resolvedFactory =
-          resolveScalingFactory(*_definition.factory, resolvedNLists);
       LOG_TOPIC("c163b", INFO, Logger::ENGINES) << std::format(
           "[shard={}, index={}] Scaling mode: using resolved "
           "factory string '{}'.",
-          _shardName, _indexId, resolvedFactory);
+          _shardName, _indexId, _definition.factory->c_str());
     }
   }
 

@@ -234,21 +234,6 @@ inline std::int64_t resolveNProbeParameter(NProbeParameter const& p,
       p);
 }
 
-/// @brief Resolve a scaling factory string by replacing {nLists} with the
-/// computed nLists value.
-/// Example: "IVF{nLists}_HNSW10,Flat" with nLists=1500
-///       -> "IVF1500_HNSW10,Flat"
-inline std::string resolveScalingFactory(std::string const& factoryTemplate,
-                                         std::int64_t nLists) {
-  std::string result = factoryTemplate;
-  static constexpr std::string_view placeholder = "{nLists}";
-  auto pos = result.find(placeholder);
-  if (pos != std::string::npos) {
-    result.replace(pos, placeholder.length(), std::to_string(nLists));
-  }
-  return result;
-}
-
 struct UserVectorIndexDefinition {
   std::uint64_t dimension;
   SimilarityMetric metric;
