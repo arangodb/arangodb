@@ -602,15 +602,12 @@ Collections::create(         // create collection
 
   // Let's first check if we are allowed to create the collections
   auto const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(vocbase.name(), DatabaseAccessLevel::Write)) {
+  if (auto r = exec.canUseDatabase(vocbase.name(), DatabaseAccessLevel::Write);
+      r.fail()) {
     for (auto const& col : collections) {
       events::CreateCollection(vocbase.name(), col.name, TRI_ERROR_FORBIDDEN);
     }
-    return arangodb::Result(  // result
-        TRI_ERROR_FORBIDDEN,  // code
-        absl::StrCat("cannot create collection in ", vocbase.name(), ": ",
-                     TRI_errno_string(TRI_ERROR_FORBIDDEN))  // message
-    );
+    return r;
   }
 
   // TODO: Discuss should this be Prod Assert?

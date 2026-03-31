@@ -493,10 +493,12 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!ExecContext::current().canUseDatabase(vocbase.name(),
-                                             DatabaseAccessLevel::Read)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient rights to get views");
+  if (auto r = ExecContext::current().canUseDatabase(vocbase.name(),
+                                                     DatabaseAccessLevel::Read);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        absl::StrCat("insufficient rights to get views: ", r.errorMessage()));
   }
 
   std::vector<LogicalView::ptr> views;

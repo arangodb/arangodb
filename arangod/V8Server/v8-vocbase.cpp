@@ -1323,9 +1323,10 @@ static void JS_QueryPlanCacheInvalidate(
   auto& vocbase = GetContextVocBase(isolate);
 
   // TODO Should this be a separate permission/action?
-  if (!ExecContext::current().canUseDatabase(vocbase.name(),
-                                             DatabaseAccessLevel::Write)) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseDatabase(
+          vocbase.name(), DatabaseAccessLevel::Write);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   vocbase.queryPlanCache().invalidateAll();
@@ -1344,9 +1345,10 @@ static void JS_QueryPlanCachePlans(
   auto& vocbase = GetContextVocBase(isolate);
 
   // TODO Should this be a separate permission/action?
-  if (!ExecContext::current().canUseDatabase(vocbase.name(),
-                                             DatabaseAccessLevel::Read)) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  if (auto r = ExecContext::current().canUseDatabase(vocbase.name(),
+                                                     DatabaseAccessLevel::Read);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   auto filter = [&vocbase](aql::QueryPlanCache::Key const& key,

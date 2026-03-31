@@ -49,11 +49,11 @@ futures::Future<futures::Unit> RestPublicOptionsHandler::executeAsync() {
 
   // available to any user with at least read access to the database
   // TODO Should this get a separate admin action/permission?
-  if (ExecContext::isAuthEnabled() &&
-      !ExecContext::current().canUseDatabase(_request->databaseName(),
-                                             DatabaseAccessLevel::Read)) {
+  if (auto r = ExecContext::current().canUseDatabase(_request->databaseName(),
+                                                     DatabaseAccessLevel::Read);
+      r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficient permissions");
+                  r.errorMessage());
     co_return;
   }
 

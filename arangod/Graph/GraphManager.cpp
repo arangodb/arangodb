@@ -1110,14 +1110,14 @@ Result GraphManager::checkDropGraphPermissions(
 
   bool mustDropAtLeastOneCollection =
       !followersToBeRemoved.empty() || !leadersToBeRemoved.empty();
-  bool canUseDatabaseRW =
+  Result canUseDatabaseRW =
       execContext.canUseDatabase(databaseName, DatabaseAccessLevel::Write);
 
-  if (mustDropAtLeastOneCollection && !canUseDatabaseRW) {
+  if (mustDropAtLeastOneCollection && canUseDatabaseRW.fail()) {
     LOG_TOPIC("fdc57", DEBUG, Logger::GRAPHS)
         << logprefix << "Must drop at least one collection in " << databaseName
         << ", but don't have permissions.";
-    return TRI_ERROR_FORBIDDEN;
+    return canUseDatabaseRW;
   }
 
   for (auto const& col :

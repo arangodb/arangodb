@@ -163,24 +163,28 @@ TEST(ExecContextTest, canUseDatabase_internal_uses_dbAuthLevel) {
   TestExecContext ctx(true, "", "", CollectionAccessLevel::WriteMeta,
                       CollectionAccessLevel::WriteMeta, true);
 
-  EXPECT_TRUE(ctx.canUseDatabase("anydb", CollectionAccessLevel::WriteMeta));
-  EXPECT_TRUE(ctx.canUseDatabase("anotherdb", CollectionAccessLevel::Read));
+  EXPECT_TRUE(
+      ctx.canUseDatabase("anydb", CollectionAccessLevel::WriteMeta).ok());
+  EXPECT_TRUE(
+      ctx.canUseDatabase("anotherdb", CollectionAccessLevel::Read).ok());
 }
 
 TEST(ExecContextTest, canUseDatabase_internal_ro_rejects_rw) {
   TestExecContext ctx(true, "", "", CollectionAccessLevel::Read,
                       CollectionAccessLevel::Read, false);
 
-  EXPECT_TRUE(ctx.canUseDatabase("anydb", CollectionAccessLevel::Read));
-  EXPECT_FALSE(ctx.canUseDatabase("anydb", CollectionAccessLevel::WriteMeta));
+  EXPECT_TRUE(ctx.canUseDatabase("anydb", CollectionAccessLevel::Read).ok());
+  EXPECT_FALSE(
+      ctx.canUseDatabase("anydb", CollectionAccessLevel::WriteMeta).ok());
 }
 
 TEST(ExecContextTest, canUseDatabase_same_db_uses_dbAuthLevel) {
   TestExecContext ctx("user", "mydb", CollectionAccessLevel::WriteMeta,
                       CollectionAccessLevel::Read, false);
 
-  EXPECT_TRUE(ctx.canUseDatabase("mydb", CollectionAccessLevel::Read));
-  EXPECT_FALSE(ctx.canUseDatabase("mydb", CollectionAccessLevel::WriteMeta));
+  EXPECT_TRUE(ctx.canUseDatabase("mydb", CollectionAccessLevel::Read).ok());
+  EXPECT_FALSE(
+      ctx.canUseDatabase("mydb", CollectionAccessLevel::WriteMeta).ok());
 }
 
 // --- collectionAuthLevel (internal path) ---

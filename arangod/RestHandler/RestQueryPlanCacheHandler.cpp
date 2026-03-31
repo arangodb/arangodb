@@ -55,11 +55,14 @@ RestStatus RestQueryPlanCacheHandler::execute() {
 
 void RestQueryPlanCacheHandler::clearCache() {
   // TODO Should this get a separate admin action/permission?
-  if (!ExecContext::current().canUseDatabase(_vocbase.name(),
-                                             DatabaseAccessLevel::Write)) {
+  if (auto r = ExecContext::current().canUseDatabase(
+          _vocbase.name(), DatabaseAccessLevel::Write);
+      r.fail()) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        "not allowed to clear this database's query plan cache entries");
+        absl::StrCat(
+            "not allowed to clear this database's query plan cache entries: ",
+            r.errorMessage()));
     return;
   }
 
@@ -76,11 +79,14 @@ void RestQueryPlanCacheHandler::clearCache() {
 
 void RestQueryPlanCacheHandler::readPlans() {
   // TODO Should this get a separate admin action/permission?
-  if (!ExecContext::current().canUseDatabase(_vocbase.name(),
-                                             DatabaseAccessLevel::Read)) {
+  if (auto r = ExecContext::current().canUseDatabase(_vocbase.name(),
+                                                     DatabaseAccessLevel::Read);
+      r.fail()) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        "not allowed to retrieve this database's query plan cache entries");
+        absl::StrCat(
+            "not allowed to retrieve this database's query plan cache entries",
+            r.errorMessage()));
     return;
   }
 

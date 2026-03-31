@@ -1219,7 +1219,7 @@ Result GraphOperations::checkEdgeDefinitionPermissions(
   setUnion(graphCollections, edgeDefinition.getTo());
   graphCollections.emplace(edgeDefinition.getName());
 
-  bool canUseDatabaseRW =
+  Result canUseDatabaseRW =
       execContext.canUseDatabase(databaseName, DatabaseAccessLevel::Write);
   for (auto const& col : graphCollections) {
     // We need RO on all collections. And, in case any collection does not
@@ -1231,11 +1231,11 @@ Result GraphOperations::checkEdgeDefinitionPermissions(
           << logprefix << "No read access to " << databaseName << "." << col;
       return r;
     }
-    if (!collectionExists(col) && !canUseDatabaseRW) {
+    if (!collectionExists(col) && canUseDatabaseRW.fail()) {
       LOG_TOPIC("2bcf2", DEBUG, Logger::GRAPHS)
           << logprefix << "Creation of " << databaseName << "." << col
           << " is not allowed.";
-      return TRI_ERROR_FORBIDDEN;
+      return canUseDatabaseRW;
     }
   }
 
