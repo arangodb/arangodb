@@ -570,13 +570,21 @@ RequestTimingData CommTask::stealTimingData(uint64_t id) {
   return result;
 }
 
-void CommTask::finalizeTimingData(RequestTimingData& data) {
+RequestTimingData* CommTask::tryTimingData(uint64_t id) {
+  std::lock_guard lock{_statisticsMutex};
+  auto it = _statisticsMap.find(id);
+  if (it == _statisticsMap.end()) {
+    return nullptr;
+  }
+  return &it->second;
+}
+
+/*static*/ void CommTask::finalizeTimingData(
+    application_features::ApplicationServer& server, RequestTimingData& data) {
   if (!data.active) {
     return;
   }
 
-  // Legacy counters — still needed by ConnectionStatistics::getSnapshot
-  // until Task 2 (COR293) removes ConnectionStatistics.
   statistics::TotalRequests.incCounter();
   if (data.async) {
     statistics::AsyncRequests.incCounter();
@@ -591,18 +599,19 @@ void CommTask::finalizeTimingData(RequestTimingData& data) {
       statistics::TotalRequestsUser.incCounter();
     }
 
-    if (_server.server().hasFeature<GeneralServerFeature>()) {
-      _server.server()
-          .getFeature<GeneralServerFeature>()
-          .recordHttpRequestStatistics(
-              data.async, data.requestType, data.superuser, data.readStart,
-              data.requestEnd, data.writeEnd, data.queueStart, data.queueEnd,
-              data.requestStart, data.sentBytes, data.receivedBytes);
+    if (server.hasFeature<GeneralServerFeature>()) {
+      server.getFeature<GeneralServerFeature>().recordHttpRequestStatistics(
+          data.async, data.requestType, data.superuser, data.readStart,
+          data.requestEnd, data.writeEnd, data.queueStart, data.queueEnd,
+          data.requestStart, data.sentBytes, data.receivedBytes);
     }
   }
 
-  // Mark as inactive so double-finalization is a no-op
   data.active = false;
+}
+
+void CommTask::finalizeTimingData(RequestTimingData& data) {
+  finalizeTimingData(_server.server(), data);
 }
 
 /// @brief send error response including response body

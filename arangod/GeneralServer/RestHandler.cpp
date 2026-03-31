@@ -33,6 +33,7 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogStructuredParamsAllowList.h"
@@ -79,6 +80,10 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 }
 
 RestHandler::~RestHandler() {
+  if (_timingData.active) {
+    CommTask::finalizeTimingData(_server, _timingData);
+  }
+  
   if (_trackedAsOngoingLowPrio) {
     // someone forgot to call trackTaskEnd 🤔
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
