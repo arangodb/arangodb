@@ -63,12 +63,13 @@ add_library(arango_rocksdb STATIC
   RocksDBVectorIndex.cpp
   RocksDBVectorIndexList.cpp
   RocksDBVectorIndexTraining.cpp
+  RocksDBVectorIndexBuilder.cpp
   RocksDBWalAccess.cpp
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)
 
-if (USE_V8) 
+if (USE_V8)
   target_sources(arango_rocksdb PRIVATE
     RocksDBV8Functions.cpp)
 endif()
@@ -97,7 +98,7 @@ if (USE_ENTERPRISE)
   target_include_directories(arango_rocksdb PUBLIC
     ${IRESEARCH_INCLUDE})
   target_link_libraries(arango_rocksdb
-    arango_rclone 
+    arango_rclone
   )
 endif()
 

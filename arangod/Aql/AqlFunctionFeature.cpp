@@ -29,7 +29,7 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 
 using namespace arangodb::application_features;
 

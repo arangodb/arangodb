@@ -73,3 +73,6 @@ race:DummyConnection::sendRequest
 # might report potential data races because of these missing synchronizations.
 # For that reason we simply need to ignore _all_ data races coming from V8.
 race:v8::*
+
+# Suppress tsan races from OpenBLAS used by faiss
+race:libopenblas

@@ -1,5 +1,60 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+* Fix vector index creation in cluster producing duplicate indexes when
+  `storedValues` differs between definitions (e.g., one with and one without
+  `storedValues`). The comparison now correctly ignores `storedValues`.
+
+* Fix vector index creation in cluster when inBackground is false reports the error
+  that there is insufficient data in collection.
+
+* Vector index creation with `inBackground: false` now blocks until training
+  completes and returns the current `trainingState` in the response.
+
+* Lowered the vector index training threshold from
+  `nLists * max_points_per_centroid` to `nLists`, allowing vector indexes
+  to be trained with fewer documents in the collection.
+
+* COR-255: Fixed vector index not being properly trained on follower shards
+  when replicationFactor is increased. Followers now automatically train and
+  populate vector indexes from local documents after initial sync.
+  Vector index training now happens in the background; index creation returns
+  immediately and queries return error 1555 (`ERROR_QUERY_VECTOR_INDEX_NOT_READY`)
+  until training completes.
+  The REST index API (`GET /_api/index`) now includes per-shard training state
+  for vector indexes in cluster deployments.
+  Added four new vector index metrics: `arangodb_vector_index_unusable`,
+  `arangodb_vector_index_training_ongoing`, `arangodb_vector_index_training_duration`,
+  and `arangodb_vector_index_ingestion_duration`.
+
+* Make defaults for JavaScript security options stricter: Use a default deny
+  policy for the following options:
+    - `--javascript.endpoints-allowlist`
+    - `--javascript.environment-variables-allowlist`
+    - `--javascript.files-allowlist`
+    - `--javascript.startup-options-allowlist`
+  This changes nothing if you **have set these options**. But if you have not,
+  then the default is now "deny".
+
+* Fix an issue when removing documents while using sparse vector index.
+
+* Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
+
+* Fixed a bug in arangosh that made it quit when entering `global`.
+
+* COR-324, github issue #21782: Added information to query extra output
+  about parallelism achieved in SEARCH queries.
+
+* COR-328: Fixed incomplete results in vector search queries when LIMIT exceeded the
+  internal batch size.
+
+* Updated ArangoDB Starter to v0.19.18.
+
+* COR-123: The push-filter-into-enumerate-near optimizer rule now considers all
+  compatible vector indexes on a collection to find if one whose storedValues cover
+  the filter expression.
+
+* COR-267, github issue #21944: Fixed a bug in the handling of post filters
+  with array expansion operators and inverted indexes.
 
 * COR-286: Fixed a crash when executing AQL queries with `usePlanCache: true` on
   cluster-one-shard databases containing graph traversals. When a cached

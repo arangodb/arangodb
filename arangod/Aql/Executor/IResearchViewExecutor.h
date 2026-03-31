@@ -76,7 +76,7 @@ class IResearchViewExecutor
   size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll(IResearchViewStats&);
 
-  bool fillBuffer(ReadContext& ctx);
+  bool fillBuffer(ReadContext& ctx, IResearchViewStats& stats);
 
   template<bool parallel>
   bool readSegment(SegmentReader& reader, std::atomic_size_t& bufferIdxGlobal);

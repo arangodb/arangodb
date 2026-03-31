@@ -889,7 +889,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
 
       // check function arguments
       ast::FunctionCallNode funcCall(node);
-      auto args = funcCall.getArguments();
+      auto args = funcCall.getArgumentsNode();
       size_t const n = args->numMembers();
 
       for (size_t i = 0; i < n; ++i) {
@@ -2981,14 +2981,11 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(
     TRI_ASSERT(func != nullptr);
 
     // function should have one argument (an array with the parameters)
-    auto args = funcCall.getArguments();
-    // the number of arguments should also be one (note: this has been
-    // validated before)
-    TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
+    auto args = funcCall.getArguments().getElements();
     std::string_view functionName = Aggregator::translateAlias(func->name);
     Variable const* variable = nullptr;
-    if (args->numMembers() == 1) {
-      auto arg = args->getMember(0);
+    if (args.size() == 1) {
+      auto arg = args[0];
       if (arg->type == NODE_TYPE_REFERENCE) {
         // operand is a variable
         ast::ReferenceNode refNode(arg);

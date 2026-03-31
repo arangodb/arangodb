@@ -40,6 +40,7 @@
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
+class Iterator;
 class WriteBatch;
 }  // namespace rocksdb
 
@@ -107,9 +108,12 @@ class RocksDBIndex : public Index {
   void setupCache();
   void destroyCache() noexcept;
 
-  virtual void prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
-                            rocksdb::Slice upper, RocksDBMethods* methods,
-                            std::uint64_t numDocsHint = 0) {}
+
+  /// @brief Called before the index is persisted during creation.
+  /// Allows indexes to validate existing documents in the collection.
+  /// Default implementation is a no-op.
+  virtual Result prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
+                              rocksdb::Slice upper, RocksDBMethods* methods);
 
   /// performs a preflight check for an insert operation, not carrying out any
   /// modifications to the index.

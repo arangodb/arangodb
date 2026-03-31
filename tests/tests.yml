@@ -59,7 +59,7 @@
       extraArgs:log.level: replication=trace
 
 
-- authentication_audit_endpoints_import_export_agency:
+- authentication_audit_endpoints_import_export_agency_fuerte:
     options:
       type: single
     suites:
@@ -278,6 +278,7 @@
     options:
       priority: 1000
       type: mixed
+      size: large
     suites:
       - deadlock:
           args:
@@ -338,7 +339,7 @@
 - cluster_resilience:
     options:
       priority: 500
-      size: medium
+      size: large
       type: cluster
     args:
       dumpAgencyOnError: true
@@ -417,7 +418,7 @@
     options:
       priority: 500
       type: cluster
-      size: medium+
+      size: large
       buckets: 6
     args:
       dumpAgencyOnError: true
@@ -477,6 +478,7 @@
       parallelity: 3
       buckets: 2
       type: single
+      size: medium
 
 - server_parameters:
     options:
