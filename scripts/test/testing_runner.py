@@ -431,7 +431,7 @@ class TestingRunner:
       #   for f in fnlist:
       #     tar.add(f, arcname=os.path.basename("build/bin/"))
       filenames = map(str, fnlist)
-      opts = ["tar", "-c", "-I", "zstd -5 -T0", "-f", tarfile] + list(filenames)
+      opts = ["tar", "-c", "-I", "xz -5 -T0", "-f", tarfile] + list(filenames)
       subprocess.run(opts)
 
     def generate_crash_report(self):
