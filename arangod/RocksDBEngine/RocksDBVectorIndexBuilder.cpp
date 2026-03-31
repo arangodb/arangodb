@@ -49,6 +49,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBMetadata.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -155,11 +156,15 @@ VectorIndexTrainer::VectorIndexTrainer(
       _indexId(indexId),
       _trainingThreshold(trainingThreshold) {}
 
-std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex() const {
+std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
+    std::int64_t resolvedNLists) const {
   if (_definition.factory) {
-    std::shared_ptr<faiss::Index> index(faiss::index_factory(
-        _definition.dimension, _definition.factory->c_str(),
-        metricToFaissMetric(_definition.metric)));
+    std::string factoryString =
+        resolveScalingFactory(*_definition.factory, resolvedNLists);
+
+    std::shared_ptr<faiss::Index> index(
+        faiss::index_factory(_definition.dimension, factoryString.c_str(),
+                             metricToFaissMetric(_definition.metric)));
 
     auto ivfIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
     if (ivfIndex == nullptr) {
@@ -167,14 +172,13 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex() const {
           TRI_ERROR_BAD_PARAMETER,
           "Index definition not supported. Expected IVF index.");
     }
-    if (static_cast<std::int64_t>(ivfIndex->nlist) != _definition.nLists) {
+    if (std::size_t(resolvedNLists) != ivfIndex->nlist) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           std::format(
-              "Factory-created IVF index nlist ({}) does not match definition "
-              "nLists ({}). They must match for training and inverted-list "
-              "setup.",
-              ivfIndex->nlist, _definition.nLists));
+              "The nLists parameter ({}) has to agree with the actual nlists "
+              "implied by the factory string '{}' (which is {})",
+              resolvedNLists, factoryString, ivfIndex->nlist));
     }
 
     return ivfIndex;
@@ -192,7 +196,7 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex() const {
 
     std::shared_ptr<faiss::IndexIVF> ivfIndex =
         std::make_unique<faiss::IndexIVFFlat>(
-            quantizer.get(), _definition.dimension, _definition.nLists,
+            quantizer.get(), _definition.dimension, resolvedNLists,
             metricToFaissMetric(_definition.metric));
     ivfIndex->own_fields = nullptr != quantizer.release();
     return ivfIndex;
@@ -255,13 +259,50 @@ ResultT<std::vector<float>> VectorIndexTrainer::collectTrainingDataset(
   return trainingData;
 }
 
+std::int64_t VectorIndexTrainer::resolveNLists(
+    std::uint64_t numDocsHint) const {
+  if (isNListsScaling(_definition.nLists) && numDocsHint == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "For the vector index to be created documents "
+        "must be present in the respective collection for the training "
+        "process.");
+  }
+  return resolveNListsParameter(_definition.nLists, numDocsHint);
+}
+
+std::int64_t VectorIndexTrainer::resolveDefaultNProbe(
+    std::int64_t resolvedNLists) const {
+  return resolveNProbeParameter(_definition.defaultNProbe, resolvedNLists);
+}
+
 ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
-    rocksdb::Iterator& it, rocksdb::Slice upper,
+    rocksdb::Iterator& it, rocksdb::Slice upper, std::uint64_t numDocsHint,
     std::stop_token stopToken) const {
-  auto faissIndex = createFaissIndex();
+  auto const resolvedNLists = resolveNLists(numDocsHint);
+  auto const resolvedDefaultNProbe = resolveDefaultNProbe(resolvedNLists);
+
+  if (isNListsScaling(_definition.nLists)) {
+    LOG_TOPIC("c162b", INFO, Logger::ENGINES) << std::format(
+        "[shard={}, index={}] Scaling mode: numDocsHint={}, "
+        "computed nLists={}, computed defaultNProbe={}.",
+        _shardName, _indexId, numDocsHint, resolvedNLists,
+        resolvedDefaultNProbe);
+
+    if (_definition.factory) {
+      std::string resolvedFactory =
+          resolveScalingFactory(*_definition.factory, resolvedNLists);
+      LOG_TOPIC("c163b", INFO, Logger::ENGINES) << std::format(
+          "[shard={}, index={}] Scaling mode: using resolved "
+          "factory string '{}'.",
+          _shardName, _indexId, resolvedFactory);
+    }
+  }
+
+  auto faissIndex = createFaissIndex(resolvedNLists);
 
   std::int64_t trainingDataSize =
-      faissIndex->cp.max_points_per_centroid * _definition.nLists;
+      faissIndex->cp.max_points_per_centroid * resolvedNLists;
   // For sparse indexes, collect at least trainingThreshold vectors so we can
   // verify that enough vector-bearing documents exist.
   if (_isSparse) {
@@ -284,21 +325,20 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
                               _trainingThreshold, numVectors)};
   }
 
-  LOG_TOPIC("a162b", INFO, Logger::ENGINES)
-      << "[shard=" << _shardName << ", index=" << _indexId << "] "
-      << "Loaded " << numVectors << " vectors. Start training process on "
-      << _definition.nLists << " centroids.";
+  LOG_TOPIC("a162b", INFO, Logger::ENGINES) << std::format(
+      "[shard={}, index={}] Loaded {} vectors. Start training "
+      "process on {} centroids.",
+      _shardName, _indexId, numVectors, resolvedNLists);
 
   faissIndex->train(numVectors, trainingData.get().data());
 
-  LOG_TOPIC("a160b", INFO, Logger::ENGINES)
-      << "[shard=" << _shardName << ", index=" << _indexId << "] "
-      << "Finished training.";
+  LOG_TOPIC("a160b", INFO, Logger::ENGINES) << std::format(
+      "[shard={}, index={}] Finished training.", _shardName, _indexId);
 
   // Persist the resolved defaultNProbe into IndexIVF::nprobe so that it
   // survives serialization and can be read back on restore without needing
   // to recompute from the (no-longer-available) original document count.
-  faissIndex->nprobe = _definition.defaultNProbe;
+  faissIndex->nprobe = resolvedDefaultNProbe;
 
   return faissIndex;
 }
@@ -627,7 +667,9 @@ Result VectorIndexBuildManager::build(
   }
   std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
   trainIt->Seek(_bounds.start());
-  auto faissIndexResult = trainer.train(*trainIt, upper, stopToken);
+  auto numDocsHint = _rcoll->meta().numberDocuments();
+  auto faissIndexResult =
+      trainer.train(*trainIt, upper, numDocsHint, stopToken);
   auto const trainEnd = std::chrono::steady_clock::now();
   if (faissIndexResult.fail()) {
     _index.resetTrainingState();

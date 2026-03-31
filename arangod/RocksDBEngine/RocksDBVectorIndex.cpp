@@ -109,6 +109,9 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     _faissIndex =
         vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
 
+    _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
+    _resolvedDefaultNProbe = static_cast<std::int64_t>(_faissIndex->nprobe);
+
     _faissIndex->replace_invlists(
         new vector::RocksDBInvertedLists(this, &coll, _resolvedNLists,
                                          _faissIndex->code_size),
@@ -118,7 +121,10 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                      VectorIndexTrainingState::kReady);
   }
 
-  _trainingThreshold = _definition.nLists;
+  _trainingThreshold = std::visit(
+      overload{[](std::int64_t fixed) { return fixed; },
+               [](NListsScalingSpec const& spec) { return spec.minNLists; }},
+      _definition.nLists);
 }
 
 RocksDBVectorIndex::~RocksDBVectorIndex() = default;
@@ -277,8 +283,11 @@ void RocksDBVectorIndex::applyTrainingResult(
   _faissIndex = std::move(faissIndex);
   _trainedData = std::move(trainedData);
 
+  _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
+  _resolvedDefaultNProbe = static_cast<std::int64_t>(_faissIndex->nprobe);
+
   _faissIndex->replace_invlists(
-      new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
+      new vector::RocksDBInvertedLists(this, &collection(), _resolvedNLists,
                                        _faissIndex->code_size),
       true /* faiss owns the inverted list */);
 }
