@@ -15,6 +15,7 @@ from threading import Thread, Lock
 import traceback
 from multiprocessing import Process
 import zipfile
+import subprocess
 
 import psutil
 
