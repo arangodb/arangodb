@@ -1,5 +1,8 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+* COR-374: Fix assertion failure during vector index creation in cluster when a transient
+  shard error is followed by success, due to stale error message not being cleared.
+
 * Fix vector index creation in cluster producing duplicate indexes when
   `storedValues` differs between definitions (e.g., one with and one without
   `storedValues`). The comparison now correctly ignores `storedValues`.
