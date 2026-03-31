@@ -62,7 +62,7 @@ TEST(ExecContextTest, basic_construction) {
   EXPECT_EQ(ctx.database(), "testdb");
   EXPECT_EQ(ctx.systemAuthLevel(), CollectionAccessLevel::WriteMeta);
   EXPECT_EQ(ctx.databaseAuthLevel(), CollectionAccessLevel::WriteMeta);
-  EXPECT_TRUE(ctx.isAdminUser());
+  EXPECT_TRUE(ctx.canUseAdminAction());
   EXPECT_FALSE(ctx.isInternal());
   EXPECT_FALSE(ctx.isSuperuser());
   EXPECT_FALSE(ctx.isReadOnly());
@@ -82,7 +82,7 @@ TEST(ExecContextTest, construction_with_jwt_and_roles) {
   EXPECT_EQ(ctx.database(), "testdb");
   EXPECT_EQ(ctx.systemAuthLevel(), auth::Level::RW);
   EXPECT_EQ(ctx.databaseAuthLevel(), auth::Level::RO);
-  EXPECT_TRUE(ctx.isAdminUser());
+  EXPECT_TRUE(ctx.canUseAdminAction());
   EXPECT_TRUE(ctx.hasJwtToken());
   EXPECT_EQ(ctx.jwtToken(), jwtToken);
 
@@ -213,7 +213,7 @@ TEST(ExecContextTest, superuser_singleton) {
   EXPECT_TRUE(su.isInternal());
   EXPECT_TRUE(su.isSuperuser());
   EXPECT_FALSE(su.isReadOnly());
-  EXPECT_TRUE(su.isAdminUser());
+  EXPECT_TRUE(su.canUseAdminAction());
 }
 
 TEST(ExecContextTest, superuser_as_shared_returns_same_object) {

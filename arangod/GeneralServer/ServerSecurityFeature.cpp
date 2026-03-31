@@ -98,7 +98,7 @@ bool ServerSecurityFeature::canAccessHardenedApi(
 
   if (!allowAccess) {
     ExecContext const& exec = ExecContext::current();
-    if (exec.isAdminUser(action)) {
+    if (exec.canUseAdminAction(action)) {
       // also allow access if there is not authentication
       // enabled or when the user is an administrator
       allowAccess = true;

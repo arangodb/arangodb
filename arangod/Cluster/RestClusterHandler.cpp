@@ -59,7 +59,7 @@ RestStatus RestClusterHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty()) {
     if (suffixes[0] == "cluster-info") {
-      if (!ExecContext::current().isAdminUser(
+      if (!ExecContext::current().canUseAdminAction(
               arangodb::rbac::Category::AdminClusterInfo{})) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                       "you need admin rights to produce a cluster info dump");
@@ -150,7 +150,7 @@ void RestClusterHandler::handleAgencyDump() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auto const& exec = ExecContext::current();
-    if (!exec.isAdminUser(arangodb::rbac::Category::AdminReadAgency{})) {
+    if (!exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{})) {
       generateError(
           rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
           "you need AdminReadAgency rights to produce an agency dump");
@@ -173,7 +173,7 @@ void RestClusterHandler::handleAgencyCache() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auto const& exec = ExecContext::current();
-    if (!exec.isAdminUser(arangodb::rbac::Category::AdminReadAgency{})) {
+    if (!exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need AdminReadAgency rights to read the agency cache");
       return;

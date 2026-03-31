@@ -146,7 +146,7 @@ RestStatus RestTelemetricsHandler::execute() {
   }
 
   if (apiPolicy == "admin" &&
-      !ExecContext::current().isAdminUser(
+      !ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMonitoringInternal{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");

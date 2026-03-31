@@ -74,14 +74,14 @@ RestDocumentStateHandler::RestDocumentStateHandler(
 RestStatus RestDocumentStateHandler::execute() {
   auto const type = _request->requestType();
   if (type == RequestType::GET) {
-    if (!ExecContext::current().isAdminUser(
+    if (!ExecContext::current().canUseAdminAction(
             arangodb::rbac::Category::AdminReadReplicatedLog{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "need ReadReplicatedLog rights to perform this operation");
       return RestStatus::DONE;
     }
   } else {
-    if (!ExecContext::current().isAdminUser(
+    if (!ExecContext::current().canUseAdminAction(
             arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "need WriteReplicatedLog rights to perform this operation");

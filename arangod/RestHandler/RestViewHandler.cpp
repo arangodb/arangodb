@@ -467,11 +467,12 @@ void RestViewHandler::getViews() {
 
   for (auto view : views) {
     if (view && (!excludeSystem || !view->system())) {
-      if (!ExecContext::current().canUseView(
-              view->vocbase().name(), view->name(),
-              ViewAccessLevel::Read)) {  // check auth after ensuring that
-                                         // the view exists
-        continue;  // skip views that are not authorized to be read
+      if (ExecContext::current()
+              .canUseView(view->vocbase().name(), view->name(),
+                          ViewAccessLevel::Read)
+              .fail()) {  // check auth after ensuring that
+                          // the view exists
+        continue;         // skip views that are not authorized to be read
       }
 
       // skip views for which the full view definition cannot be generated, as

@@ -51,13 +51,13 @@ using namespace arangodb::replication2;
 auto RestLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
   if (_request->requestType() == RequestType::GET) {
-    if (!ExecContext::current().isAdminUser(
+    if (!ExecContext::current().canUseAdminAction(
             arangodb::rbac::Category::AdminReadReplicatedLog{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
       co_return;
     }
   } else {
-    if (!ExecContext::current().isAdminUser(
+    if (!ExecContext::current().canUseAdminAction(
             arangodb::rbac::Category::AdminWriteReplicatedLog{})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
       co_return;

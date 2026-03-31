@@ -172,7 +172,7 @@ void RestDumpHandler::handleCommandDumpStart() {
   //      before. Should it be specific to `database`?
   //      Should isSingleServer() be part of the permission check?
   ExecContextSuperuserScope escope(
-      ExecContext::current().isAdminUser(rbac::Category::AdminDump{}) &&
+      ExecContext::current().canUseAdminAction(rbac::Category::AdminDump{}) &&
       ServerState::instance()->isSingleServer());
 
   auto guard =
@@ -313,8 +313,9 @@ Result RestDumpHandler::validateRequest() {
         // make this version of dump compatible with the previous version of
         // arangodump. the previous version assumed that as long as you are
         // an admin user, you can dump every collection
-        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser(
-            arangodb::rbac::Category::AdminDump{}));
+        ExecContextSuperuserScope escope(
+            ExecContext::current().canUseAdminAction(
+                arangodb::rbac::Category::AdminDump{}));
 
         // validate permissions for all participating shards
         RocksDBDumpContextOptions opts;

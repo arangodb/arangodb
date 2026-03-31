@@ -165,6 +165,7 @@ struct AuthMode {
 
   Any authMode;
 
+  [[nodiscard]] bool isRbac() const noexcept;
   [[nodiscard]] bool isSuperuser() const noexcept;
 
   template<typename T, typename... Args>

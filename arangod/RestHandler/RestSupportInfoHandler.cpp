@@ -56,7 +56,7 @@ RestStatus RestSupportInfoHandler::execute() {
   }
 
   if (apiPolicy == "admin" &&
-      !ExecContext::current().isAdminUser(
+      !ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMonitoring{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");

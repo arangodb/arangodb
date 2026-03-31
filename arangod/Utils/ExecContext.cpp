@@ -26,6 +26,8 @@
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
 
+#include <variant>
+
 using namespace arangodb;
 
 thread_local std::shared_ptr<ExecContext const> ExecContext::CURRENT = nullptr;
@@ -116,11 +118,14 @@ CollectionAccessLevel ExecContext::collectionAccessLevel(
 }
 
 Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {
-  return Result{};
+  return _authMode.getIAuth().canUse({Permission::Admin{.action = action}});
 }
 
 Result ExecContext::canUseHardenedAction(
     rbac::Category::Any const& action) const {
+  if (_authMode.isRbac()) {
+    return _authMode.getIAuth().canUse({Permission::Admin{.action = action}});
+  }
   return Result{};
 }
 

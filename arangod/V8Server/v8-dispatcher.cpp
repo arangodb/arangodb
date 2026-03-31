@@ -349,7 +349,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto const runAsUser = exec.user();
-  TRI_ASSERT(exec.isAdminUser(arangodb::rbac::Category::AdminTasks{}) ||
+  TRI_ASSERT(exec.canUseAdminAction(arangodb::rbac::Category::AdminTasks{}) ||
              !runAsUser.empty());
 
   std::string key = TRI_ObjectToString(isolate, args[0]);

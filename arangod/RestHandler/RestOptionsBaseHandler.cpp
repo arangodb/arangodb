@@ -51,7 +51,7 @@ bool RestOptionsBaseHandler::checkAuthentication() {
     }
   }
 
-  if (apiPolicy == "admin" && !ExecContext::current().isAdminUser(
+  if (apiPolicy == "admin" && !ExecContext::current().canUseAdminAction(
                                   arangodb::rbac::Category::AdminOptions{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");

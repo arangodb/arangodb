@@ -43,6 +43,10 @@ auto AuthMode::getIAuth() const -> const AuthMode::IAuth& {
       [](auto const& authMode) -> IAuth const& { return authMode; }, authMode);
 }
 
+bool AuthMode::isRbac() const noexcept {
+  return std::holds_alternative<Rbac>(authMode);
+}
+
 bool AuthMode::isSuperuser() const noexcept {
   return std::holds_alternative<Superuser>(authMode);
 }

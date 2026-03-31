@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Auth/Common.h"
+#include "Auth/Rbac/Actions.h"
 
 #include <string>
 #include <variant>
@@ -63,7 +64,7 @@ struct Permission {
     AnalyzerAccessLevel level;
   };
   struct Admin {
-    // TODO
+    arangodb::rbac::Category::Any action;
   };
 
   using Any = std::variant<Database, Collection, View, Analyzer, Admin>;

@@ -49,7 +49,7 @@ RestSupervisionStateHandler::RestSupervisionStateHandler(
 
 // Mounted at /_admin/supervisionState (exact)
 futures::Future<futures::Unit> RestSupervisionStateHandler::executeAsync() {
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminSupervisionState{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;

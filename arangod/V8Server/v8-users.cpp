@@ -258,7 +258,7 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("reload()");
   }
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminAuthReload{})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }

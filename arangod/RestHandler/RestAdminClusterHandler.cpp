@@ -651,7 +651,7 @@ async<void> RestAdminClusterHandler::handlePostRemoveServer(
 }
 
 async<void> RestAdminClusterHandler::handleRemoveServer() {
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminRemoveServer{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
@@ -687,7 +687,7 @@ async<void> RestAdminClusterHandler::handleRemoveServer() {
 }
 
 void RestAdminClusterHandler::handleShardStatistics() {
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminClusterInfo{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return;
@@ -797,7 +797,7 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
 
     auto const& exec = ExecContext::current();
     bool canAccess =
-        exec.isAdminUser(arangodb::rbac::Category::AdminMoveShards{}) ||
+        exec.canUseAdminAction(arangodb::rbac::Category::AdminMoveShards{}) ||
         exec.canUseCollection(ctx->database, ctx->collection,
                               CollectionAccessLevel::WriteMeta)
             .ok();
@@ -980,7 +980,7 @@ async<void> RestAdminClusterHandler::handlePostMoveShard(
 }
 
 async<void> RestAdminClusterHandler::handleQueryJobStatus() {
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMoveShards{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
@@ -1059,7 +1059,7 @@ async<void> RestAdminClusterHandler::handleQueryJobStatus() {
 }
 
 async<void> RestAdminClusterHandler::handleCancelJob() {
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMoveShards{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
@@ -1230,7 +1230,7 @@ async<void> RestAdminClusterHandler::handleCancelJob() {
 
 async<void> RestAdminClusterHandler::handleSingleServerJob(
     std::string const& job) {
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMaintenance{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
@@ -1400,7 +1400,7 @@ void RestAdminClusterHandler::handleShardDistribution() {
     return;
   }
 
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminClusterInfo{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return;
@@ -1450,7 +1450,7 @@ void RestAdminClusterHandler::handleCollectionShardDistribution() {
     return;
   }
 
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminClusterInfo{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return;
@@ -1836,7 +1836,7 @@ async<void> RestAdminClusterHandler::handlePutDBServerMaintenance(
 }
 
 async<void> RestAdminClusterHandler::handleMaintenance() {
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMaintenance{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
@@ -1869,7 +1869,7 @@ async<void> RestAdminClusterHandler::handleMaintenance() {
 
 async<void> RestAdminClusterHandler::handleDBServerMaintenance(
     std::string const& serverId) {
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMaintenance{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
@@ -1948,7 +1948,7 @@ async<void> RestAdminClusterHandler::handleGetNumberOfServers() {
 }
 
 async<void> RestAdminClusterHandler::handlePutNumberOfServers() {
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMaintenance{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
@@ -2074,7 +2074,7 @@ async<void> RestAdminClusterHandler::handleNumberOfServers() {
        security.isRestApiHardened());
 
   if (needsAdminPrivileges &&
-      !ExecContext::current().isAdminUser(
+      !ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMaintenance{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
@@ -2100,7 +2100,7 @@ async<void> RestAdminClusterHandler::handleUniqId() {
   }
 
   // Only PUT method is allowed and always requires admin privileges
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminMaintenance{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
@@ -2257,7 +2257,7 @@ async<void> RestAdminClusterHandler::handlePutUniqId() {
 
 async<void> RestAdminClusterHandler::handleHealth() {
   // We allow this API whenever one is authenticated in some way. There used
-  // to be a check for isAdminUser here. However, we want that the UI with
+  // to be a check for canUseAdminAction here. However, we want that the UI with
   // the cluster health dashboard works for every authenticated user.
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -2550,7 +2550,7 @@ async<void> RestAdminClusterHandler::handleRebalanceShards() {
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isAdminUser(rbac::Category::AdminMoveShards{})) {
+  if (!exec.canUseAdminAction(rbac::Category::AdminMoveShards{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");
     co_return;
@@ -2880,7 +2880,7 @@ async<void> RestAdminClusterHandler::handleRebalance() {
     co_return;
   }
 
-  if (!ExecContext::current().isAdminUser(
+  if (!ExecContext::current().canUseAdminAction(
           arangodb::rbac::Category::AdminRebalance{})) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;

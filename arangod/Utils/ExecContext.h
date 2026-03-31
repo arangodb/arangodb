@@ -88,11 +88,6 @@ class ExecContext : public RequestContext {
     std::abort();  // TODO remove this method
   }
 
-  bool isAdminUser(
-      arangodb::rbac::Category::Any const& rbacAction) const noexcept {
-    return can().admin(rbacAction);
-  }
-
   /// @brief tells you if this execution was canceled
   // TODO I think it's strange to to have this in ExecContext. It's implemented
   //      in the VocbaseContext.
@@ -138,7 +133,9 @@ class ExecContext : public RequestContext {
 
   // New Result-returning permission check methods:
 
-  Result canUseAdminAction(rbac::Category::Any const& action) const;
+  Result canUseAdminAction(
+      arangodb::rbac::Category::Any const& rbacAction) const;
+
   Result canUseHardenedAction(rbac::Category::Any const& action) const;
 
   Result canSeeDatabase(std::string_view db) const;
