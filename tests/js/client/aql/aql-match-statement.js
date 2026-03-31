@@ -190,6 +190,28 @@ function aqlMatchStatementTestSuite() {
                 }
             }
         },
+
+        testMatchPathsWithVars: function () {
+            const query = `
+                FOR v_0 IN vc
+                MATCH p = (v_0) -[ :ec_paths ]-> (v_1 :vc)
+                                -[ :ec_paths ]-> (v_2 :vc)
+                                -[ :ec_paths ]-> (v_3 :vc)
+                                -[ :ec_paths ]-> (v_4 :vc)
+                RETURN p
+            `;
+            const result = db._query(query, {}, options).toArray();
+            assertEqual(result.length, 100 / 5);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 4);
+                assertEqual(vertices.length, 5);
+                for (let i = 0; i < 4; i++) {
+                    assertEqual(edges[i]._from, vertices[i]._id);
+                    assertEqual(edges[i]._to, vertices[i+1]._id);
+                }
+            }
+        },
     };
 }
 

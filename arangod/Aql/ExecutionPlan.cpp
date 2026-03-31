@@ -2536,9 +2536,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         pathVariable = static_cast<Variable const*>(member->getData());
       } else if (member->type == NODE_TYPE_REFERENCE) {
         prevVar = static_cast<Variable*>(member->getData());
-      } else {
-        ADB_PROD_ASSERT(member->type == NODE_TYPE_PATTERN_SEGMENT)
-            << member->type;
+        pathVertexVariables.push_back(prevVar);
+      } else if (member->type == NODE_TYPE_PATTERN_SEGMENT) {
         // generate code like
         //  FOR <outvar> IN <edge>
         //    FILTER <outvar>._from == <prevVar>._id
@@ -2574,6 +2573,9 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
         pathEdgeVariables.push_back(edgeVar);
         pathVertexVariables.push_back(prevVar);
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unexpected match expression member");
       }
     }
 
