@@ -475,7 +475,7 @@ class TestingRunner:
                 if one_file.exists():
                     coredumps.append(one_file)
             crash_report_file = get_workspace() / datetime.now(tz=None).strftime(
-                f"crashreport-{self.cfg.datetime_format}"
+                f"crashreport-{self.cfg.datetime_format}.tar.xz"
             )
             logging.info(
                 "creating crashreport: %s with %s",
@@ -488,7 +488,7 @@ class TestingRunner:
             
         if self.crashed:
             binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
-                f"binaries-{self.cfg.datetime_format}"
+                f"binaries-{self.cfg.datetime_format}.tar.xz"
             )
             logging.info(
                 "creating crashreport binary support zip: %s", str(binary_report_file)
