@@ -7,10 +7,10 @@ defmodule ToastTest.CrashMonitor do
   """
 
   @spec handle_crash(String.t(), Toast.Process.CrashInfo.t()) :: :ok
-  def handle_crash(_server_id, %Toast.Process.CrashInfo{signal: signal, exit_status: exit_status}) do
+  def handle_crash(server_id, %Toast.Process.CrashInfo{signal: signal, exit_status: exit_status}) do
     message =
       [
-        "Server crashed",
+        "Server crashed: #{server_id}",
         if(signal, do: "(signal: #{signal})"),
         if(exit_status, do: "exit_status=#{exit_status}")
       ]

@@ -256,18 +256,18 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
       assert {:suite, nil, nil} = TimeWindows.attribute(ts, windows)
     end
 
-    test "timestamp before suite start returns :suite" do
+    test "timestamp before first module returns :suite with phase :startup" do
       windows = build_windows()
       ts = to_us(~U[2026-03-09 09:59:00Z])
 
-      assert {:suite, nil, nil} = TimeWindows.attribute(ts, windows)
+      assert {:suite, nil, :startup} = TimeWindows.attribute(ts, windows)
     end
 
-    test "timestamp after suite end returns :suite" do
+    test "timestamp after last module returns :suite with phase :shutdown" do
       windows = build_windows()
       ts = to_us(~U[2026-03-09 10:15:00Z])
 
-      assert {:suite, nil, nil} = TimeWindows.attribute(ts, windows)
+      assert {:suite, nil, :shutdown} = TimeWindows.attribute(ts, windows)
     end
   end
 

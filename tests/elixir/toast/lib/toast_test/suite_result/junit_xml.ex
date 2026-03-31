@@ -24,18 +24,30 @@ defmodule ToastTest.SuiteResult.JUnitXML do
       Enum.count(tests, &(&1.outcome == :invalid)) +
         count_infra_errors(tests, issue_index)
 
-    suites =
-      result.modules
-      |> Enum.sort_by(fn {mod, _} -> Atom.to_string(mod) end)
-      |> Enum.map_join("\n", &render_testsuite(&1, result.suite, failure_index, issue_index))
+    suite_issues = Map.get(issue_index, :suite, [])
+    synthetic_suite = synthetic_testcases_for(suite_issues, result.suite)
 
-    system_err = render_system_err(Map.get(issue_index, :suite, []))
+    sorted_modules =
+      Enum.sort_by(result.modules, fn {mod, _} -> Atom.to_string(mod) end)
+
+    {suite_xmls, module_synthetic_count} =
+      Enum.map_reduce(sorted_modules, 0, fn entry, acc ->
+        {xml, syn_count} = render_testsuite(entry, result.suite, failure_index, issue_index)
+        {xml, acc + syn_count}
+      end)
+
+    suites = Enum.join(suite_xmls, "\n")
+
+    infra_suite = render_infra_testsuite(synthetic_suite)
+
+    total = total + length(synthetic_suite) + module_synthetic_count
+    errors = errors + length(synthetic_suite) + module_synthetic_count
 
     [
       ~s(<?xml version="1.0" encoding="UTF-8"?>),
       ~s(<testsuites name="#{xml_escape(result.suite)}" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
       suites,
-      system_err,
+      infra_suite,
       ~s(</testsuites>)
     ]
     |> Enum.reject(&(&1 == ""))
@@ -58,29 +70,38 @@ defmodule ToastTest.SuiteResult.JUnitXML do
 
   defp render_testsuite({module, %{tests: tests}}, suite, failure_index, issue_index) do
     name = Atom.to_string(module)
-    total = length(tests)
     failures = Enum.count(tests, &(&1.outcome == :failed))
     skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded]))
+    time = tests |> Enum.map(& &1.duration_us) |> Enum.sum() |> format_duration()
+
+    module_issues = Map.get(issue_index, {:module, module}, [])
+    classname = "#{suite}::#{module}"
+    synthetic = synthetic_testcases_for(module_issues, classname)
+    synthetic_count = length(synthetic)
+
+    total = length(tests) + synthetic_count
 
     errors =
       Enum.count(tests, &(&1.outcome == :invalid)) +
-        count_infra_errors(tests, module, issue_index)
-
-    time = tests |> Enum.map(& &1.duration_us) |> Enum.sum() |> format_duration()
+        count_infra_errors(tests, module, issue_index) +
+        synthetic_count
 
     cases =
       Enum.map_join(tests, "\n", &render_testcase(&1, module, suite, failure_index, issue_index))
 
-    module_err = render_system_err(Map.get(issue_index, {:module, module}, []), "    ")
+    synthetic_xml = Enum.map_join(synthetic, "\n", & &1)
 
-    [
-      ~s(  <testsuite name="#{xml_escape(name)}" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
-      cases,
-      module_err,
-      ~s(  </testsuite>)
-    ]
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.join("\n")
+    xml =
+      [
+        ~s(  <testsuite name="#{xml_escape(name)}" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
+        cases,
+        synthetic_xml,
+        ~s(  </testsuite>)
+      ]
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.join("\n")
+
+    {xml, synthetic_count}
   end
 
   defp render_testcase(test, module, suite, failure_index, issue_index) do
@@ -236,20 +257,55 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     Enum.join([header | items], "\n")
   end
 
-  # --- system-err rendering (for module/suite-scoped issues) ---
+  # --- Synthetic testcase rendering (for module/suite-scoped issues) ---
 
-  defp render_system_err(issues, indent \\ "")
-
-  defp render_system_err([], _indent), do: ""
-
-  defp render_system_err(issues, indent) do
-    parts = Enum.map(issues, &render_issue_detail/1)
-
-    case Toast.Utils.compact(parts) do
-      [] -> ""
-      non_empty -> indent <> wrap_cdata("system-err", Enum.join(non_empty, "\n\n"))
-    end
+  # Returns a list of rendered XML strings, one per issue that has renderable detail.
+  defp synthetic_testcases_for(issues, classname) do
+    issues
+    |> Enum.map(&render_synthetic_testcase(&1, classname))
+    |> Toast.Utils.compact()
   end
+
+  defp render_synthetic_testcase(issue, classname) do
+    detail = render_issue_detail(issue)
+    if detail == nil, do: nil, else: do_render_synthetic_testcase(issue, classname, detail)
+  end
+
+  defp do_render_synthetic_testcase(issue, classname, detail) do
+    label = issue_type_label(issue)
+    server = issue.detail[:server]
+    phase = phase_prefix(issue.detail[:phase])
+    name_base = if phase, do: "#{phase} #{label}", else: label
+    name = if server, do: "#{name_base} (#{server})", else: name_base
+    escaped_name = xml_escape(name)
+    escaped_cn = xml_escape(classname)
+    escaped_msg = xml_escape(label)
+
+    ~s(    <testcase name="#{escaped_name}" classname="#{escaped_cn}" time="0.000">\n) <>
+      ~s(      <error message="#{escaped_msg}"><![CDATA[#{escape_cdata(detail)}]]></error>\n) <>
+      ~s(    </testcase>)
+  end
+
+  # Wraps suite-scoped synthetic testcases in an _infrastructure_ testsuite.
+  defp render_infra_testsuite([]), do: ""
+
+  defp render_infra_testsuite(synthetic) do
+    count = length(synthetic)
+    inner = Enum.join(synthetic, "\n")
+
+    [
+      ~s(  <testsuite name="_infrastructure_" tests="#{count}" failures="0" errors="#{count}" skipped="0" time="0.000">),
+      inner,
+      ~s(  </testsuite>)
+    ]
+    |> Enum.join("\n")
+  end
+
+  defp phase_prefix(:setup), do: "setup_all"
+  defp phase_prefix(:teardown), do: "on_exit"
+  defp phase_prefix(:startup), do: "startup"
+  defp phase_prefix(:shutdown), do: "shutdown"
+  defp phase_prefix(_), do: nil
 
   # Issue detail rendering — delegates to shared IssueFormatting.
   defp render_issue_detail(%{type: :sanitizer_report} = issue),
@@ -266,10 +322,6 @@ defmodule ToastTest.SuiteResult.JUnitXML do
   # --- XML helpers ---
 
   defp escape_cdata(text), do: String.replace(text, "]]>", "]]]]><![CDATA[>")
-
-  defp wrap_cdata(tag, content) do
-    ~s(<#{tag}><![CDATA[#{escape_cdata(content)}]]></#{tag}>)
-  end
 
   defp format_duration(us) do
     :erlang.float_to_binary(us / 1_000_000, decimals: 3)

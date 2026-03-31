@@ -83,7 +83,7 @@ defmodule ToastTest.Attribution.TimeWindows do
 
     with :miss <- match_test(timestamp, windows.tests, tolerance_us),
          :miss <- match_module(timestamp, windows.modules) do
-      {:suite, nil, nil}
+      {:suite, nil, suite_phase(timestamp, windows.modules)}
     end
   end
 
@@ -150,6 +150,30 @@ defmodule ToastTest.Attribution.TimeWindows do
   end
 
   defp in_teardown?(_timestamp, _window), do: false
+
+  # Determines where in the suite lifecycle a suite-scoped timestamp falls.
+  defp suite_phase(_timestamp, modules) when map_size(modules) == 0, do: nil
+
+  defp suite_phase(timestamp, modules) do
+    {earliest_start, latest_finish} =
+      Enum.reduce(modules, {nil, nil}, fn {_mod, w}, {min_s, max_f} ->
+        {min_ts(min_s, w.started_at), max_ts(max_f, w.finished_at)}
+      end)
+
+    cond do
+      earliest_start && timestamp < earliest_start -> :startup
+      latest_finish && timestamp > latest_finish -> :shutdown
+      true -> nil
+    end
+  end
+
+  defp min_ts(nil, ts), do: ts
+  defp min_ts(ts, nil), do: ts
+  defp min_ts(a, b), do: min(a, b)
+
+  defp max_ts(nil, ts), do: ts
+  defp max_ts(ts, nil), do: ts
+  defp max_ts(a, b), do: max(a, b)
 
   # --- Window helpers ---
 

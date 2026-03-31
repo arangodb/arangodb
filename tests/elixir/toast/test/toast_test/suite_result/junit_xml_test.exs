@@ -168,7 +168,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      assert xml =~ ~r/<testsuites[^>]*tests="2"/
+      # 2 real tests + 1 synthetic for module-scoped crash
+      assert xml =~ ~r/<testsuites[^>]*tests="3"/
       assert xml =~ ~r/<testsuites[^>]*failures="1"/
     end)
   end
@@ -201,20 +202,57 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
     end)
   end
 
-  test "module-scoped crash appears in testsuite system-err" do
+  test "module-scoped crash appears as synthetic testcase in testsuite" do
     with_tmp_dir(fn dir ->
       result = build_suite_result()
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      # The default crash issue is scoped to {:module, FakeModule},
-      # so it should appear inside the <testsuite>, not at top level
+      # Synthetic testcase inside the module's testsuite
       assert xml =~
-               ~r/<testsuite[^>]*>.*<system-err>.*srv-1 — FakeModule.*Coredump:.*core\.1234.*<\/system-err>.*<\/testsuite>/s
+               ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*>.*<testcase[^>]*name="crash \(srv-1\)"[^>]*>.*<error message="crash">.*Coredump:.*core\.1234.*<\/error>.*<\/testcase>.*<\/testsuite>/s
     end)
   end
 
-  test "suite-scoped sanitizer appears in testsuites system-err" do
+  test "module-scoped issue with setup phase has setup_all prefix in name" do
+    issues = [
+      %{
+        type: :crash,
+        scope: {:module, FakeModule},
+        confidence: nil,
+        detail: %{server: "srv-1", coredumps: [], crash_lines: "setup crash", phase: :setup}
+      }
+    ]
+
+    with_tmp_dir(fn dir ->
+      result = build_suite_result(issues: issues)
+      SuiteResult.write_junit_xml(result, dir)
+
+      xml = read_xml!(dir, "smoke.xml")
+      assert xml =~ ~r/<testcase[^>]*name="setup_all crash \(srv-1\)"/
+    end)
+  end
+
+  test "module-scoped issue with teardown phase has on_exit prefix in name" do
+    issues = [
+      %{
+        type: :crash,
+        scope: {:module, FakeModule},
+        confidence: nil,
+        detail: %{server: "srv-1", coredumps: [], crash_lines: "teardown crash", phase: :teardown}
+      }
+    ]
+
+    with_tmp_dir(fn dir ->
+      result = build_suite_result(issues: issues)
+      SuiteResult.write_junit_xml(result, dir)
+
+      xml = read_xml!(dir, "smoke.xml")
+      assert xml =~ ~r/<testcase[^>]*name="on_exit crash \(srv-1\)"/
+    end)
+  end
+
+  test "suite-scoped sanitizer appears as synthetic testcase in _infrastructure_ testsuite" do
     issues = [build_sanitizer_issue()]
 
     with_tmp_dir(fn dir ->
@@ -222,8 +260,9 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      # suite-scoped sanitizer should appear after all testsuites, before closing tag
-      assert xml =~ ~r/<\/testsuite>\n<system-err>.*ASAN detected leak/s
+      # Suite-scoped issue in _infrastructure_ testsuite
+      assert xml =~
+               ~r/<testsuite[^>]*name="_infrastructure_"[^>]*>.*<testcase[^>]*name="sanitizer report \(srv-1\)".*<error message="sanitizer report">.*ASAN detected leak/s
     end)
   end
 
@@ -251,7 +290,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
     end)
   end
 
-  test "suite-scoped timeout appears in testsuites system-err" do
+  test "suite-scoped timeout appears as synthetic testcase in _infrastructure_ testsuite" do
     issues = [
       %{
         type: :timeout,
@@ -274,7 +313,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      assert xml =~ ~r/<system-err>/
+      assert xml =~ ~r/<testsuite[^>]*name="_infrastructure_"/
+      assert xml =~ ~r/<testcase[^>]*name="timeout"/
       assert xml =~ "suite exceeded 30 minute limit"
       assert xml =~ "srv-1"
       assert xml =~ "core.9999"
@@ -384,7 +424,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
 
   # --- Issue type x scope matrix ---
 
-  test "suite-scoped crash appears in testsuites system-err" do
+  test "suite-scoped crash appears as synthetic testcase in _infrastructure_ testsuite" do
     issues = [
       %{
         type: :crash,
@@ -403,14 +443,15 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      # Should appear between </testsuite> and </testsuites>
-      assert xml =~ ~r/<\/testsuite>\n<system-err>.*srv-1.*<\/system-err>\n<\/testsuites>/s
+      assert xml =~ ~r/<testsuite[^>]*name="_infrastructure_"/
+      assert xml =~ ~r/<testcase[^>]*name="crash \(srv-1\)"/
+      assert xml =~ ~r/<error message="crash">/
       assert xml =~ "fatal error in main"
       assert xml =~ "Coredump: /tmp/core.100"
     end)
   end
 
-  test "module-scoped sanitizer appears in testsuite system-err" do
+  test "module-scoped sanitizer appears as synthetic testcase in module testsuite" do
     issues = [
       %{
         type: :sanitizer_report,
@@ -427,9 +468,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       xml = read_xml!(dir, "smoke.xml")
 
       assert xml =~
-               ~r/<testsuite[^>]*>.*<system-err>.*TSAN data race.*<\/system-err>.*<\/testsuite>/s
-
-      assert xml =~ "srv-2 — FakeModule"
+               ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*>.*<testcase[^>]*name="sanitizer report \(srv-2\)"[^>]*>.*<error message="sanitizer report">.*TSAN data race.*<\/error>.*<\/testcase>.*<\/testsuite>/s
     end)
   end
 
@@ -477,7 +516,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
     end)
   end
 
-  test "module-scoped timeout appears in testsuite system-err" do
+  test "module-scoped timeout appears as synthetic testcase in module testsuite" do
     issues = [
       %{
         type: :timeout,
@@ -499,7 +538,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       xml = read_xml!(dir, "smoke.xml")
 
       assert xml =~
-               ~r/<testsuite[^>]*>.*<system-err>.*setup exceeded limit.*<\/system-err>.*<\/testsuite>/s
+               ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*>.*<testcase[^>]*name="timeout"[^>]*>.*<error message="timeout">.*setup exceeded limit.*<\/error>.*<\/testcase>.*<\/testsuite>/s
 
       assert xml =~ "core.mod"
     end)
@@ -647,7 +686,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
 
   # --- Structural edge cases ---
 
-  test "multiple issues at same scope are combined in one system-err" do
+  test "multiple module-scoped issues produce multiple synthetic testcases" do
     issues = [
       %{
         type: :crash,
@@ -668,10 +707,11 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      # Both issues should be in a single system-err within the testsuite
-      [system_err] = Regex.scan(~r/<system-err>.*?<\/system-err>/s, xml) |> List.flatten()
-      assert system_err =~ "crash A"
-      assert system_err =~ "ASAN report B"
+      # Each issue gets its own synthetic testcase
+      assert xml =~ ~r/<testcase[^>]*name="crash \(srv-1\)"/
+      assert xml =~ ~r/<testcase[^>]*name="sanitizer report \(srv-1\)"/
+      assert xml =~ "crash A"
+      assert xml =~ "ASAN report B"
     end)
   end
 
@@ -745,17 +785,17 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
 
       xml = read_xml!(dir, "smoke.xml")
 
-      # Test-level: inside <testcase> as <error> with detail
+      # Test-level: inside real <testcase> as <error> with detail
       assert xml =~
                ~r/<testcase[^>]*name="test passes"[^>]*>\s*<error message="crash">.*test-level crash/s
 
-      # Module-level: inside <testsuite> but not inside <testcase>
+      # Module-level: synthetic <testcase> inside <testsuite>
       assert xml =~
-               ~r/<\/testcase>.*<system-err>.*module-level sanitizer.*<\/system-err>\s*<\/testsuite>/s
+               ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*>.*<testcase[^>]*name="sanitizer report \(srv-1\)"[^>]*>.*module-level sanitizer.*<\/testsuite>/s
 
-      # Suite-level: inside <testsuites> but not inside <testsuite>
+      # Suite-level: synthetic <testcase> in _infrastructure_ testsuite
       assert xml =~
-               ~r/<\/testsuite>\s*<system-err>.*suite-level timeout.*<\/system-err>\s*<\/testsuites>/s
+               ~r/<testsuite[^>]*name="_infrastructure_"[^>]*>.*<testcase[^>]*name="timeout"[^>]*>.*suite-level timeout.*<\/testsuite>/s
     end)
   end
 
@@ -785,7 +825,6 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       assert [inner] = testcase_match
       assert inner =~ ~r/<error message="crash">.*post-test crash.*<\/error>/s
       refute inner =~ ~r/<failure/
-      refute inner =~ ~r/<system-err>/
     end)
   end
 
@@ -811,7 +850,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
     end)
   end
 
-  test "unknown issue type is silently ignored in system-err" do
+  test "unknown issue type produces no synthetic testcase" do
     issues = [
       %{
         type: :unknown_future_type,
@@ -826,8 +865,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      # Unknown issue type returns nil from render_issue_detail, so no system-err
-      refute xml =~ ~r/<system-err>/
+      refute xml =~ ~r/<testsuite[^>]*name="_infrastructure_"/
+      refute xml =~ "unknown_future_type"
     end)
   end
 
@@ -980,7 +1019,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
     end)
   end
 
-  test "no system-err when result has no non-failure issues" do
+  test "no system-err or infrastructure suite when result has no non-failure issues" do
     issues = [
       %{
         type: :test_failure,
@@ -996,6 +1035,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
 
       xml = read_xml!(dir, "smoke.xml")
       refute xml =~ ~r/<system-err>/
+      refute xml =~ ~r/<testsuite[^>]*name="_infrastructure_"/
     end)
   end
 
@@ -1044,6 +1084,56 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       a_pos = :binary.match(xml, "AModule") |> elem(0)
       z_pos = :binary.match(xml, "ZModule") |> elem(0)
       assert a_pos < z_pos
+    end)
+  end
+
+  test "module-scoped issues update testsuite test and error counts" do
+    issues = [
+      %{
+        type: :crash,
+        scope: {:module, FakeModule},
+        confidence: :low,
+        detail: %{server: "srv-1", coredumps: [], crash_lines: "crash"}
+      },
+      %{
+        type: :sanitizer_report,
+        scope: {:module, FakeModule},
+        confidence: nil,
+        detail: %{server: "srv-2", report: "leak"}
+      }
+    ]
+
+    with_tmp_dir(fn dir ->
+      result = build_suite_result(issues: issues)
+      SuiteResult.write_junit_xml(result, dir)
+
+      xml = read_xml!(dir, "smoke.xml")
+      # 2 real tests + 2 synthetic = 4
+      assert xml =~ ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*tests="4"/
+      # 2 synthetic errors
+      assert xml =~ ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*errors="2"/
+    end)
+  end
+
+  test "suite-scoped issues update testsuites test and error counts" do
+    issues = [
+      %{
+        type: :crash,
+        scope: :suite,
+        confidence: :medium,
+        detail: %{server: "srv-1", coredumps: [], crash_lines: "boom"}
+      }
+    ]
+
+    with_tmp_dir(fn dir ->
+      result = build_suite_result(issues: issues)
+      SuiteResult.write_junit_xml(result, dir)
+
+      xml = read_xml!(dir, "smoke.xml")
+      # 2 real tests + 1 synthetic = 3
+      assert xml =~ ~r/<testsuites[^>]*tests="3"/
+      # 1 synthetic error
+      assert xml =~ ~r/<testsuites[^>]*errors="1"/
     end)
   end
 end
