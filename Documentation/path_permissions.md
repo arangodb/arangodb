@@ -848,9 +848,13 @@ S/A          - API is switchable between superuser and admin access, additionall
 
 
 (1) For `arangorestore`, if `--overwrite=true`, then we need COLL RW, if `--overwrite=false`, we only need COLL RWDATA
+
 (2) For `/_api/version`, details can only be queried with `AdminMonitoringInternal`, if `--server.harden=true`
+
 (3) For `/_api/collection`, RO for database is needed, then all collections with COLL RO are listed
+
 (4) For `/_api/database`, all databases with DB RO are listed
+
 (5) For `GET /_api/query-plan-cache` only those entries are returned, for which the user has read access to all occurring collections
 
 Rules:
