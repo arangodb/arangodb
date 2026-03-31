@@ -50,8 +50,8 @@ auto AuthMode::Superuser::username() const noexcept -> std::string_view {
   return "";
 }
 
-auto AuthMode::Superuser::canUse(Permission permission) const -> bool {
-  return true;
+auto AuthMode::Superuser::canUse(Permission permission) const -> Result {
+  return {};
 }
 
 AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username)
@@ -61,10 +61,10 @@ auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
 }
 
-auto AuthMode::Classic::canUse(Permission permission) const -> bool {
+auto AuthMode::Classic::canUse(Permission permission) const -> Result {
   return std::visit(
       overload{
-          [&](Permission::Database const& database) -> bool {
+          [&](Permission::Database const& database) -> Result {
             auto const storedLevel =
                 _userManager.databaseAuthLevel(username(), database.name, true);
             auto const maxLevel =
@@ -73,7 +73,7 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
 
             switch (database.level) {
               case DatabaseAccessLevel::None:
-                return true;
+                return {};
               case DatabaseAccessLevel::Read:
                 return level >= auth::Level::RO;
               case DatabaseAccessLevel::Write:
@@ -81,7 +81,7 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
             }
             ADB_PROD_CRASH();
           },
-          [&](Permission::Collection const& collection) -> bool {
+          [&](Permission::Collection const& collection) -> Result {
             auto const storedLevel = _userManager.collectionAuthLevel(
                 username(), collection.database, collection.name, true);
             auto const maxLevel =
@@ -121,7 +121,7 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
             }
             ADB_PROD_CRASH();
           },
-          [&](Permission::View const& view) -> bool {
+          [&](Permission::View const& view) -> Result {
             auto const storedLevel = _userManager.collectionAuthLevel(
                 username(), view.database, view.name, true);
             auto const maxLevel =
@@ -133,14 +133,29 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
                 return true;
               case ViewAccessLevel::Read:
                 return level >= auth::Level::RO;
-              case ViewAccessLevel::Drop:
-              case ViewAccessLevel::Create:
               case ViewAccessLevel::Modify:
                 return level >= auth::Level::RW;
             }
             ADB_PROD_CRASH();
           },
-          [&](Permission::Admin const& admin) -> bool {
+          [&](Permission::Analyzer const& analyzer) -> Result {
+            auto const storedLevel = _userManager.collectionAuthLevel(
+                username(), analyzer.database, analyzer.name, true);
+            auto const maxLevel =
+                ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
+            auto const level = std::min(storedLevel, maxLevel);
+
+            switch (analyzer.level) {
+              case AnalyzerAccessLevel::None:
+                return true;
+              case AnalyzerAccessLevel::Read:
+                return level >= auth::Level::RO;
+              case AnalyzerAccessLevel::Modify:
+                return level >= auth::Level::RW;
+            }
+            ADB_PROD_CRASH();
+          },
+          [&](Permission::Admin const& admin) -> Result {
             // this recurses to canUse, but with a Database permission
             return isAdmin();
           },
@@ -148,7 +163,7 @@ auto AuthMode::Classic::canUse(Permission permission) const -> bool {
       permission.permission);
 }
 
-bool AuthMode::Classic::isAdmin() const {
+Result AuthMode::Classic::isAdmin() const {
   return canUse({Permission::Database{.name = StaticStrings::SystemDatabase,
                                       .level = DatabaseAccessLevel::Write}});
 }
@@ -157,7 +172,7 @@ auto AuthMode::Rbac::username() const noexcept -> std::string_view {
   return _username;
 }
 
-auto AuthMode::Rbac::canUse(Permission permission) const -> bool {
+auto AuthMode::Rbac::canUse(Permission permission) const -> Result {
   std::abort();  // TODO implement
   // NOTE Remember to handle "supportsRbac" flag for collections; we will need
   // access to the collection somehow!
@@ -170,9 +185,9 @@ auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
   return _username;
 }
 
-auto AuthMode::Unauthenticated::canUse(Permission permission) const -> bool {
+auto AuthMode::Unauthenticated::canUse(Permission permission) const -> Result {
   return std::visit(
-      [](auto const& perm) -> bool {
+      [](auto const& perm) -> Result {
         using T = std::decay_t<decltype(perm)>;
         if constexpr (std::is_same_v<T, Permission::Database>) {
           return perm.level <= DatabaseAccessLevel::None;
@@ -194,8 +209,8 @@ auto AuthMode::Disabled::username() const noexcept -> std::string_view {
   return _username;
 }
 
-auto AuthMode::Disabled::canUse(Permission permission) const -> bool {
-  return true;
+auto AuthMode::Disabled::canUse(Permission permission) const -> Result {
+  return {};
 }
 
 auto AuthMode::Mockable::username() const noexcept -> std::string_view {
@@ -203,7 +218,7 @@ auto AuthMode::Mockable::username() const noexcept -> std::string_view {
   return mock->username();
 }
 
-auto AuthMode::Mockable::canUse(Permission permission) const -> bool {
+auto AuthMode::Mockable::canUse(Permission permission) const -> Result {
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->canUse(permission);
 }

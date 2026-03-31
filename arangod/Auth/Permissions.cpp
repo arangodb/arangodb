@@ -57,12 +57,19 @@ auto to_string(ViewAccessLevel level) -> std::string_view {
       return "none";
     case ViewAccessLevel::Read:
       return "read";
-    case ViewAccessLevel::Create:
-      return "create";
     case ViewAccessLevel::Modify:
       return "modify";
-    case ViewAccessLevel::Drop:
-      return "drop";
+  }
+}
+
+auto to_string(AnalyzerAccessLevel level) -> std::string_view {
+  switch (level) {
+    case AnalyzerAccessLevel::None:
+      return "none";
+    case AnalyzerAccessLevel::Read:
+      return "read";
+    case AnalyzerAccessLevel::Modify:
+      return "modify";
   }
 }
 

@@ -23,6 +23,7 @@
 
 #include "ExecContext.h"
 
+#include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
 
 using namespace arangodb;
@@ -63,12 +64,6 @@ bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   return af->isActive();
-}
-
-bool ExecContext::canUseDatabase(std::string_view db,
-                                 DatabaseAccessLevel requested) const {
-  return _authMode.getIAuth().canUse(
-      {Permission::Database{.name = std::string{db}, .level = requested}});
 }
 
 /// @brief returns auth level for user
@@ -120,20 +115,94 @@ CollectionAccessLevel ExecContext::collectionAccessLevel(
   std::abort();
 }
 
-bool ExecContext::canUseCollection(std::string_view db, std::string_view coll,
-                                   CollectionAccessLevel requested) const {
-  return _authMode.getIAuth().canUse(
-      {Permission::Collection{.database = std::string(db),
-                              .name = std::string(coll),
-                              .level = requested}});
+Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {
+  return Result{};
 }
 
-bool ExecContext::canUseView(std::string_view db, std::string_view viewName,
-                             ViewAccessLevel requested) const {
+Result ExecContext::canUseHardenedAction(
+    rbac::Category::Any const& action) const {
+  return Result{};
+}
+
+Result ExecContext::canSeeDatabase(std::string_view db) const {
+  return Result{};
+}
+
+Result ExecContext::canCreateDatabase(std::string_view db) const {
+  return Result{};
+}
+
+Result ExecContext::canDropDatabase(std::string_view db) const {
+  return Result{};
+}
+
+Result ExecContext::canUseDatabase(std::string_view db,
+                                   DatabaseAccessLevel level) const {
+  return Result{};
+}
+
+Result ExecContext::canSeeCollection(std::string_view db,
+                                     std::string_view coll) const {
+  return Result{};
+}
+
+Result ExecContext::canCreateCollection(std::string_view db,
+                                        std::string_view coll) const {
+  return Result{};
+}
+
+Result ExecContext::canDropCollection(std::string_view db,
+                                      std::string_view coll) const {
+  return Result{};
+}
+
+Result ExecContext::canUseCollection(std::string_view db, std::string_view coll,
+                                     CollectionAccessLevel level) const {
+  return Result{};
+}
+
+Result ExecContext::canSeeView(std::string_view db,
+                               std::string_view view) const {
+  return Result{};
+}
+
+Result ExecContext::canCreateView(std::string_view db,
+                                  std::string_view view) const {
+  return Result{};
+}
+
+Result ExecContext::canDropView(std::string_view db,
+                                std::string_view view) const {
+  return Result{};
+}
+
+Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
+                               ViewAccessLevel requested) const {
   return _authMode.getIAuth().canUse(
       {Permission::View{.database = std::string(db),
                         .name = std::string(viewName),
                         .level = requested}});
+}
+
+Result ExecContext::canSeeAnalyzer(std::string_view db,
+                                   std::string_view analyzer) const {
+  return Result{};
+}
+
+Result ExecContext::canCreateAnalyzer(std::string_view db,
+                                      std::string_view analyzer) const {
+  return Result{};
+}
+
+Result ExecContext::canDropAnalyzer(std::string_view db,
+                                    std::string_view analyzer) const {
+  return Result{};
+}
+
+Result ExecContext::canUseAnalyzer(std::string_view db,
+                                   std::string_view analyzer,
+                                   AnalyzerAccessLevel level) const {
+  return Result{};
 }
 
 /// @brief returns true if the user can be read

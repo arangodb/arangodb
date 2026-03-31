@@ -201,12 +201,12 @@ return a `Result`, so that a decline can return the actual reason
  - `canSeeDatabase(std::string_view db) -> Result`
  - `canCreateDatabase(std::string_view db) -> Result`
  - `canDropDatabase(std::string_view db) -> Result`
- - `canUseDatabase(std::string_view db, AccessLevel const level) -> Result`
+ - `canUseDatabase(std::string_view db, DatabaseAccessLevel const level) -> Result`
 
  - `canSeeCollection(std::string_view db, std::string_view coll) -> Result`
  - `canCreateCollection(std::string_view db, std::string_view coll) -> Result`
  - `canDropCollection(std::string_view db, std::string_view coll) -> Result`
- - `canUseCollection(std::string_view db, std::string_view view, AccessLevel const level) -> Result`
+ - `canUseCollection(std::string_view db, std::string_view coll, CollectionAccessLevel const level) -> Result`
 
  - `canSeeView(std::string_view db, std::string_view view) -> Result`
  - `canCreateView(std::string_view db, std::string_view view) -> Result`
@@ -255,13 +255,12 @@ central implementation of these methods.
 
    check RW access for `_system` database
   
- - `canUseDatabase(std::string_view db, AccessLevel const level) -> Result`
+ - `canUseDatabase(std::string_view db, DatabaseAccessLevel const level) -> Result`
 
    check database auth level and use this:
 
-      - AccessLevel::Read: needs auth::Level::RO or more
-      - AccessLevel::WriteData: needs auth::Level::RW
-      - AccessLevel::WriteMeta: needs auth::Level::RW
+      - DatabaseAccessLevel::Read: needs auth::Level::RO or more
+      - DatabaseAccessLevel::Write: needs auth::Level::RW
 
  - `canSeeCollection(std::string_view db, std::string_view coll) -> Result`
 
@@ -275,13 +274,13 @@ central implementation of these methods.
 
    check RW access for database
 
- - `canUseCollection(std::string_view db, std::string_view view, AccessLevel const level) -> Result`
+ - `canUseCollection(std::string_view db, std::string_view coll, CollectionAccessLevel const level) -> Result`
 
    check collection auth level and use this:
 
-      - AccessLevel::Read: needs auth::Level::RO or more
-      - AccessLevel::WriteData: needs auth::Level::RW
-      - AccessLevel::WriteMeta: needs auth::Level::RW
+      - CollectionAccessLevel::Read: needs auth::Level::RO or more
+      - CollectionAccessLevel::WriteData: needs auth::Level::RW
+      - CollectionAccessLevel::WriteMeta: needs auth::Level::RW
 
  - `canSeeView(std::string_view db, std::string_view view) -> Result`
 
@@ -352,7 +351,7 @@ central implementation of these methods.
    check RBAC actions `db:ReadDatabase` and `db:WriteDatabase`, i.e. access level i
    for database is at least RW
   
- - `canUseDatabase(std::string_view db, AccessLevel const level) -> Result`
+ - `canUseDatabase(std::string_view db, DatabaseAccessLevel const level) -> Result`
 
    check database access level, i.e. check RBAC actions `db:ReadDatabase` and
    `db:WriteDatabase`
@@ -372,7 +371,7 @@ central implementation of these methods.
    check collection access level to be RW, i.e., check RBAC actions
    `db:ReadCollection` and `db:WriteCollectionData` and `db:WriteCollectionMeta`.
   
- - `canUseCollection(std::string_view db, std::string_view view, AccessLevel const level) -> Result`
+ - `canUseCollection(std::string_view db, std::string_view coll, CollectionAccessLevel const level) -> Result`
 
    check collection access level, i.e., check RBAC actions
    `db:ReadCollection` and `db:WriteCollectionData` and

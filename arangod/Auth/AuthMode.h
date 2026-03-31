@@ -25,6 +25,7 @@
 
 #include "Auth/Common.h"
 #include "Auth/Permissions.h"
+#include "Basics/Result.h"
 
 #include <variant>
 
@@ -61,13 +62,13 @@ struct AuthMode {
     // this is a suboptimal interface; it should be batched. but it's closer to
     // the existing one, and simplifies the migration a little.
     // this is allowed to throw (e.g. network errors, etc.).
-    [[nodiscard]] virtual auto canUse(Permission) const -> bool = 0;
+    [[nodiscard]] virtual auto canUse(Permission) const -> Result = 0;
   };
 
   // Superuser; may do anything, without further checks.
   struct Superuser : IAuth {
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
-    [[nodiscard]] auto canUse(Permission permission) const -> bool override;
+    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
   };
 
   // Classic, arangodb-internal authorization, based on permissions in _users.
@@ -79,7 +80,7 @@ struct AuthMode {
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
-    [[nodiscard]] auto canUse(Permission permission) const -> bool override;
+    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
 
    protected:
     // has _system RW access
@@ -102,7 +103,7 @@ struct AuthMode {
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
-    [[nodiscard]] auto canUse(Permission permission) const -> bool override;
+    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
   };
 
   // Authentication is on, but the current user is without authentication.
@@ -117,7 +118,7 @@ struct AuthMode {
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
-    [[nodiscard]] auto canUse(Permission permission) const -> bool override;
+    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
   };
 
   // Authentication is disabled, barely any restrictions.
@@ -128,7 +129,7 @@ struct AuthMode {
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
-    [[nodiscard]] auto canUse(Permission permission) const -> bool override;
+    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
   };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -149,7 +150,7 @@ struct AuthMode {
     Mockable(std::shared_ptr<IAuth> mock) : mock(std::move(mock)) {}
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
-    [[nodiscard]] auto canUse(Permission permission) const -> bool override;
+    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
   };
 #define MOCKABLE , Mockable
 #else

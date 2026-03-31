@@ -28,6 +28,7 @@
 #include "Auth/Common.h"
 #include "Auth/Rbac/Actions.h"
 #include "Auth/Permissions.h"
+#include "Basics/Result.h"
 #include "Rest/RequestContext.h"
 
 #include <memory>
@@ -127,12 +128,6 @@ class ExecContext : public RequestContext {
     std::abort();  // TODO remove this method
   }
 
-  /// @brief returns true if auth level is above or equal `requested`
-  bool canUseDatabase(std::string_view db, DatabaseAccessLevel requested) const;
-
-  /// @brief returns true if a database can be created or dropped
-  bool canCreateOrDropDatabase(std::string_view db) const;
-
   /// @brief returns auth level for user
   [[deprecated]] auth::Level collectionAuthLevel(
       std::string_view dbname, std::string_view collection) const;
@@ -141,15 +136,34 @@ class ExecContext : public RequestContext {
   [[deprecated]] CollectionAccessLevel collectionAccessLevel(
       std::string_view dbname, std::string_view collection) const;
 
-  /// @brief returns true if auth level is above or equal `requested`
-  bool canUseCollection(std::string_view db, std::string_view coll,
-                        CollectionAccessLevel requested) const;
+  // New Result-returning permission check methods:
 
-  // TODO This is insufficient. We can check whether the caller is allowed to
-  //      read or drop a view; but to decide whether they are allowed to create
-  //      or modify it, we would need the list of linked collections as well.
-  bool canUseView(std::string_view db, std::string_view viewName,
-                  ViewAccessLevel requested) const;
+  Result canUseAdminAction(rbac::Category::Any const& action) const;
+  Result canUseHardenedAction(rbac::Category::Any const& action) const;
+
+  Result canSeeDatabase(std::string_view db) const;
+  Result canCreateDatabase(std::string_view db) const;
+  Result canDropDatabase(std::string_view db) const;
+  Result canUseDatabase(std::string_view db, DatabaseAccessLevel level) const;
+
+  Result canSeeCollection(std::string_view db, std::string_view coll) const;
+  Result canCreateCollection(std::string_view db, std::string_view coll) const;
+  Result canDropCollection(std::string_view db, std::string_view coll) const;
+  Result canUseCollection(std::string_view db, std::string_view coll,
+                          CollectionAccessLevel level) const;
+
+  Result canSeeView(std::string_view db, std::string_view view) const;
+  Result canCreateView(std::string_view db, std::string_view view) const;
+  Result canDropView(std::string_view db, std::string_view view) const;
+  Result canUseView(std::string_view db, std::string_view view,
+                    ViewAccessLevel level) const;
+
+  Result canSeeAnalyzer(std::string_view db, std::string_view analyzer) const;
+  Result canCreateAnalyzer(std::string_view db,
+                           std::string_view analyzer) const;
+  Result canDropAnalyzer(std::string_view db, std::string_view analyzer) const;
+  Result canUseAnalyzer(std::string_view db, std::string_view analyzer,
+                        AnalyzerAccessLevel level) const;
 
   /// @brief returns true if the user can be read
   bool canReadUser(std::string_view user) const;

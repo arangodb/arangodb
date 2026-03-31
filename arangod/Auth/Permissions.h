@@ -32,14 +32,15 @@ namespace arangodb {
 
 enum class CollectionAccessLevel { None = 0, Read, WriteData, WriteMeta };
 enum class DatabaseAccessLevel { None = 0, Read, Write };
-// create and modify are basically the same, and not ordered; maybe fuse them
-enum class ViewAccessLevel { None = 0, Read, Drop, Create, Modify };
+enum class ViewAccessLevel { None = 0, Read, Modify };
+enum class AnalyzerAccessLevel { None = 0, Read, Modify };
 
 using AccessLevel = CollectionAccessLevel;
 
 auto to_string(CollectionAccessLevel level) -> std::string_view;
 auto to_string(DatabaseAccessLevel level) -> std::string_view;
 auto to_string(ViewAccessLevel level) -> std::string_view;
+auto to_string(AnalyzerAccessLevel level) -> std::string_view;
 
 struct Permission {
   struct Database {
@@ -56,11 +57,16 @@ struct Permission {
     std::string name;
     ViewAccessLevel level;
   };
+  struct Analyzer {
+    std::string database;
+    std::string name;
+    AnalyzerAccessLevel level;
+  };
   struct Admin {
     // TODO
   };
 
-  using Any = std::variant<Database, Collection, View, Admin>;
+  using Any = std::variant<Database, Collection, View, Analyzer, Admin>;
 
   Any permission;
 };
