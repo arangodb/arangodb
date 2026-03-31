@@ -811,12 +811,12 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
                             "index on collection '",
                             collection.name(), "'")};
   }
-}
 
-if (ServerState::instance()->isCoordinator()) {
-  co_return co_await dropCoordinator(collection, indexId);
-} else {
-  co_return co_await dropDBServer(collection, indexId);
+  if (ServerState::instance()->isCoordinator()) {
+    co_return co_await dropCoordinator(collection, indexId);
+  } else {
+    co_return co_await dropDBServer(collection, indexId);
+  }
 }
 
 futures::Future<arangodb::Result> Indexes::dropCoordinator(
