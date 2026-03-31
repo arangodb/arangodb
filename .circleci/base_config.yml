@@ -359,7 +359,7 @@ commands:
                 echo "File ${OMP_TOOL_LIBRARIES} does not exist."
                 exit 1
               fi
-              export TSAN_OPTIONS="history_size=1:log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py:ignore_noninstrumented_modules=1"
+              export TSAN_OPTIONS="symbolize=0:history_size=1:log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py:ignore_noninstrumented_modules=1"
               export SAN_MODE=tsan
             fi
 
