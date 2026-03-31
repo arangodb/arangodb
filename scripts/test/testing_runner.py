@@ -460,6 +460,28 @@ class TestingRunner:
             self.append_report_txt(f"Failed to create {verb} zip: {str(ex)}")
         shutil.rmtree(zip_dir)
 
+    def cleanup_unneeded_binary_files(self):
+        """delete all files not needed for the crashreport binaries"""
+        shutil.rmtree(str(self.cfg.bin_dir / "tzdata"))
+        needed = [
+            "fuertetest",
+            "arangobackup",
+            "arangosh",
+            "arangoexport",
+            "arangoinspect",
+            "arangoimport",
+            "arangoimp",
+            "arangorestore",
+            "arangobench",
+            'arangodbtests',
+            "arangod",
+            "arangodump",
+        ]
+        for one_file in self.cfg.bin_dir.iterdir():
+            if one_file.suffix == ".lib" or (one_file.stem not in needed):
+                logging.info("Deleting %s", str(one_file))
+                one_file.unlink(missing_ok=True)
+
     def generate_crash_report(self):
         """crash report zips"""
         # pylint: disable=too-many-statements disable=too-many-branches disable=too-many-locals disable=chained-comparison
@@ -469,6 +491,7 @@ class TestingRunner:
         core_dir = Path.cwd()
         core_pattern = "core*"
         system_corefiles = []
+        self.cleanup_unneeded_binary_files()
         if "COREDIR" in os.environ:
             core_dir = Path(os.environ["COREDIR"])
         else:
@@ -519,20 +542,7 @@ class TestingRunner:
             logging.info(
                 "creating crashreport binary support zip: %s", str(binary_report_file)
             )
-            bin_files_list = [
-                "fuertetest",
-                "arangobackup",
-                "arangosh",
-                "arangoexport",
-                "arangoinspect",
-                "arangoimport",
-                "arangoimp",
-                "arangorestore",
-                "arangobench",
-                'arangodbtests',
-                "arangod",
-                "arangodump",
-            ]
+            bin_files_list = [f for f in self.cfg.bin_dir.glob('*') if not f.is_symlink()]
             self.mp_zip_tar(bin_files_list, self.cfg.bin_dir, binary_report_file, 'binary support', 'binreport')
 
     def generate_test_report(self):
