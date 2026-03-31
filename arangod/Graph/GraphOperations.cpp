@@ -1187,7 +1187,7 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection,
     return true;
   }
 
-  if (execContext.canUseCollection(databaseName, collection, level)) {
+  if (execContext.canUseCollection(databaseName, collection, level).ok()) {
     return true;
   }
 
@@ -1224,10 +1224,12 @@ Result GraphOperations::checkEdgeDefinitionPermissions(
   for (auto const& col : graphCollections) {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
-    if (!execContext.canUseCollection(databaseName, col, AccessLevel::Read)) {
+    if (auto r =
+            execContext.canUseCollection(databaseName, col, AccessLevel::Read);
+        r.fail()) {
       LOG_TOPIC("e8a53", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
-      return TRI_ERROR_FORBIDDEN;
+      return r;
     }
     if (!collectionExists(col) && !canUseDatabaseRW) {
       LOG_TOPIC("2bcf2", DEBUG, Logger::GRAPHS)

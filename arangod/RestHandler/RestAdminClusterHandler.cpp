@@ -799,7 +799,8 @@ async<void> RestAdminClusterHandler::handleMoveShard() {
     bool canAccess =
         exec.isAdminUser(arangodb::rbac::Category::AdminMoveShards{}) ||
         exec.canUseCollection(ctx->database, ctx->collection,
-                              CollectionAccessLevel::WriteMeta);
+                              CollectionAccessLevel::WriteMeta)
+            .ok();
     if (!canAccess) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "insufficient permissions on database to move shard");

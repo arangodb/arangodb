@@ -219,10 +219,11 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         "_create(<name>, <properties>, <type>, <options>)");
   }
 
-  if (!ExecContext::current().canUseCollection(
-          vocbase.name(), name, CollectionAccessLevel::WriteMeta)) {
+  if (auto r = ExecContext::current().canUseCollection(
+          vocbase.name(), name, CollectionAccessLevel::WriteMeta);
+      r.fail()) {
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_FORBIDDEN);
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   // optional, third parameter can override collection type

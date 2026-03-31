@@ -417,8 +417,9 @@ bool Query::tryLoadPlanFromCache() {
 
         if (!exec.isSuperuser()) {
           for (auto const& dataSource : cacheEntry->dataSources) {
-            if (!exec.canUseCollection(_vocbase.name(), dataSource.second.name,
-                                       dataSource.second.level)) {
+            if (exec.canUseCollection(_vocbase.name(), dataSource.second.name,
+                                      dataSource.second.level)
+                    .fail()) {
               // cannot use query cache result because of permissions
               return false;
             }

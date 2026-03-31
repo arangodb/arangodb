@@ -402,10 +402,10 @@ Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
 
   if (checkPermissions) {
     std::string const& dbName = _info.getName();
-    if (!ExecContext::current().canUseCollection(dbName, collection.name(),
-                                                 AccessLevel::Read)) {
-      return {TRI_ERROR_FORBIDDEN, std::string("cannot access collection '") +
-                                       collection.name() + "'"};
+    if (auto r = ExecContext::current().canUseCollection(
+            dbName, collection.name(), AccessLevel::Read);
+        !r.ok()) {
+      return r;
     }
   }
 
@@ -644,7 +644,8 @@ void TRI_vocbase_t::inventory(
       continue;
     }
 
-    if (!exec.canUseCollection(dbName, collection->name(), AccessLevel::Read)) {
+    if (exec.canUseCollection(dbName, collection->name(), AccessLevel::Read)
+            .fail()) {
       continue;
     }
 

@@ -84,8 +84,8 @@ AqlValue functions::Collections(ExpressionContext* exprCtx, AstNode const&,
   for (size_t i = 0; i < n; ++i) {
     auto& coll = colls[i];
 
-    if (!exec.canUseCollection(vocbase.name(), coll->name(),
-                               AccessLevel::Read)) {
+    if (exec.canUseCollection(vocbase.name(), coll->name(), AccessLevel::Read)
+            .fail()) {
       continue;
     }
 

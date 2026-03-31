@@ -40,13 +40,10 @@ futures::Future<Result> RocksDBRestCollectionHandler::handleExtraCommandPut(
     std::shared_ptr<LogicalCollection> coll, std::string const& suffix,
     velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    if (!ExecContext::current().canUseCollection(
-            coll->vocbase().name(), coll->name(), AccessLevel::WriteMeta)) {
-      co_return Result(
-          TRI_ERROR_FORBIDDEN,
-          absl::StrCat(
-              "insufficient permissions to modify collection (meta data) '",
-              coll->name(), "'"));
+    if (auto r = ExecContext::current().canUseCollection(
+            coll->vocbase().name(), coll->name(), AccessLevel::WriteMeta);
+        !r.ok()) {
+      co_return r;
     }
 
     auto physical = toRocksDBCollection(coll->getPhysical());

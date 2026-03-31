@@ -605,12 +605,12 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
             continue;
           }
 
-          if (checkPermissions &&
-              !execCtx.canUseCollection(vocbase().name(), collection->name(),
-                                        AccessLevel::Read)) {
-            return {TRI_ERROR_FORBIDDEN,
-                    absl::StrCat("Current user cannot use collection '",
-                                 collection->name(), "'")};
+          if (checkPermissions) {
+            if (auto r = execCtx.canUseCollection(
+                    vocbase().name(), collection->name(), AccessLevel::Read);
+                !r.ok()) {
+              return r;
+            }
           }
 
           auto& index = dataStore->index();
@@ -694,11 +694,10 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       return {TRI_ERROR_BAD_PARAMETER, "Cannot find collection"};
     }
     if (auto const& ctx = ExecContext::current(); !ctx.isSuperuser()) {
-      if (!ctx.canUseCollection(vocbase().name(), collection->name(),
-                                AccessLevel::Read)) {
-        return {TRI_ERROR_FORBIDDEN,
-                absl::StrCat("Current user cannot use collection '",
-                             collection->name(), "'")};
+      if (auto r = ctx.canUseCollection(vocbase().name(), collection->name(),
+                                        AccessLevel::Read);
+          !r.ok()) {
+        return r;
       }
     }
     auto const cid = collection->id();

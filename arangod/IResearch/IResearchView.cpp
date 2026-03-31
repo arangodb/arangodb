@@ -421,12 +421,12 @@ Result IResearchView::dropImpl() {
     if (!ExecContext::current().isSuperuser()) {
       for (auto& entry : stale) {
         auto collection = vocbase().lookupCollection(entry);
-        if (collection &&
-            !ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), AccessLevel::Read)) {
-          return {TRI_ERROR_FORBIDDEN,
-                  absl::StrCat("Need read access to collection '",
-                               collection->name(), "'")};
+        if (collection) {
+          if (auto r = ExecContext::current().canUseCollection(
+                  vocbase().name(), collection->name(), AccessLevel::Read);
+              !r.ok()) {
+            return r;
+          }
         }
       }
     }
@@ -605,14 +605,14 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     if (!ExecContext::current().isSuperuser()) {
       for (auto& entry : _links) {
         auto collection = vocbase().lookupCollection(entry.first);
-        if (collection &&
-            !ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), AccessLevel::Read)) {
-          return {
-              TRI_ERROR_FORBIDDEN,
-              absl::StrCat(
-                  "while updating arangosearch definition, error: collection '",
-                  collection->name(), "' not authorized for read access")};
+        if (collection) {
+          if (auto r = ExecContext::current().canUseCollection(
+                  vocbase().name(), collection->name(), AccessLevel::Read);
+              !r.ok()) {
+            return {TRI_ERROR_FORBIDDEN,
+                    absl::StrCat("while updating view definition: ",
+                                 r.errorMessage())};
+          }
         }
       }
     }

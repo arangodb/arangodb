@@ -174,8 +174,9 @@ bool QueryCacheResultEntry::currentUserHasPermissions() const {
   // got a result from the query cache
   if (!exec.isSuperuser()) {
     for (auto const& dataSource : _dataSources) {
-      if (!exec.canUseCollection(_databaseName, dataSource.second,
-                                 AccessLevel::Read)) {
+      if (exec.canUseCollection(_databaseName, dataSource.second,
+                                AccessLevel::Read)
+              .fail()) {
         // cannot use query cache result because of permissions
         return false;
       }

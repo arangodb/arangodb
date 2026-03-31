@@ -1358,9 +1358,10 @@ static void JS_QueryPlanCachePlans(
         // TODO Should this be a separate permission/action?
         // TODO `dataSource` can be either a collection or view; we need to
         //      distinguish what it is to determine its permissions!
-        if (!ExecContext::current().canUseCollection(
-                vocbase.name(), dataSource.second.name,
-                CollectionAccessLevel::Read)) {
+        if (ExecContext::current()
+                .canUseCollection(vocbase.name(), dataSource.second.name,
+                                  CollectionAccessLevel::Read)
+                .fail()) {
           return false;
         }
       }

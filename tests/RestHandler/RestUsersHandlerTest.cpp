@@ -291,9 +291,10 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
 
-    EXPECT_FALSE(
-        execContext->canUseCollection(vocbase->name(), "testDataSource",
-                                      arangodb::CollectionAccessLevel::Read));
+    EXPECT_FALSE(execContext
+                     ->canUseCollection(vocbase->name(), "testDataSource",
+                                        arangodb::CollectionAccessLevel::Read)
+                     .ok());
     auto status = grantHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
@@ -314,9 +315,10 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_FALSE(
-        execContext->canUseCollection(vocbase->name(), "testDataSource",
-                                      arangodb::CollectionAccessLevel::Read));
+    EXPECT_FALSE(execContext
+                     ->canUseCollection(vocbase->name(), "testDataSource",
+                                        arangodb::CollectionAccessLevel::Read)
+                     .ok());
   }
 
   // test auth missing (revoke)
@@ -334,15 +336,16 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::CollectionAccessLevel::Read);  // for missing collections
-                                                 // User::collectionAuthLevel(...)
-                                                 // returns database auth::Level
+    userPtr->grantCollection(vocbase->name(), "testDataSource",
+                             arangodb::CollectionAccessLevel::
+                                 Read);  // for missing collections
+                                         // User::collectionAuthLevel(...)
+                                         // returns database auth::Level
 
-    EXPECT_FALSE(
-        execContext->canUseCollection(vocbase->name(), "testDataSource",
-                                      arangodb::CollectionAccessLevel::Read));
+    EXPECT_FALSE(execContext
+                     ->canUseCollection(vocbase->name(), "testDataSource",
+                                        arangodb::CollectionAccessLevel::Read)
+                     .ok());
     auto status = revokeHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
@@ -428,11 +431,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::CollectionAccessLevel::Read);  // for missing collections
-                                                 // User::collectionAuthLevel(...)
-                                                 // returns database auth::Level
+    userPtr->grantCollection(vocbase->name(), "testDataSource",
+                             arangodb::CollectionAccessLevel::
+                                 Read);  // for missing collections
+                                         // User::collectionAuthLevel(...)
+                                         // returns database auth::Level
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -535,11 +538,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::CollectionAccessLevel::Read);  // for missing collections
-                                                 // User::collectionAuthLevel(...)
-                                                 // returns database auth::Level
+    userPtr->grantCollection(vocbase->name(), "testDataSource",
+                             arangodb::CollectionAccessLevel::
+                                 Read);  // for missing collections
+                                         // User::collectionAuthLevel(...)
+                                         // returns database auth::Level
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
         vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
@@ -636,11 +639,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::CollectionAccessLevel::Read);  // for missing collections
-                                                 // User::collectionAuthLevel(...)
-                                                 // returns database auth::Level
+    userPtr->grantCollection(vocbase->name(), "testDataSource",
+                             arangodb::CollectionAccessLevel::
+                                 Read);  // for missing collections
+                                         // User::collectionAuthLevel(...)
+                                         // returns database auth::Level
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {

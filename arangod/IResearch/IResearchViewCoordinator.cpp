@@ -187,12 +187,11 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
       //      but I don't know which, because I don't know where this is being
       //      called from (createView? modifyView? both?)
       for (auto& entry : _collections) {
-        if (!exec.canUseCollection(vocbase().name(),
-                                   entry.second->collectionName,
-                                   AccessLevel::Read)) {
-          return {TRI_ERROR_FORBIDDEN,
-                  absl::StrCat("Need read access to collection '",
-                               entry.second->collectionName, "'")};
+        if (auto r = exec.canUseCollection(vocbase().name(),
+                                           entry.second->collectionName,
+                                           AccessLevel::Read);
+            !r.ok()) {
+          return r;
         }
       }
     }
@@ -376,13 +375,14 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
         auto const& name = vocbase().name();
         auto collection = engine.getCollection(
             name, absl::AlphaNum{entry.first.id()}.Piece());
-        if (collection && !exec.canUseCollection(name, collection->name(),
-                                                 AccessLevel::Read)) {
-          return {
-              TRI_ERROR_FORBIDDEN,
-              absl::StrCat(
-                  "while updating arangosearch definition, error: collection '",
-                  collection->name(), "' not authorized for read access")};
+        if (collection) {
+          if (auto r = exec.canUseCollection(name, collection->name(),
+                                             AccessLevel::Read);
+              !r.ok()) {
+            return {TRI_ERROR_FORBIDDEN,
+                    absl::StrCat("while updating arangosearch definition: ",
+                                 r.errorMessage())};
+          }
         }
       }
     }
