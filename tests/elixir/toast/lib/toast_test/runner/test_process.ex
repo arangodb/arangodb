@@ -7,11 +7,11 @@ defmodule ToastTest.Runner.TestProcess do
 
   def spawn_test(config, test, context) do
     parent_pid = self()
-    timeout = Timeout.get_timeout(config, test.tags)
+    {timeout, timeout_source} = Timeout.get_timeout(config, test.tags)
     start_time = System.monotonic_time()
     {test_pid, test_ref} = spawn_test_monitor(config, test, parent_pid, context)
     Abort.register_test_pid(test_pid)
-    test = receive_test_reply(test, test_pid, test_ref, timeout, start_time)
+    test = receive_test_reply(test, test_pid, test_ref, timeout, timeout_source, start_time)
     Abort.unregister_test_pid()
     exec_on_exit(test, test_pid, timeout)
   end
@@ -83,7 +83,7 @@ defmodule ToastTest.Runner.TestProcess do
     end
   end
 
-  defp receive_test_reply(test, test_pid, test_ref, timeout, start_time) do
+  defp receive_test_reply(test, test_pid, test_ref, timeout, timeout_source, start_time) do
     receive do
       {^test_pid, :test_finished, test} ->
         Process.demonitor(test_ref, [:flush])
@@ -114,7 +114,8 @@ defmodule ToastTest.Runner.TestProcess do
             exception =
               ToastTest.TimeoutError.exception(
                 timeout: timeout,
-                type: Atom.to_string(test.tags.test_type)
+                type: Atom.to_string(test.tags.test_type),
+                source: timeout_source
               )
 
             %{
@@ -124,7 +125,7 @@ defmodule ToastTest.Runner.TestProcess do
             }
 
           nil ->
-            receive_test_reply(test, test_pid, test_ref, timeout, start_time)
+            receive_test_reply(test, test_pid, test_ref, timeout, timeout_source, start_time)
         end
     end
   end

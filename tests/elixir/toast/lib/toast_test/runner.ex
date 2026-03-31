@@ -298,6 +298,9 @@ defmodule ToastTest.Runner do
         base_timeout: opts[:timeout],
         timeout_factor: suite_run.timeout_factor,
         suite_deadline: suite_run.suite_deadline,
+        suite_timeout: suite_run.suite_timeout,
+        global_deadline: suite_run.global_deadline,
+        global_timeout: suite_run.global_timeout,
         trace: opts[:trace] || false
       }
     }
@@ -353,6 +356,9 @@ defmodule ToastTest.Runner do
       suite_module: suite_module,
       deployment_mode: mode,
       suite_deadline: suite_deadline,
+      suite_timeout: suite_timeout,
+      global_deadline: global_deadline,
+      global_timeout: test_config.global_timeout,
       timeout_factor: timeout_factor,
       test_config: test_config,
       between_tests: Keyword.get(suite_config, :between_tests, :default)
