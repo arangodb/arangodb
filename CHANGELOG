@@ -7,6 +7,18 @@
   context from the time the signal was raised instead of the CPU context from
   the std::abort call.
 
+* Updated timezone database as of 31.03.2026.
+
+* COR-374: Fix assertion failure during vector index creation in cluster when a transient
+  shard error is followed by success, due to stale error message not being cleared.
+
+* Fix vector index creation in cluster producing duplicate indexes when
+  `storedValues` differs between definitions (e.g., one with and one without
+  `storedValues`). The comparison now correctly ignores `storedValues`.
+
+* Fix vector index creation in cluster when inBackground is false reports the error
+  that there is insufficient data in collection.
+
 * Vector index creation with `inBackground: false` now blocks until training
   completes and returns the current `trainingState` in the response.
 
