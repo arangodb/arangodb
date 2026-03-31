@@ -164,6 +164,7 @@ void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void EndpointFeature::prepare() {
+  ADB_PROD_CRASH();
   buildEndpointLists();
 
   if (_endpointList.empty()) {
