@@ -302,6 +302,7 @@ CommTask::Flow CommTask::prepareExecution(
     return Flow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
+  TRI_ASSERT(downCast<VocbaseContext>(req.requestContext()) != nullptr);
 
   // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the

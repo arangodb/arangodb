@@ -84,6 +84,11 @@ RestStatus RestStatusHandler::execute() {
   }
 }
 
+async<Result> RestStatusHandler::checkUserCanAccess() const {
+  co_return request()->authenticated()
+    ? Result{} : Result{TRI_ERROR_HTTP_UNAUTHORIZED};
+}
+
 RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   VPackBuilder result;
   result.openObject();

@@ -677,7 +677,7 @@ async<Result> RestHandler::checkUserCanAccess() const {
   std::string const& path = request()->requestPath();
 
   auto vc = basics::downCast<VocbaseContext>(request()->requestContext());
-  TRI_ASSERT(vc != nullptr);
+  TRI_ASSERT(vc != nullptr) << "no vocbase context in request: " << this->name();
   // deny access to database with NONE
   if (canAccess && vc->databaseAuthLevel() == auth::Level::NONE) {
     canAccess = false;
