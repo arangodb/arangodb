@@ -1994,7 +1994,6 @@ AstNode* Ast::createPatternEdge(AstNode const* outVariable,
   node->addMember(properties ? properties : createNodeNop());
   node->addMember(filterExpression ? filterExpression : createNodeNop());
   if (isInbound && isOutbound) {
-    // usage of user-defined functions is disallowed
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
         "found pattern edge having both inbound and outbound operator");

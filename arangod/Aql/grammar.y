@@ -1127,7 +1127,6 @@ pattern_label:
     T_COLON T_STRING {
         auto const& resolver = parser->query().resolver();
         $$ = parser->ast()->createNodeDataSource(resolver, {$2.value, $2.length}, arangodb::AccessMode::Type::READ, true, false);
-        // $$ = parser->ast()->createPatternLabel({$2.value, $2.length});
     }
 
 %type <node> pattern_maybe_where_expression;
@@ -1164,7 +1163,7 @@ pattern_maybe_property_key_value_expression:
   }
   | /* empty */ { $$ = nullptr;}
 
-/*
+/* not supported for now, will be used later
 %type<node> pattern_variable_length_relationship;
 pattern_variable_length_relationship:
     T_TIMES expression { $$ = $2; }

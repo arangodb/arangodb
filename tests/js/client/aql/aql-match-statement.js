@@ -31,7 +31,7 @@ const {db, errors} = require("@arangodb");
 function aqlMatchStatementTestSuite() {
 
     const database = "UnitTestsAqlMatchStatement";
-    const options = {matchStatement: "experimental"};
+    const options = { matchStatement: "experimental" };
 
     return {
 
@@ -53,6 +53,13 @@ function aqlMatchStatementTestSuite() {
             for (let i = 0; i < 10; i++) {
                 db.ec_loops.save({_key: `e${i}`, i, j: i % 10, _from: `vc/v${i}`, _to: `vc/v${i}`});
                 db.ec_loops.save({_key: `e${i + 10}`, i, j: i % 10, _from: `vc/v${i}`, _to: `vc/v${i + 1}`});
+            }
+
+            db._createEdgeCollection("ec_paths");
+            for (let i = 0; i < 20; i++) {
+                for (let j = 0; j < 4; j++) {
+                    db.ec_paths.save({_key: `e${i}_${j}`, i, j, _from: `vc/v${5*i + j}`, _to: `vc/v${5*i + j + 1}`});
+                }
             }
         },
 
@@ -149,7 +156,40 @@ function aqlMatchStatementTestSuite() {
                 assertEqual(v._id, e._from);
                 assertEqual(v._id, e._to);
             }
-        }
+        },
+
+        testMatchPathVariable: function () {
+            const result = db._query("MATCH p = (v :vc) -[ e :ec ]-> (w :vc) RETURN p", {}, options).toArray();
+            assertEqual(result.length, 50);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 1);
+                assertEqual(vertices.length, 2);
+                assertEqual(edges[0]._from, vertices[0]._id);
+                assertEqual(edges[0]._to, vertices[1]._id);
+            }
+        },
+
+        testMatchPaths: function () {
+            const query = `
+                MATCH p = (v_0 :vc) -[ :ec_paths ]-> (v_1 :vc) 
+                                    -[ :ec_paths ]-> (v_2 :vc) 
+                                    -[ :ec_paths ]-> (v_3 :vc) 
+                                    -[ :ec_paths ]-> (v_4 :vc) 
+                RETURN p
+            `;
+            const result = db._query(query, {}, options).toArray();
+            assertEqual(result.length, 100 / 5);
+
+            for (const {edges, vertices} of result) {
+                assertEqual(edges.length, 4);
+                assertEqual(vertices.length, 5);
+                for (let i = 0; i < 4; i++) {
+                    assertEqual(edges[i]._from, vertices[i]._id);
+                    assertEqual(edges[i]._to, vertices[i+1]._id);
+                }
+            }
+        },
     };
 }
 
