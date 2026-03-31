@@ -159,11 +159,12 @@ void RestHandler::trackQueueStart() noexcept {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   if (_timingData.active) {
     _timingData.queueStart = StatisticsFeature::time();
-    _timingData.queueSize = SchedulerFeature::SCHEDULER->queueStatistics()._queued;
+    _timingData.queueSize =
+        SchedulerFeature::SCHEDULER->queueStatistics()._queued;
   }
 }
 
-void RestHandler::trackQueueEnd() noexcept { 
+void RestHandler::trackQueueEnd() noexcept {
   if (_timingData.active) {
     _timingData.queueEnd = StatisticsFeature::time();
   }

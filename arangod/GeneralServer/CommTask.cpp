@@ -456,12 +456,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     timingData(messageId).superuser = true;
-    std::move(res).thenFinal(
-        [self(shared_from_this()), h(std::move(handler)),
-         messageId](futures::Try<Result>&& /*ignored*/) -> void {
-          self->sendResponse(h->stealResponse(),
-                             self->stealTimingData(messageId));
-        });
+    std::move(res).thenFinal([self(shared_from_this()), h(std::move(handler)),
+                              messageId](
+                                 futures::Try<Result>&& /*ignored*/) -> void {
+      self->sendResponse(h->stealResponse(), self->stealTimingData(messageId));
+    });
     return;
   }
 
@@ -545,7 +544,7 @@ RequestTimingData& CommTask::acquireTimingData(uint64_t id) {
   if (inserted) {
     // Only activate if statistics are enabled
     // Check if server has StatisticsFeature and it is enabled
-    if (_server.server().hasFeature<StatisticsFeature>() && 
+    if (_server.server().hasFeature<StatisticsFeature>() &&
         _server.server().getFeature<StatisticsFeature>().isEnabled()) {
       it->second.active = true;
     }
@@ -564,7 +563,7 @@ RequestTimingData CommTask::stealTimingData(uint64_t id) {
   std::lock_guard lock{_statisticsMutex};
   auto it = _statisticsMap.find(id);
   if (it == _statisticsMap.end()) {
-    return RequestTimingData{}; // inactive, no-op
+    return RequestTimingData{};  // inactive, no-op
   }
   RequestTimingData result = std::move(it->second);
   _statisticsMap.erase(it);
@@ -582,7 +581,8 @@ void CommTask::finalizeTimingData(RequestTimingData& data) {
   if (data.async) {
     statistics::AsyncRequests.incCounter();
   }
-  statistics::MethodRequests[static_cast<size_t>(data.requestType)].incCounter();
+  statistics::MethodRequests[static_cast<size_t>(data.requestType)]
+      .incCounter();
 
   if (data.readStart != 0.0 && (data.async || data.writeEnd != 0.0)) {
     if (data.superuser) {
@@ -592,12 +592,12 @@ void CommTask::finalizeTimingData(RequestTimingData& data) {
     }
 
     if (_server.server().hasFeature<GeneralServerFeature>()) {
-      _server.server().getFeature<GeneralServerFeature>()
+      _server.server()
+          .getFeature<GeneralServerFeature>()
           .recordHttpRequestStatistics(
-              data.async, data.requestType, data.superuser,
-              data.readStart, data.requestEnd, data.writeEnd,
-              data.queueStart, data.queueEnd, data.requestStart,
-              data.sentBytes, data.receivedBytes);
+              data.async, data.requestType, data.superuser, data.readStart,
+              data.requestEnd, data.writeEnd, data.queueStart, data.queueEnd,
+              data.requestStart, data.sentBytes, data.receivedBytes);
     }
   }
 
@@ -685,8 +685,7 @@ void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
     handler->trackTaskEnd();
     try {
       // Pass the response to the io context
-      self->sendResponse(handler->stealResponse(),
-                         handler->stealTimingData());
+      self->sendResponse(handler->stealResponse(), handler->stealTimingData());
     } catch (...) {
       LOG_TOPIC("e1322", WARN, Logger::REQUESTS)
           << "got an exception while sending response, closing connection";
