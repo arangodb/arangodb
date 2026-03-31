@@ -1,102 +1,111 @@
 defmodule Toast.Diagnostics.AgencyDump do
   @moduledoc """
-  Capture agency state from a live ArangoDB agent for cluster diagnostics.
+  Capture agency state for cluster diagnostics.
 
-  Queries a single responsive agent for configuration, full state, and the
-  /arango plan tree. This information is essential for diagnosing cluster
-  test failures (shard leadership changes, replication issues, etc.).
+  Queries agents directly via `/_api/agency/state`, trying each endpoint
+  until one responds. The response is kept as raw JSON and written to disk.
   """
 
   require Logger
 
-  @type t :: %__MODULE__{
-          agent_id: String.t(),
-          config: map() | nil,
-          state: map() | nil,
-          plan: map() | nil,
-          error: String.t() | nil
-        }
-
-  defstruct [:agent_id, :config, :state, :plan, :error]
-
   @doc """
-  Capture agency dump from the first responsive agent.
+  Capture agency dump from an agent.
 
-  Takes a list of agent info maps and queries the first one that responds.
-  Returns the dump struct or nil if no agents are available.
+  Tries each endpoint in order until one succeeds. Returns the raw JSON
+  response body or nil if all endpoints fail.
 
   ## Options
 
-    * `:agents` - list of `%{id: String.t(), endpoint: String.t()}` maps
-    * `:timeout` - per-request timeout in ms (default: 10_000)
+    * `:endpoints` - list of agent endpoint URLs
+    * `:timeout` - request timeout in ms (default: 30_000)
     * `:client_opts` - extra options forwarded to `Toast.Client.new/2` (test use)
 
   """
-  @spec capture(keyword()) :: t() | nil
+  @spec capture(keyword()) :: binary() | nil
   def capture(opts) do
-    agents = Keyword.fetch!(opts, :agents)
-    timeout = Keyword.get(opts, :timeout, 10_000)
+    endpoints = Keyword.get(opts, :endpoints, [])
+    timeout = Keyword.get(opts, :timeout, 30_000)
     client_opts = Keyword.get(opts, :client_opts, [])
 
-    case agents do
+    case endpoints do
       [] ->
-        Logger.warning("AgencyDump: no agents available, skipping dump")
+        Logger.warning("AgencyDump: no agent endpoints available")
         nil
 
       _ ->
-        try_agents(agents, timeout, client_opts)
+        try_endpoints(endpoints, timeout, client_opts)
     end
   end
 
-  defp try_agents([], _timeout, _client_opts) do
-    Logger.warning("AgencyDump: no responsive agents found")
-    nil
-  end
+  # 1 MB — below this we keep raw JSON for easy inspection
+  @compress_threshold 1_024 * 1_024
 
-  defp try_agents([agent | rest], timeout, client_opts) do
-    case dump_agent(agent, timeout, client_opts) do
-      {:ok, dump} ->
-        dump
+  @doc """
+  Write agency dump JSON to a file in the given directory.
 
-      {:error, reason} ->
-        Logger.warning("AgencyDump: agent #{agent.id} failed: #{inspect(reason)}, trying next")
-        try_agents(rest, timeout, client_opts)
-    end
-  end
+  The file is named `agency-dump-<deployment_id>.json`. If the content exceeds
+  #{@compress_threshold} bytes, it is compressed (zstd or gzip) and the
+  compressed path is returned.
 
-  defp dump_agent(agent, timeout, client_opts) do
-    client = Toast.Client.new(agent.endpoint, [{:receive_timeout, timeout} | client_opts])
+  Returns `{:ok, path}` on success or `{:error, reason}` on failure.
+  """
+  @spec write(iodata(), Path.t(), String.t()) :: {:ok, Path.t()} | {:error, term()}
+  def write(json, dir, deployment_id) do
+    File.mkdir_p!(dir)
+    json_path = Path.join(dir, "agency-dump-#{deployment_id}.json")
 
-    with {:ok, config} <- fetch_config(client),
-         {:ok, state} <- fetch_state(client),
-         {:ok, plan} <- fetch_plan(client) do
-      {:ok,
-       %__MODULE__{
-         agent_id: agent.id,
-         config: config,
-         state: state,
-         plan: plan
-       }}
+    File.write!(json_path, json)
+
+    if IO.iodata_length(json) > @compress_threshold do
+      compress_and_remove(json_path)
+    else
+      {:ok, json_path}
     end
   rescue
     e -> {:error, Exception.message(e)}
   end
 
-  defp fetch_config(client), do: fetch(client, :get, "/_api/agency/config", nil, "config")
-  defp fetch_state(client), do: fetch(client, :get, "/_api/agency/state", nil, "state")
-  defp fetch_plan(client), do: fetch(client, :post, "/_api/agency/read", [["/arango"]], "plan")
+  defp compress_and_remove(json_path) do
+    ext = if ToastTest.ResultPackaging.zstd_available?(), do: ".zst", else: ".gz"
 
-  defp fetch(client, method, path, body, label) do
-    result =
-      case method do
-        :get -> Toast.Client.get(client, path)
-        :post -> Toast.Client.post(client, path, body)
-      end
+    case ToastTest.ResultPackaging.compress_file(json_path, json_path <> ext) do
+      {:ok, compressed} ->
+        File.rm(json_path)
+        {:ok, compressed}
 
-    case result do
-      {:ok, %{status: 200, body: body}} -> {:ok, body}
-      {:ok, %{status: status}} -> {:error, "#{label} returned status #{status}"}
-      {:error, reason} -> {:error, reason}
+      {:error, _} ->
+        {:ok, json_path}
     end
+  end
+
+  # --- Capture internals ---
+
+  defp try_endpoints([], _timeout, _client_opts) do
+    Logger.warning("AgencyDump: no agent responded")
+    nil
+  end
+
+  defp try_endpoints([endpoint | rest], timeout, client_opts) do
+    client = Toast.Client.new(endpoint, [{:receive_timeout, timeout} | client_opts])
+
+    case Toast.Client.get(client, "/_api/agency/state", decode_body: false) do
+      {:ok, %{status: 200, body: body}} when is_binary(body) ->
+        body
+
+      {:ok, %{status: 200, body: body}} ->
+        IO.iodata_to_binary(:json.encode(body))
+
+      {:ok, %{status: status}} ->
+        Logger.warning("AgencyDump: #{endpoint} returned status #{status}")
+        try_endpoints(rest, timeout, client_opts)
+
+      {:error, reason} ->
+        Logger.warning("AgencyDump: #{endpoint} failed: #{inspect(reason)}")
+        try_endpoints(rest, timeout, client_opts)
+    end
+  rescue
+    e ->
+      Logger.warning("AgencyDump: #{endpoint} error: #{Exception.message(e)}")
+      try_endpoints(rest, timeout, client_opts)
   end
 end

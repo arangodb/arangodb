@@ -171,6 +171,7 @@ defmodule Mix.Tasks.Toast do
       ResultPackaging.package(
         ci: true,
         result_dir: test_config.result_dir,
+        base_dir: test_config.base_dir,
         suite_diagnostics: suite_diagnostics
       )
     end

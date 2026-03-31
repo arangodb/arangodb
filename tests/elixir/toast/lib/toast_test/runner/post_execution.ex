@@ -11,6 +11,8 @@ defmodule ToastTest.Runner.PostExecution do
   end
 
   def run(deployment, test_data, %ToastTest.Config{} = test_config) do
+    maybe_dump_agency(deployment, test_data, test_config)
+
     Logger.debug("Post-execution: stopping deployment")
     {servers, error} = stop_deployment(deployment)
     if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
@@ -142,6 +144,39 @@ defmodule ToastTest.Runner.PostExecution do
       nil -> opts
       debugger -> [{:debugger, debugger} | opts]
     end
+  end
+
+  defp maybe_dump_agency(deployment, test_data, test_config) do
+    has_error =
+      ToastTest.Abort.reason() != nil or
+        EventStore.unexpected_crashes() != [] or
+        test_data.failures != []
+
+    if has_error and test_config.dump_agency_on_error do
+      case Toast.Deployment.dump_agency(deployment) do
+        {:ok, json} when json != nil ->
+          case Toast.Diagnostics.AgencyDump.write(
+                 json,
+                 test_config.result_dir,
+                 deployment.id
+               ) do
+            {:ok, path} ->
+              Logger.info("Agency dump written to #{path}")
+
+            {:error, reason} ->
+              Logger.warning("Failed to write agency dump: #{inspect(reason)}")
+          end
+
+        {:ok, nil} ->
+          Logger.warning("Agency dump returned nil (no responsive agents?)")
+
+        {:error, reason} ->
+          Logger.debug("Agency dump skipped: #{inspect(reason)}")
+      end
+    end
+  rescue
+    e ->
+      Logger.warning("Agency dump failed: #{Exception.message(e)}")
   end
 
   defp print_post_exec_summary(suite_result) do

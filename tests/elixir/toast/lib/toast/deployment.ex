@@ -220,7 +220,7 @@ defmodule Toast.Deployment do
     end
   end
 
-  @spec dump_agency(t(), keyword()) :: :ok | {:error, term()}
+  @spec dump_agency(t(), keyword()) :: {:ok, iodata() | nil} | {:error, term()}
   def dump_agency(deployment, opts \\ [])
 
   def dump_agency(%__MODULE__{} = deployment, opts) do
@@ -228,8 +228,7 @@ defmodule Toast.Deployment do
       timeout = Keyword.get(opts, :timeout, 60_000)
 
       try do
-        Controller.dump_agency(deployment.controller, timeout)
-        :ok
+        {:ok, Controller.dump_agency(deployment.controller, timeout)}
       catch
         :exit, _ -> {:error, :controller_dead}
       end

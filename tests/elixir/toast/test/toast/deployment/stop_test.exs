@@ -195,11 +195,11 @@ defmodule Toast.Deployment.StopTest do
   end
 
   describe "dump_agency/2 for cluster" do
-    test "delegates to controller and returns :ok" do
+    test "delegates to controller and returns dump" do
       {:ok, pid} =
         MockController.start_link(responses: %{dump_agency: %{"agency_data" => "test"}})
 
-      assert :ok = Deployment.dump_agency(cluster_deployment(pid))
+      assert {:ok, %{"agency_data" => "test"}} = Deployment.dump_agency(cluster_deployment(pid))
       assert [:dump_agency] = MockController.calls(pid)
     end
 

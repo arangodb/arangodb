@@ -2,9 +2,12 @@ defmodule ToastTest.ResultPackaging do
   @moduledoc """
   Tiered result packaging for CI environments.
 
-  Tier 1: Always published (results.json, results.xml, toast.log)
-  Tier 2: Compressed archive (server logs, sanitizer reports, crash reports, agency dumps)
-  Tier 3: Individually compressed (core dumps)
+  Tier 1: Always published (results.json, results.xml, toast.log, agency dumps)
+  Tier 2: Compressed archive (server logs, sanitizer reports)
+  Tier 3: Large individually compressed files (core dumps, base dir archive)
+
+  Agency dumps are written to result_dir at capture time by post-execution,
+  so they are already present when packaging runs.
   """
 
   require Logger
@@ -93,7 +96,9 @@ defmodule ToastTest.ResultPackaging do
     Enum.flat_map(suite_diagnostics, fn diag ->
       suite_name = Map.get(diag, :name, "unknown")
 
-      [:log_files, :sanitizer_files, :crash_reports, :agency_dumps]
+      # TODO: :crash_reports — will contain internal crash dump artifact paths once
+      # the crash dump feature is implemented.
+      [:log_files, :sanitizer_files, :crash_reports]
       |> Enum.flat_map(&Map.get(diag, &1, []))
       |> Enum.filter(&File.exists?/1)
       |> Enum.map(&{suite_name, &1})
@@ -116,7 +121,7 @@ defmodule ToastTest.ResultPackaging do
     end
   end
 
-  # --- Tier 3: Individually compressed ---
+  # --- Tier 3: Large individually compressed files ---
 
   defp package_tier3(opts, result_dir) do
     tool = detect_compression_tool()
@@ -126,6 +131,35 @@ defmodule ToastTest.ResultPackaging do
     |> Enum.flat_map(&Map.get(&1, :core_dumps, []))
     |> Enum.filter(&File.exists?/1)
     |> Enum.each(&package_core_dump(&1, result_dir, tool))
+
+    package_base_dir(opts, result_dir)
+  end
+
+  defp package_base_dir(opts, result_dir) do
+    case Keyword.get(opts, :base_dir) do
+      nil ->
+        :ok
+
+      base_dir ->
+        if File.dir?(base_dir) do
+          archive_path = Path.join(result_dir, "work-dir.tar.gz")
+          Logger.info("Archiving base dir #{base_dir} → #{archive_path}")
+
+          case :erl_tar.create(
+                 String.to_charlist(archive_path),
+                 [{String.to_charlist("work-dir"), String.to_charlist(base_dir)}],
+                 [:compressed, :dereference]
+               ) do
+            :ok ->
+              :ok
+
+            {:error, reason} ->
+              Logger.warning("Failed to archive work dir: #{inspect(reason)}")
+          end
+        else
+          :ok
+        end
+    end
   end
 
   defp detect_compression_tool do

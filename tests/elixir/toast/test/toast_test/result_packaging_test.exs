@@ -177,8 +177,7 @@ defmodule ToastTest.ResultPackagingTest do
         name: "suite1",
         log_files: [Path.join(log_dir, "arangod.log")],
         sanitizer_files: [],
-        crash_reports: [],
-        agency_dumps: []
+        crash_reports: []
       }
 
       assert :ok =
@@ -229,7 +228,6 @@ defmodule ToastTest.ResultPackagingTest do
         log_files: [],
         sanitizer_files: [],
         crash_reports: [],
-        agency_dumps: [],
         core_dumps: [core_path]
       }
 
@@ -244,6 +242,46 @@ defmodule ToastTest.ResultPackagingTest do
       # Should have a compressed core file
       compressed = Path.wildcard(Path.join(result_dir, "core.12345.*"))
       assert length(compressed) == 1
+    end
+
+    @tag :tmp_dir
+    test "tier 3 archives work dir", %{tmp_dir: tmp_dir} do
+      base_dir = Path.join(tmp_dir, "work")
+      result_dir = Path.join(tmp_dir, "results")
+      File.mkdir_p!(result_dir)
+
+      # Create work dir with some content
+      server_dir = Path.join(base_dir, "suite1/dbserver-0")
+      File.mkdir_p!(server_dir)
+      File.write!(Path.join(server_dir, "arangod.log"), "log content")
+      File.write!(Path.join(server_dir, "data.db"), "db content")
+
+      assert :ok =
+               ResultPackaging.package(
+                 ci: true,
+                 result_dir: result_dir,
+                 base_dir: base_dir,
+                 suite_diagnostics: []
+               )
+
+      archive = Path.join(result_dir, "work-dir.tar.gz")
+      assert File.exists?(archive)
+      assert File.stat!(archive).size > 0
+    end
+
+    @tag :tmp_dir
+    test "skips work dir archive when base_dir is nil", %{tmp_dir: tmp_dir} do
+      result_dir = Path.join(tmp_dir, "results")
+      File.mkdir_p!(result_dir)
+
+      assert :ok =
+               ResultPackaging.package(
+                 ci: true,
+                 result_dir: result_dir,
+                 suite_diagnostics: []
+               )
+
+      refute File.exists?(Path.join(result_dir, "work-dir.tar.gz"))
     end
   end
 end
