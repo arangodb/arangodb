@@ -30,12 +30,12 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/H2CommTask.h"
+#include "GeneralServer/RequestTimingData.h"
 #include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Statistics/ConnectionStatistics.h"
-#include "Statistics/RequestStatistics.h"
 
 #include <cstring>
 
@@ -109,7 +109,10 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_headerCorrupt = false;
 
   // acquire a new statistics entry for the request
-  me->acquireRequestStatistics(1UL).SET_READ_START(TRI_microtime());
+  auto& td = me->acquireTimingData(1UL);
+  if (td.active && td.readStart == 0.0) {
+    td.readStart = TRI_microtime();
+  }
   return HPE_OK;
 } catch (...) {
   // the caller of this function is a C function, which doesn't know
@@ -126,7 +129,10 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) try {
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
-  me->requestStatistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
+  auto& td = me->timingData(1UL);
+  if (td.active) {
+    td.requestType = me->_request->requestType();
+  }
 
   me->_url.append(at, len);
   return HPE_OK;
@@ -252,7 +258,10 @@ template<SocketType T>
 int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   try {
-    me->requestStatistics(1UL).SET_READ_END();
+    auto& td = me->timingData(1UL);
+    if (td.active) {
+      td.readEnd = TRI_microtime();
+    }
     me->_messageDone = true;
     me->_request->parseUrl(me->_url.data(), me->_url.size());
     me->_urlCorrupt = false;
@@ -347,8 +356,11 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(nparsed);
     // And count it in the statistics:
-    this->requestStatistics(1UL).ADD_RECEIVED_BYTES(nparsed);
-
+    auto& td = this->timingData(1UL);
+    if (td.active) {
+      td.receivedBytes += nparsed;
+    }
+    
     if (_headerCorrupt) {
       LOG_TOPIC("33324", WARN, Logger::REQUESTS)
           << "request failed because of a corrupt header";
@@ -475,7 +487,7 @@ void HttpCommTask<T>::checkProtocolUpgrade() {
       // do not remove preface here, H2CommTask will read it from buffer
       auto commTask = std::make_unique<H2CommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol));
-      commTask->setStatistics(1UL, me.stealRequestStatistics(1UL));
+      commTask->setTimingData(1UL, me.stealTimingData(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;
@@ -560,7 +572,7 @@ void HttpCommTask<T>::doProcessRequest() {
     if (h2 == "h2c" && found && !settings.empty()) {
       auto task = std::make_shared<H2CommTask<T>>(
           this->_server, this->_connectionInfo, std::move(this->_protocol));
-      task->setStatistics(1UL, this->stealRequestStatistics(1UL));
+      task->setTimingData(1UL, this->stealTimingData(1UL));
       task->upgradeHttp1(std::move(_request));
       this->close();
       return;
@@ -602,7 +614,10 @@ void HttpCommTask<T>::doProcessRequest() {
 
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {
-    this->requestStatistics(1UL).SET_SUPERUSER();
+    auto td = this->timingData(1UL);
+    if (td.active) {
+      td.superuser = true;
+    }
   }
 
   // first check whether we allow the request to continue
@@ -648,7 +663,7 @@ static void DTraceHttpCommTaskSendResponse(size_t) {}
 
 template<SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
-                                   RequestStatistics::Item stat) {
+                                   RequestTimingData data) {
   if (this->stopped()) {
     return;
   }
@@ -802,14 +817,14 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
       << "\",\"" << url() << "\",\""
       << static_cast<int>(response.responseCode()) << "\","
-      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
-      << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
+      << Logger::FIXED(data.elapsedSinceReadStart(), 6) << ","
+      << Logger::FIXED(data.elapsedWhileQueued(), 6);
 
   // sendResponse is always called from a scheduler thread
   boost::asio::post(
       this->_protocol->context.io_context,
-      [self = this->shared_from_this(), stat = std::move(stat)]() mutable {
-        static_cast<HttpCommTask<T>&>(*self).writeResponse(std::move(stat));
+      [self = this->shared_from_this(), data = std::move(data)]() mutable {
+        static_cast<HttpCommTask<T>&>(*self).writeResponse(std::move(data));
       });
 }
 
@@ -830,12 +845,14 @@ static void DTraceHttpCommTaskResponseWritten(size_t) {}
 
 // called on IO context thread
 template<SocketType T>
-void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
+void HttpCommTask<T>::writeResponse(RequestTimingData data) {
   DTraceHttpCommTaskWriteResponse((size_t)this);
 
   TRI_ASSERT(!_header.empty());
 
-  stat.SET_WRITE_START();
+  if (data.active) {
+    data.writeStart = StatisticsFeature::time();
+  }
 
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] = asio_ns::buffer(_header.data(), _header.size());
@@ -846,15 +863,18 @@ void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
   this->_writing = true;
   asio_ns::async_write(
       this->_protocol->socket, buffers,
-      withLogContext([self = this->shared_from_this(), stat = std::move(stat)](
-                         asio_ns::error_code ec, size_t nwrite) {
+      withLogContext([self = this->shared_from_this(), data = std::move(data)](
+                         asio_ns::error_code ec, size_t nwrite) mutable {
         DTraceHttpCommTaskResponseWritten((size_t)self.get());
 
         auto& me = static_cast<HttpCommTask<T>&>(*self);
         me._writing = false;
 
-        stat.SET_WRITE_END();
-        stat.ADD_SENT_BYTES(nwrite);
+        if (data.active) {
+          data.writeEnd = TRI_microtime();
+          data.sentBytes += nwrite;
+        }
+        me.finalizeTimingData(data);
 
         me._response.reset();
 
