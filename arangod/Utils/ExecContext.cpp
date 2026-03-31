@@ -232,11 +232,6 @@ bool ExecContext::canWriteUser(std::string_view user) const {
   return true;
 }
 
-/// @brief returns true if a database can be created or dropped
-bool ExecContext::canCreateOrDropDatabase(std::string_view db) const {
-  return true;
-}
-
 /// @brief returns true for each user which can be read
 std::vector<bool> ExecContext::canReadUsers(
     std::vector<std::string> users) const {

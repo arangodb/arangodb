@@ -28,9 +28,6 @@
 #include "v8-views.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/conversions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -198,11 +195,10 @@ static void JS_CreateViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (!ExecContext::current().canUseView(vocbase.name(), name,
-                                         ViewAccessLevel::Create)) {
+  if (auto r = ExecContext::current().canCreateView(vocbase.name(), name);
+      r.fail()) {
     events::CreateView(vocbase.name(), name, TRI_ERROR_FORBIDDEN);
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient rights to create view");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   velocypack::Builder header;
@@ -323,13 +319,11 @@ static void JS_DropViewVocbase(
   auto view = CollectionNameResolver(vocbase).getView(name);
 
   if (view) {
-    if (!ExecContext::current().canUseView(
-            vocbase.name(), name,
-            ViewAccessLevel::Drop)) {  // check auth after ensuring
-                                       // that the view exists
+    if (auto r = ExecContext::current().canDropView(vocbase.name(), name);
+        r.fail()) {  // check auth after ensuring
+                     // that the view exists
       events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "insufficient rights to drop view");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
     }
 
     // prevent dropping of system views
@@ -392,13 +386,11 @@ static void JS_DropViewVocbaseObj(
   // end of parameter parsing
   // ...........................................................................
 
-  if (!ExecContext::current().canUseView(
-          vocbase.name(), view->name(),
-          ViewAccessLevel::Drop)) {  // check auth after ensuring
-                                     // that the view exists
+  if (auto r = ExecContext::current().canDropView(vocbase.name(), view->name());
+      r.fail()) {
+    // check auth after ensuring that the view exists
     events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient rights to drop view");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   // prevent dropping of system views
@@ -443,12 +435,11 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!ExecContext::current().canUseView(
-          vocbase.name(), view->name(),
-          ViewAccessLevel::Read)) {  // check auth after ensuring
-                                     // that the view exists
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient rights to get view");
+  if (auto r = ExecContext::current().canUseView(vocbase.name(), view->name(),
+                                                 ViewAccessLevel::Read);
+      r.fail()) {  // check auth after ensuring
+                   // that the view exists
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   // skip views for which the full view definition cannot be generated, as per
@@ -520,10 +511,11 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   for (size_t i = 0; i < n; ++i) {
     auto view = views[i];
 
-    if (!view || !ExecContext::current().canUseView(
-                     vocbase.name(), view->name(),
-                     ViewAccessLevel::Read)) {  // check auth after ensuring
-                                                // that the view exists
+    if (!view || ExecContext::current()
+                     .canUseView(vocbase.name(), view->name(),
+                                 ViewAccessLevel::Read)
+                     .fail()) {  // check auth after ensuring
+                                 // that the view exists
       continue;  // skip views that are not authorized to be read
     }
 
@@ -578,12 +570,11 @@ static void JS_NameViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (!ExecContext::current().canUseView(
-          vocbase.name(), view->name(),
-          ViewAccessLevel::Read)) {  // check auth after ensuring that the
-                                     // view exists
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient rights to get view");
+  if (auto r = ExecContext::current().canUseView(vocbase.name(), view->name(),
+                                                 ViewAccessLevel::Read);
+      r.fail()) {  // check auth after ensuring that the
+                   // view exists
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   std::string const name(view->name());
@@ -631,12 +622,12 @@ static void JS_PropertiesViewVocbase(
     // end of parameter parsing
     // ...........................................................................
 
-    if (!ExecContext::current().canUseView(
-            viewPtr->vocbase().name(), viewPtr->name(),
-            ViewAccessLevel::Modify)) {  // check auth after ensuring that
+    if (auto r = ExecContext::current().canUseView(viewPtr->vocbase().name(),
+                                                   viewPtr->name(),
+                                                   ViewAccessLevel::Modify);
+        r.fail()) {  // check auth after ensuring that
       // the view exists
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "insufficient rights to modify view");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
     }
 
     // check ability to read current properties
@@ -690,12 +681,12 @@ static void JS_PropertiesViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (!ExecContext::current().canUseView(
-          view->vocbase().name(), view->name(),
-          ViewAccessLevel::Read)) {  // check auth after ensuring that the
-                                     // view exists
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient rights to get view");
+  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
+                                                 view->name(),
+                                                 ViewAccessLevel::Read);
+      r.fail()) {  // check auth after ensuring that the
+                   // view exists
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   velocypack::Builder builder;
@@ -752,12 +743,12 @@ static void JS_RenameViewVocbase(
   // ...........................................................................
 
   // TODO We need to check permissions for the old AND new view name!
-  if (!ExecContext::current().canUseView(
-          view->vocbase().name(), view->name(),
-          ViewAccessLevel::Modify)) {  // check auth after ensuring
-                                       // that the view exists
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient rights to rename view");
+  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
+                                                 view->name(),
+                                                 ViewAccessLevel::Modify);
+      r.fail()) {  // check auth after ensuring
+                   // that the view exists
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   // skip views for which the full view definition cannot be generated, as per
@@ -802,12 +793,12 @@ static void JS_TypeViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (!ExecContext::current().canUseView(
-          view->vocbase().name(), view->name(),
-          ViewAccessLevel::Read)) {  // check auth after ensuring that the
-                                     // view exists
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient rights to get view");
+  if (auto r = ExecContext::current().canUseView(view->vocbase().name(),
+                                                 view->name(),
+                                                 ViewAccessLevel::Read);
+      r.fail()) {  // check auth after ensuring that the
+                   // view exists
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
 
   auto const type = view->typeName();

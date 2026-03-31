@@ -359,14 +359,13 @@ Result Databases::create(application_features::ApplicationServer& server,
                          ExecContext const& exec, std::string const& dbName,
                          velocypack::Slice users, velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
-    Result res;
-
     // Only admin users are permitted to create databases
-    if (!exec.canCreateOrDropDatabase(std::string(dbName))) {
-      return res.reset(TRI_ERROR_FORBIDDEN);
+    if (auto r = exec.canCreateDatabase(std::string(dbName)); r.fail()) {
+      return r;
     }
     if (ServerState::readOnly() && !exec.isSuperuser()) {
-      return res.reset(TRI_ERROR_FORBIDDEN, "server is in read-only mode");
+      return Result(TRI_ERROR_FORBIDDEN,
+                    std::string("server is in read-only mode"));
     }
 
     bool extendedNames = server.getFeature<DatabaseFeature>().extendedNames();
@@ -504,9 +503,9 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
                        std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  if (exec.systemAuthLevel() != auth::Level::RW) {
+  if (auto r = exec.canDropDatabase(dbName); r.fail()) {
     events::DropDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
-    return TRI_ERROR_FORBIDDEN;
+    return r;
   }
 
   Result res;
