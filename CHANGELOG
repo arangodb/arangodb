@@ -1,5 +1,8 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+
+* Updated timezone database as of 31.03.2026.
+
 * COR-374: Fix assertion failure during vector index creation in cluster when a transient
   shard error is followed by success, due to stale error message not being cleared.
 
