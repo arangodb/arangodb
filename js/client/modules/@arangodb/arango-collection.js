@@ -41,17 +41,14 @@ function ArangoCollection (database, data) {
   if (typeof data === 'string') {
     this._id = null;
     this._name = data;
-    this._status = null;
     this._type = null;
   } else if (data !== undefined) {
     this._id = data.id;
     this._name = data.name;
-    this._status = data.status;
     this._type = data.type;
   } else {
     this._id = null;
     this._name = null;
-    this._status = null;
     this._type = null;
   }
 }
@@ -276,22 +273,6 @@ ArangoCollection.prototype.name = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief gets the status of a collection
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.status = function () {
-  if (this._status === null) {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
-      errorMessage: "Collection status is not set"
-    });
-  }
-
-  // save original status
-  return this._status;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief gets the type of a collection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -455,8 +436,6 @@ ArangoCollection.prototype.drop = function (options) {
     arangosh.checkRequestResult(requestResult);
   }
 
-  this._status = ArangoCollection.STATUS_DELETED;
-
   let database = this._database;
 
   for (let name in database) {
@@ -523,7 +502,7 @@ ArangoCollection.prototype.rename = function (name) {
 // / @brief gets all indexes
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats, withHidden) {
+ArangoCollection.prototype.indexes = function (withStats, withHidden) {
   let url = this._indexurl();
   url = appendBoolParameter(url, 'withStats', withStats);
   if (withHidden) {

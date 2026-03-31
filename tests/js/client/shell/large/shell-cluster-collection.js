@@ -92,7 +92,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
 
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
@@ -129,7 +128,6 @@ function ClusterCollectionSuite () {
           });
           assertEqual("UnitTestsClusterCrud", c.name());
           assertEqual(2, c.type());
-          assertEqual(3, c.status());
           assertTrue(c.hasOwnProperty("_id"));
           assertEqual(i, c.properties().replicationFactor);
         } finally {
@@ -154,7 +152,6 @@ function ClusterCollectionSuite () {
           });
           assertEqual("UnitTestsClusterCrud", c.name());
           assertEqual(2, c.type());
-          assertEqual(3, c.status());
           assertTrue(c.hasOwnProperty("_id"));
           assertEqual(i, c.properties().replicationFactor);
           assertEqual(i, c.properties().writeConcern);
@@ -180,7 +177,6 @@ function ClusterCollectionSuite () {
           });
           assertEqual("UnitTestsClusterCrud", c.name());
           assertEqual(2, c.type());
-          assertEqual(3, c.status());
           assertTrue(c.hasOwnProperty("_id"));
           assertEqual(i, c.properties().replicationFactor);
           assertEqual(i - 1, c.properties().writeConcern);
@@ -202,7 +198,6 @@ function ClusterCollectionSuite () {
       });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(2, c.properties().replicationFactor);
       assertEqual(2, c.properties().writeConcern);
@@ -231,7 +226,6 @@ function ClusterCollectionSuite () {
       });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(1, c.properties().replicationFactor);
       assertEqual(1, c.properties().writeConcern);
@@ -260,7 +254,6 @@ function ClusterCollectionSuite () {
       });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(2, c.properties().replicationFactor);
       assertEqual(2, c.properties().writeConcern);
@@ -334,13 +327,11 @@ function ClusterCollectionSuite () {
         assertTypeOf("string", c1._id);
         assertEqual(id, c1._id);
         assertEqual(cn, c1.name());
-        assertTypeOf("number", c1.status());
 
         var c2 = db._collection(cn);
 
         assertEqual(c1._id, c2._id);
         assertEqual(c1.name(), c2.name());
-        assertEqual(c1.status(), c2.status());
       } finally {
         db._drop(cn);
       }
@@ -374,7 +365,6 @@ function ClusterCollectionSuite () {
       var c = db._createEdgeCollection("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(3, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
 
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
@@ -388,7 +378,6 @@ function ClusterCollectionSuite () {
       var c = db._createEdgeCollection("UnitTestsClusterCrud", { numberOfShards: 8 });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(3, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(8, c.shards().length);
 
@@ -403,7 +392,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
 
       c.drop();
@@ -674,7 +662,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud", { numberOfShards : 5, shardKeys: [ "_key" ] });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "_key" ], c.properties().shardKeys);
       assertFalse(c.properties().waitForSync);
@@ -688,7 +675,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud", { shardKeys: [ "foo", "bar" ], waitForSync : true });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "foo", "bar" ], c.properties().shardKeys);
       assertTrue(c.properties().waitForSync);
@@ -702,7 +688,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "_key" ], c.properties().shardKeys);
       assertFalse(c.properties().waitForSync);
@@ -716,7 +701,6 @@ function ClusterCollectionSuite () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
-      assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
 
       try {
