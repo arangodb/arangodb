@@ -67,7 +67,11 @@ defmodule ToastTest.Attribution do
         server_artifacts = Map.get(artifacts, event.server_id)
 
         {coredump_paths, new_dumps} =
-          analyze_coredumps(event.server_id, server_artifacts, analyzer_opts)
+          analyze_coredumps(
+            event.server_id,
+            filter_artifacts_by_pid(server_artifacts, event.crash_info.os_pid),
+            analyzer_opts
+          )
 
         detail =
           %{server: event.server_id, crash_info: event.crash_info}
@@ -122,6 +126,22 @@ defmodule ToastTest.Attribution do
 
     coredump_paths = Enum.map(reports, & &1.core_path)
     {coredump_paths, reports}
+  end
+
+  defp filter_artifacts_by_pid(nil, _os_pid), do: nil
+  defp filter_artifacts_by_pid(artifacts, nil), do: artifacts
+
+  defp filter_artifacts_by_pid(artifacts, os_pid) do
+    pid_str = to_string(os_pid)
+
+    Enum.filter(artifacts.coredump_paths, fn path ->
+      path |> Path.basename() |> String.split(~r/[.\-_]/) |> Enum.member?(pid_str)
+    end)
+    |> case do
+      # Fall back to all paths if none matched (e.g., core files without PID in name)
+      [] -> artifacts
+      paths -> %{artifacts | coredump_paths: paths}
+    end
   end
 
   defp maybe_put(map, _key, nil), do: map

@@ -346,6 +346,148 @@ defmodule ToastTest.AttributionTest do
     end
   end
 
+  describe "run/4 — crash coredump filtering by PID" do
+    test "only coredumps matching the crash event PID are analyzed" do
+      crash_info = %CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond),
+        os_pid: 2000
+      }
+
+      server = build_server("single1")
+
+      artifacts = %{
+        "single1" => %{
+          server: server,
+          coredump_paths: ["/tmp/core.1000", "/tmp/core.2000"],
+          sanitizer_files: []
+        }
+      }
+
+      fake_analyzer = fn core_path, _bin, _opts ->
+        {:ok,
+         %Toast.Diagnostics.Coredump.Report{
+           core_path: core_path,
+           binary_path: "/usr/bin/arangod",
+           debugger: :gdb,
+           signal: "SIGSEGV",
+           faulting_address: nil,
+           crash_thread: 1,
+           threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
+         }}
+      end
+
+      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+
+      {issues, coredump_reports} =
+        Attribution.run(
+          build_test_data(),
+          artifacts,
+          crash_events,
+          analyzer_opts: [analyzer: fake_analyzer]
+        )
+
+      # Only the coredump matching PID 2000 should be analyzed
+      assert [issue] = issues
+      assert issue.detail.coredump_paths == ["/tmp/core.2000"]
+      assert length(coredump_reports) == 1
+      assert hd(coredump_reports).core_path == "/tmp/core.2000"
+    end
+
+    test "falls back to all coredumps when PID is nil" do
+      crash_info = %CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond),
+        os_pid: nil
+      }
+
+      server = build_server("single1")
+
+      artifacts = %{
+        "single1" => %{
+          server: server,
+          coredump_paths: ["/tmp/core.1000", "/tmp/core.2000"],
+          sanitizer_files: []
+        }
+      }
+
+      fake_analyzer = fn core_path, _bin, _opts ->
+        {:ok,
+         %Toast.Diagnostics.Coredump.Report{
+           core_path: core_path,
+           binary_path: "/usr/bin/arangod",
+           debugger: :gdb,
+           signal: "SIGSEGV",
+           faulting_address: nil,
+           crash_thread: 1,
+           threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
+         }}
+      end
+
+      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+
+      {issues, coredump_reports} =
+        Attribution.run(
+          build_test_data(),
+          artifacts,
+          crash_events,
+          analyzer_opts: [analyzer: fake_analyzer]
+        )
+
+      assert [issue] = issues
+      assert length(issue.detail.coredump_paths) == 2
+      assert length(coredump_reports) == 2
+    end
+
+    test "falls back to all coredumps when no filename matches PID" do
+      crash_info = %CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond),
+        os_pid: 9999
+      }
+
+      server = build_server("single1")
+
+      artifacts = %{
+        "single1" => %{
+          server: server,
+          coredump_paths: ["/tmp/core"],
+          sanitizer_files: []
+        }
+      }
+
+      fake_analyzer = fn core_path, _bin, _opts ->
+        {:ok,
+         %Toast.Diagnostics.Coredump.Report{
+           core_path: core_path,
+           binary_path: "/usr/bin/arangod",
+           debugger: :gdb,
+           signal: "SIGSEGV",
+           faulting_address: nil,
+           crash_thread: 1,
+           threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
+         }}
+      end
+
+      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+
+      {issues, coredump_reports} =
+        Attribution.run(
+          build_test_data(),
+          artifacts,
+          crash_events,
+          analyzer_opts: [analyzer: fake_analyzer]
+        )
+
+      assert [issue] = issues
+      assert issue.detail.coredump_paths == ["/tmp/core"]
+      assert length(coredump_reports) == 1
+    end
+  end
+
   describe "run/4 — empty crash events" do
     test "empty list produces no crash issues" do
       assert {[], []} = Attribution.run(build_test_data(), empty_artifacts(), [])
