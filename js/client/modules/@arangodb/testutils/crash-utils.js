@@ -298,7 +298,6 @@ function locateCoreDump(options, instanceInfo) {
     cp = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
     if (matchSystemdCoredump.exec(cp) !== null) {
       cp = '/var/lib/systemd/coredump/*core*' + instanceInfo.pid + '*';
-      print(options.coreDirectory)
     }
     cp = cp.replaceAll("*", ".*");
     let paths = cp.split(fs.pathSeparator);
