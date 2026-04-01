@@ -28,10 +28,8 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const fs = require('fs');
 const jsunity = require('jsunity');
-let instanceManager = JSON.parse(internal.env.INSTANCEINFO);
-
-const IM  = instanceManager;
-
+let instance = JSON.parse(internal.env.INSTANCEINFO);
+print(internal.env.INSTANCEINFO);
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
@@ -64,7 +62,7 @@ function runSetup () {
 
       if (remain.length > 0) {
         // ok, we found a WAL file to destroy!
-        let fn = fs.join(IM.arangods[0].dataDir,
+        let fn = fs.join(instance.dataDir,
                          'databases',
                          'engine-rocksdb',
                          'journals',
