@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
+  `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
+  `/_admin/wal/transactions`.
 
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
 
@@ -14,7 +17,6 @@
 
 * COR-353: Removed deprecated JS index creation functions `ensureUniqueConstraint()`,
   `ensureGeoIndex()`, and `ensureGeoConstraint()` from collection objects.
-
 * COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
 
 * Removed leftover range() method from collection objects in JavaScript API
