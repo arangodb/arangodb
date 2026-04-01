@@ -62,11 +62,11 @@ function runSetup () {
 
       if (remain.length > 0) {
         // ok, we found a WAL file to destroy!
-        let path = fs.join(IM.arangods[0].dataDir,
-                           'databases',
-                           'engine-rocksdb',
-                           'journals',
-                           remain[0]);
+        let fn = fs.join(IM.arangods[0].dataDir,
+                         'databases',
+                         'engine-rocksdb',
+                         'journals',
+                         remain[0]);
         // remove file and replace it with an empty one!
         require("console").warn("intentionally truncating log file " + fn);
         fs.remove(fn);
