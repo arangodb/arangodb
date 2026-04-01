@@ -117,7 +117,6 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
                                            inst.instanceRole.single,
                                            args, {}, {}, 'tcp', params.testDir, '',
                                            new agencyMgr(params.options, null));
-
     argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {
     additionalParams['javascript.script-parameter'] = 'recovery';
@@ -132,6 +131,7 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
   process.env["state-file"] = params.stateFile;
   process.env["crash-log"] = params.crashLog;
   process.env["isSan"] = params.options.isSan;
+  process.env["INSTANCEINFO"] = JSON.stringify(inst.getStructure());
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
