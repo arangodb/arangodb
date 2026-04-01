@@ -61,7 +61,7 @@ class VectorIndexFeature final
   bool shouldRunBuildManager() const;
 
   VectorIndexFeatureOptions _options;
-  std::optional<VectorIndexBuildManager> _buildManager;
+  std::optional<vector::VectorIndexBuildManager> _buildManager;
 };
 
 }  // namespace arangodb

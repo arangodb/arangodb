@@ -35,13 +35,13 @@ namespace arangodb::aql {
 
 inline bool checkFunctionNameMatchesIndexMetric(
     std::string_view functionName,
-    UserVectorIndexDefinition const& definition) {
+    vector::UserVectorIndexDefinition const& definition) {
   switch (definition.metric) {
-    case SimilarityMetric::kL2:
+    case vector::SimilarityMetric::kL2:
       return functionName == "APPROX_NEAR_L2";
-    case SimilarityMetric::kCosine:
+    case vector::SimilarityMetric::kCosine:
       return functionName == "APPROX_NEAR_COSINE";
-    case SimilarityMetric::kInnerProduct:
+    case vector::SimilarityMetric::kInnerProduct:
       return functionName == "APPROX_NEAR_INNER_PRODUCT";
   }
   return false;
@@ -50,10 +50,10 @@ inline bool checkFunctionNameMatchesIndexMetric(
 inline bool checkAscendingMatchesMetric(
     std::shared_ptr<Index> const& vectorIndex, bool ascending) {
   switch (vectorIndex->getVectorIndexDefinition().metric) {
-    case SimilarityMetric::kL2:
+    case vector::SimilarityMetric::kL2:
       return ascending;
-    case SimilarityMetric::kCosine:
-    case SimilarityMetric::kInnerProduct:
+    case vector::SimilarityMetric::kCosine:
+    case vector::SimilarityMetric::kInnerProduct:
       return !ascending;
   }
   // Not possible we handle all cases

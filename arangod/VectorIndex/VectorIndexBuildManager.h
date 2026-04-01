@@ -40,12 +40,14 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
 class DatabaseFeature;
 class LogicalCollection;
 class MaintenanceFeature;
 class RocksDBVectorIndex;
 class Scheduler;
+}  // namespace arangodb
+
+namespace arangodb::vector {
 
 /// Single background thread that periodically scans for untrained vector
 /// indexes and builds them one at a time. The same thread scans and builds.
@@ -114,4 +116,4 @@ class VectorIndexBuildManager {
       _waiters;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::vector

@@ -111,9 +111,9 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
                      std::unique_ptr<rocksdb::Iterator> documentIterator,
                      std::stop_token stopToken = {});
 
-class VectorIndexBuildManager {
+class VectorIndexBuilder {
  public:
-  explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
+  explicit VectorIndexBuilder(RocksDBVectorIndex& index);
 
   Result build(std::shared_ptr<RocksDBIndex> indexPtr,
                metrics::Histogram<metrics::LogScale<double>>& trainingDuration,

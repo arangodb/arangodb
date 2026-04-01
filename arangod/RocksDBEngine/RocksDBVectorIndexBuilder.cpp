@@ -619,14 +619,14 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   return firstError;
 }
 
-VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
+VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index)
     : _index(index),
       _engine(index.collection().vocbase().engine<RocksDBEngine>()),
       _rootDB(_engine.db()->GetRootDB()),
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuildManager::build(
+Result VectorIndexBuilder::build(
     std::shared_ptr<RocksDBIndex> indexPtr,
     metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
     metrics::Histogram<metrics::LogScale<double>>& ingestionDuration,

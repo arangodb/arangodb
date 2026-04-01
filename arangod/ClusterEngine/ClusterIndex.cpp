@@ -549,7 +549,8 @@ bool ClusterIndex::isVectorIndexReady() const noexcept {
   }
 }
 
-UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {
+vector::UserVectorIndexDefinition const&
+ClusterIndex::getVectorIndexDefinition() {
   TRI_ASSERT(_vectorIndexDefinition != nullptr);
   if (!_vectorIndexDefinition) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

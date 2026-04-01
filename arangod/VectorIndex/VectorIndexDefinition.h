@@ -36,7 +36,7 @@
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
 
-namespace arangodb {
+namespace arangodb::vector {
 
 // Number of training iterations, in faiss it is 25 by default
 static constexpr std::uint64_t kdefaultTrainingIterations{25};
@@ -102,17 +102,16 @@ struct NListsTier {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, NListsTier& x) {
     return f.object(x).fields(
-        f.field("min_n", x.minN)
+        f.field("minN", x.minN).invariant([](auto value) -> inspection::Status {
+          if (value < 1) {
+            return {"minN must be 1 or greater!"};
+          }
+          return inspection::Status::Success{};
+        }),
+        f.field("fixedValue", x.fixedValue)
             .invariant([](auto value) -> inspection::Status {
               if (value < 1) {
-                return {"min_n must be 1 or greater!"};
-              }
-              return inspection::Status::Success{};
-            }),
-        f.field("fixed_value", x.fixedValue)
-            .invariant([](auto value) -> inspection::Status {
-              if (value < 1) {
-                return {"fixed_value must be 1 or greater!"};
+                return {"fixedValue must be 1 or greater!"};
               }
               return inspection::Status::Success{};
             }));
@@ -121,8 +120,8 @@ struct NListsTier {
 
 /// @brief Tiered NLists scaling specification.
 /// For small N: nLists = max(minNLists, multiplier * func(N))
-/// For large N: uses fixed values from tiers (first tier whose min_n <= N).
-/// Tiers should be provided in descending order of min_n.
+/// For large N: uses fixed values from tiers (first tier whose minN <= N).
+/// Tiers should be provided in descending order of minN1.
 struct NListsScalingSpec {
   NListsStrategy strategy{NListsStrategy::kAutoSqrt};
   std::int64_t multiplier{8};
@@ -292,4 +291,4 @@ struct UserVectorIndexDefinition {
   }
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::vector

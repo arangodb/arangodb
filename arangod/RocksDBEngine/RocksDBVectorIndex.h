@@ -82,12 +82,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
-  UserVectorIndexDefinition const& getDefinition() const noexcept {
+  vector::UserVectorIndexDefinition const& getDefinition() const noexcept {
     return _definition;
   }
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
-      std::vector<float>& inputs, SearchParameters const& searchParameters,
+      std::vector<float>& inputs,
+      vector::SearchParameters const& searchParameters,
       RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
       std::shared_ptr<LogicalCollection> collection, std::size_t topK,
       aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
@@ -96,7 +97,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
           filterVarsToRegs,
       aql::Variable const* documentVariable, bool isCovered);
 
-  UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+  vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
   bool isVectorIndexReady() const noexcept override;
 
@@ -110,7 +111,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::int64_t trainingThreshold() const noexcept { return _trainingThreshold; }
 
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
-                           TrainedData trainedData);
+                           vector::TrainedData trainedData);
 
   bool hasStoredValues() const noexcept;
 
@@ -143,9 +144,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  TrainedData loadTrainedData(velocypack::Slice info) const;
+  vector::TrainedData loadTrainedData(velocypack::Slice info) const;
 
-  UserVectorIndexDefinition _definition;
+  vector::UserVectorIndexDefinition _definition;
   // The actual nLists value used for FAISS operations.
   // Resolved at training time via resolveNListsParameter().
   std::int64_t _resolvedNLists{0};
@@ -153,7 +154,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   // Resolved at training time: explicit value or sqrt(nLists).
   std::int64_t _resolvedDefaultNProbe{0};
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
-  TrainedData _trainedData;
+  vector::TrainedData _trainedData;
   StoredValues const _storedValues;
 
   std::int64_t _trainingThreshold{0};
