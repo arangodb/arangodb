@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertNotNull */
+/* global assertNotNull, print */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
