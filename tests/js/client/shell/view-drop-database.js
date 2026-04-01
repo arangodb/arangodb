@@ -42,7 +42,7 @@ function DropDatabase() {
       count += fs.list(path).length;
     });
     return count;
-  }
+  };
   let was = 0;
 
   function dirmaker(n, needDrop) {
