@@ -110,7 +110,8 @@ void DaemonFeature::validateOptions(
   std::error_code ec;
   std::string currentDir = std::filesystem::current_path(ec).string();
   if (ec) {
-    currentDir = ".";
+    throw std::filesystem::filesystem_error(
+        "cannot get current working directory", std::filesystem::path(), ec);
   }
   std::string absoluteFile = TRI_GetAbsolutePath(_options.pidFile, currentDir);
 
