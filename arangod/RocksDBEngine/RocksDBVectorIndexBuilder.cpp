@@ -269,16 +269,11 @@ std::int64_t VectorIndexTrainer::resolveNLists(
   return resolveNListsParameter(_definition.nLists, numDocsHint);
 }
 
-std::int64_t VectorIndexTrainer::resolveDefaultNProbe(
-    std::int64_t resolvedNLists) const {
-  return resolveNProbeParameter(_definition.defaultNProbe, resolvedNLists);
-}
-
 ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
     rocksdb::Iterator& it, rocksdb::Slice upper, std::uint64_t numDocsHint,
     std::stop_token stopToken) const {
   auto const resolvedNLists = resolveNLists(numDocsHint);
-  auto const resolvedDefaultNProbe = resolveDefaultNProbe(resolvedNLists);
+  auto const resolvedDefaultNProbe = _definition.defaultNProbe;
 
   if (isNListsScaling(_definition.nLists)) {
     LOG_TOPIC("c162b", INFO, Logger::ENGINES) << std::format(

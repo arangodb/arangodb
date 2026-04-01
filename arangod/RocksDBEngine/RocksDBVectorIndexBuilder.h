@@ -77,7 +77,7 @@ class VectorIndexTrainer {
       std::int64_t resolvedNLists) const;
 
   /// Run the full training pipeline:
-  ///  1. Resolve nLists and defaultNProbe from the definition
+  ///  1. Resolve nLists from the definition
   ///  2. Create the FAISS index
   ///  3. Load training vectors from the iterator
   ///  4. Train the FAISS index
@@ -94,10 +94,6 @@ class VectorIndexTrainer {
   /// Resolve the nLists value from the definition, using numDocsHint for
   /// scaling mode.
   std::int64_t resolveNLists(std::uint64_t numDocsHint) const;
-
-  /// Resolve the defaultNProbe value. Uses the explicit value from the
-  /// definition if set, otherwise computes sqrt(resolvedNLists) with min 1.
-  std::int64_t resolveDefaultNProbe(std::int64_t resolvedNLists) const;
 
   UserVectorIndexDefinition const& _definition;
   bool _isSparse;

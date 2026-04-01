@@ -203,45 +203,13 @@ inline std::int64_t resolveNListsParameter(NListsParameter const& p,
       p);
 }
 
-/// @brief NProbe parameter: either a fixed integer or a strategy.
-/// JSON: 10  OR  "autoSqrt"
-using NProbeParameter = std::variant<std::int64_t, NListsStrategy>;
-
-template<class Inspector>
-inline auto inspect(Inspector& f, NProbeParameter& x) {
-  namespace insp = arangodb::inspection;
-  return f.variant(x).unqualified().alternatives(
-      insp::inlineType<std::int64_t>(), insp::inlineType<NListsStrategy>());
-}
-
-/// @brief Resolve an NProbeParameter to a concrete value.
-/// Fixed mode returns the value directly.
-/// Strategy mode computes from resolvedNLists (autoSqrt → sqrt(nLists), min 1).
-inline std::int64_t resolveNProbeParameter(NProbeParameter const& p,
-                                           std::int64_t resolvedNLists) {
-  return std::visit(
-      overload{
-          [](std::int64_t fixed) -> std::int64_t { return fixed; },
-          [resolvedNLists](NListsStrategy strategy) -> std::int64_t {
-            switch (strategy) {
-              case NListsStrategy::kAutoSqrt:
-                return std::max<std::int64_t>(
-                    1, static_cast<std::int64_t>(std::sqrt(resolvedNLists)));
-            }
-          },
-      },
-      p);
-}
-
 struct UserVectorIndexDefinition {
   std::uint64_t dimension;
   SimilarityMetric metric;
   NListsParameter nLists;
   std::uint64_t trainingIterations;
 
-  // Default nProbe: either a fixed integer or a strategy like "autoSqrt"
-  // which computes sqrt(resolvedNLists) at training time.
-  NProbeParameter defaultNProbe;
+  std::int64_t defaultNProbe;
 
   // FAISS factory string. In fixed nLists mode, nLists must match the IVF
   // number in the string. In scaling nLists mode, the string must contain a
@@ -279,12 +247,10 @@ struct UserVectorIndexDefinition {
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)
-            .fallback(NProbeParameter{NListsStrategy::kAutoSqrt})
-            .invariant([](auto const& value) -> inspection::Status {
-              if (auto* fixed = std::get_if<std::int64_t>(&value)) {
-                if (*fixed < 1) {
-                  return {"defaultNProbe must be 1 or greater!"};
-                }
+            .fallback(static_cast<std::int64_t>(kdefaultNProbe))
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"defaultNProbe must be 1 or greater!"};
               }
               return inspection::Status::Success{};
             }));
