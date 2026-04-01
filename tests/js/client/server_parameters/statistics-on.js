@@ -26,9 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
-  return {
-    'server.statistics': "true"
-  };
+  return {};
 }
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
@@ -78,16 +76,7 @@ function testSuite() {
       for (let i = 0; i < 10; ++i) {
         arango.GET("/_api/version");
       }
-      // statistics aggregation on server may take a short while - wait for it
-      let newValue;
-      let tries = 0;
-      while (++tries < 4 * 10) {
-        newValue = getMetric("arangodb_http_request_statistics_total_requests_total");
-        if (newValue - oldValue >= 10) {
-          break;
-        }
-        internal.sleep(0.25);
-      }
+      let newValue = getMetric("arangodb_http_request_statistics_total_requests_total");
       assertTrue(newValue - oldValue >= 10, { oldValue, newValue });
     },
 
