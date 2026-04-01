@@ -1672,7 +1672,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!abs.empty()) {
     res = TRI_V8_STD_STRING(isolate, abs);
   } else {
-    res = TRI_V8_STD_STRING(isolate, cwd);
+    res = TRI_V8_STD_STRING(isolate, cwdPath.string());
   }
 
   // return result
