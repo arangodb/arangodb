@@ -36,7 +36,6 @@
 #include <chrono>
 #include <thread>
 
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
 namespace {
@@ -122,6 +121,8 @@ void handleGossipResponse(arangodb::network::Response const& r,
 
 }  // namespace
 
+namespace arangodb {
+namespace consensus {
 Inception::Inception(Agent& agent) : Thread("Inception"), _agent(agent) {}
 
 // Shutdown if not already
@@ -569,3 +570,6 @@ void Inception::signalConditionVar() {
   std::lock_guard guard{_cv.mutex};
   _cv.cv.notify_all();
 }
+
+}  // namespace consensus
+}  // namespace arangodb

@@ -35,8 +35,10 @@
 #include "Agency/ResignLeadership.h"
 #include "Logger/LogMacros.h"
 
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+
+namespace arangodb {
+namespace consensus {
 
 JobContext::JobContext(JOB_STATUS status, std::string const& id,
                        Node const& snapshot, AgentInterface* agent)
@@ -96,3 +98,6 @@ void JobContext::abort(std::string const& reason) {
     _job->abort(reason);
   }
 }
+
+}  // namespace consensus
+}  // namespace arangodb

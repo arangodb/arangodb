@@ -37,10 +37,11 @@
 #include <ctime>
 #include <string_view>
 
-using namespace arangodb::consensus;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
+namespace arangodb {
+namespace consensus {
 /// Ctor with name
 Store::Store(std::string const& name) : _node(Node::create()) {}
 
@@ -755,3 +756,6 @@ void Store::registerPrefixTrigger(std::string const& prefix,
 std::vector<std::string> Store::split(std::string_view str) {
   return Node::split(str);
 }
+
+}  // namespace consensus
+}  // namespace arangodb

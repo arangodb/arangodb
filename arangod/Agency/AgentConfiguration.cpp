@@ -29,7 +29,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-using namespace arangodb::consensus;
+namespace arangodb::consensus {
 
 std::string const config_t::idStr = "id";
 std::string const config_t::agencySizeStr = "agency size";
@@ -789,3 +789,5 @@ void config_t::updateConfiguration(velocypack::Slice other) {
 
   ++_version;
 }
+
+}  //  arangodb::consensus

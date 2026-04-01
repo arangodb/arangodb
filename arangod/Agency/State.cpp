@@ -52,18 +52,20 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 using namespace arangodb::basics;
+
+namespace arangodb {
 
 DECLARE_GAUGE(arangodb_agency_log_size_bytes, uint64_t,
               "Agency replicated log size [bytes]");
 DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
               "Current number of entries in agency client id lookup table");
+
+namespace consensus {
 
 /// Constructor:
 State::State(metrics::MetricsFeature& metrics)
@@ -1495,8 +1497,8 @@ bool State::removeObsolete(index_t cind) {
 
 /// Persist a compaction snapshot
 bool State::persistCompactionSnapshot(index_t cind,
-                                      arangodb::consensus::term_t term,
-                                      arangodb::consensus::Store& snapshot) {
+                                      term_t term,
+                                      Store& snapshot) {
   TRI_IF_FAILURE("State::persistCompactionSnapshot") { return true; }
 
   if (checkCollection("compact")) {
@@ -1974,3 +1976,6 @@ void State::toVelocyPack(velocypack::Builder& builder) const {
   char const* key = keySlice.getString(keyLength);
   return index_t(arangodb::basics::StringUtils::uint64(key, keyLength));
 }
+
+}  // namespace consensus
+}  // namespace arangodb
