@@ -59,8 +59,7 @@ TEST(ExecContextTest, basic_construction) {
                       CollectionAccessLevel::WriteMeta, true);
 
   EXPECT_EQ(ctx.user(), "testuser");
-  EXPECT_EQ(ctx.database(), "testdb");
-  EXPECT_EQ(ctx.systemAuthLevel(), CollectionAccessLevel::WriteMeta);
+  EXPECT_TRUE(ctx.canUseDatabase("_system", DatabaseAccessLevel::Write).ok());
   EXPECT_TRUE(ctx.canUseDatabase("testdb", DatabaseAccessLevel::Write).ok());
   EXPECT_TRUE(
       ctx.canUseAdminAction(arangodb::rbac::Category::AdminBackup{}).ok());
@@ -80,8 +79,7 @@ TEST(ExecContextTest, construction_with_jwt_and_roles) {
                       true, roles, jwtToken);
 
   EXPECT_EQ(ctx.user(), "jwtuser");
-  EXPECT_EQ(ctx.database(), "testdb");
-  EXPECT_EQ(ctx.systemAuthLevel(), auth::Level::RW);
+  EXPECT_TRUE(ctx.canUseDatabase("_system", DatabaseAccessLevel::Write).ok());
   EXPECT_TRUE(ctx.canUseDatabase("testdb", DatabaseAccessLevel::Read));
   EXPECT_TRUE(
       ctx.canUseAdminAction(arangodb::rbac::Category::AdminFoxx{}).ok());

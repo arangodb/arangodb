@@ -107,15 +107,6 @@ class ExecContext : public RequestContext {
   /// @brief current user, may be empty for internal users
   std::string_view user() const { return _authMode.getIAuth().username(); }
 
-  [[deprecated]] std::string const& database() const {
-    std::abort();  // TODO remove this method
-  }
-
-  /// @brief authentication level on _system. Always RW for superuser
-  [[deprecated]] auth::Level systemAuthLevel() const noexcept {
-    std::abort();  // TODO remove this method
-  }
-
   /// @brief returns auth level for user
   [[deprecated]] auth::Level collectionAuthLevel(
       std::string_view dbname, std::string_view collection) const;
