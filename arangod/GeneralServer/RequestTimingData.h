@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,9 +22,9 @@
 #pragma once
 
 #include "Rest/CommonDefines.h"
-#include "Statistics/StatisticsFeature.h"
 
 #include <cstdint>
+#include <chrono>
 
 namespace arangodb {
 namespace application_features {
@@ -33,15 +34,18 @@ class ApplicationServer;
 // Timing data struct carried out on CommTask (per message id)
 // and handed to RestHander during execution.
 struct RequestTimingData {
-  double readStart = 0.0;
-  double readEnd = 0.0;
-  double queueStart = 0.0;
-  double queueEnd = 0.0;
+  using clock = std::chrono::steady_clock;
+  using time_point = std::chrono::time_point<clock>;
+  
+  time_point readStart{};
+  time_point readEnd{};
+  time_point queueStart{};
+  time_point queueEnd{};
   int64_t queueSize = 0;
-  double requestStart = 0.0;
-  double requestEnd = 0.0;
-  double writeStart = 0.0;
-  double writeEnd = 0.0;
+  time_point requestStart{};
+  time_point requestEnd{};
+  time_point writeStart{};
+  time_point writeEnd{};
   double receivedBytes = 0.0;
   double sentBytes = 0.0;
   rest::RequestType requestType = rest::RequestType::ILLEGAL;
@@ -51,19 +55,25 @@ struct RequestTimingData {
   // When false, all timing is skipped (--server.statistics=false)
   bool active = false;
 
-  double elapsedSinceReadStart() const {
-    if (active && readStart != 0.0) {
-      return StatisticsFeature::time() - readStart;
+  double elapsedSinceReadStart() const noexcept {
+    if (active && readStart != time_point{}) {
+      return toSeconds(clock::now() - readStart);
     }
     return 0.0;
   }
 
   double elapsedWhileQueued() const noexcept {
     if (active) {
-      return queueEnd - queueStart;
+      return toSeconds(queueEnd - queueStart);
     }
     return 0.0;
   }
+
+  static double toSeconds(clock::duration d) noexcept {
+    return std::chrono::duration<double>(d).count();
+  }
+
+  static time_point now() noexcept { return clock::now(); }
 };
 
 // @brief finalize timing data

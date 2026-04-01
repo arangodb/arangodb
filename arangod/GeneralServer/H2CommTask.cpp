@@ -95,8 +95,8 @@ template<SocketType T>
 
   int32_t const sid = frame->hd.stream_id;
   auto& td = me->acquireTimingData(sid);
-  if (td.active && td.readStart == 0.0) {
-    td.readStart = TRI_microtime();
+  if (td.active && td.readStart == RequestTimingData::time_point{}) {
+    td.readStart = RequestTimingData::now();
   }
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid);
@@ -226,7 +226,7 @@ template<SocketType T>
       if (h2Response != nullptr) {
         auto& td = h2Response->timingData;
         if (td.active) {
-          td.writeEnd = TRI_microtime();
+          td.writeEnd = RequestTimingData::now();
         }
         me->finalizeTimingData(h2Response->timingData);
       }
@@ -647,8 +647,8 @@ void H2CommTask<T>::processRequest(Stream& stream,
   if (td.active) {
     td.requestType = req->requestType();
     td.receivedBytes += stream.headerBuffSize + req->body().size();
-    td.readEnd = StatisticsFeature::time();
-    td.writeStart = StatisticsFeature::time();
+    td.readEnd = RequestTimingData::now();
+    td.writeStart = RequestTimingData::now();
   }
 
   // OPTIONS requests currently go unauthenticated

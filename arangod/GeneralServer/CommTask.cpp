@@ -582,7 +582,8 @@ void finalizeTimingData(application_features::ApplicationServer& server,
   statistics::MethodRequests[static_cast<size_t>(data.requestType)]
       .incCounter();
 
-  if (data.readStart != 0.0 && (data.async || data.writeEnd != 0.0)) {
+  if (data.readStart != RequestTimingData::time_point{} &&
+      (data.async || data.writeEnd != RequestTimingData::time_point{})) {
     if (data.superuser) {
       statistics::TotalRequestsSuperuser.incCounter();
     } else {
@@ -591,9 +592,7 @@ void finalizeTimingData(application_features::ApplicationServer& server,
 
     if (server.hasFeature<GeneralServerFeature>()) {
       server.getFeature<GeneralServerFeature>().recordHttpRequestStatistics(
-          data.async, data.requestType, data.superuser, data.readStart,
-          data.requestEnd, data.writeEnd, data.queueStart, data.queueEnd,
-          data.requestStart, data.sentBytes, data.receivedBytes);
+          data);
     }
   }
 

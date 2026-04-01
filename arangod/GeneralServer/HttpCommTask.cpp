@@ -110,8 +110,8 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
 
   // acquire a new timing data entry for the request
   auto& td = me->acquireTimingData(1UL);
-  if (td.active && td.readStart == 0.0) {
-    td.readStart = TRI_microtime();
+  if (td.active && td.readStart == RequestTimingData::time_point{}) {
+    td.readStart = RequestTimingData::now();
   }
   return HPE_OK;
 } catch (...) {
@@ -260,7 +260,7 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   try {
     auto& td = me->timingData(1UL);
     if (td.active) {
-      td.readEnd = TRI_microtime();
+      td.readEnd = RequestTimingData::now();
     }
     me->_messageDone = true;
     me->_request->parseUrl(me->_url.data(), me->_url.size());
@@ -850,7 +850,7 @@ void HttpCommTask<T>::writeResponse(RequestTimingData data) {
   TRI_ASSERT(!_header.empty());
 
   if (data.active) {
-    data.writeStart = StatisticsFeature::time();
+    data.writeStart = RequestTimingData::now();
   }
 
   std::array<asio_ns::const_buffer, 2> buffers;
@@ -870,7 +870,7 @@ void HttpCommTask<T>::writeResponse(RequestTimingData data) {
         me._writing = false;
 
         if (data.active) {
-          data.writeEnd = TRI_microtime();
+          data.writeEnd = RequestTimingData::now();
           data.sentBytes += nwrite;
         }
         me.finalizeTimingData(data);

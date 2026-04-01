@@ -165,7 +165,7 @@ RequestLane RestHandler::determineRequestLane() {
 void RestHandler::trackQueueStart() noexcept {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   if (_timingData.active) {
-    _timingData.queueStart = StatisticsFeature::time();
+    _timingData.queueStart = RequestTimingData::now();
     _timingData.queueSize =
         SchedulerFeature::SCHEDULER->queueStatistics()._queued;
   }
@@ -173,7 +173,7 @@ void RestHandler::trackQueueStart() noexcept {
 
 void RestHandler::trackQueueEnd() noexcept {
   if (_timingData.active) {
-    _timingData.queueEnd = StatisticsFeature::time();
+    _timingData.queueEnd = RequestTimingData::now();
   }
 }
 
@@ -430,7 +430,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   auto fail = [&]() {
     TRI_ASSERT(_state == HandlerState::FAILED);
     if (_timingData.active) {
-      _timingData.requestEnd = StatisticsFeature::time();
+      _timingData.requestEnd = RequestTimingData::now();
     }
     // Callback may stealTimingData!
     _sendResponseCallback(this);
@@ -455,7 +455,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 
   TRI_ASSERT(_state == HandlerState::FINALIZE);
   if (_timingData.active) {
-    _timingData.requestEnd = StatisticsFeature::time();
+    _timingData.requestEnd = RequestTimingData::now();
   }
 
   // shutdownExecute is noexcept
@@ -476,7 +476,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 void RestHandler::prepareEngine() {
   // set end immediately so we do not get negative statistics
   if (_timingData.active) {
-    _timingData.requestStart = StatisticsFeature::time();
+    _timingData.requestStart = RequestTimingData::now();
     _timingData.requestEnd = _timingData.requestStart;
   }
 

@@ -45,6 +45,7 @@
 
 namespace arangodb {
 class RestServerThread;
+struct RequestTimingData;
 
 class GeneralServerFeature final
     : public application_features::ApplicationFeature {
@@ -91,12 +92,7 @@ class GeneralServerFeature final
 
   void countHttp2Connection() { _http2Connections.count(); }
 
-  void recordHttpRequestStatistics(bool async, rest::RequestType requestType,
-                                   bool superuser, double readStart,
-                                   double requestEnd, double writeEnd,
-                                   double queueStart, double queueEnd,
-                                   double requestStart, double sentBytes,
-                                   double receivedBytes) noexcept;
+  void recordHttpRequestStatistics(RequestTimingData const& data) noexcept;
 
   bool isTelemetricsEnabled() const noexcept {
     return _options.enableTelemetrics;
