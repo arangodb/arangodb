@@ -122,18 +122,45 @@ jobs:
               echo "Branch is a release branch or devel, not cancelling any pipelines"
             else
               ## Get the name of the workflow and the related pipeline number
-              CURRENT_PIPELINE_NUM=$(curl --header "Circle-Token: $CIRCLECI_TOKEN" --request GET "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}" | jq -r '.pipeline_number')
+              echo "Fetching workflow info for CIRCLE_WORKFLOW_ID=${CIRCLE_WORKFLOW_ID}"
+              WORKFLOW_RESPONSE=$(curl -sf --header "Circle-Token: $CIRCLECI_TOKEN" --request GET "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}") || {
+                echo "WARNING: Failed to fetch workflow info (curl exit code $?). Skipping cancellation."
+                exit 0
+              }
+              CURRENT_PIPELINE_NUM=$(echo "$WORKFLOW_RESPONSE" | jq -r '.pipeline_number')
+              echo "Current pipeline number: $CURRENT_PIPELINE_NUM"
 
-              ## Get the IDs of pipelines created by the current user on the same branch. (Only consider pipelines that have a pipeline number inferior to the current pipeline)
-              PIPE_IDS=$(curl --header "Circle-Token: $CIRCLECI_TOKEN" --request GET "https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline?branch=$CIRCLE_BRANCH" | \
-                jq -r --arg CIRCLE_USERNAME "$CIRCLE_USERNAME" --argjson CURRENT_PIPELINE_NUM "$CURRENT_PIPELINE_NUM" '.items[]|select(.state == "created")|select(.trigger.actor.login == $CIRCLE_USERNAME)|select(.number < $CURRENT_PIPELINE_NUM)|.id')
+              ## Get the IDs of pipelines created by the current user on the same branch.
+              echo "Fetching pipelines for branch=${CIRCLE_BRANCH}, username=${CIRCLE_USERNAME}"
+              PIPELINE_RESPONSE=$(curl -sf --header "Circle-Token: $CIRCLECI_TOKEN" --request GET "https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline?branch=$CIRCLE_BRANCH") || {
+                echo "WARNING: Failed to fetch pipelines (curl exit code $?). Skipping cancellation."
+                exit 0
+              }
+
+              if echo "$PIPELINE_RESPONSE" | jq -e '.items' > /dev/null 2>&1; then
+                PIPE_IDS=$(echo "$PIPELINE_RESPONSE" | \
+                  jq -r --arg CIRCLE_USERNAME "$CIRCLE_USERNAME" --argjson CURRENT_PIPELINE_NUM "$CURRENT_PIPELINE_NUM" '.items[]|select(.state == "created")|select(.trigger.actor.login == $CIRCLE_USERNAME)|select(.number < $CURRENT_PIPELINE_NUM)|.id')
+              else
+                echo "WARNING: Pipeline API response does not contain 'items' field. Skipping cancellation."
+                PIPE_IDS=""
+              fi
+              echo "Pipe IDs to check: $PIPE_IDS"
 
               ## Get the IDs of currently running/on_hold workflows
               if [ ! -z "$PIPE_IDS" ]; then
                 for PIPE_ID in $PIPE_IDS
                 do
-                  curl --header "Circle-Token: $CIRCLECI_TOKEN" --request GET "https://circleci.com/api/v2/pipeline/${PIPE_ID}/workflow" | \
-                    jq -r '.items[]|select(.status == "on_hold" or .status == "running") | .id' >> WF_to_cancel.txt
+                  echo "Fetching workflows for pipeline ${PIPE_ID}"
+                  WF_RESPONSE=$(curl -sf --header "Circle-Token: $CIRCLECI_TOKEN" --request GET "https://circleci.com/api/v2/pipeline/${PIPE_ID}/workflow") || {
+                    echo "WARNING: Failed to fetch workflows for pipeline ${PIPE_ID}. Skipping."
+                    continue
+                  }
+
+                  if echo "$WF_RESPONSE" | jq -e '.items' > /dev/null 2>&1; then
+                    echo "$WF_RESPONSE" | jq -r '.items[]|select(.status == "on_hold" or .status == "running") | .id' >> WF_to_cancel.txt
+                  else
+                    echo "WARNING: Workflow API response for pipeline ${PIPE_ID} does not contain 'items' field. Skipping."
+                  fi
                 done
               fi
 
