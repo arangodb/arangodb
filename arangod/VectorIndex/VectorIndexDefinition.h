@@ -28,7 +28,6 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -92,9 +91,9 @@ inline auto inspect(Inspector& f, NListsStrategy& x) {
 }
 
 /// @brief A single tier in the NLists scaling specification.
-/// If the document count N >= minN, use fixedValue for nLists.
+/// If the document count N >= threshold, use fixedValue for nLists.
 struct NListsTier {
-  std::int64_t minN{0};
+  std::int64_t threshold{0};
   std::int64_t fixedValue{1};
 
   bool operator==(NListsTier const&) const noexcept = default;
@@ -102,12 +101,13 @@ struct NListsTier {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, NListsTier& x) {
     return f.object(x).fields(
-        f.field("minN", x.minN).invariant([](auto value) -> inspection::Status {
-          if (value < 1) {
-            return {"minN must be 1 or greater!"};
-          }
-          return inspection::Status::Success{};
-        }),
+        f.field("threshold", x.threshold)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"threshold must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
         f.field("fixedValue", x.fixedValue)
             .invariant([](auto value) -> inspection::Status {
               if (value < 1) {
@@ -119,24 +119,41 @@ struct NListsTier {
 };
 
 /// @brief Tiered NLists scaling specification.
-/// For small N: nLists = max(minNLists, multiplier * func(N))
-/// For large N: uses fixed values from tiers (first tier whose minN <= N).
-/// Tiers should be provided in descending order of minN1.
+/// For small N: nLists = max(minNLists, multiplier * func(N)), N < 1M
+/// For large N: uses fixed values from tiers (first tier whose threshold <= N).
+/// Tiers should be provided in descending order of threshold.
+/// Values have been taken from autofaiss
+/// {
+///     strategy: "autoSqrt",
+///     multiplier: 4,
+///     minNLists: 2,
+///     tiers: [
+///         { treshold: 1_000_000,   fixedValue: 16384 },
+///         { treshold: 10_000_000,  fixedValue: 65536 },
+///         { treshold: 300_000_000, fixedValue: 131072 },
+///     ],
+/// }
+/// so the rulse apply as such:
+/// N < 1M: nLists = max(2, 4 * sqrt(N))
+/// 1M <= N < 10M: nLists = 16384
+/// 10M <= N < 300M: nLists = 65536
+/// N >= 300M: nLists = 131072
 struct NListsScalingSpec {
   NListsStrategy strategy{NListsStrategy::kAutoSqrt};
-  std::int64_t multiplier{8};
-  std::int64_t minNLists{10};
-  std::vector<NListsTier> tiers;
+  std::int64_t multiplier{4};
+  std::int64_t minNLists{2};
+  std::vector<NListsTier> tiers{
+      {1000000, 16384}, {10000000, 65536}, {300000000, 131072}};
 
   bool operator==(NListsScalingSpec const&) const noexcept = default;
 
   std::int64_t compute(std::int64_t docCount) const {
-    // Sort tiers by minN descending to match the highest threshold first.
     auto sortedTiers = tiers;
-    std::sort(sortedTiers.begin(), sortedTiers.end(),
-              [](auto const& a, auto const& b) { return a.minN > b.minN; });
+    std::sort(
+        sortedTiers.begin(), sortedTiers.end(),
+        [](auto const& a, auto const& b) { return a.threshold > b.threshold; });
     for (auto const& tier : sortedTiers) {
-      if (docCount >= tier.minN) {
+      if (docCount >= tier.threshold) {
         return tier.fixedValue;
       }
     }
@@ -230,11 +247,7 @@ struct UserVectorIndexDefinition {
             }),
         f.field("metric", x.metric),
         f.field("nLists", x.nLists)
-            .fallback(NListsParameter{NListsScalingSpec{
-                NListsStrategy::kAutoSqrt,
-                8,
-                10,
-                {{100000000, 1048576}, {10000000, 262144}, {1000000, 65536}}}})
+            .fallback(NListsParameter{NListsScalingSpec{}})
             .invariant([](auto const& value) -> inspection::Status {
               if (auto* fixed = std::get_if<std::int64_t>(&value)) {
                 if (*fixed < 1) {
