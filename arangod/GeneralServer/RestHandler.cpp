@@ -80,7 +80,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 }
 
 RestHandler::~RestHandler() {
-  if (_timingData.active) {
+  if (_timingData.readStart != RequestTimingData::time_point{}) {
     // An async path doesn't call stealTimingData, so we need to finalize it
     // here. RestHandler is destroyed as soon as the execution is finished.
     arangodb::finalizeTimingData(_server, _timingData);
@@ -164,17 +164,13 @@ RequestLane RestHandler::determineRequestLane() {
 
 void RestHandler::trackQueueStart() noexcept {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  if (_timingData.active) {
-    _timingData.queueStart = RequestTimingData::now();
-    _timingData.queueSize =
-        SchedulerFeature::SCHEDULER->queueStatistics()._queued;
-  }
+  _timingData.queueStart = RequestTimingData::now();
+  _timingData.queueSize =
+      SchedulerFeature::SCHEDULER->queueStatistics()._queued;
 }
 
 void RestHandler::trackQueueEnd() noexcept {
-  if (_timingData.active) {
-    _timingData.queueEnd = RequestTimingData::now();
-  }
+  _timingData.queueEnd = RequestTimingData::now();
 }
 
 void RestHandler::trackTaskStart() noexcept {
@@ -224,8 +220,8 @@ void RestHandler::startActivity() {
                                         _request->requestType())}}});
 }
 
-RequestTimingData&& RestHandler::stealTimingData() {
-  return std::move(_timingData);
+RequestTimingData RestHandler::stealTimingData() {
+  return std::exchange(_timingData, RequestTimingData{});
 }
 
 void RestHandler::setTimingData(RequestTimingData&& data) {
@@ -429,9 +425,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
 auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   auto fail = [&]() {
     TRI_ASSERT(_state == HandlerState::FAILED);
-    if (_timingData.active) {
-      _timingData.requestEnd = RequestTimingData::now();
-    }
+    _timingData.requestEnd = RequestTimingData::now();
     // Callback may stealTimingData!
     _sendResponseCallback(this);
 
@@ -454,9 +448,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   }
 
   TRI_ASSERT(_state == HandlerState::FINALIZE);
-  if (_timingData.active) {
-    _timingData.requestEnd = RequestTimingData::now();
-  }
+  _timingData.requestEnd = RequestTimingData::now();
 
   // shutdownExecute is noexcept
   shutdownExecute(true);  // may not be moved down
@@ -475,10 +467,8 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 
 void RestHandler::prepareEngine() {
   // set end immediately so we do not get negative statistics
-  if (_timingData.active) {
-    _timingData.requestStart = RequestTimingData::now();
-    _timingData.requestEnd = _timingData.requestStart;
-  }
+  _timingData.requestStart = RequestTimingData::now();
+  _timingData.requestEnd = _timingData.requestStart;
 
   if (_canceled) {
     _state = HandlerState::FAILED;

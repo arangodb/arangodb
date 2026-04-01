@@ -52,21 +52,15 @@ struct RequestTimingData {
   bool async = false;
   bool superuser = false;
 
-  // When false, all timing is skipped (--server.statistics=false)
-  bool active = false;
-
   double elapsedSinceReadStart() const noexcept {
-    if (active && readStart != time_point{}) {
+    if (readStart != time_point{}) {
       return toSeconds(clock::now() - readStart);
     }
     return 0.0;
   }
 
   double elapsedWhileQueued() const noexcept {
-    if (active) {
-      return toSeconds(queueEnd - queueStart);
-    }
-    return 0.0;
+    return toSeconds(queueEnd - queueStart);
   }
 
   static double toSeconds(clock::duration d) noexcept {

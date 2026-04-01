@@ -107,7 +107,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   [[nodiscard]] RequestTimingData const& timingData() const noexcept {
     return _timingData;
   }
-  [[nodiscard]] RequestTimingData&& stealTimingData();
+  [[nodiscard]] RequestTimingData stealTimingData();
   void setTimingData(RequestTimingData&& data);
 
   void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }

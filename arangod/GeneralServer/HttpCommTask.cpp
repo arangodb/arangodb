@@ -110,7 +110,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
 
   // acquire a new timing data entry for the request
   auto& td = me->acquireTimingData(1UL);
-  if (td.active && td.readStart == RequestTimingData::time_point{}) {
+  if (td.readStart == RequestTimingData::time_point{}) {
     td.readStart = RequestTimingData::now();
   }
   return HPE_OK;
@@ -130,9 +130,7 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) try {
     return HPE_USER;
   }
   auto& td = me->timingData(1UL);
-  if (td.active) {
-    td.requestType = me->_request->requestType();
-  }
+  td.requestType = me->_request->requestType();
 
   me->_url.append(at, len);
   return HPE_OK;
@@ -259,9 +257,7 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   try {
     auto& td = me->timingData(1UL);
-    if (td.active) {
-      td.readEnd = RequestTimingData::now();
-    }
+    td.readEnd = RequestTimingData::now();
     me->_messageDone = true;
     me->_request->parseUrl(me->_url.data(), me->_url.size());
     me->_urlCorrupt = false;
@@ -357,9 +353,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     this->_protocol->buffer.consume(nparsed);
     // And count it in the statistics:
     auto& td = this->timingData(1UL);
-    if (td.active) {
-      td.receivedBytes += nparsed;
-    }
+    td.receivedBytes += nparsed;
 
     if (_headerCorrupt) {
       LOG_TOPIC("33324", WARN, Logger::REQUESTS)
@@ -615,9 +609,7 @@ void HttpCommTask<T>::doProcessRequest() {
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {
     auto& td = this->timingData(1UL);
-    if (td.active) {
-      td.superuser = true;
-    }
+    td.superuser = true;
   }
 
   // first check whether we allow the request to continue
@@ -849,9 +841,7 @@ void HttpCommTask<T>::writeResponse(RequestTimingData data) {
 
   TRI_ASSERT(!_header.empty());
 
-  if (data.active) {
-    data.writeStart = RequestTimingData::now();
-  }
+  data.writeStart = RequestTimingData::now();
 
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] = asio_ns::buffer(_header.data(), _header.size());
@@ -869,10 +859,8 @@ void HttpCommTask<T>::writeResponse(RequestTimingData data) {
         auto& me = static_cast<HttpCommTask<T>&>(*self);
         me._writing = false;
 
-        if (data.active) {
-          data.writeEnd = RequestTimingData::now();
-          data.sentBytes += nwrite;
-        }
+        data.writeEnd = RequestTimingData::now();
+        data.sentBytes += nwrite;
         me.finalizeTimingData(data);
 
         me._response.reset();
