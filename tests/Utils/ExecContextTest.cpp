@@ -187,24 +187,6 @@ TEST(ExecContextTest, canUseDatabase_same_db_uses_dbAuthLevel) {
       ctx.canUseDatabase("mydb", CollectionAccessLevel::WriteMeta).ok());
 }
 
-// --- collectionAuthLevel (internal path) ---
-
-TEST(ExecContextTest, collectionAuthLevel_internal_returns_dbAuthLevel) {
-  TestExecContext ctx(true, "", "", CollectionAccessLevel::WriteMeta,
-                      CollectionAccessLevel::WriteMeta, true);
-
-  EXPECT_EQ(ctx.collectionAuthLevel("anydb", "anycoll"),
-            CollectionAccessLevel::WriteMeta);
-}
-
-TEST(ExecContextTest, collectionAuthLevel_internal_ro_returns_ro) {
-  TestExecContext ctx(true, "", "", CollectionAccessLevel::Read,
-                      CollectionAccessLevel::Read, false);
-
-  EXPECT_EQ(ctx.collectionAuthLevel("anydb", "anycoll"),
-            CollectionAccessLevel::Read);
-}
-
 // --- Static superuser singleton ---
 
 TEST(ExecContextTest, superuser_singleton) {

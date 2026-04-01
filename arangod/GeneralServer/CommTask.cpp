@@ -812,7 +812,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   TRI_ASSERT(vc != nullptr);
   // deny access to database with NONE
   if (result == Flow::Continue &&
-      vc->databaseAuthLevel() == auth::Level::NONE) {
+      vc->canUseDatabase(req.databaseName(), DatabaseAccessLevel::Read)
+          .fail()) {
     result = Flow::Abort;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
         << "Access forbidden to " << path;
