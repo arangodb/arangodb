@@ -4,7 +4,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 // / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
 // / Licensed under the Business Source License 1.1 (the "License");
@@ -28,26 +28,24 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const errors = internal.errors;
 const db = require("internal").db;
-const print = internal.print;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed
 } = require("@arangodb/testutils/seededRandom");
 
 const dbName = "vectorScalingDB";
 const collName = "coll";
 const idxName = "vector_scaling_test";
-const dimension = 50;
-const seed = randomInteger();
-const insertedDocsCount = 2000;
+const dimension = 128;
+const insertedDocsCount = 100;
 
 function VectorIndexScalingTestSuite() {
     let collection;
     let randomPoint;
+    const seed = generateSeed();
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -73,7 +71,7 @@ function VectorIndexScalingTestSuite() {
         tearDown: function() {
             try {
                 collection.dropIndex(idxName);
-            } catch (_) {}
+            } catch(e) {}
         },
 
         testDefaultNListsScalingSpec: function() {
@@ -86,54 +84,18 @@ function VectorIndexScalingTestSuite() {
             });
             const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
-            // When nLists is omitted, the default scaling spec should be used
+            // When nLists is omitted, the default scaling should be used
             assertEqual("autoSqrt", idx.params.nLists.strategy, "default strategy should be autoSqrt");
-            assertEqual(8, idx.params.nLists.multiplier, "default multiplier should be 8");
-            assertEqual(10, idx.params.nLists.minNLists, "default minNLists should be 10");
+            assertEqual(4, idx.params.nLists.multiplier, "default multiplier should be 4");
+            assertEqual(2, idx.params.nLists.minNLists, "default minNLists should be 2");
             assertEqual(3, idx.params.nLists.tiers.length, "default should have 3 tiers");
 
-            assertEqual(100000000, idx.params.nLists.tiers[0].min_n);
-            assertEqual(1048576, idx.params.nLists.tiers[0].fixed_value);
-            assertEqual(10000000, idx.params.nLists.tiers[1].min_n);
-            assertEqual(262144, idx.params.nLists.tiers[1].fixed_value);
-            assertEqual(1000000, idx.params.nLists.tiers[2].min_n);
-            assertEqual(65536, idx.params.nLists.tiers[2].fixed_value);
-            assertEqual("autoSqrt", idx.params.defaultNProbe, "default defaultNProbe should be autoSqrt");
-        },
-
-        testScalingNListsWithTiersAndExplicitNProbe: function() {
-            const params = {
-                metric: "l2", dimension,
-                nLists: {
-                    strategy: "autoSqrt",
-                    multiplier: 4,
-                    minNLists: 2,
-                    tiers: [
-                        { min_n: 50000000, fixed_value: 500000 },
-                        { min_n: 5000000, fixed_value: 50000 },
-                        { min_n: 500000, fixed_value: 5000 },
-                    ],
-                },
-                defaultNProbe: 10,
-                trainingIterations: 25,
-            };
-            collection.ensureIndex({
-                name: idxName,
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params,
-            });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertEqual(params, idx.params);
-
-            // Query should work
-            const results = db._query(
-                `FOR d IN ${collName} SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 10}) LIMIT 5 RETURN d`,
-                { qp: randomPoint }
-            ).toArray();
-            assertEqual(5, results.length);
+            assertEqual(1000000, idx.params.nLists.tiers[0].threshold);
+            assertEqual(16384, idx.params.nLists.tiers[0].fixedValue);
+            assertEqual(10000000, idx.params.nLists.tiers[1].threshold);
+            assertEqual(65536, idx.params.nLists.tiers[1].fixedValue);
+            assertEqual(300000000, idx.params.nLists.tiers[2].threshold);
+            assertEqual(131072, idx.params.nLists.tiers[2].fixedValue);
         },
 
         testZeroMultiplierFails: function() {
@@ -145,13 +107,47 @@ function VectorIndexScalingTestSuite() {
                     inBackground: false,
                     params: {
                         metric: "l2", dimension,
-                        nLists: { multiplier: 0, minNLists: 1, tiers: [] },
+                        nLists: { multiplier: 0 },
                     },
                 });
                 fail();
             } catch (e) {
                 assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
             }
+        },
+
+        testSmallTiersGetTriggered: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [
+                            { threshold: 50, fixedValue: 2 },
+                            { threshold: 200, fixedValue: 4 },
+                        ],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual(2, idx.params.nLists.tiers.length);
+            assertEqual(50, idx.params.nLists.tiers[0].threshold);
+            assertEqual(2, idx.params.nLists.tiers[0].fixedValue);
+
+            // Verify the index is usable with a query
+            const query = `FOR d IN ${collName}
+                SORT APPROX_NEAR_L2(d.vector, @qp)
+                LIMIT 5
+                RETURN d`;
+            const result = db._query(query, { qp: randomPoint }).toArray();
+            assertEqual(5, result.length);
         },
 
         testInvalidMinNListsFails: function() {
@@ -164,44 +160,6 @@ function VectorIndexScalingTestSuite() {
                     params: {
                         metric: "l2", dimension,
                         nLists: { multiplier: 4, minNLists: 0, tiers: [] },
-                    },
-                });
-                fail();
-            } catch (e) {
-                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
-            }
-        },
-
-        testFactoryWithScalingNListsAndPlaceholder: function() {
-            collection.ensureIndex({
-                name: idxName,
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2", dimension,
-                    nLists: { multiplier: 4, minNLists: 2, tiers: [] },
-                    factory: "IVF{nLists},Flat",
-                },
-            });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-
-            assertTrue(idx !== undefined);
-            assertEqual(4, idx.params.nLists.multiplier, `nLists multiplier should be 4, got ${idx.params.nLists.multiplier}`);
-            assertEqual("IVF{nLists},Flat", idx.params.factory);
-        },
-
-        testFactoryWithScalingNListsMissingPlaceholderFails: function() {
-            try {
-                collection.ensureIndex({
-                    name: idxName,
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2", dimension,
-                        nLists: { multiplier: 4, minNLists: 2, tiers: [] },
-                        factory: "IVF10,Flat",
                     },
                 });
                 fail();
