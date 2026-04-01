@@ -30,6 +30,7 @@
 #include "Async/async.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Network/Methods.h"
@@ -450,8 +451,9 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
   }
 
   for (ServerID const& server : dbServers) {
-    // Build Lookup Infos
-    VPackBuilder infoBuilder;
+    auto sb = std::make_shared<velocypack::SupervisedBuffer>(
+        _query.resourceMonitor());
+    VPackBuilder infoBuilder(sb);  // supervised
     auto didCreateEngine = buildEngineInfo(clusterQueryId, infoBuilder, server,
                                            nodesById, nodeAliases);
     VPackSlice infoSlice = infoBuilder.slice();
@@ -615,7 +617,10 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
       // variant, but we have just waited 2 seconds and will linearly lock all
       // servers, any performance optimization here will not have measureable
       // impact.
-      VPackBuilder overwrittenOptions;
+      auto sbForOverwrittenOptions =
+          std::make_shared<velocypack::SupervisedBuffer>(
+              _query.resourceMonitor());
+      VPackBuilder overwrittenOptions(sbForOverwrittenOptions);
       overwrittenOptions.openObject();
       // patch query id
       overwrittenOptions.add("clusterQueryId", VPackValue(clusterQueryId));
@@ -799,7 +804,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily
 
   // Shutdown query snippets
-  VPackBuffer<uint8_t> body;
+  velocypack::SupervisedBuffer body(_query.resourceMonitor());
   VPackBuilder builder(body);
   builder.openObject();
   builder.add(StaticStrings::Code, VPackValue(errorCode));
@@ -816,7 +821,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
   _query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
 
   // Shutdown traverser engines
-  VPackBuffer<uint8_t> noBody;
+  velocypack::SupervisedBuffer noBody(_query.resourceMonitor());
 
   for (auto& gn : _graphNodes) {
     auto allEngines = gn->engines();
@@ -824,7 +829,8 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
       TRI_ASSERT(!engine.first.starts_with("server:"));
       futureResponses.emplace_back(network::sendRequestRetry(
           pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-          absl::StrCat(::traverserUrl, engine.second), noBody, options));
+          absl::StrCat(::traverserUrl, engine.second), /*copy*/ noBody,
+          options));
     }
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
     gn->clearEngines();
