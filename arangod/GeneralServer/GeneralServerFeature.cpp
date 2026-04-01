@@ -107,7 +107,6 @@
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -548,55 +547,51 @@ void GeneralServerFeature::countHttpRequestByMethod(
 }
 
 void GeneralServerFeature::recordHttpRequestStatistics(
-    RequestTimingData const& data) noexcept {
-  _httpReqsTotal.count();
-  statistics::TotalRequests.incCounter();
-  if (data.async) {
-    _httpReqsAsync.count();
-    statistics::AsyncRequests.incCounter();
+  RequestTimingData const& data) noexcept {
+_httpReqsTotal.count();
+if (data.async) {
+  _httpReqsAsync.count();
+}
+countHttpRequestByMethod(data.requestType);
+
+using td = RequestTimingData;
+auto readStart = data.readStart;
+
+if (readStart != td::time_point{} &&
+    (data.async || data.writeEnd != td::time_point{})) {
+  double const totalTime = data.async
+      ? td::toSeconds(data.requestEnd - readStart)
+      : td::toSeconds(data.writeEnd - readStart);
+
+  if (data.superuser) {
+    _httpReqsSuperuser.count();
+  } else {
+    _httpReqsUser.count();
   }
-  countHttpRequestByMethod(data.requestType);
-  statistics::MethodRequests[static_cast<size_t>(data.requestType)]
-      .incCounter();
 
-  using td = RequestTimingData;
-  if (data.readStart != td::time_point{} &&
-      (data.async || data.writeEnd != td::time_point{})) {
-    double const totalTime =
-        data.async ? td::toSeconds(data.requestEnd - data.readStart)
-                   : td::toSeconds(data.writeEnd - data.readStart);
+  _histTotalTime.count(totalTime);
+  double const reqT = td::toSeconds(data.requestEnd - data.requestStart);
+  _histRequestTime.count(reqT);
 
-    if (data.superuser) {
-      _httpReqsSuperuser.count();
-      statistics::TotalRequestsSuperuser.incCounter();
-    } else {
-      _httpReqsUser.count();
-      statistics::TotalRequestsUser.incCounter();
-    }
-
-    _histTotalTime.count(totalTime);
-    double const reqT = td::toSeconds(data.requestEnd - data.requestStart);
-    _histRequestTime.count(reqT);
-
-    double queueTime = 0.0;
-    if (data.queueStart != td::time_point{} &&
-        data.queueEnd != td::time_point{}) {
-      queueTime = td::toSeconds(data.queueEnd - data.queueStart);
-      _histQueueTime.count(queueTime);
-    }
-
-    double const ioTime = totalTime - reqT - queueTime;
-    if (ioTime >= 0.0) {
-      _histIoTime.count(ioTime);
-    }
-
-    _histBytesSent.count(data.sentBytes);
-    _histBytesReceived.count(data.receivedBytes);
-    if (!data.superuser) {
-      _histBytesSentUser.count(data.sentBytes);
-      _histBytesReceivedUser.count(data.receivedBytes);
-    }
+  double queueTime = 0.0;
+  if (data.queueStart != td::time_point{} &&
+      data.queueEnd != td::time_point{}) {
+    queueTime = td::toSeconds(data.queueEnd - data.queueStart);
+    _histQueueTime.count(queueTime);
   }
+
+  double const ioTime = totalTime - reqT - queueTime;
+  if (ioTime >= 0.0) {
+    _histIoTime.count(ioTime);
+  }
+
+  _histBytesSent.count(data.sentBytes);
+  _histBytesReceived.count(data.receivedBytes);
+  if (!data.superuser) {
+    _histBytesSentUser.count(data.sentBytes);
+    _histBytesReceivedUser.count(data.receivedBytes);
+  }
+}
 }
 
 void GeneralServerFeature::buildServers() {
