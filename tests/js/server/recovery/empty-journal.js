@@ -28,7 +28,6 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const fs = require('fs');
 const jsunity = require('jsunity');
-const im = require('@arangodb/testutils/instance-manager');
 let instanceManager = JSON.parse(internal.env.INSTANCEINFO);
 
 const IM  = instanceManager;
