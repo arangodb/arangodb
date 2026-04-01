@@ -28,24 +28,13 @@ defmodule Toast.Deployment.FailurePointTest.MockController do
 end
 
 defmodule Toast.Deployment.FailurePointTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
-  alias Toast.Client
   alias Toast.Deployment
   alias Toast.Deployment.FailurePoint
   alias Toast.Deployment.FailurePointTest.MockController
 
-  defp client_with_plug(plug) do
-    Client.new("http://localhost:8529", plug: plug)
-  end
-
-  defp json_plug(status, body \\ %{}) do
-    fn conn ->
-      conn
-      |> Plug.Conn.put_resp_content_type("application/json")
-      |> Plug.Conn.send_resp(status, Jason.encode!(body))
-    end
-  end
+  import Toast.ClientTestHelpers
 
   defp deployment(pid) do
     %Deployment{

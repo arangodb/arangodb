@@ -1,5 +1,5 @@
 defmodule Toast.Deployment.FactoryTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Toast.Deployment.{Config, Factory}
 

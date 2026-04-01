@@ -79,9 +79,13 @@ defmodule Toast.Deployment.CommandBuilderTest do
           @repo_root
         )
 
-      db_role_args = Enum.drop(db, 12)
-      coord_role_args = Enum.drop(coord, 12)
-      assert db_role_args == coord_role_args
+      cluster_args = fn args ->
+        args
+        |> Enum.chunk_every(2)
+        |> Enum.filter(fn [flag | _] -> String.starts_with?(flag, "--cluster.") end)
+      end
+
+      assert cluster_args.(db) == cluster_args.(coord)
     end
   end
 

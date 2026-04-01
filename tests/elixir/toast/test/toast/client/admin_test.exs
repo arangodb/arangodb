@@ -3,9 +3,7 @@ defmodule Toast.Client.AdminTest do
 
   alias Toast.Client
 
-  defp client_with_plug(plug) do
-    Client.new("http://localhost:8529", plug: plug)
-  end
+  import Toast.ClientTestHelpers
 
   describe "version/1" do
     test "sends GET to /_api/version" do

@@ -26,7 +26,6 @@ defmodule Toast.Deployment.CrashAbortTest do
       }
 
       send(pid, {:server_crashed, "test-server", crash_info})
-      :sys.get_state(pid)
 
       assert Controller.get_status(pid) == :failed
       info = Controller.get_info(pid)
@@ -51,7 +50,6 @@ defmodule Toast.Deployment.CrashAbortTest do
       }
 
       send(pid, {:server_crashed, "test-server", crash_info})
-      :sys.get_state(pid)
 
       assert Toast.Deployment.status(deployment) == :failed
     end
@@ -91,7 +89,6 @@ defmodule Toast.Deployment.CrashAbortTest do
       }
 
       send(pid, {:server_crashed, "test-server", crash_info})
-      :sys.get_state(pid)
 
       deployment = make_deployment(pid, id: id)
 
@@ -151,7 +148,6 @@ defmodule Toast.Deployment.CrashAbortTest do
       }
 
       send(pid, {:server_crashed, "dbserver-1", crash_info})
-      :sys.get_state(pid)
 
       assert Controller.get_status(pid) == :failed
       info = Controller.get_info(pid)
@@ -176,7 +172,6 @@ defmodule Toast.Deployment.CrashAbortTest do
       }
 
       send(pid, {:server_crashed, "agent-1", crash_info})
-      :sys.get_state(pid)
 
       assert Toast.Deployment.status(deployment) == :failed
     end
@@ -199,7 +194,6 @@ defmodule Toast.Deployment.CrashAbortTest do
       }
 
       send(pid, {:server_crashed, "agent-1", crash_info})
-      :sys.get_state(pid)
 
       assert {:server_crashed, "agent-1", ^crash_info} =
                Toast.Deployment.deployment_error(deployment)

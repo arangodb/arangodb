@@ -1,27 +1,17 @@
 defmodule ToastTest.StateCleanupTest do
   use ExUnit.Case, async: false
 
+  import Toast.DeploymentTestHelpers, only: [setup_deployment_registry: 1]
+
   alias ToastTest.{DeploymentRegistry, StateCleanup}
 
+  setup :setup_deployment_registry
+
   setup do
-    try do
-      :ets.delete(:toast_deployment_registry)
-    catch
-      :error, :badarg -> :ok
-    end
-
-    DeploymentRegistry.init()
-
     original_after_suite = Application.get_env(:ex_unit, :after_suite, [])
 
     on_exit(fn ->
       Application.put_env(:ex_unit, :after_suite, original_after_suite)
-
-      try do
-        :ets.delete(:toast_deployment_registry)
-      catch
-        :error, :badarg -> :ok
-      end
     end)
 
     :ok

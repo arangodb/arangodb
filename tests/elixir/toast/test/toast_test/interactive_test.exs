@@ -3,6 +3,8 @@ defmodule ToastTest.InteractiveTest do
 
   import ExUnit.CaptureIO
 
+  import Toast.DeploymentTestHelpers, only: [setup_deployment_registry: 1]
+
   alias ToastTest.DeploymentRegistry
   alias ToastTest.Interactive
 
@@ -122,25 +124,7 @@ defmodule ToastTest.InteractiveTest do
 
   # -- Setup --
 
-  setup do
-    try do
-      :ets.delete(:toast_deployment_registry)
-    catch
-      :error, :badarg -> :ok
-    end
-
-    DeploymentRegistry.init()
-
-    on_exit(fn ->
-      try do
-        :ets.delete(:toast_deployment_registry)
-      catch
-        :error, :badarg -> :ok
-      end
-    end)
-
-    :ok
-  end
+  setup :setup_deployment_registry
 
   defp register_collector do
     Process.register(self(), :interactive_test_collector)

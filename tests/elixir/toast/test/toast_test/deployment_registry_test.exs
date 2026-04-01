@@ -1,27 +1,11 @@
 defmodule ToastTest.DeploymentRegistryTest do
   use ExUnit.Case, async: false
 
+  import Toast.DeploymentTestHelpers, only: [setup_deployment_registry: 1]
+
   alias ToastTest.DeploymentRegistry
 
-  setup do
-    try do
-      :ets.delete(:toast_deployment_registry)
-    catch
-      :error, :badarg -> :ok
-    end
-
-    DeploymentRegistry.init()
-
-    on_exit(fn ->
-      try do
-        :ets.delete(:toast_deployment_registry)
-      catch
-        :error, :badarg -> :ok
-      end
-    end)
-
-    :ok
-  end
+  setup :setup_deployment_registry
 
   test "put and get deployment by suite module" do
     deployment = %{endpoint: "http://localhost:8529", id: "test-1"}

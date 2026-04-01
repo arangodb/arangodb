@@ -43,7 +43,7 @@ defmodule Toast.Deployment.ExpectCrashTest.MockController do
 end
 
 defmodule Toast.Deployment.ExpectCrashTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Toast.Deployment.Config
   alias Toast.Deployment
@@ -73,15 +73,9 @@ defmodule Toast.Deployment.ExpectCrashTest do
       %{pid: pid}
     end
 
-    test "sends {:expect_crash, server_id, timeout} to controller", %{pid: pid} do
+    test "sends {:expect_crash, server_id, timeout} with default 30_000", %{pid: pid} do
       assert :ok = Deployment.expect_crash(deployment(pid), "s1")
       assert [{:expect_crash, "s1", 30_000}] = MockController.calls(pid)
-    end
-
-    test "default timeout is 30_000", %{pid: pid} do
-      Deployment.expect_crash(deployment(pid), "s1")
-      [{:expect_crash, _server_id, timeout}] = MockController.calls(pid)
-      assert timeout == 30_000
     end
 
     test "custom timeout passes through", %{pid: pid} do
@@ -120,15 +114,9 @@ defmodule Toast.Deployment.ExpectCrashTest do
       %{pid: pid}
     end
 
-    test "sends {:verify_crash, server_id, timeout} to controller", %{pid: pid} do
+    test "sends {:verify_crash, server_id, timeout} with default 5_000", %{pid: pid} do
       assert {:ok, _crash_info} = Deployment.verify_crash(deployment(pid), "s1")
       assert [{:verify_crash, "s1", 5_000}] = MockController.calls(pid)
-    end
-
-    test "default timeout is 5_000", %{pid: pid} do
-      Deployment.verify_crash(deployment(pid), "s1")
-      [{:verify_crash, _server_id, timeout}] = MockController.calls(pid)
-      assert timeout == 5_000
     end
 
     test "custom timeout passes through", %{pid: pid} do
@@ -217,22 +205,18 @@ defmodule Toast.Deployment.ExpectCrashTest do
         end
       end)
 
-      # Set status to :ready and inject a server
       inject_single_server(ctrl)
+      server_id = controller_id(ctrl)
 
       # Expect crash with a very short timeout
-      :ok = GenServer.call(ctrl, {:expect_crash, state_server_id(ctrl), 50})
-
-      # Verify expectation exists
-      state = :sys.get_state(ctrl)
-      assert map_size(state.expected_crashes) == 1
+      :ok = GenServer.call(ctrl, {:expect_crash, server_id, 50})
 
       # Wait for the timeout to fire
       Process.sleep(100)
 
-      # Expectation should have been auto-cleared
-      state = :sys.get_state(ctrl)
-      assert state.expected_crashes == %{}
+      # Verify expectation was auto-cleared
+      result = GenServer.call(ctrl, {:verify_crash, server_id, 100}, 5_000)
+      assert result == {:error, :no_expectation}
     end
 
     test "verify_crash returns {:error, :timeout} when no crash occurs within verify timeout" do
@@ -254,7 +238,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
       inject_single_server(ctrl)
 
-      server_id = state_server_id(ctrl)
+      server_id = controller_id(ctrl)
 
       # Expect crash with long timeout so the expect_crash_timeout doesn't fire first
       :ok = GenServer.call(ctrl, {:expect_crash, server_id, 10_000})
@@ -264,38 +248,6 @@ defmodule Toast.Deployment.ExpectCrashTest do
       assert result == {:error, :timeout}
 
       # After verify timeout, expectation is cleaned up
-      state = :sys.get_state(ctrl)
-      assert state.expected_crashes == %{}
-    end
-
-    test "verify_crash returns {:error, :no_expectation} after expect timeout clears" do
-      config = Config.new()
-
-      {:ok, ctrl} =
-        Controller.start_link(
-          config: config,
-          id: "expect-crash-#{System.unique_integer([:positive])}"
-        )
-
-      on_exit(fn ->
-        try do
-          GenServer.stop(ctrl)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      inject_single_server(ctrl)
-
-      server_id = state_server_id(ctrl)
-
-      # Expect crash with very short timeout
-      :ok = GenServer.call(ctrl, {:expect_crash, server_id, 50})
-
-      # Wait for auto-clear
-      Process.sleep(100)
-
-      # Now verify_crash should fail because there is no expectation
       result = GenServer.call(ctrl, {:verify_crash, server_id, 100}, 5_000)
       assert result == {:error, :no_expectation}
     end
@@ -319,7 +271,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
       inject_single_server(ctrl)
 
-      server_id = state_server_id(ctrl)
+      server_id = controller_id(ctrl)
       :ok = GenServer.call(ctrl, {:expect_crash, server_id, 5_000})
 
       # Simulate crash notification
@@ -331,10 +283,8 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
       send(ctrl, {:server_crashed, server_id, info})
 
-      # Give handle_info time to process
-      Process.sleep(50)
-
-      # verify_crash should return the crash info
+      # verify_crash should return the crash info (GenServer mailbox ordering
+      # ensures the crash message is processed before this call)
       assert {:ok, returned_info} = GenServer.call(ctrl, {:verify_crash, server_id, 1_000}, 5_000)
       assert returned_info.signal == 11
       assert returned_info.exit_status == 139
@@ -367,9 +317,8 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
   end
 
-  defp state_server_id(ctrl) do
-    state = :sys.get_state(ctrl)
-    state.id
+  defp controller_id(ctrl) do
+    Controller.get_info(ctrl).id
   end
 
   defp inject_single_server(ctrl) do

@@ -1,6 +1,8 @@
 defmodule ToastTest.AttributionTest do
   use ExUnit.Case, async: true
 
+  import ToastTest.TimeTestHelpers, only: [to_us: 1]
+
   alias Toast.Deployment.Factory.LaunchSpec
   alias Toast.Deployment.ServerInstance
   alias Toast.Process.CrashEvent
@@ -126,7 +128,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
+        timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
@@ -144,7 +146,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:08:00Z], :microsecond)
+        timestamp: to_us(~U[2026-03-09 10:08:00Z])
       }
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
@@ -159,7 +161,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
+        timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
       server = build_server("single1")
@@ -206,7 +208,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
+        timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
       server = build_server("single1")
@@ -240,7 +242,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
+        timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
       server = build_server("single1")
@@ -292,7 +294,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
+        timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
       server = build_server("single1")
@@ -351,7 +353,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond),
+        timestamp: to_us(~U[2026-03-09 10:00:30Z]),
         os_pid: 2000
       }
 
@@ -399,7 +401,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond),
+        timestamp: to_us(~U[2026-03-09 10:00:30Z]),
         os_pid: nil
       }
 
@@ -445,7 +447,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond),
+        timestamp: to_us(~U[2026-03-09 10:00:30Z]),
         os_pid: 9999
       }
 
@@ -518,9 +520,6 @@ defmodule ToastTest.AttributionTest do
       assert issue.type == :sanitizer_report
       assert issue.detail.server == "single1"
       assert issue.detail.report =~ "AddressSanitizer"
-    after
-      # Cleanup handled by tmp_dir lifecycle
-      :ok
     end
 
     test "sanitizer file attributed via time windows" do
@@ -544,9 +543,7 @@ defmodule ToastTest.AttributionTest do
 
       assert [issue] = issues
       assert issue.type == :sanitizer_report
-      assert issue.scope != nil
-    after
-      :ok
+      assert issue.scope == :suite
     end
   end
 
@@ -673,7 +670,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
-        timestamp: DateTime.to_unix(~U[2026-03-09 10:00:30Z], :microsecond)
+        timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
       dir = System.tmp_dir!()
@@ -700,8 +697,6 @@ defmodule ToastTest.AttributionTest do
       assert :crash in types
       assert :sanitizer_report in types
       assert length(issues) == 3
-    after
-      :ok
     end
   end
 end

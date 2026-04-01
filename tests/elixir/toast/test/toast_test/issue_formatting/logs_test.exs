@@ -3,6 +3,8 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   alias ToastTest.IssueFormatting.Logs
 
+  import ToastTest.TimeTestHelpers, only: [to_us: 1]
+
   @usec_per_sec 1_000_000
 
   # --- parse_server_filter/1 ---
@@ -994,8 +996,6 @@ defmodule ToastTest.IssueFormatting.LogsTest do
   end
 
   # --- Helpers ---
-
-  defp to_us(%DateTime{} = dt), do: DateTime.to_unix(dt, :microsecond)
 
   defp entry(time, opts) do
     %{

@@ -3,106 +3,7 @@ defmodule ToastTest.SuiteResultTest do
 
   alias ToastTest.SuiteResult
 
-  @suite_started_at ~U[2026-03-09 10:00:00Z]
-  @suite_finished_at ~U[2026-03-09 10:05:00Z]
-
-  @mod_started_at ~U[2026-03-09 10:00:01Z]
-  @mod_finished_at ~U[2026-03-09 10:04:59Z]
-  @setup_finished_at ~U[2026-03-09 10:00:02Z]
-  @teardown_started_at ~U[2026-03-09 10:04:58Z]
-
-  @test1_started_at ~U[2026-03-09 10:00:02Z]
-  @test1_finished_at ~U[2026-03-09 10:01:00Z]
-  @test2_started_at ~U[2026-03-09 10:01:01Z]
-  @test2_finished_at ~U[2026-03-09 10:02:00Z]
-
-  # --- Fixture builders ---
-
-  defp build_test_data(overrides \\ %{}) do
-    defaults = %{
-      suite: "smoke",
-      started_at: @suite_started_at,
-      finished_at: @suite_finished_at,
-      times_us: %{async: 0, load: 5000, run: 300_000_000},
-      modules: %{
-        FakeModule => %{
-          started_at: @mod_started_at,
-          finished_at: @mod_finished_at,
-          setup_finished_at: @setup_finished_at,
-          teardown_started_at: @teardown_started_at,
-          tests: [
-            %{
-              name: :"test passes",
-              outcome: :passed,
-              duration_us: 58_000_000,
-              started_at: @test1_started_at,
-              finished_at: @test1_finished_at,
-              tags: %{file: "test/fake_test.exs", line: 10}
-            },
-            %{
-              name: :"test fails",
-              outcome: :failed,
-              duration_us: 59_000_000,
-              started_at: @test2_started_at,
-              finished_at: @test2_finished_at,
-              tags: %{file: "test/fake_test.exs", line: 20}
-            }
-          ]
-        }
-      }
-    }
-
-    Map.merge(defaults, overrides)
-  end
-
-  defp build_issues do
-    [
-      %{
-        type: :test_failure,
-        scope: {:test, FakeModule, :"test fails"},
-        confidence: :high,
-        detail: %{test: %{name: :"test fails", module: FakeModule}}
-      },
-      %{
-        type: :crash,
-        scope: {:module, FakeModule},
-        confidence: :low,
-        detail: %{
-          server: "srv-1",
-          coredumps: [%{path: "/tmp/core.1234", signal: "SIGABRT", threads: []}],
-          logs: "some log output"
-        }
-      }
-    ]
-  end
-
-  defp build_sanitizer_issue do
-    %{
-      type: :sanitizer_report,
-      scope: :suite,
-      confidence: nil,
-      detail: %{server: "srv-1", report: "ASAN detected leak"}
-    }
-  end
-
-  defp build_suite_result(opts \\ []) do
-    test_data = Keyword.get(opts, :test_data, build_test_data())
-    issues = Keyword.get(opts, :issues, build_issues())
-    events = Keyword.get(opts, :events, [])
-    deployments = Keyword.get(opts, :deployments, %{})
-    SuiteResult.build(test_data, issues, events: events, deployments: deployments)
-  end
-
-  defp with_tmp_dir(fun) do
-    dir = Path.join(System.tmp_dir!(), "suite_result_test_#{:erlang.unique_integer([:positive])}")
-    File.mkdir_p!(dir)
-
-    try do
-      fun.(dir)
-    after
-      File.rm_rf!(dir)
-    end
-  end
+  import ToastTest.SuiteResultTestHelpers
 
   # --- build/3 ---
 
@@ -123,8 +24,8 @@ defmodule ToastTest.SuiteResultTest do
     test "populates timestamps from test_data" do
       result = build_suite_result()
 
-      assert result.started_at == @suite_started_at
-      assert result.finished_at == @suite_finished_at
+      assert result.started_at == suite_started_at()
+      assert result.finished_at == suite_finished_at()
     end
 
     test "populates times_us from test_data" do
@@ -156,7 +57,7 @@ defmodule ToastTest.SuiteResultTest do
     end
 
     test "populates events when provided" do
-      events = [%{event: :server_started, server_id: "s1", timestamp: @test1_started_at}]
+      events = [%{event: :server_started, server_id: "s1", timestamp: test1_started_at()}]
       result = build_suite_result(events: events)
 
       assert result.events == events
@@ -194,8 +95,8 @@ defmodule ToastTest.SuiteResultTest do
       modules =
         build_test_data().modules
         |> Map.put(OtherModule, %{
-          started_at: @mod_started_at,
-          finished_at: @mod_finished_at,
+          started_at: mod_started_at(),
+          finished_at: mod_finished_at(),
           setup_finished_at: nil,
           teardown_started_at: nil,
           tests: [
@@ -203,8 +104,8 @@ defmodule ToastTest.SuiteResultTest do
               name: :"test other",
               outcome: :skipped,
               duration_us: 0,
-              started_at: @test1_started_at,
-              finished_at: @test1_finished_at,
+              started_at: test1_started_at(),
+              finished_at: test1_finished_at(),
               tags: %{}
             }
           ]
@@ -306,8 +207,8 @@ defmodule ToastTest.SuiteResultTest do
     test "handles all outcome types in summary" do
       modules = %{
         AllOutcomes => %{
-          started_at: @mod_started_at,
-          finished_at: @mod_finished_at,
+          started_at: mod_started_at(),
+          finished_at: mod_finished_at(),
           setup_finished_at: nil,
           teardown_started_at: nil,
           tests:
@@ -316,8 +217,8 @@ defmodule ToastTest.SuiteResultTest do
                 name: :"test #{outcome}",
                 outcome: outcome,
                 duration_us: 1000 * (i + 1),
-                started_at: @test1_started_at,
-                finished_at: @test1_finished_at,
+                started_at: test1_started_at(),
+                finished_at: test1_finished_at(),
                 tags: %{}
               }
             end
@@ -414,8 +315,8 @@ defmodule ToastTest.SuiteResultTest do
 
     test "preserves events through roundtrip" do
       events = [
-        %{event: :server_started, server_id: "s1", pid: 1001, timestamp: @test1_started_at},
-        %{event: :server_stopped, server_id: "s1", pid: 1001, timestamp: @test1_finished_at}
+        %{event: :server_started, server_id: "s1", pid: 1001, timestamp: test1_started_at()},
+        %{event: :server_stopped, server_id: "s1", pid: 1001, timestamp: test1_finished_at()}
       ]
 
       with_tmp_dir(fn dir ->

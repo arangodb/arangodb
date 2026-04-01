@@ -3,9 +3,7 @@ defmodule Toast.Client.AQLTest do
 
   alias Toast.Client
 
-  defp client_with_plug(plug) do
-    Client.new("http://localhost:8529", plug: plug)
-  end
+  import Toast.ClientTestHelpers
 
   describe "execute/2" do
     test "sends POST to /_api/cursor with query" do

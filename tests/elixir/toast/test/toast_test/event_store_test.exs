@@ -3,6 +3,8 @@ defmodule ToastTest.EventStoreTest do
 
   alias ToastTest.EventStore
 
+  import ToastTest.TimeTestHelpers, only: [to_us: 1]
+
   setup do
     {:ok, pid} = EventStore.start_link()
 
@@ -555,7 +557,6 @@ defmodule ToastTest.EventStoreTest do
   # --- Helpers ---
 
   defp ts, do: :os.system_time(:microsecond)
-  defp to_us(dt), do: DateTime.to_unix(dt, :microsecond)
 
   defp start_deployment(did, opts) do
     mode = Keyword.get(opts, :mode, :cluster)

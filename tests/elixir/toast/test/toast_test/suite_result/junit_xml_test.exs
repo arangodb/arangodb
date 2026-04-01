@@ -3,105 +3,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
 
   alias ToastTest.SuiteResult
 
-  @suite_started_at ~U[2026-03-09 10:00:00Z]
-  @suite_finished_at ~U[2026-03-09 10:05:00Z]
-
-  @mod_started_at ~U[2026-03-09 10:00:01Z]
-  @mod_finished_at ~U[2026-03-09 10:04:59Z]
-  @setup_finished_at ~U[2026-03-09 10:00:02Z]
-  @teardown_started_at ~U[2026-03-09 10:04:58Z]
-
-  @test1_started_at ~U[2026-03-09 10:00:02Z]
-  @test1_finished_at ~U[2026-03-09 10:01:00Z]
-  @test2_started_at ~U[2026-03-09 10:01:01Z]
-  @test2_finished_at ~U[2026-03-09 10:02:00Z]
-
-  # --- Fixture builders ---
-
-  defp build_test_data(overrides \\ %{}) do
-    defaults = %{
-      suite: "smoke",
-      started_at: @suite_started_at,
-      finished_at: @suite_finished_at,
-      times_us: %{async: 0, load: 5000, run: 300_000_000},
-      modules: %{
-        FakeModule => %{
-          started_at: @mod_started_at,
-          finished_at: @mod_finished_at,
-          setup_finished_at: @setup_finished_at,
-          teardown_started_at: @teardown_started_at,
-          tests: [
-            %{
-              name: :"test passes",
-              outcome: :passed,
-              duration_us: 58_000_000,
-              started_at: @test1_started_at,
-              finished_at: @test1_finished_at,
-              tags: %{file: "test/fake_test.exs", line: 10}
-            },
-            %{
-              name: :"test fails",
-              outcome: :failed,
-              duration_us: 59_000_000,
-              started_at: @test2_started_at,
-              finished_at: @test2_finished_at,
-              tags: %{file: "test/fake_test.exs", line: 20}
-            }
-          ]
-        }
-      }
-    }
-
-    Map.merge(defaults, overrides)
-  end
-
-  defp build_issues do
-    [
-      %{
-        type: :test_failure,
-        scope: {:test, FakeModule, :"test fails"},
-        confidence: :high,
-        detail: %{test: %{name: :"test fails", module: FakeModule}}
-      },
-      %{
-        type: :crash,
-        scope: {:module, FakeModule},
-        confidence: :low,
-        detail: %{
-          server: "srv-1",
-          coredumps: [%{core_path: "/tmp/core.1234", signal: "SIGABRT", threads: []}],
-          logs: "some log output"
-        }
-      }
-    ]
-  end
-
-  defp build_sanitizer_issue do
-    %{
-      type: :sanitizer_report,
-      scope: :suite,
-      confidence: nil,
-      detail: %{server: "srv-1", report: "ASAN detected leak"}
-    }
-  end
-
-  defp build_suite_result(opts \\ []) do
-    test_data = Keyword.get(opts, :test_data, build_test_data())
-    issues = Keyword.get(opts, :issues, build_issues())
-    events = Keyword.get(opts, :events, %{})
-    SuiteResult.build(test_data, issues, events: events)
-  end
-
-  defp with_tmp_dir(fun) do
-    dir = Path.join(System.tmp_dir!(), "junit_xml_test_#{:erlang.unique_integer([:positive])}")
-    File.mkdir_p!(dir)
-
-    try do
-      fun.(dir)
-    after
-      File.rm_rf!(dir)
-    end
-  end
+  import ToastTest.SuiteResultTestHelpers
 
   defp read_xml!(dir, filename) do
     dir
@@ -324,8 +226,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "handles suite with only passed tests and no issues" do
     modules = %{
       CleanModule => %{
-        started_at: @mod_started_at,
-        finished_at: @mod_finished_at,
+        started_at: mod_started_at(),
+        finished_at: mod_finished_at(),
         setup_finished_at: nil,
         teardown_started_at: nil,
         tests: [
@@ -333,8 +235,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
             name: :"test ok",
             outcome: :passed,
             duration_us: 1000,
-            started_at: @test1_started_at,
-            finished_at: @test1_finished_at,
+            started_at: test1_started_at(),
+            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
@@ -355,8 +257,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "skipped and excluded tests have skipped elements" do
     modules = %{
       SkipModule => %{
-        started_at: @mod_started_at,
-        finished_at: @mod_finished_at,
+        started_at: mod_started_at(),
+        finished_at: mod_finished_at(),
         setup_finished_at: nil,
         teardown_started_at: nil,
         tests: [
@@ -364,16 +266,16 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
             name: :"test skipped",
             outcome: :skipped,
             duration_us: 0,
-            started_at: @test1_started_at,
-            finished_at: @test1_finished_at,
+            started_at: test1_started_at(),
+            finished_at: test1_finished_at(),
             tags: %{}
           },
           %{
             name: :"test excluded",
             outcome: :excluded,
             duration_us: 0,
-            started_at: @test1_started_at,
-            finished_at: @test1_finished_at,
+            started_at: test1_started_at(),
+            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
@@ -394,8 +296,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "invalid tests have error elements" do
     modules = %{
       ErrorModule => %{
-        started_at: @mod_started_at,
-        finished_at: @mod_finished_at,
+        started_at: mod_started_at(),
+        finished_at: mod_finished_at(),
         setup_finished_at: nil,
         teardown_started_at: nil,
         tests: [
@@ -403,8 +305,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
             name: :"test invalid",
             outcome: :invalid,
             duration_us: 500,
-            started_at: @test1_started_at,
-            finished_at: @test1_finished_at,
+            started_at: test1_started_at(),
+            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
@@ -873,8 +775,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "xml special characters in test and module names are escaped" do
     modules = %{
       :"Elixir.Module<With>&\"Chars" => %{
-        started_at: @mod_started_at,
-        finished_at: @mod_finished_at,
+        started_at: mod_started_at(),
+        finished_at: mod_finished_at(),
         setup_finished_at: nil,
         teardown_started_at: nil,
         tests: [
@@ -882,8 +784,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
             name: :"test <angle> & \"quote\"",
             outcome: :passed,
             duration_us: 1000,
-            started_at: @test1_started_at,
-            finished_at: @test1_finished_at,
+            started_at: test1_started_at(),
+            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
@@ -1042,8 +944,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "multiple modules are sorted by name in output" do
     modules = %{
       ZModule => %{
-        started_at: @mod_started_at,
-        finished_at: @mod_finished_at,
+        started_at: mod_started_at(),
+        finished_at: mod_finished_at(),
         setup_finished_at: nil,
         teardown_started_at: nil,
         tests: [
@@ -1051,15 +953,15 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
             name: :"test z",
             outcome: :passed,
             duration_us: 1000,
-            started_at: @test1_started_at,
-            finished_at: @test1_finished_at,
+            started_at: test1_started_at(),
+            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
       },
       AModule => %{
-        started_at: @mod_started_at,
-        finished_at: @mod_finished_at,
+        started_at: mod_started_at(),
+        finished_at: mod_finished_at(),
         setup_finished_at: nil,
         teardown_started_at: nil,
         tests: [
@@ -1067,8 +969,8 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
             name: :"test a",
             outcome: :passed,
             duration_us: 1000,
-            started_at: @test1_started_at,
-            finished_at: @test1_finished_at,
+            started_at: test1_started_at(),
+            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]

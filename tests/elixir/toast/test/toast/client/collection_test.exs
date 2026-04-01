@@ -3,9 +3,7 @@ defmodule Toast.Client.CollectionTest do
 
   alias Toast.Client
 
-  defp client_with_plug(plug, opts \\ []) do
-    Client.new("http://localhost:8529", [{:plug, plug} | opts])
-  end
+  import Toast.ClientTestHelpers
 
   describe "create/3" do
     test "sends POST to /_api/collection with name and type" do

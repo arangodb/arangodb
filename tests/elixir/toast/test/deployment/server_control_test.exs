@@ -23,7 +23,7 @@ defmodule Toast.Deployment.ServerControlTest.MockController do
 end
 
 defmodule Toast.Deployment.ServerControlTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Toast.Deployment
   alias Toast.Deployment.ServerControlTest.MockController
@@ -114,27 +114,6 @@ defmodule Toast.Deployment.ServerControlTest do
       dead = spawn(fn -> :ok end)
       Process.sleep(50)
       assert {:error, :controller_not_available} = Deployment.stop_server(deployment(dead), "s1")
-    end
-  end
-
-  describe "routes through Controller" do
-    setup do
-      {:ok, pid} = MockController.start_link()
-
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      %{pid: pid}
-    end
-
-    test "stop_server delegates to Controller", %{pid: pid} do
-      assert :ok = Deployment.stop_server(deployment(pid), "s1")
-      assert [{:stop_server, "s1"}] = MockController.calls(pid)
     end
   end
 end

@@ -155,8 +155,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
 
       # echo exits 0 but parse_output returns no threads, so build_report succeeds
       # with an empty report
-      assert {:ok, %Report{}} = result
-      assert {:ok, report} = result
+      assert {:ok, %Report{} = report} = result
       assert report.threads == []
     end
 

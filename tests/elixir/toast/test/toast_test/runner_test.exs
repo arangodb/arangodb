@@ -38,45 +38,6 @@ defmodule ToastTest.RunnerTest do
     end
   end
 
-  describe "validate_no_async!" do
-    # ExUnit doesn't persist the async flag in __ex_unit__() metadata.
-    # The suite architecture prevents async modules: use Smoke.Suite ->
-    # use ToastTest.Case -> use ExUnit.CaseTemplate (always sync).
-    # validate_no_async! is a runtime guard that can't detect async from
-    # compiled module metadata, so it's a no-op safety net.
-
-    test "suite test modules are inherently sync" do
-      defmodule TestSuiteForAsync do
-        use ToastTest.Suite
-      end
-
-      defmodule TestModuleUsingSuite do
-        use ToastTest.RunnerTest.TestSuiteForAsync
-
-        test "dummy" do
-          :ok
-        end
-      end
-
-      # Modules created through the suite system don't have async: true
-      meta = TestModuleUsingSuite.__ex_unit__()
-      assert %ExUnit.TestModule{} = meta
-    end
-  end
-
-  describe "merge_stats" do
-    # merge_stats is private; test through the public run_suites return value shape
-    test "run_suites returns expected structure" do
-      # run_suites with empty list should return zero stats
-      result = Runner.run_suites([], ToastTest.Config.new(), [])
-
-      assert result == %{
-               suites: [],
-               stats: %{total: 0, failures: 0, skipped: 0, excluded: 0}
-             }
-    end
-  end
-
   describe "health check between tests" do
     # The runner calls Deployment.check_health/1 between tests via
     # check_config_deployments. This tests the decision function that

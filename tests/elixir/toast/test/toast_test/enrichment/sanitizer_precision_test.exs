@@ -13,7 +13,7 @@ defmodule ToastTest.Enrichment.SanitizerPrecisionTest do
   alias ToastTest.Enrichment.Sanitizer
   alias ToastTest.Attribution.TimeWindows
 
-  defp to_us(%DateTime{} = dt), do: DateTime.to_unix(dt, :microsecond)
+  import ToastTest.TimeTestHelpers, only: [to_us: 1]
 
   @tmp_dir Path.join(
              System.tmp_dir!(),

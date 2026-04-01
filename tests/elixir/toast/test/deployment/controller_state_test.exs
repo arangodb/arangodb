@@ -5,7 +5,6 @@ defmodule Toast.Deployment.ControllerStateTest do
   alias Toast.Process.ServerProcess
 
   import Toast.ServerTestHelpers, only: [cleanup_server: 1]
-  import Toast.DeploymentTestHelpers, only: [inject_cluster_servers: 2]
 
   @fake_server Path.expand("../support/fake_server.sh", __DIR__)
 
@@ -96,11 +95,11 @@ defmodule Toast.Deployment.ControllerStateTest do
       id: id
     } do
       assert :ok = Controller.stop_server(ctrl, id)
-      state = :sys.get_state(ctrl)
-      server = state.servers[id]
+      info = Controller.get_info(ctrl)
+      server = info.servers[id]
       assert server.operational_state == :stopped
       assert server.expecting_exit == true
-      assert state.status == :degraded
+      assert info.status == :degraded
     end
 
     test "kill_server sets operational_state to :killed and expecting_exit to true", %{
@@ -108,11 +107,11 @@ defmodule Toast.Deployment.ControllerStateTest do
       id: id
     } do
       assert :ok = Controller.kill_server(ctrl, id)
-      state = :sys.get_state(ctrl)
-      server = state.servers[id]
+      info = Controller.get_info(ctrl)
+      server = info.servers[id]
       assert server.operational_state == :killed
       assert server.expecting_exit == true
-      assert state.status == :degraded
+      assert info.status == :degraded
     end
   end
 
@@ -135,10 +134,9 @@ defmodule Toast.Deployment.ControllerStateTest do
       }
 
       send(ctrl, {:server_crashed, id, crash_info})
-      :sys.get_state(ctrl)
 
-      state = :sys.get_state(ctrl)
-      assert state.status == :failed
+      info = Controller.get_info(ctrl)
+      assert info.status == :failed
     end
   end
 
@@ -157,11 +155,10 @@ defmodule Toast.Deployment.ControllerStateTest do
       }
 
       send(ctrl, {:server_crashed, id, crash_info})
-      :sys.get_state(ctrl)
 
-      state = :sys.get_state(ctrl)
-      assert state.status == :failed
-      assert state.servers[id].expecting_exit == false
+      info = Controller.get_info(ctrl)
+      assert info.status == :failed
+      assert info.servers[id].expecting_exit == false
     end
 
     test "SIGTERM (signal 15) during expected exit keeps expecting_exit true" do
@@ -178,66 +175,37 @@ defmodule Toast.Deployment.ControllerStateTest do
       }
 
       send(ctrl, {:server_crashed, id, crash_info})
-      :sys.get_state(ctrl)
 
-      state = :sys.get_state(ctrl)
+      info = Controller.get_info(ctrl)
       # signal 15 is in @intentional_exit_signals, so it is ignored (no state change)
-      assert state.servers[id].expecting_exit == true
+      assert info.servers[id].expecting_exit == true
     end
   end
 
   # --- ClusterController state machine tests ---
 
   describe "Controller (cluster) derive_cluster_status" do
-    setup do
-      id = "cluster-status-#{System.unique_integer([:positive])}"
-      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
-
-      on_exit(fn ->
-        try do
-          GenServer.stop(ctrl)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      %{ctrl: ctrl}
-    end
-
-    test "all servers running -> :ready", %{ctrl: ctrl} do
-      inject_cluster_servers(ctrl, %{
-        "agent-0" => %ServerInstance{
-          id: "agent-0",
-          role: :agent,
-          operational_state: :running,
-          expecting_exit: false
-        },
+    test "all servers running -> :ready" do
+      servers = %{
+        "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running},
         "dbserver-0" => %ServerInstance{
           id: "dbserver-0",
           role: :dbserver,
-          operational_state: :running,
-          expecting_exit: false
+          operational_state: :running
         },
         "coordinator-0" => %ServerInstance{
           id: "coordinator-0",
           role: :coordinator,
-          operational_state: :running,
-          expecting_exit: false
+          operational_state: :running
         }
-      })
+      }
 
-      set_cluster_status(ctrl, :ready)
-      assert Controller.get_status(ctrl) == :ready
+      assert ServerInstance.derive_cluster_status(servers) == :ready
     end
 
-    test "some servers intentionally down -> :degraded", %{ctrl: ctrl} do
-      inject_cluster_servers(ctrl, %{
-        "agent-0" => %ServerInstance{
-          id: "agent-0",
-          role: :agent,
-          operational_state: :running,
-          expecting_exit: false
-        },
+    test "some servers intentionally stopped -> :degraded" do
+      servers = %{
+        "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running},
         "dbserver-0" => %ServerInstance{
           id: "dbserver-0",
           role: :dbserver,
@@ -247,23 +215,16 @@ defmodule Toast.Deployment.ControllerStateTest do
         "coordinator-0" => %ServerInstance{
           id: "coordinator-0",
           role: :coordinator,
-          operational_state: :running,
-          expecting_exit: false
+          operational_state: :running
         }
-      })
+      }
 
-      state = :sys.get_state(ctrl)
-      assert derive_expected_status(state.servers) == :degraded
+      assert ServerInstance.derive_cluster_status(servers) == :degraded
     end
 
-    test "unexpected crash (expecting_exit=false) -> :failed", %{ctrl: ctrl} do
-      inject_cluster_servers(ctrl, %{
-        "agent-0" => %ServerInstance{
-          id: "agent-0",
-          role: :agent,
-          operational_state: :running,
-          expecting_exit: false
-        },
+    test "unexpected crash -> :failed" do
+      servers = %{
+        "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running},
         "dbserver-0" => %ServerInstance{
           id: "dbserver-0",
           role: :dbserver,
@@ -273,23 +234,16 @@ defmodule Toast.Deployment.ControllerStateTest do
         "coordinator-0" => %ServerInstance{
           id: "coordinator-0",
           role: :coordinator,
-          operational_state: :running,
-          expecting_exit: false
+          operational_state: :running
         }
-      })
+      }
 
-      state = :sys.get_state(ctrl)
-      assert derive_expected_status(state.servers) == :failed
+      assert ServerInstance.derive_cluster_status(servers) == :failed
     end
 
-    test "expected crash (expecting_exit=true) -> :degraded", %{ctrl: ctrl} do
-      inject_cluster_servers(ctrl, %{
-        "agent-0" => %ServerInstance{
-          id: "agent-0",
-          role: :agent,
-          operational_state: :running,
-          expecting_exit: false
-        },
+    test "expected crash -> :degraded (not :failed)" do
+      servers = %{
+        "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running},
         "dbserver-0" => %ServerInstance{
           id: "dbserver-0",
           role: :dbserver,
@@ -299,13 +253,11 @@ defmodule Toast.Deployment.ControllerStateTest do
         "coordinator-0" => %ServerInstance{
           id: "coordinator-0",
           role: :coordinator,
-          operational_state: :running,
-          expecting_exit: false
+          operational_state: :running
         }
-      })
+      }
 
-      state = :sys.get_state(ctrl)
-      assert derive_expected_status(state.servers) == :ready
+      assert ServerInstance.derive_cluster_status(servers) == :degraded
     end
   end
 
@@ -325,7 +277,7 @@ defmodule Toast.Deployment.ControllerStateTest do
         {:DOWN, _, :process, ^fake_hm, _} -> :ok
       end
 
-      :sys.get_state(ctrl)
+      Controller.get_status(ctrl)
       assert Process.alive?(ctrl)
     end
 
@@ -340,7 +292,7 @@ defmodule Toast.Deployment.ControllerStateTest do
       Process.exit(fake_hm, :normal)
       Process.sleep(50)
 
-      :sys.get_state(ctrl)
+      Controller.get_status(ctrl)
       assert Process.alive?(ctrl)
     end
   end
@@ -384,28 +336,5 @@ defmodule Toast.Deployment.ControllerStateTest do
           servers: Map.put(state.servers, id, %{server | health_monitor: hm_pid})
       }
     end)
-  end
-
-  defp set_cluster_status(ctrl, status) do
-    :sys.replace_state(ctrl, fn state -> %{state | status: status} end)
-  end
-
-  defp derive_expected_status(servers) do
-    server_list = Map.values(servers)
-    states = Enum.map(server_list, & &1.operational_state)
-
-    cond do
-      Enum.any?(server_list, &(&1.operational_state == :crashed and not &1.expecting_exit)) ->
-        :failed
-
-      Enum.all?(states, &(&1 == :running)) ->
-        :ready
-
-      Enum.any?(states, &(&1 in [:stopped, :killed, :paused])) ->
-        :degraded
-
-      true ->
-        :ready
-    end
   end
 end

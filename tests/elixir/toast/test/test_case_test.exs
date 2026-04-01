@@ -1,28 +1,12 @@
 defmodule ToastTest.CaseTest do
   use ExUnit.Case, async: false
 
+  import Toast.DeploymentTestHelpers, only: [setup_deployment_registry: 1]
+
   alias ToastTest.DeploymentRegistry
 
   describe "DeploymentRegistry integration" do
-    setup do
-      try do
-        :ets.delete(:toast_deployment_registry)
-      catch
-        :error, :badarg -> :ok
-      end
-
-      DeploymentRegistry.init()
-
-      on_exit(fn ->
-        try do
-          :ets.delete(:toast_deployment_registry)
-        catch
-          :error, :badarg -> :ok
-        end
-      end)
-
-      :ok
-    end
+    setup :setup_deployment_registry
 
     test "put and get roundtrip" do
       deployment = fake_deployment()

@@ -3,6 +3,8 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
 
   alias ToastTest.Attribution.TimeWindows
 
+  import ToastTest.TimeTestHelpers, only: [to_us: 1]
+
   # Suite: 10:00:00 - 10:10:00
   # ModA:  10:00:01 - 10:05:00 (setup until 10:00:03, teardown from 10:04:58)
   #   test_one: 10:00:03 - 10:01:00
@@ -24,8 +26,6 @@ defmodule ToastTest.Attribution.TimeWindowsTest do
 
   @mod_b_started ~U[2026-03-09 10:05:01Z]
   @mod_b_finished ~U[2026-03-09 10:09:00Z]
-
-  defp to_us(%DateTime{} = dt), do: DateTime.to_unix(dt, :microsecond)
 
   defp build_test_data do
     %{

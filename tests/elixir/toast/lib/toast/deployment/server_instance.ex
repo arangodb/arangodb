@@ -46,4 +46,19 @@ defmodule Toast.Deployment.ServerInstance do
   @spec unexpected_crash?(t()) :: boolean()
   def unexpected_crash?(%__MODULE__{operational_state: :crashed, expecting_exit: false}), do: true
   def unexpected_crash?(%__MODULE__{}), do: false
+
+  @spec derive_cluster_status(Enumerable.t({any(), t()})) :: :ready | :degraded | :failed
+  def derive_cluster_status(servers) do
+    Enum.reduce(servers, :ready, fn
+      _server, :failed ->
+        :failed
+
+      {_id, server}, acc ->
+        cond do
+          unexpected_crash?(server) -> :failed
+          server.operational_state == :running -> acc
+          true -> :degraded
+        end
+    end)
+  end
 end

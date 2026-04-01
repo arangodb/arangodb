@@ -3,17 +3,7 @@ defmodule Toast.ClientTest do
 
   alias Toast.Client
 
-  defp client_with_plug(plug, opts \\ []) do
-    Client.new("http://localhost:8529", [{:plug, plug} | opts])
-  end
-
-  defp json_plug(status \\ 200, body \\ %{}) do
-    fn conn ->
-      conn
-      |> Plug.Conn.put_resp_content_type("application/json")
-      |> Plug.Conn.send_resp(status, Jason.encode!(body))
-    end
-  end
+  import Toast.ClientTestHelpers
 
   describe "new/2" do
     test "returns a Client struct with base_url" do

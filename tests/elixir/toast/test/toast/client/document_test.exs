@@ -3,9 +3,7 @@ defmodule Toast.Client.DocumentTest do
 
   alias Toast.Client
 
-  defp client_with_plug(plug) do
-    Client.new("http://localhost:8529", plug: plug)
-  end
+  import Toast.ClientTestHelpers
 
   describe "insert/3" do
     test "sends POST to /_api/document/{collection}" do

@@ -257,7 +257,7 @@ defmodule Toast.Deployment.Controller do
 
     case handle_crash(server_id, crash_info, server, state) do
       {:expected, state} ->
-        {:noreply, %{state | status: derive_status(state.servers)}}
+        {:noreply, %{state | status: ServerInstance.derive_cluster_status(state.servers)}}
 
       {:intentional_exit, state} ->
         {:noreply, state}
@@ -605,22 +605,6 @@ defmodule Toast.Deployment.Controller do
     end
   end
 
-  # --- Status derivation ---
-
-  defp derive_status(servers) do
-    Enum.reduce(servers, :ready, fn
-      _server, :failed ->
-        :failed
-
-      {_id, server}, acc ->
-        cond do
-          ServerInstance.unexpected_crash?(server) -> :failed
-          server.operational_state == :running -> acc
-          true -> :degraded
-        end
-    end)
-  end
-
   # --- Target resolution ---
 
   defp resolve_target(state, server_id) when is_binary(server_id) do
@@ -675,11 +659,19 @@ defmodule Toast.Deployment.Controller do
     end)
     |> case do
       {:ok, final_state} ->
-        final_state = %{final_state | status: derive_status(final_state.servers)}
+        final_state = %{
+          final_state
+          | status: ServerInstance.derive_cluster_status(final_state.servers)
+        }
+
         {:reply, :ok, final_state}
 
       {{:error, _} = err, partial_state} ->
-        partial_state = %{partial_state | status: derive_status(partial_state.servers)}
+        partial_state = %{
+          partial_state
+          | status: ServerInstance.derive_cluster_status(partial_state.servers)
+        }
+
         {:reply, err, partial_state}
     end
   end

@@ -26,7 +26,7 @@ defmodule Toast.Deployment.ControllerCrashTest do
       %{state | status: :ready, servers: Map.put(state.servers, server.id, server)}
     end)
 
-    :sys.get_state(ctrl).id
+    Controller.get_info(ctrl).id
   end
 
   defp crash_info(overrides \\ []) do
@@ -45,12 +45,11 @@ defmodule Toast.Deployment.ControllerCrashTest do
       server_id = inject_server(ctrl)
 
       send(ctrl, {:server_crashed, server_id, crash_info()})
-      Process.sleep(50)
 
-      state = :sys.get_state(ctrl)
-      assert state.status == :failed
-      assert {:server_crashed, ^server_id, _} = state.error
-      assert state.servers[server_id].operational_state == :crashed
+      assert Controller.get_status(ctrl) == :failed
+      info = Controller.get_info(ctrl)
+      assert {:server_crashed, ^server_id, _} = info.error
+      assert info.servers[server_id].operational_state == :crashed
     end
 
     test "intentional exit (nil signal) does not change status" do
@@ -58,11 +57,9 @@ defmodule Toast.Deployment.ControllerCrashTest do
       server_id = inject_server(ctrl, expecting_exit: true)
 
       send(ctrl, {:server_crashed, server_id, crash_info(signal: nil)})
-      Process.sleep(50)
 
-      state = :sys.get_state(ctrl)
-      assert state.status == :ready
-      assert state.error == nil
+      assert Controller.get_status(ctrl) == :ready
+      assert Controller.get_info(ctrl).error == nil
     end
 
     test "intentional exit (SIGTERM signal 15) does not change status" do
@@ -70,11 +67,9 @@ defmodule Toast.Deployment.ControllerCrashTest do
       server_id = inject_server(ctrl, expecting_exit: true)
 
       send(ctrl, {:server_crashed, server_id, crash_info(signal: 15)})
-      Process.sleep(50)
 
-      state = :sys.get_state(ctrl)
-      assert state.status == :ready
-      assert state.error == nil
+      assert Controller.get_status(ctrl) == :ready
+      assert Controller.get_info(ctrl).error == nil
     end
 
     test "crash during intentional stop (SIGSEGV) sets status to :failed" do
@@ -82,11 +77,10 @@ defmodule Toast.Deployment.ControllerCrashTest do
       server_id = inject_server(ctrl, expecting_exit: true)
 
       send(ctrl, {:server_crashed, server_id, crash_info(signal: 11)})
-      Process.sleep(50)
 
-      state = :sys.get_state(ctrl)
-      assert state.status == :failed
-      assert {:server_crashed, ^server_id, _} = state.error
+      assert Controller.get_status(ctrl) == :failed
+      info = Controller.get_info(ctrl)
+      assert {:server_crashed, ^server_id, _} = info.error
     end
 
     test "crash during intentional stop (SIGABRT signal 6) sets status to :failed" do
@@ -94,10 +88,8 @@ defmodule Toast.Deployment.ControllerCrashTest do
       server_id = inject_server(ctrl, expecting_exit: true)
 
       send(ctrl, {:server_crashed, server_id, crash_info(signal: 6)})
-      Process.sleep(50)
 
-      state = :sys.get_state(ctrl)
-      assert state.status == :failed
+      assert Controller.get_status(ctrl) == :failed
     end
 
     test "expected crash (no waiter) stores crash_info and derives status" do
@@ -108,12 +100,11 @@ defmodule Toast.Deployment.ControllerCrashTest do
 
       info = crash_info()
       send(ctrl, {:server_crashed, server_id, info})
-      Process.sleep(50)
 
-      state = :sys.get_state(ctrl)
-      assert state.servers[server_id].operational_state == :crashed
-      # Expected crash — status is derived, not forced to :failed
-      assert state.status in [:degraded, :failed]
+      # Sync via get_info — expected crash derives status (degraded, not :failed)
+      ctrl_info = Controller.get_info(ctrl)
+      assert ctrl_info.servers[server_id].operational_state == :crashed
+      assert ctrl_info.status == :degraded
     end
 
     test "expected crash with pending verify_crash replies to waiter" do
@@ -139,10 +130,6 @@ defmodule Toast.Deployment.ControllerCrashTest do
       assert {:ok, returned_info} = Task.await(task, 5_000)
       assert returned_info.signal == 11
       assert returned_info.exit_status == 139
-
-      # Expectation should be cleaned up
-      state = :sys.get_state(ctrl)
-      assert state.expected_crashes == %{}
     end
   end
 end

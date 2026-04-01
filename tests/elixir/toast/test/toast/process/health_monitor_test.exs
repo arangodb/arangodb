@@ -34,7 +34,6 @@ defmodule Toast.Process.HealthMonitorTest do
       HealthMonitor.suspend(pid)
 
       assert HealthMonitor.status(pid) == :suspended
-      assert HealthMonitor.status(pid) != :healthy
       HealthMonitor.stop(pid)
     end
 

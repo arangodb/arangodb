@@ -1,6 +1,8 @@
 defmodule Toast.LogFormatterTest do
   use ExUnit.Case, async: true
 
+  import ToastTest.TimeTestHelpers, only: [to_us: 1]
+
   alias Toast.LogFormatter
 
   describe "format/4 (Elixir Logger console callback)" do
@@ -81,7 +83,7 @@ defmodule Toast.LogFormatterTest do
 
   describe "format/2 (Erlang :logger handler callback)" do
     test "formats string message with timestamp and module" do
-      now_usec = DateTime.to_unix(~U[2024-06-15 10:30:45.123456Z], :microsecond)
+      now_usec = to_us(~U[2024-06-15 10:30:45.123456Z])
 
       log_event = %{
         level: :info,
@@ -103,7 +105,7 @@ defmodule Toast.LogFormatterTest do
     end
 
     test "formats report message" do
-      now_usec = DateTime.to_unix(~U[2024-01-01 00:00:00Z], :microsecond)
+      now_usec = to_us(~U[2024-01-01 00:00:00Z])
 
       log_event = %{
         level: :warning,
@@ -120,7 +122,7 @@ defmodule Toast.LogFormatterTest do
     end
 
     test "formats io_lib format+args message" do
-      now_usec = DateTime.to_unix(~U[2024-01-01 12:00:00Z], :microsecond)
+      now_usec = to_us(~U[2024-01-01 12:00:00Z])
 
       log_event = %{
         level: :error,
@@ -137,7 +139,7 @@ defmodule Toast.LogFormatterTest do
     end
 
     test "handles missing MFA in meta" do
-      now_usec = DateTime.to_unix(~U[2024-01-01 00:00:00Z], :microsecond)
+      now_usec = to_us(~U[2024-01-01 00:00:00Z])
 
       log_event = %{
         level: :info,
@@ -183,7 +185,7 @@ defmodule Toast.LogFormatterTest do
     end
 
     test "config parameter is ignored" do
-      now_usec = DateTime.to_unix(~U[2024-01-01 00:00:00Z], :microsecond)
+      now_usec = to_us(~U[2024-01-01 00:00:00Z])
       log_event = %{level: :info, msg: {:string, "msg"}, meta: %{time: now_usec}}
 
       result1 = LogFormatter.format(log_event, %{})
@@ -198,7 +200,7 @@ defmodule Toast.LogFormatterTest do
   describe "timestamp formatting" do
     test "formats with millisecond precision" do
       # 2024-06-15 10:30:45.678 UTC
-      now_usec = DateTime.to_unix(~U[2024-06-15 10:30:45.678000Z], :microsecond)
+      now_usec = to_us(~U[2024-06-15 10:30:45.678000Z])
 
       log_event = %{
         level: :info,
@@ -213,7 +215,7 @@ defmodule Toast.LogFormatterTest do
     end
 
     test "formats zero milliseconds correctly" do
-      now_usec = DateTime.to_unix(~U[2024-01-01 00:00:00.000000Z], :microsecond)
+      now_usec = to_us(~U[2024-01-01 00:00:00.000000Z])
 
       log_event = %{
         level: :info,
@@ -229,7 +231,7 @@ defmodule Toast.LogFormatterTest do
 
     test "truncates microseconds to milliseconds" do
       # .123456 should become .123
-      now_usec = DateTime.to_unix(~U[2024-06-15 10:30:45.123456Z], :microsecond)
+      now_usec = to_us(~U[2024-06-15 10:30:45.123456Z])
 
       log_event = %{
         level: :info,

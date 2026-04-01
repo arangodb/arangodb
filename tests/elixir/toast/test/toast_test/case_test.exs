@@ -62,35 +62,17 @@ end
 defmodule ToastTest.CaseContextTest do
   use ExUnit.Case, async: false
 
+  import Toast.DeploymentTestHelpers, only: [setup_deployment_registry: 1]
+
   alias ToastTest.DeploymentRegistry
 
-  setup do
-    try do
-      :ets.delete(:toast_deployment_registry)
-    catch
-      :error, :badarg -> :ok
-    end
+  setup :setup_deployment_registry
 
-    DeploymentRegistry.init()
-
-    on_exit(fn ->
-      try do
-        :ets.delete(:toast_deployment_registry)
-      catch
-        :error, :badarg -> :ok
-      end
-    end)
-
-    :ok
-  end
-
-  defp fake_deployment(overrides) do
-    defaults = %{
+  defp fake_deployment do
+    fields = %{
       id: "test-1",
       controller: self()
     }
-
-    fields = Map.merge(defaults, overrides)
 
     %Toast.Deployment{
       id: fields.id,
@@ -104,29 +86,12 @@ defmodule ToastTest.CaseContextTest do
         def __toast_suite__, do: __MODULE__
       end
 
-      deployment = fake_deployment(%{endpoint: "http://localhost:9999"})
+      deployment = fake_deployment()
       DeploymentRegistry.put(FakeSuiteModule, deployment)
       DeploymentRegistry.put_extra_context(FakeSuiteModule, %{extra_key: "extra_val"})
 
       assert DeploymentRegistry.get(FakeSuiteModule) == deployment
       assert DeploymentRegistry.get_extra_context(FakeSuiteModule) == %{extra_key: "extra_val"}
-    end
-
-    test "raises when module has no __toast_suite__/0" do
-      defmodule NoSuiteModule do
-      end
-
-      error =
-        assert_raise RuntimeError, fn ->
-          # Simulate what resolve_suite_key does
-          if function_exported?(NoSuiteModule, :__toast_suite__, 0) do
-            NoSuiteModule.__toast_suite__()
-          else
-            raise "#{inspect(NoSuiteModule)} must belong to a suite."
-          end
-        end
-
-      assert error.message =~ "must belong to a suite"
     end
   end
 

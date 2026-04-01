@@ -3,9 +3,7 @@ defmodule Toast.Client.IndexTest do
 
   alias Toast.Client
 
-  defp client_with_plug(plug) do
-    Client.new("http://localhost:8529", plug: plug)
-  end
+  import Toast.ClientTestHelpers
 
   describe "create/3" do
     test "sends POST to /_api/index with collection param" do
