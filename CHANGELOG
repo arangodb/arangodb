@@ -1,6 +1,9 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Fix vector index creation response containing a stale errorMessage after
+  training succeeds when the index was created with `inBackground: false`.
+
 * Create coredumps with correct CPU context.
   For signals like SIGSEGV, SIGILL etc. return from the signal handler instead
   of calling std::abort. This ensures that the coredump is created with the CPU
