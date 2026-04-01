@@ -1660,10 +1660,9 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         StringUtils::concatT("cannot get current working directory: ",
                              cwdEc.message()));
   }
-  std::string const cwd = cwdPath.string();
 
   if (name.length() == 0) {
-    TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, cwd.result()));
+    TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, cwdPath.string()));
   }
 
   std::string abs =
