@@ -575,25 +575,8 @@ void finalizeTimingData(application_features::ApplicationServer& server,
     return;
   }
 
-  statistics::TotalRequests.incCounter();
-  if (data.async) {
-    statistics::AsyncRequests.incCounter();
-  }
-  statistics::MethodRequests[static_cast<size_t>(data.requestType)]
-      .incCounter();
-
-  if (data.readStart != RequestTimingData::time_point{} &&
-      (data.async || data.writeEnd != RequestTimingData::time_point{})) {
-    if (data.superuser) {
-      statistics::TotalRequestsSuperuser.incCounter();
-    } else {
-      statistics::TotalRequestsUser.incCounter();
-    }
-
-    if (server.hasFeature<GeneralServerFeature>()) {
-      server.getFeature<GeneralServerFeature>().recordHttpRequestStatistics(
-          data);
-    }
+  if (server.hasFeature<GeneralServerFeature>()) {
+    server.getFeature<GeneralServerFeature>().recordHttpRequestStatistics(data);
   }
 
   data.active = false;
