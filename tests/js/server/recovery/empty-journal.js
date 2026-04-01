@@ -28,7 +28,17 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const fs = require('fs');
 const jsunity = require('jsunity');
-const IM  = global.instanceManager;
+const im = require('@arangodb/testutils/instance-manager');
+let instanceManager = new im.instanceManager(options.protocol, options, {}, '');
+try {
+  instanceManager.setFromStructure(JSON.parse(internal.env.INSTANCEINFO));
+} catch (ex) {
+  print("Failed to deserialize the instance manager!");
+  print(ex);
+  print(ex.stack);
+}
+
+const IM  = instanceManager;
 
 function runSetup () {
   'use strict';
