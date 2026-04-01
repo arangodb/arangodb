@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertNotNull, print */
+/* global assertNotNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -29,7 +29,7 @@ const internal = require('internal');
 const fs = require('fs');
 const jsunity = require('jsunity');
 let instance = JSON.parse(internal.env.INSTANCEINFO);
-print(internal.env.INSTANCEINFO);
+
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
