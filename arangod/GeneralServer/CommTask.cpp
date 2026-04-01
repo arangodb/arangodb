@@ -537,18 +537,7 @@ ConnectionStatistics::Item CommTask::acquireConnectionStatistics() {
 
 RequestTimingData& CommTask::acquireTimingData(uint64_t id) {
   std::lock_guard lock{_statisticsMutex};
-
-  // If statistics are enabled, create an active entry
-  // otherwise create an inactive one
-  auto [it, inserted] = _statisticsMap.try_emplace(id, RequestTimingData{});
-  if (inserted) {
-    // Only activate if statistics are enabled
-    // Check if server has StatisticsFeature and it is enabled
-    if (_server.server().hasFeature<StatisticsFeature>() &&
-        _server.server().getFeature<StatisticsFeature>().isEnabled()) {
-      it->second.active = true;
-    }
-  }
+  auto [it, _] = _statisticsMap.try_emplace(id, RequestTimingData{});
   return it->second;
 }
 
@@ -571,15 +560,9 @@ RequestTimingData CommTask::stealTimingData(uint64_t id) {
 namespace arangodb {
 void finalizeTimingData(application_features::ApplicationServer& server,
                         RequestTimingData& data) {
-  if (!data.active) {
-    return;
-  }
-
   if (server.hasFeature<GeneralServerFeature>()) {
     server.getFeature<GeneralServerFeature>().recordHttpRequestStatistics(data);
   }
-
-  data.active = false;
 }
 }  // namespace arangodb
 

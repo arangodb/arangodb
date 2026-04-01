@@ -487,21 +487,6 @@ StatisticsFeature::StatisticsFeature(
 void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options
-      ->addOption("--server.statistics",
-                  "Whether to enable statistics gathering and statistics APIs.",
-                  new BooleanParameter(&_options.statistics))
-      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
-statistics gathering is turned off. Statistics gathering causes regular
-background CPU activity, memory usage, and writes to the storage engine, so
-using this option to turn statistics off might relieve heavily-loaded instances
-a bit.
-
-A side effect of setting this option to `false` is that no statistics are
-shown in the dashboard of ArangoDB's web interface, and the metrics exposed
-by the `GET /_admin/metrics` API will not include these statistics (or will
-report zero for them).)");
-
-  options
       ->addOption(
           "--server.statistics-all-databases",
           "Provide cluster statistics in the web interface for all databases.",
@@ -514,13 +499,8 @@ report zero for them).)");
 
 void StatisticsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_options.statistics) {
-    // initialize counters for all HTTP request types
-    ConnectionStatistics::initialize();
-  } else {
-    // turn ourselves off
-    disable();
-  }
+  // initialize counters for all HTTP request types
+  ConnectionStatistics::initialize();
 }
 
 void StatisticsFeature::start() {

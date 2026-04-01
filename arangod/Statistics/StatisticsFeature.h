@@ -98,7 +98,6 @@ class StatisticsFeature final
                                         std::string_view globals,
                                         bool ensureWhitespace);
 
-  bool _statistics;
   bool _statisticsAllDatabases;
   StatisticsFeatureOptions _options;
 
