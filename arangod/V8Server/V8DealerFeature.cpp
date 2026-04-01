@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <filesystem>
 #include "Actions/ActionFeature.h"
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
@@ -669,10 +670,11 @@ void V8DealerFeature::copyInstallationFiles() {
         FATAL_ERROR_EXIT();
       }
     }
-    if (!FileUtils::createDirectory(copyJSPath, &res)) {
+    auto ec = std::error_code{};
+    if (!std::filesystem::create_directory(copyJSPath, ec)) {
       LOG_TOPIC("b8c79", FATAL, Logger::V8)
           << "Error creating JS installation path '" << copyJSPath
-          << "': " << TRI_errno_string(res);
+          << "': " << ec.message();
       FATAL_ERROR_EXIT();
     }
 

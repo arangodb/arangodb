@@ -163,16 +163,6 @@ TEST_F(FilesTest, tst_createdirectory) {
   EXPECT_FALSE(TRI_IsDirectory(filename.c_str()));
 }
 
-TEST_F(FilesTest, tst_fileutils_createDirectory) {
-  std::string const path =
-      absl::StrCat(_directory, TRI_DIR_SEPARATOR_STR, "fu-mkdir-", ++counter);
-  EXPECT_TRUE(FileUtils::createDirectory(path, 0777, nullptr));
-  EXPECT_TRUE(FileUtils::isDirectory(path));
-  // Same second time create on existing dir succeeds.
-  EXPECT_TRUE(FileUtils::createDirectory(path, 0777, nullptr));
-  EXPECT_TRUE(FileUtils::isDirectory(path));
-}
-
 TEST_F(FilesTest, tst_createdirectoryrecursive) {
   std::string filename1 = absl::StrCat(_directory, TRI_DIR_SEPARATOR_STR,
                                        "tmp-", ++counter, "-dir");

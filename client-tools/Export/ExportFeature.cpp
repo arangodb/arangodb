@@ -23,6 +23,8 @@
 
 #include "ExportFeature.h"
 
+#include <filesystem>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
@@ -89,8 +91,13 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server,
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
-  _outputDirectory = FileUtils::buildFilename(
-      FileUtils::currentDirectory().result(), "export");
+  std::error_code cwdEc;
+  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
+  if (cwdEc) {
+    throw std::filesystem::filesystem_error(
+        "cannot get current working directory", std::filesystem::path(), cwdEc);
+  }
+  _outputDirectory = FileUtils::buildFilename(cwdPath.string(), "export");
 }
 
 ExportFeature::~ExportFeature() = default;

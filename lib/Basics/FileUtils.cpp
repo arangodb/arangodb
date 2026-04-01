@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -365,51 +366,6 @@ ErrorCode remove(std::string const& fileName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-bool createDirectory(std::string const& name, ErrorCode* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = TRI_ERROR_NO_ERROR;
-  }
-
-  return createDirectory(name, 0777, errorNumber);
-}
-
-bool createDirectory(std::string const& name, int mask,
-                     ErrorCode* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = TRI_ERROR_NO_ERROR;
-  }
-
-  std::filesystem::path const p(name);
-  std::error_code ec;
-  bool const created = std::filesystem::create_directory(p, ec);
-  if (!ec) {
-    if (created) {
-      std::error_code pec;
-      std::filesystem::permissions(
-          p, static_cast<std::filesystem::perms>(mask & 07777),
-          std::filesystem::perm_options::replace, pec);
-      if (pec) {
-        errno = pec.value();
-        auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        if (errorNumber != nullptr) {
-          *errorNumber = errorCode;
-        }
-        return false;
-      }
-    }
-    return true;
-  }
-  if (isDirectory(name)) {
-    return true;
-  }
-  errno = ec.value();
-  auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  if (errorNumber != nullptr) {
-    *errorNumber = errorCode;
-  }
-  return false;
-}
-
 /// @brief will not copy files/directories for which the filter function
 /// returns true (now wrapper for version below with TRI_copy_recursive_e
 /// filter)
@@ -615,31 +571,21 @@ std::string stripExtension(std::string const& path,
   return path;
 }
 
-FileResult changeDirectory(std::string const& path) {
-  std::error_code ec;
-  std::filesystem::current_path(path, ec);
-  if (ec) {
-    return FileResult(ec.value());
-  }
-  return FileResult();
-}
-
-FileResultString currentDirectory() {
-  std::error_code ec;
-  std::filesystem::path const cwd = std::filesystem::current_path(ec);
-  if (ec) {
-    return FileResultString(ec.value(), ".");
-  }
-  return FileResultString(cwd.string());
-}
-
 std::string homeDirectory() { return TRI_HomeDirectory(); }
 
 std::string configDirectory(char const* binaryPath) {
   std::string dir = TRI_LocateConfigDirectory(binaryPath);
 
   if (dir.empty()) {
-    return currentDirectory().result();
+    std::error_code ec;
+    std::filesystem::path const cwd = std::filesystem::current_path(ec);
+    if (ec) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_set_errno(TRI_ERROR_SYS_ERROR),
+          StringUtils::concatT("cannot get current working directory: ",
+                               ec.message()));
+    }
+    return (cwd.string());
   }
 
   return dir;
@@ -648,7 +594,13 @@ std::string configDirectory(char const* binaryPath) {
 std::string dirname(std::string const& name) { return TRI_Dirname(name); }
 
 void makePathAbsolute(std::string& path) {
-  std::string cwd = FileUtils::currentDirectory().result();
+  std::error_code cwdEc;
+  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
+  if (cwdEc) {
+    throw std::filesystem::filesystem_error(
+        "cannot get current working directory", std::filesystem::path(), cwdEc);
+  }
+  std::string const cwd = cwdPath.string();
 
   if (path.empty()) {
     path = cwd;

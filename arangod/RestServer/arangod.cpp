@@ -23,6 +23,7 @@
 
 #include "RestServer/arangod.h"
 
+#include <filesystem>
 #include <type_traits>
 
 // The list of includes for the features is defined in the following file -
@@ -320,7 +321,13 @@ int main(int argc, char* argv[]) {
     f();
   }
 
-  std::string workdir(basics::FileUtils::currentDirectory().result());
+  std::error_code cwdEc;
+  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
+  if (cwdEc) {
+    throw std::filesystem::filesystem_error(
+        "cannot get current working directory", std::filesystem::path(), cwdEc);
+  }
+  std::string workdir(cwdPath.string());
 
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 

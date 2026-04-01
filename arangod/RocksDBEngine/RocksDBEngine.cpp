@@ -1054,10 +1054,10 @@ void RocksDBEngine::start() {
       TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
     }
   } else {
-    auto errorMsg = TRI_ERROR_NO_ERROR;
-    if (!basics::FileUtils::createDirectory(_idxPath, &errorMsg)) {
+    if (auto ec = std::error_code{};
+        !std::filesystem::create_directory(_idxPath, ec)) {
       LOG_TOPIC("6d10f", FATAL, Logger::ENGINES)
-          << "Cannot create tmp-idx-creation directory: " << TRI_last_error();
+          << "Cannot create tmp-idx-creation directory: " << ec.message();
       FATAL_ERROR_EXIT();
     }
   }
