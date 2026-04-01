@@ -35,7 +35,7 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/GaugeCounterGuard.h"
-#include "Metrics/MeasureTimeGuard.h"
+#include "Statistics/ConnectionTimeRecorder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
 
@@ -105,11 +105,11 @@ class GeneralServerFeature final
     return _options.startedListening;
   }
 
-  auto startConnection() {
-    return metrics::MeasureTimeGuard<double>{_connectionDuration};
+  [[nodiscard]] ConnectionTimeRecorder startConnection() noexcept {
+    return ConnectionTimeRecorder{_connectionDuration};
   }
 
-  auto addHttpConnection() {
+  [[nodiscard]] auto addHttpConnection() {
     return metrics::GaugeCounterGuard{_connectionHttp, static_cast<double>(1)};
   }
 

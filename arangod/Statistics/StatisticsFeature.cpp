@@ -154,8 +154,6 @@ DECLARE_GAUGE(arangodb_process_statistics_resident_set_size_percent, double,
 DECLARE_GAUGE(
     arangodb_process_statistics_virtual_memory_size, double,
     "This figure contains The size of the virtual memory the process is using");
-DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
-              "The number of client connections that are currently open");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_total_time,
                   ConnectionTimeScale, "Total time needed to answer a request");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_request_time,

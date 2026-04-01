@@ -18,40 +18,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
+
 #include <chrono>
-#include "Histogram.h"
+#include "Metrics/Histogram.h"
 
-namespace arangodb::metrics {
-template<typename ValueType>
-struct MeasureTimeGuard {
-  explicit MeasureTimeGuard(
-      metrics::HistogramBase<ValueType>& histogram) noexcept
+namespace arangodb {
+
+// RAII guard that records connection duration to the MetricsFeature histogram
+// on destruction (i.e. when the connection closes).
+struct ConnectionTimeRecorder {
+  ConnectionTimeRecorder() = default;
+
+  explicit ConnectionTimeRecorder(
+      metrics::HistogramBase<double>& histogram) noexcept
       : _start(std::chrono::steady_clock::now()), _histogram(&histogram) {}
-  MeasureTimeGuard(MeasureTimeGuard const&) = delete;
-  MeasureTimeGuard(MeasureTimeGuard&&) = default;
-  ~MeasureTimeGuard() { fire(); }
 
-  void fire() {
-    if (_histogram) {
-      auto const endTime = std::chrono::steady_clock::now();
-      auto const duration =
-          std::chrono::duration_cast<std::chrono::microseconds>(endTime -
-                                                                _start);
-      _histogram->count(duration.count());
-      _histogram.reset();
+  ConnectionTimeRecorder(ConnectionTimeRecorder const&) = delete;
+  ConnectionTimeRecorder& operator=(ConnectionTimeRecorder const&) = delete;
+  ConnectionTimeRecorder(ConnectionTimeRecorder&&) = default;
+  ConnectionTimeRecorder& operator=(ConnectionTimeRecorder&&) = default;
+
+  ~ConnectionTimeRecorder() {
+    if (_histogram != nullptr) {
+      double const dt = std::chrono::duration<double>(
+                            std::chrono::steady_clock::now() - _start)
+                            .count();
+      _histogram->count(dt);
     }
   }
 
  private:
-  std::chrono::steady_clock::time_point const _start;
-  struct noop {
-    template<typename T>
-    void operator()(T*) {}
-  };
-
-  std::unique_ptr<HistogramBase<ValueType>, noop> _histogram;
+  std::chrono::steady_clock::time_point _start;
+  metrics::HistogramBase<double>* _histogram = nullptr;
 };
-}  // namespace arangodb::metrics
+
+}  // namespace arangodb

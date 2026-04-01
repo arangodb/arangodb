@@ -30,7 +30,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Metrics/GaugeCounterGuard.h"
-#include "Metrics/MeasureTimeGuard.h"
+#include "Statistics/ConnectionTimeRecorder.h"
 #include "Statistics/RequestStatistics.h"
 
 #include <velocypack/Buffer.h>
@@ -172,7 +172,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   ApiRecordingFeature& _apiRecordingFeature;
   ConnectionInfo _connectionInfo;
 
-  metrics::MeasureTimeGuard<double> _connectionStatistics;
+  ConnectionTimeRecorder _connectionStatistics;
   metrics::GaugeCounterGuard<double> _connectionHttp;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;

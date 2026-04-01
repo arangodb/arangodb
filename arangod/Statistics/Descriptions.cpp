@@ -32,6 +32,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Statistics/RequestStatistics.h"
+#include "Statistics/StatisticsFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
 
