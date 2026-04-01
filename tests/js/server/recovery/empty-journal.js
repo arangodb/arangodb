@@ -63,7 +63,6 @@ function runSetup () {
       if (remain.length > 0) {
         // ok, we found a WAL file to destroy!
         let fn = fs.join(instance.dataDir,
-                         'databases',
                          'engine-rocksdb',
                          'journals',
                          remain[0]);
