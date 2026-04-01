@@ -32,7 +32,6 @@ const fs = require("fs");
 const IM  = global.instanceManager;
 const db = arangodb.db;
 const isCluster = internal.isCluster();
-const isServer = require('@arangodb').isServer;
 
 function DropDatabase() {
   let path = fs.join(IM.arangods[0].dataDir, 'databases');
@@ -92,10 +91,6 @@ function DropDatabase() {
   };
 }
 
-if (!isCluster && isServer) {
-  jsunity.run(DropDatabase);
-} else {
-  // TODO(MBkkt) Add test for cluster, we need to know path to dbserver
-}
+jsunity.run(DropDatabase);
 
 return jsunity.done();
