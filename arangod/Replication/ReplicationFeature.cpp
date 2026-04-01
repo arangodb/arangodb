@@ -93,16 +93,10 @@ void ReplicationFeature::collectOptions(
       new BooleanParameter(&_options.replicationApplierAutoStart),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options->addOldOption("server.disable-replication-applier",
-                        "replication.auto-start");
-  options->addOldOption("database.replication-applier",
-                        "replication.auto-start");
-
-  options->addObsoleteOption(
-      "--replication.active-failover",
-      "Enable active-failover during asynchronous replication.", false);
-  options->addOldOption("--replication.automatic-failover",
-                        "--replication.active-failover");
+  options->addObsoleteOption("--replication.active-failover",
+                             "active failover has been removed", true);
+  options->addObsoleteOption("--replication.automatic-failover",
+                             "active failover has been removed", true);
 
   options->addOption(
       "--replication.max-parallel-tailing-invocations",
@@ -141,13 +135,6 @@ void ReplicationFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(31006);
-
-  options->addObsoleteOption(
-      "--replication.active-failover-leader-grace-period",
-      "The amount of time (in seconds) for which the current leader will "
-      "continue to assume its leadership even if it lost connection to the "
-      "agency (0 = unlimited)",
-      true);
 }
 
 void ReplicationFeature::validateOptions(

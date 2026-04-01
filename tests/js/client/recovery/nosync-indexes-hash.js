@@ -45,7 +45,7 @@ if (runSetup === true) {
 
   db._drop(colName1);
   let c = db._create(colName1);
-  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "persistent", fields: ["value"] });
 
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -55,7 +55,7 @@ if (runSetup === true) {
 
   db._drop(colName2);
   c = db._create(colName2);
-  c.ensureIndex({ type: "hash", fields: ["a.value"], unique: true });
+  c.ensureIndex({ type: "persistent", fields: ["a.value"], unique: true });
 
   docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -65,7 +65,7 @@ if (runSetup === true) {
 
   db._drop(colName3);
   c = db._create(colName3);
-  c.ensureIndex({ type: "hash", fields: ["a", "b"] });
+  c.ensureIndex({ type: "persistent", fields: ["a", "b"] });
 
   docs = [];
   for (let i = 0; i < 500; ++i) {

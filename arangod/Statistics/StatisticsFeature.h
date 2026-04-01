@@ -41,7 +41,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class Thread;
-class StatisticsWorker;
 namespace stats {
 class Descriptions;
 }
@@ -107,11 +106,7 @@ class StatisticsFeature final
   static arangodb::velocypack::Builder fillDistribution(
       statistics::Distribution const& dist);
 
-  Result getClusterSystemStatistics(
-      TRI_vocbase_t& vocbase, double start,
-      arangodb::velocypack::Builder& result) const;
-
-  bool allDatabases() const noexcept { return _options.statisticsAllDatabases; }
+  bool allDatabases() const noexcept { return _statisticsAllDatabases; }
 
  private:
   static void appendMetric(std::string& result, std::string const& val,
@@ -131,12 +126,12 @@ class StatisticsFeature final
                               std::initializer_list<std::string> const& les,
                               bool isInteger, std::string_view globals,
                               bool ensureWhitespace);
+  bool _statistics;
+  bool _statisticsAllDatabases;
   StatisticsFeatureOptions _options;
-  bool _statisticsHistoryTouched = false;
 
   stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;
-  std::unique_ptr<StatisticsWorker> _statisticsWorker;
 
   metrics::Gauge<uint64_t>& _requestStatisticsMemoryUsage;
   metrics::Gauge<uint64_t>& _connectionStatisticsMemoryUsage;

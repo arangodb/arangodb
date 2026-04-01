@@ -140,6 +140,12 @@ async<void> RestCollectionHandler::handleCommandGet() {
   }
 
   std::string const& name = suffixes[0];
+
+  // if name is a numeric collection id, generate an error
+  if (rejectNumericCollectionId(name)) {
+    co_return;
+  }
+
   // /_api/collection/<name>
   if (suffixes.size() == 1) {
     try {
@@ -420,6 +426,12 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
 
   std::string const& name = suffixes[0];
+
+  // if name is a numeric collection id, generate an error
+  if (rejectNumericCollectionId(name)) {
+    co_return;
+  }
+
   std::string const& sub = suffixes[1];
 
   if (sub != "responsibleShard" && !body.isObject()) {
@@ -441,29 +453,6 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
   TRI_ASSERT(coll);
 
-  if (sub == "load") {
-    // "load" is a no-op starting with 3.9
-    bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
-    co_await collectionRepresentation(
-        name, /*showProperties*/ false,
-        /*showFigures*/ FiguresType::None,
-        /*showCount*/ cc ? CountType::Standard : CountType::None);
-    co_return standardResponse();
-  }
-  if (sub == "unload") {
-    bool flush = _request->parsedValue("flush", false);
-
-    if (flush && !coll->deleted()) {
-      server().getFeature<EngineSelectorFeature>().engine().flushWal(false,
-                                                                     false);
-    }
-
-    // apart from WAL flushing, unload is a no-op starting with 3.9
-    co_await collectionRepresentation(name, /*showProperties*/ false,
-                                      /*showFigures*/ FiguresType::None,
-                                      /*showCount*/ CountType::None);
-    co_return standardResponse();
-  }
   if (sub == "compact") {
     if (ServerState::instance()->isCoordinator()) {
       auto& feature = server().getFeature<ClusterFeature>();
@@ -608,11 +597,10 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
   if (sub == "properties") {
     std::vector<std::string> keep = {
-        StaticStrings::WaitForSyncString,    StaticStrings::Schema,
-        StaticStrings::ReplicationFactor,
-        StaticStrings::MinReplicationFactor,  // deprecated
-        StaticStrings::WriteConcern,         StaticStrings::ComputedValues,
-        StaticStrings::CacheEnabled,         StaticStrings::SupportsRBAC};
+        StaticStrings::WaitForSyncString, StaticStrings::Schema,
+        StaticStrings::ReplicationFactor, StaticStrings::WriteConcern,
+        StaticStrings::ComputedValues,    StaticStrings::CacheEnabled,
+        StaticStrings::SupportsRBAC};
     VPackBuilder props = VPackCollection::keep(body, keep);
 
     OperationOptions options(_context);
@@ -691,6 +679,12 @@ async<void> RestCollectionHandler::handleCommandDelete() {
   }
 
   std::string const& name = suffixes[0];
+
+  // if name is a numeric collection id, generate an error
+  if (rejectNumericCollectionId(name)) {
+    co_return;
+  }
+
   bool allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();

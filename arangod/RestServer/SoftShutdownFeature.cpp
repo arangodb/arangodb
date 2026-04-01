@@ -25,10 +25,6 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#ifdef USE_V8
-#include "RestServer/ConsoleFeature.h"
-#include "RestServer/ScriptFeature.h"
-#endif
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
@@ -63,12 +59,6 @@ SoftShutdownFeature::SoftShutdownFeature(
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();
-#ifdef USE_V8
-  startsAfter<ConsoleFeature>();
-  startsAfter<ScriptFeature>();
-#else
-  startsAfter<application_features::AgencyFeaturePhase>();
-#endif
 
   // We do not yet know if we are a coordinator, so just in case,
   // create a SoftShutdownTracker, it will not hurt if it is not used:

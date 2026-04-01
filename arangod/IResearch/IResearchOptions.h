@@ -43,8 +43,6 @@ struct IResearchOptions {
   uint32_t deprecatedOptions = 0;
   uint32_t consolidationThreads = 0;
   uint32_t commitThreads = 0;
-  uint32_t threads = 0;
-  uint32_t threadsLimit = 0;
   uint32_t searchExecutionThreadsLimit = 0;
   uint32_t defaultParallelism = 1;
 

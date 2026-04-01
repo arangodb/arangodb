@@ -40,12 +40,12 @@ function dealing_with_documentSuite () {
   let cid;
   return {
 
-    setUp: function() {
+    setUpAll: function() {
       db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
     },
 
@@ -54,7 +54,7 @@ function dealing_with_documentSuite () {
     ////////////////////////////////////////////////////////////////////////////////;
 
     test_creates_a_document_with_an_invalid_type_1: function() {
-      let cmd = api + "?collection=" + cn;
+      let cmd = api + "/" + cn;
       let body = "[ [] ]";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -65,7 +65,7 @@ function dealing_with_documentSuite () {
     },
 
     test_creates_a_document_with_an_invalid_type_2: function() {
-      let cmd = api + "?collection=" + cn;
+      let cmd = api + "/" + cn;
       let body = '"test"';
       let doc = arango.POST_RAW(cmd, body);
 
@@ -137,92 +137,6 @@ function dealing_with_documentSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
-    // updates documents by example with invalid type;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_updates_documents_by_example_with_an_invalid_type_1: function() {
-      if (!IM.options.skipServerJS) {
-        let cmd = "/_api/simple/update-by-example";
-        let body = { "collection" : cn, "example" : [ ], "newValue" : { } };
-        let doc = arango.PUT_RAW(cmd, body);
-
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      }
-    },
-
-    test_updates_documents_by_example_with_an_invalid_type_2: function() {
-      if (!IM.options.skipServerJS) {
-        let cmd = "/_api/simple/update-by-example";
-        let body = { "collection" : cn, "example" : { }, "newValue" : [ ] };
-        let doc = arango.PUT_RAW(cmd, body);
-
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      }
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////;
-    // replaces documents by example with invalid type;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_replaces_documents_by_example_with_an_invalid_type_1: function() {
-      if (!IM.options.skipServerJS) {
-        let cmd = "/_api/simple/replace-by-example";
-        let body = { "collection" : cn, "example" : [ ], "newValue" : { } };
-        let doc = arango.PUT_RAW(cmd, body);
-
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      }
-    },
-
-    test_replaces_documents_by_example_with_an_invalid_type_2: function() {
-      if (!IM.options.skipServerJS) {
-        let cmd = "/_api/simple/replace-by-example";
-        let body = { "collection" : cn, "example" : { }, "newValue" : [ ] };
-        let doc = arango.PUT_RAW(cmd, body);
-
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      }
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////;
-    // removes documents by example with invalid type;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_removes_a_document_with_an_invalid_type: function() {
-      if (!IM.options.skipServerJS) {
-        let cmd = "/_api/simple/remove-by-example";
-        let body = { "collection" : cn, "example" : [ ] };
-        let doc = arango.PUT_RAW(cmd, body);
-
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-      }
-    }
   };
 }
 jsunity.run(dealing_with_documentSuite);

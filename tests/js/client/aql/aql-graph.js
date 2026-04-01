@@ -724,7 +724,7 @@ function ahuacatlQueryNeighborsTestSuite() {
 
     testNeighborsEdgeFilter: function () {
       // try with bfs/uniqueVertices first
-      let query1 = `WITH ${vn} FOR v, e, p IN 0..9 OUTBOUND "${vn}/v1" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} FILTER p.edges[*].what ALL != "v1->v2" && p.edges[*].what ALL != "v1->v3" RETURN v._key`;
+      let query1 = `WITH ${vn} FOR v, e, p IN 0..9 OUTBOUND "${vn}/v1" UnitTestsAhuacatlEdge OPTIONS {order: "bfs", uniqueVertices: "global"} FILTER p.edges[*].what ALL != "v1->v2" && p.edges[*].what ALL != "v1->v3" RETURN v._key`;
 
       let actual = getQueryResults(query1);
       assertEqual(actual, ["v1"]);
@@ -752,8 +752,8 @@ function ahuacatlQueryNeighborsTestSuite() {
       var v8 = "UnitTestsAhuacatlVertex/v8";
       var theFox = "UnitTestsAhuacatlVertex/thefox";
       var queryStart = `WITH ${vn} FOR n IN ANY "`;
-      var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
-      var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
+      var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {order: "bfs", uniqueVertices: "global"} SORT n._id RETURN n._id`;
+      var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {order: "bfs", uniqueVertices: "global"} SORT n RETURN n`;
 
       actual = getQueryResults(queryStart + v1 + queryEnd);
       assertEqual(actual, [v2, v3]);
@@ -818,8 +818,8 @@ function ahuacatlQueryNeighborsTestSuite() {
       var theFox = "UnitTestsAhuacatlVertex/thefox";
 
       var queryStart = `WITH ${vn} FOR n IN INBOUND "`;
-      var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
-      var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
+      var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {order: "bfs", uniqueVertices: "global"} SORT n._id RETURN n._id`;
+      var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {order: "bfs", uniqueVertices: "global"} SORT n RETURN n`;
 
       actual = getQueryResults(queryStart + v1 + queryEnd);
       assertEqual(actual, []);
@@ -881,8 +881,8 @@ function ahuacatlQueryNeighborsTestSuite() {
       var v8 = "UnitTestsAhuacatlVertex/v8";
       var theFox = "UnitTestsAhuacatlVertex/thefox";
       var queryStart = `WITH ${vn} FOR n IN OUTBOUND "`;
-      var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
-      var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
+      var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {order: "bfs", uniqueVertices: "global"} SORT n._id RETURN n._id`;
+      var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {order: "bfs", uniqueVertices: "global"} SORT n RETURN n`;
 
       actual = getQueryResults(queryStart + v1 + queryEnd);
       assertEqual(actual, [v2, v3]);
@@ -935,7 +935,7 @@ function ahuacatlQueryNeighborsTestSuite() {
       var v6 = "UnitTestsAhuacatlVertex/v6";
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var createQuery = function (start, filter) {
-        return `WITH ${vn} FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: true} ${filter} SORT n._id RETURN n._id`;
+        return `WITH ${vn} FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {order: "bfs", uniqueVertices: "global"} ${filter} SORT n._id RETURN n._id`;
       };
 
       // An empty filter should let all edges through
@@ -972,7 +972,7 @@ function ahuacatlQueryNeighborsTestSuite() {
       var v6 = "UnitTestsAhuacatlVertex/v6";
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var createQuery = function (start, filter) {
-        return `WITH ${vn} FOR n, e, p IN 2 OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: 'global'} ${filter} SORT n._id RETURN n._id`;
+        return `WITH ${vn} FOR n, e, p IN 2 OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {order: "bfs", uniqueVertices: "global"} ${filter} SORT n._id RETURN n._id`;
       };
 
       // It should filter on the start vertex
@@ -1009,7 +1009,7 @@ function ahuacatlQueryNeighborsTestSuite() {
       var v6 = "UnitTestsAhuacatlVertex/v6";
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var createQuery = function (start, filter) {
-        return `WITH ${vn} FOR n, e, p IN 2 OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true} ${filter} SORT n._id RETURN n._id`;
+        return `WITH ${vn} FOR n, e, p IN 2 OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {order: "bfs"} ${filter} SORT n._id RETURN n._id`;
       };
 
       // It should filter on the start vertex
@@ -1109,7 +1109,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testNonUniqueVerticesDefaultDepth: function () {
       var query = `WITH ${vn}
         FOR v IN OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 4);
@@ -1119,7 +1119,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testNonUniqueVerticesMaxDepth2: function () {
       var query = `WITH ${vn}
         FOR v IN 1..2 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 8);
@@ -1129,7 +1129,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testNonUniqueVerticesMinDepth0: function () {
       var query = `WITH ${vn}
         FOR v IN 0..2 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 9);
@@ -1139,7 +1139,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testNonUniqueVerticesMinDepth2: function () {
       var query = `WITH ${vn}
         FOR v IN 2..2 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 4);
@@ -1149,7 +1149,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testUniqueVerticesMaxDepth2: function () {
       var query = `WITH ${vn}
         FOR v IN 1..2 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true, uniqueVertices: 'global'}
+        OPTIONS {order: "bfs", uniqueVertices: "global"}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 5);
@@ -1159,7 +1159,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testUniqueVerticesMinDepth0: function () {
       var query = `WITH ${vn}
         FOR v IN 0..3 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true, uniqueVertices: 'global'}
+        OPTIONS {order: "bfs", uniqueVertices: "global"}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 6);
@@ -1169,7 +1169,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testUniqueVerticesMinDepth2: function () {
       var query = `WITH ${vn}
         FOR v IN 2..2 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true, uniqueVertices: 'global'}
+        OPTIONS {order: "bfs", uniqueVertices: "global"}
         SORT v._key RETURN v._key`;
       var actual;
 
@@ -1183,7 +1183,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testNonUniqueEdgesDefaultDepth: function () {
       var query = `WITH ${vn}
         FOR v,e IN OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 4);
@@ -1193,7 +1193,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testNonUniqueEdgesMaxDepth2: function () {
       var query = `WITH ${vn}
         FOR v,e IN 1..3 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 10);
@@ -1203,7 +1203,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testNonUniqueEdgesMinDepth0: function () {
       var query = `WITH ${vn}
         FOR v,e IN 0..3 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: false}
+        OPTIONS {order: "dfs"}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 11);
@@ -1213,7 +1213,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
     testNonUniqueEdgesMinDepth2: function () {
       var query = `WITH ${vn}
         FOR v,e IN 2..3 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 6);
@@ -1226,7 +1226,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
       // and thereby is non-unique and will be excluded
       const query = `WITH ${vn}
       FOR v, e, p IN 2..4 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true, uniqueVertices: "path"}
+        OPTIONS {order: "bfs", uniqueVertices: "path"}
         LET keys = CONCAT(p.vertices[*]._key)
         SORT keys RETURN keys`;
 
@@ -1249,7 +1249,7 @@ function ahuacatlQueryBreadthFirstTestSuite() {
       // uniqueEdges: path is the default
       const query = `WITH ${vn}
       FOR v, e, p IN 4..7 OUTBOUND "${center}" ${en}
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         LET keys = CONCAT(p.vertices[*]._key)
         SORT keys RETURN keys`;
 

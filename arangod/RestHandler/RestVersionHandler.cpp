@@ -76,8 +76,6 @@ static void addVersionDetails(application_features::ApplicationServer& server,
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
-  auto& serverFeature = server.getFeature<ServerFeature>();
-  result.add("mode", VPackValue(serverFeature.operationModeString()));
   auto serverState = ServerState::instance();
   if (serverState != nullptr) {
     result.add("role",
@@ -130,6 +128,10 @@ void RestVersionHandler::getVersion(
 }
 
 RestStatus RestVersionHandler::execute() {
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
 
   ServerSecurityFeature& security =

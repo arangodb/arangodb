@@ -51,7 +51,6 @@ class IOHeartbeatThread;
 class LogicalCollection;
 class ReplicationFeature;
 class StorageEngine;
-class V8DealerFeature;
 
 namespace metrics {
 class MetricsFeature;
@@ -94,9 +93,6 @@ class DatabaseManagerThread final : public ServerThread {
   }
   DatabaseFeature& _databaseFeature;
   StorageEngine& _engine;
-#ifdef USE_V8
-  V8DealerFeature& _dealer;
-#endif
 };
 
 class DatabaseFeature final : public application_features::ApplicationFeature {

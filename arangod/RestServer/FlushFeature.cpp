@@ -58,12 +58,6 @@ FlushFeature::FlushFeature(ApplicationServer& server)
 
 FlushFeature::~FlushFeature() = default;
 
-void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addObsoleteOption(
-      "--server.flush-interval",
-      "The interval (in microseconds) for flushing data.", true);
-}
-
 void FlushFeature::registerFlushSubscription(
     std::shared_ptr<FlushSubscription> const& subscription) {
   if (!subscription) {

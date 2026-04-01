@@ -42,9 +42,6 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Utils/ExecContext.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"

@@ -134,7 +134,7 @@ function optimizerQueryStatsTestSuite () {
         docs.push({ value: i % 10 });
       }
       c.insert(docs);
-      c.ensureIndex({ type: "hash", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 RETURN doc").getExtra().stats;
 
       assertEqual(0, stats.filtered);
@@ -148,7 +148,7 @@ function optimizerQueryStatsTestSuite () {
         docs.push({ value: i % 10 });
       }
       c.insert(docs);
-      c.ensureIndex({ type: "hash", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 && doc._key != 'peng' RETURN doc").getExtra().stats;
 
       assertEqual(0, stats.filtered);

@@ -23,10 +23,13 @@
 
 #include "Servers.h"
 
+#include "gmock/gmock.h"
+
 #include <algorithm>
 #include <typeindex>
 
 #include "Agency/AgencyStrings.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -36,11 +39,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Random/RandomFeature.h"
 #include "Ssl/SslFeature.h"
-#include "gmock/gmock.h"
-#ifdef USE_V8
-#include "V8/V8PlatformFeature.h"
-#endif
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -70,9 +68,6 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "RestServer/VectorIndexFeature.h"
-#ifdef USE_V8
-#include "FeaturePhases/V8FeaturePhase.h"
-#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/AgencyMock.h"
@@ -109,17 +104,12 @@
 #include "Servers.h"
 #include "Sharding/ShardingFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#ifdef USE_V8
-#include "V8/V8SecurityFeature.h"
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
@@ -217,18 +207,8 @@ static void SetupCommunicationFeaturePhase(MockServer& server) {
   // This phase is empty...
 }
 
-static void SetupV8Phase(MockServer& server) {
-  SetupCommunicationFeaturePhase(server);
-#ifdef USE_V8
-  server.addFeature<application_features::V8FeaturePhase>(false);
-  server.addFeature<V8DealerFeature>(
-      false, server.getFeature<arangodb::metrics::MetricsFeature>());
-  server.addFeature<V8SecurityFeature>(false);
-#endif
-}
-
 static void SetupAqlPhase(MockServer& server) {
-  SetupV8Phase(server);
+  SetupCommunicationFeaturePhase(server);
   server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(
       false, server.getFeature<arangodb::metrics::MetricsFeature>());
@@ -444,7 +424,7 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
 
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
-  SetupV8Phase(*this);
+  SetupCommunicationFeaturePhase(*this);
   addFeature<NetworkFeature>(
       true, _server.getFeature<metrics::MetricsFeature>(),
       network::ConnectionPool::Config{
@@ -520,7 +500,7 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
 }
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
-  SetupV8Phase(*this);
+  SetupCommunicationFeaturePhase(*this);
   addFeature<QueryRegistryFeature>(
       false, getFeature<arangodb::metrics::MetricsFeature>());
   addFeature<NetworkFeature>(

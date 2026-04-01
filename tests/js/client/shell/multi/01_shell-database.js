@@ -255,45 +255,6 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test _executeTransaction
-////////////////////////////////////////////////////////////////////////////////
-
-    testExecuteTransaction1 : function () {
-      if (!IM.options.skipServerJS) {
-        var result = internal.db._executeTransaction({
-          collections: { },
-          action: function (params) {
-            return params.v1 + params.v2;
-          },
-          params: {
-            "v1": 1,
-            "v2": 2
-          }
-        });
-
-        assertEqual(3, result);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _executeTransaction
-////////////////////////////////////////////////////////////////////////////////
-
-    testExecuteTransaction2 : function () {
-      if (!IM.options.skipServerJS) {
-        var result = internal.db._executeTransaction({
-          collections: { },
-          action: "function () { return params.v1[0] - params.v1[1]; }",
-          params: {
-            "v1": [ 10, 4 ],
-          }
-        });
-
-        assertEqual(6, result);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test _databases function
 ////////////////////////////////////////////////////////////////////////////////
 

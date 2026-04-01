@@ -71,7 +71,6 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration(
       _adaptivePolling(true),
       _autoResync(false),
       _includeSystem(true),
-      _includeFoxxQueues(false),
       _requireFromPresent(true),
       _incremental(false),
       _verbose(false),
@@ -103,7 +102,6 @@ ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
   _adaptivePolling = other._adaptivePolling;
   _autoResync = other._autoResync;
   _includeSystem = other._includeSystem;
-  _includeFoxxQueues = other._includeFoxxQueues;
   _requireFromPresent = other._requireFromPresent;
   _incremental = other._incremental;
   _verbose = other._verbose;
@@ -142,7 +140,6 @@ void ReplicationApplierConfiguration::reset() {
   _adaptivePolling = true;
   _autoResync = false;
   _includeSystem = true;
-  _includeFoxxQueues = false;
   _requireFromPresent = true;
   _incremental = false;
   _verbose = false;
@@ -189,7 +186,6 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder,
   builder.add("autoResyncRetries", VPackValue(_autoResyncRetries));
   builder.add("maxPacketSize", VPackValue(_maxPacketSize));
   builder.add("includeSystem", VPackValue(_includeSystem));
-  builder.add("includeFoxxQueues", VPackValue(_includeFoxxQueues));
   builder.add("requireFromPresent", VPackValue(_requireFromPresent));
   builder.add("verbose", VPackValue(_verbose));
   builder.add("incremental", VPackValue(_incremental));
@@ -331,11 +327,6 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   value = slice.get("includeSystem");
   if (value.isBoolean()) {
     configuration._includeSystem = value.getBoolean();
-  }
-
-  value = slice.get("includeFoxxQueues");
-  if (value.isBoolean()) {
-    configuration._includeFoxxQueues = value.getBoolean();
   }
 
   value = slice.get("requireFromPresent");

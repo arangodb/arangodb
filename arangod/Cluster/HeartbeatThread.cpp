@@ -60,10 +60,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
-#ifdef USE_V8
-#include "V8Server/FoxxFeature.h"
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/vocbase.h"
 
 #include <date/date.h>
@@ -565,12 +561,9 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   auto& cache = _clusterFeature.agencyCache();
   auto [acb, idx] = cache.read(std::vector<std::string>{
       AgencyCommHelper::path("Current/Version"),
-      AgencyCommHelper::path("Current/Foxxmaster"),
-      AgencyCommHelper::path("Current/FoxxmasterQueueupdate"),
       AgencyCommHelper::path("Plan/Version"),
       AgencyCommHelper::path("Readonly"), AgencyCommHelper::path("Shutdown"),
       AgencyCommHelper::path("Sync/UserVersion"),
-      AgencyCommHelper::path("Sync/FoxxQueueVersion"),
       AgencyCommHelper::path("Target/FailedServers"), "/.agency"});
   auto result = acb->slice();
   LOG_TOPIC("53262", DEBUG, Logger::HEARTBEAT)
@@ -600,42 +593,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       _server.beginShutdown();
     }
 
-    // mop: order is actually important here...FoxxmasterQueueupdate will
-    // be set only when somebody registers some new queue stuff (for example
-    // on a different coordinator than this one)... However when we are just
-    // about to become the new foxxmaster we must immediately refresh our
-    // queues this is done in ServerState...if queueupdate is set after
-    // foxxmaster the change will be reset again
-    VPackSlice foxxmasterQueueupdateSlice =
-        result[0].get(std::vector<std::string>(
-            {AgencyCommHelper::path(), "Current", "FoxxmasterQueueupdate"}));
-
-    if (foxxmasterQueueupdateSlice.isBool() &&
-        foxxmasterQueueupdateSlice.getBool()) {
-      ServerState::instance()->setFoxxmasterQueueupdate(true);
-    }
-
-    VPackSlice foxxmasterSlice = result[0].get(std::vector<std::string>(
-        {AgencyCommHelper::path(), "Current", "Foxxmaster"}));
-
-    if (foxxmasterSlice.isString() && foxxmasterSlice.getStringLength() != 0) {
-      ServerState::instance()->setFoxxmaster(foxxmasterSlice.copyString());
-    } else {
-      auto state = ServerState::instance();
-      VPackBuilder myIdBuilder;
-      myIdBuilder.add(VPackValue(state->getId()));
-
-      AgencyComm agency(server());
-
-      auto updateLeader = agency.casValue(
-          "/Current/Foxxmaster", foxxmasterSlice, myIdBuilder.slice(), 0, 10.0);
-      if (updateLeader.successful()) {
-        // We won the race we are the master
-        ServerState::instance()->setFoxxmaster(state->getId());
-      }
-      agency.increment("Current/Version");
-    }
-
     VPackSlice versionSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Plan", "Version"}));
 
@@ -663,11 +620,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 
     // handle global changes to Sync/UserVersion
     handleUserVersionChange(result);
-
-#ifdef USE_V8
-    // handle global changes to Sync/FoxxQueueVersion
-    handleFoxxQueueVersionChange(result);
-#endif
 
     versionSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Current", "Version"}));
@@ -709,8 +661,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     updateServerMode(readOnlySlice);
   }
 
-  // the Foxx stuff needs an updated list of coordinators
-  // and this is only updated when current version has changed
+  // this is only updated when current version has changed
   if (_invalidateCoordinators) {
     ci.invalidateCurrentCoordinators();
   }
@@ -745,33 +696,6 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
     }
   }
 }
-
-#ifdef USE_V8
-void HeartbeatThread::handleFoxxQueueVersionChange(
-    VPackSlice foxxQueueVersion) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-
-  VPackSlice slice = foxxQueueVersion[0].get(std::vector<std::string>(
-      {AgencyCommHelper::path(), "Sync", "FoxxQueueVersion"}));
-
-  if (slice.isInteger()) {
-    // there is a UserVersion
-    uint64_t version = 0;
-    try {
-      version = slice.getNumber<uint64_t>();
-    } catch (...) {
-    }
-
-    if (version > 0) {
-      // track the global foxx queues version from the agency. any
-      // coordinator can update this any time. the setQueueVersion
-      // method makes sure we are not going below a value that
-      // we have already seen.
-      server().getFeature<FoxxFeature>().setQueueVersion(version);
-    }
-  }
-}
-#endif
 
 void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
   bool readOnly = false;

@@ -76,7 +76,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const LoggerTickRanges;
   static std::string const LoggerFirstTick;
   static std::string const LoggerLast;
-  static std::string const LoggerFollow;
   static std::string const Batch;
   static std::string const Inventory;
   static std::string const Keys;
@@ -467,12 +466,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// SECTION:
   /// Functions to be implemented by specialization
   //////////////////////////////////////////////////////////////////////////////
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a follow command for the replication log
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandLoggerFollow() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the command to determine the transactions that were open

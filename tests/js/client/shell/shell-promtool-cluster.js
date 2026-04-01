@@ -45,7 +45,7 @@ if (fs.isDirectory(promtoolPath)) {
   promtoolPath = fs.join(promtoolPath, 'promtool' + pu.executableExt);
 }
 
-const metricsUrlPath = "/_admin/metrics/v2";
+const metricsUrlPath = "/_admin/metrics";
 const serverIdPath = "/_admin/server/id";
 const healthUrl = "_admin/cluster/health";
 
@@ -106,7 +106,7 @@ function checkThatAllDbServersAreHealthy() {
 function validateMetrics(metrics) {
   let toRemove = [];
   try {
-    // store output of /_admin/metrics/v2 into a temp file
+    // store output of /_admin/metrics into a temp file
     let input = fs.getTempFile();
     fs.writeFileSync(input, metrics);
     toRemove.push(input);

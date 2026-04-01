@@ -57,7 +57,6 @@ function RocksDBCorrSuite() {
     tearDown : function () {
       // try...catch is necessary as some tests delete the collection itself!
       try {
-        coll.unload();
         coll.drop();
       }
       catch (err) {

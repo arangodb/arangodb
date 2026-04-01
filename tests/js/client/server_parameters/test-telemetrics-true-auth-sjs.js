@@ -40,7 +40,6 @@ const internal = require('internal');
 const toArgv = require('internal').toArgv;
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
-const FoxxManager = require('@arangodb/foxx/manager');
 const path = require('path');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'redirect');
 const arangodb = require('@arangodb');
@@ -123,7 +122,6 @@ function parseCollections(colls) {
     assertTrue(coll.hasOwnProperty("n_docs"));
     assertTrue(coll.hasOwnProperty("type"));
     assertTrue(coll.hasOwnProperty("n_edge"));
-    assertTrue(coll.hasOwnProperty("n_fulltext"));
     assertTrue(coll.hasOwnProperty("n_geo"));
     assertTrue(coll.hasOwnProperty("n_hash"));
     assertTrue(coll.hasOwnProperty("n_inverted"));
@@ -816,14 +814,6 @@ function telemetricsSendToEndpointRedirectTestsuite() {
 
   return {
     setUpAll: function () {
-      try {
-        FoxxManager.uninstall(mount, {force: true});
-      } catch (err) {
-      }
-      try {
-        FoxxManager.install(basePath, mount);
-      } catch (err) {
-      }
       db._create(cn);
       let coll = db._createEdgeCollection(cn3, {numberOfShards: 2});
       coll.insert({_from: vn1 + "/test1", _to: vn2 + "/test2"});
@@ -832,10 +822,6 @@ function telemetricsSendToEndpointRedirectTestsuite() {
     tearDownAll: function () {
       db._drop(cn);
       db._drop(cn3);
-      try {
-        FoxxManager.uninstall(mount, {force: true});
-      } catch (err) {
-      }
     },
 
     setUp: function () {

@@ -51,9 +51,6 @@
 #include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
-#ifdef USE_V8
-#include "V8/v8-globals.h"
-#endif
 
 #include <velocypack/Iterator.h>
 
@@ -508,10 +505,10 @@ bool IndexExecutor::CursorReader::readIndex(
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
-  // For the edge, hash or skiplists indexes, initIndexes creates an iterator
-  // and read*Index just reads from the iterator until it is done.
-  // Then initIndexes is read again and so on. This is to avoid reading the
-  // entire index when we only want a small number of documents.
+  // For the edge, hash/skiplist/persistent indexes, initIndexes creates an
+  // iterator and read*Index just reads from the iterator until it is done. Then
+  // initIndexes is read again and so on. This is to avoid reading the entire
+  // index when we only want a small number of documents.
   TRI_ASSERT(_cursor->hasMore());
   TRI_IF_FAILURE("IndexBlock::readIndex") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -691,29 +688,9 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
 
     if (_infos.getV8Expression()) {
-#ifdef USE_v8
-      // must have a V8 context here to protect Expression::execute()
-      auto cleanup = [this]() {
-        if (arangodb::ServerState::instance()->isRunningInCluster()) {
-          _infos.query().exitV8Executor();
-        }
-      };
-
-      _infos.query().enterV8Executor();
-      auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
-
-      v8::Isolate* isolate = v8::Isolate::GetCurrent();
-      v8::HandleScope scope(isolate);  // do not delete this!
-
-      executeExpressions(input);
-      TRI_IF_FAILURE("IndexBlock::executeV8") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-#else
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
           "unexpected v8 function call in IndexExecutor");
-#endif
     } else {
       // no V8 context required!
       executeExpressions(input);

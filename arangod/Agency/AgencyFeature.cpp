@@ -23,7 +23,6 @@
 
 #include "AgencyFeature.h"
 
-#include "Actions/ActionFeature.h"
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
@@ -33,7 +32,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
-#include "FeaturePhases/FoxxFeaturePhase.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
@@ -42,13 +40,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#ifdef USE_V8
-#include "RestServer/FrontendFeature.h"
-#include "RestServer/ScriptFeature.h"
-#include "V8/V8PlatformFeature.h"
-#include "V8Server/FoxxFeature.h"
-#include "V8Server/V8DealerFeature.h"
-#endif
 
 #include <limits>
 
@@ -62,11 +53,7 @@ namespace arangodb {
 AgencyFeature::AgencyFeature(ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
-#ifdef USE_V8
-  startsAfter<application_features::FoxxFeaturePhase>();
-#else
   startsAfter<application_features::ServerFeaturePhase>();
-#endif
 }
 
 AgencyFeature::~AgencyFeature() = default;
@@ -85,15 +72,6 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnAgent));
-
-  options
-      ->addOption("--agency.pool-size", "The number of Agents in the pool.",
-                  new UInt64Parameter(&_options.poolSize),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnAgent))
-      .setDeprecatedIn(31100);
 
   options->addOption(
       "--agency.election-timeout-min",
@@ -270,16 +248,6 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     _options.size = 1;
   }
 
-  if (result.touched("agency.pool-size") &&
-      _options.poolSize != _options.size) {
-    // using a pool size different to the number of agents
-    // has never been implemented properly, so bail out early here.
-    LOG_TOPIC("af108", FATAL, Logger::AGENCY)
-        << "agency pool size is deprecated and is not expected to be set";
-    FATAL_ERROR_EXIT();
-  }
-  _options.poolSize = _options.size;
-
   // Size needs to be odd
   if (_options.size % 2 == 0) {
     LOG_TOPIC("0eab5", FATAL, Logger::AGENCY)
@@ -339,26 +307,10 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // turn off the following features, as they are not needed in an agency:
   // - ArangoSearch: not needed by agency
-  // - IResearchAnalyzer: analyzers are not needed by agency
-  // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
+  // - IResearchAnalyzer: analyzers are not needed by agency  server()
   server()
       .disableFeatures<iresearch::IResearchFeature,
-                       iresearch::IResearchAnalyzerFeature,
-#ifdef USE_V8
-                       FoxxFeature, FrontendFeature,
-#endif
-                       ActionFeature>();
-
-#ifdef USE_V8
-  if (!V8DealerFeature::javascriptRequestedViaOptions(options)) {
-    // specifying --console requires JavaScript, so we can only turn Javascript
-    // off if not requested
-
-    // console mode inactive. so we can turn off V8
-    server()
-        .disableFeatures<ScriptFeature, V8PlatformFeature, V8DealerFeature>();
-  }
-#endif
+                       iresearch::IResearchAnalyzerFeature>();
 }
 
 void AgencyFeature::prepare() {

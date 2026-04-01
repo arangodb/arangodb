@@ -115,8 +115,7 @@ The individual files to be used are controlled by code in the testsuite like thi
     dumpCheckDumpFiles: 'dump-check-dump-files-encrypted.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
-    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    foxxTest: 'check-foxx.js'
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js'
   };
 ```
 

@@ -58,7 +58,6 @@ function IResearchLinkSuite () {
     tearDown : function () {
       // we need try...catch here because at least one test drops the collection itself!
       try {
-        collection.unload();
         collection.drop();
       } catch (err) {
       }

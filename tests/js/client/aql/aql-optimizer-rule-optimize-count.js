@@ -44,8 +44,8 @@ function optimizerRuleTestSuite () {
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "hash", fields: ["value1"] });
-      c.ensureIndex({ type: "hash", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       c.ensureIndex({ type: "persistent", fields: ["value5", "value4[*]"] });
     },
 

@@ -45,23 +45,12 @@ function error_handlingSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function() {
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cn);
-    },
-
-    test_returns_an_error_if_document_identifier_is_corrupted: function() {
-      let cmd = "/_api/document/123456";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
     },
 
     test_returns_an_error_if_document_identifier_is_corrupted_with_empty_cid: function() {
@@ -75,19 +64,8 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if_collection_identifier_is_unknown: function() {
-      let cmd = "/_api/document/123456/234567";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.headers['content-type'], contentType);
-    },
-
     test_returns_an_error_if_document_identifier_is_unknown: function() {
-      let cmd = `/_api/document/${cid._id}/234567`;
+      let cmd = `/_api/document/${cn}/234567`;
       let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -97,7 +75,7 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
 
       assertEqual(cid.count(), 0);
-    }
+    },
   };
 }
 
@@ -109,16 +87,20 @@ function reading_a_documentSuite () {
   let reStart = new RegExp('^' + cn + '/');
   let cid;
   return {
-    setUpAll: function() {
+    setUpAll: function () {
       cid = db._create(cn, { waitForSync: true } );
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
+    tearDown: function () {
+      db._truncate(cn);
+    },
+
     test_create_a_document_and_read_it: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -164,7 +146,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it__using_collection_name: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -209,7 +191,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it__use_if_none_match: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -272,7 +254,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it__use_if_match: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -337,199 +319,6 @@ function reading_a_documentSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
-// reading all documents;
-////////////////////////////////////////////////////////////////////////////////;
-function reading_all_documentsSuite () {
-  let cn = "UnitTestsCollectionAll";
-  let reStart = new RegExp('^/_db/[^/]+/_api/document/' + cn + '/');
-  let cid;
-  return {
-    setUpAll: function() {
-      cid = db._create(cn, { waitForSync: true });
-    },
-    tearDown: function() {
-      cid.truncate();
-    },
-
-    tearDownAll: function() {
-      db._drop(cn);
-    },
-
-    test_get_all_documents_of_an_empty_collection: function() {
-      // get documents;
-      let cmd = "/_api/simple/all-keys";
-      let body = { "collection" : cn };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-
-      let documents = doc.parsedBody['result'];
-      assertTrue(Array.isArray(documents));
-      assertEqual(documents.length, 0);
-
-      assertEqual(cid.count(), 0);
-    },
-
-    test_get_all_documents_of_an_empty_collection__using_typeEQid: function() {
-      // get documents;
-      let cmd = "/_api/simple/all-keys";
-      let body = { "collection" : cn , "type" : "id" };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-
-      let documents = doc.parsedBody['result'];
-      assertTrue(Array.isArray(documents));
-      assertEqual(documents.length, 0);
-
-      assertEqual(cid.count(), 0);
-    },
-
-    test_create_three_documents_and_read_them_using_the_collection_identifier: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
-
-      let location = [];
-
-      [ 1, 2, 3 ].forEach( i => {
-        let body = { "Hallo" : `World-${i}` };
-        let doc = arango.POST_RAW(cmd, body);
-
-        assertEqual(doc.code, 201);
-        
-        location.push(doc.headers['location']);
-      });
-      
-      // get document;
-      cmd = "/_api/simple/all-keys";
-      let body = { "collection" :  cn };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-
-      let documents = doc.parsedBody['result'];
-      assertTrue(Array.isArray(documents));
-      assertEqual(documents.length, 3);
-
-      documents.forEach(document => {
-        assertMatch(rePath, document);
-        assertMatch(reStart, document);
-      });
-
-      location.forEach(l => {
-        arango.DELETE_RAW(l);
-      });
-      assertEqual(cid.count(), 0);
-    },
-
-    test_create_three_documents_and_read_them_using_the_collection_name: function() {
-      let cmd = `/_api/document?collection=${cn}`;
-
-      let location = [];
-
-      [ 1, 2, 3 ].forEach( i => {
-        let body = { "Hallo" : `World-${i}` };
-        let doc = arango.POST_RAW(cmd, body);
-
-        assertEqual(doc.code, 201);
-        
-        location.push(doc.headers['location']);
-      });
-
-      // get document;
-      cmd = "/_api/simple/all-keys";
-      let body = { "collection" : cn };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-
-      let documents = doc.parsedBody['result'];
-      assertTrue(Array.isArray(documents));
-      assertEqual(documents.length, 3);
-
-      documents.forEach(document => {
-        assertMatch(rePath, document);
-        assertMatch(reStart, document);
-      });
-
-      location.forEach(l => {
-        arango.DELETE_RAW(l);
-      });
-      assertEqual(cid.count(), 0);
-    },
-
-    test_create_three_documents_and_read_them_using_the_collection_name__typeEQid: function() {
-      let cmd = `/_api/document?collection=${cn}`;
-
-      let location = [];
-
-      [ 1, 2, 3 ].forEach( i => {
-        let body = { "Hallo" : `World-${i}` };
-        let doc = arango.POST_RAW(cmd, body);
-
-        assertEqual(doc.code, 201);
-        
-        location.push(doc.headers['location']);
-      });
-      
-      // get documents;
-      cmd = "/_api/simple/all-keys";
-      let body = { "collection" : cn, "type" : "id" };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-
-      let documents = doc.parsedBody['result'];
-      assertTrue(Array.isArray(documents));
-      assertEqual(documents.length, 3);
-
-      let regex = new RegExp('^' + cn + '/\\d+$');
-
-      documents.forEach(document => {
-        assertMatch(regex, document);
-      });
-      cid.truncate();
-    },
-
-    test_create_three_documents_and_read_them_using_the_collection_name__typeEQkey: function() {
-      let cmd = `/_api/document?collection=${cn}`;
-
-      let location = [];
-
-      [ 1, 2, 3 ].forEach( i => {
-        let body = { "Hallo" : `World-${i}` };
-        let doc = arango.POST_RAW(cmd, body);
-
-        assertEqual(doc.code, 201);
-        
-        location.push(doc.headers['location']);
-      });
-
-      // get documents
-      cmd = "/_api/simple/all-keys";
-      let body = {"collection" : cn, "type": "key" };
-      let doc = arango.PUT_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-
-      let documents = doc.parsedBody['result'];
-      assertTrue(Array.isArray(documents));
-      assertEqual(documents.length, 3);
-
-      let regex = new RegExp('^\\d+$');  ;
-      documents.forEach(document => {
-        assertMatch(regex, document);
-      });
-      cid.truncate();
-    },
-  };
-}
 
 ////////////////////////////////////////////////////////////////////////////////;
 // checking document;
@@ -538,16 +327,20 @@ function checking_a_documentSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUpAll: function () {
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
+    tearDown: function () {
+      db._truncate(cn);
+    },
+
     test_create_a_document_and_check_to_read_it: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body, { 'accept-encoding': 'identity' });
 
@@ -578,7 +371,7 @@ function checking_a_documentSuite () {
     },
 
     test_use_an_invalid_revision_for_HEAD: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -610,7 +403,7 @@ function checking_a_documentSuite () {
     },
 
     test_use_empty_array_for_documents_read: function () {
-      let cmd = `/_api/document/${cid._id}?onlyget=true`;
+      let cmd = `/_api/document/${cn}?onlyget=true`;
       let body = [];
       let doc = arango.PUT_RAW(cmd, body);
 
@@ -624,6 +417,5 @@ function checking_a_documentSuite () {
 
 jsunity.run(error_handlingSuite);
 jsunity.run(reading_a_documentSuite);
-jsunity.run(reading_all_documentsSuite);
 jsunity.run(checking_a_documentSuite);
 return jsunity.done();

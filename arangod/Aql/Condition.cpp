@@ -716,15 +716,8 @@ std::pair<bool, bool> Condition::findIndexes(
   }
 
   size_t itemsInIndex;
-  if (collectionName.starts_with(StaticStrings::StatisticsCollection)) {
-    // use hard-coded number of items in index, because we are dealing with
-    // the statistics collection here. this saves a roundtrip to the DB servers
-    // for statistics queries that do not need a fully accurate collection count
-    itemsInIndex = 1024;
-  } else {
-    // estimate for the number of documents in the index. may be outdated...
-    itemsInIndex = coll.count(&trx, transaction::CountType::kTryCache);
-  }
+  // estimate for the number of documents in the index. may be outdated...
+  itemsInIndex = coll.count(&trx, transaction::CountType::kTryCache);
   if (_root == nullptr) {
     size_t dummy;
     return std::make_pair<bool, bool>(

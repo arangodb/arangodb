@@ -94,7 +94,6 @@ class Future;
 }
 class CursorRepository;
 struct DatabaseConfiguration;
-struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
@@ -259,11 +258,6 @@ struct TRI_vocbase_t {
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
-
-  // structures for volatile cache data (used from JavaScript)
-#ifdef USE_V8
-  std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
-#endif
 
   arangodb::application_features::ApplicationServer& server() const noexcept {
     return _server;

@@ -16,13 +16,13 @@ parameters:
     default: true
   arangod-without-v8:
     type: boolean
-    default: false
+    default: true
   extra_args:
     type: string
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:20"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:20"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-809e7ff4f
@@ -271,7 +271,10 @@ commands:
             curl -s -L -o <<parameters.repo-path>>/build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/arangodb
 
-            curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
+            # Temporary hack to use the 3.12 version of rclone until we
+            # have a 4.0 version:
+            #curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
+            curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_3.12_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
             chmod a+x <<parameters.repo-path>>/build/bin/rclone-arangodb
   run-test:
     parameters:
@@ -310,9 +313,6 @@ commands:
             - attach_workspace_from_s3:
                 at: .
                 archive: binaries.tar.bz2
-            - attach_workspace_from_s3:
-                at: .
-                archive: frontend.tar.bz2
       - run:
           name: Log processes
           command: |
@@ -519,29 +519,6 @@ jobs:
               echo "Nothing to cancel"
             fi
 
-  build-frontend:
-    docker:
-      - image: << pipeline.parameters.build-docker-image >>
-    resource_class: arangodb/large-amd64
-    steps:
-      - checkout-arangodb:
-          with-submodules: false
-          destination: "/root/project"
-      - run:
-          name: Build frontend
-          command: |
-            cd js/apps/system/_admin/aardvark/APP/react
-            tar -xJf /node_modules.tar.xz
-            yarn install
-            yarn build
-      - persist_to_workspace:
-          root: .
-          paths: js/apps/system/_admin/aardvark/APP/react/build
-      - persist_workspace_to_s3:
-          root: .
-          paths: js/apps/system/_admin/aardvark/APP/react/build
-          archive: frontend.tar.bz2
-
   compile-linux:
     parameters:
       preset:
@@ -553,7 +530,7 @@ jobs:
         default: true
       build-v8:
         type: boolean
-        default: true
+        default: false
       publish-artifacts:
         type: boolean
         default: true
@@ -631,7 +608,6 @@ jobs:
                 name: Create install package
                 command: |
                   mkdir install
-                  # Note: ATM this will rebuild the frontend
                   DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
                   cp build/bin/arangodb ./install/usr/bin/
                   if [ << parameters.enterprise >> = true ]; then
@@ -650,7 +626,6 @@ jobs:
             find build/ -iname *.a -delete || true
             find build/ -iname *.o -delete || true
             find build/ -iname *.o.d -delete || true
-            rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
       - run:
           name: List build artifacts
           command: |
@@ -677,6 +652,7 @@ jobs:
                   - enterprise/js
                   - etc/
                   - tests/js
+                  - tests/fixtures
                   - enterprise/tests/js
                   - utils
                   - lib/iresearch/tests/resources
@@ -887,104 +863,6 @@ jobs:
           sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
           use-s3-workspace: false
-
-  run-rta-tests:
-    machine:
-      image: ubuntu-2204:current
-    resource_class: large
-    parameters:
-      suiteName:
-        type: string
-      enterprise:
-        type: string
-      deployment:
-        type: string
-      filterStatement:
-        type: string
-      browser:
-        type: string
-      rta-branch:
-        type: string
-        default: "main"
-      arangosh_args:
-        type: string
-        default: ""
-      docker_image:
-        type: string
-        default: "<< pipeline.parameters.test-docker-image >>"
-      buckets:
-        type: integer
-        default: 1
-      sanitizer:
-        type: string
-        default: ""
-    parallelism: << parameters.buckets >>
-    steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
-      - attach_workspace:
-          at: work/ArangoDB
-      - fetch-aux-binaries:
-          arch: x64 # rta tests should only run on x64
-          repo-path: work/ArangoDB
-      - run:
-          name: Clone RTA
-          command: |
-            set + x
-            mkdir work/release-test-automation
-            cd work/release-test-automation
-            git clone git@github.com:arangodb/release-test-automation.git .
-            git checkout << parameters.rta-branch >>
-      - run:
-          name: Run << parameters.suiteName >> tests
-          no_output_timeout: 20m
-          command: |
-            set +x
-            pwd
-            export SOURCE=nightlypublic
-            export RTA_EDITION=<< parameters.enterprise >>
-            if [ "<< parameters.sanitizer >>" = "alubsan" ]; then
-              export ASAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
-              export LSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
-              export UBSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
-              export SAN_MODE=alubsan
-              cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
-              cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
-              cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
-            elif [ "<< parameters.sanitizer >>" = "tsan" ]; then
-              sudo sysctl vm.mmap_rnd_bits=28
-              export TSAN_OPTIONS="log_exe_name=true:log_path=/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
-              export SAN_MODE=tsan
-              cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
-              cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
-              cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
-            fi
-            mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
-            cd work/release-test-automation
-            export DOCKER_CONTAINER="<< parameters.docker_image >>"
-            bash -x ./jenkins/circleci_tar.sh \
-              --no-checkdata \
-              --no-run-upgrade  \
-              --selenium << parameters.browser >> \
-              --starter-mode << parameters.deployment >> \
-              --buckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
-              << parameters.filterStatement >>
-            exit_code=$?
-            docker run \
-             -v $(pwd)/allure-report:/allure-report \
-             -v $(pwd)/allure-results:/allure-results \
-             -v $(pwd)/allure-config:/allure-config \
-             smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
-             exit $(($exit_code + $(cat ./test_dir/status.json) ))
-      - store_artifacts:
-          destination: << parameters.suiteName >>
-          path: ./work/release-test-automation/test_dir
-      - store_artifacts:
-          destination: << parameters.suiteName >>
-          path: ./work/release-test-automation/allure-report
-      - store_test_results:
-          path: ./test-results/
 
   run-cppcheck:
     docker:

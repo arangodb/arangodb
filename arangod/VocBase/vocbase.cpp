@@ -76,9 +76,6 @@
 #include "Utils/ExecContext.h"
 #include "Utils/VersionTracker.h"
 #include "Utilities/NameValidator.h"
-#ifdef USE_V8
-#include "V8Server/v8-user-structures.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
@@ -1421,10 +1418,6 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
   // init collections
   _collections.reserve(32);
   _deadCollections.reserve(32);
-
-#ifdef USE_V8
-  _cacheData = std::make_unique<DatabaseJavaScriptCache>();
-#endif
   _logManager = std::make_shared<VocBaseLogManager>(*this, name());
 }
 

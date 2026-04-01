@@ -390,7 +390,6 @@ class instance {
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
       this.args['server.statistics'] = false;
-      this.args['foxx.queues'] = false;
     }
 
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
@@ -403,7 +402,7 @@ class instance {
     }
 
     if (this.restKeyFile &&
-        !this.args.hasOwnProperty('server.jwt-secret') &&
+        !this.args.hasOwnProperty('server.jwt-secret-keyfile') &&
         !this.args.hasOwnProperty('server.jwt-secret-folder')) {
       this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
       this.JWT = fs.read(this.restKeyFile);
@@ -497,8 +496,7 @@ class instance {
       this.args = Object.assign(this.args, {
         'cluster.my-role': 'COORDINATOR',
         'cluster.my-address': this.args['server.endpoint'],
-        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint,
-        'foxx.force-update-on-startup': true
+        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint
       });
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
         this.args['cluster.default-replication-factor'] = '2';
@@ -517,8 +515,8 @@ class instance {
         'http.compress-response-threshold':  99999999999,
       });
     }
-    if (this.args.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = this.args['server.jwt-secret'];
+    if (this.args.hasOwnProperty('server.jwt-secret-keyfile') && !this.JWT) {
+      this.JWT = fs.read(this.args['server.jwt-secret-keyfile']);
     } else if (this.args.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(this.args['server.jwt-secret-folder']);
       files = files.sort();
@@ -558,6 +556,10 @@ class instance {
   _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      let kf = fs.join(this.rootDir, 'jwt-secret-exec.txt');
+      fs.write(kf, this.JWT);
+      delete moreArgs['server.jwt-secret'];
+      moreArgs['server.jwt-secret-keyfile'] = kf;
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
@@ -656,6 +658,10 @@ class instance {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      let kf = fs.join(this.rootDir, 'jwt-secret-restart.txt');
+      fs.write(kf, this.JWT);
+      delete moreArgs['server.jwt-secret'];
+      moreArgs['server.jwt-secret-keyfile'] = kf;
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
@@ -1413,7 +1419,7 @@ class instance {
     }
 
     let fnMetrics = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.metrics`);
-    let metricsReply = download(this.url + '/_admin/metrics/v2', opts);
+    let metricsReply = download(this.url + '/_admin/metrics', opts);
     if (metricsReply.code === 200) {
       fs.write(fnMetrics, metricsReply.body);
       print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);

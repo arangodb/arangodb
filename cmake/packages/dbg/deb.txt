@@ -44,7 +44,6 @@ set(PACKAGING_HANDLE_CONFIG_FILES false)
 ################################################################################
 set(BIN_ARANGOD @BIN_ARANGOD@)
 
-set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
 set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
 set(BIN_ARANGOEXPORT @BIN_ARANGOEXPORT@)
 set(BIN_ARANGOIMPORT @BIN_ARANGOIMPORT@)

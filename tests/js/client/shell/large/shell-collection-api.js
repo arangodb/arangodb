@@ -56,9 +56,8 @@ const filterNotExposedAttributes = (attributes) => {
   if (!isCluster) {
     // NOTE: Some attributes are not on this list.
     // 1) writeConcern is actually exposed on the SingleServer
-    // 2) minReplicationFactor is exposed on the Cluster, but only sometimes on SingleServer (See when this test is disabled)
-    // 3) DistributeShardsLike is exposed to simulate SmartGraphs on SingleServer in Enterprise
-    // 4) shardingStrategy: is erased later, because the following are only optionally erased on single server
+    // 2) DistributeShardsLike is exposed to simulate SmartGraphs on SingleServer in Enterprise
+    // 3) shardingStrategy: is erased later, because the following are only optionally erased on single server
 
     const enterpriseSimulationAttributes = ["numberOfShards", "shardKeys", "replicationFactor"];
     for (const key of enterpriseSimulationAttributes) {
@@ -82,7 +81,6 @@ const getDefaultProps = () => {
         "type": "traditional"
       },
       "replicationFactor": 2,
-      "minReplicationFactor": 1,
       "writeConcern": 1,
       "shardingStrategy": "hash",
       "cacheEnabled": false,
@@ -144,11 +142,6 @@ const validateProperties = (overrides, colName, type, keepEnterpriseSimulationAt
   assertEqual(col.name(), colName);
   assertEqual(col.type(), type);
   const expectedProps = {...defaultProps, ...overrides};
-  if (keepEnterpriseSimulationAttributes && !isCluster) {
-    // In some cases minReplicationFactor is returned
-    // but is not part of the expected list. So let us add it
-    expectedProps.minReplicationFactor = expectedProps.writeConcern;
-  }
   for (const [key, value] of Object.entries(expectedProps)) {
     assertEqual(props[key], value, `Differ on key ${key} Got: ${JSON.stringify(props)} , expected: ${JSON.stringify(expectedProps)}`);
   }
@@ -450,7 +443,7 @@ function CreateCollectionsSuite() {
               // 0 is actually not allowed anymore in the future
               validateDeprecationLogEntryWritten();
             }
-            // MinReplicationFactor is forced to 0 on satellites
+            // WriteConcern is forced to 0 on satellites
             // NOTE: SingleServer Enterprise for some reason this create returns MORE properties, then the others.
             if (!isCluster) {
               if (replicationFactor === 0) {
@@ -458,7 +451,6 @@ function CreateCollectionsSuite() {
               } else {
                 validateProperties({
                   replicationFactor: "satellite",
-                  minReplicationFactor: 0,
                   writeConcern: 0,
                   isSmart: false,
                   shardKeys: ["_key"],
@@ -467,7 +459,7 @@ function CreateCollectionsSuite() {
                 }, collname, 2, true);
               }
             } else {
-              validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0}, collname, 2);
+              validateProperties({replicationFactor: "satellite", writeConcern: 0}, collname, 2);
             }
           }
         } finally {
@@ -480,27 +472,7 @@ function CreateCollectionsSuite() {
       const res = tryCreate({name: collname, writeConcern: 2, replicationFactor: 3});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (isCluster) {
-          // For Backwards Compatibility in Agency, cluster still exposes minReplicationFactor
-          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
-        } else {
-          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
-        }
-      } finally {
-        db._drop(collname);
-      }
-    },
-
-    testMinReplicationFactor: function () {
-      const res = tryCreate({name: collname, minReplicationFactor: 2, replicationFactor: 3});
-      try {
-        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (isCluster) {
-          // For Backwards Compatibility in Agency, cluster still exposes minReplicationFactor
-          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
-        } else {
-          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
-        }
+        validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
       } finally {
         db._drop(collname);
       }
@@ -1181,6 +1153,54 @@ function CreateCollectionsSuite() {
       }
     },
 
+    testCreateSmartEdgeWithoutDistributeShardsLike: function () {
+      if (!isEnterprise || !isCluster) {
+        return;
+      }
+
+      const vertexName = "UnitTestSmartVertex";
+      const edgeName = "UnitTestSmartEdgeNoDSL";
+
+      // Intentionally don't refer to this coll via distributeShardsLike.
+      const vertex = tryCreate({
+        name: vertexName,
+        type: 2,
+        numberOfShards: 3,
+        replicationFactor: 2,
+        isSmart: true,
+        shardKeys: ["_key:"],
+        smartGraphAttribute: "test",
+      });
+
+      try {
+        assertTrue(vertex.result, `Vertex create failed: ${JSON.stringify(vertex)}`);
+
+        // Without distributeShardsLike
+        try {
+          db._create(edgeName, {
+            replicationFactor: 2,
+            isSmart: true,
+            shardKeys: ["_key:"],
+            numberOfShards: 1
+          }, "edge");
+
+          fail(`Expected creation of smart edge without distributeShardsLike to fail`);
+        } catch (err) {
+          assertEqual(err.code, ERROR_HTTP_BAD_PARAMETER.code, `Unexpected error: ${JSON.stringify(err)}`);
+          assertEqual(err.errorNum, ERROR_BAD_PARAMETER.code, `Unexpected errorNum: ${JSON.stringify(err)}`);
+
+          const msg = String(err.message || "");
+          assertTrue(
+            msg.toLowerCase().includes("distributeshardslike"),
+            `Expected error message to mention distributeShardsLike, got: ${msg}`
+          );
+        }
+      } finally {
+        try { db._drop(edgeName, true); } catch (e) {}
+        db._drop(vertexName, true);
+      }
+    },
+
     testDuplicateName: function () {
       const res = tryCreate({name: collname});
       try {
@@ -1300,12 +1320,7 @@ function CreateCollectionsSuite() {
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           // Needs to take into account the database defaults
-          if (isCluster) {
-            // For Backwards Compatibility in Agency, cluster still exposes minReplicationFactor
-            validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
-          } else {
-            validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
-          }
+          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
         } finally {
           db._drop(collname);
         }
@@ -1346,7 +1361,6 @@ function IgnoreIllegalTypesSuite() {
     shardKeys: "array",
     numberOfShards: "integer",
     replicationFactor: "integer",
-    minReplicationFactor: "integer",
     shardingStrategy: "string",
     isDisjoint: "bool",
     distributeShardsLike: "string"
@@ -1438,8 +1452,7 @@ function IgnoreIllegalTypesSuite() {
               break;
             }
             case "replicationFactor":
-            case "writeConcern":
-            case "minReplicationFactor": {
+            case "writeConcern": {
               if (isCluster) {
                 if (typeof ignoredValue === "number") {
                   // We take doubles for integers
@@ -1510,7 +1523,7 @@ function IgnoreIllegalTypesSuite() {
 function CreateCollectionsInOneShardSuite() {
   const collname = "UnitTestCollection";
   const oneShardLeader = "_graphs";
-  const fixedOneShardValues = ["numberOfShards", "replicationFactor", "minReplicationFactor", "writeConcern"];
+  const fixedOneShardValues = ["numberOfShards", "replicationFactor", "writeConcern"];
   const getOneShardShardingValues = () => {
     const props = _.pick(db[oneShardLeader].properties(), fixedOneShardValues);
     return {...props, distributeShardsLike: oneShardLeader, shardingStrategy: "hash"};
@@ -1553,19 +1566,18 @@ function CreateCollectionsInOneShardSuite() {
         const value = v === "replicationFactor" ? 3 : 2;
         const res = tryCreate({name: collname, [v]: value});
         try {
-          if (isCluster && db._properties().replicationVersion === "2" && (v === "minReplicationFactor" || v === "writeConcern")) {
+          if (isCluster && db._properties().replicationVersion === "2" && v === "writeConcern") {
             // For Replication2 the writeConcern is per CollectionGroup. We cannot create a follower with a different one.
             assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
             isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {[v]: value});
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             if (isCluster) {
-              if (v === "minReplicationFactor" || v === "writeConcern") {
+              if (v === "writeConcern") {
                 // On Replication1 writeConcern is allowed to differ per Collection.
                 validateProperties({
                   ...getOneShardShardingValues(),
                   writeConcern: value,
-                  minReplicationFactor: value
                 }, collname, 2);
               } else {
                 validateProperties(getOneShardShardingValues(), collname, 2);
@@ -1573,7 +1585,7 @@ function CreateCollectionsInOneShardSuite() {
               }
             } else {
               // OneShard has no meaning in single server, just assert values are taken
-              if (v === "minReplicationFactor" || v === "writeConcern") {
+              if (v === "writeConcern") {
                 validateProperties({writeConcern: value}, collname, 2);
               } else {
                 validateProperties({}, collname, 2);

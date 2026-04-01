@@ -31,7 +31,6 @@ namespace arangodb {
 struct AgencyOptions {
   bool activated = false;
   uint64_t size = 1;
-  uint64_t poolSize = 1;
   double minElectionTimeout = 1.0;
   double maxElectionTimeout = 5.0;
   bool supervision = false;

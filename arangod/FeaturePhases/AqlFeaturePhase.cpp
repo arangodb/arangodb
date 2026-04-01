@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "RestServer/AqlFeature.h"
@@ -40,10 +39,6 @@ AqlFeaturePhase::AqlFeaturePhase(
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
   startsAfter<CommunicationFeaturePhase>();
-#ifdef USE_V8
-  startsAfter<V8FeaturePhase>();
-#endif
-
   startsAfter<AqlFeature>();
   startsAfter<aql::AqlFunctionFeature>();
   startsAfter<iresearch::IResearchAnalyzerFeature>();

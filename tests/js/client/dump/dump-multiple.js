@@ -58,7 +58,7 @@ jsunity.run(function dump_single_testsuite() {
       removedSingleIndices: 1,
       removedModulo: 10,
       // testIndexes
-      indexesCount: 9,
+      indexesCount: 8,
       // testKeygenAutoInc
       keygenAutoInc: 42049,
       autoIncDocCount: 1001,
@@ -82,7 +82,6 @@ jsunity.run(function dump_single_testsuite() {
       "testKeygenUuid",
       "testAnalyzers",
       "testIndexAnalyzerCollection",
-      "testJobsAndQueues",
       "testReplicationFactor",
 
       // enterprise graph tests:

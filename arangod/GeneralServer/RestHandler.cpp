@@ -53,6 +53,7 @@
 #include <absl/strings/str_cat.h>
 #include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
+#include <cstdint>
 #include <unordered_map>
 
 using namespace arangodb;
@@ -116,15 +117,6 @@ RequestLane RestHandler::determineRequestLane() {
   if (_lane == RequestLane::UNDEFINED) {
     bool found;
     _request->header(StaticStrings::XArangoFrontend, found);
-
-    if (!found) {
-      // header not found, but for requests to root and to /_admin/aardvark/ we
-      // are still increasing the priority
-      auto const& requestPath = _request->requestPath();
-      if (requestPath == "/" || requestPath.starts_with("/_admin/aardvark/")) {
-        found = true;
-      }
-    }
 
     if (found) {
       _lane = RequestLane::CLIENT_UI;
@@ -683,6 +675,34 @@ void RestHandler::generateError(rest::ResponseCode code,
 void RestHandler::generateError(arangodb::Result const& r) {
   ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
   generateError(code, r.errorNumber(), r.errorMessage());
+}
+
+// checks if the HTTP method is allowed and generates an error if not
+bool RestHandler::isAllowedHttpMethod(
+    std::initializer_list<rest::RequestType> allowed) {
+  auto method = _request->requestType();
+  if (std::find(allowed.begin(), allowed.end(), method) != allowed.end()) {
+    return true;
+  }
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return false;
+}
+
+// checks if collection name is a numeric collection id (= all chars are digits)
+// and generates an error if so
+bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
+  if (cname.empty() || cname.front() < '0' || cname.front() > '9') {
+    return false;  // early exit
+  }
+  if (std::all_of(cname.begin(), cname.end(),
+                  [](unsigned char c) { return c >= '0' && c <= '9'; })) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Numeric collection IDs are not allowed; please use the "
+                  "collection name instead");
+    return true;
+  }
+  return false;
 }
 
 // -----------------------------------------------------------------------------

@@ -57,9 +57,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
-#ifdef USE_V8
-#include "Transaction/V8Context.h"
-#endif
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
@@ -179,8 +176,8 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
   // All collections on a single server should be local collections.
   // A Coordinator should never have local collections.
   // On an Agent, all collections should be local collections.
-  // On a DBServer, the only local collections should be system collections
-  // (like _statisticsRaw). Non-local (system or not) collections are shards,
+  // On a DBServer, the only local collections should be system collections.
+  // Non-local (system or not) collections are shards,
   // so don't have system-names, even if they are system collections!
   switch (ServerState::instance()->getRole()) {
     case ServerState::ROLE_SINGLE:
@@ -404,12 +401,7 @@ futures::Future<transaction::Methods*> Collections::Context::trx(
   if (_responsibleForTrx && _trx == nullptr) {
     auto origin = transaction::OperationOriginREST{::moduleName};
 
-#ifdef USE_V8
-    auto ctx = transaction::V8Context::createWhenRequired(_coll->vocbase(),
-                                                          origin, embeddable);
-#else
     auto ctx = transaction::StandaloneContext::create(_coll->vocbase(), origin);
-#endif
     auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx),
                                                              *_coll, type);
 
@@ -1107,13 +1099,8 @@ futures::Future<Result> Collections::updateProperties(
 
     auto origin =
         transaction::OperationOriginREST{"collection properties update"};
-#ifdef USE_V8
-    auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
-                                                          origin, false);
-#else
     auto ctx =
         transaction::StandaloneContext::create(collection.vocbase(), origin);
-#endif
 
     SingleCollectionTransaction trx(std::move(ctx), collection,
                                     AccessMode::Type::EXCLUSIVE);
@@ -1401,13 +1388,8 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
   auto origin = transaction::OperationOriginREST{"checksumming collection"};
-#ifdef USE_V8
-  auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
-                                                        origin, true);
-#else
   auto ctx =
       transaction::StandaloneContext::create(collection.vocbase(), origin);
-#endif
   SingleCollectionTransaction trx(std::move(ctx), collection,
                                   AccessMode::Type::READ);
   Result res = co_await trx.beginAsync();

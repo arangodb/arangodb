@@ -470,7 +470,7 @@ function dealing_with_wal_access_apiSuite () {
         cuid = cid.properties()["globallyUniqueId"];
         
         // create document;
-        cmd = "/_api/document?collection=UnitTestsReplication";
+        cmd = "/_api/document/UnitTestsReplication";
         body = { "_key" : "test", "test" : false };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201, doc);
@@ -664,7 +664,7 @@ function dealing_with_wal_access_apiSuite () {
       let cuid = cid.properties()["globallyUniqueId"];
 
       // create document;
-      cmd = "/_api/document?collection=UnitTestsReplication";
+      cmd = "/_api/document/UnitTestsReplication";
       let body = { "_key" : "test", "test" : false };
       doc = arango.POST_RAW(cmd, body);
       assertEqual(doc.code, 201, doc);
@@ -755,7 +755,7 @@ function dealing_with_wal_access_apiSuite () {
 
       // create documents;
       for (let value = 0; value < 250; value ++) {
-        cmd = "/_api/document?collection=UnitTestsReplication";
+        cmd = "/_api/document/UnitTestsReplication";
         let body = { "value" : "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201);
@@ -767,13 +767,13 @@ function dealing_with_wal_access_apiSuite () {
         docsBody.push({ "value" : value });
       }
       docsBody.push({ "value" : "500" });
-      cmd = "/_api/document?collection=UnitTestsReplication";
+      cmd = "/_api/document/UnitTestsReplication";
       doc = arango.POST_RAW(cmd, docsBody);
       assertEqual(doc.code, 201);
 
       // create more documents;
       for(let value = 0; value < 500; value ++) {
-        cmd = "/_api/document?collection=UnitTestsReplication";
+        cmd = "/_api/document/UnitTestsReplication";
         let body = { "value" : "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201);
@@ -1065,16 +1065,16 @@ function dealing_with_the_initial_dumpSuite () {
       let cid2 = db._create("UnitTestsReplication2");
       let cuid2 = cid2.properties()["globallyUniqueId"];
 
-      let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type" : "persistent", "unique" : false, "fields" : [ "a", "b" ] };
       let doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "skiplist", "unique" : false, "fields" : [ "c" ] };
+      body = { "type" : "persistent", "unique" : false, "fields" : [ "c" ] };
       doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
       assertEqual(doc.code, 201);
 
       // create indexes for second collection;
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "d" ] };
+      body = { "type" : "persistent", "unique" : true, "fields" : [ "d" ] };
       doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication2", body);
       assertEqual(doc.code, 201);
 
@@ -1128,13 +1128,13 @@ function dealing_with_the_initial_dumpSuite () {
 
       let idx = indexes[0];
       assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "hash");
+      assertEqual(idx["type"], "persistent");
       assertFalse(idx["unique"]);
       assertEqual(idx["fields"], [ "a", "b" ]);
 
       idx = indexes[1];
       assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "skiplist");
+      assertEqual(idx["type"], "persistent");
       assertFalse(idx["unique"]);
       assertEqual(idx["fields"], [ "c" ]);
 
@@ -1161,7 +1161,7 @@ function dealing_with_the_initial_dumpSuite () {
 
       idx = indexes[0];
       assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "skiplist");
+      assertEqual(idx["type"], "persistent");
       assertTrue(idx["unique"]);
       assertEqual(idx["fields"], [ "d" ]);
 

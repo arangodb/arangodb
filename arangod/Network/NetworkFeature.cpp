@@ -365,19 +365,6 @@ void NetworkFeature::collectOptions(
       "communication.",
       new BooleanParameter(&_options.verifyHosts));
 
-  std::unordered_set<std::string> protos = {"", "http", "http2", "h2"};
-
-  // starting with 3.9, we will hard-code the protocol for cluster-internal
-  // communication
-  options
-      ->addOption(
-          "--network.protocol",
-          "The network protocol to use for cluster-internal communication.",
-          new DiscreteValuesParameter<StringParameter>(&_options.protocol,
-                                                       protos),
-          options::makeDefaultFlags(options::Flags::Uncommon))
-      .setDeprecatedIn(30900);
-
   options
       ->addOption("--network.max-requests-in-flight",
                   "The number of internal requests that can be in "
@@ -498,19 +485,6 @@ void NetworkFeature::prepare() {
   // note: we plan to upgrade the internal protocol to HTTP/2 at
   // some point in the future
   config.protocol = fuerte::ProtocolType::Http;
-  if (_options.protocol == "http" || _options.protocol == "h1") {
-    config.protocol = fuerte::ProtocolType::Http;
-  } else if (_options.protocol == "http2" || _options.protocol == "h2") {
-    config.protocol = fuerte::ProtocolType::Http2;
-  }
-
-  if (config.protocol != fuerte::ProtocolType::Http) {
-    LOG_TOPIC("6d221", WARN, Logger::CONFIG)
-        << "using `--network.protocol` is deprecated. "
-        << "the network protocol for cluster-internal requests is hard-coded "
-           "to HTTP/1 in this version";
-    config.protocol = fuerte::ProtocolType::Http;
-  }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_relaxed);

@@ -39,7 +39,7 @@ function runSetup () {
 
   db._drop(colName1);
   let c = db._create(colName1);
-  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "persistent", fields: ["value"] });
 
   let docs = [];
   for (let i = 0; i < 1000; ++i) {

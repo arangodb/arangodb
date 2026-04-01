@@ -44,13 +44,10 @@ const setup = require(base);
   setup.createPaddedKeyGen();
   setup.createUUIDKeyGen();
   setup.createStrings();
-  setup.createTransactional();
   setup.createPersistent();
   setup.createView();
   setup.createSearch();
   setup.createInvertedIndex();
-  setup.createJobs();
-  setup.createFoxx();
   setup.createAnalyzers();
 
   // those two are related to each other as createSmartArangoSearch depends on createSmartGraph

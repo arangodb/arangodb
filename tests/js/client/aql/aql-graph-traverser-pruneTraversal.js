@@ -44,9 +44,9 @@ const planNodes = function(plan) {
 
 function pruneTraversalSuite() {
   const optionsToTest = {
-    DFS: {bfs: false},
-    BFS: {bfs: true},
-    Neighbors: {bfs: true, uniqueVertices: 'global'}
+    DFS: {order: "dfs"},
+    BFS: {order: "bfs"},
+    Neighbors: {order: "bfs", uniqueVertices: 'global'}
   };
 
   // We have identical tests for all traversal options.

@@ -47,9 +47,9 @@ function optimizerRuleTestSuite() {
 
     setUpAll: function () {
       db._create(singleShardCollection, {numberOfShards: 1})
-          .ensureIndex({type: "hash", fields: [indexAttribute]});
+          .ensureIndex({type: "persistent", fields: [indexAttribute]});
       db._create(shardedCollection, {numberOfShards: 3})
-          .ensureIndex({type: "hash", fields: [indexAttribute]});
+          .ensureIndex({type: "persistent", fields: [indexAttribute]});
 
       if (isEnterprise) {
         db._create(satelliteCollection, {replicationFactor: "satellite"});

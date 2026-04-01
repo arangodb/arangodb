@@ -30,7 +30,6 @@
 #include "Aql/QueryRegistry.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -56,12 +55,7 @@ namespace arangodb {
 AqlFeature::AqlFeature(ApplicationServer& server)
     : ApplicationFeature{server, *this} {
   setOptional(false);
-#ifdef USE_V8
-  startsAfter<V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
-
   startsAfter<QueryRegistryFeature>();
   startsAfter<TemporaryStorageFeature>();
 }

@@ -66,7 +66,7 @@ function ClusterCollectionSuite () {
     testIndexEstimates : function () {
       let c = db._collection(cn);
       
-      c.ensureIndex({type:"skiplist", fields:["foo"]});
+      c.ensureIndex({type:"persistent", fields:["foo"]});
 
       for (let i = 0; i < 10; ++i) {
         c.save({foo: i});

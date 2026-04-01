@@ -42,8 +42,8 @@ if (runSetup === true) {
     }
     c.insert(docs);
 
-    c.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
-    c.ensureIndex({ type: "skiplist", fields: ["value2"], unique: true });
+    c.ensureIndex({ type: "persistent", fields: ["value1"], unique: true });
+    c.ensureIndex({ type: "persistent", fields: ["value2"], unique: true });
   }
 
   db._drop('test');
@@ -78,10 +78,12 @@ function recoverySuite () {
         assertEqual(3, idx.length);
 
         for (j = 1; j < 3; ++j) {
-          if (idx[j].type === 'hash') {
-            hash = idx[j];
-          } else if (idx[j].type === 'skiplist') {
-            skip = idx[j];
+          if (idx[j].type === 'persistent') {
+            if (idx[j].fields[0] === 'value1') {
+              hash = idx[j];
+            } else {
+              skip = idx[j];
+            }
           }
         }
 

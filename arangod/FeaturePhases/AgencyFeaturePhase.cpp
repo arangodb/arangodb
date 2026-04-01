@@ -24,7 +24,6 @@
 #include "AgencyFeaturePhase.h"
 
 #include "Agency/AgencyFeature.h"
-#include "FeaturePhases/FoxxFeaturePhase.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 
 namespace arangodb::application_features {
@@ -33,11 +32,7 @@ AgencyFeaturePhase::AgencyFeaturePhase(
     application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-#ifdef USE_V8
-  startsAfter<FoxxFeaturePhase>();
-#else
   startsAfter<application_features::ServerFeaturePhase>();
-#endif
   startsAfter<AgencyFeature>();
 }
 

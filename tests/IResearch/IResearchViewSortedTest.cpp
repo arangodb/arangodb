@@ -68,9 +68,6 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-#ifdef USE_V8
-#include "V8/v8-globals.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 

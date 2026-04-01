@@ -394,14 +394,16 @@ bool PhysicalCollection::IndexOrder::operator()(
   }
 
   // This failpoint allows CRUD tests to trigger reversal
-  // of index operations. Hash index placed always AFTER reversable indexes
-  // could be broken by unique constraint violation or by intentional failpoint.
-  // And this will make possible to deterministically trigger index reversals
-  TRI_IF_FAILURE("HashIndexAlwaysLast") {
+  // of index operations. Persistent index placed always AFTER reversible
+  // indexes could be broken by unique constraint violation or by intentional
+  // failpoint. And this will make possible to deterministically trigger index
+  // reversals.
+  TRI_IF_FAILURE("PersistentIndexAlwaysLast") {
     if (left->type() != right->type()) {
-      if (left->type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+      if (left->type() == Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
         return false;
-      } else if (right->type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+      } else if (right->type() ==
+                 Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
         return true;
       }
     }

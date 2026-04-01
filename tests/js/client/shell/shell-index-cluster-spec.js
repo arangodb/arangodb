@@ -42,11 +42,11 @@ describe('Cluster collection creation options', function() {
         db.testi.save({"test": 1});
         
         expect(function() {
-            db.testi.ensureIndex({ type: "hash", fields: [ "test" ], unique: true });
+            db.testi.ensureIndex({ type: "persistent", fields: [ "test" ], unique: true });
         }).to.throw();
         // before fixing it the second call would return the faulty index
         expect(function() {
-            db.testi.ensureIndex({ type: "hash", fields: [ "test" ], unique: true });
+            db.testi.ensureIndex({ type: "persistent", fields: [ "test" ], unique: true });
         }).to.throw();
     });
     it('should cleanup current after creating a faulty index', function() {
@@ -66,7 +66,7 @@ describe('Cluster collection creation options', function() {
         db.testi.save({"test": 1});
         
         expect(function() {
-            db.testi.ensureIndex({ type: "hash", fields: [ "test" ], unique: true });
+            db.testi.ensureIndex({ type: "persistent", fields: [ "test" ], unique: true });
         }).to.throw();
         // wait for the schmutz
         internal.wait(1.0);

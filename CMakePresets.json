@@ -38,14 +38,14 @@
       "hidden": true,
       "name": "x86_64",
       "cacheVariables": {
-        "TARGET_ARCHITECTURE": "sandy-bridge"
+        "TARGET_ARCHITECTURE": "haswell"
       }
     },
     {
       "hidden": true,
       "name": "arm",
       "cacheVariables": {
-        "TARGET_ARCHITECTURE": "graviton1"
+        "TARGET_ARCHITECTURE": "graviton2"
       }
     },
     {

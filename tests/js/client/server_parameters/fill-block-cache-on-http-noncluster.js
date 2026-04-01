@@ -30,7 +30,6 @@ const cn = 'UnitTestsCollection';
 
 if (getOptions === true) {
   return {
-    'foxx.queues' : 'false',
     'server.statistics' : 'false',
     runSetup: true,
   };

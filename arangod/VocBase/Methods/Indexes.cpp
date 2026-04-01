@@ -50,17 +50,11 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
-#ifdef USE_V8
-#include "Transaction/V8Context.h"
-#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
-#ifdef USE_V8
-#include "V8Server/v8-collection.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
@@ -820,16 +814,9 @@ std::unique_ptr<SingleCollectionTransaction> Indexes::createTrxForDrop(
   auto origin = transaction::OperationOriginREST{::moduleName};
   transaction::Options trxOpts;
   trxOpts.requiresReplication = false;
-#ifdef USE_V8
-  return std::make_unique<SingleCollectionTransaction>(
-      transaction::V8Context::createWhenRequired(collection.vocbase(), origin,
-                                                 false),
-      collection, AccessMode::Type::EXCLUSIVE, trxOpts);
-#else
   return std::make_unique<SingleCollectionTransaction>(
       transaction::StandaloneContext::create(collection.vocbase(), origin),
       collection, AccessMode::Type::EXCLUSIVE, trxOpts);
-#endif
 }
 
 template<typename IndexSpec>

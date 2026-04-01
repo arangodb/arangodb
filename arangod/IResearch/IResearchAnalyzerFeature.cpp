@@ -53,7 +53,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchDataStore.h"
@@ -1096,11 +1095,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
     : ApplicationFeature{server, *this},
       _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()) {
   setOptional(true);
-#ifdef USE_V8
-  startsAfter<application_features::V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
   // used for registering IResearch analyzer functions
   startsAfter<aql::AqlFunctionFeature>();
   // used for getting the system database

@@ -38,10 +38,9 @@ const db = internal.db;
 
 function testSuite() {
   return {
-    testStatisticApi : function() {
-      let value = arango.GET("/_admin/statistics");
-      assertTrue(value.error);
-      assertEqual(404, value.code);
+    testMetricsApiAvailableWhenStatisticsOff : function() {
+      const res = arango.GET_RAW("/_admin/metrics");
+      assertEqual(200, res.code, "GET /_admin/metrics should return 200 even when server.statistics is false");
     },
 
     testMetricsAlwaysThere : function() {
@@ -59,20 +58,6 @@ function testSuite() {
       } catch (err) {
         assertEqual("Metric arangodb_http_request_statistics_total_requests_total not found", err);
       }
-    },
-    
-    testStatisticsHistory : function() {
-      let count;
-      let tries = 0;
-      // wait until some document has been written into statistics collection
-      while (++tries < 4 * 10) {
-        count = db._statisticsRaw.count();
-        if (count > 0) {
-          break;
-        }
-        internal.sleep(0.25);
-      }
-      assertEqual(0, count);
     },
 
     testMemoryUsage : function() {

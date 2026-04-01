@@ -91,7 +91,7 @@ function sortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSortSkiplist: function() {
-      c.ensureIndex({type: "skiplist", fields: ["value"]});
+      c.ensureIndex({type: "persistent", fields: ["value"]});
       const result =
           db._query(`FOR doc IN ${c.name()} SORT doc.value RETURN doc.value`)
               .toArray();

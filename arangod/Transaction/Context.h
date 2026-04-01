@@ -89,10 +89,6 @@ class Context {
   /// whether or not can read from query cache)
   bool isStreaming() const noexcept { return _meta.isStreamingTransaction; }
 
-  /// @brief whether or not transaction is JS (used to know
-  /// whether or not can read from query cache)
-  bool isTransactionJS() const noexcept { return _meta.isJStransaction; }
-
   bool isReadOnlyTransaction() const noexcept {
     return _meta.isReadOnlyTransaction;
   }
@@ -101,17 +97,7 @@ class Context {
 
   /// @brief sets the transaction to be streaming (used to know whether or not
   /// can read from query cache)
-  void setStreaming() noexcept {
-    TRI_ASSERT(_meta.isJStransaction == false);
-    _meta.isStreamingTransaction = true;
-  }
-
-  /// @brief sets the transaction to be JS (used to know whether or not
-  /// can read from query cache)
-  void setJStransaction() noexcept {
-    TRI_ASSERT(_meta.isStreamingTransaction == false);
-    _meta.isJStransaction = true;
-  }
+  void setStreaming() noexcept { _meta.isStreamingTransaction = true; }
 
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
@@ -157,7 +143,6 @@ class Context {
     bool isReadOnlyTransaction = false;
     bool isFollowerTransaction = false;
     bool isStreamingTransaction = false;
-    bool isJStransaction = false;
   } _meta;
 };
 

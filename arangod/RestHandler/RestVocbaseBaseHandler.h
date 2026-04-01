@@ -82,9 +82,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // gharial graph api path
   static std::string const GHARIAL_PATH;
 
-  // endpoint path
-  static std::string const ENDPOINT_PATH;
-
   // document import path
   static std::string const IMPORT_PATH;
 
@@ -94,26 +91,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // replication path
   static std::string const REPLICATION_PATH;
 
-  // simple query all path
-  static std::string const SIMPLE_QUERY_ALL_PATH;
-
-  // simple query all keys path
-  static std::string const SIMPLE_QUERY_ALL_KEYS_PATH;
-
-  // simple query by example path
-  static std::string const SIMPLE_QUERY_BY_EXAMPLE;
-
-  // simple batch document lookup path
-  static std::string const SIMPLE_LOOKUP_PATH;
-
-  // simple batch document removal path
-  static std::string const SIMPLE_REMOVE_PATH;
-
   // tasks path
   static std::string const TASKS_PATH;
-
-  // upload path
-  static std::string const UPLOAD_PATH;
 
   // users path
   static std::string const USERS_PATH;

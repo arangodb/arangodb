@@ -34,15 +34,11 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 static auto const kNonServerFeatures =
-    std::array{std::type_index(typeid(ActionFeature)),
-               std::type_index(typeid(AgencyFeature)),
+    std::array{std::type_index(typeid(AgencyFeature)),
                std::type_index(typeid(ClusterFeature)),
 #ifdef ARANGODB_HAVE_FORK
                std::type_index(typeid(SupervisorFeature)),
                std::type_index(typeid(DaemonFeature)),
-#endif
-#ifdef USE_V8
-               std::type_index(typeid(FoxxFeature)),
 #endif
                std::type_index(typeid(GeneralServerFeature)),
                std::type_index(typeid(GreetingsFeature)),
@@ -67,14 +63,8 @@ void ArangodServer::addFeatures(
   addFeature<ClusterFeaturePhase>();
   addFeature<DatabaseFeaturePhase>();
   addFeature<FinalFeaturePhase>();
-#ifdef USE_V8
-  addFeature<FoxxFeaturePhase>();
-#endif
   addFeature<GreetingsFeaturePhase>(std::false_type{});
   addFeature<ServerFeaturePhase>();
-#ifdef USE_V8
-  addFeature<V8FeaturePhase>();
-#endif
 
   // Adding the features - order matters for dependency resolution
   // metrics::MetricsFeature must go first
@@ -86,7 +76,6 @@ void ArangodServer::addFeatures(
       LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<metrics::ClusterMetricsFeature>();
   addFeature<VersionFeature>();
-  addFeature<ActionFeature>();
   auto& agency = addFeature<AgencyFeature>();
   addFeature<ApiRecordingFeature>(dataSourceRegistry);
   addFeature<AqlFeature>();
@@ -108,39 +97,23 @@ void ArangodServer::addFeatures(
   auto& database = addFeature<DatabaseFeature>();
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
   addFeature<ConfigFeature>(std::string{binaryName});
-#ifdef USE_V8
-  addFeature<ConsoleFeature>();
-#endif
   addFeature<CpuUsageFeature>();
   auto& databasePath = addFeature<DatabasePathFeature>();
   auto& dumpLimits = addFeature<DumpLimitsFeature>();
   addFeature<HttpEndpointProvider, EndpointFeature>();
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   auto& engineSelectorFeature = addFeature<EngineSelectorFeature>();
-#ifdef USE_V8
-  auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
-  addFeature<V8PlatformFeature>();
-  addFeature<V8SecurityFeature>();
-#endif
   addFeature<BootstrapFeature>(clusterFeature, engineSelectorFeature, database,
-                               &systemDatabaseFeature, &clusterUpgradeFeature
-#ifdef USE_V8
-                               ,
-                               &v8DealerFeature
-#endif
-  );
+                               &systemDatabaseFeature, &clusterUpgradeFeature);
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
   auto& flush = addFeature<FlushFeature>();
   addFeature<FortuneFeature>();
-#ifdef USE_V8
-  addFeature<FoxxFeature>();
-  addFeature<FrontendFeature>();
-#endif
   addFeature<GeneralServerFeature>(metrics);
   addFeature<GreetingsFeature>();
   addFeature<InitDatabaseFeature>(kNonServerFeatures);
   addFeature<LanguageCheckFeature>();
+  addFeature<LegacyOptionsFeature>();
   addFeature<LanguageFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
@@ -149,7 +122,6 @@ void ArangodServer::addFeatures(
   addFeature<MaintenanceFeature>();
   addFeature<MaxMapCountFeature>();
   addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
-  addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
@@ -163,21 +135,13 @@ void ArangodServer::addFeatures(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(std::string{binaryName});
 #endif
-#ifdef USE_V8
-  addFeature<ScriptFeature>(ret);
-#endif
   addFeature<ServerFeature>(ret);
   addFeature<ServerIdFeature>();
   addFeature<ServerSecurityFeature>();
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
-#ifdef USE_V8
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(ScriptFeature))});
-#else
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(AgencyFeaturePhase))});
-#endif
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
   addFeature<StatisticsFeature>();

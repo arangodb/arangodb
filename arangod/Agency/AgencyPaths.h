@@ -179,19 +179,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return Views::make_shared(shared_from_this());
       }
 
-      class AsyncReplication : public StaticComponent<AsyncReplication, Plan> {
-       public:
-        constexpr char const* component() const noexcept {
-          return "AsyncReplication";
-        }
-
-        using BaseType::StaticComponent;
-      };
-
-      std::shared_ptr<AsyncReplication const> asyncReplication() const {
-        return AsyncReplication::make_shared(shared_from_this());
-      }
-
       class Coordinators : public StaticComponent<Coordinators, Plan> {
        public:
         constexpr char const* component() const noexcept {
@@ -225,17 +212,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
       std::shared_ptr<Lock const> lock() const {
         return Lock::make_shared(shared_from_this());
-      }
-
-      class Singles : public StaticComponent<Singles, Plan> {
-       public:
-        constexpr char const* component() const noexcept { return "Singles"; }
-
-        using BaseType::StaticComponent;
-      };
-
-      std::shared_ptr<Singles const> singles() const {
-        return Singles::make_shared(shared_from_this());
       }
 
       class DbServers : public StaticComponent<DbServers, Plan> {
@@ -1033,21 +1009,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return ServersKnown::make_shared(shared_from_this());
       }
 
-      class FoxxmasterQueueupdate
-          : public StaticComponent<FoxxmasterQueueupdate, Current> {
-       public:
-        constexpr char const* component() const noexcept {
-          return "FoxxmasterQueueupdate";
-        }
-
-        using BaseType::StaticComponent;
-      };
-
-      std::shared_ptr<FoxxmasterQueueupdate const> foxxmasterQueueupdate()
-          const {
-        return FoxxmasterQueueupdate::make_shared(shared_from_this());
-      }
-
       class ShardsCopied : public StaticComponent<ShardsCopied, Current> {
        public:
         constexpr char const* component() const noexcept {
@@ -1059,19 +1020,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
       std::shared_ptr<ShardsCopied const> shardsCopied() const {
         return ShardsCopied::make_shared(shared_from_this());
-      }
-
-      class Foxxmaster : public StaticComponent<Foxxmaster, Current> {
-       public:
-        constexpr char const* component() const noexcept {
-          return "Foxxmaster";
-        }
-
-        using BaseType::StaticComponent;
-      };
-
-      std::shared_ptr<Foxxmaster const> foxxmaster() const {
-        return Foxxmaster::make_shared(shared_from_this());
       }
 
       class ServersRegistered
@@ -1261,20 +1209,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return MaintenanceDBServers::make_shared(shared_from_this());
       }
 
-      class AsyncReplication
-          : public StaticComponent<AsyncReplication, Current> {
-       public:
-        constexpr char const* component() const noexcept {
-          return "AsyncReplication";
-        }
-
-        using BaseType::StaticComponent;
-      };
-
-      std::shared_ptr<AsyncReplication const> asyncReplication() const {
-        return AsyncReplication::make_shared(shared_from_this());
-      }
-
       class Coordinators : public StaticComponent<Coordinators, Current> {
        public:
         constexpr char const* component() const noexcept {
@@ -1308,17 +1242,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
       std::shared_ptr<Lock const> lock() const {
         return Lock::make_shared(shared_from_this());
-      }
-
-      class Singles : public StaticComponent<Singles, Current> {
-       public:
-        constexpr char const* component() const noexcept { return "Singles"; }
-
-        using BaseType::StaticComponent;
-      };
-
-      std::shared_ptr<Singles const> singles() const {
-        return Singles::make_shared(shared_from_this());
       }
 
       class DbServers : public StaticComponent<DbServers, Current> {

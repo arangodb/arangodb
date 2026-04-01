@@ -244,12 +244,6 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createSystemCollectionsAndIndices);
-  addTask(upgradeFeature, "createSystemStatisticsDBServer",
-          "creates the statistics system collections including their indices",
-          /*system*/ Flags::DATABASE_SYSTEM,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createStatisticsCollectionsAndIndices);
   addTask(upgradeFeature, "addDefaultUserOther",
           "add default users for a new database",
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
@@ -269,6 +263,32 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::dropPregelQueriesCollection);
 
+  // Fulltext indexes are no longer supported since 4.0.
+  // CLUSTER_NONE: single server drops locally.
+  // CLUSTER_COORDINATOR_GLOBAL: coordinator drops via agency, DB servers
+  //   pick up the change automatically.
+  addTask(upgradeFeature, "dropFulltextIndexes",
+          "drop obsolete fulltext indexes",
+          /*system*/ Upgrade::Flags::DATABASE_ALL,
+          /*cluster*/ Upgrade::Flags::CLUSTER_NONE |
+              Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::dropFulltextIndexes);
+
+  // Hash/skiplist indexes are just aliases for persistent; rewrite their type
+  // in stored definitions.
+  // CLUSTER_DB_SERVER_LOCAL: DB servers rewrite their local RocksDB
+  // definitions. CLUSTER_COORDINATOR_GLOBAL: coordinator updates the agency
+  // plan. CLUSTER_NONE: single server rewrites local RocksDB definitions.
+  addTask(upgradeFeature, "migrateHashSkiplistToPersistent",
+          "convert hash/skiplist indexes to persistent",
+          /*system*/ Upgrade::Flags::DATABASE_ALL,
+          /*cluster*/ Upgrade::Flags::CLUSTER_NONE |
+              Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL |
+              Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::migrateHashSkiplistToPersistent);
+
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators
@@ -281,6 +301,24 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
               | Upgrade::Flags::DATABASE_UPGRADE,
           &UpgradeTasks::dropLegacyAnalyzersCollection  // action
   );
+
+  // Legacy geo1/geo2 indexes: drop on single server locally; on coordinator
+  // drop via agency so DB servers pick up the change.
+  addTask(
+      upgradeFeature, "dropLegacyGeoIndexes", "drop legacy geo1/geo2 indexes",
+      /*system*/ Flags::DATABASE_ALL,
+      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
+      /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING | DATABASE_ONLY_ONCE,
+      &UpgradeTasks::dropLegacyGeoIndexes);
+
+  addTask(upgradeFeature, "dropOldStatisticsCollections",
+          "drop old statistics collections: _statistics, _statistics15, "
+          "_statisticsRaw",
+          /*system*/ Upgrade::Flags::DATABASE_SYSTEM,
+          /*cluster*/ Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL |
+              Upgrade::Flags::CLUSTER_NONE,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::dropOldStatisticsCollections);
 
 #ifdef USE_ENTERPRISE
   registerTasksEE(upgradeFeature);

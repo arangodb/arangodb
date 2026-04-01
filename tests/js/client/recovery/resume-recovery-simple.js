@@ -35,7 +35,7 @@ if (runSetup === true) {
 
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
-  c.ensureIndex({ type: "hash", fields: ["foo", "bar"] });
+  c.ensureIndex({ type: "persistent", fields: ["foo", "bar"] });
 
   c.save({ _key: 'test', 'foo': 1, 'bar': 2 }, true);
 

@@ -11,7 +11,6 @@
       - BackupNoAuthSysTests
       - BackupNoAuthNoSysTests
       - arangosh
-      - arangobench
       - permissions
       - paths_server
       - version
@@ -274,17 +273,13 @@
     args:
       dumpAgencyOnError: true
 
-- arangobench_deadlock_audit:
+- deadlock_audit_secrets:
     options:
       priority: 1000
       type: mixed
       size: large
     suites:
       - deadlock:
-          args:
-            dumpAgencyOnError: true
-            cluster: true
-      - arangobench:
           args:
             dumpAgencyOnError: true
             cluster: true
@@ -616,12 +611,6 @@
     options:
       type: single
       priority: 1000
-    requires:
-      full: true
-- foxx_manager:
-    options:
-      type: single
-      priority: 500
     requires:
       full: true
 - queryCacheAuthorization:

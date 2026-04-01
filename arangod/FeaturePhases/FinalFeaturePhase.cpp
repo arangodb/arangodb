@@ -25,10 +25,6 @@
 
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
-#ifdef USE_V8
-#include "RestServer/ConsoleFeature.h"
-#include "RestServer/ScriptFeature.h"
-#endif
 #include "RestServer/SoftShutdownFeature.h"
 
 namespace arangodb::application_features {
@@ -39,12 +35,7 @@ FinalFeaturePhase::FinalFeaturePhase(
   setOptional(false);
   startsAfter<AgencyFeaturePhase>();
 
-#ifdef USE_V8
-  startsAfter<ConsoleFeature>();
-  startsAfter<ScriptFeature>();
-#else
   startsAfter<AgencyFeaturePhase>();
-#endif
   startsAfter<ShutdownFeature>();
   startsAfter<SoftShutdownFeature>();
 }

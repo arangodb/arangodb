@@ -71,13 +71,11 @@ function config (options) {
 
   const ts = [
     'arangod',
-    'arangobench',
     'arangodump',
     'arangoimport',
     'arangorestore',
     'arangoexport',
-    'arangosh',
-    'foxx-manager'
+    'arangosh'
   ];
 
   let rootDir = fs.join(fs.getTempPath(), 'config');

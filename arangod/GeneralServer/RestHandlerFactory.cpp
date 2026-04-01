@@ -57,7 +57,9 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   uint32_t apiVersion = req->requestedApiVersion();
 
   // Check if the requested API version is valid
-  if (apiVersion >= _constructors.size()) {
+  if (apiVersion >= _constructors.size() ||
+      (!ApiVersion::isApiVersionSupported(apiVersion) &&
+       apiVersion != ApiVersion::experimentalApiVersion)) {
     LOG_TOPIC("a8f2e", DEBUG, arangodb::Logger::FIXME)
         << "requested API version " << apiVersion
         << " is not supported (max: " << (_constructors.size() - 1) << ")";
@@ -135,13 +137,7 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     l = prefix->size() + 1;
   }
 
-  // we did not find a route
-  // this may only happen for API versions > 0 since API version 0 always has a
-  // catch-all handler registered at "/" to forward to Foxx.
-  // For all other versions we return null to indicate that we have not found a
-  // handler, which will lead to a 404 response.
   if (it == constructors.end()) {
-    TRI_ASSERT(apiVersion > 0);
     return nullptr;
   }
 

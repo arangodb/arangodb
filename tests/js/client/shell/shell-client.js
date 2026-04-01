@@ -158,14 +158,14 @@ function clientTestSuite () {
     },
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test skiplist sorting
+// / @brief test persistent index sorting
 // //////////////////////////////////////////////////////////////////////////////
 
-    testICU_Compare_Skiplist_Sorting: function () {
+    testICU_Compare_Persistent_Index_Sorting: function () {
       try {
         db._drop('ICU_SORTED');
         db._create('ICU_SORTED');
-        db.ICU_SORTED.ensureIndex({ type: "skiplist", fields: ["test"] });
+        db.ICU_SORTED.ensureIndex({ type: "persistent", fields: ["test"] });
         db.ICU_SORTED.save({ test: 'äää' });
         db.ICU_SORTED.save({ test: 'aaa' });
         db.ICU_SORTED.save({ test: 'aab' });
@@ -173,13 +173,22 @@ function clientTestSuite () {
         db.ICU_SORTED.save({ test: 'äää' });
         db.ICU_SORTED.save({ test: 'Aaa' });
 
-        var y = db.ICU_SORTED.range('test', 'A', 'z');
-        assertEqual(y.next().test, 'Aaa');
-        assertEqual(y.next().test, 'aaa');
-        assertEqual(y.next().test, 'äaa');
-        assertEqual(y.next().test, 'äää');
-        assertEqual(y.next().test, 'äää');
-        assertEqual(y.next().test, 'aab');
+        var y = db._query(`
+          FOR doc IN @@collection
+            FILTER doc.@attribute >= @left && doc.@attribute < @right
+            RETURN doc
+        `, {
+          '@collection': 'ICU_SORTED',
+          attribute: 'test',
+          left: 'A',
+          right: 'z'
+        }).toArray();
+        assertEqual(y[0].test, 'Aaa');
+        assertEqual(y[1].test, 'aaa');
+        assertEqual(y[2].test, 'äaa');
+        assertEqual(y[3].test, 'äää');
+        assertEqual(y[4].test, 'äää');
+        assertEqual(y[5].test, 'aab');
       } finally {
         db._drop('ICU_SORTED');
       }
