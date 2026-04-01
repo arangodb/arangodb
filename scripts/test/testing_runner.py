@@ -57,7 +57,7 @@ def zipp_this(filenames, target_dir):
     # pylint: disable=consider-using-with
     for corefile in filenames:
         try:
-            print(f"zipping {corefile}")
+            print(f"{str(datetime.now())} zipping {corefile}")
             zipfile.ZipFile(
                 str(target_dir / (corefile.name + ".xz")),
                 mode="w",
@@ -76,7 +76,7 @@ def testing_runner(testing_instance, this, arangosh):
             this.suite,
             this.arangosh_args,
             this.args,
-            15 * 60,  # 15 Minutes screen idle before timeout
+            16 * 60,  # 16 Minutes screen idle before timeout - so 15 mins testing.js can work
             this.base_logdir,
             this.log_file,
             this.name_enum,

@@ -276,10 +276,10 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
   auto numVectors = static_cast<std::int64_t>(trainingData.get().size() /
                                               _definition.dimension);
 
-  if (_isSparse && numVectors < _trainingThreshold) {
+  if (numVectors < _trainingThreshold) {
     return Result{TRI_ERROR_NOT_IMPLEMENTED,
-                  std::format("Sparse vector index requires at least {} "
-                              "documents with the vector field for training, "
+                  std::format("Vector index requires at least {} "
+                              "vectors for training, "
                               "but only {} were found.",
                               _trainingThreshold, numVectors)};
   }

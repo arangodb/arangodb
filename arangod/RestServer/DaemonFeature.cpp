@@ -31,6 +31,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <thread>
+#include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -107,13 +108,10 @@ void DaemonFeature::validateOptions(
   }
 
   // make the pid filename absolute
-  std::error_code ec;
-  std::string currentDir = std::filesystem::current_path(ec).string();
-  if (ec) {
-    throw std::filesystem::filesystem_error(
-        "cannot get current working directory", std::filesystem::path(), ec);
-  }
-  std::string absoluteFile = TRI_GetAbsolutePath(_options.pidFile, currentDir);
+  std::string currentDir = FileUtils::currentDirectory().result();
+  std::string absoluteFile =
+      std::filesystem::absolute(std::filesystem::path(_options.pidFile))
+          .string();
 
   if (!absoluteFile.empty()) {
     _options.pidFile = absoluteFile;
