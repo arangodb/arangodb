@@ -100,6 +100,15 @@ RestVersionHandler::RestVersionHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+async<Result> RestVersionHandler::checkUserCanAccess() const {
+  auto mode = ServerState::instance()->mode();
+  if (mode == ServerState::Mode::STARTUP || mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated() ? Result{} : Result{TRI_ERROR_HTTP_UNAUTHORIZED};
+  }
+
+  co_return co_await RestBaseHandler::checkUserCanAccess();
+}
+
 void RestVersionHandler::getVersion(
     application_features::ApplicationServer& server, bool allowInfo,
     bool includeDetails, VPackBuilder& result, uint32_t requestedApiVersion) {
