@@ -1,5 +1,16 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+
+* Updated ArangoDB Starter to v0.19.19.
+
+* Create coredumps with correct CPU context.
+  For signals like SIGSEGV, SIGILL etc. return from the signal handler instead
+  of calling std::abort. This ensures that the coredump is created with the CPU
+  context from the time the signal was raised instead of the CPU context from
+  the std::abort call.
+
+* Updated timezone database as of 31.03.2026.
+
 * COR-374: Fix assertion failure during vector index creation in cluster when a transient
   shard error is followed by success, due to stale error message not being cleared.
 
@@ -49,8 +60,6 @@
 
 * COR-328: Fixed incomplete results in vector search queries when LIMIT exceeded the
   internal batch size.
-
-* Updated ArangoDB Starter to v0.19.18.
 
 * COR-123: The push-filter-into-enumerate-near optimizer rule now considers all
   compatible vector indexes on a collection to find if one whose storedValues cover

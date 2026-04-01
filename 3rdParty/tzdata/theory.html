@@ -3,14 +3,16 @@
 <head>
   <title>Theory and pragmatics of the tz code and data</title>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    pre {margin-left: 2em; white-space: pre-wrap;}
+    dd {margin-left: 1.3rem;}
+    pre {margin-left: 1.3rem; overflow: auto;}
+    ul {padding-left: 1.3rem;}
   </style>
 </head>
 
 <body>
 <h1>Theory and pragmatics of the <code><abbr>tz</abbr></code> code and data</h1>
-  <h3>Outline</h3>
   <nav>
     <ul>
       <li><a href="#scope">Scope of the <code><abbr>tz</abbr></code>
@@ -89,24 +91,25 @@ The <code><abbr>tz</abbr></code> code is upwards compatible with <a
 href="https://en.wikipedia.org/wiki/POSIX">POSIX</a>, an international
 standard for <a
 href="https://en.wikipedia.org/wiki/Unix">UNIX</a>-like systems.
-As of this writing, the current edition of POSIX is POSIX.1-2024,
-which has been published but not yet in HTML form.
-Unlike its predecessor POSIX.1-2017 (<a
-href="https://pubs.opengroup.org/onlinepubs/9699919799/"> The Open
-Group Base Specifications Issue 7</a>, IEEE Std 1003.1-2017, 2018
-Edition), POSIX.1-2024 requires support for the
+As of this writing, the current edition of POSIX is
+<a href="https://pubs.opengroup.org/onlinepubs/9799919799/">POSIX.1-2024</a>
+(The Open Group Base Specifications Issue 8, IEEE Std 1003.1-2024).
+Unlike its predecessors
+<a href="https://archive.org/details/POSIX.1-1988">POSIX.1-1988</a> through
+<a href="https://pubs.opengroup.org/onlinepubs/9699919799/">POSIX.1-2017</a>,
+POSIX.1-2024 requires support for the
 <code><abbr>tz</abbr></code> database, which has a
 model for describing civil time that is more complex than the
-standard and daylight saving times required by POSIX.1-2017.
+standard and daylight saving times required by earlier POSIX editions.
 A <code><abbr>tz</abbr></code> timezone corresponds to a ruleset that can
 have more than two changes per year, these changes need not merely
 flip back and forth between two alternatives, and the rules themselves
 can change at times.
 Whether and when a timezone changes its clock,
-and even the timezone's notional base offset from <abbr>UTC</abbr>,
+and even the timezone’s notional base offset from <abbr>UTC</abbr>,
 are variable.
-It does not always make sense to talk about a timezone's
-"base offset", which is not necessarily a single number.
+It does not always make sense to talk about a timezone’s
+“base offset”, which is not necessarily a single number.
 </p>
 
 </section>
@@ -118,16 +121,16 @@ Each timezone has a name that uniquely identifies the timezone.
 Inexperienced users are not expected to select these names unaided.
 Distributors should provide documentation and/or a simple selection
 interface that explains each name via a map or via descriptive text like
-"Czech Republic" instead of the timezone name "<code>Europe/Prague</code>".
+“Czech Republic” instead of the timezone name “<code>Europe/Prague</code>”.
 If geolocation information is available, a selection interface can
 locate the user on a timezone map or prioritize names that are
 geographically close. For an example selection interface, see the
 <code>tzselect</code> program in the <code><abbr>tz</abbr></code> code.
-Unicode's <a href="https://cldr.unicode.org">Common Locale Data
+Unicode’s <a href="https://cldr.unicode.org">Common Locale Data
 Repository (<abbr>CLDR</abbr>)</a>
 contains data that may be useful for other selection
 interfaces; it maps timezone names like <code>Europe/Prague</code> to
-locale-dependent strings like "Prague", "Praha", "Прага", and "布拉格".
+locale-dependent strings like “Prague”, “Praha”, “Прага”, and “布拉格”.
 </p>
 
 <p>
@@ -142,13 +145,13 @@ among the following goals:
     civil time.
   </li>
   <li>
-    Indicate to experts where the timezone's clocks typically are.
+    Indicate to experts where the timezone’s clocks typically are.
   </li>
   <li>
     Be robust in the presence of political changes.
     For example, names are typically not tied to countries, to avoid
     incompatibilities when countries change their name (e.g.,
-    Swaziland&rarr;Eswatini) or when locations change countries (e.g., Hong
+    Swaziland→Eswatini) or when locations change countries (e.g., Hong
     Kong from UK colony to China).
     There is no requirement that every country or national
     capital must have a timezone name.
@@ -166,11 +169,11 @@ Names normally have the format
 <var>AREA</var><code>/</code><var>LOCATION</var>, where
 <var>AREA</var> is a continent or ocean, and
 <var>LOCATION</var> is a specific location within the area.
-North and South America share the same area, '<code>America</code>'.
-Typical names are '<code>Africa/Cairo</code>',
-'<code>America/New_York</code>', and '<code>Pacific/Honolulu</code>'.
+North and South America share the same area, <code>America</code>.
+Typical names are <code>Africa/Cairo</code>,
+<code>America/New_York</code>, and <code>Pacific/Honolulu</code>.
 Some names are further qualified to help avoid confusion; for example,
-'<code>America/Indiana/Petersburg</code>' distinguishes Petersburg,
+<code>America/Indiana/Petersburg</code> distinguishes Petersburg,
 Indiana from other Petersburgs in America.
 </p>
 
@@ -183,25 +186,25 @@ in decreasing order of importance:
 <ul>
   <li>
     Use only valid POSIX file name components (i.e., the parts of
-    names other than '<code>/</code>').
-    Do not use the file name components '<code>.</code>' and
-    '<code>..</code>'.
+    names other than "<code>/</code>").
+    Do not use the file name components "<code>.</code>" and
+    "<code>..</code>".
     Within a file name component, use only <a
     href="https://en.wikipedia.org/wiki/ASCII">ASCII</a> letters,
-    '<code>.</code>', '<code>-</code>' and '<code>_</code>'.
+    "<code>.</code>", "<code>-</code>" and "<code>_</code>".
     Do not use digits, as that might create an ambiguity with <a
-    href="https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08_03">POSIX's proleptic
-    <code>TZ</code> strings</a>.
+    href="https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html#tag_08_03">POSIX’s
+    proleptic <code>TZ</code> strings</a>.
     A file name component must not exceed 14 characters or start with
-    '<code>-</code>'.
+    "<code>-</code>".
     E.g., prefer <code>America/Noronha</code> to
     <code>America/Fernando_de_Noronha</code>.
     Exceptions: see the discussion of legacy names below.
   </li>
   <li>
-    A name must not be empty, or contain '<code>//</code>', or
-    start or end with '<code>/</code>'.
-    Also, a name must not be '<code>Etc/Unknown</code>', as
+    A name must not be empty, or contain "<code>//</code>", or
+    start or end with "<code>/</code>".
+    Also, a name must not be "<code>Etc/Unknown</code>", as
     <abbr>CLDR</abbr> uses that string for an unknown or invalid timezone.
   </li>
   <li>
@@ -213,7 +216,7 @@ in decreasing order of importance:
   <li>
     If one name <var>A</var> is an initial prefix of another
     name <var>AB</var> (ignoring case), then <var>B</var> must not
-    start with '<code>/</code>', as a regular file cannot have the
+    start with "<code>/</code>", as a regular file cannot have the
     same name as a directory in POSIX.
     For example, <code>America/New_York</code> precludes
     <code>America/New_York/Bronx</code>.
@@ -280,8 +283,8 @@ in decreasing order of importance:
     <code>Atlantic/Canaries</code>.
   </li>
   <li>
-    Omit common suffixes like '<code>_Islands</code>' and
-    '<code>_City</code>', unless that would lead to ambiguity.
+    Omit common suffixes like "<code>_Islands</code>" and
+    "<code>_City</code>", unless that would lead to ambiguity.
     E.g., prefer <code>America/Cayman</code> to
     <code>America/Cayman_Islands</code> and
     <code>America/Guatemala</code> to
@@ -292,10 +295,10 @@ in decreasing order of importance:
     country of Mexico has several time zones</a>.
   </li>
   <li>
-    Use '<code>_</code>' to represent a space.
+    Use "<code>_</code>" to represent a space.
   </li>
   <li>
-    Omit '<code>.</code>' from abbreviations in names.
+    Omit "<code>.</code>" from abbreviations in names.
     E.g., prefer <code>Atlantic/St_Helena</code> to
     <code>Atlantic/St._Helena</code>.
   </li>
@@ -303,15 +306,15 @@ in decreasing order of importance:
     Do not change established names if they only marginally violate
     the above guidelines.
     For example, do not change the existing name <code>Europe/Rome</code> to
-    <code>Europe/Milan</code> merely because Milan's population has grown
-    to be somewhat greater than Rome's.
+    <code>Europe/Milan</code> merely because Milan’s population has grown
+    to be somewhat greater than Rome’s.
   </li>
   <li>
     If a name is changed, put its old spelling in the
-    '<code>backward</code>' file as a link to the new spelling.
+    "<code>backward</code>" file as a link to the new spelling.
     This means old spellings will continue to work.
     Ordinarily a name change should occur only in the rare case when
-    a location's consensus English-language spelling changes; for example,
+    a location’s consensus English-language spelling changes; for example,
     in 2008 <code>Asia/Calcutta</code> was renamed to <code>Asia/Kolkata</code>
     due to long-time widespread use of the new city name instead of the old.
   </li>
@@ -327,11 +330,11 @@ have included the following:
 <ul>
 <li>
 Older versions of this package used a different naming scheme.
-See the file '<code>backward</code>' for most of these older names
-(e.g., '<code>US/Eastern</code>' instead of '<code>America/New_York</code>').
+See the file "<code>backward</code>" for most of these older names
+(e.g., <code>US/Eastern</code> instead of <code>America/New_York</code>).
 The other old-fashioned names still supported are
-'<code>WET</code>', '<code>CET</code>', '<code>MET</code>', and
-'<code>EET</code>' (see the file '<code>europe</code>').
+<code>WET</code>, <code>CET</code>, <code>MET</code>, and
+<code>EET</code> (see the file "<code>europe</code>").
 </li>
 
 <li>
@@ -339,13 +342,13 @@ Older versions of this package defined legacy names that are
 incompatible with the first guideline of location names, but which are
 still supported.
 These legacy names are mostly defined in the file
-'<code>etcetera</code>'.
-Also, the file '<code>backward</code>' defines the legacy names
-'<code>Etc/GMT0</code>', '<code>Etc/GMT-0</code>', '<code>Etc/GMT+0</code>',
-'<code>GMT0</code>', '<code>GMT-0</code>' and '<code>GMT+0</code>',
-and the file '<code>northamerica</code>' defines the legacy names
-'<code>EST5EDT</code>', '<code>CST6CDT</code>',
-'<code>MST7MDT</code>', and '<code>PST8PDT</code>'.
+"<code>etcetera</code>".
+Also, the file "<code>backward</code>" defines the legacy names
+<code>Etc/GMT0</code>, <code>Etc/GMT-0</code>, <code>Etc/GMT+0</code>,
+<code>GMT0</code>, <code>GMT-0</code> and <code>GMT+0</code>,
+and the file "<code>northamerica</code>" defines the legacy names
+<code>EST5EDT</code>, <code>CST6CDT</code>,
+<code>MST7MDT</code>, and <code>PST8PDT</code>.
 </li>
 
 <li>
@@ -365,11 +368,11 @@ The file <code>zone1970.tab</code> lists geographical locations used
 to name timezones.
 It is intended to be an exhaustive list of names for geographic
 regions as described above; this is a subset of the timezones in the data.
-Although a <code>zone1970.tab</code> location's
+Although a <code>zone1970.tab</code> location’s
 <a href="https://en.wikipedia.org/wiki/Longitude">longitude</a>
 corresponds to
 its <a href="https://en.wikipedia.org/wiki/Local_mean_time">local mean
-time (<abbr>LMT</abbr>)</a> offset with one hour for every 15&deg;
+time (<abbr>LMT</abbr>)</a> offset with one hour for every 15°
 east longitude, this relationship is not exact.
 The backward-compatibility file <code>zone.tab</code> is similar
 but conforms to the older-version guidelines related to <abbr>ISO</abbr> 3166-1;
@@ -395,7 +398,7 @@ on platforms that do not support proleptic <code>TZ</code> strings
 like <code>&lt;+08&gt;-8</code>;
 no other source file other than <code>backward</code>
 contains links to its zones.
-One of <code>etcetera</code>'s names is <code>Etc/UTC</code>,
+One of <code>etcetera</code>’s names is <code>Etc/UTC</code>,
 used by functions like <code>gmtime</code> to obtain leap
 second information on platforms that support leap seconds.
 Another <code>etcetera</code> name, <code>GMT</code>,
@@ -407,7 +410,7 @@ is used by older code releases.
   <h2 id="abbreviations">Time zone abbreviations</h2>
 <p>
 When this package is installed, it generates time zone abbreviations
-like '<code>EST</code>' to be compatible with human tradition and POSIX.
+like <code>EST</code> to be compatible with human tradition and POSIX.
 Here are the general guidelines used for choosing time zone abbreviations,
 in decreasing order of importance:
 </p>
@@ -415,25 +418,24 @@ in decreasing order of importance:
 <ul>
   <li>
     Use three to six characters that are ASCII alphanumerics or
-    '<code>+</code>' or '<code>-</code>'.
+    "<code>+</code>" or "<code>-</code>".
     Previous editions of this database also used characters like
-    space and '<code>?</code>', but these characters have a
+    space and "<code>?</code>", but these characters have a
     special meaning to the
     <a href="https://en.wikipedia.org/wiki/Unix_shell">UNIX shell</a>
     and cause commands like
-    '<code><a href="https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#set">set</a>
-    `<a href="https://pubs.opengroup.org/onlinepubs/9699919799/utilities/date.html">date</a>`</code>'
+    "<code><a href="https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#set">set</a>
+    `<a href="https://pubs.opengroup.org/onlinepubs/9799919799/utilities/date.html">date</a>`</code>"
     to have unexpected effects.
     Previous editions of this guideline required upper-case letters, but the
     Congressman who introduced
     <a href="https://en.wikipedia.org/wiki/Chamorro_Time_Zone">Chamorro
-    Standard Time</a> preferred "ChST", so lower-case letters are now
-    allowed.
-    Also, POSIX from 2001 on relaxed the rule to allow '<code>-</code>',
-    '<code>+</code>', and alphanumeric characters from the portable
+    Standard Time</a> preferred “ChST”, so lower-case letters are now allowed.
+    Also, POSIX from 2001 on relaxed the rule to allow "<code>-</code>",
+    "<code>+</code>", and alphanumeric characters from the portable
     character set in the current locale.
-    In practice ASCII alphanumerics and '<code>+</code>' and
-    '<code>-</code>' are safe in all locales.
+    In practice ASCII alphanumerics and "<code>+</code>" and
+    "<code>-</code>" are safe in all locales.
 
     <p>
     In other words, in the C locale the POSIX extended regular
@@ -445,10 +447,10 @@ in decreasing order of importance:
   </li>
   <li>
     Use abbreviations that are in common use among English-speakers,
-    e.g., 'EST' for Eastern Standard Time in North America.
+    e.g., “EST” for Eastern Standard Time in North America.
     We assume that applications translate them to other languages
     as part of the normal localization process; for example,
-    a French application might translate 'EST' to 'HNE'.
+    a French application might translate “EST” to “HNE”.
 
     <p>
     <small>These abbreviations (for standard/daylight/etc. time) are:
@@ -483,7 +485,7 @@ in decreasing order of importance:
       NST/NDT/NWT/NPT/NDDT Newfoundland,
       NST/NDT/NWT/NPT Nome,
       NZMT/NZST New Zealand through 1945,
-      NZST/NZDT New Zealand 1946&ndash;present,
+      NZST/NZDT New Zealand 1946–present,
       PKT/PKST Pakistan,
       PST/PDT/PWT/PPT Pacific,
       PST/PDT Philippine,
@@ -500,12 +502,12 @@ in decreasing order of importance:
   </li>
   <li>
     <p>
-    For times taken from a city's longitude, use the
+    For times taken from a city’s longitude, use the
     traditional <var>x</var>MT notation.
-    The only abbreviation like this in current use is '<abbr>GMT</abbr>'.
+    The only abbreviation like this in current use is <abbr>GMT</abbr>.
     The others are for timestamps before 1960,
     except that Monrovia Mean Time persisted until 1972.
-    Typically, numeric abbreviations (e.g., '<code>-</code>004430' for
+    Typically, numeric abbreviations (e.g., <code>-</code>004430 for
     MMT) would cause trouble here, as the numeric strings would exceed
     the POSIX length limit.
     </p>
@@ -546,39 +548,39 @@ in decreasing order of importance:
     <small>A few abbreviations also follow the pattern that
     <abbr>GMT</abbr>/<abbr>BST</abbr> established for time in the UK.
     They are:
-      BMT/BST for Bermuda 1890&ndash;1930,
+      BMT/BST for Bermuda 1890–1930,
       CMT/BST for Calamarca Mean Time and Bolivian Summer Time
-	1890&ndash;1932,
+	1890–1932,
       DMT/IST for Dublin/Dunsink Mean Time and Irish Summer Time
-	1880&ndash;1916,
-      MMT/MST/MDST for Moscow 1880&ndash;1919, and
-      RMT/LST for Riga Mean Time and Latvian Summer time 1880&ndash;1926.
+	1880–1916,
+      MMT/MST/MDST for Moscow 1880–1919, and
+      RMT/LST for Riga Mean Time and Latvian Summer time 1880–1926.
     </small>
     </p>
   </li>
   <li>
-    Use '<abbr>LMT</abbr>' for local mean time of locations before the
-    introduction of standard time; see "<a href="#scope">Scope of the
-    <code><abbr>tz</abbr></code> database</a>".
+    Use “<abbr>LMT</abbr>” for local mean time of locations before the
+    introduction of standard time; see “<a href="#scope">Scope of the
+    <code><abbr>tz</abbr></code> database</a>”.
   </li>
   <li>
     If there is no common English abbreviation, use numeric offsets like
     <code>-</code>05 and <code>+</code>0530 that are generated
-    by <code>zic</code>'s <code>%z</code> notation.
+    by <code>zic</code>’s <code>%z</code> notation.
   </li>
   <li>
     Use current abbreviations for older timestamps to avoid confusion.
     For example, in 1910 a common English abbreviation for time
-    in central Europe was 'MEZ' (short for both "Middle European
-    Zone" and for "Mitteleuropäische Zeit" in German).
-    Nowadays 'CET' ("Central European Time") is more common in
-    English, and the database uses 'CET' even for circa-1910
+    in central Europe was “MEZ” (short for both “Middle European
+    Zone” and for “Mitteleuropäische Zeit” in German).
+    Nowadays “CET” (“Central European Time”) is more common in
+    English, and the database uses “CET” even for circa-1910
     timestamps as this is less confusing for modern users and avoids
-    the need for determining when 'CET' supplanted 'MEZ' in common
+    the need for determining when “CET” supplanted “MEZ” in common
     usage.
   </li>
   <li>
-    Use a consistent style in a timezone's history.
+    Use a consistent style in a timezone’s history.
     For example, if a history tends to use numeric
     abbreviations and a particular entry could go either way, use a
     numeric abbreviation.
@@ -586,13 +588,13 @@ in decreasing order of importance:
   <li>
     Use
     <a href="https://en.wikipedia.org/wiki/Universal_Time">Universal Time</a>
-    (<abbr>UT</abbr>) (with time zone abbreviation '<code>-</code>00') for
+    (<abbr>UT</abbr>) (with time zone abbreviation <code>-</code>00) for
     locations while uninhabited.
-    The leading '<code>-</code>' is a flag that the <abbr>UT</abbr> offset is in
+    The leading "<code>-</code>" is a flag that the <abbr>UT</abbr> offset is in
     some sense undefined; this notation is derived
     from <a href="https://www.rfc-editor.org/rfc/rfc3339">Internet
     <abbr title="Request For Comments">RFC</abbr> 3339</a>.
-    (The abbreviation 'Z' that
+    (The abbreviation Z that
     <a href="https://www.rfc-editor.org/rfc/rfc9557">Internet
     <abbr>RFC</abbr> 9557</a> uses for this concept
     would violate the POSIX requirement
@@ -602,11 +604,11 @@ in decreasing order of importance:
 
 <p>
 Application writers should note that these abbreviations are ambiguous
-in practice: e.g., 'CST' means one thing in China and something else
-in North America, and 'IST' can refer to time in India, Ireland or
+in practice: e.g., CST means one thing in China and something else
+in North America, and IST can refer to time in India, Ireland or
 Israel.
 To avoid ambiguity, use numeric <abbr>UT</abbr> offsets like
-'<code>-</code>0600' instead of time zone abbreviations like 'CST'.
+<code>-</code>0600 instead of time zone abbreviations like CST.
 </p>
 </section>
 
@@ -617,7 +619,7 @@ The <code><abbr>tz</abbr></code> database is not authoritative, and it
 surely has errors.
 Corrections are welcome and encouraged; see the file <code>CONTRIBUTING</code>.
 Users requiring authoritative data should consult national standards
-bodies and the references cited in the database's comments.
+bodies and the references cited in the database’s comments.
 </p>
 
 <p>
@@ -639,7 +641,7 @@ Errors in the <code><abbr>tz</abbr></code> database arise from many sources:
     clocks actually behaved; the vast majority of the necessary
     information was lost or never recorded.
     Thousands more timezones would be needed if
-    the <code><abbr>tz</abbr></code> database's scope were extended to
+    the <code><abbr>tz</abbr></code> database’s scope were extended to
     cover even just the known or guessed history of standard time; for
     example, the current single entry for France would need to split
     into dozens of entries, perhaps hundreds.
@@ -648,14 +650,14 @@ Errors in the <code><abbr>tz</abbr></code> database arise from many sources:
     should be observed.
     In her 2015 book
     <cite><a
-    href="https://www.hup.harvard.edu/catalog.php?isbn=9780674286146">The
-    Global Transformation of Time, 1870&ndash;1950</a></cite>,
+    href="https://www.hup.harvard.edu/books/9780674286146">The
+    Global Transformation of Time, 1870–1950</a></cite>,
     Vanessa Ogle writes
-    "Outside of Europe and North America there was no system of time
+    “Outside of Europe and North America there was no system of time
     zones at all, often not even a stable landscape of mean times,
-    prior to the middle decades of the twentieth century".
+    prior to the middle decades of the twentieth century”.
     See: Timothy Shenk, <a
-href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanessa-ogle">Booked:
+href="https://dissentmagazine.org/blog/booked-a-global-history-of-time-vanessa-ogle/">Booked:
       A Global History of Time</a>. <cite>Dissent</cite> 2015-12-17.
   </li>
   <li>
@@ -671,8 +673,8 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     For the UK the <code><abbr>tz</abbr></code> database relies on
     years of first-class work done by
     Joseph Myers and others; see
-    "<a href="https://www.polyomino.org.uk/british-time/">History of
-    legal time in Britain</a>".
+    “<a href="https://www.polyomino.org.uk/british-time/">History of
+    legal time in Britain</a>”.
     Other countries are not done nearly as well.
   </li>
   <li>
@@ -697,13 +699,13 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     entries are often accurate for only a small subset of that region.
     For example, <code>Europe/London</code> stands for the United
     Kingdom, but its pre-1847 times are valid only for locations that
-    have London's exact meridian, and its 1847 transition
+    have London’s exact meridian, and its 1847 transition
     to <abbr>GMT</abbr> is known to be valid only for the L&amp;NW and
     the Caledonian railways.
   </li>
   <li>
     The <code><abbr>tz</abbr></code> database does not record the
-    earliest time for which a timezone's
+    earliest time for which a timezone’s
     data entries are thereafter valid for every location in the region.
     For example, <code>Europe/London</code> is valid for all locations
     in its region after <abbr>GMT</abbr> was made the standard time,
@@ -714,7 +716,7 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
   </li>
   <li>
     The <code><abbr>tz</abbr></code> database does not record a
-    region's boundaries, and in many cases the boundaries are not known.
+    region’s boundaries, and in many cases the boundaries are not known.
     For example, the timezone
     <code>America/Kentucky/Louisville</code> represents a region
     around the city of Louisville, the boundaries of which are
@@ -747,7 +749,7 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     than what the <code><abbr>tz</abbr></code> code can handle.
     For example, from 1880 to 1916 clocks in Ireland observed Dublin Mean
     Time (estimated to be <abbr>UT</abbr>
-    &minus;00:25:21.1); although the <code><abbr>tz</abbr></code>
+    −00:25:21.1); although the <code><abbr>tz</abbr></code>
     source data can represent the .1 second, TZif files and the code cannot.
     In practice these old specifications were rarely if ever
     implemented to subsecond precision.
@@ -787,9 +789,9 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     non-hour-based system at night.
     And even today, some local practices diverge from the Gregorian
     calendar with 24-hour days. These divergences range from
-    relatively minor, such as Japanese bars giving times like "24:30" for the
+    relatively minor, such as Japanese bars giving times like 24:30 for the
     wee hours of the morning, to more-significant differences such as <a
-    href="https://theworld.org/stories/2015-01-30/if-you-have-meeting-ethiopia-you-better-double-check-time">the
+    href="https://theworld.org/stories/2015/01/30/ethiopian-time">the
     east African practice of starting the day at dawn</a>, renumbering
     the Western 06:00 to be 12:00. These practices are largely outside
     the scope of the <code><abbr>tz</abbr></code> code and data, which
@@ -825,16 +827,16 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
   <li>
     Civil time was not based on atomic time before 1972, and we do not
     know the history of
-    <a href="https://en.wikipedia.org/wiki/Earth's_rotation">earth's
+    <a href="https://en.wikipedia.org/wiki/Earth's_rotation">earth’s
     rotation</a> accurately enough to map <a
     href="https://en.wikipedia.org/wiki/International_System_of_Units"><abbr
     title="International System of Units">SI</abbr></a> seconds to
     historical <a href="https://en.wikipedia.org/wiki/Solar_time">solar time</a>
     to more than about one-hour accuracy.
-    See: Stephenson FR, Morrison LV, Hohenkerk CY.
-    <a href="https://dx.doi.org/10.1098/rspa.2016.0404">Measurement of
-    the Earth's rotation: 720 BC to AD 2015</a>.
-    <cite>Proc Royal Soc A</cite>. 2016;472:20160404.
+    See: Morrison LV, Stephenson FR, Hohenkerk CY, Zawilski M.
+    <a href="https://doi.org/10.1098/rspa.2020.0776">Addendum 2020
+    to ‘Measurement of the Earth’s rotation: 720 BC to AD 2015’</a>.
+    <cite>Proc Royal Soc A</cite>. 2021;477:20200776.
     Also see: Espenak F. <a
     href="https://eclipse.gsfc.nasa.gov/SEhelp/uncertainty2004.html">Uncertainty
     in Delta T (ΔT)</a>.
@@ -843,7 +845,7 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     The relationship between POSIX time (that is, <abbr>UTC</abbr> but
     ignoring <a href="https://en.wikipedia.org/wiki/Leap_second">leap
     seconds</a>) and <abbr>UTC</abbr> is not agreed upon.
-    This affects time stamps during the leap second era (1972&ndash;2035).
+    This affects time stamps during the leap second era (1972–2035).
     Although the POSIX
     clock officially stops during an inserted leap second, at least one
     proposed standard has it jumping back a second instead; and in
@@ -862,12 +864,12 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
 
 <p>
 In short, many, perhaps most, of the <code><abbr>tz</abbr></code>
-database's pre-1970 and future timestamps are either wrong or
+database’s pre-1970 and future timestamps are either wrong or
 misleading.
 Any attempt to pass the
 <code><abbr>tz</abbr></code> database off as the definition of time
 should be unacceptable to anybody who cares about the facts.
-In particular, the <code><abbr>tz</abbr></code> database's
+In particular, the <code><abbr>tz</abbr></code> database’s
 <abbr>LMT</abbr> offsets should not be considered meaningful, and
 should not prompt creation of timezones
 merely because two locations
@@ -886,7 +888,7 @@ Code compatible with this package is already
 primary use of this package is to update obsolete time-related files.
 To do this, you may need to compile the time zone compiler
 <code>zic</code> supplied with this package instead of using the
-system <code>zic</code>, since the format of <code>zic</code>'s
+system <code>zic</code>, since the format of <code>zic</code>’s
 input is occasionally extended, and a platform may still be shipping
 an older <code>zic</code>.
 </p>
@@ -914,7 +916,8 @@ environment variable <code>TZ</code>, which can have two forms:
 
 <h3 id="POSIX.1-2017">POSIX.1-2017 properties and limitations</h3>
 <p>
-Some platforms support only the features required by POSIX.1-2017,
+Some platforms support only the features required by POSIX.1-2017
+and earlier editions,
 and have not yet upgraded to POSIX.1-2024.
 Code intended to be portable to these platforms must deal
 with problems that were fixed in later POSIX editions.
@@ -956,14 +959,14 @@ with problems that were fixed in later POSIX editions.
 	are 3 or more characters specifying the standard
 	and daylight saving time (<abbr>DST</abbr>) zone abbreviations.
 	Starting with POSIX.1-2001, <var>std</var> and <var>dst</var>
-	may also be in a quoted form like '<code>&lt;+09&gt;</code>';
+	may also be quoted in angle brackets, like <code>&lt;+09&gt;</code>;
 	this allows "<code>+</code>" and "<code>-</code>" in the names.
       </dd>
       <dt><var>offset</var></dt><dd>
 	is of the form
-	'<code>[&plusmn;]<var>hh</var>:[<var>mm</var>[:<var>ss</var>]]</code>'
+	<code>[±]<var>hh</var>:[<var>mm</var>[:<var>ss</var>]]</code>
 	and specifies the offset west of <abbr>UT</abbr>.
-	'<var>hh</var>' may be a single digit;
+	<var>hh</var> may be a single digit;
 	0&le;<var>hh</var>&le;24.
 	The default <abbr>DST</abbr> offset is one hour ahead of
 	standard time.
@@ -976,10 +979,10 @@ with problems that were fixed in later POSIX editions.
       </dd>
       <dt><var>time</var></dt><dd>
 	takes the form
-	'<var>hh</var><code>:</code>[<var>mm</var>[<code>:</code><var>ss</var>]]'
+	<var>hh</var><code>:</code>[<var>mm</var>[<code>:</code><var>ss</var>]]
 	and defaults to 02:00.
 	This is the same format as the offset, except that a
-	leading '<code>+</code>' or '<code>-</code>' is not allowed.
+	leading "<code>+</code>" or "<code>-</code>" is not allowed.
       </dd>
       <dt><var>date</var></dt><dd>
 	takes one of the following forms:
@@ -996,7 +999,7 @@ with problems that were fixed in later POSIX editions.
 	    for the <var>d</var>th day of week <var>n</var> of
 	    month <var>m</var> of the year, where week 1 is the first
 	    week in which day <var>d</var> appears, and
-	    '<code>5</code>' stands for the last week in which
+	    "<code>5</code>" stands for the last week in which
 	    day <var>d</var> appears (which may be either the 4th or
 	    5th week).
 	    Typically, this is the only useful form; the <var>n</var>
@@ -1011,8 +1014,8 @@ with problems that were fixed in later POSIX editions.
     Zealand after 2007.
     It says that standard time (<abbr>NZST</abbr>) is 12 hours ahead
     of <abbr>UT</abbr>, and that daylight saving time
-    (<abbr>NZDT</abbr>) is observed from September's last Sunday at
-    02:00 until April's first Sunday at 03:00:
+    (<abbr>NZDT</abbr>) is observed from September’s last Sunday at
+    02:00 until April’s first Sunday at 03:00:
     </p>
 
     <pre><code>TZ='NZST-12NZDT,M9.5.0,M4.1.0/3'</code></pre>
@@ -1048,11 +1051,11 @@ POSIX.1-2024 extends POSIX.1-2017 in the following significant ways:
     Earlier POSIX editions lack this requirement.
   </li>
   <li>
-    DST transition times can range from &minus;167:59:59
+    DST transition times can range from −167:59:59
     to 167:59:59 instead of merely from 00:00:00 to 24:59:59.
     This allows for proleptic TZ strings
     like <code>"&lt;-02&gt;2&lt;-01&gt;,M3.5.0/-1,M10.5.0/0"</code>
-    where the transition time &minus;1:00 means 23:00 the previous day.
+    where the transition time −1:00 means 23:00 the previous day.
   </li>
 </ul>
 <p>
@@ -1065,14 +1068,14 @@ However POSIX.1-2024, like earlier POSIX editions, has some limitations:
   </li>
   <li>
     In POSIX, there is no tamper-proof way for a process to learn the
-    system's best idea of local (wall clock) time.
+    system’s best idea of local (wall clock) time.
     This is important for applications that an administrator wants
-    used only at certain times &ndash; without regard to whether the
+    used only at certain times – without regard to whether the
     user has fiddled the
     <code>TZ</code> environment variable.
-    While an administrator can "do everything in <abbr>UT</abbr>" to
+    While an administrator can “do everything in <abbr>UT</abbr>” to
     get around the problem, doing so is inconvenient and precludes
-    handling daylight saving time shifts &ndash; as might be required to
+    handling daylight saving time shifts – as might be required to
     limit phone calls to off-peak hours.
   </li>
   <li>
@@ -1081,8 +1084,7 @@ However POSIX.1-2024, like earlier POSIX editions, has some limitations:
   </li>
   <li>
     POSIX does not define the <abbr>DST</abbr> transitions
-    for <code>TZ</code> values like
-    "<code>EST5EDT</code>".
+    for settings like <code>TZ='EST5EDT'</code>.
     Traditionally the current <abbr>US</abbr> <abbr>DST</abbr> rules
     were used to interpret such values, but this meant that the
     <abbr>US</abbr> <abbr>DST</abbr> rules were compiled into each
@@ -1124,9 +1126,9 @@ However POSIX.1-2024, like earlier POSIX editions, has some limitations:
     If the <code>TZ</code> environment variable uses the geographical format,
     it is used in generating
     the name of a file from which time-related information is read.
-    The file's format is <dfn><abbr>TZif</abbr></dfn>,
+    The file’s format is <dfn><abbr>TZif</abbr></dfn>,
     a timezone information format that contains binary data; see
-    <a href="https://www.rfc-editor.org/rfc/9636">Internet
+    <a href="https://www.rfc-editor.org/rfc/rfc9636">Internet
     <abbr>RFC</abbr> 9636</a>.
     The daylight saving time rules to be used for a
     particular timezone are encoded in the
@@ -1138,18 +1140,18 @@ However POSIX.1-2024, like earlier POSIX editions, has some limitations:
     <p>
     When the <code><abbr>tz</abbr></code> code was developed in the 1980s,
     it was recognized that allowing the <code>TZ</code> environment
-    variable to take on values such as '<code>America/New_York</code>'
-    might cause "old" programs (that expect <code>TZ</code> to have a
+    variable to take on values such as <code>America/New_York</code>
+    might cause old programs (that expect <code>TZ</code> to have a
     certain format) to operate incorrectly; consideration was given to using
     some other environment variable (for example, <code>TIMEZONE</code>)
-    to hold the string used to generate the <abbr>TZif</abbr> file's name.
+    to hold the string used to generate the <abbr>TZif</abbr> file’s name.
     In the end, however, it was decided to continue using
     <code>TZ</code>: it is widely used for time zone purposes;
     separately maintaining both <code>TZ</code>
     and <code>TIMEZONE</code> seemed a nuisance; and systems where
-    "new" forms of <code>TZ</code> might cause problems can simply
-    use legacy <code>TZ</code> values such as "<code>EST5EDT</code>" which
-    can be used by "new" programs as well as by "old" programs that
+    new forms of <code>TZ</code> might cause problems can simply
+    use legacy settings such as <code>TZ='EST5EDT'</code> which
+    can be used by new programs as well as by old programs that
     assume pre-POSIX <code>TZ</code> values.
     </p>
   </li>
@@ -1192,20 +1194,20 @@ The vestigial <abbr>API</abbr>s are:
     The POSIX <code>tzname</code> variable does not suffice and is no
     longer needed.
     It is planned to be removed in a future edition of POSIX.
-    To get a timestamp's time zone abbreviation, consult
+    To get a timestamp’s time zone abbreviation, consult
     the <code>tm_zone</code> member if available; otherwise,
-    use <code>strftime</code>'s <code>"%Z"</code> conversion
+    use <code>strftime</code>’s <code>"%Z"</code> conversion
     specification.
   </li>
   <li>
     The POSIX <code>daylight</code> and <code>timezone</code>
     variables do not suffice and are no longer needed.
     They are planned to be removed in a future edition of POSIX.
-    To get a timestamp's <abbr>UT</abbr> offset, consult
+    To get a timestamp’s <abbr>UT</abbr> offset, consult
     the <code>tm_gmtoff</code> member if available; otherwise,
     subtract values returned by <code>localtime</code>
     and <code>gmtime</code> using the rules of the Gregorian calendar,
-    or use <code>strftime</code>'s <code>"%z"</code> conversion
+    or use <code>strftime</code>’s <code>"%z"</code> conversion
     specification if a string like <code>"+0900"</code> suffices.
   </li>
   <li>
@@ -1230,9 +1232,9 @@ The vestigial <abbr>API</abbr>s are:
   <li>
     The <a href="https://en.wikipedia.org/wiki/Version_7_Unix">7th Edition
     UNIX</a> <code>timezone</code> function is not present in this
-    package; it is impossible to reliably map <code>timezone</code>'s
-    arguments (a "minutes west of <abbr>GMT</abbr>" value and a
-    "daylight saving time in effect" flag) to a time zone
+    package; it is impossible to reliably map <code>timezone</code>’s
+    arguments (a “minutes west of <abbr>GMT</abbr>” value and a
+    “daylight saving time in effect” flag) to a time zone
     abbreviation, and we refuse to guess.
     Programs that in the past used the <code>timezone</code> function
     may now examine <code>localtime(&amp;clock)-&gt;tm_zone</code>
@@ -1262,7 +1264,7 @@ The vestigial <abbr>API</abbr>s are:
     The functions that are conditionally compiled
     if <code>STD_INSPIRED</code> is nonzero should, at this point, be
     looked on primarily as food for thought.
-    They are not in any sense "standard compatible" &ndash; some are
+    They are not in any sense “standard compatible” – some are
     not, in fact, specified in <em>any</em> standard.
     They do, however, represent responses of various authors to
     standardization proposals.
@@ -1293,11 +1295,11 @@ The <code><abbr>tz</abbr></code> code and data supply the following interfaces:
 <ul>
   <li>
     A set of timezone names as per
-      "<a href="#naming">Timezone identifiers</a>" above.
+      “<a href="#naming">Timezone identifiers</a>” above.
   </li>
   <li>
-    Library functions described in "<a href="#functions">Time and date
-      functions</a>" above.
+    Library functions described in “<a href="#functions">Time and date
+      functions</a>” above.
   </li>
   <li>
     The programs <code>tzselect</code>, <code>zdump</code>,
@@ -1319,7 +1321,7 @@ The <code><abbr>tz</abbr></code> code and data supply the following interfaces:
   </li>
   <li>
     The version number of the code and data, as the first line of
-    the text file '<code>version</code>' in each release.
+    the text file "<code>version</code>" in each release.
   </li>
 </ul>
 
@@ -1347,7 +1349,7 @@ For example, even though the <samp>Asia/Bangkok</samp> timezone
 currently includes Chang Mai, Hanoi, and Phnom Penh, this is not part
 of the stable interface and the timezone can split at any time.
 If a calendar application records a future event in some location other
-than Bangkok by putting "<samp>Asia/Bangkok</samp>" in the event's record,
+than Bangkok by putting <samp>Asia/Bangkok</samp> in the event’s record,
 the application should be robust in the presence of timezone splits
 between now and the future time.
 </p>
@@ -1381,7 +1383,7 @@ commonly used by
 <a href="https://www.ntp.org"><abbr title="Network Time Protocol">NTP</abbr></a>
 software that adjusts the kernel clock.
 However, kernel-clock twiddling approximates UTC only roughly,
-and systems needing more precise UTC can use this package's leap
+and systems needing more precise UTC can use this package’s leap
 second support directly.
 </p>
 
@@ -1391,8 +1393,8 @@ counts of seconds since the POSIX epoch normally include leap seconds,
 as opposed to POSIX <code>time_t</code> counts which exclude leap seconds.
 This modified timescale is converted to <abbr>UTC</abbr>
 at the same point that time zone and <abbr>DST</abbr>
-adjustments are applied &ndash;
-namely, at calls to <code>localtime</code> and analogous functions &ndash;
+adjustments are applied –
+namely, at calls to <code>localtime</code> and analogous functions –
 and the process is driven by leap second information
 stored in alternate versions of the <abbr>TZif</abbr> files.
 Because a leap second adjustment may be needed even
@@ -1402,7 +1404,7 @@ also need to consult a <abbr>TZif</abbr> file,
 conventionally named <samp><abbr>Etc/UTC</abbr></samp>
 (<samp><abbr>GMT</abbr></samp> in previous versions),
 to see whether leap second corrections are needed.
-To convert an application's <code>time_t</code> timestamps to or from
+To convert an application’s <code>time_t</code> timestamps to or from
 POSIX <code>time_t</code> timestamps (for use when, say,
 embedding or interpreting timestamps in portable
 <a href="https://en.wikipedia.org/wiki/Tar_(computing)"><code>tar</code></a>
@@ -1425,7 +1427,7 @@ So if you configure your kernel to count leap seconds, you should also
 discard <samp>zoneinfo</samp> and rename <samp>zoneinfo-leaps</samp>
 to <samp>zoneinfo</samp>.
 Alternatively, you can install just one set of <abbr>TZif</abbr> files
-in the first place; see the <code>REDO</code> variable in this package's
+in the first place; see the <code>REDO</code> variable in this package’s
 <a href="https://en.wikipedia.org/wiki/Makefile">makefile</a>.
 </p>
 </section>
@@ -1438,9 +1440,9 @@ but they indicate the sort of problems that we would run into if we
 extended the time zone database further into the past.
 An excellent resource in this area is Edward M. Reingold
 and Nachum Dershowitz, <cite><a
-href="https://www.cambridge.org/fr/academic/subjects/computer-science/computing-general-interest/calendrical-calculations-ultimate-edition-4th-edition">Calendrical
+href="https://www.cambridge.org/fr/universitypress/subjects/computer-science/computing-general-interest/calendrical-calculations-ultimate-edition-4th-edition">Calendrical
 Calculations: The Ultimate Edition</a></cite>, Cambridge University Press (2018).
-Other information and sources are given in the file '<code>calendars</code>'
+Other information and sources are given in the file "<code>calendars</code>"
 in the <code><abbr>tz</abbr></code> distribution.
 They sometimes disagree.
 </p>
@@ -1450,20 +1452,20 @@ They sometimes disagree.
   <h2 id="planets">Time and time zones off Earth</h2>
 <p>
 The European Space Agency is <a
-href='https://www.esa.int/Applications/Navigation/Telling_time_on_the_Moon'>considering</a>
+href="https://www.esa.int/Applications/Satellite_navigation/Telling_time_on_the_Moon">considering</a>
 the establishment of a reference timescale for the Moon, which has
 days roughly equivalent to 29.5 Earth days, and where relativistic
 effects cause clocks to tick slightly faster than on Earth.
 Also, <abbr title="National Aeronautics and Space Administration">NASA</abbr>
 has been <a
-href='https://www.whitehouse.gov/wp-content/uploads/2024/04/Celestial-Time-Standardization-Policy.pdf'>ordered</a>
+href="https://bidenwhitehouse.archives.gov/wp-content/uploads/2024/04/Celestial-Time-Standardization-Policy.pdf">ordered</a>
 to consider the establishment of Coordinated Lunar Time (<abbr>LTC</abbr>).
 It is not yet known whether the US and European efforts will result in
 multiple timescales on the Moon.
 </p>
 
 <p>
-Some people's work schedules have used
+Some people’s work schedules have used
 <a href="https://en.wikipedia.org/wiki/Timekeeping_on_Mars">Mars time</a>.
 Jet Propulsion Laboratory (JPL) coordinators kept Mars time on
 and off during the
@@ -1473,7 +1475,7 @@ Some of their family members also adapted to Mars time.
 Dozens of special Mars watches were built for JPL workers who kept
 Mars time during the
 <a href="https://en.wikipedia.org/wiki/Mars_Exploration_Rover">Mars
-Exploration Rovers (MER)</a> mission (2004&ndash;2018).
+Exploration Rovers (MER)</a> mission (2004–2018).
 These timepieces looked like normal Seikos and Citizens but were adjusted
 to use Mars seconds rather than terrestrial seconds, although
 unfortunately the adjusted watches were unreliable and appear to have
@@ -1481,12 +1483,12 @@ had only limited use.
 </p>
 
 <p>
-A Mars solar day is called a "sol" and has a mean period equal to
+A Mars solar day is called a “sol” and has a mean period equal to
 about 24 hours 39 minutes 35.244 seconds in terrestrial time.
 It is divided into a conventional 24-hour clock, so each Mars second
 equals about 1.02749125 terrestrial seconds.
-(One MER worker noted, "If I am working Mars hours, and Mars hours are
-2.5% more than Earth hours, shouldn't I get an extra 2.5% pay raise?")
+(One MER worker noted, “If I am working Mars hours, and Mars hours are
+2.5% more than Earth hours, shouldn’t I get an extra 2.5% pay raise?”)
 </p>
 
 <p>
@@ -1494,7 +1496,7 @@ The <a href="https://en.wikipedia.org/wiki/Prime_meridian">prime
 meridian</a> of Mars goes through the center of the crater
 <a href="https://en.wikipedia.org/wiki/Airy-0">Airy-0</a>, named in
 honor of the British astronomer who built the Greenwich telescope that
-defines Earth's prime meridian.
+defines Earth’s prime meridian.
 Mean solar time on the Mars prime meridian is
 called Mars Coordinated Time (<abbr>MTC</abbr>).
 </p>
@@ -1502,13 +1504,13 @@ called Mars Coordinated Time (<abbr>MTC</abbr>).
 <p>
 Each landed mission on Mars has adopted a different reference for
 solar timekeeping, so there is no real standard for Mars time zones.
-For example, the MER mission defined two time zones "Local
-Solar Time A" and "Local Solar Time B" for its two missions, each zone
+For example, the MER mission defined two time zones “Local
+Solar Time A” and “Local Solar Time B” for its two missions, each zone
 designed so that its time equals local true solar time at
 approximately the middle of the nominal mission.
 The A and B zones differ enough so that an MER worker assigned to
-the A zone might suffer "Mars lag" when switching to work in the B zone.
-Such a "time zone" is not particularly suited for any application
+the A zone might suffer “Mars lag” when switching to work in the B zone.
+Such a “time zone” is not particularly suited for any application
 other than the mission itself.
 </p>
 
@@ -1522,13 +1524,13 @@ sequential count of Mars solar days elapsed since about 1873-12-29
 
 <p>
 In our solar system, Mars is the planet with time and calendar most
-like Earth's.
+like Earth’s.
 On other planets, Sun-based time and calendars would work quite
 differently.
-For example, although Mercury's
+For example, although Mercury’s
 <a href="https://en.wikipedia.org/wiki/Rotation_period">sidereal
 rotation period</a> is 58.646 Earth days, Mercury revolves around the
-Sun so rapidly that an observer on Mercury's equator would see a
+Sun so rapidly that an observer on Mercury’s equator would see a
 sunrise only every 175.97 Earth days, i.e., a Mercury year is 0.5 of a
 Mercury day.
 Venus is more complicated, partly because its rotation is slightly
@@ -1554,8 +1556,8 @@ Sources for time on other planets:
 <ul>
   <li>
     Michael Allison and Robert Schmunk,
-    "<a href="https://www.giss.nasa.gov/tools/mars24/help/notes.html">Technical
-      Notes on Mars Solar Time as Adopted by the Mars24 Sunclock</a>"
+    “<a href="https://www.giss.nasa.gov/tools/mars24/help/notes.html">Technical
+      Notes on Mars Solar Time as Adopted by the Mars24 Sunclock</a>”
     (2020-03-08).
   </li>
   <li>
@@ -1565,28 +1567,33 @@ Sources for time on other planets:
   </li>
   <li>
     Jia-Rui Chong,
-    "<a href="https://www.latimes.com/archives/la-xpm-2004-jan-14-sci-marstime14-story.html">Workdays
-    Fit for a Martian</a>", <cite>Los Angeles Times</cite>
-    (2004-01-14), pp A1, A20&ndash;A21.
+    “<a href="https://www.latimes.com/archives/la-xpm-2004-jan-14-sci-marstime14-story.html">Workdays
+    Fit for a Martian</a>”, <cite>Los Angeles Times</cite>
+    (2004-01-14), pp A1, A20–A21.
   </li>
   <li>
     Tom Chmielewski,
-    "<a href="https://www.theatlantic.com/technology/archive/2015/02/jet-lag-is-worse-on-mars/386033/">Jet
-    Lag Is Worse on Mars</a>", <cite>The Atlantic</cite> (2015-02-26)
+    “<a href="https://www.theatlantic.com/technology/archive/2015/02/jet-lag-is-worse-on-mars/386033/">Jet
+    Lag Is Worse on Mars</a>”, <cite>The Atlantic</cite> (2015-02-26)
   </li>
   <li>
     Matt Williams,
-    "<a href="https://www.universetoday.com/37481/days-of-the-planets/">How
-    long is a day on the other planets of the solar system?</a>"
+    “<a href="https://www.universetoday.com/articles/days-of-the-planets">How
+    long is a day on the other planets of the solar system?</a>”
     (2016-01-20).
   </li>
 </ul>
 </section>
 
 <footer>
-  <hr>
-  This file is in the public domain, so clarified as of 2009-05-17 by
-  Arthur David Olson.
+<hr>
+This web page is in the public domain, so clarified as of
+2009-05-17 by Arthur David Olson.
+<br>
+Please send corrections to this web page to the
+<a href="mailto:tz@iana.org">time zone mailing list</a>.
+The mailing list and its archives are public,
+so please do not send confidential information.
 </footer>
 </body>
 </html>

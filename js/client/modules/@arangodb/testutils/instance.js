@@ -1626,7 +1626,15 @@ class instance {
     return reply.parsedBody === true;
   }
 
-  checkDebugTerminated(waitForExit) {
+  removeCoredump() {
+    if (crashUtils.locateCoreDump(this.options, this) && fs.exists(this.options.coreDirectory)) {
+      print(`${Date()} ${this.name}: deleting coredump for PID ${this.pid} ${this.options.coreDirectory}`);
+      fs.remove(this.options.coreDirectory);
+    } else {
+      print(`${Date()} ${this.name}: no coredump for PID ${this.pid} found`);
+    }
+  }
+  checkDebugTerminated(waitForExit, signal_to_expect) {
     let res = statusExternal(this.pid, waitForExit);
     if (res.status === 'NOT-FOUND') {
       print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
@@ -1637,46 +1645,59 @@ class instance {
     if (!running) {
       // the test may have abortet by itself already, using SIG_ARBRT or SIG_KILL.
       this.exitStatus = res;
-      this.pid = null;
-      if (res.hasOwnProperty('signal') &&
-          (res.signal !== 6)&&(res.signal !== 9)) {
-        throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+      if (res.hasOwnProperty('signal')) {
+        if (signal_to_expect !== undefined) {
+          if (res.signal !== signal_to_expect) {
+            this.pid = null;
+            throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)} !== ${signal_to_expect}`);
+          }
+          if (signal_to_expect === 11) {
+            this.removeCoredump();
+          }
+          this.pid = null;
+          return true;
+        } else if ((res.signal !== 6) && (res.signal !== 9)) {
+          this.pid = null;
+          throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+        }
       }
+      this.pid = null;
       return true;
     }
     return false;
   }
-  debugTerminate(msg) {
+  debugTerminate(msg, signal_to_expect) {
     if (this.pid === null) {
       return;
     }
-    if (!this.checkDebugTerminated(false)){
+    if (!this.checkDebugTerminated(false, signal_to_expect)){
       let reply;
       try {
         this.connect();
         const body = {
           message: msg
         };
+        arango.timeout(this.options.httpTimeout / 4);
         reply = arango.PUT_RAW('/_admin/debug/crash', body);
       } catch(ex) {
         if (ex instanceof ArangoError && (
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
             (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
-          print(`Terminated instance ${this.name} - ${ex}`);
-          return this.checkDebugTerminated(true);
+          print(`Terminated instance ${this.name} - ${ex.message} ${signal_to_expect}`);
+          return this.checkDebugTerminated(true, signal_to_expect);
         }
-        throw new Error(`Failed to crash ${this.name}: ${ex}`);
+        throw new Error(`Failed to crash ${this.name}: ${ex.message}`);
       }
       if (reply.code !== 200) {
         if (reply === undefined) {
           reply = { parsedBody: "thrown during connect"};
         }
-        throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
+        throw new Error(`Failed to crash ${this.name}: ${JSON.stringify(reply)}`);
       }
     }
     let count = 0;
     while (count < 10) {
-      if (this.checkDebugTerminated(false)) {
+      if (this.checkDebugTerminated(false, signal_to_expect)) {
         return;
       }
       count += 1;

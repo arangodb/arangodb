@@ -266,31 +266,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief the bad has happened, tell it the user and try to gather more
-// /        information about the incident.
-// //////////////////////////////////////////////////////////////////////////////
-function analyzeCrash (binary, instanceInfo, options, checkStr) {
-  if (instanceInfo.exitStatus.hasOwnProperty('gdbHint')) {
-    print(RESET);
-    return;
-  }
-  GDB_OUTPUT += `Analyzing crash of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
-  let message = 'during: ' + checkStr + ': Core dump written; ' +
-      /*
-        'copying ' + binary + ' to ' +
-        storeArangodPath + ' for later analysis.\n' +
-      */
-      'Process facts :\n' +
-      yaml.safeDump(instanceInfo.getStructure()) +
-      'marking build as crashy.';
-  pu.serverFailMessages = pu.serverFailMessages + '\n' + message;
-
-  if (!options.coreCheck) {
-    instanceInfo.exitStatus['gdbHint'] = message;
-    print(RESET);
-    return;
-  }
+function locateCoreDump(options, instanceInfo) {
   var cpf = '/proc/sys/kernel/core_pattern';
 
   if (fs.isFile(cpf)) {
@@ -319,34 +295,72 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       }
       return s;
     };
+    cp = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
     if (matchSystemdCoredump.exec(cp) !== null) {
-      options.coreDirectory = '/var/lib/systemd/coredump/*core*' + instanceInfo.pid + '*';
-    } else if (matchVarTmp.exec(cp) !== null) {
-      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
-    } else {
-      let found = false;
-      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
-      if (options.coreDirectory.search('/') < 0) {
-        let rx = new RegExp(cp.replace(/%[sdeEghiItu]/, '.*').replace(/%p/, instanceInfo.pid));
-        fs.list('.').forEach((file) => {
-          if (file.match(rx) != null) {
-            options.coreDirectory = file;
-            print(GREEN + `Found ${file} - starting analysis` + RESET);
-            found = true;
-          }
-        });
-      }
-      if (!found) {
-        if (instanceInfo.exitStatus.hasOwnProperty('signal') && instanceInfo.exitStatus.signal === killSignal) {
-          // SIG_KILL doesn't write coredumps 
-          GDB_OUTPUT += checkStr;
-        } else {
-          print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + '"' + RESET);
-          print(RED + 'Directory (' + fs.makeAbsolute('.') + '): ' + JSON.stringify(fs.list('.')));
-        }
-        return;
-      }
+      cp = '/var/lib/systemd/coredump/*core*' + instanceInfo.pid + '*';
     }
+    cp = cp.replaceAll("*", ".*");
+    let paths = cp.split(fs.pathSeparator);
+    let searchDir = ".";
+    if (paths.length > 1) {
+      searchDir = fs.join(...paths.slice(0, paths.length - 1));
+      if (cp[0] === fs.pathSeparator) {
+        searchDir = fs.pathSeparator + searchDir;
+      }
+      cp = paths[paths.length-1];
+    }
+    let rx = new RegExp(cp.replace(/%[sdeEghiItu]/, '.*').replace(/%p/, instanceInfo.pid));
+    let found = false;
+    fs.list(searchDir).forEach((file) => {
+      if (file.match(rx) != null) {
+        options.coreDirectory = fs.join(searchDir, file);
+        found = true;
+      }
+    });
+    return found;
+  }
+  return false;
+}
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief the bad has happened, tell it the user and try to gather more
+// /        information about the incident.
+// //////////////////////////////////////////////////////////////////////////////
+function analyzeCrash (binary, instanceInfo, options, checkStr) {
+  if (instanceInfo.exitStatus.hasOwnProperty('gdbHint')) {
+    print(RESET);
+    return;
+  }
+  GDB_OUTPUT += `Analyzing crash of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
+  let message = 'during: ' + checkStr + ': Core dump written; ' +
+      /*
+        'copying ' + binary + ' to ' +
+        storeArangodPath + ' for later analysis.\n' +
+      */
+      'Process facts :\n' +
+      yaml.safeDump(instanceInfo.getStructure()) +
+      'marking build as crashy.';
+  pu.serverFailMessages = pu.serverFailMessages + '\n' + message;
+
+  if (!options.coreCheck) {
+    instanceInfo.exitStatus['gdbHint'] = message;
+    print(RESET);
+    return;
+  }
+
+  if (!locateCoreDump(options, instanceInfo)) {
+    if (instanceInfo.exitStatus.hasOwnProperty('signal') && instanceInfo.exitStatus.signal === killSignal) {
+      // SIG_KILL doesn't write coredumps 
+      GDB_OUTPUT += checkStr;
+    } else {
+      var cpf = '/proc/sys/kernel/core_pattern';
+      var corePattern = fs.readBuffer(cpf);
+      var cp = corePattern.utf8Slice(0, corePattern.length).trim();
+      print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + '"' + RESET);
+      print(RED + 'Directory (' + fs.makeAbsolute('.') + '): ' + JSON.stringify(fs.list('.')));
+    }
+    return;
   }
 
   print(RED + message + RESET);
@@ -432,6 +446,7 @@ exports.readGdbFileFiltered = readGdbFileFiltered;
 exports.aggregateDebugger = aggregateDebugger;
 exports.generateCrashDump = generateCrashDump;
 exports.analyzeCrash = analyzeCrash;
+exports.locateCoreDump = locateCoreDump;
 Object.defineProperty(exports, 'GDB_OUTPUT', { get: () => GDB_OUTPUT, set: (value) => { GDB_OUTPUT = value; }});
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   const isSan = versionHas('asan') || versionHas('tsan');
