@@ -754,12 +754,15 @@ futures::Future<Result> RestIndexHandler::awaitAndRefreshVectorIndex(
     co_return res;
   }
 
-  // Update the trainingState field to reflect that the index is now ready.
+  // Update the trainingState field to reflect that the index is now ready
+  // and clear any errorMessage that was set while the index was still building.
   VPackBuilder patch;
-  patch.openObject();
-  patch.add(StaticStrings::IndexTrainingState,
-            VPackValue(StaticStrings::IndexTrainingStateReady));
-  patch.close();
+  {
+    VPackObjectBuilder guard(&patch);
+    patch.add(StaticStrings::IndexTrainingState,
+              VPackValue(StaticStrings::IndexTrainingStateReady));
+    patch.add(StaticStrings::ErrorMessage, VPackValue(""));
+  }
   response = VPackCollection::merge(response.slice(), patch.slice(), false);
 
   co_return Result{};
