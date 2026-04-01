@@ -46,7 +46,6 @@
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
@@ -525,15 +524,6 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
   std::lock_guard guard{_statisticsMutex};
   _statisticsMap.insert_or_assign(id, std::move(stat));
-}
-
-ConnectionStatistics::Item CommTask::acquireConnectionStatistics() {
-  ConnectionStatistics::Item stat;
-  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
-    // only acquire a new item if the statistics are enabled.
-    stat = ConnectionStatistics::acquire();
-  }
-  return stat;
 }
 
 RequestStatistics::Item const& CommTask::acquireRequestStatistics(uint64_t id) {

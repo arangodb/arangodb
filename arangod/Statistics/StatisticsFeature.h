@@ -55,7 +55,6 @@ extern std::initializer_list<double> const ConnectionTimeDistributionCuts;
 extern std::initializer_list<double> const RequestTimeDistributionCuts;
 
 extern Counter AsyncRequests;
-extern Counter HttpConnections;
 extern Counter TotalRequests;
 extern Counter TotalRequestsSuperuser;
 extern Counter TotalRequestsUser;
@@ -134,7 +133,6 @@ class StatisticsFeature final
   std::unique_ptr<Thread> _statisticsThread;
 
   metrics::Gauge<uint64_t>& _requestStatisticsMemoryUsage;
-  metrics::Gauge<uint64_t>& _connectionStatisticsMemoryUsage;
 };
 
 }  // namespace arangodb
