@@ -1,5 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* Removed the "path" attribute from the `GET /_api/database/current` endpoint
+  as well as the `db._path()` method from the JavaScript API.
+
 * COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
   `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
   `/_admin/wal/transactions`.

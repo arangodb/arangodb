@@ -124,7 +124,6 @@ Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
       }
       result.add(StaticStrings::DataSourceSystem,
                  VPackValue(NameValidator::isSystemName(name)));
-      result.add("path", VPackValue("none"));
     }
   } else {
     VPackObjectBuilder b(&result);
@@ -133,7 +132,6 @@ Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
                VPackValue(std::to_string(vocbase->id())));
     result.add(StaticStrings::DataSourceSystem,
                VPackValue(vocbase->isSystem()));
-    result.add("path", VPackValue(vocbase->path()));
   }
   return Result();
 }
