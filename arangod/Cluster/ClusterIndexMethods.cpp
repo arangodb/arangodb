@@ -1090,6 +1090,7 @@ Result ensureIndexCoordinatorInner(
         }
 
         if (found == static_cast<size_t>(numberOfShards)) {
+          errMsg->clear();
           dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
         }
 

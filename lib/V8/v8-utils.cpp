@@ -48,6 +48,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <filesystem>
 
 #include "unicode/normalizer2.h"
 
@@ -1663,6 +1664,8 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string abs = TRI_GetAbsolutePath(std::string(*name, name.length()), cwd);
 
+  std::string abs =
+      std::filesystem::absolute(std::string(*name, name.length()));
   v8::Handle<v8::String> res;
 
   if (!abs.empty()) {

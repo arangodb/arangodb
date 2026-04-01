@@ -31,6 +31,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <thread>
+#include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -107,12 +108,19 @@ void DaemonFeature::validateOptions(
   }
 
   // make the pid filename absolute
+<<<<<<< cor-371-replace-fileutils-implementations-with-std-filesystem-apis
   std::error_code ec;
   std::string currentDir = std::filesystem::current_path(ec).string();
   if (ec) {
     currentDir = ".";
   }
   std::string absoluteFile = TRI_GetAbsolutePath(_options.pidFile, currentDir);
+=======
+  std::string currentDir = FileUtils::currentDirectory().result();
+  std::string absoluteFile =
+      std::filesystem::absolute(std::filesystem::path(_options.pidFile))
+          .string();
+>>>>>>> devel
 
   if (!absoluteFile.empty()) {
     _options.pidFile = absoluteFile;
