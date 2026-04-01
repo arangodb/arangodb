@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
+  `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
+  `/_admin/wal/transactions`.
 
 * Updated ArangoDB Starter to v0.20.0-preview-6.
 
@@ -12,7 +15,6 @@
 
 * COR-353: Removed deprecated JS index creation functions `ensureUniqueConstraint()`,
   `ensureGeoIndex()`, and `ensureGeoConstraint()` from collection objects.
-
 * COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
 
 * Removed leftover range() method from collection objects in JavaScript API
