@@ -26,7 +26,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"

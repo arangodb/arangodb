@@ -27,7 +27,7 @@
 #include <type_traits>
 
 #include "RocksDBIndex.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "Transaction/Methods.h"
@@ -38,11 +38,6 @@
 #include "Aql/QueryContext.h"
 #include "Aql/RegisterId.h"
 #include "Aql/Variable.h"
-#include "Indexes/VectorIndexDefinition.h"
-#include "RocksDBEngine/RocksDBIndex.h"
-#include "Transaction/Methods.h"
-#include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
 
 #include <faiss/IndexIVF.h>
 #include <rocksdb/iterator.h>

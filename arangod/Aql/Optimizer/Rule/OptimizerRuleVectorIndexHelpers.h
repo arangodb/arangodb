@@ -25,7 +25,7 @@
 
 #include "Assertions/Assert.h"
 #include "Indexes/Index.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 
 #include <memory>
 #include <string_view>

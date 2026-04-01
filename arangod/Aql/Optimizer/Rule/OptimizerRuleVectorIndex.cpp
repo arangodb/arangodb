@@ -45,7 +45,7 @@
 #include "Assertions/Assert.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Basics/ResourceUsage.h"
