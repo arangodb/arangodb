@@ -36,7 +36,7 @@ class ApplicationServer;
 struct RequestTimingData {
   using clock = std::chrono::steady_clock;
   using time_point = std::chrono::time_point<clock>;
-  
+
   time_point readStart{};
   time_point readEnd{};
   time_point queueStart{};
