@@ -221,9 +221,9 @@ function recovery_server (options) {
       let stateFile = fs.getTempFile();
       let exitSuccessOk = test.indexOf('-exitzero') >= 0;
       let exitFailOk = test.indexOf('-exitone') >= 0;
-      SetGlobalExecutionDeadlineTo(options.oneTestTimeout / 4);
 
       while (true) {
+        SetGlobalExecutionDeadlineTo(options.oneTestTimeout / 4);
         ++iteration;
         print(BLUE + "running setup #" + iteration + " of test " + count + " - " + test + RESET);
         let params = {
