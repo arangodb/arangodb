@@ -25,6 +25,7 @@
 namespace arangodb {
 
 struct StatisticsFeatureOptions {
+  bool statistics = true;
   bool statisticsHistory = true;
   bool statisticsAllDatabases = true;
 };

@@ -95,7 +95,7 @@ template<SocketType T>
 
   int32_t const sid = frame->hd.stream_id;
   auto& td = me->acquireTimingData(sid);
-  if (td.readStart == RequestTimingData::time_point{}) {
+  if (td.active && td.readStart == RequestTimingData::time_point{}) {
     td.readStart = RequestTimingData::now();
   }
   auto req =
@@ -225,7 +225,9 @@ template<SocketType T>
       auto* h2Response = dynamic_cast<H2Response*>(strm.response.get());
       if (h2Response != nullptr) {
         auto& td = h2Response->timingData;
-        td.writeEnd = RequestTimingData::now();
+        if (td.active) {
+          td.writeEnd = RequestTimingData::now();
+        }
         me->finalizeTimingData(h2Response->timingData);
       }
     }
@@ -642,10 +644,12 @@ void H2CommTask<T>::processRequest(Stream& stream,
   stream.origin = req->header(StaticStrings::Origin);
   auto messageId = req->messageId();
   auto& td = this->timingData(messageId);
-  td.requestType = req->requestType();
-  td.receivedBytes += stream.headerBuffSize + req->body().size();
-  td.readEnd = RequestTimingData::now();
-  td.writeStart = RequestTimingData::now();
+  if (td.active) {
+    td.requestType = req->requestType();
+    td.receivedBytes += stream.headerBuffSize + req->body().size();
+    td.readEnd = RequestTimingData::now();
+    td.writeStart = RequestTimingData::now();
+  }
 
   // OPTIONS requests currently go unauthenticated
   if (req->requestType() == rest::RequestType::OPTIONS) {
@@ -660,7 +664,9 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
   // We want to separate superuser token traffic:
   if (req->authenticated() && req->user().empty()) {
-    td.superuser = true;
+    if (td.active) {
+      td.superuser = true;
+    }
   }
 
   // first check whether we allow the request to continue
@@ -914,7 +920,9 @@ void H2CommTask<T>::queueHttp2Responses() {
     // try if upcasting works, and only if so, treat it as HTTP/2.
     auto* h2Response = dynamic_cast<H2Response*>(&res);
     if (h2Response != nullptr) {
-      h2Response->timingData.sentBytes += res.bodySize();
+      if (h2Response->timingData.active) {
+        h2Response->timingData.sentBytes += res.bodySize();
+      }
     }
 
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
