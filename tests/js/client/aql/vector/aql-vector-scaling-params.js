@@ -39,6 +39,15 @@ const idxName = "vector_scaling_test";
 const dimension = 128;
 const insertedDocsCount = 100;
 
+function assertVectorIndexUsable(queryPoint, limit = 5) {
+    const query = `FOR d IN ${collName}
+        SORT APPROX_NEAR_L2(d.vector, @qp)
+        LIMIT @limit
+        RETURN d`;
+    const result = db._query(query, { qp: queryPoint, limit }).toArray();
+    assertEqual(limit, result.length);
+}
+
 function VectorIndexScalingTestSuite() {
     let collection;
     let randomPoint;
@@ -141,13 +150,30 @@ function VectorIndexScalingTestSuite() {
             assertEqual(50, idx.params.nLists.tiers[0].threshold);
             assertEqual(2, idx.params.nLists.tiers[0].fixedValue);
 
-            // Verify the index is usable with a query
-            const query = `FOR d IN ${collName}
-                SORT APPROX_NEAR_L2(d.vector, @qp)
-                LIMIT 5
-                RETURN d`;
-            const result = db._query(query, { qp: randomPoint }).toArray();
-            assertEqual(5, result.length);
+            assertVectorIndexUsable(randomPoint);
+        },
+
+        testMinNListsValue: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual(15, idx.params.nLists.minNLists);
+
+            assertVectorIndexUsable(randomPoint);
         },
 
         testInvalidMinNListsFails: function() {
