@@ -93,8 +93,8 @@ inline auto inspect(Inspector& f, NListsStrategy& x) {
 /// @brief A single tier in the NLists scaling specification.
 /// If the document count N >= threshold, use fixedValue for nLists.
 struct NListsTier {
-  std::int64_t threshold{0};
-  std::int64_t fixedValue{1};
+  std::int64_t threshold;
+  std::int64_t fixedValue;
 
   bool operator==(NListsTier const&) const noexcept = default;
 
@@ -121,7 +121,6 @@ struct NListsTier {
 /// @brief Tiered NLists scaling specification.
 /// For small N: nLists = max(minNLists, multiplier * func(N)), N < 1M
 /// For large N: uses fixed values from tiers (first tier whose threshold <= N).
-/// Tiers should be provided in descending order of threshold.
 /// Values have been taken from autofaiss
 /// {
 ///     strategy: "autoSqrt",
@@ -142,12 +141,11 @@ struct NListsScalingSpec {
   NListsStrategy strategy{NListsStrategy::kAutoSqrt};
   std::int64_t multiplier{4};
   std::int64_t minNLists{2};
-  std::vector<NListsTier> tiers{
-      {1000000, 16384}, {10000000, 65536}, {300000000, 131072}};
+  std::vector<NListsTier> tiers;
 
   bool operator==(NListsScalingSpec const&) const noexcept = default;
 
-  std::int64_t compute(std::int64_t docCount) const {
+  std::int64_t compute(std::int64_t const docCount) const {
     auto sortedTiers = tiers;
     std::sort(
         sortedTiers.begin(), sortedTiers.end(),
@@ -170,7 +168,7 @@ struct NListsScalingSpec {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, NListsScalingSpec& x) {
     return f.object(x).fields(
-        f.field("strategy", x.strategy).fallback(NListsStrategy::kAutoSqrt),
+        f.field("strategy", x.strategy),
         f.field("multiplier", x.multiplier)
             .invariant([](auto value) -> inspection::Status {
               if (value < 1) {
@@ -185,12 +183,13 @@ struct NListsScalingSpec {
               }
               return inspection::Status::Success{};
             }),
-        f.field("tiers", x.tiers));
+        f.field("tiers", x.tiers)
+            .fallback(std::vector<NListsTier>{
+                {1000000, 16384}, {10000000, 65536}, {300000000, 131072}}));
   }
 };
 
 /// @brief NLists parameter: either a fixed integer or a tiered scaling spec.
-/// JSON: 100  OR  { "multiplier": 8, "minNLists": 10, "tiers": [...] }
 using NListsParameter = std::variant<std::int64_t, NListsScalingSpec>;
 
 template<class Inspector>
@@ -247,9 +246,13 @@ struct UserVectorIndexDefinition {
             }),
         f.field("metric", x.metric),
         f.field("nLists", x.nLists)
-            .fallback(NListsParameter{NListsScalingSpec{}})
-            .invariant([](auto const& value) -> inspection::Status {
-              if (auto* fixed = std::get_if<std::int64_t>(&value)) {
+            .fallback(NListsParameter{NListsScalingSpec{
+                NListsStrategy::kAutoSqrt,
+                4,
+                2,
+                {{1000000, 16384}, {10000000, 65536}, {300000000, 131072}}}})
+            .invariant([](NListsParameter const& value) -> inspection::Status {
+              if (auto const* fixed = std::get_if<std::int64_t>(&value)) {
                 if (*fixed < 1) {
                   return {"nLists must be 1 or greater!"};
                 }
