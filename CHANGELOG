@@ -1,6 +1,11 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Fixed a bug that prevented the `GET /_api/database/current` endpoint and
+  `db._path()` from returning the actual database directory `path` for
+  DB-Servers and single servers. They returned `"none"`, which is only expected
+  from Coordinators that generally don't store data.
+
 * Updated ArangoDB Starter to v0.19.19.
 
 * Create coredumps with correct CPU context.
