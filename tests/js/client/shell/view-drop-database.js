@@ -29,12 +29,13 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const internal = require("internal");
 const fs = require("fs");
+const IM  = global.instanceManager;
 const db = arangodb.db;
 const isCluster = internal.isCluster();
 const isServer = require('@arangodb').isServer;
 
 function DropDatabase() {
-  let path = fs.join(db._path(), 'databases');
+  let path = fs.join(IM.arangods[0].dataDir, 'databases');
   let was = 0;
 
   function dirmaker(n, needDrop) {
