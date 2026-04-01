@@ -1108,15 +1108,8 @@ void V8ShellFeature::initGlobals() {
   }
 
   if (_currentModuleDirectory) {
-    std::error_code cwdEc;
-    std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
-    if (cwdEc) {
-      throw std::filesystem::filesystem_error(
-          "cannot get current working directory", std::filesystem::path(),
-          cwdEc);
-    }
-    std::string const cwd = cwdPath.string();
-    modules += sep + cwd;
+    auto const cwd = std::filesystem::current_path();
+    modules += sep + cwd.string();
     v8security.addToInternalAllowList(cwd, FSAccessType::READ);
   }
 

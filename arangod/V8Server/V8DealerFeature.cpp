@@ -670,8 +670,8 @@ void V8DealerFeature::copyInstallationFiles() {
         FATAL_ERROR_EXIT();
       }
     }
-    auto ec = std::error_code{};
-    if (!std::filesystem::create_directory(copyJSPath, ec)) {
+    if (auto ec = std::error_code{};
+        !std::filesystem::create_directory(copyJSPath, ec)) {
       LOG_TOPIC("b8c79", FATAL, Logger::V8)
           << "Error creating JS installation path '" << copyJSPath
           << "': " << ec.message();

@@ -4566,13 +4566,7 @@ static void JS_ExecuteExternal(
     }
   }
 
-  std::error_code cwdEc;
-  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
-  if (cwdEc) {
-    throw std::filesystem::filesystem_error(
-        "cannot get current working directory", std::filesystem::path(), cwdEc);
-  }
-  std::string const workingDirectory = cwdPath.string();
+  auto const workingDirectory = std::filesystem::current_path();
   std::string subProcessWorkingDirectory = workingDirectory;
 
   if (5 <= args.Length()) {
@@ -4849,13 +4843,7 @@ static void JS_ExecuteExternalAndWait(
     }
   }
 
-  std::error_code cwdEc;
-  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
-  if (cwdEc) {
-    throw std::filesystem::filesystem_error(
-        "cannot get current working directory", std::filesystem::path(), cwdEc);
-  }
-  std::string const workingDirectory = cwdPath.string();
+  auto const workingDirectory = std::filesystem::current_path();
   std::string subProcessWorkingDirectory = workingDirectory;
 
   if (6 <= args.Length()) {

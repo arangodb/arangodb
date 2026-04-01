@@ -224,13 +224,7 @@ void TemporaryStorageFeature::validateOptions(
   _options.basePath = basics::StringUtils::replace(
       _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
 
-  std::error_code cwdEc;
-  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
-  if (cwdEc) {
-    throw std::filesystem::filesystem_error(
-        "cannot get current working directory", std::filesystem::path(), cwdEc);
-  }
-  std::string currentDir(cwdPath.string());
+  auto const currentDir = std::filesystem::current_path();
 
   // get regular database path
   std::string dbPath = normalizePath(

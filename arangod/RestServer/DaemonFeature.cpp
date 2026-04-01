@@ -108,12 +108,7 @@ void DaemonFeature::validateOptions(
   }
 
   // make the pid filename absolute
-  std::error_code ec;
-  std::string currentDir = std::filesystem::current_path(ec).string();
-  if (ec) {
-    throw std::filesystem::filesystem_error(
-        "cannot get current working directory", std::filesystem::path(), ec);
-  }
+
   std::string absoluteFile =
       std::filesystem::absolute(std::filesystem::path(_options.pidFile))
           .string();
@@ -298,14 +293,12 @@ int DaemonFeature::forkProcess() {
 
   // store current working directory
   std::error_code cwdEc;
-  std::string cwd = std::filesystem::current_path(cwdEc).string();
+  _current = std::filesystem::current_path(cwdEc).string();
   if (cwdEc) {
     LOG_TOPIC("a681c", FATAL, arangodb::Logger::FIXME)
         << "cannot get current directory: " << cwdEc.message();
     FATAL_ERROR_EXIT();
   }
-
-  _current = cwd;
 
   // change the current working directory
   if (!_options.workingDirectory.empty()) {

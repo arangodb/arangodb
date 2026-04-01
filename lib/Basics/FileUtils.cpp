@@ -578,15 +578,7 @@ std::string configDirectory(char const* binaryPath) {
   std::string dir = TRI_LocateConfigDirectory(binaryPath);
 
   if (dir.empty()) {
-    std::error_code ec;
-    std::filesystem::path const cwd = std::filesystem::current_path(ec);
-    if (ec) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_set_errno(TRI_ERROR_SYS_ERROR),
-          StringUtils::concatT("cannot get current working directory: ",
-                               ec.message()));
-    }
-    return (cwd.string());
+    return std::filesystem::current_path();
   }
 
   return dir;
@@ -595,14 +587,7 @@ std::string configDirectory(char const* binaryPath) {
 std::string dirname(std::string const& name) { return TRI_Dirname(name); }
 
 void makePathAbsolute(std::string& path) {
-  std::error_code cwdEc;
-  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
-  if (cwdEc) {
-    throw std::filesystem::filesystem_error(
-        "cannot get current working directory", std::filesystem::path(), cwdEc);
-  }
-  std::string const cwd = cwdPath.string();
-
+  std::string const cwd = std::filesystem::current_path();
   if (path.empty()) {
     path = cwd;
   } else {

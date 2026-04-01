@@ -91,13 +91,8 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server,
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
-  std::error_code cwdEc;
-  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
-  if (cwdEc) {
-    throw std::filesystem::filesystem_error(
-        "cannot get current working directory", std::filesystem::path(), cwdEc);
-  }
-  _outputDirectory = FileUtils::buildFilename(cwdPath.string(), "export");
+  auto const cwd = std::filesystem::current_path();
+  _outputDirectory = FileUtils::buildFilename(cwd.string(), "export");
 }
 
 ExportFeature::~ExportFeature() = default;

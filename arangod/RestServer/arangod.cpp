@@ -321,13 +321,7 @@ int main(int argc, char* argv[]) {
     f();
   }
 
-  std::error_code cwdEc;
-  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
-  if (cwdEc) {
-    throw std::filesystem::filesystem_error(
-        "cannot get current working directory", std::filesystem::path(), cwdEc);
-  }
-  std::string workdir(cwdPath.string());
+  auto workdir = std::filesystem::current_path();
 
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
@@ -358,8 +352,8 @@ int main(int argc, char* argv[]) {
   // cases, we need outside help to get the process restarted.
   res = chdir(workdir.c_str());
   if (res != 0) {
-    std::cerr << "WARNING: could not change into directory '" << workdir << "'"
-              << std::endl;
+    std::cerr << "WARNING: could not change into directory '"
+              << workdir.string() << "'" << std::endl;
   }
   if (execvp(argv[0], argv) == -1) {
     std::cerr << "WARNING: could not execvp ourselves, restore will not work!"
