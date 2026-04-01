@@ -133,7 +133,7 @@ struct NListsTier {
 ///         { treshold: 300_000_000, fixedValue: 131072 },
 ///     ],
 /// }
-/// so the rulse apply as such:
+/// So the rules apply as such:
 /// N < 1M: nLists = max(2, 4 * sqrt(N))
 /// 1M <= N < 10M: nLists = 16384
 /// 10M <= N < 300M: nLists = 65536
