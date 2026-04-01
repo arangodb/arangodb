@@ -228,7 +228,6 @@ let helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '                                                                          ' + '\n' +
   'Administration Functions:                                                 ' + '\n' +
   '  name()                                collection name                   ' + '\n' +
-  '  status()                              status of the collection          ' + '\n' +
   '  type()                                type of the collection            ' + '\n' +
   '  truncate()                            remove all documents              ' + '\n' +
   '  properties()                          show collection properties        ' + '\n' +

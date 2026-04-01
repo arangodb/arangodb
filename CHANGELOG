@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-377: Removed deprecated `status` and `statusString` attributes from collection
+  HTTP responses, and `status()` and `getIndexes()` collection functions from the
+  JavaScript API.
+
 * Removed leftover unit test and handling of `@arangodb/locals` module that was
   only used for Foxx.
 
