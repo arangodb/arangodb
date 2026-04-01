@@ -4,6 +4,8 @@
   `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
   `/_admin/wal/transactions`.
 
+* Updated ArangoDB Starter to v0.20.0-preview-6.
+
 * Removed leftover unit test and handling of `@arangodb/locals` module that was
   only used for Foxx.
 
@@ -42,8 +44,6 @@
 
 * Legacy geo index types `geo1` and `geo2` are no longer supported. Existing
   indexes of these types are automatically dropped during database upgrade.
-
-* Updated ArangoDB Starter to v0.20.0-preview-4.
 
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
