@@ -547,51 +547,51 @@ void GeneralServerFeature::countHttpRequestByMethod(
 }
 
 void GeneralServerFeature::recordHttpRequestStatistics(
-  RequestTimingData const& data) noexcept {
-_httpReqsTotal.count();
-if (data.async) {
-  _httpReqsAsync.count();
-}
-countHttpRequestByMethod(data.requestType);
-
-using td = RequestTimingData;
-auto readStart = data.readStart;
-
-if (readStart != td::time_point{} &&
-    (data.async || data.writeEnd != td::time_point{})) {
-  double const totalTime = data.async
-      ? td::toSeconds(data.requestEnd - readStart)
-      : td::toSeconds(data.writeEnd - readStart);
-
-  if (data.superuser) {
-    _httpReqsSuperuser.count();
-  } else {
-    _httpReqsUser.count();
+    RequestTimingData const& data) noexcept {
+  _httpReqsTotal.count();
+  if (data.async) {
+    _httpReqsAsync.count();
   }
+  countHttpRequestByMethod(data.requestType);
 
-  _histTotalTime.count(totalTime);
-  double const reqT = td::toSeconds(data.requestEnd - data.requestStart);
-  _histRequestTime.count(reqT);
+  using td = RequestTimingData;
+  auto readStart = data.readStart;
 
-  double queueTime = 0.0;
-  if (data.queueStart != td::time_point{} &&
-      data.queueEnd != td::time_point{}) {
-    queueTime = td::toSeconds(data.queueEnd - data.queueStart);
-    _histQueueTime.count(queueTime);
+  if (readStart != td::time_point{} &&
+      (data.async || data.writeEnd != td::time_point{})) {
+    double const totalTime = data.async
+                                 ? td::toSeconds(data.requestEnd - readStart)
+                                 : td::toSeconds(data.writeEnd - readStart);
+
+    if (data.superuser) {
+      _httpReqsSuperuser.count();
+    } else {
+      _httpReqsUser.count();
+    }
+
+    _histTotalTime.count(totalTime);
+    double const reqT = td::toSeconds(data.requestEnd - data.requestStart);
+    _histRequestTime.count(reqT);
+
+    double queueTime = 0.0;
+    if (data.queueStart != td::time_point{} &&
+        data.queueEnd != td::time_point{}) {
+      queueTime = td::toSeconds(data.queueEnd - data.queueStart);
+      _histQueueTime.count(queueTime);
+    }
+
+    double const ioTime = totalTime - reqT - queueTime;
+    if (ioTime >= 0.0) {
+      _histIoTime.count(ioTime);
+    }
+
+    _histBytesSent.count(data.sentBytes);
+    _histBytesReceived.count(data.receivedBytes);
+    if (!data.superuser) {
+      _histBytesSentUser.count(data.sentBytes);
+      _histBytesReceivedUser.count(data.receivedBytes);
+    }
   }
-
-  double const ioTime = totalTime - reqT - queueTime;
-  if (ioTime >= 0.0) {
-    _histIoTime.count(ioTime);
-  }
-
-  _histBytesSent.count(data.sentBytes);
-  _histBytesReceived.count(data.receivedBytes);
-  if (!data.superuser) {
-    _histBytesSentUser.count(data.sentBytes);
-    _histBytesReceivedUser.count(data.receivedBytes);
-  }
-}
 }
 
 void GeneralServerFeature::buildServers() {
