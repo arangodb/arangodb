@@ -1491,9 +1491,9 @@ void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
   if (ServerState::instance()->isCoordinator()) {
-    result.add("path", VPackValue(path()));
-  } else {
     result.add("path", VPackValue("none"));
+  } else {
+    result.add("path", VPackValue(path()));
   }
 }
 
