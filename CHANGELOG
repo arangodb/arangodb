@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
+
 * Updated ArangoDB Starter to v0.20.0-preview-6.
 
 * Removed leftover unit test and handling of `@arangodb/locals` module that was
@@ -275,6 +277,7 @@
 -------------------------
 
 * Fix an issue when removing documents while using sparse vector index.
+
 
 * Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 

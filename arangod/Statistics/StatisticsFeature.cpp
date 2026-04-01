@@ -211,6 +211,7 @@ DECLARE_GAUGE(
     "Percentage of time that the system CPUs have been waiting for I/O");
 DECLARE_GAUGE(arangodb_request_statistics_memory_usage, uint64_t,
               "Memory used by the internal request statistics");
+
 namespace {
 // local_name: {"prometheus_name", "type", "help"}
 auto const statStrings = std::map<std::string_view,
@@ -458,7 +459,6 @@ Counter TotalRequests;
 Counter TotalRequestsSuperuser;
 Counter TotalRequestsUser;
 MethodRequestCounters MethodRequests;
-Distribution ConnectionTimeDistribution(ConnectionTimeDistributionCuts);
 
 RequestFigures::RequestFigures()
     : bytesReceivedDistribution(BytesReceivedDistributionCuts),

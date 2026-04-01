@@ -101,7 +101,7 @@ function testSuite() {
          arango.GET_RAW("/_admin/metrics");
       }
 
-      // metric value shouldn't have changed, because the statistics memory
+      // metrics values shouldn't have changed, because the statistics memory
       // is allocated at startup and shouldn't grow under normal circumstances
       assertEqual(requestsBefore, getMetric("arangodb_request_statistics_memory_usage"));
     }

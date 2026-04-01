@@ -113,9 +113,7 @@ class GeneralServerFeature final
     return metrics::GaugeCounterGuard{_connectionHttp, static_cast<double>(1)};
   }
 
-  [[nodiscard]] double httpConnectionCount() const noexcept {
-    return _connectionHttp.load();
-  }
+  double httpConnections() const noexcept { return _connectionHttp.load(); }
 
  private:
   // build HTTP server(s)

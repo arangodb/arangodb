@@ -34,6 +34,7 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/ServerStatistics.h"
+#include "Statistics/StatisticsFeature.h"
 
 #include <velocypack/Builder.h>
 
@@ -111,7 +112,6 @@ stats::Descriptions::Descriptions(
     application_features::ApplicationServer& server)
     : _server(server),
       _requestTimeCuts(statistics::RequestTimeDistributionCuts),
-      _connectionTimeCuts(statistics::ConnectionTimeDistributionCuts),
       _bytesSendCuts(statistics::BytesSentDistributionCuts),
       _bytesReceivedCuts(statistics::BytesReceivedDistributionCuts) {
   _groups.emplace_back(Group{stats::GroupType::System, "Process Statistics",
@@ -248,12 +248,6 @@ stats::Descriptions::Descriptions(
              // cuts: internal.bytesReceivedDistribution,
              stats::Unit::Bytes, _bytesReceivedCuts});
 
-  _figures.emplace_back(Figure{
-      stats::GroupType::Client, "connectionTime", "Connection Time",
-      "Total connection time of a client.", stats::FigureType::Distribution,
-      // cuts: internal.connectionTimeDistribution,
-      stats::Unit::Seconds, _connectionTimeCuts});
-
   // Only user traffic:
 
   _figures.emplace_back(Figure{
@@ -299,13 +293,6 @@ stats::Descriptions::Descriptions(
              stats::FigureType::Distribution,
              // cuts: internal.bytesReceivedDistribution,
              stats::Unit::Bytes, _bytesReceivedCuts});
-
-  _figures.emplace_back(
-      Figure{stats::GroupType::ClientUser, "connectionTime", "Connection Time",
-             "Total connection time of a client (only user traffic).",
-             stats::FigureType::Distribution,
-             // cuts: internal.connectionTimeDistribution,
-             stats::Unit::Seconds, _connectionTimeCuts});
 
   _figures.emplace_back(Figure{stats::GroupType::Http,
                                "requestsTotal",
@@ -472,10 +459,8 @@ static void FillDistribution(VPackBuilder& b, std::string const& name,
 
 void stats::Descriptions::clientStatistics(
     velocypack::Builder& b, RequestStatisticsSource source) const {
-  b.add("httpConnections",
-        VPackValue(static_cast<uint64_t>(
-            _server.getFeature<GeneralServerFeature>().httpConnectionCount())));
-  FillDistribution(b, "connectionTime", statistics::ConnectionTimeDistribution);
+  auto& gsf = _server.getFeature<GeneralServerFeature>();
+  b.add("httpConnections", VPackValue(gsf.httpConnections()));
 
   RequestStatistics::Snapshot requestStats;
   RequestStatistics::getSnapshot(requestStats, source);

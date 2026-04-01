@@ -63,7 +63,6 @@ constexpr size_t MethodRequestsStatisticsSize =
     ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
 using MethodRequestCounters = std::array<Counter, MethodRequestsStatisticsSize>;
 extern MethodRequestCounters MethodRequests;
-extern Distribution ConnectionTimeDistribution;
 
 struct RequestFigures {
   RequestFigures();
