@@ -38,7 +38,7 @@ function testSuite() {
   return {
     testMetricsApiWhenStatisticsOn : function() {
       const res = arango.GET_RAW("/_admin/metrics");
-      assertEqual(200, res.code, "GET /_admin/metrics should return 200 when server.statistics is true");
+      assertEqual(200, res.code, "GET /_admin/metrics should return 200");
       const body = typeof res.body === 'string' ? res.body : String(res.body);
 
       assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,

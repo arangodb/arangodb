@@ -389,7 +389,6 @@ class instance {
     }
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
-      this.args['server.statistics'] = false;
     }
 
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
