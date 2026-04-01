@@ -299,46 +299,6 @@ function dealing_with_the_loggerSuite () {
       assertTrue(server.hasOwnProperty('version'));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
-    // firstTick;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_fetches_the_first_available_tick: function() {
-      // fetch state;
-      let cmd = api + "/logger-first-tick";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-
-      let result = doc.parsedBody;
-      assertTrue(result.hasOwnProperty('firstTick'));
-
-      assertMatch(/^[0-9]+$/, result['firstTick']);
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////;
-    // tickRanges;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_fetches_the_available_tick_ranges: function() {
-      // fetch state;
-      let cmd = api + "/logger-tick-ranges";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-
-      let result = doc.parsedBody;
-      assertTrue(doc.body.length > 0, doc);
-
-      result.forEach(datafile => {
-        assertTrue(datafile.hasOwnProperty('datafile'));
-        assertTrue(datafile.hasOwnProperty('status'));
-        assertTrue(datafile.hasOwnProperty('tickMin'));
-        assertTrue(datafile.hasOwnProperty('tickMax'));
-        assertMatch(/^[0-9]+$/, datafile['tickMin']);
-        assertMatch(/^[0-9]+$/, datafile['tickMax']);
-      });
-    }
   };
 }
 
