@@ -150,9 +150,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   // The actual nLists value used for FAISS operations.
   // Resolved at training time via resolveNListsParameter().
   std::int64_t _resolvedNLists{0};
-  // The actual defaultNProbe value used at query time.
-  // Resolved at training time: explicit value or sqrt(nLists).
-  std::int64_t _resolvedDefaultNProbe{0};
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   vector::TrainedData _trainedData;
   StoredValues const _storedValues;

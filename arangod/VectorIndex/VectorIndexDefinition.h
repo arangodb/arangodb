@@ -227,9 +227,7 @@ struct UserVectorIndexDefinition {
 
   std::int64_t defaultNProbe;
 
-  // FAISS factory string. In fixed nLists mode, nLists must match the IVF
-  // number in the string. In scaling nLists mode, the string must contain a
-  // {nLists} placeholder that is resolved at training time.
+  // FAISS factory string.
   std::optional<std::string> factory;
 
   bool operator==(UserVectorIndexDefinition const&) const noexcept = default;

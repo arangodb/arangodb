@@ -108,9 +108,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   if (!_trainedData.codeData.empty()) {
     _faissIndex =
         vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
-
     _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
-    _resolvedDefaultNProbe = static_cast<std::int64_t>(_faissIndex->nprobe);
 
     _faissIndex->replace_invlists(
         new vector::RocksDBInvertedLists(this, &coll, _resolvedNLists,
@@ -255,7 +253,7 @@ RocksDBVectorIndex::readBatch(
 
   faiss::SearchParametersIVF searchParametersIvf;
   searchParametersIvf.nprobe =
-      searchParameters.nProbe.value_or(_resolvedDefaultNProbe);
+      searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
   _faissIndex->search(1, inputs.data(), topK, distances.data(), labels.data(),
                       &searchParametersIvf);
@@ -286,9 +284,7 @@ void RocksDBVectorIndex::applyTrainingResult(
     vector::TrainedData trainedData) {
   _faissIndex = std::move(faissIndex);
   _trainedData = std::move(trainedData);
-
   _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
-  _resolvedDefaultNProbe = static_cast<std::int64_t>(_faissIndex->nprobe);
 
   _faissIndex->replace_invlists(
       new vector::RocksDBInvertedLists(this, &collection(), _resolvedNLists,
@@ -420,31 +416,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 
   return rocksutils::convertStatus(status);
 }
-
-// void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
-//                                       rocksdb::Slice upper,
-//                                       RocksDBMethods* methods,
-//                                       std::uint64_t numDocsHint) {
-//   // In normal replication code this can be called multiple times
-//   // so to stop retraining of vector index we ignore this part
-//   if (_faissIndex && _faissIndex->is_trained) {
-//     return;
-//   }
-
-//   vector::VectorIndexTrainer trainer(_definition, _sparse, _fields,
-//                                      _collection.name(), _iid.id());
-//   auto result = trainer.train(*it, upper, numDocsHint);
-
-//   _faissIndex = std::move(result.faissIndex);
-//   _resolvedNLists = result.resolvedNLists;
-//   _resolvedDefaultNProbe = result.resolvedDefaultNProbe;
-//   _trainedData = std::move(result.trainedData);
-
-//   _faissIndex->replace_invlists(
-//       new vector::RocksDBInvertedLists(this, &collection(), _resolvedNLists,
-//                                        _faissIndex->code_size),
-//       true /* faiss owns the inverted list */);
-// }
 
 /// @brief removes a document from the index
 Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
