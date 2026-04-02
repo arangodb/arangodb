@@ -1,10 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* Remove the `--server.rest-server` startup option (and legacy `--no-server`).
-  The option is still accepted as obsolete and ignored. Database upgrade on
-  coordinators now disables the HTTP stack without it. Packaging and init
-  scripts no longer pass `--server.rest-server`.
+* Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
+  They are still accepted for backward compatibility but are ignored and no longer
+  appear in `--help`. Coordinator runs with `--database.auto-upgrade` now disable
+  the HTTP listener stack without requiring `--server.rest-server false`. Packaging
+  and init scripts no longer pass these flags.
 
 * Remove metrics for V8 contexts:
   - `arangodb_v8_context_alive`: number of V8 contexts currently alive.

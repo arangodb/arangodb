@@ -157,12 +157,11 @@ class BaseTraverserEngine : public BaseEngine {
   Result nextEdgeBatch(size_t cursorId, size_t batchId, VPackBuilder& builder);
   void addAndClearStatistics(VPackBuilder& builder);
 
-  // Default throws TRI_ERROR_ONLY_ENTERPRISE; enterprise engines may override.
   virtual void smartSearch(arangodb::velocypack::Slice,
-                           arangodb::velocypack::Builder&);
+                           arangodb::velocypack::Builder&) = 0;
 
   virtual void smartSearchUnified(arangodb::velocypack::Slice,
-                                  arangodb::velocypack::Builder&);
+                                  arangodb::velocypack::Builder&) = 0;
 
   EngineType getType() const override { return TRAVERSER; }
 
@@ -229,6 +228,12 @@ class TraverserEngine : public BaseTraverserEngine {
                   arangodb::velocypack::Slice info);
 
   ~TraverserEngine();
+
+  void smartSearch(arangodb::velocypack::Slice,
+                   arangodb::velocypack::Builder&) override;
+
+  void smartSearchUnified(arangodb::velocypack::Slice,
+                          arangodb::velocypack::Builder&) override;
 };
 
 }  // namespace traverser
