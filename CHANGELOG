@@ -1,4 +1,8 @@
-3.12.9-devel (XXXX-XX-XX)
+3.12.10-devel (XXXX-XX-XX)
+--------------------------
+
+
+3.12.9-devel (2026-04-02)
 -------------------------
 
 * Fix vector index creation response containing a stale errorMessage after
