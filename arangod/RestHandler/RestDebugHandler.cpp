@@ -36,10 +36,9 @@ RestDebugHandler::RestDebugHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-
 async<Result> RestDebugHandler::checkUserCanAccess() const {
-  co_return request()->authenticated()
-      ? Result{} : Result{TRI_ERROR_HTTP_UNAUTHORIZED};
+  co_return request()->authenticated() ? Result{}
+                                       : Result{TRI_ERROR_HTTP_UNAUTHORIZED};
 }
 
 RestStatus RestDebugHandler::execute() {

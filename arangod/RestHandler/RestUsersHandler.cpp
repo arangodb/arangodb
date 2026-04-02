@@ -122,8 +122,7 @@ async<Result> RestUsersHandler::checkUserCanAccess() const {
   TRI_ASSERT(vc != nullptr);
 
   if (_request->requestType() == RequestType::POST && !username.empty() &&
-                 path.starts_with(std::string{pathPrefixApiUser} + username +
-                                  '/')) {
+      path.starts_with(std::string{pathPrefixApiUser} + username + '/')) {
     vc->forceReadOnly();
     co_return Result{};
   }

@@ -111,7 +111,7 @@ void RestActionHandler::executeAction() {
   }
 }
 
-async<Result> RestActionHandler::checkUserCanAccess() const{
+async<Result> RestActionHandler::checkUserCanAccess() const {
   if (request()->requestPath().starts_with("/_admin/aardvark/")) {
     co_return Result{};
   }

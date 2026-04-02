@@ -677,7 +677,8 @@ async<Result> RestHandler::checkUserCanAccess() const {
   std::string const& path = request()->requestPath();
 
   auto vc = basics::downCast<VocbaseContext>(request()->requestContext());
-  TRI_ASSERT(vc != nullptr) << "no vocbase context in request: " << this->name();
+  TRI_ASSERT(vc != nullptr)
+      << "no vocbase context in request: " << this->name();
   // deny access to database with NONE
   if (canAccess && vc->databaseAuthLevel() == auth::Level::NONE) {
     canAccess = false;
@@ -702,7 +703,8 @@ async<Result> RestHandler::checkUserCanAccess() const {
     }
 #endif
 
-    if (not canAccess && auth->authenticationSystemOnly()) { // TODO remove in 4.0
+    if (not canAccess &&
+        auth->authenticationSystemOnly()) {  // TODO remove in 4.0
       // authentication required, but only for /_api, /_admin etc.
       if (!path.empty()) {
         // check if path starts with /_
@@ -732,9 +734,8 @@ async<void> RestHandler::handleSpecialAccessChecks() {
   if (authzResult.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
-    generateError(ResponseCode::UNAUTHORIZED,
-                      TRI_ERROR_FORBIDDEN,
-                      "not authorized to execute this request");
+    generateError(ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                  "not authorized to execute this request");
   }
 }
 

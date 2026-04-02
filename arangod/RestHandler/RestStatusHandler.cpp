@@ -86,8 +86,10 @@ RestStatus RestStatusHandler::execute() {
 
 async<Result> RestStatusHandler::checkUserCanAccess() const {
   auto mode = ServerState::instance()->mode();
-  if (mode == ServerState::Mode::STARTUP || mode == ServerState::Mode::MAINTENANCE) {
-    co_return request()->authenticated() ? Result{} : Result{TRI_ERROR_HTTP_UNAUTHORIZED};
+  if (mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated() ? Result{}
+                                         : Result{TRI_ERROR_HTTP_UNAUTHORIZED};
   }
 
   co_return co_await RestBaseHandler::checkUserCanAccess();

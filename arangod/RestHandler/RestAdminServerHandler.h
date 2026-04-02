@@ -42,8 +42,8 @@ class RestAdminServerHandler : public RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
-protected:
- async<Result> checkUserCanAccess() const override;
+ protected:
+  async<Result> checkUserCanAccess() const override;
 
  private:
   void handleMode();

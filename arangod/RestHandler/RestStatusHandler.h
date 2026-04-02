@@ -38,7 +38,7 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
-protected:
+ protected:
   async<Result> checkUserCanAccess() const override;
 
  private:

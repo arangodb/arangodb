@@ -30,8 +30,10 @@ class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
   RestVersionHandler(application_features::ApplicationServer&, GeneralRequest*,
                      GeneralResponse*);
+
  protected:
   async<Result> checkUserCanAccess() const override;
+
  public:
   static void getVersion(application_features::ApplicationServer& server,
                          bool allowInfo, bool includeDetails,
