@@ -36,7 +36,6 @@ const isCluster = internal.isCluster();
 function DropDatabase() {
   let getAllSubPathCounts = function() {
     let count = 0;
-    let paths = [];
     IM.arangods.forEach(arangod => {
       let path = fs.join(arangod.dataDir, 'databases');
       count += fs.list(path).length;
