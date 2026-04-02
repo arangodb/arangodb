@@ -1,6 +1,6 @@
 jobProperties:
     container_suffix: '-python:'
-    second_repo: git@github.com:arangodb/python-arango-async.git
+    second_repo: git@github.com:arangodb/kkawade-python-arango-async.git
     branch: main
 tests:
 - python_driver:
@@ -11,6 +11,7 @@ tests:
       suffix: -async
     args:
       extremeVerbosity: true
+      cleanup: false
 - python_driver:
     job: run-driver-tests
     options:
@@ -20,3 +21,4 @@ tests:
       suffix: -async
     args:
       extremeVerbosity: true
+      cleanup: false
