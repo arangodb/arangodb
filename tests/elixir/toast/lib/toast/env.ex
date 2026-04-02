@@ -22,6 +22,8 @@ defmodule Toast.Env do
     values =
       resolve_all(opts, local)
       |> resolve_sanitizers()
+      |> resolve_rr()
+      |> validate_rr!()
       |> apply_timeout_factor()
       |> ensure_base_dir()
 
@@ -107,6 +109,8 @@ defmodule Toast.Env do
       keep_data: resolve(opts, local, :keep_data, &read_bool/1, "TOAST_KEEP_DATA") || false,
       ci: resolve(opts, local, :ci, &read_bool/1, "TOAST_CI") || false,
       debugger: resolve(opts, local, :debugger, &read_debugger/1, "TOAST_DEBUGGER") || :auto,
+      rr: resolve(opts, local, :rr, &env/1, "TOAST_RR"),
+      rr_path: nil,
       dump_agency_on_error:
         resolve(opts, local, :dump_agency_on_error, &read_opt_bool/1, "TOAST_DUMP_AGENCY")
     }
@@ -143,10 +147,61 @@ defmodule Toast.Env do
     %{values | sanitizer_override: sanitizer_override, active_sanitizers: active_sanitizers}
   end
 
+  @valid_rr_roles ~w(single agent dbserver coordinator)a
+  @all_rr_roles MapSet.new(@valid_rr_roles)
+
+  defp resolve_rr(%{rr: nil} = values), do: values
+
+  defp resolve_rr(%{rr: rr} = values) when is_binary(rr) do
+    resolve_rr(%{values | rr: parse_rr(rr)})
+  end
+
+  defp resolve_rr(%{rr: :default} = values) do
+    %{values | rr: default_rr_roles(values.deployment_mode)}
+  end
+
+  defp resolve_rr(%{rr: %MapSet{}} = values), do: values
+
+  defp default_rr_roles(:single_server), do: MapSet.new([:single])
+  defp default_rr_roles(:cluster), do: MapSet.new([:dbserver, :coordinator])
+
+  defp parse_rr("default"), do: :default
+  defp parse_rr("all"), do: @all_rr_roles
+
+  defp parse_rr(roles_str) do
+    roles_str
+    |> String.split(",", trim: true)
+    |> Enum.map(&parse_rr_role/1)
+    |> MapSet.new()
+  end
+
+  defp parse_rr_role(role) when role in ~w(single agent dbserver coordinator),
+    do: String.to_existing_atom(role)
+
+  defp parse_rr_role(other),
+    do:
+      raise(
+        ArgumentError,
+        "invalid rr role: #{inspect(other)} (expected one of: #{Enum.join(@valid_rr_roles, ", ")})"
+      )
+
+  defp validate_rr!(%{rr: nil} = values), do: values
+
+  defp validate_rr!(values) do
+    case System.find_executable("rr") do
+      nil ->
+        raise ArgumentError,
+              "rr recording requested but `rr` executable not found in PATH"
+
+      path ->
+        Map.put(values, :rr_path, path)
+    end
+  end
+
   defp apply_timeout_factor(values) do
     factor =
       values.timeout_factor ||
-        if Enum.any?(values.active_sanitizers), do: 3, else: 1
+        infer_timeout_factor(values)
 
     %{
       values
@@ -157,6 +212,12 @@ defmodule Toast.Env do
         shutdown_timeout: round(values.shutdown_timeout * factor),
         coredump_timeout: round(values.coredump_timeout * factor)
     }
+  end
+
+  defp infer_timeout_factor(values) do
+    sanitizer_factor = if Enum.any?(values.active_sanitizers), do: 3, else: 1
+    rr_factor = if values.rr != nil, do: 10, else: 1
+    max(sanitizer_factor, rr_factor)
   end
 
   defp ensure_base_dir(%{base_dir: nil} = values) do
@@ -305,7 +366,8 @@ defmodule Toast.Env do
         test_timeout: "#{values.test_timeout}ms",
         startup_timeout: "#{values.startup_timeout}ms",
         shutdown_timeout: "#{values.shutdown_timeout}ms",
-        active_sanitizers: inspect(MapSet.to_list(values.active_sanitizers))
+        active_sanitizers: inspect(MapSet.to_list(values.active_sanitizers)),
+        rr: inspect(values.rr)
       ]
 
       "Toast.Env: " <> Enum.map_join(fields, " ", fn {k, v} -> "#{k}=#{v}" end)

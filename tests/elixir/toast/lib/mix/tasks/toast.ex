@@ -30,6 +30,9 @@ defmodule Mix.Tasks.Toast do
       --timeout-factor N          - Timeout multiplier (default: 1, auto-set to 3 for sanitizer builds)
       --keep-data                 - Keep server data/logs even on success
       --sanitizer TYPE            - Sanitizer: tsan or alubsan (auto-detected from build dir)
+      --rr ROLES                  - Record with rr: "default", "all", or comma-separated roles
+                                    (single, agent, dbserver, coordinator)
+                                    "default" = single server or dbserver,coordinator in cluster
       --cluster-agents N          - Number of agency nodes (default: 3)
       --cluster-dbservers N       - Number of DB servers (default: 3)
       --cluster-coordinators N    - Number of coordinators (default: 1)
@@ -59,6 +62,7 @@ defmodule Mix.Tasks.Toast do
   alias Mix.Tasks.Toast.Helpers
   alias ToastTest.DiagnosticsSummary
   alias ToastTest.ResultPackaging
+  alias ToastTest.RrSummary
 
   @compile {:no_warn_undefined, [ExUnit, ExUnit.Filters]}
 
@@ -87,6 +91,7 @@ defmodule Mix.Tasks.Toast do
     timeout_factor: :integer,
     keep_data: :boolean,
     sanitizer: :string,
+    rr: :string,
     cluster_agents: :integer,
     cluster_dbservers: :integer,
     cluster_coordinators: :integer,
@@ -158,6 +163,7 @@ defmodule Mix.Tasks.Toast do
 
     suite_results = Enum.map(result.suites, & &1.suite_result)
     ToastTest.RunSummary.print(suite_results)
+    RrSummary.print(test_config.base_dir)
 
     abort_reason = ToastTest.Abort.reason()
 

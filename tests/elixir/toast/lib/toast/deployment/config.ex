@@ -25,7 +25,9 @@ defmodule Toast.Deployment.Config do
           startup_timeout: pos_integer(),
           shutdown_timeout: pos_integer(),
           api_version: non_neg_integer() | String.t() | nil,
-          cluster: ClusterOpts.t() | nil
+          cluster: ClusterOpts.t() | nil,
+          rr: MapSet.t(atom()) | nil,
+          rr_path: Path.t() | nil
         }
 
   defstruct build_dir: nil,
@@ -37,7 +39,9 @@ defmodule Toast.Deployment.Config do
             startup_timeout: 60_000,
             shutdown_timeout: 60_000,
             api_version: nil,
-            cluster: nil
+            cluster: nil,
+            rr: nil,
+            rr_path: nil
 
   @doc """
   Build a deployment config from application env with optional overrides.

@@ -78,10 +78,12 @@ defmodule Toast.Deployment.Factory do
         log_file: paths.log_file
       }
 
+      spec = maybe_apply_rr(spec, config)
+
       Logger.debug(
         "Built single server spec: executable=#{spec.executable} " <>
           "port=#{port} working_dir=#{repo_root} server_dir=#{paths.base_dir}\n" <>
-          "  args: #{Enum.join(args, " ")}"
+          "  args: #{Enum.join(spec.args, " ")}"
       )
 
       {:ok, [spec]}
@@ -177,24 +179,25 @@ defmodule Toast.Deployment.Factory do
       server_spec = %{role: role, port: port, args: merged_args}
       args = CommandBuilder.build_args(server_spec, paths, repo_root)
 
-      {:ok,
-       %LaunchSpec{
-         id: server_id,
-         role: role,
-         executable: executable,
-         args: args,
-         env:
-           Sanitizer.build_env(
-             config.active_sanitizers,
-             paths.base_dir,
-             repo_root,
-             config.sanitizer_override
-           ),
-         working_dir: repo_root,
-         server_dir: paths.base_dir,
-         port: port,
-         log_file: paths.log_file
-       }}
+      spec = %LaunchSpec{
+        id: server_id,
+        role: role,
+        executable: executable,
+        args: args,
+        env:
+          Sanitizer.build_env(
+            config.active_sanitizers,
+            paths.base_dir,
+            repo_root,
+            config.sanitizer_override
+          ),
+        working_dir: repo_root,
+        server_dir: paths.base_dir,
+        port: port,
+        log_file: paths.log_file
+      }
+
+      {:ok, maybe_apply_rr(spec, config)}
     end
   end
 
@@ -238,5 +241,24 @@ defmodule Toast.Deployment.Factory do
     else
       base
     end
+  end
+
+  # --- rr wrapping ---
+
+  defp maybe_apply_rr(spec, %{rr: nil}), do: spec
+
+  defp maybe_apply_rr(spec, %{rr: roles, rr_path: rr_path}) do
+    if spec.role in roles do
+      apply_rr(spec, rr_path)
+    else
+      spec
+    end
+  end
+
+  defp apply_rr(spec, rr_path) do
+    trace_dir = Path.join(spec.server_dir, "rr-trace")
+    File.mkdir_p!(trace_dir)
+
+    %{spec | executable: rr_path, args: ["record", "-o", trace_dir, spec.executable | spec.args]}
   end
 end

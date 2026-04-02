@@ -330,6 +330,127 @@ defmodule Toast.Deployment.FactoryTest do
     end
   end
 
+  describe "rr wrapping" do
+    setup do
+      tmp_dir =
+        Path.join(System.tmp_dir!(), "toast_rr_test_#{System.unique_integer([:positive])}")
+
+      File.mkdir_p!(tmp_dir)
+      on_exit(fn -> File.rm_rf!(tmp_dir) end)
+      fake_rr = Toast.PathTestHelpers.create_fake_executable("rr", tmp_dir)
+
+      %{tmp_dir: tmp_dir, fake_rr: fake_rr}
+    end
+
+    test "single server: wraps executable when rr includes :single", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      rr_path = System.find_executable("rr")
+      config = make_config(build_dir, rr: MapSet.new([:single]), rr_path: rr_path)
+
+      deployment_dir = Path.join(tmp_dir, "work-rr")
+      assert {:ok, [spec]} = Factory.build_single_server(config, "rr1", deployment_dir)
+
+      arangod = Path.join([build_dir, "bin", "arangod"])
+      assert spec.executable == System.find_executable("rr")
+      assert ["record", "-o", trace_dir, ^arangod | _rest] = spec.args
+      assert String.ends_with?(trace_dir, "/rr-trace")
+      assert File.dir?(trace_dir)
+    end
+
+    test "single server: no wrapping when rr is nil", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      config = make_config(build_dir)
+
+      deployment_dir = Path.join(tmp_dir, "work-norr")
+      assert {:ok, [spec]} = Factory.build_single_server(config, "norr1", deployment_dir)
+
+      assert spec.executable == Path.join([build_dir, "bin", "arangod"])
+      refute "record" in spec.args
+    end
+
+    test "single server: no wrapping when rr excludes :single", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      config = make_config(build_dir, rr: MapSet.new([:dbserver]))
+
+      deployment_dir = Path.join(tmp_dir, "work-norr2")
+      assert {:ok, [spec]} = Factory.build_single_server(config, "norr2", deployment_dir)
+
+      assert spec.executable == Path.join([build_dir, "bin", "arangod"])
+      refute "record" in spec.args
+    end
+
+    test "cluster: wraps only specified roles", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+
+      config =
+        make_config(build_dir,
+          cluster: [agents: 1, dbservers: 2, coordinators: 1],
+          rr: MapSet.new([:dbserver, :coordinator]),
+          rr_path: System.find_executable("rr")
+        )
+
+      deployment_dir = Path.join(tmp_dir, "work-cluster-rr")
+      assert {:ok, specs} = Factory.build_cluster(config, "crr", deployment_dir)
+
+      rr_path = System.find_executable("rr")
+      arangod = Path.join([build_dir, "bin", "arangod"])
+
+      for spec <- specs do
+        if spec.role in [:dbserver, :coordinator] do
+          assert spec.executable == rr_path,
+                 "expected #{spec.role} #{spec.id} to be wrapped with rr"
+
+          assert ["record", "-o", _trace_dir, ^arangod | _] = spec.args
+        else
+          assert spec.executable == arangod,
+                 "expected #{spec.role} #{spec.id} NOT to be wrapped with rr"
+
+          refute "record" in spec.args
+        end
+      end
+    end
+
+    test "cluster: default roles wrap dbserver and coordinator", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+
+      config =
+        make_config(build_dir,
+          cluster: [agents: 1, dbservers: 1, coordinators: 1],
+          rr: MapSet.new([:dbserver, :coordinator]),
+          rr_path: System.find_executable("rr")
+        )
+
+      deployment_dir = Path.join(tmp_dir, "work-cluster-rr-default")
+      assert {:ok, specs} = Factory.build_cluster(config, "crrd", deployment_dir)
+
+      rr_path = System.find_executable("rr")
+      arangod = Path.join([build_dir, "bin", "arangod"])
+
+      for spec <- specs do
+        if spec.role in [:dbserver, :coordinator] do
+          assert spec.executable == rr_path
+        else
+          assert spec.executable == arangod
+        end
+      end
+    end
+
+    test "single server: wraps when role is in rr set", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+
+      config =
+        make_config(build_dir,
+          rr: MapSet.new([:single]),
+          rr_path: System.find_executable("rr")
+        )
+
+      deployment_dir = Path.join(tmp_dir, "work-rr-default-single")
+      assert {:ok, [spec]} = Factory.build_single_server(config, "rrds", deployment_dir)
+
+      assert spec.executable == System.find_executable("rr")
+    end
+  end
+
   defp has_flag_value?(args, flag, value) do
     args
     |> Enum.chunk_every(2, 1, :discard)

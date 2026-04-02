@@ -72,6 +72,7 @@ defmodule Mix.Tasks.Toast.Helpers do
       timeout_factor: :timeout_factor,
       keep_data: :keep_data,
       sanitizer: :sanitizer_override,
+      rr: :rr,
       cluster_agents: :cluster_agents,
       cluster_dbservers: :cluster_dbservers,
       cluster_coordinators: :cluster_coordinators,
