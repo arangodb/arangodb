@@ -79,8 +79,7 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
   _hints = hints;
   auto& stats = _vocbase.server()
                     .getFeature<metrics::MetricsFeature>()
-                    .serverStatistics()
-                    ._transactionsStatistics;
+                    .transactionStatistics();
 
   auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);
@@ -159,8 +158,8 @@ futures::Future<Result> ClusterTransactionState::commitTransaction(
   updateStatus(transaction::Status::COMMITTED);
   ++_vocbase.server()
         .getFeature<metrics::MetricsFeature>()
-        .serverStatistics()
-        ._transactionsStatistics._transactionsCommitted;
+        .transactionStatistics()
+        ._transactionsCommitted;
 
   return Result{};
 }
@@ -175,8 +174,8 @@ Result ClusterTransactionState::abortTransaction(
   updateStatus(transaction::Status::ABORTED);
   ++_vocbase.server()
         .getFeature<metrics::MetricsFeature>()
-        .serverStatistics()
-        ._transactionsStatistics._transactionsAborted;
+        .transactionStatistics()
+        ._transactionsAborted;
 
   return {};
 }

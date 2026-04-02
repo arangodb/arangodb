@@ -49,7 +49,7 @@
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/ServerStatistics.h"
+#include "Statistics/TransactionStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -388,8 +388,8 @@ void RocksDBBuilderIndex::beforeCreate() {
   auto& metric = _collection.vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
+                     .transactionStatistics()
+                     ._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
       nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
@@ -443,8 +443,8 @@ Result RocksDBBuilderIndex::fillIndexForeground(
   auto& metric = _collection.vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
+                     .transactionStatistics()
+                     ._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
       nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
@@ -881,8 +881,8 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   auto& metric = _collection.vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
+                     .transactionStatistics()
+                     ._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
       nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);

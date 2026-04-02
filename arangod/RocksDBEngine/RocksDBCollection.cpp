@@ -328,8 +328,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
-                      .serverStatistics()
-                      ._transactionsStatistics),
+                      .transactionStatistics()),
       _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
                     !collection.isAStub() &&
                     !ServerState::instance()->isCoordinator() &&

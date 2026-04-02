@@ -40,7 +40,7 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Metrics/CounterBuilder.h"
-#include "Statistics/ServerStatistics.h"
+#include "Statistics/TransactionStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -884,8 +884,7 @@ void TransactionState::coordinatorRerollTransactionId() {
 TransactionStatistics& TransactionState::statistics() const noexcept {
   return _vocbase.server()
       .getFeature<metrics::MetricsFeature>()
-      .serverStatistics()
-      ._transactionsStatistics;
+      .transactionStatistics();
 }
 
 void TransactionState::chooseReplicasNolock(

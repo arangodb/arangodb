@@ -70,8 +70,8 @@ MetricsFeature::MetricsFeature(
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  _serverStatistics =
-      std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
+  _startTime = StatisticsFeature::time();
+  _transactionStatistics = std::make_unique<TransactionStatistics>(*this);
 
   options->addOption(
       "--server.export-metrics-api", "Whether to enable the metrics API.",
@@ -227,7 +227,7 @@ void MetricsFeature::validateOptions(
   }
 
   if (_options.exportReadWriteMetrics) {
-    serverStatistics().setupDocumentMetrics();
+    transactionStatistics().setupDocumentMetrics();
   }
 }
 
@@ -339,8 +339,12 @@ void MetricsFeature::toVPack(velocypack::Builder& builder,
   builder.close();
 }
 
-ServerStatistics& MetricsFeature::serverStatistics() noexcept {
-  return *_serverStatistics;
+TransactionStatistics& MetricsFeature::transactionStatistics() noexcept {
+  return *_transactionStatistics;
+}
+
+double MetricsFeature::uptime() const noexcept {
+  return StatisticsFeature::time() - _startTime;
 }
 
 std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {

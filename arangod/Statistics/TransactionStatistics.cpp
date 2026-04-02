@@ -21,9 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ServerStatistics.h"
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Statistics/StatisticsFeature.h"
+#include "TransactionStatistics.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -131,12 +129,4 @@ void TransactionStatistics::setupDocumentMetrics() {
       _metrics.add(arangodb_document_update_time{}),
       _metrics.add(arangodb_collection_truncate_time{}),
   });
-}
-
-void ServerStatistics::setupDocumentMetrics() {
-  _transactionsStatistics.setupDocumentMetrics();
-}
-
-double ServerStatistics::uptime() const noexcept {
-  return StatisticsFeature::time() - _startTime;
 }
