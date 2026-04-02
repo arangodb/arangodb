@@ -26,7 +26,6 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
-const arangodb = require("@arangodb");
 const helper = require("@arangodb/aql-helper");
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
@@ -187,7 +186,9 @@ function VectorTrainingStateTestSuite(sparse) {
       const docs = generateDocs(gen, aboveThresholdCount, dimension);
       collection.insert(docs);
 
-      createIndex(collection, sparse);
+      const result = createIndex(collection, sparse);
+      assertFalse(result.hasOwnProperty("errorMessage") && result.errorMessage.length > 0,
+        "ensureIndex response should not have an errorMessage when index becomes ready");
 
       assertTrue(
         waitForVectorIndexState(
