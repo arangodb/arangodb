@@ -29,19 +29,20 @@ var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 var fs = require('fs');
+const IM  = global.instanceManager;
 
 if (runSetup === true) {
   'use strict';
-  global.instanceManager.debugClearFailAt();
-
+  IM.debugClearFailAt();
+  let dn = 'UnitTestsRecovery';
   try {
-    db._dropDatabase('UnitTestsRecovery');
+    db._dropDatabase(dn);
   } catch (err) {}
 
-  db._createDatabase('UnitTestsRecovery');
-  db._useDatabase('UnitTestsRecovery');
+  db._createDatabase(dn);
+  db._useDatabase(dn);
   var id = Number(db._id());
-  var path = db._path().replace(/-\d+$/, '');
+  var path = fs.join(IM.arangods[0].dataDir, dn).replace(/-\d+$/, '');
   db._useDatabase('_system');
 
   // create some empty directories

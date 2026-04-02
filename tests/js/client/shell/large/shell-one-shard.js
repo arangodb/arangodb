@@ -88,16 +88,14 @@ function getEndpointsByType(type) {
 function checkDBServerSharding(db, expected) {
   // connect to all db servers and check if they picked up the
   // "sharding" attribute correctly
-  if (!require('@arangodb').isServer) {
-    // request module can only be used inside arangosh tests
-    let endpoints = getEndpointsByType("dbserver");
-    assertTrue(endpoints.length > 0);
-    endpoints.forEach((ep) => {
-      let res = request.get({ url: ep + "/_db/" + encodeURIComponent(db) + "/_api/database/current" });
-      assertEqual(200, res.status);
-      assertEqual(expected, res.json.result.sharding);
-    });
-  }
+  // request module can only be used inside arangosh tests
+  let endpoints = getEndpointsByType("dbserver");
+  assertTrue(endpoints.length > 0);
+  endpoints.forEach((ep) => {
+    let res = request.get({ url: ep + "/_db/" + encodeURIComponent(db) + "/_api/database/current" });
+    assertEqual(200, res.status);
+    assertEqual(expected, res.json.result.sharding);
+  });
 }
 
 function OneShardPropertiesSuite () {

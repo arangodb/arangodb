@@ -146,7 +146,6 @@
     const gm = (isEnterprise) ? require("@arangodb/smart-graph") : {};
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
     const {map, zipObject} = require('lodash');
-    const isServer = require("@arangodb").isServer;
     const request = require("@arangodb/request");
     const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 
@@ -951,19 +950,10 @@
         let res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
 
-        if (isServer) {
-          request({
-            method: "get",
-            url: "/_db/_system/_admin/metrics?mode=trigger_global",
-            headers: {accept: "application/json"},
-            body: {}
-          });
-        } else {
-          let coordinators = getEndpointsByType("coordinator");
-          for (let i = 0; i < coordinators.length; i++) {
-            let c = coordinators[i];
-            getRawMetric(c, '?mode=trigger_global');
-          }
+        let coordinators = getEndpointsByType("coordinator");
+        for (let i = 0; i < coordinators.length; i++) {
+          let c = coordinators[i];
+          getRawMetric(c, '?mode=trigger_global');
         }
         let figures;
         for (let i = 0; i < 100; ++i) {
