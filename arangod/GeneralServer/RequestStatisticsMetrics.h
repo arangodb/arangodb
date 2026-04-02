@@ -17,6 +17,7 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// @author Koichi Nakata
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once

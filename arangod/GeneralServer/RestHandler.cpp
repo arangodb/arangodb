@@ -221,6 +221,10 @@ void RestHandler::startActivity() {
 }
 
 RequestTimingData RestHandler::stealTimingData() {
+  // We need to use exchange here instead of move to avoid a copy of the time_point.
+  // time_point is a trivial type, so it will be copied even when moved.
+  // Destructor of RestHandler will check if readStart != time_point() to
+  // determine whether or not to finalize.
   return std::exchange(_timingData, RequestTimingData{});
 }
 
