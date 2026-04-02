@@ -26,9 +26,7 @@
 
 namespace arangodb::cluster::paths {
 
-auto root() -> std::shared_ptr<Root const> {
-  return Root::make_shared();
-}
+auto root() -> std::shared_ptr<Root const> { return Root::make_shared(); }
 
 auto to_string(Path const& path) -> std::string { return path.str(); }
 
@@ -49,12 +47,11 @@ auto target() -> std::shared_ptr<Root::Arango::Target const> {
   return root()->arango()->target();
 }
 
-auto supervision()
-    -> std::shared_ptr<Root::Arango::Supervision const> {
+auto supervision() -> std::shared_ptr<Root::Arango::Supervision const> {
   return root()->arango()->supervision();
 }
 
-}  //aliases
+}  // namespace aliases
 
 auto Root::Arango::Target::ReplicatedLogs::Database::log(
     replication2::LogId id) const -> std::shared_ptr<const Log> {
@@ -71,4 +68,4 @@ auto Root::Arango::Current::ReplicatedLogs::Database::log(
   return Log::make_shared(shared_from_this(), std::to_string(id.id()));
 }
 
-}  // arangodb::cluster::paths
+}  // namespace arangodb::cluster::paths

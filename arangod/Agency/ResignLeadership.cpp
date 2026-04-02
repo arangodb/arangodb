@@ -238,7 +238,9 @@ bool ResignLeadership::start(bool& aborts) {
   } else {
     // ignore this check
     cleanedServersBuilder.clear();
-    { VPackArrayBuilder guard(&cleanedServersBuilder); }
+    {
+      VPackArrayBuilder guard(&cleanedServersBuilder);
+    }
   }
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
@@ -261,12 +263,16 @@ bool ResignLeadership::start(bool& aborts) {
     } else {
       // ignore this check
       failedServersBuilder.clear();
-      { VPackObjectBuilder guard(&failedServersBuilder); }
+      {
+        VPackObjectBuilder guard(&failedServersBuilder);
+      }
     }
   } else {
     // ignore this check
     failedServersBuilder.clear();
-    { VPackObjectBuilder guard(&failedServersBuilder); }
+    {
+      VPackObjectBuilder guard(&failedServersBuilder);
+    }
   }  // if
 
   VPackSlice failedServers = failedServersBuilder.slice();

@@ -1496,8 +1496,7 @@ bool State::removeObsolete(index_t cind) {
 }
 
 /// Persist a compaction snapshot
-bool State::persistCompactionSnapshot(index_t cind,
-                                      term_t term,
+bool State::persistCompactionSnapshot(index_t cind, term_t term,
                                       Store& snapshot) {
   TRI_IF_FAILURE("State::persistCompactionSnapshot") { return true; }
 

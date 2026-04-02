@@ -1009,8 +1009,7 @@ NodePtr consensus::Node::allocateNode(Args&&... args) {
 
 // Create an explicit instantiation for VPackString using the Node
 // AccountingAllocator
-using AllocatorType =
-    typename Node::allocator_type::rebind<uint8_t>::type;
+using AllocatorType = typename Node::allocator_type::rebind<uint8_t>::type;
 
 }  // namespace arangodb::consensus
 

@@ -430,7 +430,7 @@ bool RemoveFollower::start(bool&) {
         addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
       }
     }  // precondition done
-  }    // array for transaction done
+  }  // array for transaction done
 
   // Transact to agency
   write_ret_t res = singleWriteTransaction(_agent, trx, false);

@@ -790,4 +790,4 @@ void config_t::updateConfiguration(velocypack::Slice other) {
   ++_version;
 }
 
-}  //  arangodb::consensus
+}  // namespace arangodb::consensus
