@@ -41,7 +41,8 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
   RestStatus execute() override;
   void cancel() override;
-
+ protected:
+  async<Result> checkUserCanAccess() const override;
  private:
   // executes an action
   void executeAction();
