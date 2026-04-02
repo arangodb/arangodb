@@ -196,6 +196,47 @@ function VectorIndexScalingTestSuite() {
     };
 }
 
+function VectorIndexScalingEmptyCollectionTestSuite() {
+    let collection;
+
+    return {
+        setUpAll: function() {
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+            collection = db._create(collName, { numberOfShards: 3 });
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testScaledNListsOnEmptyCollectionRejected: function() {
+            try {
+                collection.ensureIndex({
+                    name: idxName,
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2", dimension,
+                        nLists: {
+                            strategy: "autoSqrt",
+                            multiplier: 4,
+                            minNLists: 2,
+                            tiers: [],
+                        },
+                    },
+                });
+                fail();
+            } catch (e) {
+                assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum);
+            }
+        },
+    };
+}
+
 jsunity.run(VectorIndexScalingTestSuite);
+jsunity.run(VectorIndexScalingEmptyCollectionTestSuite);
 
 return jsunity.done();
