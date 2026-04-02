@@ -1,5 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
+  `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
+  `/_admin/wal/transactions`.
+
+* Updated ArangoDB Starter to v0.20.0-preview-6.
 
 * Removed leftover unit test and handling of `@arangodb/locals` module that was
   only used for Foxx.
@@ -10,7 +15,6 @@
 
 * COR-353: Removed deprecated JS index creation functions `ensureUniqueConstraint()`,
   `ensureGeoIndex()`, and `ensureGeoConstraint()` from collection objects.
-
 * COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
 
 * Removed leftover range() method from collection objects in JavaScript API
@@ -40,8 +44,6 @@
 
 * Legacy geo index types `geo1` and `geo2` are no longer supported. Existing
   indexes of these types are automatically dropped during database upgrade.
-
-* Updated ArangoDB Starter to v0.20.0-preview-4.
 
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
