@@ -42,7 +42,7 @@ defmodule Toast.Deployment.FactoryTest do
       assert spec.role == :single
       assert spec.executable == Path.join([build_dir, "bin", "arangod"])
       assert is_integer(spec.port) and spec.port > 0
-      assert spec.env == []
+      assert is_list(spec.env)
       assert is_list(spec.args)
       assert spec.working_dir == repo_root
       assert spec.server_dir == deployment_dir
@@ -327,6 +327,82 @@ defmodule Toast.Deployment.FactoryTest do
       deployment_dir = Path.join(base_dir, "test-cluster")
       assert {:error, msg} = Factory.build_cluster(config, "test-cluster", deployment_dir)
       assert msg =~ "arangod not found"
+    end
+  end
+
+  describe "memory budget distribution" do
+    setup do
+      tmp_dir =
+        Path.join(System.tmp_dir!(), "toast_mem_test_#{System.unique_integer([:positive])}")
+
+      File.mkdir_p!(tmp_dir)
+      on_exit(fn -> File.rm_rf!(tmp_dir) end)
+      %{tmp_dir: tmp_dir}
+    end
+
+    @memory_env_var "ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY"
+
+    defp memory_env(spec) do
+      Enum.find_value(spec.env, fn
+        {@memory_env_var, val} -> String.to_integer(val)
+        _ -> nil
+      end)
+    end
+
+    test "single server gets full memory budget", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      total = 8_000_000_000
+      config = make_config(build_dir, memory_budget: total)
+
+      deployment_dir = Path.join(tmp_dir, "work")
+      assert {:ok, [spec]} = Factory.build_single_server(config, "mem1", deployment_dir)
+      assert memory_env(spec) == total
+    end
+
+    test "single server with nil memory has no override", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      config = make_config(build_dir, memory_budget: nil)
+
+      deployment_dir = Path.join(tmp_dir, "work")
+      assert {:ok, [spec]} = Factory.build_single_server(config, "mem2", deployment_dir)
+      assert memory_env(spec) == nil
+    end
+
+    test "cluster distributes 8/69/23% across roles", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      total = 10_000_000_000
+
+      config =
+        make_config(build_dir,
+          memory_budget: total,
+          cluster: [agents: 1, dbservers: 2, coordinators: 1]
+        )
+
+      deployment_dir = Path.join(tmp_dir, "work")
+      assert {:ok, specs} = Factory.build_cluster(config, "memc", deployment_dir)
+
+      agents = Enum.filter(specs, &(&1.role == :agent))
+      dbservers = Enum.filter(specs, &(&1.role == :dbserver))
+      coordinators = Enum.filter(specs, &(&1.role == :coordinator))
+
+      for spec <- agents, do: assert(memory_env(spec) == 800_000_000)
+      for spec <- dbservers, do: assert(memory_env(spec) == 3_450_000_000)
+      for spec <- coordinators, do: assert(memory_env(spec) == 2_300_000_000)
+    end
+
+    test "cluster with nil memory has no override", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+
+      config =
+        make_config(build_dir,
+          memory_budget: nil,
+          cluster: [agents: 1, dbservers: 1, coordinators: 1]
+        )
+
+      deployment_dir = Path.join(tmp_dir, "work")
+      assert {:ok, specs} = Factory.build_cluster(config, "memc2", deployment_dir)
+
+      for spec <- specs, do: assert(memory_env(spec) == nil)
     end
   end
 

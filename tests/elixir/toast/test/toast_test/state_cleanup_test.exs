@@ -3,7 +3,7 @@ defmodule ToastTest.StateCleanupTest do
 
   import Toast.DeploymentTestHelpers, only: [setup_deployment_registry: 1]
 
-  alias ToastTest.{DeploymentRegistry, StateCleanup}
+  alias ToastTest.{Abort, DeploymentRegistry, StateCleanup}
 
   setup :setup_deployment_registry
 
@@ -26,29 +26,23 @@ defmodule ToastTest.StateCleanupTest do
     assert_raise RuntimeError, fn -> DeploymentRegistry.get(TestSuite) end
   end
 
-  test "reset clears abort table" do
-    try do
-      :ets.delete(:toast_suite_abort)
-    catch
-      :error, :badarg -> :ok
-    end
-
-    :ets.new(:toast_suite_abort, [:named_table, :set, :public])
-    :ets.insert(:toast_suite_abort, {:aborted, "test reason"})
+  test "reset clears abort state" do
+    Abort.clear!()
+    Abort.abort!("test reason")
+    assert Abort.reason() == "test reason"
 
     StateCleanup.reset()
 
-    assert :ets.lookup(:toast_suite_abort, :aborted) == []
+    assert Abort.reason() == nil
   end
 
-  test "reset does not crash when abort table does not exist" do
-    try do
-      :ets.delete(:toast_suite_abort)
-    catch
-      :error, :badarg -> :ok
-    end
+  test "reset clears abort state when already clear" do
+    Abort.clear!()
+    assert Abort.reason() == nil
 
     StateCleanup.reset()
+
+    assert Abort.reason() == nil
   end
 
   test "reset clears after_suite callbacks" do

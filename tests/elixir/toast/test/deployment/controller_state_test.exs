@@ -429,12 +429,6 @@ defmodule Toast.Deployment.ControllerStateTest do
   end
 
   defp cleanup_server(pid) do
-    if Process.alive?(pid) do
-      try do
-        Toast.Process.ServerProcess.stop(pid, 2_000)
-      catch
-        :exit, _ -> :ok
-      end
-    end
+    Toast.Process.ServerProcess.shutdown(pid, 2_000)
   end
 end

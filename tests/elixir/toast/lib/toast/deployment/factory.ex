@@ -70,7 +70,7 @@ defmodule Toast.Deployment.Factory do
             paths.base_dir,
             repo_root,
             config.sanitizer_override
-          ),
+          ) ++ memory_env(config.memory_budget, :single, nil),
         # Run from repo root so relative config paths (etc/testing/...) resolve correctly
         working_dir: repo_root,
         server_dir: paths.base_dir,
@@ -190,7 +190,7 @@ defmodule Toast.Deployment.Factory do
             paths.base_dir,
             repo_root,
             config.sanitizer_override
-          ),
+          ) ++ memory_env(config.memory_budget, role, config.cluster),
         working_dir: repo_root,
         server_dir: paths.base_dir,
         port: port,
@@ -241,6 +241,28 @@ defmodule Toast.Deployment.Factory do
     else
       base
     end
+  end
+
+  # --- memory budget ---
+  # Distribution ratios match the JS test framework (instance-manager.js).
+
+  @memory_env_var "ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY"
+  @agent_memory_pct 8
+  @dbserver_memory_pct 69
+  @coordinator_memory_pct 23
+
+  defp memory_env(nil, _role, _cluster), do: []
+  defp memory_env(total, :single, _cluster), do: [{@memory_env_var, to_string(total)}]
+
+  defp memory_env(total, role, cluster) do
+    per_server =
+      case role do
+        :agent -> div(total * @agent_memory_pct, 100 * cluster.agents)
+        :dbserver -> div(total * @dbserver_memory_pct, 100 * cluster.dbservers)
+        :coordinator -> div(total * @coordinator_memory_pct, 100 * cluster.coordinators)
+      end
+
+    [{@memory_env_var, to_string(per_server)}]
   end
 
   # --- rr wrapping ---

@@ -102,6 +102,22 @@ defmodule Toast.Process.ServerProcess do
   end
 
   @doc """
+  Stop the OS process and terminate the GenServer.
+
+  Combines `stop/2` (which stops the OS process) with `GenServer.stop`
+  (which terminates the GenServer). Handles the case where the GenServer
+  is already dead.
+  """
+  @spec shutdown(GenServer.server(), timeout()) :: :ok | :escalated
+  def shutdown(server, timeout \\ @default_stop_timeout) do
+    result = stop(server, timeout)
+    GenServer.stop(server, :normal, 5_000)
+    result
+  catch
+    :exit, _ -> :ok
+  end
+
+  @doc """
   Get the current status of the managed process.
   """
   @spec status(GenServer.server()) :: status()

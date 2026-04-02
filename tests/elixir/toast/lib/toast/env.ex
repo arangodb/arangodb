@@ -96,6 +96,11 @@ defmodule Toast.Env do
           "TOAST_CLUSTER_REPLICATION_FACTOR"
         ) || 2,
 
+      # Resources
+      memory_budget:
+        resolve(opts, local, :memory_budget, &read_pos_int/1, "TOAST_MEMORY_BUDGET") ||
+          detect_memory(),
+
       # Server args (no env var — only via opts or local config)
       server_args: Keyword.get(opts, :server_args, local[:server_args]) || %{},
       coordinator_args: Keyword.get(opts, :coordinator_args, local[:coordinator_args]) || %{},
@@ -361,6 +366,13 @@ defmodule Toast.Env do
     end
   end
 
+  defp detect_memory do
+    case Toast.System.total_memory() do
+      {:ok, bytes} -> bytes
+      :error -> nil
+    end
+  end
+
   defp log_config(values) do
     Logger.debug(fn ->
       fields = [
@@ -375,7 +387,8 @@ defmodule Toast.Env do
         startup_timeout: "#{values.startup_timeout}ms",
         shutdown_timeout: "#{values.shutdown_timeout}ms",
         active_sanitizers: inspect(MapSet.to_list(values.active_sanitizers)),
-        rr: inspect(values.rr)
+        rr: inspect(values.rr),
+        memory_budget: inspect(values.memory_budget)
       ]
 
       "Toast.Env: " <> Enum.map_join(fields, " ", fn {k, v} -> "#{k}=#{v}" end)

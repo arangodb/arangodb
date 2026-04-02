@@ -14,6 +14,7 @@ defmodule Toast.Deployment.ConfigTest do
     :startup_timeout,
     :shutdown_timeout,
     :api_version,
+    :memory_budget,
     :rr,
     :rr_path
   ]

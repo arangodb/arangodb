@@ -226,6 +226,30 @@ defmodule Toast.EnvTest do
     end
   end
 
+  describe "memory_budget option" do
+    test "defaults to auto-detected system memory" do
+      config = load()
+      # On any Linux machine, this should be a positive integer
+      assert is_integer(config.memory_budget) and config.memory_budget > 0
+    end
+
+    test "TOAST_MEMORY_BUDGET env var overrides auto-detection" do
+      System.put_env("TOAST_MEMORY_BUDGET", "4294967296")
+      on_exit(fn -> System.delete_env("TOAST_MEMORY_BUDGET") end)
+
+      config = load()
+      assert config.memory_budget == 4_294_967_296
+    end
+
+    test "opts override env var" do
+      System.put_env("TOAST_MEMORY_BUDGET", "4294967296")
+      on_exit(fn -> System.delete_env("TOAST_MEMORY_BUDGET") end)
+
+      config = load(memory_budget: 8_589_934_592)
+      assert config.memory_budget == 8_589_934_592
+    end
+  end
+
   describe "error paths" do
     test "invalid deployment mode raises" do
       System.put_env("TOAST_DEPLOYMENT_MODE", "bogus")

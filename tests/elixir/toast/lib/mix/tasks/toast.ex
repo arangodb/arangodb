@@ -89,6 +89,7 @@ defmodule Mix.Tasks.Toast do
     startup_timeout: :integer,
     shutdown_timeout: :integer,
     timeout_factor: :integer,
+    memory_budget: :integer,
     keep_data: :boolean,
     sanitizer: :string,
     rr: :string,

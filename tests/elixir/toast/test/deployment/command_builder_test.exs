@@ -122,27 +122,17 @@ defmodule Toast.Deployment.CommandBuilderTest do
     end
 
     test "includes custom args at the end" do
-      spec = %{role: :single, port: 8529, args: %{"log.level" => "debug"}}
+      base =
+        CommandBuilder.build_args(%{role: :single, port: 8529, args: %{}}, @paths, @repo_root)
 
-      result = CommandBuilder.build_args(spec, @paths, @repo_root)
+      full =
+        CommandBuilder.build_args(
+          %{role: :single, port: 8529, args: %{"log.level" => "debug"}},
+          @paths,
+          @repo_root
+        )
 
-      assert "--log.level" in result
-      assert "debug" in result
-
-      # Custom log.level should come after the base crash=info and role args
-      log_indices =
-        result
-        |> Enum.with_index()
-        |> Enum.filter(fn {v, _i} -> v == "--log.level" end)
-        |> Enum.map(&elem(&1, 1))
-
-      # Two --log.level flags: base (crash=info) and custom (debug)
-      assert length(log_indices) == 2
-      [_base_idx, custom_idx] = log_indices
-      assert Enum.at(result, custom_idx + 1) == "debug"
-
-      role_idx = Enum.find_index(result, &(&1 == "--server.storage-engine"))
-      assert custom_idx > role_idx
+      assert full == base ++ ["--log.level", "debug"]
     end
   end
 

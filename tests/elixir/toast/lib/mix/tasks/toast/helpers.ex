@@ -70,6 +70,7 @@ defmodule Mix.Tasks.Toast.Helpers do
       startup_timeout: :startup_timeout,
       shutdown_timeout: :shutdown_timeout,
       timeout_factor: :timeout_factor,
+      memory_budget: :memory_budget,
       keep_data: :keep_data,
       sanitizer: :sanitizer_override,
       rr: :rr,

@@ -26,6 +26,7 @@ defmodule Toast.Deployment.Config do
           shutdown_timeout: pos_integer(),
           api_version: non_neg_integer() | String.t() | nil,
           cluster: ClusterOpts.t() | nil,
+          memory_budget: pos_integer() | nil,
           rr: MapSet.t(atom()) | nil,
           rr_path: Path.t() | nil
         }
@@ -40,6 +41,7 @@ defmodule Toast.Deployment.Config do
             shutdown_timeout: 60_000,
             api_version: nil,
             cluster: nil,
+            memory_budget: nil,
             rr: nil,
             rr_path: nil
 
