@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, print */
+/*global assertEqual, assertNotEqual, assertTrue, print, args */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -208,7 +208,7 @@ function ExclusiveSuite () {
           c2.update("runner1", { value: true });
         } catch (err) {
           print('error with spawned queries');
-          if (ERRORS.ERROR_ARANGO_CONFLICT.code != err.errorNum) {
+          if (ERRORS.ERROR_ARANGO_CONFLICT.code !== err.errorNum) {
             throw(err);
           }
         }
