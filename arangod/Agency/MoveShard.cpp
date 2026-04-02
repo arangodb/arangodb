@@ -318,9 +318,7 @@ bool MoveShard::start(bool&) {
   if (!cleanedServersNode) {
     // ignore this check
     cleanedServersBuilder.clear();
-    {
-      VPackArrayBuilder guard(&cleanedServersBuilder);
-    }
+    { VPackArrayBuilder guard(&cleanedServersBuilder); }
   }
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
@@ -340,9 +338,7 @@ bool MoveShard::start(bool&) {
   if (!failedServersNode) {
     // ignore this check
     failedServersBuilder.clear();
-    {
-      VPackObjectBuilder guard(&failedServersBuilder);
-    }
+    { VPackObjectBuilder guard(&failedServersBuilder); }
   }
   VPackSlice failedServers = failedServersBuilder.slice();
   if (failedServers.isObject()) {
@@ -1301,9 +1297,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
     auto todoPrec = std::make_shared<Builder>();
     {
       VPackArrayBuilder b(todoPrec.get());
-      {
-        VPackObjectBuilder o(todoPrec.get());
-      }  // nothing to declare
+      { VPackObjectBuilder o(todoPrec.get()); }  // nothing to declare
       {
         VPackObjectBuilder path(
             todoPrec.get());  // expect jobs still to be sitting in ToDo
