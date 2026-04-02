@@ -153,11 +153,9 @@ function VectorTrackIndexCreationBackgroundSuite() {
       // inBackground: true — ensureIndex returns without waiting for
       // training.
       assertEqual("vector", result.type);
-      if (!isCluster) {
         assertFalse(result.trainingState === VectorIndexTrainingState.kReady,
           "Background ensureIndex response should NOT have trainingState " +
           "'ready' — it should return before training completes");
-      }
 
       // The build manager will train it eventually.
       assertTrue(
@@ -200,10 +198,6 @@ function VectorTrackIndexCreationBelowThresholdSuite() {
     },
 
     testBelowThresholdReturnsError: function () {
-      if (isCluster) {
-        // On coordinator, the wait is a no-op — ensureIndex succeeds.
-        return;
-      }
       const seed = generateSeed();
       const gen = randomNumberGeneratorFloat(seed);
       const belowThresholdCount = trainingThreshold - 1;
@@ -221,9 +215,6 @@ function VectorTrackIndexCreationBelowThresholdSuite() {
     },
 
     testEmptyCollectionReturnsError: function () {
-      if (isCluster) {
-        return;
-      }
       try {
         createIndex(collection, /*inBackground*/ false);
         fail("ensureIndex should have thrown for empty collection");

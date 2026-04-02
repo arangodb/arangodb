@@ -94,11 +94,7 @@ describe('Foxx Manager install', function () {
         FoxxManager.install(fs.join(basePath, 'malformed-controller-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
-        if (require('@arangodb').isServer) {
-          expect(err).to.have.property('cause').that.is.an.instanceof(SyntaxError);
-        } else {
-          expect(err).not.to.have.property('cause');
-        }
+        expect(err).not.to.have.property('cause');
         return true;
       });
     });
@@ -118,12 +114,7 @@ describe('Foxx Manager install', function () {
         FoxxManager.install(fs.join(basePath, 'broken-controller-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
-        if (require('@arangodb').isServer) {
-          expect(err).to.have.property('cause')
-            .that.is.an.instanceof(SyntaxError);
-        } else {
-          expect(err).not.to.have.property('cause');
-        }
+        expect(err).not.to.have.property('cause');
         return true;
       });
     });
@@ -133,13 +124,7 @@ describe('Foxx Manager install', function () {
         FoxxManager.install(fs.join(basePath, 'broken-setup-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        if (require('@arangodb').isServer) {
-          expect(err).to.have.property('cause');
-          expect(err.cause).not.to.be.an.instanceof(SyntaxError);
-          expect(err.cause).not.to.be.an.instanceof(ArangoError);
-        } else {
-          expect(err).not.to.have.property('cause');
-        }
+        expect(err).not.to.have.property('cause');
         return true;
       });
     });
@@ -149,12 +134,7 @@ describe('Foxx Manager install', function () {
         FoxxManager.install(fs.join(basePath, 'malformed-exports-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
-        if (require('@arangodb').isServer) {
-          expect(err).to.have.property('cause')
-            .that.is.an.instanceof(SyntaxError);
-        } else {
-          expect(err).not.to.have.property('cause');
-        }
+        expect(err).not.to.have.property('cause');
         return true;
       });
     });
@@ -174,12 +154,7 @@ describe('Foxx Manager install', function () {
         FoxxManager.install(fs.join(basePath, 'malformed-setup-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
-        if (require('@arangodb').isServer) {
-          expect(err).to.have.property('cause')
-            .that.is.an.instanceof(SyntaxError);
-        } else {
-          expect(err).not.to.have.property('cause');
-        }
+        expect(err).not.to.have.property('cause');
         return true;
       });
     });
