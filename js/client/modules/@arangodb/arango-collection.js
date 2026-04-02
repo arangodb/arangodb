@@ -501,7 +501,7 @@ ArangoCollection.prototype.rename = function (name) {
 // / @brief gets all indexes
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.indexes = function (withStats, withHidden) {
+ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats, withHidden) {
   let url = this._indexurl();
   url = appendBoolParameter(url, 'withStats', withStats);
   if (withHidden) {
