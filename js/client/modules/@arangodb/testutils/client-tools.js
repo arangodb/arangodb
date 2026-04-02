@@ -418,7 +418,7 @@ while (fs.exists('${globalFn}')) {
 }
 let args = ${JSON.stringify(args)};
 let testfunc = ${String(snippet)};
-testfunc();
+testfunc(...args);
 `;
     arangoshList.push(
       launchPlainSnippetInBG(mySnippet, key + `_${i}`)
