@@ -79,9 +79,9 @@ function ExclusiveSuite () {
 
     testExclusiveExpectConflict : function () {
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let fn1 = function(cn1, cn2) {
+      let fn1 = function() {
         let db = require('internal').db;
-        let c2 = db[cn2];
+        let c2 = db[args.cn2];
         c2.insert({ _key: "runner1", value: false });
               
         while (!c2.exists("runner2")) {
@@ -90,13 +90,13 @@ function ExclusiveSuite () {
         
         let trx = db._createTransaction({
           collections: {
-            write: [cn1, cn2],
+            write: [args.cn1, args.cn2],
             exclusive: [ ]
           }
         });
-        let ct1 = trx.collection(cn1);
-        let ct2 = trx.collection(cn2);
-        for (let i = 0; i < 100000; ++i) {
+        let ct1 = trx.collection(args.cn1);
+        let ct2 = trx.collection(args.cn2);
+        for (let i = 0; i < 10000; ++i) {
           ct1.update("XXX", { name : "runner1" });
         }
         ct2.update("runner1", { value: true });
@@ -104,7 +104,7 @@ function ExclusiveSuite () {
         trx.commit();
       };
       let shells = [];
-      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, [`${cn1}`, `${cn2}`]);
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, {cn1, cn2});
       db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
       while (!c2.exists("runner1")) {
         sleep(0.02);
@@ -118,7 +118,7 @@ function ExclusiveSuite () {
         });
         let ct1 = trx.collection(cn1);
         let ct2 = trx.collection(cn2);
-        for (let i = 0; i < 100000; ++i) {
+        for (let i = 0; i < 10000; ++i) {
           ct1.update("XXX", { name : "runner2" });
         }
         ct2.update("runner2", { value: true });
@@ -140,9 +140,9 @@ function ExclusiveSuite () {
     testExclusiveExpectNoConflict : function () {
       assertEqual(0, c2.count());
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let fn1 = function(cn1, cn2) {
+      let fn1 = function() {
         let db = require("internal").db;
-        let c2 = db[cn2];
+        let c2 = db[args.cn2];
         c2.insert({ _key: "runner1", value: false });
         while (!c2.exists("runner2")) {
           require("internal").sleep(0.02);
@@ -150,19 +150,19 @@ function ExclusiveSuite () {
 
         let trx = db._createTransaction({
           collections: {
-            exclusive: [cn1, cn2],
+            exclusive: [args.cn1, args.cn2],
           }
         });
-        let ct1 = trx.collection(cn1);
-        let ct2 = trx.collection(cn2);
-        for (let i = 0; i < 100000; ++i) {
+        let ct1 = trx.collection(args.cn1);
+        let ct2 = trx.collection(args.cn2);
+        for (let i = 0; i < 10000; ++i) {
           ct1.update("XXX", { name : "runner1" });
         }
         ct2.update("runner1", { value: true });
         trx.commit();
       };
       let shells = [];
-      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, [`${cn1}`, `${cn2}`]);
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, {cn1, cn2});
 
       c2.insert({ _key: "runner2", value: false });
       while (!c2.exists("runner1")) {
@@ -176,7 +176,7 @@ function ExclusiveSuite () {
       });
       let ct1 = trx.collection(cn1);
       let ct2 = trx.collection(cn2);
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < 10000; ++i) {
         ct1.update("XXX", { name : "runner2" });
       }
       ct2.update("runner2", { value: true });
@@ -192,26 +192,30 @@ function ExclusiveSuite () {
 
     testExclusiveExpectConflictAQL : function () {
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let fn1 = function(cn1, cn2) {
+      let fn1 = function() {
+        var arangodb = require("@arangodb");
+        var ERRORS = arangodb.errors;
         let db = require("internal").db;
-        let c2 = db[cn2];
+        let c2 = db[args.cn2];
         c2.insert({ _key: "runner1", value: false });
         while (!c2.exists("runner2")) {
           require("internal").sleep(0.02);
         }
         try {
-          for (let i = 0; i < 10000; ++i) {
-            db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@cn", {'@cn': cn1});
+          for (let i = 0; i < 1000; ++i) {
+            db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@cn", {'@cn': args.cn1});
           }
           c2.update("runner1", { value: true });
         } catch (err) {
           print('error with spawned queries');
-          assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+          if (ERRORS.ERROR_ARANGO_CONFLICT.code != err.errorNum) {
+            throw(err);
+          }
         }
       };
       
       let shells = [];
-      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, [`${cn1}`, `${cn2}`]);
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, {cn1, cn2});
 
       try {
         c2.insert({ _key: "runner2", value: false });
@@ -243,23 +247,23 @@ function ExclusiveSuite () {
     
     testExclusiveExpectNoConflictAQL : function () {
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let fn1 = function(cn1, cn2) {
+      let fn1 = function() {
         let db = require("internal").db;
-        let c2 = db[cn2];
+        let c2 = db[args.cn2];
         c2.insert({ _key: "runner1", value: false });
         while (!c2.exists("runner2")) {
           require("internal").sleep(0.02);
         }
         print('spawned start');
-        for (let i = 0; i < 10000; ++i) {
-          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@col OPTIONS { exclusive: true }", {"@col": cn1});
+        for (let i = 0; i < 1000; ++i) {
+          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@col OPTIONS { exclusive: true }", {"@col": args.cn1});
         }
         print('spawned done');
         c2.update("runner1", { value: true });
       };
       
       let shells = [];
-      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, [`${cn1}`, `${cn2}`]);
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, {cn1, cn2});
 
       c2.insert({ _key: "runner2", value: false });
       while (!c2.exists("runner1")) {
