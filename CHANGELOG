@@ -1,5 +1,5 @@
-3.12.9-devel (XXXX-XX-XX)
--------------------------
+3.12.9 (2026-04-02)
+-------------------
 
 * Fix vector index creation response containing a stale errorMessage after
   training succeeds when the index was created with `inBackground: false`.
@@ -14,34 +14,36 @@
 
 * Updated timezone database as of 31.03.2026.
 
-* COR-374: Fix assertion failure during vector index creation in cluster when a transient
-  shard error is followed by success, due to stale error message not being cleared.
+* COR-374: Fix assertion failure during vector index creation in cluster when a
+  transient shard error is followed by success, due to stale error message not
+  being cleared.
 
 * Fix vector index creation in cluster producing duplicate indexes when
   `storedValues` differs between definitions (e.g., one with and one without
   `storedValues`). The comparison now correctly ignores `storedValues`.
 
-* Fix vector index creation in cluster when inBackground is false reports the error
-  that there is insufficient data in collection.
+* Fix vector index creation in cluster when inBackground is false reports the
+  error that there is insufficient data in collection.
 
 * Vector index creation with `inBackground: false` now blocks until training
   completes and returns the current `trainingState` in the response.
 
 * Lowered the vector index training threshold from
-  `nLists * max_points_per_centroid` to `nLists`, allowing vector indexes
-  to be trained with fewer documents in the collection.
+  `nLists * max_points_per_centroid` to `nLists`, allowing vector indexes to be
+  trained with fewer documents in the collection.
 
-* COR-255: Fixed vector index not being properly trained on follower shards
-  when replicationFactor is increased. Followers now automatically train and
-  populate vector indexes from local documents after initial sync.
+* COR-255: Fixed vector index not being properly trained on follower shards when
+  replicationFactor is increased. Followers now automatically train and populate
+  vector indexes from local documents after initial sync.
   Vector index training now happens in the background; index creation returns
-  immediately and queries return error 1555 (`ERROR_QUERY_VECTOR_INDEX_NOT_READY`)
-  until training completes.
+  immediately and queries return error 1555
+  (`ERROR_QUERY_VECTOR_INDEX_NOT_READY`) until training completes.
   The REST index API (`GET /_api/index`) now includes per-shard training state
   for vector indexes in cluster deployments.
   Added four new vector index metrics: `arangodb_vector_index_unusable`,
-  `arangodb_vector_index_training_ongoing`, `arangodb_vector_index_training_duration`,
-  and `arangodb_vector_index_ingestion_duration`.
+  `arangodb_vector_index_training_ongoing`,
+  `arangodb_vector_index_training_duration`, and
+  `arangodb_vector_index_ingestion_duration`.
 
 * Make defaults for JavaScript security options stricter: Use a default deny
   policy for the following options:
@@ -58,33 +60,33 @@
 
 * Fixed a bug in arangosh that made it quit when entering `global`.
 
-* COR-324, github issue #21782: Added information to query extra output
-  about parallelism achieved in SEARCH queries.
+* COR-324, github issue #21782: Added information to query extra output about
+  parallelism achieved in SEARCH queries.
 
-* COR-328: Fixed incomplete results in vector search queries when LIMIT exceeded the
-  internal batch size.
+* COR-328: Fixed incomplete results in vector search queries when LIMIT exceeded
+  the internal batch size.
 
 * COR-123: The push-filter-into-enumerate-near optimizer rule now considers all
-  compatible vector indexes on a collection to find if one whose storedValues cover
-  the filter expression.
+  compatible vector indexes on a collection to find if one whose storedValues
+  cover the filter expression.
 
-* COR-267, github issue #21944: Fixed a bug in the handling of post filters
-  with array expansion operators and inverted indexes.
+* COR-267, github issue #21944: Fixed a bug in the handling of post filters with
+  array expansion operators and inverted indexes.
 
 * COR-286: Fixed a crash when executing AQL queries with `usePlanCache: true` on
-  cluster-one-shard databases containing graph traversals. When a cached
-  plan was restored, the `_appliedRules` metadata (including
-  `cluster-one-shard`) was not deserialized, causing the coordinator to
-  incorrectly attempt distributed execution on a plan optimized for a
-  single DB server. Additionally, graph nodes lost their
-  `LocalGraphNode` type during cache round-trip.
+  cluster-one-shard databases containing graph traversals. When a cached plan
+  was restored, the `_appliedRules` metadata (including `cluster-one-shard`)
+  was not deserialized, causing the coordinator to incorrectly attempt
+  distributed execution on a plan optimized for a single DB server.
+  Additionally, graph nodes lost their `LocalGraphNode` type during cache
+  round-trip.
 
-* Fixed a bug in arangodump that prevented the `--local-network-threads`
-  startup option from accepting the specified value and potentially
-  overwriting the `--dbserver-worker-threads` setting.
+* Fixed a bug in arangodump that prevented the `--local-network-threads` startup
+  option from accepting the specified value and potentially overwriting the
+  `--dbserver-worker-threads` setting.
 
-* COR-271: If a query uses an OR condition that affects multiple indexes
-  the covering index optimisation is now applied.
+* COR-271: If a query uses an OR condition that affects multiple indexes the
+  covering index optimisation is now applied.
 
 * COR-168: Fixed the projections and filterProjections that were being cleared
   up when an IndexNode had multiple indexes because of an OR operand in a query.
