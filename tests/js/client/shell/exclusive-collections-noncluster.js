@@ -31,7 +31,7 @@ const sleep = require('internal').sleep;
 
 var arangodb = require("@arangodb");
 var db = arangodb.db;
-var IM = GLOBAL.instanceManager;
+var IM = global.instanceManager;
 var ERRORS = arangodb.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ function ExclusiveSuite () {
         ct2.update("runner1", { value: true });
         print('committing spawned');
         trx.commit();
-      }
+      };
       let shells = [];
       ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, [`${cn1}`, `${cn2}`]);
       db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
@@ -160,7 +160,7 @@ function ExclusiveSuite () {
         }
         ct2.update("runner1", { value: true });
         trx.commit();
-      }
+      };
       let shells = [];
       ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, [`${cn1}`, `${cn2}`]);
 
@@ -256,7 +256,7 @@ function ExclusiveSuite () {
         }
         print('spawned done');
         c2.update("runner1", { value: true });
-      }
+      };
       
       let shells = [];
       ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, [`${cn1}`, `${cn2}`]);
