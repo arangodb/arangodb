@@ -83,14 +83,14 @@ function IndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetIndexes: function() {
-      var res = collection.indexes();
+      var res = collection.getIndexes();
 
       assertEqual(1, res.length);
 
       collection.ensureIndex({type: "geo", fields: ["a"]});
       collection.ensureIndex({type: "geo", fields: ["a", "b"]});
 
-      res = collection.indexes();
+      res = collection.getIndexes();
 
       assertEqual(3, res.length);
     },

@@ -502,7 +502,7 @@ function VectorIndexStoredValuesTestSuite() {
 
         testCreateVectorIndexWithStoredValues: function() {
             // Test creating a vector index with storedValues
-            const indexInfo = collection.indexes().find(idx => idx.name === "vector_l2_stored");
+            const indexInfo = collection.getIndexes().find(idx => idx.name === "vector_l2_stored");
             assertTrue(indexInfo !== undefined, "Vector index with storedValues should exist");
             assertEqual("vector", indexInfo.type);
             assertTrue(indexInfo.storedValues !== undefined, "storedValues should be defined");
@@ -664,7 +664,7 @@ function VectorIndexStoredValuesTestSuite() {
 
         testStoredValuesIndexSerialization: function() {
             // Test that storedValues are properly serialized in index definition
-            const indexes = collection.indexes();
+            const indexes = collection.getIndexes();
             const vectorIndex = indexes.find(idx => idx.name === "vector_l2_stored");
             
             assertTrue(vectorIndex !== undefined, "Vector index should exist");
