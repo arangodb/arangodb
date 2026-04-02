@@ -34,6 +34,7 @@
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
+#include "Aql/TypedAstNodes.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Graph/TraverserOptions.h"

@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/TypedAstNodes.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
@@ -98,7 +99,7 @@ SortCondition::SortCondition(
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           fieldNames.emplace_back(
               arangodb::basics::AttributeName(node->getString(), false));
-          node = node->getMember(0);
+          node = ast::AttributeAccessNode(node).getObject();
         }
 
         if (node->type == NODE_TYPE_REFERENCE) {
