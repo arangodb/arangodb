@@ -119,7 +119,7 @@ defmodule Mix.Tasks.Toast do
         Mix.Task.run("compile", [])
       end
 
-      Toast.Env.load(Helpers.opts_to_env_list(opts))
+      opts |> Helpers.opts_to_env_list() |> Toast.Env.load() |> Toast.Env.apply!()
 
       unless opts[:start] == false do
         Mix.Task.run("app.start", [])

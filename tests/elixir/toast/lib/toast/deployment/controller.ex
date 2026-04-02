@@ -17,6 +17,7 @@ defmodule Toast.Deployment.Controller do
   }
 
   alias Toast.Diagnostics.AgencyDump
+  alias Toast.Process.CrashInfo
   alias Toast.Process.ServerProcess
 
   @intentional_exit_signals [nil, 15]
@@ -135,6 +136,23 @@ defmodule Toast.Deployment.Controller do
   def start_server(server, server_id, opts \\ []),
     do: GenServer.call(server, {:start_server, server_id, opts}, :infinity)
 
+  @spec notify_crash(GenServer.server(), String.t(), CrashInfo.t()) :: :ok
+  def notify_crash(server, server_id, crash_info) do
+    send(server, {:server_crashed, server_id, crash_info})
+    :ok
+  end
+
+  @spec expect_crash(GenServer.server(), String.t(), timeout()) :: :ok | {:error, term()}
+  def expect_crash(server, server_id, timeout \\ 30_000) do
+    GenServer.call(server, {:expect_crash, server_id, timeout})
+  end
+
+  @spec verify_crash(GenServer.server(), String.t(), timeout()) ::
+          {:ok, CrashInfo.t()} | {:error, term()}
+  def verify_crash(server, server_id, timeout \\ 5_000) do
+    GenServer.call(server, {:verify_crash, server_id, timeout}, timeout + 5_000)
+  end
+
   # --- Server callbacks ---
 
   @impl true
@@ -142,11 +160,21 @@ defmodule Toast.Deployment.Controller do
     config = Keyword.get(opts, :config, Config.new())
     id = Keyword.fetch!(opts, :id)
     listener = Keyword.get(opts, :event_listener, DefaultEventListener)
+    servers = Keyword.get(opts, :servers, %{})
+    status = Keyword.get(opts, :status, :stopped)
+
+    # Monitor any pre-existing health monitors (e.g., when servers are passed in
+    # for testing) so we receive :DOWN messages if they crash.
+    for {_id, %ServerInstance{health_monitor: pid}} when is_pid(pid) <- servers do
+      Process.monitor(pid)
+    end
 
     state = %State{
       id: id,
       config: config,
-      event_listener: listener
+      event_listener: listener,
+      servers: servers,
+      status: status
     }
 
     {:ok, state}
@@ -253,17 +281,13 @@ defmodule Toast.Deployment.Controller do
 
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
-    %ServerInstance{} = server = state.servers[server_id]
-
-    case handle_crash(server_id, crash_info, server, state) do
-      {:expected, state} ->
-        {:noreply, %{state | status: ServerInstance.derive_cluster_status(state.servers)}}
-
-      {:intentional_exit, state} ->
+    case Map.get(state.servers, server_id) do
+      nil ->
+        Logger.warning("Received crash notification for unknown server #{server_id}, ignoring")
         {:noreply, state}
 
-      {:failed, state} ->
-        {:noreply, state}
+      %ServerInstance{} = server ->
+        handle_crash_result(handle_crash(server_id, crash_info, server, state))
     end
   end
 
@@ -318,6 +342,19 @@ defmodule Toast.Deployment.Controller do
   def handle_info(msg, state) do
     Logger.debug("Unexpected message: #{inspect(msg)}")
     {:noreply, state}
+  end
+
+  defp handle_crash_result(result) do
+    case result do
+      {:expected, state} ->
+        {:noreply, %{state | status: ServerInstance.derive_cluster_status(state.servers)}}
+
+      {:intentional_exit, state} ->
+        {:noreply, state}
+
+      {:failed, state} ->
+        {:noreply, state}
+    end
   end
 
   # --- Control operations ---

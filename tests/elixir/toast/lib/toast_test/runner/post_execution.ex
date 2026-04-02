@@ -2,6 +2,7 @@ defmodule ToastTest.Runner.PostExecution do
   @moduledoc false
 
   alias ToastTest.{EventStore, SuiteResult}
+  alias ToastTest.Runner.ResultBuilder
 
   require Logger
 
@@ -50,7 +51,7 @@ defmodule ToastTest.Runner.PostExecution do
 
     Logger.debug("Running attribution")
 
-    crash_events = Enum.map(snapshot.unexpected_crashes, &to_crash_event/1)
+    crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
 
     {issues, coredump_reports} =
       ToastTest.Attribution.run(test_data, artifacts, crash_events,
@@ -60,12 +61,21 @@ defmodule ToastTest.Runner.PostExecution do
 
     Logger.debug("Collecting server logs")
     windows = ToastTest.Attribution.TimeWindows.build(test_data)
-    all_log_files = collect_log_files(snapshot.servers)
+    all_log_files = ResultBuilder.collect_log_files(snapshot.servers)
     server_logs = ToastTest.Attribution.ServerLogs.collect(issues, all_log_files, windows)
 
     Logger.debug("Building results (#{length(issues)} issues found)")
-    warnings = coredump_warnings(crash_events, artifacts, test_config)
-    deployments = build_deployments(snapshot, server_logs)
+    active_sanitizers = Application.get_env(:toast, :active_sanitizers, MapSet.new())
+
+    warnings =
+      ResultBuilder.coredump_warnings(
+        crash_events,
+        artifacts,
+        test_config.coredump_dir,
+        active_sanitizers
+      )
+
+    deployments = ResultBuilder.build_deployments(snapshot, server_logs)
 
     suite_result =
       SuiteResult.build(test_data, issues,
@@ -78,63 +88,6 @@ defmodule ToastTest.Runner.PostExecution do
     SuiteResult.write_all(suite_result, test_config.result_dir)
     print_post_exec_summary(suite_result)
     suite_result
-  end
-
-  defp build_deployments(snapshot, server_logs) do
-    Map.new(snapshot.deployments, fn {did, deployment_info} ->
-      servers_with_logs =
-        Map.new(Map.get(snapshot.servers, did, %{}), fn {sid, server} ->
-          {sid, Map.put(server, :logs, Map.get(server_logs, sid, []))}
-        end)
-
-      {did,
-       %{
-         id: did,
-         mode: deployment_info.mode,
-         stacktrace: deployment_info.stacktrace,
-         started_at: deployment_info.started_at,
-         stopped_at: deployment_info.stopped_at,
-         servers: servers_with_logs
-       }}
-    end)
-  end
-
-  defp collect_log_files(servers_by_deployment) do
-    for {_did, servers} <- servers_by_deployment,
-        {sid, server} <- servers,
-        log_file = server[:log_file],
-        log_file != nil,
-        into: %{} do
-      {sid, log_file}
-    end
-  end
-
-  defp to_crash_event(%{server_id: sid, crash_info: info} = e) do
-    %Toast.Process.CrashEvent{
-      server_id: sid,
-      crash_info: info,
-      expected: Map.get(e, :expected, false)
-    }
-  end
-
-  defp coredump_warnings(crash_events, artifacts, test_config) do
-    if crash_events != [] and not ToastTest.ArtifactCollector.has_coredumps?(artifacts) do
-      [
-        sanitizer_coredump_warning(),
-        Toast.Diagnostics.Coredump.coredump_discovery_warning(test_config.coredump_dir)
-      ]
-      |> Toast.Utils.compact()
-    else
-      []
-    end
-  end
-
-  defp sanitizer_coredump_warning do
-    active = Application.get_env(:toast, :active_sanitizers, MapSet.new())
-
-    if MapSet.size(active) > 0,
-      do:
-        "Sanitizer build detected — coredumps are typically not generated with sanitizers enabled"
   end
 
   defp build_coredump_analyzer_opts(test_config) do

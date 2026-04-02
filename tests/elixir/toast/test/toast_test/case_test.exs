@@ -69,14 +69,8 @@ defmodule ToastTest.CaseContextTest do
   setup :setup_deployment_registry
 
   defp fake_deployment do
-    fields = %{
-      id: "test-1",
-      controller: self()
-    }
-
     %Toast.Deployment{
-      id: fields.id,
-      controller: fields.controller
+      id: "test-1"
     }
   end
 

@@ -4,9 +4,19 @@ defmodule Toast.Deployment.ControllerCrashTest do
   alias Toast.Deployment.{Config, Controller, ServerInstance}
   alias Toast.Process.CrashInfo
 
-  defp start_controller do
+  defp start_controller(server_overrides \\ []) do
     id = "crash-test-#{System.unique_integer([:positive])}"
-    {:ok, ctrl} = Controller.start_link(config: Config.new(), id: id)
+
+    defaults = [id: id, role: :single, operational_state: :running, expecting_exit: false]
+    server = struct!(ServerInstance, Keyword.merge(defaults, server_overrides))
+
+    {:ok, ctrl} =
+      Controller.start_link(
+        config: Config.new(),
+        id: id,
+        servers: %{id => server},
+        status: :ready
+      )
 
     on_exit(fn ->
       try do
@@ -16,17 +26,7 @@ defmodule Toast.Deployment.ControllerCrashTest do
       end
     end)
 
-    ctrl
-  end
-
-  defp inject_server(ctrl, overrides \\ []) do
-    :sys.replace_state(ctrl, fn state ->
-      defaults = [id: state.id, role: :single, operational_state: :running, expecting_exit: false]
-      server = struct!(ServerInstance, Keyword.merge(defaults, overrides))
-      %{state | status: :ready, servers: Map.put(state.servers, server.id, server)}
-    end)
-
-    Controller.get_info(ctrl).id
+    {ctrl, id}
   end
 
   defp crash_info(overrides \\ []) do
@@ -41,10 +41,9 @@ defmodule Toast.Deployment.ControllerCrashTest do
 
   describe "handle_crash classification via :server_crashed message" do
     test "unexpected crash sets status to :failed" do
-      ctrl = start_controller()
-      server_id = inject_server(ctrl)
+      {ctrl, server_id} = start_controller()
 
-      send(ctrl, {:server_crashed, server_id, crash_info()})
+      Controller.notify_crash(ctrl, server_id, crash_info())
 
       assert Controller.get_status(ctrl) == :failed
       info = Controller.get_info(ctrl)
@@ -53,30 +52,27 @@ defmodule Toast.Deployment.ControllerCrashTest do
     end
 
     test "intentional exit (nil signal) does not change status" do
-      ctrl = start_controller()
-      server_id = inject_server(ctrl, expecting_exit: true)
+      {ctrl, server_id} = start_controller(expecting_exit: true)
 
-      send(ctrl, {:server_crashed, server_id, crash_info(signal: nil)})
+      Controller.notify_crash(ctrl, server_id, crash_info(signal: nil))
 
       assert Controller.get_status(ctrl) == :ready
       assert Controller.get_info(ctrl).error == nil
     end
 
     test "intentional exit (SIGTERM signal 15) does not change status" do
-      ctrl = start_controller()
-      server_id = inject_server(ctrl, expecting_exit: true)
+      {ctrl, server_id} = start_controller(expecting_exit: true)
 
-      send(ctrl, {:server_crashed, server_id, crash_info(signal: 15)})
+      Controller.notify_crash(ctrl, server_id, crash_info(signal: 15))
 
       assert Controller.get_status(ctrl) == :ready
       assert Controller.get_info(ctrl).error == nil
     end
 
     test "crash during intentional stop (SIGSEGV) sets status to :failed" do
-      ctrl = start_controller()
-      server_id = inject_server(ctrl, expecting_exit: true)
+      {ctrl, server_id} = start_controller(expecting_exit: true)
 
-      send(ctrl, {:server_crashed, server_id, crash_info(signal: 11)})
+      Controller.notify_crash(ctrl, server_id, crash_info(signal: 11))
 
       assert Controller.get_status(ctrl) == :failed
       info = Controller.get_info(ctrl)
@@ -84,22 +80,20 @@ defmodule Toast.Deployment.ControllerCrashTest do
     end
 
     test "crash during intentional stop (SIGABRT signal 6) sets status to :failed" do
-      ctrl = start_controller()
-      server_id = inject_server(ctrl, expecting_exit: true)
+      {ctrl, server_id} = start_controller(expecting_exit: true)
 
-      send(ctrl, {:server_crashed, server_id, crash_info(signal: 6)})
+      Controller.notify_crash(ctrl, server_id, crash_info(signal: 6))
 
       assert Controller.get_status(ctrl) == :failed
     end
 
     test "expected crash (no waiter) stores crash_info and derives status" do
-      ctrl = start_controller()
-      server_id = inject_server(ctrl)
+      {ctrl, server_id} = start_controller()
 
-      :ok = GenServer.call(ctrl, {:expect_crash, server_id, 5_000})
+      :ok = Controller.expect_crash(ctrl, server_id, 5_000)
 
       info = crash_info()
-      send(ctrl, {:server_crashed, server_id, info})
+      Controller.notify_crash(ctrl, server_id, info)
 
       # Sync via get_info — expected crash derives status (degraded, not :failed)
       ctrl_info = Controller.get_info(ctrl)
@@ -108,15 +102,14 @@ defmodule Toast.Deployment.ControllerCrashTest do
     end
 
     test "expected crash with pending verify_crash replies to waiter" do
-      ctrl = start_controller()
-      server_id = inject_server(ctrl)
+      {ctrl, server_id} = start_controller()
 
-      :ok = GenServer.call(ctrl, {:expect_crash, server_id, 5_000})
+      :ok = Controller.expect_crash(ctrl, server_id, 5_000)
 
       # Start verify_crash in a task (it will block waiting for crash)
       task =
         Task.async(fn ->
-          GenServer.call(ctrl, {:verify_crash, server_id, 5_000}, 10_000)
+          Controller.verify_crash(ctrl, server_id, 5_000)
         end)
 
       # Give verify_crash time to register waiter
@@ -124,7 +117,7 @@ defmodule Toast.Deployment.ControllerCrashTest do
 
       # Simulate crash
       info = crash_info()
-      send(ctrl, {:server_crashed, server_id, info})
+      Controller.notify_crash(ctrl, server_id, info)
 
       # verify_crash should return the crash info
       assert {:ok, returned_info} = Task.await(task, 5_000)

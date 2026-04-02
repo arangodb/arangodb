@@ -47,15 +47,13 @@ defmodule ToastTest.CaseTest do
 
   defp fake_deployment(overrides \\ %{}) do
     defaults = %{
-      id: "test-1",
-      controller: self()
+      id: "test-1"
     }
 
     fields = Map.merge(defaults, overrides)
 
     %Toast.Deployment{
-      id: fields.id,
-      controller: fields.controller
+      id: fields.id
     }
   end
 end

@@ -46,7 +46,6 @@ defmodule ToastTest.ServerIdMappingTest do
   defp single_server_deployment(opts) do
     %Deployment{
       id: "test-single",
-      controller: self(),
       servers: %{
         "single" => %Toast.Deployment.ServerInfo{
           id: "single",
@@ -62,7 +61,6 @@ defmodule ToastTest.ServerIdMappingTest do
   defp cluster_deployment do
     %Deployment{
       id: "test-cluster",
-      controller: self(),
       servers: %{
         "dbserver-0" => %Toast.Deployment.ServerInfo{
           id: "dbserver-0",

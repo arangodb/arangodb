@@ -19,7 +19,6 @@ defmodule Toast.Deployment.ClientTest do
 
     %Deployment{
       id: "test",
-      controller: self(),
       api_version: Keyword.get(opts, :api_version),
       servers: server_map
     }

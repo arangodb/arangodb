@@ -14,11 +14,12 @@ defmodule Toast.Deployment do
             role: Toast.Deployment.ServerInstance.role(),
             port: non_neg_integer(),
             endpoint: String.t(),
-            arango_id: String.t() | nil
+            arango_id: String.t() | nil,
+            operational_state: Toast.Deployment.ServerInstance.operational_state() | nil
           }
 
     @enforce_keys [:id, :role, :port, :endpoint]
-    defstruct [:id, :role, :port, :endpoint, :arango_id]
+    defstruct [:id, :role, :port, :endpoint, :arango_id, :operational_state]
   end
 
   @type mode :: :single_server | :cluster
@@ -39,12 +40,12 @@ defmodule Toast.Deployment do
 
   @type t :: %__MODULE__{
           id: String.t(),
-          controller: pid(),
+          controller: pid() | nil,
           api_version: non_neg_integer() | String.t() | nil,
           servers: %{String.t() => ServerInfo.t()}
         }
 
-  @enforce_keys [:id, :controller]
+  @enforce_keys [:id]
   defstruct [:id, :controller, :api_version, servers: %{}]
 
   @doc "Returns true if this is a cluster deployment."
@@ -197,7 +198,14 @@ defmodule Toast.Deployment do
   end
 
   @spec stop(t(), keyword()) :: {:ok, map()} | {:error, term(), map()}
-  def stop(%__MODULE__{controller: pid} = deployment, opts \\ []) do
+  def stop(deployment, opts \\ [])
+
+  def stop(%__MODULE__{controller: nil} = deployment, _opts) do
+    Logger.info("Stopping deployment #{deployment.id} (no controller)")
+    {:ok, %{servers: %{}, error: nil}}
+  end
+
+  def stop(%__MODULE__{controller: pid} = deployment, opts) do
     Logger.info("Stopping deployment #{deployment.id}")
 
     shutdown_result =
@@ -223,6 +231,8 @@ defmodule Toast.Deployment do
   @spec dump_agency(t(), keyword()) :: {:ok, iodata() | nil} | {:error, term()}
   def dump_agency(deployment, opts \\ [])
 
+  def dump_agency(%__MODULE__{controller: nil}, _opts), do: {:error, :controller_dead}
+
   def dump_agency(%__MODULE__{} = deployment, opts) do
     if cluster?(deployment) do
       timeout = Keyword.get(opts, :timeout, 60_000)
@@ -244,24 +254,28 @@ defmodule Toast.Deployment do
   end
 
   @doc "Get a specific server's current state."
-  @spec server(t(), String.t()) :: {:ok, ServerInstance.t()} | {:error, :not_found}
+  @spec server(t(), String.t()) :: {:ok, ServerInfo.t()} | {:error, :not_found}
   def server(%__MODULE__{} = deployment, server_id) do
     case controller_call(deployment, {:get_server, server_id}, {:error, :stopped}) do
       {:error, _} = error -> error
-      server_instance -> {:ok, server_instance}
+      server_instance -> {:ok, to_server_info(server_instance)}
     end
   end
 
   @doc "List all servers with current state."
-  @spec servers(t()) :: [ServerInstance.t()]
+  @spec servers(t()) :: [ServerInfo.t()]
   def servers(%__MODULE__{} = deployment) do
-    controller_call(deployment, :get_servers, [])
+    deployment
+    |> controller_call(:get_servers, [])
+    |> Enum.map(&to_server_info/1)
   end
 
   @doc "List servers filtered by role."
-  @spec servers(t(), keyword()) :: [ServerInstance.t()]
+  @spec servers(t(), keyword()) :: [ServerInfo.t()]
   def servers(%__MODULE__{} = deployment, role: role) do
-    controller_call(deployment, {:get_servers, role}, [])
+    deployment
+    |> controller_call({:get_servers, role}, [])
+    |> Enum.map(&to_server_info/1)
   end
 
   @spec client(t(), String.t()) :: {:ok, Client.t()} | {:error, :not_found}
@@ -429,17 +443,27 @@ defmodule Toast.Deployment do
     do: controller_call_control(d, :start_server, target, opts)
 
   @spec expect_crash(t(), String.t(), keyword()) :: :ok | {:error, term()}
-  def expect_crash(%__MODULE__{controller: pid}, server_id, opts \\ []) do
+  def expect_crash(deployment, server_id, opts \\ [])
+
+  def expect_crash(%__MODULE__{controller: nil}, _server_id, _opts),
+    do: {:error, :controller_not_available}
+
+  def expect_crash(%__MODULE__{controller: pid}, server_id, opts) do
     timeout = Keyword.get(opts, :timeout, 30_000)
-    GenServer.call(pid, {:expect_crash, server_id, timeout}, 10_000)
+    Controller.expect_crash(pid, server_id, timeout)
   catch
     :exit, _ -> {:error, :controller_not_available}
   end
 
   @spec verify_crash(t(), String.t(), keyword()) :: {:ok, map()} | {:error, atom()}
-  def verify_crash(%__MODULE__{controller: pid}, server_id, opts \\ []) do
+  def verify_crash(deployment, server_id, opts \\ [])
+
+  def verify_crash(%__MODULE__{controller: nil}, _server_id, _opts),
+    do: {:error, :controller_not_available}
+
+  def verify_crash(%__MODULE__{controller: pid}, server_id, opts) do
     timeout = Keyword.get(opts, :timeout, 5_000)
-    GenServer.call(pid, {:verify_crash, server_id, timeout}, timeout + 5_000)
+    Controller.verify_crash(pid, server_id, timeout)
   catch
     :exit, _ -> {:error, :controller_not_available}
   end
@@ -474,7 +498,12 @@ defmodule Toast.Deployment do
     "exit_status=#{ci.exit_status}#{signal_part}"
   end
 
-  defp controller_call_control(deployment, op, target, opts \\ []) do
+  defp controller_call_control(deployment, op, target, opts \\ [])
+
+  defp controller_call_control(%{controller: nil}, _op, _target, _opts),
+    do: {:error, :controller_not_available}
+
+  defp controller_call_control(deployment, op, target, opts) do
     apply(Controller, op, [deployment.controller, target, opts])
   catch
     :exit, _ -> {:error, :controller_not_available}
@@ -500,21 +529,25 @@ defmodule Toast.Deployment do
   defp build_server_infos(info) do
     info
     |> Map.get(:servers, %{})
-    |> Map.new(fn {id, server} ->
-      {id,
-       %ServerInfo{
-         id: server.id,
-         role: server.role,
-         port: server.port,
-         endpoint: server.endpoint,
-         arango_id: server.arango_id
-       }}
-    end)
+    |> Map.new(fn {id, server} -> {id, to_server_info(server)} end)
+  end
+
+  defp to_server_info(%ServerInstance{} = s) do
+    %ServerInfo{
+      id: s.id,
+      role: s.role,
+      port: s.port || 0,
+      endpoint: s.endpoint || "",
+      arango_id: s.arango_id,
+      operational_state: s.operational_state
+    }
   end
 
   defp build_client(%__MODULE__{} = deployment, srv) do
     Client.new(srv.endpoint, api_version: deployment.api_version)
   end
+
+  defp controller_call(%__MODULE__{controller: nil}, _function, default), do: default
 
   defp controller_call(%__MODULE__{controller: pid}, function, default) do
     GenServer.call(pid, function)

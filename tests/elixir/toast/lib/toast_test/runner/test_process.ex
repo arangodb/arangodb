@@ -45,7 +45,6 @@ defmodule ToastTest.Runner.TestProcess do
       {time, test} =
         :timer.tc(
           maybe_capture_log(capture_log, test, fn ->
-            context = maybe_create_tmp_dir(context, test)
             run_test_with_setup(test, context)
           end)
         )
@@ -172,52 +171,5 @@ defmodule ToastTest.Runner.TestProcess do
               FailureFormatter.prune_stacktrace(__STACKTRACE__)
             )
       }
-  end
-
-  ## Tmp dir handling
-
-  defp maybe_create_tmp_dir(%{tmp_dir: true} = tags, test) do
-    create_tmp_dir!(test, "", tags)
-  end
-
-  defp maybe_create_tmp_dir(%{tmp_dir: path} = tags, test) when is_binary(path) do
-    create_tmp_dir!(test, path, tags)
-  end
-
-  defp maybe_create_tmp_dir(%{tmp_dir: other}, _test) when other != false do
-    raise ArgumentError, "expected :tmp_dir to be a boolean or a string, got: #{inspect(other)}"
-  end
-
-  defp maybe_create_tmp_dir(tags, _test) do
-    tags
-  end
-
-  defp short_hash(module, test_name, parameters) do
-    suffix = if parameters == %{}, do: "", else: :erlang.term_to_binary(parameters)
-
-    (module <> "/" <> test_name <> suffix)
-    |> :erlang.md5()
-    |> Base.encode16(case: :lower)
-    |> binary_slice(0..7)
-  end
-
-  defp create_tmp_dir!(test, extra_path, tags) do
-    module_string = inspect(test.module)
-    name_string = to_string(test.name)
-
-    module = escape_path(module_string)
-    name = escape_path(name_string)
-    short_hash = short_hash(module_string, name_string, test.parameters)
-
-    path = ["tmp", module, "#{name}-#{short_hash}", extra_path] |> Path.join() |> Path.expand()
-    File.rm_rf!(path)
-    File.mkdir_p!(path)
-    Map.put(tags, :tmp_dir, path)
-  end
-
-  @escape Enum.map(~c" [~#%&*{}\\:<>?/+|\"]", &<<&1::utf8>>)
-
-  defp escape_path(path) do
-    String.replace(path, @escape, "-")
   end
 end

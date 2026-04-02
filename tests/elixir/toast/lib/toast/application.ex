@@ -7,7 +7,7 @@ defmodule Toast.Application do
 
   @impl true
   def start(_type, _args) do
-    unless Toast.Env.loaded?(), do: Toast.Env.load()
+    unless Toast.Env.loaded?(), do: Toast.Env.load() |> Toast.Env.apply!()
     setup_file_logger()
     Toast.Deployment.init_counter()
 

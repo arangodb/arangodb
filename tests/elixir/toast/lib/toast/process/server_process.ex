@@ -479,7 +479,7 @@ defmodule Toast.Process.ServerProcess do
   defp notify_listener(nil, _id, _info), do: :ok
 
   defp notify_listener(listener, id, crash_info) do
-    send(listener, {:server_crashed, id, crash_info})
+    Toast.Deployment.Controller.notify_crash(listener, id, crash_info)
   end
 
   defp cancel_timer(nil), do: :ok

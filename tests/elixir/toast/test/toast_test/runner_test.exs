@@ -47,34 +47,31 @@ defmodule ToastTest.RunnerTest do
       {:ok, ctrl} =
         Controller.start_link(
           config: Toast.Deployment.Config.new(),
-          id: "runner-test-#{System.unique_integer([:positive])}"
+          id: "runner-test-#{System.unique_integer([:positive])}",
+          status: :ready
         )
-
-      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
 
       deployment = mock_deployment(ctrl)
       assert Deployment.check_health(deployment) == :ok
     end
 
     test "check_health returns error for :degraded status" do
+      id = "runner-test-#{System.unique_integer([:positive])}"
+
+      server = %ServerInstance{
+        id: id,
+        role: :single,
+        operational_state: :stopped,
+        expecting_exit: true
+      }
+
       {:ok, ctrl} =
         Controller.start_link(
           config: Toast.Deployment.Config.new(),
-          id: "runner-test-#{System.unique_integer([:positive])}"
-        )
-
-      :sys.replace_state(ctrl, fn state ->
-        id = state.id
-
-        server = %ServerInstance{
           id: id,
-          role: :single,
-          operational_state: :stopped,
-          expecting_exit: true
-        }
-
-        %{state | status: :degraded, servers: %{id => server}}
-      end)
+          servers: %{id => server},
+          status: :degraded
+        )
 
       deployment = mock_deployment(ctrl)
       assert {:error, msg} = Deployment.check_health(deployment)
@@ -82,10 +79,15 @@ defmodule ToastTest.RunnerTest do
     end
 
     test "check_health returns error for :failed status" do
+      id = "runner-test-#{System.unique_integer([:positive])}"
+
       {:ok, ctrl} =
         Controller.start_link(
           config: Toast.Deployment.Config.new(),
-          id: "runner-test-#{System.unique_integer([:positive])}"
+          id: id,
+          servers: %{
+            "test-server" => %ServerInstance{id: "test-server", role: :single}
+          }
         )
 
       crash_info = %CrashInfo{
@@ -94,20 +96,7 @@ defmodule ToastTest.RunnerTest do
         timestamp: :os.system_time(:microsecond)
       }
 
-      :sys.replace_state(ctrl, fn state ->
-        %{
-          state
-          | servers: %{
-              "test-server" => %Toast.Deployment.ServerInstance{
-                id: "test-server",
-                role: :single
-              }
-            }
-        }
-      end)
-
-      send(ctrl, {:server_crashed, "test-server", crash_info})
-      :sys.get_state(ctrl)
+      Controller.notify_crash(ctrl, "test-server", crash_info)
 
       deployment = mock_deployment(ctrl)
       assert {:error, msg} = Deployment.check_health(deployment)

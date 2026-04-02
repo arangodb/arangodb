@@ -1,9 +1,12 @@
 defmodule Toast.Env do
   @moduledoc """
-  Load Toast configuration from environment variables and `.toast.local.exs`,
-  then populate `Application` env under the `:toast` app.
+  Resolve Toast configuration from environment variables, `.toast.local.exs`,
+  and CLI options into a config map.
 
-  Called automatically by `Toast.Application.start/2` (env vars + local file).
+  `load/1` returns the resolved config map (pure, no side effects).
+  `apply!/1` writes the config map into `Application` env under `:toast`.
+
+  Called at startup: `Toast.Env.load() |> Toast.Env.apply!()`.
   Called again by `Mix.Tasks.Toast` with CLI opts taking precedence.
 
   Precedence (highest to lowest): opts > env vars > .toast.local.exs > defaults.
@@ -15,24 +18,29 @@ defmodule Toast.Env do
 
   @default_result_dir "toast-results"
 
-  @spec load(keyword()) :: :ok
+  @spec load(keyword()) :: map()
   def load(opts \\ []) do
     local = load_local_config(Keyword.get(opts, :local_config_dir))
 
-    values =
-      resolve_all(opts, local)
-      |> resolve_sanitizers()
-      |> resolve_rr()
-      |> validate_rr!()
-      |> apply_timeout_factor()
-      |> ensure_base_dir()
+    resolve_all(opts, local)
+    |> resolve_sanitizers()
+    |> resolve_rr()
+    |> validate_rr!()
+    |> apply_timeout_factor()
+    |> ensure_base_dir()
+  end
 
-    for {key, value} <- values, value != nil do
+  @doc """
+  Write the config map (returned by `load/1`) into Application env under `:toast`.
+  """
+  @spec apply!(map()) :: :ok
+  def apply!(config) when is_map(config) do
+    for {key, value} <- config, value != nil do
       Application.put_env(:toast, key, value)
     end
 
     Application.put_env(:toast, :__env_loaded__, true)
-    log_config(values)
+    log_config(config)
     :ok
   end
 

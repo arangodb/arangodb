@@ -54,10 +54,9 @@ defmodule Toast.Process.HealthMonitor do
   @doc false
   def status(server), do: GenServer.call(server, :status)
 
-  @spec stop(pid()) :: :ok
-  def stop(pid) when is_pid(pid) do
-    DynamicSupervisor.terminate_child(Toast.Process.Supervisor, pid)
-    :ok
+  @spec stop(GenServer.server()) :: :ok
+  def stop(server) do
+    GenServer.stop(server)
   end
 
   # --- Server callbacks ---

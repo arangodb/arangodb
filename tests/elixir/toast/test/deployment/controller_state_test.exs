@@ -2,11 +2,11 @@ defmodule Toast.Deployment.ControllerStateTest do
   use ExUnit.Case, async: false
 
   alias Toast.Deployment.{Controller, ServerInstance}
-  alias Toast.Process.ServerProcess
+  alias Toast.Process.CrashInfo
 
-  import Toast.ServerTestHelpers, only: [cleanup_server: 1]
+  @moduletag :unit
 
-  @fake_server Path.expand("../support/fake_server.sh", __DIR__)
+  # --- ServerInstance struct defaults ---
 
   describe "ServerInstance operational_state" do
     test "defaults" do
@@ -22,65 +22,40 @@ defmodule Toast.Deployment.ControllerStateTest do
     end
   end
 
-  describe "ServerProcess control flow" do
-    setup do
-      id = "ctl-state-#{System.unique_integer([:positive])}"
-      opts = [id: id, executable: @fake_server, args: ["--port", "0"], listener: self()]
-      {:ok, pid} = ServerProcess.start_link(opts)
-      :ok = ServerProcess.launch(pid)
-      on_exit(fn -> cleanup_server(pid) end)
-      %{pid: pid, id: id}
-    end
-
-    test "running -> kill -> :killed (no crash notification)", %{pid: pid} do
-      assert :ok = ServerProcess.kill(pid)
-      assert ServerProcess.status(pid) == :killed
-      Process.sleep(300)
-      refute_receive {:server_crashed, _, _}
-    end
-
-    test "running -> pause -> :paused, then resume -> :running", %{pid: pid} do
-      assert :ok = ServerProcess.pause(pid)
-      assert ServerProcess.status(pid) == :paused
-      assert :ok = ServerProcess.resume(pid)
-      assert ServerProcess.status(pid) == :running
-    end
-
-    test "running -> stop -> :stopped, then relaunch -> :running", %{pid: pid} do
-      :ok = ServerProcess.stop(pid, 5_000)
-      assert ServerProcess.status(pid) == :stopped
-      :ok = ServerProcess.relaunch(pid)
-      assert ServerProcess.status(pid) == :running
-    end
-
-    test "unexpected crash during running sets :crashed and notifies", %{pid: pid, id: id} do
-      os_pid = ServerProcess.os_pid(pid)
-      System.cmd("kill", ["-9", to_string(os_pid)])
-      assert_receive {:server_crashed, ^id, crash_info}, 5_000
-      assert ServerProcess.status(pid) == :crashed
-      assert crash_info.signal == 9
-    end
-  end
-
-  # --- Controller stop_server sets expecting_exit flag (single server mode) ---
+  # --- Controller stop/kill sets expecting_exit flag ---
 
   describe "Controller (single server) stop_server sets expecting_exit flag" do
     setup do
       id = "ssc-stop-#{System.unique_integer([:positive])}"
 
       {:ok, server_pid} =
-        ServerProcess.start_link(
+        Toast.Process.ServerProcess.start_link(
           id: id,
-          executable: @fake_server,
+          executable: fake_server(),
           args: ["--port", "0"],
           listener: self()
         )
 
-      :ok = ServerProcess.launch(server_pid)
+      :ok = Toast.Process.ServerProcess.launch(server_pid)
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
+      # Injected :ready status without a real deploy -- the test verifies
+      # Controller state transitions, not the deploy pipeline.
+      server = %ServerInstance{
+        id: id,
+        role: :single,
+        server_pid: server_pid,
+        operational_state: :running,
+        expecting_exit: false,
+        pid: Toast.Process.ServerProcess.os_pid(server_pid)
+      }
 
-      inject_single_server_state(ctrl, id, server_pid)
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => server},
+          status: :ready
+        )
 
       on_exit(fn ->
         cleanup_server(server_pid)
@@ -115,74 +90,159 @@ defmodule Toast.Deployment.ControllerStateTest do
     end
   end
 
-  describe "Controller (single server) unexpected crash clears expecting_exit" do
-    test "crash without prior stop/kill leaves expecting_exit as false" do
+  # --- Unexpected crash handling ---
+
+  describe "Controller (single server) unexpected crash" do
+    test "crash without prior stop/kill transitions to :failed" do
       id = "ssc-unexp-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => %ServerInstance{id: id, role: :single}}
+        )
 
-      # Inject a server so crash handler can find it
-      :sys.replace_state(ctrl, fn state ->
-        server = %ServerInstance{id: id, role: :single}
-        %{state | servers: %{id => server}}
-      end)
-
-      crash_info = %Toast.Process.CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        timestamp: :os.system_time(:microsecond)
-      }
-
-      send(ctrl, {:server_crashed, id, crash_info})
+      Controller.notify_crash(ctrl, id, make_crash_info(signal: 11, exit_status: 139))
 
       info = Controller.get_info(ctrl)
       assert info.status == :failed
     end
   end
 
+  # --- Signal-type awareness during expected exit ---
+
   describe "Controller (single server) signal-type awareness during expected exit" do
-    test "SIGSEGV (signal 11) during expected exit clears expecting_exit flag" do
+    test "SIGSEGV (signal 11) during expected exit clears expecting_exit and fails" do
       id = "ssc-sig11-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
+      # Injected expecting_exit: true without a real stop -- tests the crash
+      # classification logic in isolation.
+      server = %ServerInstance{id: id, role: :single, expecting_exit: true}
 
-      set_expecting_exit(ctrl, id, true)
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => server}
+        )
 
-      crash_info = %Toast.Process.CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        timestamp: :os.system_time(:microsecond)
-      }
-
-      send(ctrl, {:server_crashed, id, crash_info})
+      Controller.notify_crash(ctrl, id, make_crash_info(signal: 11, exit_status: 139))
 
       info = Controller.get_info(ctrl)
       assert info.status == :failed
       assert info.servers[id].expecting_exit == false
     end
 
-    test "SIGTERM (signal 15) during expected exit keeps expecting_exit true" do
-      id = "ssc-sig15-#{System.unique_integer([:positive])}"
+    test "SIGKILL (signal 9) during expected exit clears expecting_exit and fails" do
+      id = "ssc-sig9-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
+      server = %ServerInstance{id: id, role: :single, expecting_exit: true}
 
-      set_expecting_exit(ctrl, id, true)
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => server}
+        )
 
-      crash_info = %Toast.Process.CrashInfo{
-        exit_status: 0,
-        signal: 15,
-        timestamp: :os.system_time(:microsecond)
-      }
-
-      send(ctrl, {:server_crashed, id, crash_info})
+      Controller.notify_crash(ctrl, id, make_crash_info(signal: 9, exit_status: 137))
 
       info = Controller.get_info(ctrl)
-      # signal 15 is in @intentional_exit_signals, so it is ignored (no state change)
+      assert info.status == :failed
+      assert info.servers[id].expecting_exit == false
+    end
+
+    test "SIGTERM (signal 15) during expected exit is silently handled" do
+      id = "ssc-sig15-#{System.unique_integer([:positive])}"
+
+      # Injected expecting_exit: true -- tests intentional exit classification.
+      server = %ServerInstance{id: id, role: :single, expecting_exit: true}
+
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => server}
+        )
+
+      Controller.notify_crash(ctrl, id, make_crash_info(signal: 15, exit_status: 0))
+
+      info = Controller.get_info(ctrl)
+      # signal 15 is in @intentional_exit_signals -- no state change
+      assert info.servers[id].expecting_exit == true
+    end
+
+    test "clean shutdown (signal nil, exit_status 0) during expected exit is silently handled" do
+      id = "ssc-clean-#{System.unique_integer([:positive])}"
+
+      server = %ServerInstance{id: id, role: :single, expecting_exit: true}
+
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => server}
+        )
+
+      Controller.notify_crash(ctrl, id, make_crash_info(signal: nil, exit_status: 0))
+
+      info = Controller.get_info(ctrl)
+      # signal nil is in @intentional_exit_signals -- no state change
       assert info.servers[id].expecting_exit == true
     end
   end
 
-  # --- ClusterController state machine tests ---
+  # --- Unknown server_id crash handling ---
+
+  describe "Controller crash notification for unknown server_id" do
+    test "unknown server_id is ignored without crashing the Controller" do
+      id = "ssc-unknown-#{System.unique_integer([:positive])}"
+
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => %ServerInstance{id: id, role: :single, operational_state: :running}},
+          status: :ready
+        )
+
+      Controller.notify_crash(ctrl, "nonexistent-server", make_crash_info())
+
+      # Controller should still be alive and state unchanged
+      assert Controller.get_status(ctrl) == :ready
+    end
+  end
+
+  # --- server_unhealthy handler ---
+
+  describe "Controller server_unhealthy handler" do
+    test "transitions to :failed and sets error" do
+      id = "ssc-unhealthy-#{System.unique_integer([:positive])}"
+
+      # No real server_pid needed -- we just verify the state transition.
+      # The send_signal call is guarded by `if server && server.server_pid`.
+      server = %ServerInstance{id: id, role: :single, operational_state: :running}
+
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => server},
+          status: :ready
+        )
+
+      send(ctrl, {:server_unhealthy, id})
+
+      info = Controller.get_info(ctrl)
+      assert info.status == :failed
+      assert info.error == {:server_unhealthy, id}
+      assert info.servers[id].operational_state == :killed
+      assert info.servers[id].expecting_exit == true
+    end
+  end
+
+  # --- Cluster status derivation ---
 
   describe "Controller (cluster) derive_cluster_status" do
     test "all servers running -> :ready" do
@@ -259,82 +319,122 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       assert ServerInstance.derive_cluster_status(servers) == :degraded
     end
+
+    test "empty servers map -> :ready" do
+      assert ServerInstance.derive_cluster_status(%{}) == :ready
+    end
+
+    test "all servers crashed unexpectedly -> :failed" do
+      servers = %{
+        "agent-0" => %ServerInstance{
+          id: "agent-0",
+          role: :agent,
+          operational_state: :crashed,
+          expecting_exit: false
+        },
+        "dbserver-0" => %ServerInstance{
+          id: "dbserver-0",
+          role: :dbserver,
+          operational_state: :crashed,
+          expecting_exit: false
+        }
+      }
+
+      assert ServerInstance.derive_cluster_status(servers) == :failed
+    end
   end
+
+  # --- HealthMonitor restart on unexpected death ---
 
   describe "Controller (single server) HealthMonitor restart on unexpected death" do
     test "restarts health monitor when it dies unexpectedly during :ready" do
       id = "ssc-hm-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
-
       fake_hm = spawn(fn -> Process.sleep(:infinity) end)
-      Process.monitor(fake_hm)
-      set_ready_with_health_monitor(ctrl, id, fake_hm)
 
+      # Injected :ready with a fake health_monitor pid -- tests the DOWN
+      # handler's restart logic without a real deployment or HTTP endpoint.
+      # The restart calls ProcessSupervisor.start_health_monitor which
+      # requires Toast.Process.Supervisor to be running (started by the app).
+      server = %ServerInstance{
+        id: id,
+        role: :single,
+        operational_state: :running,
+        health_monitor: fake_hm,
+        endpoint: "http://localhost:0"
+      }
+
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => server},
+          status: :ready
+        )
+
+      Process.monitor(fake_hm)
       Process.exit(fake_hm, :abnormal_crash)
 
       receive do
         {:DOWN, _, :process, ^fake_hm, _} -> :ok
       end
 
-      Controller.get_status(ctrl)
-      assert Process.alive?(ctrl)
+      # Synchronous call forces the Controller to process the :DOWN message first
+      info = Controller.get_info(ctrl)
+      new_hm = info.servers[id].health_monitor
+      assert new_hm != fake_hm, "expected a new health monitor pid, got the old one"
+      assert is_pid(new_hm)
+      assert Process.alive?(new_hm)
     end
 
     test "does not restart health monitor on normal shutdown" do
       id = "ssc-hm-normal-#{System.unique_integer([:positive])}"
 
-      {:ok, ctrl} = Controller.start_link(config: Toast.Deployment.Config.new(), id: id)
-
       fake_hm = spawn(fn -> Process.sleep(:infinity) end)
-      set_ready_with_health_monitor(ctrl, id, fake_hm)
+
+      server = %ServerInstance{
+        id: id,
+        role: :single,
+        operational_state: :running,
+        health_monitor: fake_hm
+      }
+
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => server},
+          status: :ready
+        )
 
       Process.exit(fake_hm, :normal)
-      Process.sleep(50)
 
-      Controller.get_status(ctrl)
-      assert Process.alive?(ctrl)
+      # Synchronous call forces message ordering
+      info = Controller.get_info(ctrl)
+      # Normal exit should not trigger restart -- health_monitor stays as old pid
+      assert info.servers[id].health_monitor == fake_hm
     end
   end
 
   # --- Helpers ---
 
-  defp inject_single_server_state(ctrl, id, server_pid) do
-    :sys.replace_state(ctrl, fn state ->
-      server =
-        case state.servers[id] do
-          nil -> %ServerInstance{id: id, role: :single}
-          s -> s
-        end
+  defp fake_server, do: Path.expand("../support/fake_server.sh", __DIR__)
 
-      server = %{
-        server
-        | server_pid: server_pid,
-          operational_state: :running,
-          expecting_exit: false,
-          pid: ServerProcess.os_pid(server_pid)
-      }
-
-      %{state | status: :ready, servers: %{id => server}}
-    end)
+  defp make_crash_info(opts \\ []) do
+    %CrashInfo{
+      exit_status: Keyword.get(opts, :exit_status, 139),
+      signal: Keyword.get(opts, :signal, 11),
+      timestamp: :os.system_time(:microsecond)
+    }
   end
 
-  defp set_expecting_exit(ctrl, id, value) do
-    :sys.replace_state(ctrl, fn state ->
-      server = state.servers[id] || %ServerInstance{id: id, role: :single}
-      %{state | servers: Map.put(state.servers, id, %{server | expecting_exit: value})}
-    end)
-  end
-
-  defp set_ready_with_health_monitor(ctrl, id, hm_pid) do
-    :sys.replace_state(ctrl, fn state ->
-      server = state.servers[id] || %ServerInstance{id: id, role: :single}
-
-      %{
-        state
-        | status: :ready,
-          servers: Map.put(state.servers, id, %{server | health_monitor: hm_pid})
-      }
-    end)
+  defp cleanup_server(pid) do
+    if Process.alive?(pid) do
+      try do
+        Toast.Process.ServerProcess.stop(pid, 2_000)
+      catch
+        :exit, _ -> :ok
+      end
+    end
   end
 end

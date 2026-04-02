@@ -2,7 +2,7 @@ defmodule ToastTest.Runner.TestExecution do
   @moduledoc false
 
   alias ToastTest.ExUnitCompat, as: Compat
-  alias ToastTest.Runner.{FailureFormatter, TestProcess, Timeout}
+  alias ToastTest.Runner.{FailureFormatter, TestFilter, TestProcess, Timeout}
   alias ToastTest.{Abort, TestLifecycle, EventStore}
 
   require Logger
@@ -58,7 +58,7 @@ defmodule ToastTest.Runner.TestExecution do
     Compat.module_started(config.manager, test_module)
 
     {to_run_tests, excluded_and_skipped_tests} =
-      prepare_tests(config, test_module.tests)
+      TestFilter.filter(config.filters, test_module.tests)
 
     finish_module_execution(config, test_module, to_run_tests, excluded_and_skipped_tests)
   end
@@ -162,7 +162,7 @@ defmodule ToastTest.Runner.TestExecution do
            }}
       end
 
-    timeout = Timeout.get_timeout(config, %{})
+    {timeout, _source} = Timeout.get_timeout(config, %{})
     {ok_or_error, TestProcess.exec_on_exit(test_module, module_pid, timeout)}
   end
 
@@ -208,47 +208,6 @@ defmodule ToastTest.Runner.TestExecution do
     emit_module_with_state(config.manager, module, fn test ->
       %{test | state: {:skipped, reason}}
     end)
-  end
-
-  defp prepare_tests(config, tests) do
-    %{
-      include: include,
-      exclude: exclude,
-      only_test_ids: test_ids,
-      test_name_pattern: name_pattern
-    } =
-      config.filters
-
-    name_pattern = name_pattern && String.downcase(name_pattern)
-
-    {to_run, to_skip} =
-      for test <- tests,
-          include_test?(test_ids, test),
-          match_test_name?(name_pattern, test),
-          reduce: {[], []} do
-        {to_run, to_skip} ->
-          tags = Map.merge(test.tags, %{test: test.name, module: test.module})
-
-          case ExUnit.Filters.eval(include, exclude, tags, tests) do
-            :ok -> {[%{test | tags: tags} | to_run], to_skip}
-            excluded_or_skipped -> {to_run, [%{test | state: excluded_or_skipped} | to_skip]}
-          end
-      end
-
-    {Enum.reverse(to_run), Enum.reverse(to_skip)}
-  end
-
-  defp include_test?(test_ids, test) do
-    test_ids == nil or MapSet.member?(test_ids, {test.module, test.name})
-  end
-
-  defp match_test_name?(nil, _test), do: true
-
-  defp match_test_name?(pattern, test) do
-    test.name
-    |> Atom.to_string()
-    |> String.downcase()
-    |> String.contains?(pattern)
   end
 
   defp run_tests(config, tests, params, context) do

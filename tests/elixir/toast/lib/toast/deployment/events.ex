@@ -3,14 +3,16 @@ defmodule Toast.Deployment.Events do
 
   require Logger
 
-  @spec notify(module(), %{id: String.t()}, atom(), map()) :: :ok
+  alias Toast.Deployment.ServerInstance
+
+  @spec notify(module(), %{:id => String.t(), optional(atom()) => term()}, atom(), map()) :: :ok
   def notify(listener, state, event, extra \\ %{}) do
     listener.on_event(
       Map.merge(%{event: event, deployment_id: state.id, timestamp: Toast.get_timestamp()}, extra)
     )
   end
 
-  @spec server_started(module(), String.t(), %{endpoint: String.t()}, term(), String.t()) :: :ok
+  @spec server_started(module(), String.t(), ServerInstance.t(), term(), String.t()) :: :ok
   def server_started(listener, server_id, server, os_pid, deployment_id) do
     Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
 
@@ -25,7 +27,7 @@ defmodule Toast.Deployment.Events do
     :ok
   end
 
-  @spec server_stopped(module(), String.t(), %{pid: term()}, String.t()) :: :ok
+  @spec server_stopped(module(), String.t(), ServerInstance.t(), String.t()) :: :ok
   def server_stopped(listener, server_id, server, deployment_id) do
     listener.on_event(%{
       event: :server_stopped,
