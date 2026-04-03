@@ -46,6 +46,7 @@ defmodule ToastTest.Case do
   using do
     quote do
       alias Toast.Client
+      import ToastTest.Expect, only: [expect: 1]
     end
   end
 

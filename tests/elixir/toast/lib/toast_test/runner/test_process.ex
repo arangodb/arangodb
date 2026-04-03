@@ -159,17 +159,28 @@ defmodule ToastTest.Runner.TestProcess do
 
   defp exec_test(%ExUnit.Test{module: module, name: name} = test, context) do
     apply(module, name, [context])
-    test
+
+    case ToastTest.Expect.collect_failures() do
+      [] ->
+        test
+
+      failures ->
+        multi = %ExUnit.MultiError{errors: failures}
+        %{test | state: FailureFormatter.failed(:error, multi, [])}
+    end
   catch
     kind, error ->
-      %{
-        test
-        | state:
-            FailureFormatter.failed(
-              kind,
-              error,
-              FailureFormatter.prune_stacktrace(__STACKTRACE__)
-            )
-      }
+      pruned_stack = FailureFormatter.prune_stacktrace(__STACKTRACE__)
+      expect_failures = ToastTest.Expect.collect_failures()
+
+      case expect_failures do
+        [] ->
+          %{test | state: FailureFormatter.failed(kind, error, pruned_stack)}
+
+        prior ->
+          all_failures = prior ++ [{kind, error, pruned_stack}]
+          multi = %ExUnit.MultiError{errors: all_failures}
+          %{test | state: FailureFormatter.failed(:error, multi, [])}
+      end
   end
 end
