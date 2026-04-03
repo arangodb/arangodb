@@ -5,6 +5,8 @@
 3.12.9-devel (2026-04-02)
 -------------------------
 
+* Bump @xmldom/xmldom from 0.8.10 to 0.8.12.
+
 * Fix vector index creation response containing a stale errorMessage after
   training succeeds when the index was created with `inBackground: false`.
 
