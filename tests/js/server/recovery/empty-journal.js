@@ -28,6 +28,7 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const fs = require('fs');
 const jsunity = require('jsunity');
+let instance = JSON.parse(internal.env.INSTANCEINFO);
 
 function runSetup () {
   'use strict';
@@ -61,7 +62,10 @@ function runSetup () {
 
       if (remain.length > 0) {
         // ok, we found a WAL file to destroy!
-        let fn = fs.join(db._path(), 'engine-rocksdb', 'journals', remain[0]);
+        let fn = fs.join(instance.dataDir,
+                         'engine-rocksdb',
+                         'journals',
+                         remain[0]);
         // remove file and replace it with an empty one!
         require("console").warn("intentionally truncating log file " + fn);
         fs.remove(fn);

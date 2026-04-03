@@ -30,7 +30,6 @@ const arangodb = require("@arangodb");
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
 const internal = require("internal");
-const isServer = typeof internal.arango === 'undefined';
 const console = require('console');
 const request = require('@arangodb/request');
 const ArangoError = require("@arangodb").ArangoError;
