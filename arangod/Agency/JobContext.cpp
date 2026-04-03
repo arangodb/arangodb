@@ -37,8 +37,7 @@
 
 using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 JobContext::JobContext(JOB_STATUS status, std::string const& id,
                        Node const& snapshot, AgentInterface* agent)
@@ -99,5 +98,4 @@ void JobContext::abort(std::string const& reason) {
   }
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

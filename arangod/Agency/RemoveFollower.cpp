@@ -34,8 +34,7 @@
 
 using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,
@@ -476,5 +475,4 @@ arangodb::Result RemoveFollower::abort(std::string const& reason) {
   return result;
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

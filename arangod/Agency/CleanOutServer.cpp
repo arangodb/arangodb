@@ -41,8 +41,7 @@
 
 using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,
@@ -624,5 +623,4 @@ arangodb::Result CleanOutServer::abort(std::string const& reason) {
   return result;
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

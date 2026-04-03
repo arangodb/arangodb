@@ -39,8 +39,7 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb::velocypack;
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
                                    std::string const& jobId,
@@ -548,5 +547,4 @@ arangodb::Result ResignLeadership::abort(std::string const& reason) {
   return result;
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

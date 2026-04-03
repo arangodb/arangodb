@@ -27,8 +27,7 @@
 #include "Agency/Agent.h"
 #include "Logger/LogMacros.h"
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 // @brief Construct with agent
 Compactor::Compactor(Agent* agent)
@@ -90,5 +89,4 @@ void Compactor::beginShutdown() {
   wakeUp();
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

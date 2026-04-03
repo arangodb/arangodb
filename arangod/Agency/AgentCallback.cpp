@@ -32,8 +32,7 @@
 using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 AgentCallback::AgentCallback()
     : _agent(nullptr), _last(0), _toLog(0), _startTime(0.0) {}
@@ -116,5 +115,4 @@ bool AgentCallback::operator()(arangodb::network::Response const& r) const {
   return true;
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

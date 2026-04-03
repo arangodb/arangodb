@@ -36,8 +36,7 @@
 
 using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
@@ -561,5 +560,4 @@ arangodb::Result FailedLeader::abort(std::string const& reason) {
   }
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

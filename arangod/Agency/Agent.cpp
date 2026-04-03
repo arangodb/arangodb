@@ -85,8 +85,7 @@ DECLARE_COUNTER(arangodb_agency_write_no_leader_total,
                 "Agency write no leader");
 DECLARE_COUNTER(arangodb_agency_write_ok_total, "Agency write ok");
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 // Instanciations of some declarations in AgencyCommon.h:
 
@@ -2374,5 +2373,4 @@ Agent::getFollower(std::string const& followerId) {
   return MutexGuard(it->second, std::move(guard));
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

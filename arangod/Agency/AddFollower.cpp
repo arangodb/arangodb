@@ -33,8 +33,7 @@
 
 using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          std::string const& jobId, std::string const& creator,
@@ -408,5 +407,4 @@ arangodb::Result AddFollower::abort(std::string const& reason) {
   return Result{};
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

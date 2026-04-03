@@ -51,8 +51,7 @@
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 DECLARE_GAUGE(arangodb_agency_term, uint64_t, "Agency's term");
 
@@ -837,5 +836,4 @@ void Constituent::notifyHeartbeatSent(std::string const& followerId) {
   _lastHeartbeatSent[followerId] = now;
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

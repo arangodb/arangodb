@@ -121,8 +121,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
 
 }  // namespace
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 Inception::Inception(Agent& agent) : Thread("Inception"), _agent(agent) {}
 
 // Shutdown if not already
@@ -571,5 +570,4 @@ void Inception::signalConditionVar() {
   _cv.cv.notify_all();
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

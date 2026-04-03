@@ -40,8 +40,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 /// Ctor with name
 Store::Store(std::string const& name) : _node(Node::create()) {}
 
@@ -757,5 +756,4 @@ std::vector<std::string> Store::split(std::string_view str) {
   return Node::split(str);
 }
 
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus
