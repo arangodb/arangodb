@@ -46,6 +46,7 @@ defmodule Mix.Tasks.Toast.Analyze do
       --coredumps / --no-coredumps    Include coredump backtraces (default: on)
       --threads relevant|all          Show threads (relevant: likely interesting, all: every thread)
       --backtrace-frames N            Max frames per thread (default: 20)
+      --disassembly / --no-disassembly  Show disassembly for hardware fault signals (default: off)
 
   ## Perf options
 
@@ -76,6 +77,7 @@ defmodule Mix.Tasks.Toast.Analyze do
     coredumps: :boolean,
     threads: :string,
     backtrace_frames: :integer,
+    disassembly: :boolean,
     top: :integer,
     module: :string,
     help: :boolean
@@ -196,7 +198,8 @@ defmodule Mix.Tasks.Toast.Analyze do
     bt_opts = %{
       coredumps: Keyword.get(opts, :coredumps, true),
       threads: parse_threads_opt(opts[:threads]),
-      max_frames: Keyword.get(opts, :backtrace_frames, 20)
+      max_frames: Keyword.get(opts, :backtrace_frames, 20),
+      disassembly: Keyword.get(opts, :disassembly, false)
     }
 
     if selected == [] do
@@ -495,6 +498,7 @@ defmodule Mix.Tasks.Toast.Analyze do
   defp print_issue_body(%{type: :crash, detail: detail}, color, bt_opts) do
     print_crash_info(detail, color)
     if bt_opts.coredumps, do: print_crash_backtrace(detail, color, bt_opts)
+    print_crash_extra(detail, color, bt_opts)
   end
 
   # --- Timeout detail ---
@@ -587,6 +591,24 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   defp print_crash_backtrace(_detail, color, _bt_opts) do
     Mix.shell().info("  #{colorize("No crash details available.", :faint, color)}")
+  end
+
+  # Gated behind --disassembly since register dumps are large.
+  defp print_crash_extra(%{coredumps: [coredump | _]}, color, bt_opts) do
+    if bt_opts.disassembly do
+      print_optional_section(IssueFormatting.format_registers(coredump), "Registers", color)
+      print_optional_section(IssueFormatting.format_disassembly(coredump), "Disassembly", color)
+    end
+  end
+
+  defp print_crash_extra(_detail, _color, _bt_opts), do: :ok
+
+  defp print_optional_section(nil, _label, _color), do: :ok
+
+  defp print_optional_section(text, label, color) do
+    Mix.shell().info("")
+    Mix.shell().info(colorize("#{label}:", :blue, color))
+    Mix.shell().info(text)
   end
 
   defp print_thread(thread, max_frames, color) do

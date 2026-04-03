@@ -14,6 +14,12 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
       "-c",
       core_path,
       "-o",
+      "settings set target.x86-disassembly-flavor intel",
+      "-o",
+      "register read --all",
+      "-o",
+      "disassemble --frame",
+      "-o",
       "thread list",
       "-o",
       "thread backtrace all",
@@ -26,6 +32,7 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
 
   @impl true
   def parse_output(output) do
+    {registers, disassembly, output} = extract_preamble_sections(output)
     lines = String.split(output, "\n")
 
     # First pass: build thread# → os_id map from `thread list` output
@@ -48,9 +55,41 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
     %{
       signal: signal,
       faulting_address: nil,
+      registers: registers,
+      disassembly: disassembly,
       threads: Enum.reverse(threads),
       crash_thread: crash_thread
     }
+  end
+
+  # Extract register and disassembly sections from LLDB output.
+  # These appear as `(lldb) command\n...output...` blocks.
+  # When no `(lldb)` prompts exist (e.g., in tests with raw output), pass through unchanged.
+  # Extract register and disassembly sections from LLDB output.
+  # Non-matching lines (register values, disassembly instructions) are harmlessly
+  # skipped by the thread/frame parser, so no stripping needed.
+  @register_section ~r/\(lldb\)\s*register read[^\n]*\n(.*?)(?=\(lldb\)|\z)/s
+  @disassembly_section ~r/\(lldb\)\s*disassemble[^\n]*\n(.*?)(?=\(lldb\)|\z)/s
+
+  defp extract_preamble_sections(output) do
+    registers =
+      case Regex.run(@register_section, output) do
+        [_, body] -> non_empty_trim(body)
+        _ -> nil
+      end
+
+    disassembly =
+      case Regex.run(@disassembly_section, output) do
+        [_, body] -> non_empty_trim(body)
+        _ -> nil
+      end
+
+    {registers, disassembly, output}
+  end
+
+  defp non_empty_trim(str) do
+    trimmed = String.trim(str)
+    if trimmed == "", do: nil, else: trimmed
   end
 
   @tid_pattern ~r/thread\s+#(\d+).*?tid\s*=\s*(0x[0-9a-fA-F]+|\d+)/i

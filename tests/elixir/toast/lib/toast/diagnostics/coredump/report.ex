@@ -7,6 +7,8 @@ defmodule Toast.Diagnostics.Coredump.Report do
           debugger: :gdb | :lldb,
           signal: String.t() | nil,
           faulting_address: String.t() | nil,
+          registers: String.t() | nil,
+          disassembly: String.t() | nil,
           threads: [map()],
           crash_thread: integer() | nil
         }
@@ -17,6 +19,8 @@ defmodule Toast.Diagnostics.Coredump.Report do
     :debugger,
     :signal,
     :faulting_address,
+    :registers,
+    :disassembly,
     :crash_thread,
     threads: []
   ]

@@ -220,6 +220,8 @@ defmodule Toast.Diagnostics.Coredump do
        debugger: debugger_name(debugger),
        signal: result.signal,
        faulting_address: result.faulting_address,
+       registers: result[:registers],
+       disassembly: result[:disassembly],
        threads: result.threads,
        crash_thread: result.crash_thread
      }}

@@ -64,6 +64,12 @@ defmodule Toast.Diagnostics.Coredump.LLDBTest do
                "-c",
                "/tmp/core.12345",
                "-o",
+               "settings set target.x86-disassembly-flavor intel",
+               "-o",
+               "register read --all",
+               "-o",
+               "disassemble --frame",
+               "-o",
                "thread list",
                "-o",
                "thread backtrace all",
@@ -183,6 +189,69 @@ defmodule Toast.Diagnostics.Coredump.LLDBTest do
       assert result.signal == nil
       assert result.threads == []
       assert result.crash_thread == nil
+    end
+
+    test "extracts registers from register read section" do
+      output = """
+      (lldb) register read --all
+      General Purpose Registers:
+             rax = 0x0000000000000000
+             rbx = 0x00007f1234567890
+             rcx = 0x00000000deadbeef
+             rip = 0x0000555555555140  arangod`crash + 16
+
+      (lldb) disassemble --frame
+      arangod`crash:
+          0x555555555130 <+0>:  pushq  %rbp
+          0x555555555131 <+1>:  movq   %rsp, %rbp
+      ->  0x555555555140 <+16>: movl   (%rax), %eax
+          0x555555555142 <+18>: popq   %rbp
+          0x555555555143 <+19>: retq
+
+      (lldb) thread list
+      * thread #1: tid = 100, stop reason = signal SIGSEGV
+      (lldb) thread backtrace all
+      * thread #1, stop reason = signal SIGSEGV
+        * frame #0: 0x00007f1234 arangod`crash() at file.cpp:1
+      """
+
+      result = LLDB.parse_output(output)
+
+      assert result.registers =~ "rax"
+      assert result.registers =~ "rip"
+      assert result.registers =~ "deadbeef"
+    end
+
+    test "extracts disassembly from disassemble --frame section" do
+      output = """
+      (lldb) register read --all
+      General Purpose Registers:
+             rax = 0x0000000000000000
+
+      (lldb) disassemble --frame
+      arangod`crash:
+          0x555555555130 <+0>:  pushq  %rbp
+      ->  0x555555555140 <+16>: movl   (%rax), %eax
+          0x555555555143 <+19>: retq
+
+      (lldb) thread list
+      * thread #1: tid = 100, stop reason = signal SIGSEGV
+      (lldb) thread backtrace all
+      * thread #1, stop reason = signal SIGSEGV
+        * frame #0: 0x00007f1234 arangod`crash() at file.cpp:1
+      """
+
+      result = LLDB.parse_output(output)
+
+      assert result.disassembly =~ "arangod`crash"
+      assert result.disassembly =~ "movl"
+    end
+
+    test "registers and disassembly are nil when not present" do
+      result = LLDB.parse_output(@lldb_output)
+
+      assert result.registers == nil
+      assert result.disassembly == nil
     end
 
     test "faulting_address is nil (LLDB does not extract it)" do

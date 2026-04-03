@@ -53,6 +53,12 @@ defmodule Toast.Diagnostics.Coredump.GDBTest do
       assert args == [
                "-batch",
                "-ex",
+               "set disassembly-flavor intel",
+               "-ex",
+               "info registers",
+               "-ex",
+               "disassemble",
+               "-ex",
                "thread apply all bt full",
                "-ex",
                "quit",
@@ -241,6 +247,56 @@ defmodule Toast.Diagnostics.Coredump.GDBTest do
       result = GDB.parse_output(output)
       assert result.signal == "SIGSEGV"
       assert result.faulting_address == "0xBAADF00D"
+    end
+
+    test "extracts registers from info registers section" do
+      output = """
+      info registers:
+      rax            0x0                 0
+      rbx            0x7f1234567890      139813012345936
+      rcx            0xdeadbeef          3735928559
+      rip            0x555555555140      0x555555555140 <crash+16>
+      eflags         0x10246             [ PF ZF IF RF ]
+
+      Program terminated with signal SIGSEGV, Segmentation fault.
+      Thread 1 (LWP 100):
+      #0  0x00007f1234 in crash ()
+      """
+
+      result = GDB.parse_output(output)
+
+      assert result.registers =~ "rax"
+      assert result.registers =~ "rip"
+      assert result.registers =~ "0xdeadbeef"
+    end
+
+    test "extracts disassembly from Dump of assembler code section" do
+      output = """
+      Dump of assembler code for function crash:
+         0x0000555555555130 <+0>:	push   rbp
+         0x0000555555555131 <+1>:	mov    rbp,rsp
+      => 0x0000555555555140 <+16>:	mov    eax,DWORD PTR [rax]
+         0x0000555555555142 <+18>:	pop    rbp
+         0x0000555555555143 <+19>:	ret
+      End of assembler dump.
+
+      Program terminated with signal SIGSEGV, Segmentation fault.
+      Thread 1 (LWP 100):
+      #0  0x00007f1234 in crash ()
+      """
+
+      result = GDB.parse_output(output)
+
+      assert result.disassembly =~ "Dump of assembler code for function crash"
+      assert result.disassembly =~ "mov    eax,DWORD PTR [rax]"
+      assert result.disassembly =~ "End of assembler dump."
+    end
+
+    test "registers and disassembly are nil when not present" do
+      result = GDB.parse_output(@gdb_output)
+
+      assert result.registers == nil
+      assert result.disassembly == nil
     end
 
     test "primary address takes precedence over si_addr" do

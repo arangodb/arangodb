@@ -110,6 +110,8 @@ defmodule ToastTest.Attribution do
                 debugger: result.debugger,
                 signal: result.signal,
                 faulting_address: result.faulting_address,
+                registers: result.registers,
+                disassembly: result.disassembly,
                 crash_thread: result.crash_thread,
                 threads: result.threads
               }

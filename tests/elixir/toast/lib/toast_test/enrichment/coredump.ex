@@ -64,6 +64,8 @@ defmodule ToastTest.Enrichment.Coredump do
       threads: threads,
       signal: report.signal,
       faulting_address: report.faulting_address,
+      registers: report.registers,
+      disassembly: report.disassembly,
       crash_thread: crash_thread_id,
       debugger: report.debugger
     }

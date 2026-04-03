@@ -16,6 +16,8 @@ defmodule Toast.Diagnostics.Coredump.Debugger do
   @type result :: %{
           signal: String.t() | nil,
           faulting_address: String.t() | nil,
+          registers: String.t() | nil,
+          disassembly: String.t() | nil,
           threads: [thread()],
           crash_thread: integer() | nil
         }

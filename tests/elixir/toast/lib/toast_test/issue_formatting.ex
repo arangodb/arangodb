@@ -152,6 +152,24 @@ defmodule ToastTest.IssueFormatting do
 
   def format_timestamp(_), do: nil
 
+  # Intentional aborts (SIGABRT) are excluded — the backtrace tells the full story.
+  @hardware_fault_signals ~w(SIGSEGV SIGILL SIGBUS SIGFPE)
+
+  def hardware_fault_signal?(signal) when signal in @hardware_fault_signals, do: true
+  def hardware_fault_signal?(_), do: false
+
+  def format_registers(coredump), do: hardware_fault_field(coredump, :registers)
+  def format_disassembly(coredump), do: hardware_fault_field(coredump, :disassembly)
+
+  defp hardware_fault_field(%{signal: signal} = coredump, key) when is_binary(signal) do
+    case Map.get(coredump, key) do
+      value when is_binary(value) -> if hardware_fault_signal?(signal), do: value
+      _ -> nil
+    end
+  end
+
+  defp hardware_fault_field(_, _), do: nil
+
   def format_coredump_backtrace(%{threads: [thread | _]}) do
     frames = thread[:frames] || []
     shown = Enum.take(frames, @max_backtrace_frames)

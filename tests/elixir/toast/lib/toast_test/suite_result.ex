@@ -45,6 +45,8 @@ defmodule ToastTest.SuiteResult do
           debugger: :gdb | :lldb | nil,
           signal: String.t() | nil,
           faulting_address: String.t() | nil,
+          registers: String.t() | nil,
+          disassembly: String.t() | nil,
           crash_thread: String.t() | nil,
           threads: [coredump_thread()]
         }

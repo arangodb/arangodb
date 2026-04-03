@@ -40,6 +40,9 @@ defmodule ToastTest.Enrichment.CoredumpTest do
         debugger: :gdb,
         signal: "SIGSEGV",
         faulting_address: "0xdeadbeef",
+        registers: "rax  0x0  0\nrbx  0x7f  127",
+        disassembly:
+          "Dump of assembler code for function crash:\n=> mov eax,[rax]\nEnd of assembler dump.",
         crash_thread: 1,
         threads: [
           %{id: 1, frames: [%{function: "crash_func", file: "crash.cpp", line: 42}]},
@@ -57,6 +60,8 @@ defmodule ToastTest.Enrichment.CoredumpTest do
       assert {:ok, enrichment} = result
       assert enrichment.signal == "SIGSEGV"
       assert enrichment.faulting_address == "0xdeadbeef"
+      assert enrichment.registers =~ "rax"
+      assert enrichment.disassembly =~ "Dump of assembler code"
       assert enrichment.debugger == :gdb
       assert enrichment.crash_thread == "1"
       assert length(enrichment.threads) == 2

@@ -10,11 +10,26 @@ defmodule Toast.Diagnostics.Coredump.GDB do
 
   @impl true
   def command(binary_path, core_path) do
-    ["-batch", "-ex", "thread apply all bt full", "-ex", "quit", binary_path, core_path]
+    [
+      "-batch",
+      "-ex",
+      "set disassembly-flavor intel",
+      "-ex",
+      "info registers",
+      "-ex",
+      "disassemble",
+      "-ex",
+      "thread apply all bt full",
+      "-ex",
+      "quit",
+      binary_path,
+      core_path
+    ]
   end
 
   @impl true
   def parse_output(output) do
+    {registers, disassembly, output} = extract_preamble_sections(output)
     lines = String.split(output, "\n")
 
     init_acc = %{threads: [], current: nil, signal: nil, faulting_address: nil, crash_thread: nil}
@@ -34,9 +49,32 @@ defmodule Toast.Diagnostics.Coredump.GDB do
     %{
       signal: signal,
       faulting_address: addr,
+      registers: registers,
+      disassembly: disassembly,
       threads: Enum.reverse(threads),
       crash_thread: crash_thread
     }
+  end
+
+  # Extract "info registers" and "Dump of assembler code" sections that appear
+  # before the thread backtraces.  Returns {registers, disassembly, remaining_output}.
+  @registers_pattern ~r/(?:^|\n)((?:[a-z][a-z0-9_]+\s+0x[0-9a-fA-F]+\s+.*\n?)+)/
+  @disassembly_pattern ~r/(Dump of assembler code for function .+?End of assembler dump\.)/s
+
+  defp extract_preamble_sections(output) do
+    registers =
+      case Regex.run(@registers_pattern, output) do
+        [_, section] -> String.trim(section)
+        _ -> nil
+      end
+
+    disassembly =
+      case Regex.run(@disassembly_pattern, output) do
+        [_, section] -> String.trim(section)
+        _ -> nil
+      end
+
+    {registers, disassembly, output}
   end
 
   defp maybe_parse_signal(acc, line) do
