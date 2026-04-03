@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Remove `RequestStatistics` and `--server.statistics` option; HTTP request metrics
+  are now recorded synchronously via Prometheus metrics.
+
 * COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
   `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
   `/_admin/wal/transactions`.
