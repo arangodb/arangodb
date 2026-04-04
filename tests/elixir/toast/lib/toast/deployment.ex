@@ -14,12 +14,11 @@ defmodule Toast.Deployment do
             role: Toast.Deployment.ServerInstance.role(),
             port: non_neg_integer(),
             endpoint: String.t(),
-            arango_id: String.t() | nil,
-            operational_state: Toast.Deployment.ServerInstance.operational_state() | nil
+            arango_id: String.t() | nil
           }
 
     @enforce_keys [:id, :role, :port, :endpoint]
-    defstruct [:id, :role, :port, :endpoint, :arango_id, :operational_state]
+    defstruct [:id, :role, :port, :endpoint, :arango_id]
   end
 
   @type mode :: :single_server | :cluster
@@ -262,20 +261,22 @@ defmodule Toast.Deployment do
     end
   end
 
-  @doc "List all servers with current state."
+  @doc "List all servers as immutable info snapshots."
   @spec servers(t()) :: [ServerInfo.t()]
-  def servers(%__MODULE__{} = deployment) do
-    deployment
-    |> controller_call(:get_servers, [])
-    |> Enum.map(&to_server_info/1)
+  def servers(%__MODULE__{servers: servers}) do
+    Map.values(servers)
   end
 
   @doc "List servers filtered by role."
   @spec servers(t(), keyword()) :: [ServerInfo.t()]
-  def servers(%__MODULE__{} = deployment, role: role) do
-    deployment
-    |> controller_call({:get_servers, role}, [])
-    |> Enum.map(&to_server_info/1)
+  def servers(%__MODULE__{servers: servers}, role: role) do
+    servers |> Map.values() |> Enum.filter(&(&1.role == role))
+  end
+
+  @doc "List all servers as full runtime instances (includes mutable state like pid)."
+  @spec server_instances(t()) :: [ServerInstance.t()]
+  def server_instances(%__MODULE__{} = deployment) do
+    controller_call(deployment, :get_servers, [])
   end
 
   @spec client(t(), String.t()) :: {:ok, Client.t()} | {:error, :not_found}
@@ -511,7 +512,7 @@ defmodule Toast.Deployment do
 
   defp format_degraded_message(deployment, prev_test) do
     downed =
-      servers(deployment)
+      server_instances(deployment)
       |> Enum.filter(&(&1.operational_state in [:stopped, :killed, :paused]))
 
     names = Enum.map_join(downed, ", ", & &1.id)
@@ -538,8 +539,7 @@ defmodule Toast.Deployment do
       role: s.role,
       port: s.port || 0,
       endpoint: s.endpoint || "",
-      arango_id: s.arango_id,
-      operational_state: s.operational_state
+      arango_id: s.arango_id
     }
   end
 

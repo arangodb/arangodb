@@ -72,6 +72,7 @@ defmodule Mix.Tasks.Toast.Helpers do
       timeout_factor: :timeout_factor,
       memory_budget: :memory_budget,
       keep_data: :keep_data,
+      attach_debugger: :attach_debugger,
       sanitizer: :sanitizer_override,
       rr: :rr,
       cluster_agents: :cluster_agents,

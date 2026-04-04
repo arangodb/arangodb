@@ -30,6 +30,7 @@ defmodule Mix.Tasks.Toast do
       --timeout-factor N          - Timeout multiplier (default: 1, auto-set to 3 for sanitizer builds)
       --keep-data                 - Keep server data/logs even on success
       --sanitizer TYPE            - Sanitizer: tsan or alubsan (auto-detected from build dir)
+      --attach-debugger           - Pause after deployment for live debugger attachment
       --rr ROLES                  - Record with rr: "default", "all", or comma-separated roles
                                     (single, agent, dbserver, coordinator)
                                     "default" = single server or dbserver,coordinator in cluster
@@ -92,6 +93,7 @@ defmodule Mix.Tasks.Toast do
     memory_budget: :integer,
     keep_data: :boolean,
     sanitizer: :string,
+    attach_debugger: :boolean,
     rr: :string,
     cluster_agents: :integer,
     cluster_dbservers: :integer,

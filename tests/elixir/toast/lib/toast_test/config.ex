@@ -17,6 +17,7 @@ defmodule ToastTest.Config do
           keep_data: boolean(),
           ci: boolean(),
           debugger: :gdb | :lldb | :auto | :none | nil,
+          attach_debugger: boolean(),
           coredump_timeout: pos_integer(),
           coredump_dir: Path.t() | nil,
           dump_agency_on_error: boolean()
@@ -31,6 +32,7 @@ defmodule ToastTest.Config do
             keep_data: false,
             ci: false,
             debugger: :auto,
+            attach_debugger: false,
             coredump_timeout: 180_000,
             coredump_dir: nil,
             dump_agency_on_error: true

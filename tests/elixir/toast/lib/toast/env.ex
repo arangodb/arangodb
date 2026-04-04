@@ -122,6 +122,8 @@ defmodule Toast.Env do
       keep_data: resolve(opts, local, :keep_data, &read_bool/1, "TOAST_KEEP_DATA") || false,
       ci: resolve(opts, local, :ci, &read_bool/1, "TOAST_CI") || false,
       debugger: resolve(opts, local, :debugger, &read_debugger/1, "TOAST_DEBUGGER") || :auto,
+      attach_debugger:
+        resolve(opts, local, :attach_debugger, &read_bool/1, "TOAST_ATTACH_DEBUGGER") || false,
       rr: resolve(opts, local, :rr, &env/1, "TOAST_RR"),
       rr_path: nil,
       dump_agency_on_error:

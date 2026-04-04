@@ -382,6 +382,14 @@ defmodule ToastTest.Runner do
     ToastTest.DeploymentRegistry.put(suite_module, deployment)
     Logger.debug("Suite #{inspect(suite_module)}: deployment ready")
 
+    if test_config.attach_debugger do
+      if test_config.ci do
+        Logger.warning("--attach-debugger ignored in CI mode")
+      else
+        ToastTest.DebuggerAttach.prompt(deployment, test_config.debugger)
+      end
+    end
+
     {stats, test_data} =
       case run_suite_setup(suite_module, deployment) do
         {:ok, extra_context} ->
