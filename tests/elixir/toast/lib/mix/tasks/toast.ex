@@ -162,10 +162,14 @@ defmodule Mix.Tasks.Toast do
 
     test_config = ToastTest.Config.new()
     Toast.Application.reconfigure_file_logger(test_config.result_dir)
+    start_time = System.monotonic_time()
     result = ToastTest.Runner.run_suites(suite_data, test_config, ex_unit_opts)
 
+    elapsed_us =
+      System.convert_time_unit(System.monotonic_time() - start_time, :native, :microsecond)
+
     suite_results = Enum.map(result.suites, & &1.suite_result)
-    ToastTest.RunSummary.print(suite_results)
+    ToastTest.RunSummary.print(suite_results, elapsed_us)
     RrSummary.print(test_config.base_dir)
 
     abort_reason = ToastTest.Abort.reason()

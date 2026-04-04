@@ -3,8 +3,8 @@ defmodule ToastTest.RunSummary do
 
   import ToastTest.Formatting
 
-  @spec print([ToastTest.SuiteResult.t()]) :: :ok
-  def print(suite_results) do
+  @spec print([ToastTest.SuiteResult.t()], non_neg_integer()) :: :ok
+  def print(suite_results, elapsed_us) do
     {mod_counts, test_counts} = count(suite_results)
     colors = IO.ANSI.enabled?()
     bar = String.duplicate("\u2500", 80)
@@ -15,6 +15,7 @@ defmodule ToastTest.RunSummary do
 
     IO.puts(format_line("Modules", mod_counts, colors))
     IO.puts(format_line("Test cases", test_counts, colors))
+    IO.puts("  Runtime:     #{format_duration(elapsed_us)}")
 
     :ok
   end
@@ -90,6 +91,22 @@ defmodule ToastTest.RunSummary do
       colorize_count(counts.skipped, " skipped", :yellow, colors)
     ]
     |> IO.iodata_to_binary()
+  end
+
+  defp format_duration(us) when us < 1_000, do: "#{us}µs"
+  defp format_duration(us) when us < 1_000_000, do: "#{Float.round(us / 1_000, 1)}ms"
+
+  defp format_duration(us) do
+    total_seconds = div(us, 1_000_000)
+    minutes = div(total_seconds, 60)
+    seconds = rem(total_seconds, 60)
+    frac = us |> rem(1_000_000) |> div(100_000)
+
+    if minutes > 0 do
+      "#{minutes}m #{seconds}.#{frac}s"
+    else
+      "#{seconds}.#{frac}s"
+    end
   end
 
   defp colorize_count(0, suffix, _color, _colors), do: "0#{suffix}"

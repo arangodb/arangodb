@@ -41,7 +41,7 @@ defmodule ToastTest.RunSummaryTest do
     test "all passing" do
       suite = make_suite([{"a", [:passed, :passed]}, {"b", [:passed]}])
 
-      output = capture_io(fn -> RunSummary.print([suite]) end) |> strip_ansi()
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
 
       assert output =~ "Modules:     2 total, 2 successful, 0 failed, 0 skipped"
       assert output =~ "Test cases:  3 total, 3 successful, 0 failed, 0 skipped"
@@ -55,7 +55,7 @@ defmodule ToastTest.RunSummaryTest do
           {"skipped", [:skipped, :excluded]}
         ])
 
-      output = capture_io(fn -> RunSummary.print([suite]) end) |> strip_ansi()
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
 
       assert output =~ "Modules:     3 total, 2 successful, 1 failed, 1 skipped"
       assert output =~ "Test cases:  6 total, 4 successful, 1 failed, 2 skipped"
@@ -65,7 +65,7 @@ defmodule ToastTest.RunSummaryTest do
       suite1 = make_suite([{"a", [:passed, :failed]}])
       suite2 = make_suite([{"b", [:passed]}, {"c", [:skipped]}])
 
-      output = capture_io(fn -> RunSummary.print([suite1, suite2]) end) |> strip_ansi()
+      output = capture_io(fn -> RunSummary.print([suite1, suite2], 0) end) |> strip_ansi()
 
       assert output =~ "Modules:     3 total, 2 successful, 1 failed, 1 skipped"
       assert output =~ "Test cases:  4 total, 3 successful, 1 failed, 1 skipped"
@@ -74,17 +74,26 @@ defmodule ToastTest.RunSummaryTest do
     test "empty suite" do
       suite = make_suite([])
 
-      output = capture_io(fn -> RunSummary.print([suite]) end) |> strip_ansi()
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
 
       assert output =~ "Modules:     0 total, 0 successful, 0 failed, 0 skipped"
       assert output =~ "Test cases:  0 total, 0 successful, 0 failed, 0 skipped"
     end
 
     test "no suites" do
-      output = capture_io(fn -> RunSummary.print([]) end) |> strip_ansi()
+      output = capture_io(fn -> RunSummary.print([], 0) end) |> strip_ansi()
 
       assert output =~ "Modules:     0 total, 0 successful, 0 failed, 0 skipped"
       assert output =~ "Test cases:  0 total, 0 successful, 0 failed, 0 skipped"
+      assert output =~ "Runtime:     0µs"
+    end
+
+    test "runtime formatting" do
+      suite = make_suite([{"a", [:passed]}])
+
+      output = capture_io(fn -> RunSummary.print([suite], 72_500_000) end) |> strip_ansi()
+
+      assert output =~ "Runtime:     1m 12.5s"
     end
   end
 end
