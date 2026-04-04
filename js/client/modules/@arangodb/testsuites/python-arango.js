@@ -87,6 +87,7 @@ class runInPythonTest extends runWithAllureReport {
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
   runOneTest(file) {
+    print(`DBG: runOneTest (${file})`);
     print(this.instanceManager.setPassvoid(this.options.password));
     let testResultsDir = fs.join(this.instanceManager.rootDir, 'pythonresults');
 
@@ -153,6 +154,8 @@ function pythonDriver (options) {
     localOptions.dbServers = 3;
     localOptions.coordinators = 3;
   }
+  internal.print(`DBG: localOptions (${localOptions})`)
+
   let rc = new runInPythonTest(localOptions, 'python_test').run([ 'python_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
@@ -165,6 +168,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
   tu.CopyIntoObject(opts, {
     'pythonOptions': '',
-    'pythonsource': '../python-arango-async',
+    'pythonsource': '../kkawade-python-arango-async',
   });
 };
