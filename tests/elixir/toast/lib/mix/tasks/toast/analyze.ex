@@ -689,7 +689,7 @@ defmodule Mix.Tasks.Toast.Analyze do
   end
 
   defp idle_thread?(frames) do
-    immediate_idle?(frames) or cond_wait_idle?(frames)
+    frames == [] or immediate_idle?(frames) or cond_wait_idle?(frames)
   end
 
   defp immediate_idle?(frames) do

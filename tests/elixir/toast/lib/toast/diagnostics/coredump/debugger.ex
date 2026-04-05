@@ -43,6 +43,14 @@ defmodule Toast.Diagnostics.Coredump.Debugger do
     %{acc | threads: [thread | acc.threads], current: nil}
   end
 
+  @doc "Deduplicate threads with the same id, keeping the entry with more frames."
+  @spec deduplicate_threads([thread()]) :: [thread()]
+  def deduplicate_threads(threads) do
+    threads
+    |> Enum.group_by(& &1.id)
+    |> Enum.map(fn {_id, entries} -> Enum.max_by(entries, &length(&1.frames)) end)
+  end
+
   @doc false
   @spec filter_threads([thread()], integer() | nil) :: [thread()]
   def filter_threads(threads, crash_thread) do

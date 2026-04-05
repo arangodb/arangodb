@@ -44,7 +44,10 @@ defmodule Toast.Diagnostics.Coredump.GDB do
       end)
       |> Debugger.flush_current_thread()
 
-    threads = Debugger.filter_threads(threads, crash_thread)
+    threads =
+      threads
+      |> Debugger.deduplicate_threads()
+      |> Debugger.filter_threads(crash_thread)
 
     %{
       signal: signal,

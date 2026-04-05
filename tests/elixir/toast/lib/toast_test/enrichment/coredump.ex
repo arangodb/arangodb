@@ -49,16 +49,14 @@ defmodule ToastTest.Enrichment.Coredump do
     threads = Enum.map(report.threads, &transform_thread/1)
     crash_thread_id = if report.crash_thread, do: to_string(report.crash_thread)
 
-    # Put the crash thread first so the summary prints the most relevant backtrace.
-    threads =
+    # Put the crash thread first, then sort remaining threads by id.
+    {crash, rest} =
       case crash_thread_id do
-        nil ->
-          threads
-
-        id ->
-          {crash, rest} = Enum.split_with(threads, &(&1.id == id))
-          crash ++ rest
+        nil -> {[], threads}
+        id -> Enum.split_with(threads, &(&1.id == id))
       end
+
+    threads = crash ++ Enum.sort_by(rest, &String.to_integer(&1.id))
 
     %{
       threads: threads,
