@@ -145,6 +145,7 @@ defmodule Mix.Tasks.Toast do
   defp run_suite_mode(args, opts, ex_unit_opts, suites_dir) do
     ExUnit.start(Keyword.merge(ex_unit_opts, autorun: false))
 
+    args = Helpers.expand_args(args, suites_dir)
     {suite_requests, file_filters} = Helpers.parse_suite_args(args)
 
     suite_modules = discover_and_compile_suites(suites_dir, suite_requests)

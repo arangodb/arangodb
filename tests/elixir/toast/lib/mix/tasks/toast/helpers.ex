@@ -4,6 +4,38 @@ defmodule Mix.Tasks.Toast.Helpers do
   # Pure helper functions extracted from Mix.Tasks.Toast for testability.
 
   @doc """
+  Strips the `suites/` prefix from a single argument if present.
+  """
+  @spec normalize_arg(String.t()) :: String.t()
+  def normalize_arg("suites/" <> rest), do: rest
+  def normalize_arg(arg), do: arg
+
+  @doc """
+  Expands arguments, resolving globs against `suites_dir` and stripping `suites/` prefixes.
+
+  Non-glob arguments are returned with just prefix normalization.
+  Glob arguments are expanded against the filesystem; if no files match, the
+  normalized argument is returned as-is (letting downstream code report the error).
+  """
+  @spec expand_args([String.t()], String.t()) :: [String.t()]
+  def expand_args(args, suites_dir) do
+    Enum.flat_map(args, fn arg ->
+      normalized = normalize_arg(arg)
+
+      if glob?(normalized) do
+        case Path.join(suites_dir, normalized) |> Path.wildcard() do
+          [] -> [normalized]
+          paths -> Enum.map(paths, &Path.relative_to(&1, suites_dir))
+        end
+      else
+        [normalized]
+      end
+    end)
+  end
+
+  defp glob?(arg), do: String.contains?(arg, ["*", "?", "["])
+
+  @doc """
   Parses suite arguments into a suite request (`:all` or list of names)
   and a map of file filters keyed by suite name.
   """

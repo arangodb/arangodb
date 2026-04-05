@@ -54,6 +54,111 @@ defmodule Mix.Tasks.ToastTest do
     end
   end
 
+  describe "normalize_arg/1" do
+    test "passes through plain suite name" do
+      assert Helpers.normalize_arg("smoke") == "smoke"
+    end
+
+    test "passes through suite/file format" do
+      assert Helpers.normalize_arg("smoke/test_version.exs") == "smoke/test_version.exs"
+    end
+
+    test "strips suites/ prefix from suite name" do
+      assert Helpers.normalize_arg("suites/smoke") == "smoke"
+    end
+
+    test "strips suites/ prefix from suite/file path" do
+      assert Helpers.normalize_arg("suites/smoke/test_version.exs") == "smoke/test_version.exs"
+    end
+
+    test "strips suites/ prefix from suite/file:line path" do
+      assert Helpers.normalize_arg("suites/smoke/test_version.exs:42") ==
+               "smoke/test_version.exs:42"
+    end
+
+    test "does not strip suites prefix without slash" do
+      assert Helpers.normalize_arg("suites_extra") == "suites_extra"
+    end
+  end
+
+  describe "expand_args/2" do
+    @tag :tmp_dir
+    test "passes through non-glob args with normalization", %{tmp_dir: dir} do
+      assert Helpers.expand_args(["smoke", "suites/cluster"], dir) ==
+               ["smoke", "cluster"]
+    end
+
+    @tag :tmp_dir
+    test "expands glob matching single file", %{tmp_dir: dir} do
+      suite_dir = Path.join(dir, "smoke")
+      File.mkdir_p!(suite_dir)
+      File.write!(Path.join(suite_dir, "test_version.exs"), "")
+
+      result = Helpers.expand_args(["smoke/test_v*.exs"], dir)
+
+      assert result == ["smoke/test_version.exs"]
+    end
+
+    @tag :tmp_dir
+    test "expands glob matching multiple files", %{tmp_dir: dir} do
+      suite_dir = Path.join(dir, "smoke")
+      File.mkdir_p!(suite_dir)
+      File.write!(Path.join(suite_dir, "test_aql.exs"), "")
+      File.write!(Path.join(suite_dir, "test_version.exs"), "")
+      File.write!(Path.join(suite_dir, "test_collection.exs"), "")
+
+      result = Helpers.expand_args(["smoke/test_*.exs"], dir) |> Enum.sort()
+
+      assert result == [
+               "smoke/test_aql.exs",
+               "smoke/test_collection.exs",
+               "smoke/test_version.exs"
+             ]
+    end
+
+    @tag :tmp_dir
+    test "expands glob with suites/ prefix", %{tmp_dir: dir} do
+      suite_dir = Path.join(dir, "smoke")
+      File.mkdir_p!(suite_dir)
+      File.write!(Path.join(suite_dir, "test_version.exs"), "")
+
+      result = Helpers.expand_args(["suites/smoke/test_v*.exs"], dir)
+
+      assert result == ["smoke/test_version.exs"]
+    end
+
+    @tag :tmp_dir
+    test "expands glob across suites with wildcard suite name", %{tmp_dir: dir} do
+      for suite <- ["smoke", "cluster"] do
+        suite_dir = Path.join(dir, suite)
+        File.mkdir_p!(suite_dir)
+        File.write!(Path.join(suite_dir, "test_version.exs"), "")
+      end
+
+      result = Helpers.expand_args(["*/test_version.exs"], dir) |> Enum.sort()
+
+      assert result == ["cluster/test_version.exs", "smoke/test_version.exs"]
+    end
+
+    @tag :tmp_dir
+    test "glob with no matches passes through normalized arg", %{tmp_dir: dir} do
+      result = Helpers.expand_args(["smoke/test_nonexistent*.exs"], dir)
+
+      assert result == ["smoke/test_nonexistent*.exs"]
+    end
+
+    @tag :tmp_dir
+    test "mixes glob and non-glob args", %{tmp_dir: dir} do
+      suite_dir = Path.join(dir, "smoke")
+      File.mkdir_p!(suite_dir)
+      File.write!(Path.join(suite_dir, "test_version.exs"), "")
+
+      result = Helpers.expand_args(["cluster", "smoke/test_v*.exs"], dir)
+
+      assert result == ["cluster", "smoke/test_version.exs"]
+    end
+  end
+
   describe "parse_file_specs/1" do
     test "plain filename" do
       {files, lines} = Helpers.parse_file_specs(["test_foo.exs"])
