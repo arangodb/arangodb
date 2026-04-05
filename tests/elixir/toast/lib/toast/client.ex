@@ -46,32 +46,36 @@ defmodule Toast.Client do
     %{client | api_version: version}
   end
 
+  @doc """
+  Sends a request with the given method and URL as-is (no api_version/database prefix).
+  Body is JSON-encoded by default; pass `nil` to send no body.
+  """
+  @spec request(t(), atom(), String.t(), term(), keyword()) ::
+          {:ok, Req.Response.t()} | {:error, term()}
+  def request(%__MODULE__{} = client, method, url, body \\ nil, opts \\ []) do
+    opts = if body != nil, do: [{:json, body} | opts], else: opts
+    opts = [{:url, url} | apply_auth(client, opts)]
+    Req.request(client.req, [{:method, method} | opts])
+  end
+
   @spec get(t(), String.t(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
   def get(%__MODULE__{} = client, path, opts \\ []) do
-    request(client, :get, path, opts)
+    request(client, :get, build_url(client, path), nil, opts)
   end
 
   @spec post(t(), String.t(), term(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
   def post(%__MODULE__{} = client, path, body \\ nil, opts \\ []) do
-    opts = if body != nil, do: [{:json, body} | opts], else: opts
-    request(client, :post, path, opts)
+    request(client, :post, build_url(client, path), body, opts)
   end
 
   @spec put(t(), String.t(), term(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
   def put(%__MODULE__{} = client, path, body \\ nil, opts \\ []) do
-    opts = if body != nil, do: [{:json, body} | opts], else: opts
-    request(client, :put, path, opts)
+    request(client, :put, build_url(client, path), body, opts)
   end
 
   @spec delete(t(), String.t(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
   def delete(%__MODULE__{} = client, path, opts \\ []) do
-    request(client, :delete, path, opts)
-  end
-
-  defp request(%__MODULE__{} = client, method, path, opts) do
-    url = build_url(client, path)
-    opts = [{:url, url} | apply_auth(client, opts)]
-    Req.request(client.req, [{:method, method} | opts])
+    request(client, :delete, build_url(client, path), nil, opts)
   end
 
   defp build_url(%__MODULE__{} = client, path) do

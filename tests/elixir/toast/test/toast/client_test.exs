@@ -208,6 +208,69 @@ defmodule Toast.ClientTest do
     end
   end
 
+  describe "request/5" do
+    test "sends request with given method and path as-is (no prefix)" do
+      plug = fn conn ->
+        send(self(), {:request, conn.method, conn.request_path})
+        json_plug().(conn)
+      end
+
+      client = client_with_plug(plug, api_version: 1, database: "mydb")
+      Client.request(client, :post, "/_admin/echo")
+      assert_received {:request, "POST", "/_admin/echo"}
+    end
+
+    test "JSON-encodes body by default" do
+      plug = fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(self(), {:body, body})
+        json_plug().(conn)
+      end
+
+      client = client_with_plug(plug)
+      Client.request(client, :post, "/_api/cursor", %{"query" => "RETURN 1"})
+      assert_received {:body, body}
+      assert %{"query" => "RETURN 1"} = Jason.decode!(body)
+    end
+
+    test "sends no body when body is nil" do
+      plug = fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(self(), {:body, body})
+        json_plug().(conn)
+      end
+
+      client = client_with_plug(plug)
+      Client.request(client, :get, "/_api/version")
+      assert_received {:body, ""}
+    end
+
+    test "applies auth headers" do
+      plug = fn conn ->
+        auth = Plug.Conn.get_req_header(conn, "authorization")
+        send(self(), {:auth, auth})
+        json_plug().(conn)
+      end
+
+      client = client_with_plug(plug) |> Client.with_auth({:basic, "root", "pass"})
+      Client.request(client, :get, "/_api/version")
+      expected = "Basic " <> Base.encode64("root:pass")
+      assert_received {:auth, [^expected]}
+    end
+
+    test "passes extra opts through to Req" do
+      plug = fn conn ->
+        custom = Plug.Conn.get_req_header(conn, "x-custom")
+        send(self(), {:custom, custom})
+        json_plug().(conn)
+      end
+
+      client = client_with_plug(plug)
+      Client.request(client, :get, "/_api/version", nil, headers: [{"x-custom", "value"}])
+      assert_received {:custom, ["value"]}
+    end
+  end
+
   describe "auth headers" do
     test "basic auth sets Authorization header" do
       plug = fn conn ->
