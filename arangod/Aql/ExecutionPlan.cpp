@@ -2495,7 +2495,22 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     options->minDepth = range->getMember(0)->getIntValue();
     options->maxDepth = range->getMember(1)->getIntValue();
 
-    auto dirNode = edge->getMember(4);
+    auto dirNode = _ast->createNodeValueInt(std::invoke(
+        [](int64_t d) {
+          switch (d) {
+            case 1:
+              return 1;
+            case 2:
+              return 2;
+            case 3:
+              return 0;
+            default:
+              THROW_ARANGO_EXCEPTION_MESSAGE(
+                  TRI_ERROR_INTERNAL, "invalid direction for match expression");
+          }
+        },
+        edge->getMember(4)->getIntValue()));
+
     auto* startNode = _ast->createNodeReference(startNodeVar);
 
     auto* edgeCollectionList = _ast->createNodeArray();
@@ -2595,7 +2610,6 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       } break;
       default: {
         // Throw
-        LOG_DEVEL << "node type: " << node->getTypeString();
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected match expression member");
         return std::make_tuple(nullptr, nullptr);
