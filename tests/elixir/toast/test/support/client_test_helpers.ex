@@ -14,4 +14,12 @@ defmodule Toast.ClientTestHelpers do
       |> Plug.Conn.send_resp(status, Jason.encode!(body))
     end
   end
+
+  def vpack_plug(status \\ 200, body \\ %{}) do
+    fn conn ->
+      conn
+      |> Plug.Conn.put_resp_content_type("application/x-velocypack")
+      |> Plug.Conn.send_resp(status, VelocyPack.encode!(body))
+    end
+  end
 end

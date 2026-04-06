@@ -26,6 +26,7 @@ defmodule Toast.MixProject do
   defp deps do
     [
       {:req, "~> 0.5"},
+      {:velocy, "~> 0.1"},
       {:erlexec, "~> 2.0"},
       {:joken, "~> 2.6"},
       {:plug, "~> 1.0", only: :test},

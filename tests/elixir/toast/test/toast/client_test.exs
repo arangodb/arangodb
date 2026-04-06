@@ -26,6 +26,16 @@ defmodule Toast.ClientTest do
       assert client.auth == {:basic, "root", ""}
     end
 
+    test "pops content_type from opts" do
+      client = Client.new("http://localhost:8529", content_type: :vpack)
+      assert client.content_type == :vpack
+    end
+
+    test "defaults content_type to :vpack" do
+      client = Client.new("http://localhost:8529")
+      assert client.content_type == :vpack
+    end
+
     test "passes remaining opts to Req" do
       client = Client.new("http://localhost:8529", receive_timeout: 5_000)
       assert client.req.options.receive_timeout == 5_000
@@ -74,6 +84,19 @@ defmodule Toast.ClientTest do
       client = Client.new("http://localhost:8529", api_version: 1)
       scoped = Client.with_api_version(client, nil)
       assert scoped.api_version == nil
+    end
+
+    test "with_content_type switches to json" do
+      client = Client.new("http://localhost:8529")
+      scoped = Client.with_content_type(client, :json)
+      assert scoped.content_type == :json
+      assert client.content_type == :vpack
+    end
+
+    test "with_content_type switches back to vpack" do
+      client = Client.new("http://localhost:8529", content_type: :json)
+      scoped = Client.with_content_type(client, :vpack)
+      assert scoped.content_type == :vpack
     end
   end
 
@@ -159,7 +182,7 @@ defmodule Toast.ClientTest do
         |> Plug.Conn.send_resp(201, "{}")
       end
 
-      client = client_with_plug(plug)
+      client = client_with_plug(plug, content_type: :json)
       Client.post(client, "/_api/cursor", %{"query" => "RETURN 1"})
       assert_received {:body, %{"query" => "RETURN 1"}}
     end
@@ -175,7 +198,7 @@ defmodule Toast.ClientTest do
         |> Plug.Conn.send_resp(200, "{}")
       end
 
-      client = client_with_plug(plug)
+      client = client_with_plug(plug, content_type: :json)
       Client.put(client, "/_api/cursor/123", %{"data" => true})
       assert_received {:body, body}
       assert %{"data" => true} = Jason.decode!(body)
@@ -220,17 +243,17 @@ defmodule Toast.ClientTest do
       assert_received {:request, "POST", "/_admin/echo"}
     end
 
-    test "JSON-encodes body by default" do
+    test "vpack-encodes body by default" do
       plug = fn conn ->
         {:ok, body, conn} = Plug.Conn.read_body(conn)
         send(self(), {:body, body})
-        json_plug().(conn)
+        vpack_plug().(conn)
       end
 
       client = client_with_plug(plug)
       Client.request(client, :post, "/_api/cursor", %{"query" => "RETURN 1"})
       assert_received {:body, body}
-      assert %{"query" => "RETURN 1"} = Jason.decode!(body)
+      assert %{"query" => "RETURN 1"} = VelocyPack.decode!(body)
     end
 
     test "sends no body when body is nil" do
@@ -268,6 +291,66 @@ defmodule Toast.ClientTest do
       client = client_with_plug(plug)
       Client.request(client, :get, "/_api/version", nil, headers: [{"x-custom", "value"}])
       assert_received {:custom, ["value"]}
+    end
+  end
+
+  describe "vpack encoding" do
+    test "sends body as vpack with correct content-type and accept headers" do
+      plug = fn conn ->
+        [content_type] = Plug.Conn.get_req_header(conn, "content-type")
+        [accept] = Plug.Conn.get_req_header(conn, "accept")
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(self(), {:vpack_request, content_type, accept, body})
+        vpack_plug().(conn)
+      end
+
+      client = client_with_plug(plug, content_type: :vpack)
+      Client.post(client, "/_api/cursor", %{"query" => "RETURN 1"})
+
+      assert_received {:vpack_request, content_type, accept, body}
+      assert content_type == "application/x-velocypack"
+      assert accept == "application/x-velocypack"
+      assert %{"query" => "RETURN 1"} = VelocyPack.decode!(body)
+    end
+
+    test "sends no body when body is nil" do
+      plug = fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(self(), {:body, body})
+        vpack_plug().(conn)
+      end
+
+      client = client_with_plug(plug, content_type: :vpack)
+      Client.get(client, "/_api/version")
+      assert_received {:body, ""}
+    end
+
+    test "decodes vpack response body" do
+      payload = %{"result" => [1], "hasMore" => false}
+
+      plug = fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/x-velocypack")
+        |> Plug.Conn.send_resp(200, VelocyPack.encode!(payload))
+      end
+
+      client = client_with_plug(plug, content_type: :vpack)
+      assert {:ok, %{status: 200, body: body}} = Client.get(client, "/_api/cursor/123")
+      assert body == payload
+    end
+
+    test "json client also decodes vpack response" do
+      payload = %{"x" => 1}
+
+      plug = fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/x-velocypack")
+        |> Plug.Conn.send_resp(200, VelocyPack.encode!(payload))
+      end
+
+      client = client_with_plug(plug, content_type: :json)
+      assert {:ok, %{status: 200, body: body}} = Client.get(client, "/_api/test")
+      assert body == payload
     end
   end
 

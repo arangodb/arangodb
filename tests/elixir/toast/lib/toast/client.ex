@@ -3,30 +3,37 @@ defmodule Toast.Client do
 
   @type auth_t :: {:basic, String.t(), String.t()} | {:jwt, String.t()}
 
+  @type content_type_t :: :json | :vpack
+
   @type t :: %__MODULE__{
           base_url: String.t(),
           database: String.t() | nil,
           api_version: non_neg_integer() | String.t() | nil,
           auth: auth_t() | nil,
+          content_type: content_type_t(),
           req: Req.Request.t()
         }
 
   @enforce_keys [:base_url, :req]
-  defstruct [:base_url, :database, :api_version, :auth, :req]
+  defstruct [:base_url, :database, :api_version, :auth, :req, content_type: :vpack]
 
   @spec new(String.t(), keyword()) :: t()
   def new(base_url, opts \\ []) do
     {database, opts} = Keyword.pop(opts, :database)
     {api_version, opts} = Keyword.pop(opts, :api_version)
-    {auth, req_opts} = Keyword.pop(opts, :auth)
+    {auth, opts} = Keyword.pop(opts, :auth)
+    {content_type, req_opts} = Keyword.pop(opts, :content_type, :vpack)
 
-    req = Req.new([base_url: base_url, retry: false] ++ req_opts)
+    req =
+      Req.new([base_url: base_url, retry: false] ++ req_opts)
+      |> Req.Request.append_response_steps(vpack_decode: &decode_vpack_response/1)
 
     %__MODULE__{
       base_url: base_url,
       database: database,
       api_version: api_version,
       auth: auth,
+      content_type: content_type,
       req: req
     }
   end
@@ -46,14 +53,19 @@ defmodule Toast.Client do
     %{client | api_version: version}
   end
 
+  @spec with_content_type(t(), content_type_t()) :: t()
+  def with_content_type(%__MODULE__{} = client, content_type) do
+    %{client | content_type: content_type}
+  end
+
   @doc """
   Sends a request with the given method and URL as-is (no api_version/database prefix).
-  Body is JSON-encoded by default; pass `nil` to send no body.
+  Body is encoded according to `content_type` (vpack by default); pass `nil` to send no body.
   """
   @spec request(t(), atom(), String.t(), term(), keyword()) ::
           {:ok, Req.Response.t()} | {:error, term()}
   def request(%__MODULE__{} = client, method, url, body \\ nil, opts \\ []) do
-    opts = if body != nil, do: [{:json, body} | opts], else: opts
+    opts = encode_body(client.content_type, body, opts)
     opts = [{:url, url} | apply_auth(client, opts)]
     Req.request(client.req, [{:method, method} | opts])
   end
@@ -132,5 +144,30 @@ defmodule Toast.Client do
   defp prepend_header(opts, header) do
     existing = Keyword.get(opts, :headers, [])
     Keyword.put(opts, :headers, [header | existing])
+  end
+
+  defp encode_body(_content_type, nil, opts), do: opts
+
+  defp encode_body(:json, body, opts), do: [{:json, body} | opts]
+
+  defp encode_body(:vpack, body, opts) do
+    existing = Keyword.get(opts, :headers, [])
+
+    opts
+    |> Keyword.put(:body, VelocyPack.encode!(body))
+    |> Keyword.put(:headers, [
+      {"content-type", "application/x-velocypack"},
+      {"accept", "application/x-velocypack"} | existing
+    ])
+  end
+
+  defp decode_vpack_response({request, response}) do
+    content_type = Req.Response.get_header(response, "content-type")
+
+    if match?(["application/x-velocypack" <> _ | _], content_type) do
+      {request, %{response | body: VelocyPack.decode!(response.body)}}
+    else
+      {request, response}
+    end
   end
 end
