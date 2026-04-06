@@ -521,16 +521,6 @@ bool exists(std::string const& path) {
   return ::statResultType(path) != ::StatResultType::Error;
 }
 
-off_t size(std::string const& path) {
-  int64_t result = TRI_SizeFile(path.c_str());
-
-  if (result < 0) {
-    return (off_t)0;
-  }
-
-  return (off_t)result;
-}
-
 std::string stripExtension(std::string const& path,
                            std::string const& extension) {
   size_t pos = path.rfind(extension);
@@ -557,8 +547,6 @@ std::string configDirectory(char const* binaryPath) {
 
   return dir;
 }
-
-std::string dirname(std::string const& name) { return TRI_Dirname(name); }
 
 void makePathAbsolute(std::string& path) {
   std::string const cwd = std::filesystem::current_path();
