@@ -10,13 +10,10 @@ defmodule Toast.Client.DocumentTest do
       plug = fn conn ->
         assert conn.method == "POST"
         assert conn.request_path == "/_api/document/users"
-        {:ok, body, conn} = Plug.Conn.read_body(conn)
-        decoded = Jason.decode!(body)
+        {decoded, conn} = decode_request_body(conn)
         assert decoded["name"] == "Alice"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(202, Jason.encode!(%{"_key" => "123"}))
+        send_encoded_response(conn, 202, %{"_key" => "123"})
       end
 
       client = client_with_plug(plug)
@@ -32,9 +29,7 @@ defmodule Toast.Client.DocumentTest do
         assert conn.method == "GET"
         assert conn.request_path == "/_api/document/users/123"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{"_key" => "123", "name" => "Alice"}))
+        send_encoded_response(conn, 200, %{"_key" => "123", "name" => "Alice"})
       end
 
       client = client_with_plug(plug)
@@ -48,9 +43,7 @@ defmodule Toast.Client.DocumentTest do
         assert conn.method == "DELETE"
         assert conn.request_path == "/_api/document/users/123"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, "{}")
+        send_encoded_response(conn, 200, %{})
       end
 
       client = client_with_plug(plug)

@@ -11,9 +11,7 @@ defmodule Toast.Client.AdminTest do
         assert conn.method == "GET"
         assert conn.request_path == "/_api/version"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{"server" => "arango", "version" => "3.12.0"}))
+        send_encoded_response(conn, 200, %{"server" => "arango", "version" => "3.12.0"})
       end
 
       client = client_with_plug(plug)
@@ -27,9 +25,7 @@ defmodule Toast.Client.AdminTest do
         assert conn.method == "GET"
         assert conn.request_path == "/_admin/status"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{"operationMode" => "server"}))
+        send_encoded_response(conn, 200, %{"operationMode" => "server"})
       end
 
       client = client_with_plug(plug)

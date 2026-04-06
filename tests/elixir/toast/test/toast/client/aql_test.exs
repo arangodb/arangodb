@@ -10,14 +10,11 @@ defmodule Toast.Client.AQLTest do
       plug = fn conn ->
         assert conn.method == "POST"
         assert conn.request_path == "/_api/cursor"
-        {:ok, body, conn} = Plug.Conn.read_body(conn)
-        decoded = Jason.decode!(body)
+        {decoded, conn} = decode_request_body(conn)
         assert decoded["query"] == "RETURN 1"
         assert decoded["bindVars"] == %{}
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(201, Jason.encode!(%{"result" => [1], "hasMore" => false}))
+        send_encoded_response(conn, 201, %{"result" => [1], "hasMore" => false})
       end
 
       client = client_with_plug(plug)
@@ -26,13 +23,10 @@ defmodule Toast.Client.AQLTest do
 
     test "passes bind_vars" do
       plug = fn conn ->
-        {:ok, body, conn} = Plug.Conn.read_body(conn)
-        decoded = Jason.decode!(body)
+        {decoded, conn} = decode_request_body(conn)
         assert decoded["bindVars"] == %{"x" => 42}
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(201, Jason.encode!(%{"result" => [42], "hasMore" => false}))
+        send_encoded_response(conn, 201, %{"result" => [42], "hasMore" => false})
       end
 
       client = client_with_plug(plug)
@@ -48,19 +42,16 @@ defmodule Toast.Client.AQLTest do
 
         case {conn.method, count} do
           {"POST", 0} ->
-            body = Jason.encode!(%{"result" => [1, 2], "hasMore" => true, "id" => "cursor-1"})
-
-            conn
-            |> Plug.Conn.put_resp_content_type("application/json")
-            |> Plug.Conn.send_resp(201, body)
+            send_encoded_response(conn, 201, %{
+              "result" => [1, 2],
+              "hasMore" => true,
+              "id" => "cursor-1"
+            })
 
           {"PUT", 1} ->
             assert conn.request_path == "/_api/cursor/cursor-1"
-            body = Jason.encode!(%{"result" => [3, 4], "hasMore" => false})
 
-            conn
-            |> Plug.Conn.put_resp_content_type("application/json")
-            |> Plug.Conn.send_resp(200, body)
+            send_encoded_response(conn, 200, %{"result" => [3, 4], "hasMore" => false})
 
           _ ->
             conn |> Plug.Conn.send_resp(500, "unexpected")
@@ -75,9 +66,7 @@ defmodule Toast.Client.AQLTest do
   describe "execute!/2" do
     test "returns results directly on success" do
       plug = fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(201, Jason.encode!(%{"result" => [1], "hasMore" => false}))
+        send_encoded_response(conn, 201, %{"result" => [1], "hasMore" => false})
       end
 
       client = client_with_plug(plug)
@@ -86,12 +75,7 @@ defmodule Toast.Client.AQLTest do
 
     test "raises on error" do
       plug = fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(
-          400,
-          Jason.encode!(%{"error" => true, "errorMessage" => "bad query"})
-        )
+        send_encoded_response(conn, 400, %{"error" => true, "errorMessage" => "bad query"})
       end
 
       client = client_with_plug(plug)

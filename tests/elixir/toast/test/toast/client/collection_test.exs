@@ -10,14 +10,11 @@ defmodule Toast.Client.CollectionTest do
       plug = fn conn ->
         assert conn.method == "POST"
         assert conn.request_path == "/_api/collection"
-        {:ok, body, conn} = Plug.Conn.read_body(conn)
-        decoded = Jason.decode!(body)
+        {decoded, conn} = decode_request_body(conn)
         assert decoded["name"] == "test_coll"
         assert decoded["type"] == 2
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{"id" => "123", "name" => "test_coll"}))
+        send_encoded_response(conn, 200, %{"id" => "123", "name" => "test_coll"})
       end
 
       client = client_with_plug(plug)
@@ -26,13 +23,10 @@ defmodule Toast.Client.CollectionTest do
 
     test "edge: true sets type 3" do
       plug = fn conn ->
-        {:ok, body, conn} = Plug.Conn.read_body(conn)
-        decoded = Jason.decode!(body)
+        {decoded, conn} = decode_request_body(conn)
         assert decoded["type"] == 3
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{"id" => "456", "name" => "edges"}))
+        send_encoded_response(conn, 200, %{"id" => "456", "name" => "edges"})
       end
 
       client = client_with_plug(plug)
@@ -43,9 +37,7 @@ defmodule Toast.Client.CollectionTest do
       plug = fn conn ->
         assert conn.request_path == "/_arango/v1/_api/collection"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{}))
+        send_encoded_response(conn, 200, %{})
       end
 
       client = client_with_plug(plug, api_version: 1)
@@ -59,9 +51,7 @@ defmodule Toast.Client.CollectionTest do
         assert conn.method == "DELETE"
         assert conn.request_path == "/_api/collection/test_coll"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, "{}")
+        send_encoded_response(conn, 200, %{})
       end
 
       client = client_with_plug(plug)
@@ -70,9 +60,7 @@ defmodule Toast.Client.CollectionTest do
 
     test "404 is treated as success (idempotent)" do
       plug = fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(404, ~s({"error":true}))
+        send_encoded_response(conn, 404, %{"error" => true})
       end
 
       client = client_with_plug(plug)
@@ -86,12 +74,7 @@ defmodule Toast.Client.CollectionTest do
         assert conn.method == "GET"
         assert conn.request_path == "/_api/collection"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(
-          200,
-          Jason.encode!(%{"result" => [%{"name" => "test"}]})
-        )
+        send_encoded_response(conn, 200, %{"result" => [%{"name" => "test"}]})
       end
 
       client = client_with_plug(plug)

@@ -13,9 +13,7 @@ defmodule Toast.Client.IndexTest do
         params = URI.decode_query(conn.query_string)
         assert params["collection"] == "users"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(201, Jason.encode!(%{"id" => "users/123"}))
+        send_encoded_response(conn, 201, %{"id" => "users/123"})
       end
 
       client = client_with_plug(plug)
@@ -33,9 +31,7 @@ defmodule Toast.Client.IndexTest do
         params = URI.decode_query(conn.query_string)
         assert params["collection"] == "users"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{"indexes" => [%{"id" => "users/0"}]}))
+        send_encoded_response(conn, 200, %{"indexes" => [%{"id" => "users/0"}]})
       end
 
       client = client_with_plug(plug)
@@ -49,9 +45,7 @@ defmodule Toast.Client.IndexTest do
         assert conn.method == "DELETE"
         assert conn.request_path == "/_api/index/users/123"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, "{}")
+        send_encoded_response(conn, 200, %{})
       end
 
       client = client_with_plug(plug)
