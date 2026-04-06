@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <filesystem>
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -299,12 +300,12 @@ void V8ShellFeature::copyInstallationFiles() {
     }
   }
 
-  if (auto res = TRI_ERROR_NO_ERROR;
-      !FileUtils::createDirectory(_copyDirectory, &res)) {
+  if (auto ec = std::error_code{};
+      !std::filesystem::create_directory(_copyDirectory, ec)) {
     auto err = TRI_last_error();
     LOG_TOPIC("6d915", FATAL, Logger::V8)
         << "Error creating JS installation path '" << _copyDirectory
-        << "': " << err;
+        << "': " << ec.message();
     FATAL_ERROR_EXIT();
   }
 
@@ -1107,9 +1108,9 @@ void V8ShellFeature::initGlobals() {
   }
 
   if (_currentModuleDirectory) {
-    modules += sep + FileUtils::currentDirectory().result();
-    v8security.addToInternalAllowList(FileUtils::currentDirectory().result(),
-                                      FSAccessType::READ);
+    auto const cwd = std::filesystem::current_path();
+    modules += sep + cwd.string();
+    v8security.addToInternalAllowList(cwd, FSAccessType::READ);
   }
 
   v8security.dumpAccessLists();
