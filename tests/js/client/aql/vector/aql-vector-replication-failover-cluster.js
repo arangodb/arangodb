@@ -31,7 +31,8 @@ const aql = arangodb.aql;
 const db = internal.db;
 const {
     getDBServers,
-    waitForShardsInSync
+    waitForShardsInSync,
+    versionHas,
 } = require("@arangodb/test-helper");
 const {
     randomNumberGeneratorFloat,
@@ -40,8 +41,10 @@ const {
 const {
     VectorIndexTrainingState,
     waitForVectorIndexState,
-    insertDocsAndEnsureIndex,
 } = require("@arangodb/testutils/vector-index-common");
+
+const isSanitizer = versionHas('asan') || versionHas('tsan');
+const timeoutMultiplier = isSanitizer ? 2 : 1;
 
 const dbName = "vectorReplicationDb";
 const collName = "vectorReplicationColl";
@@ -50,9 +53,7 @@ const collName = "vectorReplicationColl";
 // COR-255 vector replication not working
 function VectorIndexReplicationFailoverTest() {
     const dimension = 4;
-    // Training threshold is max(nLists * 39, 1000) = 1000 with nLists=2.
-    // Use 1200 to comfortably exceed the threshold on the follower.
-    const numberOfDocs = 1200;
+    const numberOfDocs = 100;
     const seed = generateSeed();
     const nLists = 2;
 
@@ -80,24 +81,22 @@ function VectorIndexReplicationFailoverTest() {
                 const vector = Array.from({length: dimension}, () => gen());
                 docs.push({vec: vector, value: i});
             }
-            insertDocsAndEnsureIndex({
-                collection,
-                docs,
-                seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vec_idx",
-                    type: "vector",
-                    fields: ["vec"],
-                    params: {
-                        dimension: dimension,
-                        metric: "l2",
-                        nLists: nLists,
-                    }
-                }),
-            });
+            collection.insert(docs);
+            // For the test to be less quirky lets first insert the data and then create
+            // vector index
+            collection.ensureIndex({
+                name: "vec_idx",
+                type: "vector",
+                fields: ["vec"],
+                inBackground: false,
+                params: {
+                    dimension: dimension,
+                    metric: "l2",
+                    nLists: nLists,
+            }});
             assertEqual(collection.count(), numberOfDocs);
             assertTrue(
-                waitForVectorIndexState(collection, "vec_idx", VectorIndexTrainingState.kReady, 120),
+                waitForVectorIndexState(collection, "vec_idx", VectorIndexTrainingState.kReady, 120 * timeoutMultiplier),
                 "Expected index to become ready with " + numberOfDocs + " docs"
             );
 
@@ -116,7 +115,7 @@ function VectorIndexReplicationFailoverTest() {
             collection.properties({replicationFactor: 2});
 
             // Get the leader after sync
-            waitForShardsInSync(collName, 120, 1);
+            waitForShardsInSync(collName, 120 * timeoutMultiplier, 1);
             let shards = collection.shards(true);
             let [shardName, servers] = Object.entries(shards)[0];
             assertTrue(servers.length >= 2,
@@ -131,12 +130,12 @@ function VectorIndexReplicationFailoverTest() {
             leaderServer.suspend();
             try {
                 // Wait for failover and shards to stabilize
-                waitForShardsInSync(collName, 120, 1);
+                waitForShardsInSync(collName, 120 * timeoutMultiplier, 1);
 
                 // Verify vector index is trained on the new leader
                 assertTrue(
                     waitForVectorIndexState(collection, "vec_idx",
-                                            VectorIndexTrainingState.kReady, 120),
+                                            VectorIndexTrainingState.kReady, 120 * timeoutMultiplier),
                     "vec_idx should be ready after failover"
                 );
 

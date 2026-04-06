@@ -27,9 +27,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <utility>
+#include <filesystem>
 
 #include "FileUtils.h"
 
@@ -365,37 +367,6 @@ ErrorCode remove(std::string const& fileName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-bool createDirectory(std::string const& name, ErrorCode* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = TRI_ERROR_NO_ERROR;
-  }
-
-  return createDirectory(name, 0777, errorNumber);
-}
-
-bool createDirectory(std::string const& name, int mask,
-                     ErrorCode* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = TRI_ERROR_NO_ERROR;
-  }
-
-  auto result = TRI_MKDIR(name.c_str(), static_cast<mode_t>(mask));
-
-  if (result != 0) {
-    int res = errno;
-    if (res == EEXIST && isDirectory(name)) {
-      result = 0;
-    } else {
-      auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      if (errorNumber != nullptr) {
-        *errorNumber = errorCode;
-      }
-    }
-  }
-
-  return result == 0;
-}
-
 /// @brief will not copy files/directories for which the filter function
 /// returns true (now wrapper for version below with TRI_copy_recursive_e
 /// filter)
@@ -601,41 +572,13 @@ std::string stripExtension(std::string const& path,
   return path;
 }
 
-FileResult changeDirectory(std::string const& path) {
-  int res = TRI_CHDIR(path.c_str());
-
-  if (res == 0) {
-    return FileResult();
-  } else {
-    return FileResult(errno);
-  }
-}
-
-FileResultString currentDirectory() {
-  size_t len = 1000;
-  std::unique_ptr<char[]> current(new char[len]);
-
-  while (TRI_GETCWD(current.get(), (int)len) == nullptr) {
-    if (errno == ERANGE) {
-      len += 1000;
-      current.reset(new char[len]);
-    } else {
-      return FileResultString(errno, ".");
-    }
-  }
-
-  std::string result = current.get();
-
-  return FileResultString(result);
-}
-
 std::string homeDirectory() { return TRI_HomeDirectory(); }
 
 std::string configDirectory(char const* binaryPath) {
   std::string dir = TRI_LocateConfigDirectory(binaryPath);
 
   if (dir.empty()) {
-    return currentDirectory().result();
+    return std::filesystem::current_path();
   }
 
   return dir;
@@ -644,15 +587,12 @@ std::string configDirectory(char const* binaryPath) {
 std::string dirname(std::string const& name) { return TRI_Dirname(name); }
 
 void makePathAbsolute(std::string& path) {
-  std::string cwd = FileUtils::currentDirectory().result();
-
+  std::string const cwd = std::filesystem::current_path();
   if (path.empty()) {
     path = cwd;
   } else {
-    std::string p = TRI_GetAbsolutePath(path, cwd);
-    if (!p.empty()) {
-      path = p;
-    }
+    path =
+        std::filesystem::absolute(std::filesystem::path(cwd) / path).string();
   }
 }
 

@@ -10,26 +10,27 @@ warning, the data entries do not cover all of civil time before
 1970, and undoubtedly errors remain in the code and data.  Feel
 free to fill gaps or fix mistakes, and please email improvements
 to <tz@iana.org> for use in the future.  In your email, please give
-reliable sources that reviewers can check.
+reliable sources that reviewers can check.  The mailing list and its
+archives are public, so please do not send confidential information.
 
 ## Contributing technical changes
 
 To email small changes, please run a POSIX shell command like
-'diff -u old/europe new/europe >myfix.patch', and attach
-'myfix.patch' to the email.
+‘diff -u old/europe new/europe >myfix.patch’, and attach
+‘myfix.patch’ to the email.
 
 For more-elaborate or possibly controversial changes,
 such as renaming, adding or removing zones, please read
-"Theory and pragmatics of the tz code and data"
+“Theory and pragmatics of the tz code and data”
 <https://www.iana.org/time-zones/repository/theory.html>.
 It is also good to browse the mailing list archives
 <https://lists.iana.org/hyperkitty/list/tz@iana.org/>
 for examples of patches that tend to work well.
 Changes should contain commentary citing reliable sources.
-Citations should use "https:" URLs if available.
+Citations should use ‘https:’ URLs if available.
 
 For changes that fix sensitive security-related bugs, please see the
-distribution's 'SECURITY' file.
+distribution’s SECURITY file.
 
 Please submit changes against either the latest release
 <https://www.iana.org/time-zones> or the main branch of the development
@@ -54,11 +55,11 @@ If you use Git the following workflow may be helpful:
 
         git checkout -b mybranch
 
-  * Sleuth by using 'git blame'.  For example, when fixing data for
-    Africa/Sao_Tome, if the command 'git blame africa' outputs a line
-    '2951fa3b (Paul Eggert 2018-01-08 09:03:13 -0800 1068) Zone
-    Africa/Sao_Tome 0:26:56 - LMT 1884', commit 2951fa3b should
-    provide some justification for the 'Zone Africa/Sao_Tome' line.
+  * Sleuth by using ‘git blame’.  For example, when fixing data for
+    Africa/Sao_Tome, if the command ‘git blame africa’ outputs a line
+    ‘2951fa3b (Paul Eggert 2018-01-08 09:03:13 -0800 1068) Zone
+    Africa/Sao_Tome 0:26:56 - LMT 1884’, commit 2951fa3b should
+    provide some justification for the ‘Zone Africa/Sao_Tome’ line.
 
   * Edit source files.  Include commentary that justifies the
     changes by citing reliable sources.
@@ -69,20 +70,23 @@ If you use Git the following workflow may be helpful:
         ./zdump -v America/Los_Angeles
 
     Although builds assume only basic POSIX, they use extra features
-    if available.  'make check' accesses validator.w3.org unless you
-    lack 'curl' or use 'make CURL=:'.  If you have the latest GCC,
-    "make CFLAGS='$(GCC_DEBUG_FLAGS)'" does extra checking.
+    if available.  ‘make check’ accesses validator.w3.org unless you
+    lack ‘curl’ or use ‘make CURL=:’.  If you have the latest GCC,
+    ‘make CFLAGS='$(GCC_DEBUG_FLAGS)'’ does extra checking.
 
   * For each separable change, commit it in the new branch, e.g.:
 
         git add northamerica
         git commit
 
-    See recent 'git log' output for the commit-message style.
+    See recent ‘git log’ output for the commit-message style.
 
   * Create patch files 0001-..., 0002-..., ...
 
         git format-patch main
+
+  * Check that the patch files and your email setup contain only
+    information that you want to make public.
 
   * After reviewing the patch files, send the patches to <tz@iana.org>
     for others to review.
@@ -90,7 +94,7 @@ If you use Git the following workflow may be helpful:
         git send-email main
 
     For an archived example of such an email, see
-    "[PROPOSED] Fix off-by-1 error for Jamaica and T&C before 1913"
+    “[PROPOSED] Fix off-by-1 error for Jamaica and T&C before 1913”
     <https://mm.icann.org/pipermail/tz/2018-February/026122.html>.
 
   * Start anew by getting current with the main branch again

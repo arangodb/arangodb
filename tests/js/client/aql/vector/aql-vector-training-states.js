@@ -26,7 +26,6 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
-const arangodb = require("@arangodb");
 const helper = require("@arangodb/aql-helper");
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
@@ -47,18 +46,18 @@ const dbName = "vectorTrainingStateDb";
 const collName = "vectorTrainingStateColl";
 
 const dimension = 128;
-const nLists = 1;
-// threshold = max(nLists * 39, 1000) = 1000
-const trainingThreshold = 1000;
-const belowThresholdCount = 500;
+const nLists = 10;
+// threshold = nLists
+const trainingThreshold = nLists;
+const belowThresholdCount = nLists - 1;
 const aboveThresholdCount = isCluster ? trainingThreshold * 3 + 500 : trainingThreshold + 500;
 
-function createIndex(collection, sparse) {
+function createIndex(collection, sparse, inBackground = false) {
   return collection.ensureIndex({
     name: "vec_l2",
     type: "vector",
     fields: ["vector"],
-    inBackground: false,
+    inBackground: inBackground,
     sparse: sparse,
     params: {
       metric: "l2",
@@ -140,7 +139,7 @@ function VectorTrainingStateTestSuite(sparse) {
     },
 
     testNoDataIndexRemainsUnusable: function () {
-      createIndex(collection, sparse);
+      createIndex(collection, sparse, /*inBackground*/ true);
 
       assertTrue(
         waitForVectorIndexState(
@@ -164,7 +163,7 @@ function VectorTrainingStateTestSuite(sparse) {
       const docs = generateDocs(gen, belowThresholdCount, dimension);
       collection.insert(docs);
 
-      createIndex(collection, sparse);
+      createIndex(collection, sparse, /*inBackground*/ true);
 
       assertTrue(
         waitForVectorIndexState(
@@ -187,7 +186,9 @@ function VectorTrainingStateTestSuite(sparse) {
       const docs = generateDocs(gen, aboveThresholdCount, dimension);
       collection.insert(docs);
 
-      createIndex(collection, sparse);
+      const result = createIndex(collection, sparse);
+      assertFalse(result.hasOwnProperty("errorMessage") && result.errorMessage.length > 0,
+        "ensureIndex response should not have an errorMessage when index becomes ready");
 
       assertTrue(
         waitForVectorIndexState(
@@ -207,7 +208,7 @@ function VectorTrainingStateTestSuite(sparse) {
       const initialDocs = generateDocs(gen, belowThresholdCount, dimension);
       collection.insert(initialDocs);
 
-      createIndex(collection, sparse);
+      createIndex(collection, sparse, /*inBackground*/ true);
 
       assertTrue(
         waitForVectorIndexState(
@@ -273,7 +274,7 @@ function SparseVectorIndexTestSuite() {
       collection.insert(vectorDocs);
       collection.insert(nonVectorDocs);
 
-      createIndex(collection, /*sparse*/ true);
+      createIndex(collection, /*sparse*/ true, /*inBackground*/ true);
 
       assertTrue(
         waitForVectorIndexState(
