@@ -241,6 +241,113 @@ function aqlMatchStatementTestSuite() {
                 }
             }
         },
+        testMatchVariableLengthPath: function() {
+          /*
+            per (current) definition the below queries are expected
+            to be equivalent
+
+          MATCH (v:vc) -[ e:ec_paths * 2..3 ]-> (w:vc)
+            RETURN [v, e, w]
+
+          FOR v IN vc
+            FOR w,x,e IN 2..3 OUTBOUND v ec
+              FILTER IS_SAME_COLLECTION(w._id, "vc")
+              RETURN [v, e, w]
+          */ 
+
+          const match_query = aql`MATCH (v:vc) -[ e:ec_paths * 1..3 ]-> (w:vc)
+                              RETURN [v, e, w]`;
+          const match_result = db._query(match_query, {}, options).toArray();
+
+          const traversal_query = aql`FOR v IN vc FOR w,x,e IN 1..3 OUTBOUND v ec_paths
+                              FILTER IS_SAME_COLLECTION(w._id, "vc")
+                              RETURN [v, e, w]`;
+          const traversal_result = db._query(traversal_query, {}, options).toArray();
+
+          assertEqual(match_result, traversal_result); // , JSON.stringify(result));
+        },
+        testMatchVariableLengthPath2: function() {
+          /*
+            per (current) definition the below queries are expected
+            to be equivalent
+
+            FOR w IN vc
+              MATCH (v:vc) -[ e:ec_paths * 2..3 ]-> (w)
+                RETURN [v, e, w]
+
+            FOR w IN ovc
+              FOR v IN vc
+                FOR #3,_,e IN 2..3 OUTBOUND v ec_paths
+                  FILTER #3._id == w._id
+                  RETURN [v, e, w]
+          */ 
+
+          const match_query = aql`FOR w IN vc
+                                    MATCH (v:vc) -[ e:ec_paths * 2..3 ]-> (w)
+                                      RETURN [v, e, w]`;
+          const match_result = db._query(match_query, {}, options).toArray();
+
+          const traversal_query = aql`FOR w in vc
+                                        FOR v IN vc
+                                          FOR temp,x,e IN 2..3 OUTBOUND v ec_paths
+                                            FILTER temp._id == w._id
+                                            RETURN [v, e, w]`;
+          const traversal_result = db._query(traversal_query, {}, options).toArray();
+          assertEqual(match_result, traversal_result); // , JSON.stringify(result));
+        },
+        testMatchVariableLengthPathInbound: function() {
+          /*
+            FOR w IN vc
+              MATCH (v:vc) <-[ e:ec_paths * 2..3 ]- (w)
+                RETURN [v, e, w]
+
+            FOR w IN ovc
+              FOR v IN vc
+                FOR #3,_,e IN 2..3 INBOUND v ec_paths
+                  FILTER #3._id == w._id
+                  RETURN [v, e, w]
+          */ 
+
+          const match_query = aql`FOR w IN vc
+                                    MATCH (v:vc) -[ e:ec_paths * 2..3 ]-> (w)
+                                      RETURN [v, e, w]`;
+          const match_result = db._query(match_query, {}, options).toArray();
+
+          const traversal_query = aql`FOR w in vc
+                                        FOR v IN vc
+                                          FOR temp,x,e IN 2..3 INBOUND v ec_paths
+                                            FILTER temp._id == w._id
+                                            RETURN [v, e, w]`;
+          const traversal_result = db._query(traversal_query, {}, options).toArray();
+          assertEqual(match_result, traversal_result); // , JSON.stringify(result));
+        },
+        testMatchVariableLengthPathAny: function() {
+          /*
+            FOR w IN vc
+              MATCH (v:vc) <-[ e:ec_paths * 2..3 ]- (w)
+                RETURN [v, e, w]
+
+            FOR w IN ovc
+              FOR v IN vc
+                FOR #3,_,e IN 2..3 INBOUND v ec_paths
+                  FILTER #3._id == w._id
+                  RETURN [v, e, w]
+          */ 
+
+          const match_query = aql`FOR w IN vc
+                                    MATCH (v:vc) -[ e:ec_paths * 2..3 ]- (w)
+                                      RETURN [v, e, w]`;
+          const match_result = db._query(match_query, {}, options).toArray();
+
+          const traversal_query = aql`FOR w in vc
+                                        FOR v IN vc
+                                          FOR temp,x,e IN 2..3 INBOUND v ec_paths
+                                            FILTER temp._id == w._id
+                                            RETURN [v, e, w]`;
+          const traversal_result = db._query(traversal_query, {}, options).toArray();
+          assertEqual(match_result, traversal_result); // , JSON.stringify(result));
+        },
+
     };
 }
 
