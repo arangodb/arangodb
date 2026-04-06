@@ -309,7 +309,7 @@ function aqlMatchStatementTestSuite() {
           */ 
 
           const match_query = aql`FOR w IN vc
-                                    MATCH (v:vc) -[ e:ec_paths * 2..3 ]-> (w)
+                                    MATCH (v:vc) <-[ e:ec_paths * 2..3 ]- (w)
                                       RETURN [v, e, w]`;
           const match_result = db._query(match_query, {}, options).toArray();
 
@@ -341,7 +341,7 @@ function aqlMatchStatementTestSuite() {
 
           const traversal_query = aql`FOR w in vc
                                         FOR v IN vc
-                                          FOR temp,x,e IN 2..3 INBOUND v ec_paths
+                                          FOR temp,x,e IN 2..3 ANY v ec_paths
                                             FILTER temp._id == w._id
                                             RETURN [v, e, w]`;
           const traversal_result = db._query(traversal_query, {}, options).toArray();
