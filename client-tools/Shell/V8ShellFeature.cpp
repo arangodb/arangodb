@@ -679,7 +679,13 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
           current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"))
               .FromMaybe(v8::Handle<v8::Value>());
 
-      auto dirname = FileUtils::dirname(TRI_ObjectToString(isolate, filename));
+      std::filesystem::path dirPath =
+          std::filesystem::path(TRI_ObjectToString(isolate, filename))
+              .parent_path();
+      if (dirPath.empty()) {
+        dirPath = ".";
+      }
+      std::string const dirname = dirPath.string();
 
       current
           ->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"),

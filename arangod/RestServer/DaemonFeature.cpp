@@ -173,80 +173,84 @@ void DaemonFeature::checkPidFile() {
       LOG_TOPIC("6b3c0", FATAL, arangodb::Logger::FIXME)
           << "pid-file '" << _options.pidFile << "' is a directory";
       FATAL_ERROR_EXIT();
-    } else if (FileUtils::exists(_options.pidFile) &&
-               FileUtils::size(_options.pidFile) > 0) {
-      LOG_TOPIC("cf10a", INFO, Logger::STARTUP)
-          << "pid-file '" << _options.pidFile
-          << "' already exists, verifying pid";
-      std::string oldPidS;
-      try {
-        oldPidS = arangodb::basics::FileUtils::slurp(_options.pidFile);
-      } catch (arangodb::basics::Exception const& ex) {
-        LOG_TOPIC("4aadd", FATAL, arangodb::Logger::FIXME)
-            << "Couldn't read PID file '" << _options.pidFile << "' - "
-            << ex.what();
-        FATAL_ERROR_EXIT();
-      }
-
-      basics::StringUtils::trimInPlace(oldPidS);
-
-      if (!oldPidS.empty()) {
-        TRI_pid_t oldPid;
-
+    } else if (FileUtils::exists(_options.pidFile)) {
+      std::error_code sizeEc;
+      std::uintmax_t const pidFileSize =
+          std::filesystem::file_size(_options.pidFile, sizeEc);
+      if (!sizeEc && pidFileSize > 0) {
+        LOG_TOPIC("cf10a", INFO, Logger::STARTUP)
+            << "pid-file '" << _options.pidFile
+            << "' already exists, verifying pid";
+        std::string oldPidS;
         try {
-          oldPid = std::stol(oldPidS);
-        } catch (std::invalid_argument const&) {
-          LOG_TOPIC("bd20c", FATAL, arangodb::Logger::FIXME)
-              << "pid-file '" << _options.pidFile
-              << "' doesn't contain a number.";
-          FATAL_ERROR_EXIT();
-        }
-        if (oldPid == 0) {
-          LOG_TOPIC("aef5d", FATAL, arangodb::Logger::FIXME)
-              << "pid-file '" << _options.pidFile << "' is unreadable";
+          oldPidS = arangodb::basics::FileUtils::slurp(_options.pidFile);
+        } catch (arangodb::basics::Exception const& ex) {
+          LOG_TOPIC("4aadd", FATAL, arangodb::Logger::FIXME)
+              << "Couldn't read PID file '" << _options.pidFile << "' - "
+              << ex.what();
           FATAL_ERROR_EXIT();
         }
 
-        LOG_TOPIC("ecac1", DEBUG, Logger::STARTUP)
-            << "found old pid: " << oldPid;
+        basics::StringUtils::trimInPlace(oldPidS);
 
-        int r = kill(oldPid, 0);
+        if (!oldPidS.empty()) {
+          TRI_pid_t oldPid;
 
-        if (r == 0 || errno == EPERM) {
-          LOG_TOPIC("5fa62", FATAL, arangodb::Logger::FIXME)
-              << "pid-file '" << _options.pidFile
-              << "' exists and process with pid " << oldPid
-              << " is still running, refusing to start twice";
-          FATAL_ERROR_EXIT();
-        } else if (errno == ESRCH) {
-          LOG_TOPIC("a9576", ERR, Logger::STARTUP)
-              << "pid-file '" << _options.pidFile
-              << " exists, but no process with pid " << oldPid << " exists";
-
-          if (FileUtils::remove(_options.pidFile) != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC("fddfc", FATAL, arangodb::Logger::FIXME)
+          try {
+            oldPid = std::stol(oldPidS);
+          } catch (std::invalid_argument const&) {
+            LOG_TOPIC("bd20c", FATAL, arangodb::Logger::FIXME)
                 << "pid-file '" << _options.pidFile
-                << "' exists, no process with pid " << oldPid
-                << " exists, but pid-file cannot be removed";
+                << "' doesn't contain a number.";
+            FATAL_ERROR_EXIT();
+          }
+          if (oldPid == 0) {
+            LOG_TOPIC("aef5d", FATAL, arangodb::Logger::FIXME)
+                << "pid-file '" << _options.pidFile << "' is unreadable";
             FATAL_ERROR_EXIT();
           }
 
-          LOG_TOPIC("1f3e6", INFO, Logger::STARTUP)
-              << "removed stale pid-file '" << _options.pidFile << "'";
-        } else {
-          LOG_TOPIC("180c0", FATAL, arangodb::Logger::FIXME)
-              << "pid-file '" << _options.pidFile << "' exists and kill "
-              << oldPid << " failed";
+          LOG_TOPIC("ecac1", DEBUG, Logger::STARTUP)
+              << "found old pid: " << oldPid;
+
+          int r = kill(oldPid, 0);
+
+          if (r == 0 || errno == EPERM) {
+            LOG_TOPIC("5fa62", FATAL, arangodb::Logger::FIXME)
+                << "pid-file '" << _options.pidFile
+                << "' exists and process with pid " << oldPid
+                << " is still running, refusing to start twice";
+            FATAL_ERROR_EXIT();
+          } else if (errno == ESRCH) {
+            LOG_TOPIC("a9576", ERR, Logger::STARTUP)
+                << "pid-file '" << _options.pidFile
+                << " exists, but no process with pid " << oldPid << " exists";
+
+            if (FileUtils::remove(_options.pidFile) != TRI_ERROR_NO_ERROR) {
+              LOG_TOPIC("fddfc", FATAL, arangodb::Logger::FIXME)
+                  << "pid-file '" << _options.pidFile
+                  << "' exists, no process with pid " << oldPid
+                  << " exists, but pid-file cannot be removed";
+              FATAL_ERROR_EXIT();
+            }
+
+            LOG_TOPIC("1f3e6", INFO, Logger::STARTUP)
+                << "removed stale pid-file '" << _options.pidFile << "'";
+          } else {
+            LOG_TOPIC("180c0", FATAL, arangodb::Logger::FIXME)
+                << "pid-file '" << _options.pidFile << "' exists and kill "
+                << oldPid << " failed";
+            FATAL_ERROR_EXIT();
+          }
+        }
+
+        // failed to open file
+        else {
+          LOG_TOPIC("ab3fe", FATAL, arangodb::Logger::FIXME)
+              << "pid-file '" << _options.pidFile
+              << "' exists, but cannot be opened";
           FATAL_ERROR_EXIT();
         }
-      }
-
-      // failed to open file
-      else {
-        LOG_TOPIC("ab3fe", FATAL, arangodb::Logger::FIXME)
-            << "pid-file '" << _options.pidFile
-            << "' exists, but cannot be opened";
-        FATAL_ERROR_EXIT();
       }
     }
 
