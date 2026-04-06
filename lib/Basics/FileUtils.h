@@ -44,9 +44,6 @@
 
 namespace arangodb::basics::FileUtils {
 
-// removes trailing path separators from path, path will be modified in-place
-std::string removeTrailingSeparator(std::string const& name);
-
 // normalizes path, path will be modified in-place
 void normalizePath(std::string& name);
 
@@ -115,16 +112,8 @@ bool copyDirectoryRecursive(
 // case the directory cannot be opened for iteration.
 std::vector<std::string> listFiles(std::string const& directory);
 
-// returns the number of files / subdirectories / links in a directory.
-// does not recurse into subdirectories. will throw an exception in
-// case the directory cannot be opened for iteration.
-size_t countFiles(std::string const& directory);
-
 // checks if path is a directory
 bool isDirectory(std::string const& path);
-
-// checks if path is a symbolic link
-bool isSymbolicLink(std::string const& path);
 
 // checks if path is a regular file
 bool isRegularFile(std::string const& path);
