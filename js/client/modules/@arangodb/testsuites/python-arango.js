@@ -154,7 +154,7 @@ function pythonDriver (options) {
     localOptions.dbServers = 3;
     localOptions.coordinators = 3;
   }
-  internal.print(`DBG: localOptions (${localOptions})`)
+  internal.print(`DBG: localOptions (${localOptions})`);
 
   let rc = new runInPythonTest(localOptions, 'python_test').run([ 'python_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;
