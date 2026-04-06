@@ -121,10 +121,6 @@ bool isRegularFile(std::string const& path);
 // checks if path exists
 bool exists(std::string const& path);
 
-// returns the size of a file. will return 0 for non-existing files
-/// the caller should check first if the file exists via the exists() method
-off_t size(std::string const& path);
-
 // strip extension
 std::string stripExtension(std::string const& path,
                            std::string const& extension);
@@ -134,9 +130,6 @@ std::string homeDirectory();
 
 // returns the config directory
 std::string configDirectory(char const* binaryPath);
-
-// returns the dir name of a path
-std::string dirname(std::string const&);
 
 // returns the output of a program
 std::string slurpProgram(std::string const& program);
