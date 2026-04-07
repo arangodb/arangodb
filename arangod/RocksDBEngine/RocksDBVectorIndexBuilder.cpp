@@ -153,13 +153,23 @@ VectorIndexTrainer::VectorIndexTrainer(
     UserVectorIndexDefinition const& definition, bool isSparse,
     std::vector<std::vector<basics::AttributeName>> const& fields,
     std::string_view shardName, std::uint64_t indexId,
-    std::int64_t trainingThreshold)
+    std::int64_t trainingThreshold, rocksdb::DB* db, RocksDBKeyBounds bounds)
     : _definition(definition),
       _isSparse(isSparse),
       _fields(fields),
       _shardName(shardName),
       _indexId(indexId),
-      _trainingThreshold(trainingThreshold) {}
+      _trainingThreshold(trainingThreshold),
+      _bounds(std::move(bounds)),
+      _upper(_bounds.end()),
+      _ro(false, false) {
+  _ro.prefix_same_as_start = true;
+  _ro.iterate_upper_bound = &_upper;
+  auto* docCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+  _it.reset(db->NewIterator(_ro, docCF));
+  _it->Seek(_bounds.start());
+}
 
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
     std::int64_t resolvedNLists) const {
@@ -304,9 +314,8 @@ std::int64_t VectorIndexTrainer::resolveNLists(
 }
 
 ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
-    rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t numDocsHint,
-    std::stop_token stopToken) const {
-  auto res = collectTrainingDataset(it, upper, numDocsHint, stopToken);
+    std::size_t numDocsHint, std::stop_token stopToken) {
+  auto res = collectTrainingDataset(*_it, _upper, numDocsHint, stopToken);
   if (res.fail()) {
     return std::move(res).result();
   }
@@ -638,36 +647,27 @@ Result VectorIndexBuilder::build(
     metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
     metrics::Histogram<metrics::LogScale<double>>& ingestionDuration,
     std::stop_token stopToken) {
-    auto const shouldAbort = [&]() -> bool {
-      return stopToken.stop_requested() || _index.collection().deleted();
-    };
+  auto const shouldAbort = [&]() -> bool {
+    return stopToken.stop_requested() || _index.collection().deleted();
+  };
 
   if (!_index.setTrainingState(VectorIndexTrainingState::kUnusable,
                                VectorIndexTrainingState::kTraining)) {
     return Result{TRI_ERROR_INTERNAL, "vector index is not in unusable state"};
   }
 
-  rocksdb::Slice upper(_bounds.end());
-  rocksdb::ReadOptions ro(false, false);
-  ro.prefix_same_as_start = true;
-  ro.iterate_upper_bound = &upper;
-
-  auto* docCF = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::Documents);
+  auto numDocsHint = _rcoll->meta().numberDocuments();
   VectorIndexTrainer trainer(_index.getDefinition(), _index.sparse(),
                              _index.fields(), _index.collection().name(),
-                             _index.id().id(), _index.trainingThreshold());
+                             _index.id().id(), _index.trainingThreshold(),
+                             _rootDB, _bounds);
 
   auto const trainStart = std::chrono::steady_clock::now();
   if (shouldAbort()) {
     _index.resetTrainingState();
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
-  std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
-  trainIt->Seek(_bounds.start());
-  auto numDocsHint = _rcoll->meta().numberDocuments();
-  auto faissIndexResult =
-      trainer.train(*trainIt, upper, numDocsHint, stopToken);
+  auto faissIndexResult = trainer.train(numDocsHint, stopToken);
   auto const trainEnd = std::chrono::steady_clock::now();
   if (faissIndexResult.fail()) {
     _index.resetTrainingState();
@@ -717,6 +717,12 @@ Result VectorIndexBuilder::build(
 
   auto const ingestStart = std::chrono::steady_clock::now();
 
+  rocksdb::Slice upper(_bounds.end());
+  rocksdb::ReadOptions ro(false, false);
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
+  auto* docCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> ingestIt(_rootDB->NewIterator(ro, docCF));
   ingestIt->Seek(_bounds.start());
 

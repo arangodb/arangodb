@@ -39,6 +39,7 @@
 
 #include <faiss/IndexIVF.h>
 #include <rocksdb/iterator.h>
+#include <rocksdb/options.h>
 #include <rocksdb/slice.h>
 #include <velocypack/Slice.h>
 
@@ -80,7 +81,7 @@ class VectorIndexTrainer {
       UserVectorIndexDefinition const& definition, bool isSparse,
       std::vector<std::vector<basics::AttributeName>> const& fields,
       std::string_view shardName, std::uint64_t indexId,
-      std::int64_t trainingThreshold);
+      std::int64_t trainingThreshold, rocksdb::DB* db, RocksDBKeyBounds bounds);
 
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
       TrainedData const& data);
@@ -95,8 +96,7 @@ class VectorIndexTrainer {
   ///  4. Train the FAISS index
   ///  5. Serialize the trained index data
   ResultT<std::shared_ptr<faiss::IndexIVF>> train(
-      rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t numDocsHint,
-      std::stop_token stopToken = {}) const;
+      std::size_t numDocsHint, std::stop_token stopToken = {});
 
  private:
   ResultT<TrainingDataset> collectTrainingDataset(
@@ -113,6 +113,10 @@ class VectorIndexTrainer {
   std::string _shardName;
   std::uint64_t _indexId;
   std::int64_t _trainingThreshold;
+  RocksDBKeyBounds _bounds;
+  rocksdb::Slice _upper;
+  rocksdb::ReadOptions _ro;
+  std::unique_ptr<rocksdb::Iterator> _it;
 };
 
 Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
