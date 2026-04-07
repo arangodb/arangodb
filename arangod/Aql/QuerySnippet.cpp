@@ -155,7 +155,7 @@ CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
       _nodeAliases{nodeAliases} {}
 
 void CloneWorker::process() {
-  _root->flatWalk(*this, true);
+  _root->flatWalk(*this, ExecutionNode::FlattenType::INLINE_ASYNC_AND_SCATTER);
 
   // Home-brew early cancel: We collect the processed nodes on a stack
   // and process them in reverse order in processAfter
@@ -215,6 +215,7 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
         std::string const& cName =
             collectionAccessingNode->collection()->name();
         // Get the `i` th shard
+        TRI_ASSERT(permuter->second.at(cName).size() > _shardId);
         collectionAccessingNode->setUsedShard(
             *std::next(permuter->second.at(cName).begin(), _shardId));
       } else {
@@ -247,14 +248,27 @@ bool CloneWorker::before(ExecutionNode* node) {
 
       return false;
     } else {
-      auto consumer = createConsumerNode(plan, _internalScatter, _distId);
-      consumer->isResponsibleForInitializeCursor(false);
-      _nodeAliases.try_emplace(consumer->id(), ExecutionNodeId::InternalNode);
-      _originalToClone.try_emplace(node, consumer);
+      auto originalScatter = node->getFirstDependency();
+      if (originalScatter != _internalScatter) {
+        auto clone = ExecutionNode::castTo<DistributeConsumerNode*>(
+            node->clone(plan, false));
 
-      // Stop here. Note that we do things special here and don't really
-      // use the WalkerWorker!
-      return true;
+        TRI_ASSERT(clone->id() != node->id());
+        _originalToClone.try_emplace(node, clone);
+        _nodeAliases.try_emplace(clone->id(), node->id());
+        _stack.push_back(node);
+        return false;
+      } else {
+        auto consumer = createConsumerNode(plan, _internalScatter, _distId);
+        consumer->isResponsibleForInitializeCursor(false);
+        _nodeAliases.try_emplace(consumer->id(), ExecutionNodeId::InternalNode);
+        _originalToClone.try_emplace(node, consumer);
+
+        // Stop here. Note that we do things special here and don't really
+        // use the WalkerWorker!
+        return true;
+      }
+
     }
   } else if (node == _internalGather || node == _internalScatter) {
     // Never clone these nodes. We should never run into this case.
@@ -287,11 +301,13 @@ void CloneWorker::processAfter(ExecutionNode* node) {
         d->plan()->getAst()->query().resourceMonitor());
     VPackBuilder builder(sb);
     d->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
-    TRI_ASSERT(_originalToClone.count(d) == 1);
+    TRI_ASSERT(_originalToClone.count(d) == 1)
+        << "no clone for node " << d->id() << " " << d->getTypeString();
     auto depClone = _originalToClone.at(d);
     clone->addDependency(depClone);
   }
 
+  TRI_ASSERT(clone->getDependencies().size() == deps.size());
   if (node == _root) {
     _internalGather->addDependency(clone);
   }

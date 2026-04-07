@@ -281,6 +281,8 @@ struct OptimizerRule {
 
 #ifdef USE_ENTERPRISE
     smartJoinsRule,
+
+    smartJoinSmartEdgeRule,
 #endif
 
     // make operations on sharded collections use scatter / gather / remote

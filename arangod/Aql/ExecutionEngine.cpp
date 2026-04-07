@@ -55,6 +55,9 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
+#include "Enterprise/VocBase/VirtualSmartEdgeCollection.h"
+#include "ExecutionNode/IndexNode.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -741,6 +744,78 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
   return res;
 }
 
+void localizeSmartEdgeCollectionAccess(
+    aql::Query& query, ExecutionPlan& plan,
+    std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan.findNodesOfType(nodes, ExecutionNode::INDEX, true);
+
+  for (auto node : nodes) {
+    auto collectionAccessNode = dynamic_cast<CollectionAccessingNode*>(node);
+    TRI_ASSERT(collectionAccessNode != nullptr);
+    auto maybeVirtualCollection = collectionAccessNode->collection();
+    if (not maybeVirtualCollection->isSmart() or
+        maybeVirtualCollection->type() != TRI_COL_TYPE_EDGE) {
+      continue;
+    }
+
+    if (collectionAccessNode->prototypeCollection() == nullptr) {
+      continue;
+    }
+
+    auto virtualCollection =
+        std::dynamic_pointer_cast<VirtualClusterSmartEdgeCollection>(
+            maybeVirtualCollection->getCollection());
+    if (virtualCollection == nullptr) {
+      continue;
+    }
+
+    // add a diamond for _local, _to and _from
+    auto* scatterNode = plan.createNode<ScatterNode>(
+        &plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
+    plan.insertBefore(node, scatterNode);
+    scatterNode->cloneRegisterPlan(scatterNode->getFirstDependency());
+
+    auto* gatherNode = plan.createNode<GatherNode>(
+        &plan, plan.nextId(), GatherNode::SortMode::Default);
+    plan.insertAfter(node, gatherNode);
+    gatherNode->cloneRegisterPlan(gatherNode->getFirstDependency());
+
+    // unlink the original collection access
+    // will be inserted again later
+    // plan.unlinkNode(node);
+    auto names = virtualCollection->realNames();
+
+    auto selectedCollections = std::array<std::string_view, 2>{names[0], names[1]};
+    for (size_t idx = 0; idx < selectedCollections.size(); ++idx) {
+      auto collection = query.collections().get(selectedCollections[idx]);
+
+      // add distribute consumer nodes and add as clients to scatter nodes
+      auto* consumer = plan.createNode<DistributeConsumerNode>(
+          &plan, plan.nextId(), names[idx]);
+
+      ExecutionNode* clonedCollectionAccess = nullptr;
+      if (idx == 0) {
+        // reuse the original collection access node
+        clonedCollectionAccess = node;
+        plan.insertBefore(node, consumer);
+      } else {
+        // clone the original node
+        clonedCollectionAccess = node->clone(&plan, false);
+        clonedCollectionAccess->addDependency(consumer);
+        consumer->addDependency(scatterNode);
+        gatherNode->addDependency(clonedCollectionAccess);
+      }
+      ExecutionNode::castTo<CollectionAccessingNode*>(clonedCollectionAccess)
+            ->collection(collection);
+
+      consumer->isResponsibleForInitializeCursor(idx == 0);
+      scatterNode->addClient(*consumer);
+      consumer->cloneRegisterPlan(scatterNode);
+    }
+  }
+}
+
 // @brief create an execution engine from a plan
 async<void> ExecutionEngine::instantiateFromPlan(Query& query,
                                                  ExecutionPlan& plan,
@@ -780,8 +855,9 @@ async<void> ExecutionEngine::instantiateFromPlan(Query& query,
   if (arangodb::ServerState::isSingleServerOrCoordinator(role)) {
     ExecutionEngine::parallelizeTraversals(query, plan, aliases);
   }
-#endif
 
+  localizeSmartEdgeCollectionAccess(query, plan, aliases);
+#endif
   if (ServerState::isCoordinator(role)) {
     // distributed query
     DistributedQueryInstanciator inst(query, plan.getNodesById(),
