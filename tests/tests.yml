@@ -245,6 +245,8 @@
           args:
             cluster: true
             suffix: cluster
+            encryptionAtRest: true
+            ssl: true
       - rta_makedata:
           args:
             cluster: true
