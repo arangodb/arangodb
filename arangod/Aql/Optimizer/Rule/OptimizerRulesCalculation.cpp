@@ -562,9 +562,8 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         if (!hasCollectWithOutVariable) {
           // no COLLECT found, now replace
           std::unordered_map<VariableId, Variable const*> replacements;
-          replacements.try_emplace(
-              outVariable->id,
-              static_cast<Variable const*>(rootNode->getData()));
+          replacements.try_emplace(outVariable->id,
+                                   ast::ReferenceNode(rootNode).getVariable());
 
           utils::VariableReplacer finder(replacements);
           plan->root()->walk(finder);
