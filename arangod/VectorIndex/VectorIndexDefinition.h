@@ -127,9 +127,9 @@ struct NListsTier {
 ///     multiplier: 4,
 ///     minNLists: 2,
 ///     tiers: [
-///         { treshold: 1_000_000,   fixedValue: 16384 },
-///         { treshold: 10_000_000,  fixedValue: 65536 },
-///         { treshold: 300_000_000, fixedValue: 131072 },
+///         { threshold: 1_000_000,   fixedValue: 16384 },
+///         { threshold: 10_000_000,  fixedValue: 65536 },
+///         { threshold: 300_000_000, fixedValue: 131072 },
 ///     ],
 /// }
 /// So the rules apply as such:
@@ -146,14 +146,12 @@ struct NListsScalingSpec {
   bool operator==(NListsScalingSpec const&) const noexcept = default;
 
   std::int64_t compute(std::int64_t const docCount) const {
-    auto sortedTiers = tiers;
-    std::sort(
-        sortedTiers.begin(), sortedTiers.end(),
-        [](auto const& a, auto const& b) { return a.threshold > b.threshold; });
-    for (auto const& tier : sortedTiers) {
-      if (docCount >= tier.threshold) {
-        return tier.fixedValue;
-      }
+    auto const it =
+        std::ranges::max_element(tiers, {}, [&](NListsTier const& t) {
+          return t.threshold <= docCount ? t.threshold : std::int64_t{-1};
+        });
+    if (it != tiers.end() && it->threshold <= docCount) {
+      return it->fixedValue;
     }
 
     // No tier matched: apply strategy.
