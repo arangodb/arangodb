@@ -1,3 +1,4 @@
+---
 version: 2.1
 
 orbs:
@@ -328,7 +329,7 @@ commands:
       - when:
           condition:
             not:
-              equal: [ << parameters.sanitizer >>, ""]
+              equal: [<< parameters.sanitizer >>, ""]
           steps:
             - run:
                 name: Symbolizer server
@@ -540,7 +541,7 @@ jobs:
         type: string
         default: ""
       arch:
-          type: string
+        type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
@@ -616,10 +617,10 @@ jobs:
                 strip ./install/usr/bin/arango*
                 strip ./install/usr/sbin/arangod
                 tar -czf install.tar.gz -C install ./
-             - persist_to_workspace:
-                root: .
-                paths:
-                  - install.tar.gz
+            - persist_to_workspace:
+              root: .
+              paths:
+                - install.tar.gz
       - run:
           name: Size leaderboard
           command: |
@@ -697,11 +698,11 @@ jobs:
   create-docker-image:
     parameters:
       resource-class:
-          type: string
+        type: string
       arch:
-          type: string
+        type: string
       tag:
-          type: string
+        type: string
     docker:
       - image: cimg/base:current
     resource_class: << parameters.resource-class >>
@@ -711,7 +712,7 @@ jobs:
       - aws-ecr/ecr_login:
           public_registry: true
       - setup_remote_docker:
-            docker_layer_caching: true
+          docker_layer_caching: true
       - attach_workspace:
           at: .
       - run:
@@ -930,7 +931,7 @@ workflows:
             - minimal-checkout
       - eslint:
           name: eslint
-          context: [ circleci-token ]
+          context: [circleci-token]
           requires:
             - minimal-checkout
-  # all other workflows are defined in generate_config.py
+# all other workflows are defined in generate_config.py
