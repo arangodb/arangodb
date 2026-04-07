@@ -1,5 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
+  They are still accepted for backward compatibility but are ignored and no longer
+  appear in `--help`. Coordinator runs with `--database.auto-upgrade` now disable
+  the HTTP listener stack without requiring `--server.rest-server false`. Packaging
+  and init scripts no longer pass these flags.
+
 * Remove `RequestStatistics` and `--server.statistics` option; HTTP request metrics
   are now recorded synchronously via Prometheus metrics.
 
@@ -179,12 +185,6 @@
 * Remove deprecated option `--server.jwt-secret` because it is insecure.
 
 * Reject creation of Smart Edge collection without `distributeShardsLike`.
-
-* Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
-  They are still accepted for backward compatibility but are ignored and no longer
-  appear in `--help`. Coordinator runs with `--database.auto-upgrade` now disable
-  the HTTP listener stack without requiring `--server.rest-server false`. Packaging
-  and init scripts no longer pass these flags.
 
 * Remove metrics for V8 contexts:
   - `arangodb_v8_context_alive`: number of V8 contexts currently alive.

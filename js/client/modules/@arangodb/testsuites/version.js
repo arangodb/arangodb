@@ -56,6 +56,8 @@ function version(options) {
   args.push('false');
   args.push('--database.check-version');
   args.push('true');
+  args.push('--server.statistics');
+  args.push('false');
   fs.makeDirectoryRecursive(dataDir);
 
   let results = { failed: 0 };
