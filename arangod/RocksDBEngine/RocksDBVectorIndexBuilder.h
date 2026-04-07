@@ -55,6 +55,10 @@ class RocksDBEngine;
 
 namespace arangodb::vector {
 
+// Taken from:
+// ClusteringParameters.max_points_per_centroid
+static constexpr std::int64_t kMaxTrainingSizePerNLists{256};
+
 TrainedData serializeIndex(faiss::IndexIVF const& index);
 
 Result readDocumentVectorData(
@@ -63,6 +67,14 @@ Result readDocumentVectorData(
     std::size_t dimension, std::vector<float>& output);
 
 class VectorIndexTrainer {
+  struct TrainingDataset {
+    std::vector<float> data;
+    // Total number of documents in the shard that contained a valid vector
+    // field. Used to resolve nLists for sparse indexes where numDocsHint
+    // (total doc count) overestimates the actual vector-bearing doc count.
+    std::size_t totalValidVectorCount;
+  };
+
  public:
   VectorIndexTrainer(
       UserVectorIndexDefinition const& definition, bool isSparse,
@@ -83,12 +95,12 @@ class VectorIndexTrainer {
   ///  4. Train the FAISS index
   ///  5. Serialize the trained index data
   ResultT<std::shared_ptr<faiss::IndexIVF>> train(
-      rocksdb::Iterator& it, rocksdb::Slice upper, std::uint64_t numDocsHint,
+      rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t numDocsHint,
       std::stop_token stopToken = {}) const;
 
  private:
-  ResultT<std::vector<float>> collectTrainingDataset(
-      rocksdb::Iterator& it, rocksdb::Slice upper, std::int64_t maxVectors,
+  ResultT<TrainingDataset> collectTrainingDataset(
+      rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t numDocsHint,
       std::stop_token stopToken) const;
 
   /// Resolve the nLists value from the definition, using numDocsHint for

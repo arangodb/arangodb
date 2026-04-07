@@ -108,6 +108,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _faissIndex;
   }
 
+  // Absolute minimum number of vectors required for training, might give false
+  // positives with sparse indexes
   std::int64_t trainingThreshold() const noexcept { return _trainingThreshold; }
 
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,

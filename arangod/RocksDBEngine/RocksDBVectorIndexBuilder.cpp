@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
+#include "Basics/ResultT.h"
 #include "Indexes/IndexFactory.h"
 #include "Inspection/VPack.h"
 #include "Metrics/Histogram.h"
@@ -72,6 +73,10 @@
 #include "faiss/utils/distances.h"
 
 namespace arangodb::vector {
+
+// Minimum vectors to collect unconditionally before applying the adaptive cap
+// in the sparse+scaling path.
+constexpr std::size_t kSparseScalingBootstrapVectors{1000};
 
 Result readDocumentVectorData(
     velocypack::Slice doc,
@@ -201,21 +206,34 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
   }
 }
 
-ResultT<std::vector<float>> VectorIndexTrainer::collectTrainingDataset(
-    rocksdb::Iterator& it, rocksdb::Slice upper, std::int64_t maxVectors,
-    std::stop_token stopToken) const {
+ResultT<VectorIndexTrainer::TrainingDataset>
+VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
+                                           rocksdb::Slice upper,
+                                           std::uint64_t numDocsHint,
+                                           std::stop_token stopToken) const {
   std::vector<float> trainingData;
   std::vector<float> input;
   input.reserve(_definition.dimension);
-  std::int64_t counter{0};
+  std::optional<std::size_t> maxVectors;
 
   LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
-      "[shard={}, index={}] Trying to load {} vectors of "
-      "dimension {} for training.",
-      _shardName, _indexId, maxVectors, _definition.dimension);
+      "[shard={}, index={}] Collecting training data "
+      "dimension {} for training for {} index with the numDocsHint: {}.",
+      _shardName, _indexId, _definition.dimension,
+      _isSparse ? "sparse" : "non-sparse", numDocsHint);
 
-  while (counter < maxVectors && it.Valid()) {
-    if (counter % 1000 == 0 && stopToken.stop_requested()) {
+  // We need to do a full iteration to properly resolve the number of nLists
+  bool const shouldDoFullIteration =
+      _isSparse && isNListsScaling(_definition.nLists);
+  if (!shouldDoFullIteration) {
+    maxVectors = resolveNLists(numDocsHint) * kMaxTrainingSizePerNLists;
+  }
+
+  std::size_t trainingDatasetCounter{0};
+  std::size_t iterationCounter{0};
+  while (it.Valid() &&
+         (trainingDatasetCounter < maxVectors || shouldDoFullIteration)) {
+    if (iterationCounter % 1000 == 0 && stopToken.stop_requested()) {
       return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "vector training aborted"};
     }
@@ -236,15 +254,31 @@ ResultT<std::vector<float>> VectorIndexTrainer::collectTrainingDataset(
               res.errorMessage())};
     }
 
-    trainingData.insert(trainingData.end(), input.begin(), input.end());
+    if (!shouldDoFullIteration) {
+      trainingData.insert(trainingData.end(), input.begin(), input.end());
+      ++trainingDatasetCounter;
+    } else {
+      // We collect only in case when we are below minimum 1000 docs or when we
+      // have do not have enough docs for the currently projected nLists value
+      bool const shouldCollect =
+          trainingDatasetCounter < kSparseScalingBootstrapVectors ||
+          trainingDatasetCounter <
+              static_cast<std::size_t>(resolveNLists(trainingDatasetCounter) *
+                                       kMaxTrainingSizePerNLists);
+      if (shouldCollect) {
+        trainingData.insert(trainingData.end(), input.begin(), input.end());
+        ++trainingDatasetCounter;
+      }
+    }
     input.clear();
 
     it.Next();
-    ++counter;
+    ++iterationCounter;
   }
 
   if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
+    faiss::fvec_renorm_L2(_definition.dimension, trainingDatasetCounter,
+                          trainingData.data());
   }
 
   if (trainingData.empty()) {
@@ -254,7 +288,7 @@ ResultT<std::vector<float>> VectorIndexTrainer::collectTrainingDataset(
                   "training process."};
   }
 
-  return trainingData;
+  return ResultT<TrainingDataset>({std::move(trainingData), iterationCounter});
 }
 
 std::int64_t VectorIndexTrainer::resolveNLists(
@@ -270,66 +304,44 @@ std::int64_t VectorIndexTrainer::resolveNLists(
 }
 
 ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
-    rocksdb::Iterator& it, rocksdb::Slice upper, std::uint64_t numDocsHint,
+    rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t numDocsHint,
     std::stop_token stopToken) const {
-  auto const resolvedNLists = resolveNLists(numDocsHint);
-  auto const resolvedDefaultNProbe = _definition.defaultNProbe;
-
-  if (isNListsScaling(_definition.nLists)) {
-    LOG_TOPIC("c162b", INFO, Logger::ENGINES) << std::format(
-        "[shard={}, index={}] Scaling mode: numDocsHint={}, "
-        "computed nLists={}, computed defaultNProbe={}.",
-        _shardName, _indexId, numDocsHint, resolvedNLists,
-        resolvedDefaultNProbe);
-
-    if (_definition.factory) {
-      LOG_TOPIC("c163b", INFO, Logger::ENGINES) << std::format(
-          "[shard={}, index={}] Scaling mode: using resolved "
-          "factory string '{}'.",
-          _shardName, _indexId, _definition.factory->c_str());
-    }
+  auto res = collectTrainingDataset(it, upper, numDocsHint, stopToken);
+  if (res.fail()) {
+    return std::move(res).result();
   }
+  auto const& trainingData = res.get();
+  // When sparse we take how many document there are, for that we did full
+  // iteration otherwise we take the hint provided by the collection
+  auto const numberOfVectors = std::invoke([&]() {
+    if (_isSparse && isNListsScaling(_definition.nLists)) {
+      return trainingData.totalValidVectorCount;
+    }
+
+    return numDocsHint;
+  });
+  auto const resolvedNLists = resolveNLists(numberOfVectors);
 
   auto faissIndex = createFaissIndex(resolvedNLists);
+  faissIndex->nprobe = _definition.defaultNProbe;
+  auto const numOfTrainingVectors = static_cast<std::int64_t>(
+      trainingData.data.size() / _definition.dimension);
 
-  std::int64_t trainingDataSize =
-      faissIndex->cp.max_points_per_centroid * resolvedNLists;
-  // For sparse indexes, collect at least trainingThreshold vectors so we can
-  // verify that enough vector-bearing documents exist.
-  if (_isSparse) {
-    trainingDataSize = std::max(trainingDataSize, _trainingThreshold);
-  }
-  auto trainingData =
-      collectTrainingDataset(it, upper, trainingDataSize, stopToken);
-  if (trainingData.fail()) {
-    return std::move(trainingData).result();
-  }
-
-  auto numVectors = static_cast<std::int64_t>(trainingData.get().size() /
-                                              _definition.dimension);
-
-  if (numVectors < _trainingThreshold) {
+  if (numOfTrainingVectors < _trainingThreshold) {
     return Result{TRI_ERROR_NOT_IMPLEMENTED,
                   std::format("Vector index requires at least {} "
                               "vectors for training, "
                               "but only {} were found.",
-                              _trainingThreshold, numVectors)};
+                              _trainingThreshold, numOfTrainingVectors)};
   }
 
   LOG_TOPIC("a162b", INFO, Logger::ENGINES) << std::format(
       "[shard={}, index={}] Loaded {} vectors. Start training "
       "process on {} centroids.",
-      _shardName, _indexId, numVectors, resolvedNLists);
-
-  faissIndex->train(numVectors, trainingData.get().data());
-
+      _shardName, _indexId, numOfTrainingVectors, resolvedNLists);
+  faissIndex->train(numOfTrainingVectors, trainingData.data.data());
   LOG_TOPIC("a160b", INFO, Logger::ENGINES) << std::format(
       "[shard={}, index={}] Finished training.", _shardName, _indexId);
-
-  // Persist the resolved defaultNProbe into IndexIVF::nprobe so that it
-  // survives serialization and can be read back on restore without needing
-  // to recompute from the (no-longer-available) original document count.
-  faissIndex->nprobe = resolvedDefaultNProbe;
 
   return faissIndex;
 }
