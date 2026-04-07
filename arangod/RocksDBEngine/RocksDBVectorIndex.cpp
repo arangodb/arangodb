@@ -108,10 +108,9 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   if (!_trainedData.codeData.empty()) {
     _faissIndex =
         vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
-    _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
 
     _faissIndex->replace_invlists(
-        new vector::RocksDBInvertedLists(this, &coll, _resolvedNLists,
+        new vector::RocksDBInvertedLists(this, &coll, _faissIndex->nlist,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
 
@@ -284,10 +283,9 @@ void RocksDBVectorIndex::applyTrainingResult(
     vector::TrainedData trainedData) {
   _faissIndex = std::move(faissIndex);
   _trainedData = std::move(trainedData);
-  _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
 
   _faissIndex->replace_invlists(
-      new vector::RocksDBInvertedLists(this, &collection(), _resolvedNLists,
+      new vector::RocksDBInvertedLists(this, &collection(), _faissIndex->nlist,
                                        _faissIndex->code_size),
       true /* faiss owns the inverted list */);
 }

@@ -149,9 +149,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   vector::TrainedData loadTrainedData(velocypack::Slice info) const;
 
   vector::UserVectorIndexDefinition _definition;
-  // The actual nLists value used for FAISS operations.
-  // Resolved at training time via resolveNListsParameter().
-  std::int64_t _resolvedNLists{0};
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   vector::TrainedData _trainedData;
   StoredValues const _storedValues;
