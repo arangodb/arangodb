@@ -112,6 +112,24 @@ Projections translateLMIndexVarsToProjections(
     ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
     transaction::Methods::IndexHandle index);
 
+/// @brief WalkerWorker to replace variables in an execution plan
+struct VariableReplacer final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+ public:
+  explicit VariableReplacer(
+      std::unordered_map<VariableId, Variable const*> const& replacements)
+      : replacements(replacements) {}
+
+  bool before(ExecutionNode* en) override final {
+    en->replaceVariables(replacements);
+    // always continue
+    return false;
+  }
+
+ private:
+  std::unordered_map<VariableId, Variable const*> const& replacements;
+};
+
 }  // namespace utils
 }  // namespace aql
 }  // namespace arangodb

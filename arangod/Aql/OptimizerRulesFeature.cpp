@@ -24,6 +24,7 @@
 #include "OptimizerRulesFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilter.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesCalculation.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
