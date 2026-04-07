@@ -231,6 +231,12 @@ query. This can be a consequence of applying other optimizations.)");
       R"(Appears whenever a `COLLECT` statement is used in a query to determine
 the type of `CollectNode` to use.)");
 
+  // remove redundant sort blocks
+  registerRule("remove-redundant-sorts", removeRedundantSortsRule,
+               OptimizerRule::removeRedundantSortsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Try to merge multiple `SORT` statements into fewer sorts.)");
+
   // push limits into subqueries and simplify them
   registerRule("optimize-subqueries", optimizeSubqueriesRule,
                OptimizerRule::optimizeSubqueriesRule,
@@ -283,6 +289,13 @@ pipeline as far as possible, to pull them out of inner loops etc.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Second pass of moving filters up in the processing pipeline
 as far as possible so they filter results as early as possible.)");
+
+  // remove redundant sort node
+  registerRule("remove-redundant-sorts-2", removeRedundantSortsRule,
+               OptimizerRule::removeRedundantSortsRule2,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Second pass of trying to merge multiple `SORT` statements
+into fewer sorts.)");
 
   // remove unused INTO variable from COLLECT, or unused aggregates
   registerRule("remove-collect-variables", removeCollectVariablesRule,
@@ -508,6 +521,25 @@ inserting all documents into the collection in one go. Further optimizer rules
 are skipped if the optimization is triggered.
 )");
 
+  // make sort node aware of subsequent limit statements for internal
+  // optimizations
+  registerRule("sort-limit", sortLimitRule, OptimizerRule::applySortLimitRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Make `SORT` aware of a subsequent `LIMIT` to enable
+optimizations internal to the `SortNode` that allow to reduce memory usage
+and, in many cases, improve the sorting speed.
+
+A `SortNode` needs to be followed by a `LimitNode` with no intervening nodes
+that may change the element count (e.g. a `FilterNode` which cannot be moved
+before the sort, or a source node like `EnumerateCollectionNode`).
+
+The optimizer may choose not to apply the rule if it decides that it offers
+little or no benefit. In particular, it does not apply the rule if the input
+size is very small or if the output from the `LimitNode` is similar in size to
+the input. In exceptionally rare cases, this rule could result in some small
+slowdown. If observed, you can disable the rule for the affected query at the
+cost of increased memory usage.)");
+
   // finally, push calculations as far down as possible
   registerRule("move-calculations-down", moveCalculationsDownRule,
                OptimizerRule::moveCalculationsDownRule,
@@ -711,6 +743,22 @@ itself must be read-only (no data modification subquery), not use nested `FOR`
 loops, no `LIMIT` statement, and no `FILTER` condition or calculation that
 requires accessing document data. Accessing index data is supported for
 filtering but not for further calculations.)");
+
+  registerRule("parallelize-gather", parallelizeGatherRule,
+               OptimizerRule::parallelizeGatherRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly),
+               R"(Apply an optimization to execute Coordinator `GatherNode`
+nodes in parallel. These notes cannot be parallelized if they depend on a
+`TraversalNode`, except for certain Disjoint SmartGraph traversals where the
+traversal can run completely on the local DB-Server.)");
+
+  registerRule("decay-unnecessary-sorted-gather", decayUnnecessarySortedGather,
+               OptimizerRule::decayUnnecessarySortedGatherRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly),
+               R"(Avoid merge-sorting results on a Coordinator if they are all
+from a single shard and fully sorted by a DB-Server already.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("push-subqueries-to-dbserver", clusterPushSubqueryToDBServer,

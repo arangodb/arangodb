@@ -7820,48 +7820,6 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-namespace {
-
-/// @brief is the node parallelizable?
-struct ParallelizableFinder final
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  bool _isParallelizable = true;
-  bool _hasParallelTraversal = false;
-
-  ~ParallelizableFinder() = default;
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return false;
-  }
-
-  bool before(ExecutionNode* node) override final {
-    if ((node->getType() == ExecutionNode::SCATTER ||
-         node->getType() == ExecutionNode::DISTRIBUTE) &&
-        _hasParallelTraversal) {
-      // we cannot parallelize the gather if we have a parallel traversal which
-      // itself depends again on a scatter/distribute node, because we are
-      // currently lacking synchronization for that scatter/distribute node.
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
-    }
-
-    if (node->getType() == ExecutionNode::TRAVERSAL ||
-        node->getType() == ExecutionNode::SHORTEST_PATH ||
-        node->getType() == ExecutionNode::ENUMERATE_PATHS) {
-      auto* gn = ExecutionNode::castTo<GraphNode*>(node);
-      _hasParallelTraversal |= gn->options()->parallelism() > 1;
-      if (!gn->isLocalGraphNode()) {
-        _isParallelizable = false;
-        return true;  // true to abort the whole walking process
-      }
-    }
-
-    // continue inspecting
-    return false;
-  }
-};
-}  // namespace
-
 /// @brief turn LENGTH(FOR doc IN ...) subqueries into an optimized count
 /// operation
 void arangodb::aql::optimizeCountRule(Optimizer* opt,

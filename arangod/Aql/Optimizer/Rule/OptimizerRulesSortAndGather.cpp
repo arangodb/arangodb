@@ -24,7 +24,6 @@
 
 #include "OptimizerRulesSortAndGather.h"
 
-#include "Aql/Ast.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
@@ -33,11 +32,8 @@
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Function.h"
 #include "Aql/Optimizer.h"
 #include "Containers/SmallVector.h"
-#include "Aql/TypedAstNodes.h"
-#include "Graph/TraverserOptions.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -45,6 +41,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
+namespace {
 bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
                                  arangodb::aql::LimitNode& limitNode) {
   size_t input = sortNode.getCost().estimatedNrItems;
@@ -67,6 +64,7 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
   // should kick in if output is roughly at most 3/4 of input
   return (0.25 * N * lgM + M * lgM) < (N * lgN);
 }
+}  // namespace
 
 static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
   switch (node->getType()) {
