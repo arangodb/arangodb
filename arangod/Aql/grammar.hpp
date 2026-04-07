@@ -117,30 +117,31 @@ extern int Aqldebug;
     T_COLON = 317,                 /* ":"  */
     T_SCOPE = 318,                 /* "::"  */
     T_RANGE = 319,                 /* ".."  */
-    T_COMMA = 320,                 /* ","  */
-    T_OPEN = 321,                  /* "("  */
-    T_CLOSE = 322,                 /* ")"  */
-    T_OBJECT_OPEN = 323,           /* "{"  */
-    T_OBJECT_CLOSE = 324,          /* "}"  */
-    T_ARRAY_OPEN = 325,            /* "["  */
-    T_ARRAY_CLOSE = 326,           /* "]"  */
-    T_RELATION_OPEN = 327,         /* "-["  */
-    T_RELATION_IN_OPEN = 328,      /* "<-["  */
-    T_RELATION_CLOSE = 329,        /* "]-"  */
-    T_RELATION_OUT_CLOSE = 330,    /* "]->"  */
-    T_OUTBOUND = 331,              /* "outbound modifier"  */
-    T_INBOUND = 332,               /* "inbound modifier"  */
-    T_ANY = 333,                   /* "any modifier"  */
-    T_ALL = 334,                   /* "all modifier"  */
-    T_NONE = 335,                  /* "none modifier"  */
-    T_AT_LEAST = 336,              /* "at least modifier"  */
-    UMINUS = 337,                  /* UMINUS  */
-    UPLUS = 338,                   /* UPLUS  */
-    UNEGATION = 339,               /* UNEGATION  */
-    FUNCCALL = 340,                /* FUNCCALL  */
-    REFERENCE = 341,               /* REFERENCE  */
-    INDEXED = 342,                 /* INDEXED  */
-    EXPANSION = 343                /* EXPANSION  */
+    T_ELLIPSIS = 320,              /* "..."  */
+    T_COMMA = 321,                 /* ","  */
+    T_OPEN = 322,                  /* "("  */
+    T_CLOSE = 323,                 /* ")"  */
+    T_OBJECT_OPEN = 324,           /* "{"  */
+    T_OBJECT_CLOSE = 325,          /* "}"  */
+    T_ARRAY_OPEN = 326,            /* "["  */
+    T_ARRAY_CLOSE = 327,           /* "]"  */
+    T_RELATION_OPEN = 328,         /* "-["  */
+    T_RELATION_IN_OPEN = 329,      /* "<-["  */
+    T_RELATION_CLOSE = 330,        /* "]-"  */
+    T_RELATION_OUT_CLOSE = 331,    /* "]->"  */
+    T_OUTBOUND = 332,              /* "outbound modifier"  */
+    T_INBOUND = 333,               /* "inbound modifier"  */
+    T_ANY = 334,                   /* "any modifier"  */
+    T_ALL = 335,                   /* "all modifier"  */
+    T_NONE = 336,                  /* "none modifier"  */
+    T_AT_LEAST = 337,              /* "at least modifier"  */
+    UMINUS = 338,                  /* UMINUS  */
+    UPLUS = 339,                   /* UPLUS  */
+    UNEGATION = 340,               /* UNEGATION  */
+    FUNCCALL = 341,                /* FUNCCALL  */
+    REFERENCE = 342,               /* REFERENCE  */
+    INDEXED = 343,                 /* INDEXED  */
+    EXPANSION = 344                /* EXPANSION  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -159,7 +160,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 162 "grammar.hpp"
+#line 163 "grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

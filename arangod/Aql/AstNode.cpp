@@ -173,7 +173,6 @@ frozen::unordered_map<int, std::string_view, 88> kTypeNames{
     {static_cast<int>(NODE_TYPE_ARRAY_FILTER), "array filter"},
     {static_cast<int>(NODE_TYPE_DESTRUCTURING), "destructuring"},
     {static_cast<int>(NODE_TYPE_WINDOW), "window"},
-
     {static_cast<int>(NODE_TYPE_PATTERN_EDGE), "PATTERN edge"},
     {static_cast<int>(NODE_TYPE_PATTERN_NODE_PATTERN), "pattern node pattern"},
     {static_cast<int>(NODE_TYPE_PATTERN_SEGMENT), "pattern segment"},
@@ -183,6 +182,7 @@ frozen::unordered_map<int, std::string_view, 88> kTypeNames{
     {static_cast<int>(NODE_TYPE_PATTERN_MATCH_EXPRESSION),
      "pattern match expression"},
     {static_cast<int>(NODE_TYPE_MATCH), "match"},
+    {static_cast<int>(NODE_TYPE_ARRAY_SPLICE), "array splice"},
 };
 
 /// @brief names for AST node value types
@@ -668,6 +668,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_PATTERN_PATH_VARIABLE:
     case NODE_TYPE_PATTERN_MATCH_EXPRESSION:
     case NODE_TYPE_MATCH:
+    case NODE_TYPE_ARRAY_SPLICE:
       break;
   }
 
