@@ -1,4 +1,4 @@
-defmodule ToastTest.RrSummary do
+defmodule ToastTest.Formatting.RrSummary do
   @moduledoc false
 
   import ToastTest.Formatting

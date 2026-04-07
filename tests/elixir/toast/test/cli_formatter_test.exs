@@ -1,9 +1,9 @@
-defmodule ToastTest.CLIFormatterTest do
+defmodule ToastTest.Formatting.CLITest do
   use ExUnit.Case, async: true
 
   import ExUnit.CaptureIO
 
-  alias ToastTest.CLIFormatter
+  alias ToastTest.Formatting.CLI, as: CLIFormatter
 
   import Toast.FormatterTestHelpers, only: [make_test: 0, make_test: 1]
 

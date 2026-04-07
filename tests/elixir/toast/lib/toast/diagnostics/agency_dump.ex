@@ -66,9 +66,9 @@ defmodule Toast.Diagnostics.AgencyDump do
   end
 
   defp compress_and_remove(json_path) do
-    ext = if ToastTest.ResultPackaging.zstd_available?(), do: ".zst", else: ".gz"
+    ext = if Toast.Utils.Compression.zstd_available?(), do: ".zst", else: ".gz"
 
-    case ToastTest.ResultPackaging.compress_file(json_path, json_path <> ext) do
+    case Toast.Utils.Compression.compress_file(json_path, json_path <> ext) do
       {:ok, compressed} ->
         File.rm(json_path)
         {:ok, compressed}

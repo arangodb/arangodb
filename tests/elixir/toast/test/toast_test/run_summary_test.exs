@@ -1,9 +1,10 @@
-defmodule ToastTest.RunSummaryTest do
+defmodule ToastTest.Formatting.RunSummaryTest do
   use ExUnit.Case, async: true
 
   import ExUnit.CaptureIO
 
-  alias ToastTest.{RunSummary, SuiteResult}
+  alias ToastTest.SuiteResult
+  alias ToastTest.Formatting.RunSummary
 
   defp strip_ansi(text), do: String.replace(text, ~r/\e\[[0-9;]*m/, "")
 

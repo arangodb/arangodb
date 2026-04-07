@@ -1,4 +1,4 @@
-defmodule ToastTest.IssueFormatting do
+defmodule ToastTest.Formatting.Issues do
   @moduledoc false
 
   @max_sanitizer_lines 15

@@ -250,7 +250,7 @@ defmodule ToastTest.Runner do
       opts
       |> Keyword.get(:formatters, [])
       |> List.delete(ExUnit.CLIFormatter)
-      |> ensure_in_list(ToastTest.CLIFormatter, :front)
+      |> ensure_in_list(ToastTest.Formatting.CLI, :front)
       |> ensure_in_list(ToastTest.ResultCollector, :back)
 
     formatter_pids =

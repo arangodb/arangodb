@@ -1,9 +1,10 @@
-defmodule ToastTest.PostExecSummaryTest do
+defmodule ToastTest.Formatting.PostExecSummaryTest do
   use ExUnit.Case, async: true
 
   import ExUnit.CaptureIO
 
-  alias ToastTest.{SuiteResult, PostExecSummary}
+  alias ToastTest.SuiteResult
+  alias ToastTest.Formatting.PostExecSummary
 
   defp suite_result(issues, opts \\ []) do
     %SuiteResult{

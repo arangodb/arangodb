@@ -1,7 +1,7 @@
-defmodule ToastTest.RrSummaryTest do
+defmodule ToastTest.Formatting.RrSummaryTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.RrSummary
+  alias ToastTest.Formatting.RrSummary
 
   setup do
     tmp_dir =

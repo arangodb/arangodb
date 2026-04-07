@@ -1,4 +1,4 @@
-defmodule ToastTest.CLIFormatter do
+defmodule ToastTest.Formatting.CLI do
   @moduledoc """
   ExUnit formatter that produces Google Test-style output with timestamps.
 

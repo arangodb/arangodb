@@ -1,7 +1,8 @@
-defmodule ToastTest.IssueFormatting.LogsTest do
+defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.IssueFormatting.Logs
+  alias ToastTest.LogAnalysis, as: Logs
+  alias ToastTest.Formatting.Logs, as: LogFormatting
 
   import Toast.Utils, only: [maybe_put: 3]
   import ToastTest.TimeTestHelpers, only: [to_us: 1]
@@ -176,25 +177,25 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   describe "server_tag/2" do
     test "coordinator" do
-      assert Logs.server_tag("coordinator1", :coordinator) == "CO1"
-      assert Logs.server_tag("coordinator2", :coordinator) == "CO2"
+      assert LogFormatting.server_tag("coordinator1", :coordinator) == "CO1"
+      assert LogFormatting.server_tag("coordinator2", :coordinator) == "CO2"
     end
 
     test "dbserver" do
-      assert Logs.server_tag("dbserver1", :dbserver) == "DB1"
-      assert Logs.server_tag("dbserver2", :dbserver) == "DB2"
+      assert LogFormatting.server_tag("dbserver1", :dbserver) == "DB1"
+      assert LogFormatting.server_tag("dbserver2", :dbserver) == "DB2"
     end
 
     test "agent" do
-      assert Logs.server_tag("agent1", :agent) == "AG1"
+      assert LogFormatting.server_tag("agent1", :agent) == "AG1"
     end
 
     test "single" do
-      assert Logs.server_tag("single", :single) == "SNG"
+      assert LogFormatting.server_tag("single", :single) == "SNG"
     end
 
     test "unconventional name with role from metadata" do
-      assert Logs.server_tag("single-00", :single) == "SNG00"
+      assert LogFormatting.server_tag("single-00", :single) == "SNG00"
     end
   end
 
@@ -246,27 +247,58 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   describe "server_color/2" do
     test "coordinator returns a color from the coordinator palette" do
-      assert Logs.server_color(:coordinator, 0) in [67, 103, 110, 66, 109, 60, 68, 102, 146]
+      assert LogFormatting.server_color(:coordinator, 0) in [
+               67,
+               103,
+               110,
+               66,
+               109,
+               60,
+               68,
+               102,
+               146
+             ]
     end
 
     test "dbserver returns a color from the dbserver palette" do
-      assert Logs.server_color(:dbserver, 0) in [137, 174, 95, 180, 130, 215, 101, 172, 144]
+      assert LogFormatting.server_color(:dbserver, 0) in [
+               137,
+               174,
+               95,
+               180,
+               130,
+               215,
+               101,
+               172,
+               144
+             ]
     end
 
     test "agent returns a color from the agent palette" do
-      assert Logs.server_color(:agent, 0) in [101, 138, 66, 144, 96]
+      assert LogFormatting.server_color(:agent, 0) in [101, 138, 66, 144, 96]
     end
 
     test "different indices return different colors" do
-      assert Logs.server_color(:coordinator, 0) != Logs.server_color(:coordinator, 1)
+      assert LogFormatting.server_color(:coordinator, 0) !=
+               LogFormatting.server_color(:coordinator, 1)
     end
 
     test "single role uses dbserver palette" do
-      assert Logs.server_color(:single, 0) in [137, 174, 95, 180, 130, 215, 101, 172, 144]
+      assert LogFormatting.server_color(:single, 0) in [
+               137,
+               174,
+               95,
+               180,
+               130,
+               215,
+               101,
+               172,
+               144
+             ]
     end
 
     test "unknown role falls back to coordinator palette" do
-      assert Logs.server_color(:unknown, 0) in [67, 103, 110, 66, 109, 60, 68, 102, 146]
+      assert LogFormatting.server_color(:unknown, 0) in [67, 103, 110, 66, 109, 60, 68, 102, 146]
     end
   end
 
@@ -274,14 +306,14 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   describe "format_merged/2" do
     test "empty list returns empty string" do
-      assert Logs.format_merged([], false) == ""
+      assert LogFormatting.format_merged([], false) == ""
     end
 
     test "single server produces untagged lines" do
       e1 = entry(~U[2026-01-01 00:00:00Z], message: "line1")
       e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
       merged = [{"s1", e1}, {"s1", e2}]
-      result = Logs.format_merged(merged, false)
+      result = LogFormatting.format_merged(merged, false)
       assert result =~ "line1"
       assert result =~ "line2"
     end
@@ -291,7 +323,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
       roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
       merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, false, :basic, roles)
+      result = LogFormatting.format_merged(merged, false, :basic, roles)
       assert result =~ "[CO1]"
       assert result =~ "[DB1]"
     end
@@ -301,7 +333,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       e2 = entry(~U[2026-01-01 00:00:01Z], message: "line2")
       roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
       merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, true, :basic, roles)
+      result = LogFormatting.format_merged(merged, true, :basic, roles)
       assert result =~ "\e[38;5;"
     end
 
@@ -310,7 +342,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       e2 = entry(~U[2026-01-01 00:00:01Z], message: "other")
       roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
       merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, true, :basic, roles)
+      result = LogFormatting.format_merged(merged, true, :basic, roles)
       assert result =~ IO.ANSI.bright()
     end
 
@@ -319,7 +351,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       e2 = entry(~U[2026-01-01 00:00:01Z], message: "other")
       roles = %{"coordinator1" => :coordinator, "dbserver1" => :dbserver}
       merged = [{"coordinator1", e1}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, true, :basic, roles)
+      result = LogFormatting.format_merged(merged, true, :basic, roles)
       assert result =~ IO.ANSI.inverse()
     end
   end
@@ -328,15 +360,15 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   describe "server_tag/2 with hyphenated IDs" do
     test "coordinator with deployment prefix" do
-      assert Logs.server_tag("cluster-00-coordinator-0", :coordinator) == "CO0"
+      assert LogFormatting.server_tag("cluster-00-coordinator-0", :coordinator) == "CO0"
     end
 
     test "dbserver with deployment prefix" do
-      assert Logs.server_tag("cluster-00-dbserver-2", :dbserver) == "DB2"
+      assert LogFormatting.server_tag("cluster-00-dbserver-2", :dbserver) == "DB2"
     end
 
     test "agent with deployment prefix" do
-      assert Logs.server_tag("cluster-00-agent-1", :agent) == "AG1"
+      assert LogFormatting.server_tag("cluster-00-agent-1", :agent) == "AG1"
     end
   end
 
@@ -570,12 +602,12 @@ defmodule ToastTest.IssueFormatting.LogsTest do
   describe "format_event/1" do
     test "server_started" do
       event = %{event: :server_started, server_id: "dbserver1", pid: 12_345, timestamp: 0}
-      assert Logs.format_event(event) == ">>> server_started dbserver1 (pid=12345)"
+      assert LogFormatting.format_event(event) == ">>> server_started dbserver1 (pid=12345)"
     end
 
     test "server_stopped" do
       event = %{event: :server_stopped, server_id: "dbserver1", timestamp: 0}
-      assert Logs.format_event(event) == ">>> server_stopped dbserver1"
+      assert LogFormatting.format_event(event) == ">>> server_stopped dbserver1"
     end
 
     test "server_crashed" do
@@ -587,27 +619,28 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         timestamp: 0
       }
 
-      assert Logs.format_event(event) == ">>> server_crashed dbserver1 (pid=123, signal=11)"
+      assert LogFormatting.format_event(event) ==
+               ">>> server_crashed dbserver1 (pid=123, signal=11)"
     end
 
     test "server_killed" do
       event = %{event: :server_killed, server_id: "s1", timestamp: 0}
-      assert Logs.format_event(event) == ">>> server_killed s1"
+      assert LogFormatting.format_event(event) == ">>> server_killed s1"
     end
 
     test "server_paused" do
       event = %{event: :server_paused, server_id: "s1", timestamp: 0}
-      assert Logs.format_event(event) == ">>> server_paused s1"
+      assert LogFormatting.format_event(event) == ">>> server_paused s1"
     end
 
     test "server_resumed" do
       event = %{event: :server_resumed, server_id: "s1", timestamp: 0}
-      assert Logs.format_event(event) == ">>> server_resumed s1"
+      assert LogFormatting.format_event(event) == ">>> server_resumed s1"
     end
 
     test "test_started" do
       event = %{event: :test_started, module: MyModule, name: "my test", timestamp: 0}
-      assert Logs.format_event(event) == ">>> test_started MyModule > my test"
+      assert LogFormatting.format_event(event) == ">>> test_started MyModule > my test"
     end
 
     test "test_finished" do
@@ -619,47 +652,47 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         timestamp: 0
       }
 
-      assert Logs.format_event(event) == ">>> test_finished MyModule > my test (passed)"
+      assert LogFormatting.format_event(event) == ">>> test_finished MyModule > my test (passed)"
     end
 
     test "module_started" do
       event = %{event: :module_started, module: MyModule, timestamp: 0}
-      assert Logs.format_event(event) == ">>> module_started MyModule"
+      assert LogFormatting.format_event(event) == ">>> module_started MyModule"
     end
 
     test "module_finished" do
       event = %{event: :module_finished, module: MyModule, timestamp: 0}
-      assert Logs.format_event(event) == ">>> module_finished MyModule"
+      assert LogFormatting.format_event(event) == ">>> module_finished MyModule"
     end
 
     test "deployment_starting" do
       event = %{event: :deployment_starting, deployment_id: "d1", mode: :cluster, timestamp: 0}
-      assert Logs.format_event(event) == ">>> deployment_starting d1 (cluster)"
+      assert LogFormatting.format_event(event) == ">>> deployment_starting d1 (cluster)"
     end
 
     test "deployment_started" do
       event = %{event: :deployment_started, deployment_id: "d1", timestamp: 0}
-      assert Logs.format_event(event) == ">>> deployment_started d1"
+      assert LogFormatting.format_event(event) == ">>> deployment_started d1"
     end
 
     test "deployment_stopped" do
       event = %{event: :deployment_stopped, deployment_id: "d1", timestamp: 0}
-      assert Logs.format_event(event) == ">>> deployment_stopped d1"
+      assert LogFormatting.format_event(event) == ">>> deployment_stopped d1"
     end
 
     test "timeout_kill" do
       event = %{event: :timeout_kill, reason: "test exceeded 60s", timestamp: 0}
-      assert Logs.format_event(event) == ">>> timeout_kill test exceeded 60s"
+      assert LogFormatting.format_event(event) == ">>> timeout_kill test exceeded 60s"
     end
 
     test "server_identified" do
       event = %{event: :server_identified, server_id: "s1", arango_id: "CRDN-abc", timestamp: 0}
-      assert Logs.format_event(event) == ">>> server_identified s1 => CRDN-abc"
+      assert LogFormatting.format_event(event) == ">>> server_identified s1 => CRDN-abc"
     end
 
     test "unknown event" do
       event = %{event: :something_new, timestamp: 0}
-      assert Logs.format_event(event) == ">>> something_new"
+      assert LogFormatting.format_event(event) == ">>> something_new"
     end
   end
 
@@ -680,7 +713,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
       roles = %{"coordinator1" => :coordinator}
       merged = [{"coordinator1", e1}, {:event, event}]
-      result = Logs.format_merged(merged, false, :basic, roles)
+      result = LogFormatting.format_merged(merged, false, :basic, roles)
 
       assert result =~ "line1"
       assert result =~ ">>> test_started"
@@ -700,7 +733,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       }
 
       merged = [{"coordinator1", e1}, {:event, event}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, true, :basic, @roles)
+      result = LogFormatting.format_merged(merged, true, :basic, @roles)
 
       lines = String.split(result, "\n")
       event_line = Enum.find(lines, &String.contains?(&1, ">>>"))
@@ -722,7 +755,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
       }
 
       merged = [{"coordinator1", e1}, {:event, event}, {"dbserver1", e2}]
-      result = Logs.format_merged(merged, false, :basic, @roles)
+      result = LogFormatting.format_merged(merged, false, :basic, @roles)
 
       lines = String.split(result, "\n")
       tag_line = Enum.find(lines, &String.contains?(&1, "[CO1]"))
@@ -740,7 +773,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         name: "t"
       }
 
-      result = Logs.format_merged([{:event, event}], false)
+      result = LogFormatting.format_merged([{:event, event}], false)
       assert result =~ ">>> test_started"
     end
 
@@ -752,7 +785,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         pid: 123
       }
 
-      result = Logs.format_merged([{:event, event}], false, :full)
+      result = LogFormatting.format_merged([{:event, event}], false, :full)
       assert result =~ ">>> server_started db1 (pid=123)"
       assert result =~ "server_id: \"db1\""
       assert result =~ "pid: 123"
@@ -766,7 +799,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
         pid: 123
       }
 
-      result = Logs.format_merged([{:event, event}], false, :basic)
+      result = LogFormatting.format_merged([{:event, event}], false, :basic)
       assert result =~ ">>> server_started db1 (pid=123)"
       refute result =~ "server_id: \"db1\""
     end
@@ -783,7 +816,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
       roles = %{"coordinator1" => :coordinator}
       merged = [{"coordinator1", e1}, {:event, event}]
-      result = Logs.format_merged(merged, false, :full, roles)
+      result = LogFormatting.format_merged(merged, false, :full, roles)
       assert result =~ ">>> server_started db1 (pid=123)"
       assert result =~ "server_id: \"db1\""
     end

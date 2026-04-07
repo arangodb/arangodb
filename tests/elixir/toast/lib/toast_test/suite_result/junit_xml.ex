@@ -1,7 +1,7 @@
 defmodule ToastTest.SuiteResult.JUnitXML do
   @moduledoc false
 
-  alias ToastTest.{IssueFormatting, SuiteResult}
+  alias ToastTest.{Formatting.Issues, SuiteResult}
 
   @spec write(SuiteResult.t(), Path.t()) :: :ok
   def write(%SuiteResult{} = result, result_dir) do
@@ -306,15 +306,15 @@ defmodule ToastTest.SuiteResult.JUnitXML do
   defp phase_prefix(:shutdown), do: "shutdown"
   defp phase_prefix(_), do: nil
 
-  # Issue detail rendering — delegates to shared IssueFormatting.
+  # Issue detail rendering — delegates to shared Issues.
   defp render_issue_detail(%{type: :sanitizer_report} = issue),
-    do: IssueFormatting.format_sanitizer(issue)
+    do: Issues.format_sanitizer(issue)
 
   defp render_issue_detail(%{type: :crash} = issue),
-    do: IssueFormatting.format_crash(issue)
+    do: Issues.format_crash(issue)
 
   defp render_issue_detail(%{type: :timeout} = issue),
-    do: IssueFormatting.format_timeout(issue)
+    do: Issues.format_timeout(issue)
 
   defp render_issue_detail(_), do: nil
 

@@ -93,34 +93,6 @@ defmodule ToastTest.ResultPackagingTest do
     end
   end
 
-  describe "zstd_available?/0" do
-    test "returns a boolean" do
-      result = ResultPackaging.zstd_available?()
-      assert is_boolean(result)
-    end
-  end
-
-  describe "compress_file/2" do
-    @tag :tmp_dir
-    test "compresses a file", %{tmp_dir: tmp_dir} do
-      source = Path.join(tmp_dir, "test.txt")
-      File.write!(source, String.duplicate("hello world\n", 1000))
-      dest = Path.join(tmp_dir, "test.txt.compressed")
-
-      assert {:ok, compressed_path} = ResultPackaging.compress_file(source, dest)
-      assert File.exists?(compressed_path)
-      assert File.stat!(compressed_path).size < File.stat!(source).size
-    end
-
-    @tag :tmp_dir
-    test "returns error for nonexistent source", %{tmp_dir: tmp_dir} do
-      source = Path.join(tmp_dir, "nonexistent.txt")
-      dest = Path.join(tmp_dir, "out.compressed")
-
-      assert {:error, _reason} = ResultPackaging.compress_file(source, dest)
-    end
-  end
-
   describe "package/1" do
     test "no-op when ci is false" do
       assert :ok =

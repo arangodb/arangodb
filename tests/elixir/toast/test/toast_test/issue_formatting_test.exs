@@ -1,7 +1,7 @@
-defmodule ToastTest.IssueFormattingTest do
+defmodule ToastTest.Formatting.IssuesTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.IssueFormatting
+  alias ToastTest.Formatting.Issues, as: IssueFormatting
 
   # --- build_coredump_index/1 ---
 

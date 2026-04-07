@@ -133,6 +133,6 @@ defmodule ToastTest.Runner.PostExecution do
   end
 
   defp print_post_exec_summary(suite_result) do
-    ToastTest.PostExecSummary.print(suite_result)
+    ToastTest.Formatting.PostExecSummary.print(suite_result)
   end
 end

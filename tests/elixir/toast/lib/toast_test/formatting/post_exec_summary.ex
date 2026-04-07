@@ -1,16 +1,16 @@
-defmodule ToastTest.PostExecSummary do
+defmodule ToastTest.Formatting.PostExecSummary do
   @moduledoc false
 
   import ToastTest.Formatting
 
-  alias ToastTest.{IssueFormatting, SuiteResult}
+  alias ToastTest.{Formatting.Issues, SuiteResult}
 
   @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :timeout]
 
   @spec print(SuiteResult.t()) :: :ok
   def print(%SuiteResult{issues: issues, warnings: warnings} = result) do
-    index = IssueFormatting.build_coredump_index(result.coredumps)
-    issues = IssueFormatting.resolve_coredumps(issues, index)
+    index = Issues.build_coredump_index(result.coredumps)
+    issues = Issues.resolve_coredumps(issues, index)
     print_issues(issues)
     print_warnings(warnings)
     :ok
@@ -89,7 +89,7 @@ defmodule ToastTest.PostExecSummary do
     %{scope: scope, detail: %{server: server}} = issue
 
     print_attribution(scope, server, colors)
-    print_indented(IssueFormatting.format_sanitizer(issue), "    ")
+    print_indented(Issues.format_sanitizer(issue), "    ")
 
     counter + 1
   end
@@ -112,7 +112,7 @@ defmodule ToastTest.PostExecSummary do
   defp print_issue(:timeout, issue, counter, colors) do
     %{detail: %{source: source, reason: reason, servers: servers}} = issue
 
-    label = IssueFormatting.timeout_source_label(source)
+    label = Issues.timeout_source_label(source)
     IO.puts("\n  #{colorize("[#{label}] #{reason}", :red, colors)}")
 
     if servers != [] do
@@ -142,7 +142,7 @@ defmodule ToastTest.PostExecSummary do
   # --- Crash details ---
 
   defp print_crash_info(%{crash_info: _} = detail, colors) do
-    case IssueFormatting.format_crash_info(detail) do
+    case Issues.format_crash_info(detail) do
       nil -> :ok
       text -> IO.puts("    #{colorize(text, :red, colors)}")
     end
@@ -154,13 +154,13 @@ defmodule ToastTest.PostExecSummary do
   # captures the original CPU context from the signal handler, which may
   # differ from the coredump (see killProcess / SA_RESETHAND re-raise).
   defp print_crash_detail(detail, colors) do
-    case IssueFormatting.format_crash_detail(detail) do
+    case Issues.format_crash_detail(detail) do
       nil -> IO.puts("    #{colorize("No crash details available.", :faint, colors)}")
       text -> print_indented(text, "    ")
     end
 
-    print_blue(IssueFormatting.format_coredump_path(detail))
-    print_blue(IssueFormatting.format_log_path(detail))
+    print_blue(Issues.format_coredump_path(detail))
+    print_blue(Issues.format_log_path(detail))
   end
 
   defp print_blue(nil), do: :ok
@@ -169,7 +169,7 @@ defmodule ToastTest.PostExecSummary do
   # --- Attribution ---
 
   defp print_attribution(scope, server, colors) do
-    case IssueFormatting.format_scope(scope) do
+    case Issues.format_scope(scope) do
       nil -> IO.puts("\n  #{colorize(server, :cyan, colors)}")
       label -> IO.puts("\n  #{colorize(server, :cyan, colors)} \u2014 #{label}")
     end

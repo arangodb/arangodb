@@ -40,25 +40,6 @@ defmodule ToastTest.ResultPackaging do
     end
   end
 
-  @doc "Determine if zstd is available for compression."
-  @spec zstd_available?() :: boolean()
-  def zstd_available?, do: System.find_executable("zstd") != nil
-
-  @doc "Determine if gzip is available for compression."
-  @spec gzip_available?() :: boolean()
-  def gzip_available?, do: System.find_executable("gzip") != nil
-
-  @doc "Compress a file with zstd, falling back to gzip. Returns error if no tool available."
-  @spec compress_file(Path.t(), Path.t()) :: {:ok, Path.t()} | {:error, term()}
-  def compress_file(source, dest) do
-    cond do
-      not File.exists?(source) -> {:error, :enoent}
-      zstd_available?() -> compress_with_zstd(source, dest)
-      gzip_available?() -> compress_with_gzip(source, dest)
-      true -> {:error, :no_compression_tool}
-    end
-  end
-
   # --- Tier 1: Always published ---
 
   defp package_tier1(opts, result_dir) do
@@ -124,7 +105,7 @@ defmodule ToastTest.ResultPackaging do
   # --- Tier 3: Large individually compressed files ---
 
   defp package_tier3(opts, result_dir) do
-    tool = detect_compression_tool()
+    tool = Toast.Utils.Compression.detect_tool()
 
     opts
     |> Keyword.get(:suite_diagnostics, [])
@@ -160,14 +141,6 @@ defmodule ToastTest.ResultPackaging do
     end
   end
 
-  defp detect_compression_tool do
-    cond do
-      zstd_available?() -> :zstd
-      gzip_available?() -> :gzip
-      true -> nil
-    end
-  end
-
   defp package_core_dump(core_path, result_dir, tool) do
     basename = Path.basename(core_path)
 
@@ -181,11 +154,11 @@ defmodule ToastTest.ResultPackaging do
 
       :zstd ->
         dest = Path.join(result_dir, basename <> ".zst")
-        compress_core(core_path, dest, &compress_with_zstd/2)
+        compress_core(core_path, dest, &Toast.Utils.Compression.compress_with_zstd/2)
 
       :gzip ->
         dest = Path.join(result_dir, basename <> ".gz")
-        compress_core(core_path, dest, &compress_with_gzip/2)
+        compress_core(core_path, dest, &Toast.Utils.Compression.compress_with_gzip/2)
     end
   end
 
@@ -205,25 +178,5 @@ defmodule ToastTest.ResultPackaging do
     server_id = path |> Path.dirname() |> Path.basename()
     basename = Path.basename(path)
     "#{server_id}.#{basename}"
-  end
-
-  # --- Compression helpers ---
-
-  defp compress_with_zstd(source, dest) do
-    case System.cmd("zstd", ["-q", "-f", "-o", dest, source], stderr_to_stdout: true) do
-      {_, 0} -> {:ok, dest}
-      {output, _} -> {:error, {:zstd_failed, output}}
-    end
-  end
-
-  defp compress_with_gzip(source, dest) do
-    case System.cmd("gzip", ["-c", source], into: File.stream!(dest)) do
-      {_, 0} ->
-        {:ok, dest}
-
-      {_, code} ->
-        File.rm(dest)
-        {:error, {:gzip_failed, code}}
-    end
   end
 end

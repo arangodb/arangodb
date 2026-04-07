@@ -60,8 +60,9 @@ defmodule Mix.Tasks.Toast.Analyze do
   import ToastTest.Formatting, only: [colorize: 3, formatter_cb: 2]
 
   alias ToastTest.Enrichment
-  alias ToastTest.IssueFormatting
-  alias ToastTest.IssueFormatting.Logs
+  alias ToastTest.Formatting.Issues
+  alias ToastTest.Formatting.Logs, as: LogFormatting
+  alias ToastTest.LogAnalysis
 
   @switches [
     result_dir: :string,
@@ -187,11 +188,11 @@ defmodule Mix.Tasks.Toast.Analyze do
 
     log_opts = %{
       enabled: logs_enabled?(opts),
-      server_filter: Logs.parse_server_filter(opts[:log_servers]),
-      window_spec: Logs.parse_window_spec(opts[:log_window]),
+      server_filter: LogAnalysis.parse_server_filter(opts[:log_servers]),
+      window_spec: LogAnalysis.parse_window_spec(opts[:log_window]),
       event_detail: parse_event_detail(opts[:log_events]),
-      level_filter: Logs.parse_level_filter(opts[:log_min_level]),
-      excluded_ids: Logs.parse_exclude(opts[:log_exclude])
+      level_filter: LogAnalysis.parse_level_filter(opts[:log_min_level]),
+      excluded_ids: LogAnalysis.parse_exclude(opts[:log_exclude])
     }
 
     bt_opts = %{
@@ -494,7 +495,7 @@ defmodule Mix.Tasks.Toast.Analyze do
   # --- Timeout detail ---
 
   defp print_issue_body(%{type: :timeout, detail: detail}, color, _bt_opts) do
-    label = IssueFormatting.timeout_source_label(detail.source)
+    label = Issues.timeout_source_label(detail.source)
     Mix.shell().info("  #{colorize("[#{label}] #{detail.reason}", :red, color)}")
 
     if detail[:timestamp] do
@@ -526,7 +527,7 @@ defmodule Mix.Tasks.Toast.Analyze do
     parts =
       [
         if(info.os_pid, do: "PID #{info.os_pid}"),
-        IssueFormatting.format_signal(info.signal),
+        Issues.format_signal(info.signal),
         if(info.exit_status, do: "exit_status: #{info.exit_status}"),
         if(match?(%DateTime{}, info.timestamp), do: "at: #{DateTime.to_iso8601(info.timestamp)}")
       ]
@@ -574,7 +575,7 @@ defmodule Mix.Tasks.Toast.Analyze do
   end
 
   defp print_crash_backtrace(%{coredumps: [coredump | _]}, _color, _bt_opts) do
-    case IssueFormatting.format_coredump_backtrace(coredump) do
+    case Issues.format_coredump_backtrace(coredump) do
       nil -> :ok
       text -> Mix.shell().info("\n#{text}")
     end
@@ -587,8 +588,8 @@ defmodule Mix.Tasks.Toast.Analyze do
   # Gated behind --disassembly since register dumps are large.
   defp print_crash_extra(%{coredumps: [coredump | _]}, color, bt_opts) do
     if bt_opts.disassembly do
-      print_optional_section(IssueFormatting.format_registers(coredump), "Registers", color)
-      print_optional_section(IssueFormatting.format_disassembly(coredump), "Disassembly", color)
+      print_optional_section(Issues.format_registers(coredump), "Registers", color)
+      print_optional_section(Issues.format_disassembly(coredump), "Disassembly", color)
     end
   end
 
@@ -745,7 +746,7 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   defp print_issue_logs(issue, log_opts, color) do
     servers = issue[:servers] || %{}
-    window = Logs.display_window(issue, log_opts.window_spec)
+    window = LogAnalysis.display_window(issue, log_opts.window_spec)
     bar = String.duplicate("─", 50)
     Mix.shell().info("\n#{colorize("── Server logs " <> bar, :faint, color)}")
 
@@ -760,33 +761,36 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   defp print_log_window(issue, window, win_start, win_end, log_opts, servers, color) do
     print_log_context(issue, win_start, win_end, log_opts, servers, color)
-    filtered = Logs.filter_servers(servers, log_opts.server_filter)
+    filtered = LogAnalysis.filter_servers(servers, log_opts.server_filter)
     filtered_map = Map.new(filtered)
 
     entries =
-      Logs.extract(filtered_map, window,
+      LogAnalysis.extract(filtered_map, window,
         level_filter: log_opts.level_filter,
         excluded_ids: log_opts.excluded_ids
       )
 
     events =
       if log_opts.event_detail != :none,
-        do: Logs.extract_events(issue[:events] || [], window),
+        do: LogAnalysis.extract_events(issue[:events] || [], window),
         else: []
 
     if entries == [] and events == [] do
       Mix.shell().info(colorize("  No matching log lines found.", :faint, color))
     else
       Mix.shell().info("")
-      merged = Logs.merge_streams(entries, events)
+      merged = LogAnalysis.merge_streams(entries, events)
       server_roles = Map.new(servers, fn {sid, meta} -> {sid, meta[:role]} end)
-      Mix.shell().info(Logs.format_merged(merged, color, log_opts.event_detail, server_roles))
+
+      Mix.shell().info(
+        LogFormatting.format_merged(merged, color, log_opts.event_detail, server_roles)
+      )
     end
   end
 
   defp print_log_context(issue, win_start, win_end, log_opts, servers, color) do
     {tb_start, tb_end} = issue.time_bounds
-    matching = Logs.matching_servers(servers, log_opts.server_filter)
+    matching = LogAnalysis.matching_servers(servers, log_opts.server_filter)
     deployments = issue[:deployments] || %{}
 
     Mix.shell().info(
@@ -846,7 +850,7 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   defp format_server_label(server_id, servers, indent \\ "    ") do
     meta = servers[server_id] || %{}
-    tag = Logs.server_tag(server_id, meta[:role])
+    tag = LogFormatting.server_tag(server_id, meta[:role])
 
     pid_part =
       case meta do
@@ -881,7 +885,7 @@ defmodule Mix.Tasks.Toast.Analyze do
       all_servers = flatten_servers(result.deployments)
       deployments = Map.get(result, :deployments, %{})
       events = Map.get(result, :events, [])
-      coredump_index = IssueFormatting.build_coredump_index(Map.get(result, :coredumps, []))
+      coredump_index = Issues.build_coredump_index(Map.get(result, :coredumps, []))
 
       result.issues
       |> Enum.map(&Map.put(&1, :suite, result.suite))
@@ -889,7 +893,7 @@ defmodule Mix.Tasks.Toast.Analyze do
       |> Enum.map(&Map.put(&1, :servers, all_servers))
       |> Enum.map(&Map.put(&1, :deployments, deployments))
       |> Enum.map(&Map.put(&1, :events, events))
-      |> then(&IssueFormatting.resolve_coredumps(&1, coredump_index))
+      |> then(&Issues.resolve_coredumps(&1, coredump_index))
     end)
     |> apply_filters(opts)
   end
@@ -1344,7 +1348,7 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   # --- Formatting ---
 
-  defp format_scope(scope), do: IssueFormatting.format_scope(scope) || ":suite"
+  defp format_scope(scope), do: Issues.format_scope(scope) || ":suite"
 
   defp format_server(%{type: :crash, detail: %{server: server}}), do: server
   defp format_server(%{type: :sanitizer_report, detail: %{server: server}}), do: server
