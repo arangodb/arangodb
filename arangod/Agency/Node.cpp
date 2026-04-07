@@ -48,7 +48,6 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
-using namespace arangodb;
 
 namespace arangodb::consensus {
 /// @brief Split strings by forward slashes, omitting empty strings,

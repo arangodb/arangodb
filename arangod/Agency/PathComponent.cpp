@@ -25,9 +25,6 @@
 
 #include <iostream>
 
-using namespace arangodb;
-using namespace arangodb::cluster;
-
 namespace arangodb::cluster::paths {
 
 std::ostream& operator<<(std::ostream& stream, Path const& path) {
