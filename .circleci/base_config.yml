@@ -589,7 +589,7 @@ jobs:
       - run:
           name: Build
           command: |
-            TARGETS="<< pipeline.parameters.build-targets >>"
+            TARGETS='<< pipeline.parameters.build-targets >>'
             if [ << parameters.build-tests >> = true ]; then
               TARGETS="$TARGETS << pipeline.parameters.test-build-targets >>"
             fi
@@ -605,17 +605,17 @@ jobs:
           condition: << pipeline.parameters.create-docker-images >>
           steps:
             - run:
-                name: Create install package
-                command: |
-                  mkdir install
-                  DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
-                  cp build/bin/arangodb ./install/usr/bin/
-                  if [ << parameters.enterprise >> = true ]; then
-                    cp build/bin/rclone-arangodb ./install/usr/bin/
-                  fi
-                  strip ./install/usr/bin/arango*
-                  strip ./install/usr/sbin/arangod
-                  tar -czf install.tar.gz -C install ./
+              name: Create install package
+              command: |
+                mkdir install
+                DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
+                cp build/bin/arangodb ./install/usr/bin/
+                if [ << parameters.enterprise >> = true ]; then
+                cp build/bin/rclone-arangodb ./install/usr/bin/
+                fi
+                strip ./install/usr/bin/arango*
+                strip ./install/usr/sbin/arangod
+                tar -czf install.tar.gz -C install ./
              - persist_to_workspace:
                 root: .
                 paths:
