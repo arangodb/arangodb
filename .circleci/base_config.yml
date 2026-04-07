@@ -530,6 +530,9 @@ jobs:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: arangodb/large-amd64
     steps:
+      - run:
+          command: |
+            echo "building frontend"
       - when:
           condition:
             not:
