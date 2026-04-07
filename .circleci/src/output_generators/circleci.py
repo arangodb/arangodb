@@ -274,8 +274,6 @@ class CircleCIGenerator(OutputGenerator):
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
     ) -> None:
         """Add docker image creation job."""
-        if build_config.architecture != Architecture.X64:
-            return
         arch = "amd64" if build_config.architecture == Architecture.X64 else "arm64"
         image = "public.ecr.aws/b0b8h2r4/enterprise-preview"
 

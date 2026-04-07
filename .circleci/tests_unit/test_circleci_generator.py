@@ -242,21 +242,21 @@ class TestDockerImageJob:
         assert "my-feature" in job["tag"]
         assert "pr/123/" not in job["tag"]
 
-#    def test_docker_image_aarch64_architecture(self):
-#        """Test ARM64 architecture in docker tag."""
-#        env_vars = {
-#            "CIRCLE_BRANCH": "main",
-#            "CIRCLE_SHA1": "abc1234",
-#        }
-#        gen = self.create_generator(env_vars, date(2025, 1, 15))
-#        build_config = BuildConfig(architecture=Architecture.AARCH64)
-#
-#        workflow = {"jobs": []}
-#        gen._add_docker_image_job(workflow, build_config, ["build-job"])
-#
-#        job = workflow["jobs"][0]["create-docker-image"]
-#        assert job["arch"] == "arm64"
-#        assert "arm64" in job["tag"]
+    def test_docker_image_aarch64_architecture(self):
+        """Test ARM64 architecture in docker tag."""
+        env_vars = {
+            "CIRCLE_BRANCH": "main",
+            "CIRCLE_SHA1": "abc1234",
+        }
+        gen = self.create_generator(env_vars, date(2025, 1, 15))
+        build_config = BuildConfig(architecture=Architecture.AARCH64)
+
+        workflow = {"jobs": []}
+        gen._add_docker_image_job(workflow, build_config, ["build-job"])
+
+        job = workflow["jobs"][0]["create-docker-image"]
+        assert job["arch"] == "arm64"
+        assert "arm64" in job["tag"]
 
 
 class TestGenerateMethod:
