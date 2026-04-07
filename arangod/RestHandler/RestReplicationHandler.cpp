@@ -471,10 +471,7 @@ bool RestReplicationHandler::isCoordinatorError() {
 }
 
 std::string const RestReplicationHandler::LoggerState = "logger-state";
-std::string const RestReplicationHandler::LoggerTickRanges =
-    "logger-tick-ranges";
-std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
-std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
+std::string const RestReplicationHandler::LoggerLast = "logger-last";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
@@ -525,37 +522,14 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
-    } else if (command == LoggerTickRanges) {
+    } else if (command == LoggerLast) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
         co_return;
       }
-      handleCommandLoggerTickRanges();
-    } else if (command == LoggerFirstTick) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-      handleCommandLoggerFirstTick();
-    } else if (command == LoggerFollow) {
-      if (type != rest::RequestType::GET && type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-      // track the number of parallel invocations of the tailing API
-      auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
-      // this may throw when too many threads are going into tailing
-      rf.trackTailingStart();
-
-      auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
-
-      handleCommandLoggerFollow();
+      handleCommandLoggerLast();
     } else if (command == Batch) {
       // access batch context in context manager
       // example call: curl -XPOST --dump - --data '{}'
@@ -3041,47 +3015,14 @@ void RestReplicationHandler::handleCommandLoggerState() {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return the first tick available in a logfile
-/// @route GET logger-first-tick
-/// @caller js/client/modules/@arangodb/replication.js
-/// @response VPackObject with minTick of LogfileManager->ranges()
-//////////////////////////////////////////////////////////////////////////////
-void RestReplicationHandler::handleCommandLoggerFirstTick() {
-  TRI_voc_tick_t tick = UINT64_MAX;
-  Result res =
-      server().getFeature<EngineSelectorFeature>().engine().firstTick(tick);
+void RestReplicationHandler::handleCommandLoggerLast() {
+  VPackBuilder builder;
+  auto tickStart = _request->parsedValue("tickStart", uint64_t(0));
+  auto tickEnd = _request->parsedValue("tickEnd", uint64_t(0xbadbadbadbadULL));
 
-  VPackBuilder b;
-  b.add(VPackValue(VPackValueType::Object));
-  if (tick == UINT64_MAX || res.fail()) {
-    b.add("firstTick", VPackValue(VPackValueType::Null));
-  } else {
-    auto tickString = std::to_string(tick);
-    b.add("firstTick", VPackValue(tickString));
-  }
-  b.close();
-  generateResult(rest::ResponseCode::OK, b.slice());
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the available logfile range
-/// @route GET logger-tick-ranges
-/// @caller js/client/modules/@arangodb/replication.js
-/// @response VPackArray, containing info about each datafile
-///           * filename
-///           * status
-///           * tickMin - tickMax
-//////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandLoggerTickRanges() {
-  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  VPackBuilder b;
-  Result res = engine.createTickRanges(b);
-  if (res.ok()) {
-    generateResult(rest::ResponseCode::OK, b.slice());
-  } else {
-    generateError(res);
-  }
+  Result res = server().getFeature<EngineSelectorFeature>().engine().lastLogger(
+      _vocbase, tickStart, tickEnd, builder);
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 bool RestReplicationHandler::prepareRevisionOperation(
@@ -3252,7 +3193,7 @@ void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
 ///           * ranges, VPackArray of VPackArray of revisions
 ///           * resume, optional, if response is chunked; revision resume
 ///                     point to specify on subsequent requests
-//////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////// ///////////////////////////////
 
 void RestReplicationHandler::handleCommandRevisionRanges() {
   RevisionOperationContext ctx;
@@ -3831,9 +3772,8 @@ RequestLane RestReplicationHandler::lane() const {
       return RequestLane::CLUSTER_INTERNAL;
     }
 
-    if (command == RemoveFollower || command == LoggerFollow ||
-        command == Batch || command == Inventory || command == Revisions ||
-        command == Dump) {
+    if (command == RemoveFollower || command == Batch || command == Inventory ||
+        command == Revisions || command == Dump) {
       return RequestLane::SERVER_REPLICATION_CATCHUP;
     }
   }

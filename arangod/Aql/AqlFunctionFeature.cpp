@@ -418,7 +418,6 @@ void AqlFunctionFeature::addGeoFunctions() {
 
   // geo functions
   add({"DISTANCE", ".,.,.,.", flags, &functions::Distance});
-  add({"IS_IN_POLYGON", ".,.|.", flags, &functions::IsInPolygon});
   add({"GEO_DISTANCE", ".,.|.", flags, &functions::GeoDistance});
   add({"GEO_CONTAINS", ".,.", flags, &functions::GeoContains});
   add({"GEO_INTERSECTS", ".,.", flags, &functions::GeoIntersects});
@@ -559,19 +558,6 @@ void AqlFunctionFeature::addMiscFunctions() {
        Function::makeFlags(FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer),
        &functions::Warn});  // not deterministic and not cacheable
-
-  // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL
-  // optimizer with collection-/index-based subqueries. they are all
-  // marked as deterministic and cacheable here as they are just
-  // placeholders for collection/index accesses nowaways.
-  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(FF::Cacheable),
-       &functions::NotImplemented});
-  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable),
-       &functions::NotImplemented});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable),
-       &functions::NotImplemented});
-  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable),
-       &functions::NotImplemented});
 
   add({"MAKE_DISTRIBUTE_INPUT", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,

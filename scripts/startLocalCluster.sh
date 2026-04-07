@@ -58,7 +58,8 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-if [ "$AUTOUPGRADE" == "1" ];then
+if [[ "$AUTOUPGRADE" == "1" || "$AUTOUPGRADE" == "true" ]]; then
+  AUTOUPGRADE="1"
   echo "-- Using autoupgrade procedure"
 fi
 
@@ -153,7 +154,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
       --agency.compaction-keep-size $KEEP 
       --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE 
       --agency.my-address $TRANSPORT://$ADDRESS:$PORT
-      --agency.pool-size $NRAGENTS 
       --agency.size $NRAGENTS 
       --agency.supervision true 
       --agency.supervision-frequency $SFRE 

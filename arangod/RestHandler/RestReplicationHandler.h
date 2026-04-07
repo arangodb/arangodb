@@ -73,9 +73,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
   static std::string const LoggerState;
-  static std::string const LoggerTickRanges;
-  static std::string const LoggerFirstTick;
-  static std::string const LoggerFollow;
+  static std::string const LoggerLast;
   static std::string const Batch;
   static std::string const Inventory;
   static std::string const Keys;
@@ -251,26 +249,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   void handleCommandLoggerState();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the first tick available in a logfile
-  /// @route GET logger-first-tick
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackObject with minTick of LogfileManager->ranges()
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerFirstTick();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the available logfile range
-  /// @route GET logger-tick-ranges
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackArray, containing info about each datafile
-  ///           * filename
-  ///           * status
-  ///           * tickMin - tickMax
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerTickRanges();
+  void handleCommandLoggerLast();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed
@@ -457,19 +436,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// SECTION:
   /// Functions to be implemented by specialization
   //////////////////////////////////////////////////////////////////////////////
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a follow command for the replication log
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandLoggerFollow() = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle the command to determine the transactions that were open
-  /// at a certain point in time
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandDetermineOpenTransactions() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a batch command

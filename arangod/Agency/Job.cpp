@@ -85,8 +85,6 @@ std::string const currentVersion = "/Current/Version";
 std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
 std::string const maintenancePrefix = "/Current/MaintenanceDBServers/";
-std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
-std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
 std::string const returnLeadershipPrefix = "/Target/ReturnLeadership/";
 

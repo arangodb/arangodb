@@ -215,10 +215,12 @@ class GeneralRequest {
   /// @brief get the requested API version
   uint32_t requestedApiVersion() const noexcept { return _requestedApiVersion; }
 
-  /// @brief detect and strip /_arango/vX or /_arango/experimental prefix from
-  /// the request path
-  /// @return Result::OK if successful, error if /_arango prefix is invalid
-  Result detectAndStripApiVersion();
+  /// @brief detect and strip /_arango/vX or /_arango/experimental prefix.
+  /// @param start  reference to current position pointer; advanced past the
+  ///               prefix on success
+  /// @param end    one-past-the-end pointer of the URL buffer
+  /// @throws ArangoException if /_arango prefix is present but invalid
+  void detectAndStripApiVersion(char const*& start, char const* end);
 
  protected:
   static RequestType findRequestType(char const*, size_t const);

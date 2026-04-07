@@ -389,7 +389,6 @@ class instance {
     }
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
-      this.args['server.statistics'] = false;
     }
 
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
@@ -402,7 +401,7 @@ class instance {
     }
 
     if (this.restKeyFile &&
-        !this.args.hasOwnProperty('server.jwt-secret') &&
+        !this.args.hasOwnProperty('server.jwt-secret-keyfile') &&
         !this.args.hasOwnProperty('server.jwt-secret-folder')) {
       this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
       this.JWT = fs.read(this.restKeyFile);
@@ -515,8 +514,8 @@ class instance {
         'http.compress-response-threshold':  99999999999,
       });
     }
-    if (this.args.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = this.args['server.jwt-secret'];
+    if (this.args.hasOwnProperty('server.jwt-secret-keyfile') && !this.JWT) {
+      this.JWT = fs.read(this.args['server.jwt-secret-keyfile']);
     } else if (this.args.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(this.args['server.jwt-secret-folder']);
       files = files.sort();
@@ -556,6 +555,10 @@ class instance {
   _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      let kf = fs.join(this.rootDir, 'jwt-secret-exec.txt');
+      fs.write(kf, this.JWT);
+      delete moreArgs['server.jwt-secret'];
+      moreArgs['server.jwt-secret-keyfile'] = kf;
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
@@ -654,6 +657,10 @@ class instance {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      let kf = fs.join(this.rootDir, 'jwt-secret-restart.txt');
+      fs.write(kf, this.JWT);
+      delete moreArgs['server.jwt-secret'];
+      moreArgs['server.jwt-secret-keyfile'] = kf;
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
@@ -787,6 +794,12 @@ class instance {
     httpOptions.method = 'POST';
     httpOptions.returnBodyOnError = true;
     while (true) {
+      this.exitStatus = this.status(false);
+      if (this.exitStatus.status === 'RUNNING') {
+        this.exitStatus = null;
+      } else {
+        throw new Error('server exited during startup! bailing out!');
+      }
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
@@ -948,8 +961,10 @@ class instance {
     this.serverCrashedLocal = true;
     if (this.pid === null) {
       this.pid = pid;
-      print(`${RED}${Date()} ${this.name}: instance already gone? ${JSON.stringify(this.exitStatus)}${RESET}`);
-      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
+      const killCause = (this.exitStatus.status === "ABORTED" && this.exitStatus.hasOwnProperty('signal') && this.exitStatus.signal === 9) ?
+            " - maybe OOM killed by the kernel? ": "";
+      print(`${RED}${Date()} ${this.name}: instance already gone${killCause}? ${JSON.stringify(this.exitStatus)}${RESET}`);
+      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead${killCause}? ${JSON.stringify(this.exitStatus)}`);
       this.pid = null;
     } else {
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
@@ -1213,6 +1228,10 @@ class instance {
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
   readImportantLogLines () {
+    if (!fs.exists(fs.join(this.logFile))) {
+      print(`${RED}${Date()} unable to find ${this.logFile} of ${this.name}!${RESET}`);
+      return [];
+    }
     let fnLines = [];
     const buf = fs.readBuffer(fs.join(this.logFile));
     let lineStart = 0;

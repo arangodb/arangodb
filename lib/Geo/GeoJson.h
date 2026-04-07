@@ -36,7 +36,6 @@
 #include "Geo/Coding.h"
 
 class S2LatLng;
-class S2Loop;
 class S2Polyline;
 class S2Polygon;
 class Encoder;
@@ -170,21 +169,6 @@ Result parseCoordinates(velocypack::Slice vpack, ShapeContainer& region,
                         bool geoJson,
                         coding::Options options = coding::Options::kInvalid,
                         Encoder* encoder = nullptr);
-
-/// @brief Parse a loop (LinearRing)
-///
-/// Note that at the moment we do not enforce that the final coordinate must
-/// match the first, as is required of a proper LinearRing in GeoJSON format.
-///
-/// @param vpack  an array of arrays with 2 elements each, representing the
-///               points of the polygon
-/// @param loop  output parameter to hold the parsed loop
-/// @param geoJson  If true, the points are assumed to be [lon, lat],
-///                 otherwise [lat, lon]
-[[deprecated(
-    "Subject to removal"
-    " when deprecated IS_IN_POLYGON function is removed.")]] Result
-parseLoop(velocypack::Slice vpack, S2Loop& loop, bool geoJson);
 
 }  // namespace json
 }  // namespace arangodb::geo

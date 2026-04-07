@@ -139,12 +139,6 @@ void OptimizerRulesFeature::addRules() {
 
   // note that levels must be unique
 
-  registerRule("replace-function-with-index", replaceNearWithinFulltextRule,
-               OptimizerRule::replaceNearWithinFulltext,
-               OptimizerRule::makeFlags(),
-               R"(Replace deprecated index functions such as `FULLTEXT()`,
-`NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
-
   registerRule("replace-like-with-range", replaceLikeWithRangeRule,
                OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
                R"(Replace LIKE() function with range scans where possible.)");
@@ -709,8 +703,8 @@ data modification node) only affects a single shard.
 
 This optimization can be applied for queries that access a collection only once
 in the query, and that do not use traversals, shortest path queries, and that
-do not access collection data dynamically using the `DOCUMENT()`, `FULLTEXT()`,
-`NEAR()` or `WITHIN()` AQL functions. Additionally, the optimizer can only
+do not access collection data dynamically using the `DOCUMENT()`
+AQL functions. Additionally, the optimizer can only
 apply this optimization if it can safely determine the values of all the
 collection's shard keys from the query, and when the shard keys are covered by
 a single index (this is always true if the shard key is the default `_key`).)");
@@ -837,7 +831,8 @@ vector embeddings with vector similarity AQL functions.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
                                         OptimizerRule::Flags::Hidden),
                R"(Push Filter into EnumerateNearVector node. Can also optimize
-    filtering by using storedValues. This rule is enabled only by use-vector-index rule)");
+filtering by using `storedValues`. This rule is only enabled by the
+`use-vector-index` rule.)");
 
   registerRule(
       "immutable-search-condition", iresearch::immutableSearchCondition,

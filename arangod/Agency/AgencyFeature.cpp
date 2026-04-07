@@ -73,15 +73,6 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnAgent));
 
-  options
-      ->addOption("--agency.pool-size", "The number of Agents in the pool.",
-                  new UInt64Parameter(&_options.poolSize),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnAgent))
-      .setDeprecatedIn(31100);
-
   options->addOption(
       "--agency.election-timeout-min",
       "The minimum timeout before an Agent calls for a new election (in "
@@ -256,16 +247,6 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   } else {
     _options.size = 1;
   }
-
-  if (result.touched("agency.pool-size") &&
-      _options.poolSize != _options.size) {
-    // using a pool size different to the number of agents
-    // has never been implemented properly, so bail out early here.
-    LOG_TOPIC("af108", FATAL, Logger::AGENCY)
-        << "agency pool size is deprecated and is not expected to be set";
-    FATAL_ERROR_EXIT();
-  }
-  _options.poolSize = _options.size;
 
   // Size needs to be odd
   if (_options.size % 2 == 0) {

@@ -32,7 +32,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Activities/activity.h"
+#include "Activities/GenericActivity.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
 #include "Inspection/Types.h"
@@ -165,7 +165,7 @@ class RocksDBDumpContext {
   bool applyFilter(velocypack::Slice const& documentSlice) const;
 
   // get the activityId of this dump context
-  activities::ActivityId activityId() const noexcept;
+  activities::GenericActivity::HandleType activity() const noexcept;
 
   // Contains the data for a batch
   struct Batch {
@@ -353,7 +353,7 @@ class RocksDBDumpContext {
 
   std::atomic_bool _stopped{false};
 
-  activities::Activity _activity;
+  activities::GenericActivity::HandleType _activity;
 };
 
 }  // namespace arangodb

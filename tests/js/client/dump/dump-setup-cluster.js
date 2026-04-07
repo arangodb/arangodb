@@ -55,8 +55,6 @@ const setup = require(base);
   setup.createSatelliteCollections();
   setup.createSatelliteGraphs();
   setup.createReplicationFactors();
-  setup.createJobs();
-  setup.createFoxx();
   setup.createAnalyzers();
 
   // all types of enterprise related graphs

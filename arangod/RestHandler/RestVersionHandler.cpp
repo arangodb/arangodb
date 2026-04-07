@@ -128,6 +128,10 @@ void RestVersionHandler::getVersion(
 }
 
 RestStatus RestVersionHandler::execute() {
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
 
   ServerSecurityFeature& security =

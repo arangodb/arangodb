@@ -580,67 +580,6 @@ AqlValue functions::GeoArea(ExpressionContext* expressionContext,
       shape.area(*detEllipsoid(expressionContext, p2, functionName))));
 }
 
-/// @brief function IS_IN_POLYGON
-AqlValue functions::IsInPolygon(ExpressionContext* expressionContext,
-                                AstNode const&,
-                                VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &expressionContext->trx();
-  auto* vopts = &trx->vpackOptions();
-  AqlValue const& coords =
-      aql::functions::extractFunctionParameterValue(parameters, 0);
-  AqlValue p2 = aql::functions::extractFunctionParameterValue(parameters, 1);
-  AqlValue p3 = aql::functions::extractFunctionParameterValue(parameters, 2);
-
-  if (!coords.isArray()) {
-    registerWarning(expressionContext, "IS_IN_POLYGON",
-                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(AqlValueHintNull());
-  }
-
-  double latitude, longitude;
-  bool geoJson = false;
-  if (p2.isArray()) {
-    if (p2.length() < 2) {
-      registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
-      return AqlValue(AqlValueHintNull());
-    }
-    AqlValueMaterializer materializer(vopts);
-    VPackSlice arr = materializer.slice(p2);
-    geoJson = p3.isBoolean() && p3.toBoolean();
-    // if geoJson, map [lon, lat] -> lat, lon
-    VPackSlice lat = geoJson ? arr[1] : arr[0];
-    VPackSlice lon = geoJson ? arr[0] : arr[1];
-    if (!lat.isNumber() || !lon.isNumber()) {
-      registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
-      return AqlValue(AqlValueHintNull());
-    }
-    latitude = lat.getNumber<double>();
-    longitude = lon.getNumber<double>();
-  } else if (p2.isNumber() && p3.isNumber()) {
-    bool failed1 = false, failed2 = false;
-    latitude = p2.toDouble(failed1);
-    longitude = p3.toDouble(failed2);
-    if (failed1 || failed2) {
-      registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
-      return AqlValue(AqlValueHintNull());
-    }
-  } else {
-    registerInvalidArgumentWarning(expressionContext, "IS_IN_POLYGON");
-    return AqlValue(AqlValueHintNull());
-  }
-
-  S2Loop loop;
-  loop.set_s2debug_override(S2Debug::DISABLE);
-  auto res = geo::json::parseLoop(coords.slice(), loop, geoJson);
-  if (res.fail() || !loop.IsValid()) {
-    registerWarning(expressionContext, "IS_IN_POLYGON", res);
-    return AqlValue(AqlValueHintNull());
-  }
-
-  S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude).Normalized();
-  return AqlValue(AqlValueHintBool(loop.Contains(latLng.ToPoint())));
-}
-
 /// @brief geo constructors
 
 /// @brief function GEO_POINT

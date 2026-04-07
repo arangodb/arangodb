@@ -23,6 +23,9 @@
 
 #include "TransactionState.h"
 
+#include "Activities/RegistryGlobalVariable.h"
+#include "Activities/GenericActivity.h"
+#include "StorageEngine/TransactionActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryContext.h"
@@ -111,8 +114,9 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _operationOrigin(operationOrigin),
       // set usage tracking mode to disabled initially. this may be overriden
       // below
-      _usageTrackingMode(
-          metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+      _usageTrackingMode(metrics::MetricsFeature::UsageTrackingMode::kDisabled),
+      _activity(
+          activities::make<transaction::activity::TransactionActivity>()) {
 // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
@@ -131,6 +135,10 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
   // database is protected against deletion while the TransactionState object
   // is around.
   _vocbase.forceUse();
+
+  _activity->setDatabase(_vocbase.name());
+  _activity->setTransactionId(tid);
+  _activity->setStatus(_status);
 }
 
 /// @brief free a transaction container
@@ -406,6 +414,8 @@ void TransactionState::setUsername(std::string const& name) {
     // only set if still empty
     _username = name;
   }
+
+  _activity->setUsername(name);
 }
 
 std::string_view TransactionState::username() const noexcept {
@@ -458,6 +468,8 @@ futures::Future<Result> TransactionState::addCollection(
 
   Result res =
       co_await addCollectionInternal(cid, cname, accessType, lockUsage);
+
+  _activity->addCollection(std::string{cname}, cid, accessType);
 
   if (res.ok()) {
     // upgrade transaction type if required
@@ -575,11 +587,18 @@ futures::Future<Result> TransactionState::useCollections() {
   Result res;
   // process collections in forward order
   for (TransactionCollection* trxCollection : _collections) {
+    _activity->setLockStatus(trxCollection->id(),
+                             transaction::activity::LockStatus::ACQUIRING);
     res = co_await trxCollection->lockUsage();
 
     if (!res.ok()) {
+      _activity->setLockStatus(trxCollection->id(),
+                               transaction::activity::LockStatus::FAILED);
+
       break;
     }
+    _activity->setLockStatus(trxCollection->id(),
+                             transaction::activity::LockStatus::HOLDING);
   }
   co_return res;
 }
@@ -829,6 +848,7 @@ void TransactionState::updateStatus(transaction::Status status) noexcept {
   }
 
   _status = status;
+  _activity->setStatus(_status);
 }
 
 /// @brief returns the name of the actor the transaction runs on:

@@ -26,12 +26,14 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <fuerte/ApiVersion.h>
+
 namespace arangodb {
 
 /// @brief Central configuration for API versioning
 struct ApiVersion {
   // The list of all supported API versions (both stable and deprecated)
-  static constexpr uint32_t supportedApiVersions[] = {0, 1};
+  static constexpr uint32_t supportedApiVersions[] = {1};
 
   // The list of deprecated API versions (subset of supportedApiVersions)
   static constexpr uint32_t deprecatedApiVersions[] = {};
@@ -39,8 +41,11 @@ struct ApiVersion {
   // The default API version used when no /_arango/vX prefix is specified
   static constexpr uint32_t defaultApiVersion = 1;
 
-  // The experimental API version (accessed via /_arango/experimental)
-  static constexpr uint32_t experimentalApiVersion = 2;
+  // The experimental API version (accessed via /_arango/experimental).
+  // Value is defined in fuerte so that fuerte can use it without depending on
+  // server headers.
+  static constexpr uint32_t experimentalApiVersion =
+      fuerte::ApiVersion::experimentalApiVersion;
 
   // Helper function to get the number of supported API versions
   static constexpr size_t numSupportedApiVersions() {

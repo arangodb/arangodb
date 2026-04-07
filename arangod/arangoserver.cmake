@@ -72,7 +72,6 @@ add_library(arangoserver STATIC
   RestHandler/RestAdminDeploymentHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
-  RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
@@ -84,7 +83,6 @@ add_library(arangoserver STATIC
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestDumpHandler.cpp
   RestHandler/RestEdgesHandler.cpp
-  RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
   RestHandler/RestExplainHandler.cpp
   RestHandler/RestImportHandler.cpp
@@ -108,7 +106,6 @@ add_library(arangoserver STATIC
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
-  RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestOpenApiHandler.cpp
@@ -132,10 +129,10 @@ add_library(arangoserver STATIC
   RestServer/IOHeartbeatThread.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
+  RestServer/LegacyOptionsFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
-  RestServer/NonceFeature.cpp
   RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
   RestServer/QueryRegistryFeature.cpp
@@ -160,7 +157,6 @@ add_library(arangoserver STATIC
   Sharding/ShardingStrategyDefault.cpp
   Statistics/ConnectionStatistics.cpp
   Statistics/Descriptions.cpp
-  Statistics/RequestStatistics.cpp
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   Transaction/BatchOptions.cpp

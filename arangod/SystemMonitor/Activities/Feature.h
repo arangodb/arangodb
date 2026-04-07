@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <velocypack/SharedSlice.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "CrashHandler/DataSource.h"
 #include "SystemMonitor/Activities/Metrics.h"
@@ -46,7 +47,7 @@ class Feature final : public application_features::ApplicationFeature,
   void stop() override final;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  velocypack::Builder getData() const;
+  velocypack::SharedSlice getData() const;
   velocypack::SharedSlice getCrashData() const override;
   std::string_view getDataSourceName() const override { return name(); }
   bool isOnlySuperUserEnabled() { return _options.isOnlySuperUserEnabled; }

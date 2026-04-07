@@ -299,273 +299,6 @@ function dealing_with_the_loggerSuite () {
       assertTrue(server.hasOwnProperty('version'));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
-    // firstTick;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_fetches_the_first_available_tick: function() {
-      // fetch state;
-      let cmd = api + "/logger-first-tick";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-
-      let result = doc.parsedBody;
-      assertTrue(result.hasOwnProperty('firstTick'));
-
-      assertMatch(/^[0-9]+$/, result['firstTick']);
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////;
-    // tickRanges;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_fetches_the_available_tick_ranges: function() {
-      // fetch state;
-      let cmd = api + "/logger-tick-ranges";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-
-      let result = doc.parsedBody;
-      assertTrue(doc.body.length > 0, doc);
-
-      result.forEach(datafile => {
-        assertTrue(datafile.hasOwnProperty('datafile'));
-        assertTrue(datafile.hasOwnProperty('status'));
-        assertTrue(datafile.hasOwnProperty('tickMin'));
-        assertTrue(datafile.hasOwnProperty('tickMax'));
-        assertMatch(/^[0-9]+$/, datafile['tickMin']);
-        assertMatch(/^[0-9]+$/, datafile['tickMax']);
-      });
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////;
-    // follow;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_fetches_the_empty_follow_log_1: function() {
-      while (true) {
-        let cmd = api + "/logger-state";
-        let doc = arango.GET_RAW(cmd);
-        assertEqual(doc.code, 200);
-        assertTrue(doc.parsedBody["state"]["running"]);
-        let fromTick = doc.parsedBody["state"]["lastLogTick"];
-
-        cmd = api + "/logger-follow?from=" + fromTick;
-        doc = arango.GET_RAW(cmd);
-
-        if (doc.code !== 204) {
-          // someone else did something else;
-          assertEqual(doc.code, 200);
-          // sleep for a second && try again;
-          sleep(1);
-        } else {
-          assertEqual(doc.code, 204);
-          //assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
-          assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
-          assertEqual(doc.headers["x-arango-replication-lastincluded"], "0");
-          assertEqual(doc.headers["content-type"], "application/x-arango-dump");
-
-          let body = doc.body;
-          assertEqual(body, undefined);
-          break;
-        }
-      }
-    },
-
-    test_fetches_a_create_collection_action_from_the_follow_log_1: function() {
-      db._drop("UnitTestsReplication");
-
-      sleep(5);
-
-      let cmd = api + "/logger-state";
-      let doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-      assertTrue(doc.parsedBody["state"]["running"]);
-      let fromTick = doc.parsedBody["state"]["lastLogTick"];
-
-      let cid = db._create("UnitTestsReplication", { waitForSync: true });
-
-      sleep(5);
-
-      cmd = api + "/logger-follow?from=" + fromTick;
-      doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-
-      assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
-      assertNotEqual(doc.headers["x-arango-replication-lastincluded"], "0");
-      assertEqual(doc.headers["content-type"], "application/x-arango-dump");
-      
-      let body = doc.body.toString();
-
-      while (body.length > 1) {
-        let position = body.search("\n");
-
-        if (position === undefined) {
-          break;
-        }
-        let part = body.slice(0, position);
-        let document = JSON.parse(part);
-
-        if (document["type"] === 2000 && document["cid"] === cid._id) {
-          assertTrue(document.hasOwnProperty("tick"));
-          assertTrue(document.hasOwnProperty("type"));
-          assertTrue(document.hasOwnProperty("cid"));
-          assertTrue(document.hasOwnProperty("cname"));
-          assertTrue(document.hasOwnProperty("data"));
-
-          assertMatch(/^[0-9]+$/, document["tick"]);
-          assertTrue(Number(document["tick"]) >= Number(fromTick));
-          assertEqual(document["type"], 2000);
-          assertEqual(document["cid"], cid._id);
-          assertEqual(typeof document["cid"], 'string');
-          assertEqual(document["cname"], "UnitTestsReplication");
-
-          let c = document["data"];
-          assertTrue(c.hasOwnProperty("version"));
-          assertEqual(c["type"], 2);
-          assertEqual(c["cid"], cid._id);
-          assertEqual(typeof c["cid"], 'string');
-          assertFalse(c["deleted"]);
-          assertEqual(c["name"], "UnitTestsReplication");
-          assertTrue(c["waitForSync"]);
-        }
-
-        body = body.slice(position + 1, body.length);
-      }
-
-    },
-
-    test_fetches_some_collection_operations_from_the_follow_log_1: function() {
-      db._drop("UnitTestsReplication");
-
-      sleep(5);
-
-      let cmd = api + "/logger-state";
-      let doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-      assertTrue(doc.parsedBody["state"]["running"]);
-      let fromTick = doc.parsedBody["state"]["lastLogTick"];
-
-      // create collection;
-      let cid = db._create("UnitTestsReplication", { waitForSync: true});
-
-      // create document;
-      cmd = "/_api/document?collection=UnitTestsReplication";
-      let body = { "_key" : "test", "test" : false };
-      doc = arango.POST_RAW(cmd, body);
-      assertEqual(doc.code, 201);
-      let rev = doc.parsedBody["_rev"];
-
-      // delete document;
-      cmd = "/_api/document/UnitTestsReplication/test";
-      doc = arango.DELETE_RAW(cmd);
-      assertEqual(doc.code, 200);
-
-      // drop collection;
-      cmd = "/_api/collection/UnitTestsReplication";
-      doc = arango.DELETE_RAW(cmd);
-      assertEqual(doc.code, 200);
-
-      sleep(5);
-
-      cmd = api + "/logger-follow?from=" + fromTick;
-      doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-
-      assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
-      assertNotEqual(doc.headers["x-arango-replication-lastincluded"], "0");
-      assertEqual(doc.headers["content-type"], "application/x-arango-dump");
-
-
-      body = doc.body.toString();
-      let i = 0;
-      while (body.length > 1) {
-        let position = body.search("\n");
-
-        if (position === undefined) {
-          break;
-        }
-
-        let part = body.slice(0, position);
-        let document = JSON.parse(part);
-
-        if (i === 0) {
-          if (document["type"] === 2000 && document["cid"] === cid._id) {
-            // create collection;
-            assertTrue(document.hasOwnProperty("tick"));
-            assertTrue(document.hasOwnProperty("type"));
-            assertTrue(document.hasOwnProperty("cid"));
-            assertTrue(document.hasOwnProperty("cname"));
-            assertTrue(document.hasOwnProperty("data"));
-
-            assertMatch(/^[0-9]+$/, document["tick"]);
-            assertTrue(Number(document["tick"]) >= Number(fromTick));
-            assertEqual(document["type"], 2000);
-            assertEqual(document["cid"], cid._id);
-            assertEqual(typeof document["cid"], 'string');
-            assertEqual(document["cname"], "UnitTestsReplication");
-
-            let c = document["data"];
-            assertTrue(c.hasOwnProperty("version"));
-            assertEqual(c["type"], 2);
-            assertEqual(c["cid"], cid._id);
-            assertEqual(typeof c["cid"], 'string');
-            assertFalse(c["deleted"]);
-            assertEqual(c["name"], "UnitTestsReplication");
-            assertTrue(c["waitForSync"]);
-          }
-          i = i + 1;
-        } else if ( i === 1 && document["type"] === 2300 && document["cid"] === cid._id) {
-          // create document;
-          assertTrue(document.hasOwnProperty("tick"));
-          assertTrue(document.hasOwnProperty("type"));
-          assertTrue(document.hasOwnProperty("cid"));
-
-          assertMatch(/^[0-9]+$/, document["tick"]);
-          assertTrue(Number(document["tick"]) >= Number(fromTick));
-          assertEqual(document["type"], 2300);
-          assertEqual(document["cid"], cid._id);
-          assertEqual(typeof document["cid"], 'string');
-          assertEqual(document["data"]["_key"], "test");
-          assertMatch(/^[a-zA-Z0-9_\-]+$/, document["data"]["_rev"]);
-          assertNotEqual(document["data"]["_rev"], "0");
-          assertFalse(document["data"]["test"]);
-
-          i = i + 1;
-        } else if ( i === 2 && document["type"] === 2302 && document["cid"] === cid._id) {
-          // delete document;
-          assertTrue(document.hasOwnProperty("tick"));
-          assertTrue(document.hasOwnProperty("type"));
-          assertTrue(document.hasOwnProperty("cid"));
-
-          assertMatch(/^[0-9]+$/, document["tick"]);
-          assertTrue(Number(document["tick"]) >= Number(fromTick));
-          assertEqual(document["type"], 2302);
-          assertEqual(document["cid"], cid._id);
-          assertEqual(typeof document["cid"], 'string');
-          assertEqual(document["data"]["_key"], "test");
-
-          i = i + 1;
-        } else if ( i === 3 && document["type"] === 2001 && document["cid"] === cid._id) {
-          // drop collection;
-          assertTrue(document.hasOwnProperty("tick"));
-          assertTrue(document.hasOwnProperty("type"));
-          assertTrue(document.hasOwnProperty("cid"));
-
-          assertMatch(/^[0-9]+$/, document["tick"]);
-          assertTrue(Number(document["tick"]) >= Number(fromTick));
-          assertEqual(document["type"], 2001);
-          assertEqual(document["cid"], cid._id);
-          assertEqual(typeof document["cid"], 'string');
-
-          i = i + 1;
-        }
-
-        body = body.slice(position + 1, body.length);
-      }
-    }
   };
 }
 
@@ -909,7 +642,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       };
 
@@ -960,7 +693,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1010,7 +743,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       };
 
@@ -1062,7 +795,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : `${i}`, "test2" : false, "test3" : [ ], "test4" : { } };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication2", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication2", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1118,7 +851,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i ++) {
         let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : i, "test2" : false, "test3" : [ ], "test4" : { } };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication2", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication2", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1176,7 +909,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}`};
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
 
         doc = arango.DELETE_RAW(`/_api/document/UnitTestsReplication/test${i}`, body);
@@ -1205,7 +938,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 10; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1236,7 +969,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1279,7 +1012,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 10; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1602,240 +1335,6 @@ function dealing_with_the_logger_Suite () {
       let server = all['server'];
       assertMatch(/^[0-9]+$/, server['serverId']);
       assertTrue(server.hasOwnProperty('version'));
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////;
-    // follow;
-    ////////////////////////////////////////////////////////////////////////////////;
-
-    test_fetches_the_empty_follow_log_2: function() {
-      while (true) {
-        let cmd = api + "/logger-state";
-        let doc = arango.GET_RAW(cmd);
-        assertEqual(doc.code, 200);
-        assertTrue(doc.parsedBody["state"]["running"]);
-        let fromTick = doc.parsedBody["state"]["lastLogTick"];
-
-        cmd = api + "/logger-follow?from=" + fromTick;
-        doc = arango.GET_RAW(cmd);
-
-        if (doc.code !== 204) {
-          // someone else did something else;
-          assertEqual(doc.code, 200);
-          // sleep(for a second && try again;
-          sleep(1);
-        } else {
-          assertEqual(doc.code, 204);
-
-          //assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
-          assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
-          assertEqual(doc.headers["x-arango-replication-lastincluded"], "0");
-          assertEqual(doc.headers["content-type"], "application/x-arango-dump");
-
-          let body = doc.body;
-          assertEqual(body, undefined);
-          break;
-        }
-      }
-    },
-
-    test_fetches_a_create_collection_action_from_the_follow_log_2: function() {
-      db._useDatabase("UnitTestDB");
-      db._drop("UnitTestsReplication");
-
-      sleep(5);
-
-      let cmd = api + "/logger-state";
-      let doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-      assertTrue(doc.parsedBody["state"]["running"]);
-      let fromTick = doc.parsedBody["state"]["lastLogTick"];
-
-      
-      let cid = db._create("UnitTestsReplication", { waitForSync: true });
-      db._useDatabase("_system");
-
-      sleep(5);
-
-      cmd = api + "/logger-follow?from=" + fromTick;
-      doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-
-      assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
-      assertNotEqual(doc.headers["x-arango-replication-lastincluded"], "0");
-      assertEqual(doc.headers["content-type"], "application/x-arango-dump");
-
-      let body = doc.body.toString();
-
-      while (body.length > 1) {
-        let position = body.search("\n");
-
-        if (position === undefined) {
-          break;
-        }
-
-        let part = body.slice(0, position);
-        let document = JSON.parse(part);
-
-        if (document["type"] === 2000 && document["cid"] === cid._id) {
-          assertTrue(document.hasOwnProperty("tick"));
-          assertTrue(document.hasOwnProperty("type"));
-          assertTrue(document.hasOwnProperty("cid"));
-          assertTrue(document.hasOwnProperty("cname"));
-          assertTrue(document.hasOwnProperty("data"));
-
-          assertMatch(/^[0-9]+$/, document["tick"]);
-          assertTrue(Number(document["tick"]) >= Number(fromTick));
-          assertEqual(document["type"], 2000);
-          assertEqual(document["cid"], cid._id);
-          assertEqual(typeof document["cid"], 'string');
-          assertEqual(document["cname"], "UnitTestsReplication");
-
-          let c = document["data"];
-          assertTrue(c.hasOwnProperty("version"));
-          assertEqual(c["type"], 2);
-          assertEqual(c["cid"], cid._id);
-          assertEqual(typeof c["cid"], 'string');
-          assertFalse(c["deleted"]);
-          assertEqual(c["name"], "UnitTestsReplication");
-          assertTrue(c["waitForSync"]);
-        }
-
-        body = body.slice(position + 1, body.length);
-      }
-
-    },
-
-    test_fetches_some_collection_operations_from_the_follow_log_2: function() {
-      db._drop("UnitTestsReplication", "UnitTestDB");
-
-      sleep(5);
-
-      let cmd = api + "/logger-state";
-      let doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-      assertTrue(doc.parsedBody["state"]["running"]);
-      let fromTick = doc.parsedBody["state"]["lastLogTick"];
-
-      // create collection;
-      db._useDatabase("UnitTestDB");
-      let cid = db._create("UnitTestsReplication", { waitForSync: true});
-      db._useDatabase("_system");
-
-      // create document;
-      cmd = "/_db/UnitTestDB/_api/document?collection=UnitTestsReplication";
-      let body = { "_key" : "test", "test" : false };
-      doc = arango.POST_RAW(cmd, body);
-      assertEqual(doc.code, 201);
-      let rev = doc.parsedBody["_rev"];
-
-      // delete document;
-      cmd = "/_db/UnitTestDB/_api/document/UnitTestsReplication/test";
-      doc = arango.DELETE_RAW(cmd);
-      assertEqual(doc.code, 200);
-
-      // drop collection;
-      cmd = "/_db/UnitTestDB/_api/collection/UnitTestsReplication";
-      doc = arango.DELETE_RAW(cmd);
-      assertEqual(doc.code, 200);
-
-      sleep(5);
-
-      cmd = api + "/logger-follow?from=" + fromTick;
-      doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-
-      assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
-      assertNotEqual(doc.headers["x-arango-replication-lastincluded"], "0");
-      assertEqual(doc.headers["content-type"], "application/x-arango-dump");
-
-      body = doc.body.toString();
-      let i = 0;
-      while (body.length > 1) {
-        let position = body.search("\n");
-
-        if (position === undefined) {
-          break;
-        }
-
-        let part = body.slice(0, position);
-        let document = JSON.parse(part);
-
-        if (i === 0) {
-          if (document["type"] === 2000 && document["cid"] === cid._id) {
-            // create collection;
-            assertTrue(document.hasOwnProperty("tick"));
-            assertTrue(document.hasOwnProperty("type"));
-            assertTrue(document.hasOwnProperty("cid"));
-            assertTrue(document.hasOwnProperty("cname"));
-            assertTrue(document.hasOwnProperty("data"));
-
-            assertMatch(/^[0-9]+$/, document["tick"]);
-            assertTrue(Number(document["tick"]) >= Number(fromTick));
-            assertEqual(document["type"], 2000);
-            assertEqual(document["cid"], cid._id);
-            assertEqual(typeof document["cid"], 'string');
-            assertEqual(document["cname"], "UnitTestsReplication");
-
-            let c = document["data"];
-            assertTrue(c.hasOwnProperty("version"));
-            assertEqual(c["type"], 2);
-            assertEqual(c["cid"], cid._id);
-            assertEqual(typeof c["cid"], 'string');
-            assertFalse(c["deleted"]);
-            assertEqual(c["name"], "UnitTestsReplication");
-            assertTrue(c["waitForSync"]);
-
-            i = i + 1;
-          }
-        } else if ( i === 1 && document["type"] === 2300 && document["cid"] === cid._id) {
-          // create document;
-          assertTrue(document.hasOwnProperty("tick"));
-          assertTrue(document.hasOwnProperty("type"));
-          assertTrue(document.hasOwnProperty("cid"));
-
-          assertMatch(/^[0-9]+$/, document["tick"]);
-          assertTrue(Number(document["tick"]) >= Number(fromTick));
-          assertEqual(document["type"], 2300);
-          assertEqual(document["cid"], cid._id);
-          assertEqual(typeof document["cid"], 'string');
-          assertEqual(document["data"]["_key"], "test");
-          assertMatch(/^[a-zA-Z0-9_\-]+$/, document["data"]["_rev"]);
-          assertNotEqual(document["data"]["_rev"], "0");
-          assertFalse(document["data"]["test"]);
-
-          i = i + 1;
-        } else if ( i === 2 && document["type"] === 2302 && document["cid"] === cid._id) {
-          // delete document;
-          assertTrue(document.hasOwnProperty("tick"));
-          assertTrue(document.hasOwnProperty("type"));
-          assertTrue(document.hasOwnProperty("cid"));
-
-          assertMatch(/^[0-9]+$/, document["tick"]);
-          assertTrue(Number(document["tick"]) >= Number(fromTick));
-          assertEqual(document["type"], 2302);
-          assertEqual(document["cid"], cid._id);
-          assertEqual(typeof document["cid"], 'string');
-          assertEqual(document["data"]["_key"], "test");
-
-          i = i + 1;
-        } else if ( i === 3 && document["type"] === 2001 && document["cid"] === cid._id) {
-          // drop collection;
-          assertTrue(document.hasOwnProperty("tick"));
-          assertTrue(document.hasOwnProperty("type"));
-          assertTrue(document.hasOwnProperty("cid"));
-
-          assertMatch(/^[0-9]+$/, document["tick"]);
-          assertTrue(Number(document["tick"]) >= Number(fromTick));
-          assertEqual(document["type"], 2001);
-          assertEqual(document["cid"], cid._id);
-          assertEqual(typeof document["cid"], 'string');
-
-          i = i + 1;
-        }
-
-        body = body.slice(position + 1, body.length);
-      }
     }
   };
 }
@@ -2130,7 +1629,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}`};
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202, doc);
       }
 
@@ -2178,7 +1677,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -2231,7 +1730,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : `${i}`, "test2" : false, "test3" : [ ], "test4" : { } };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication2", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication2", body);
         assertEqual(doc.code, 202, doc);
       }
 
@@ -2288,7 +1787,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : `${i}`, "test2" : false, "test3" : [ ], "test4" : { } };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication2", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication2", body);
         assertEqual(doc.code, 202);
       }
 
@@ -2347,7 +1846,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 10; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
         
         doc = arango.DELETE_RAW(`/_db/UnitTestDB/_api/document/UnitTestsReplication/test${i}`, body);
@@ -2377,7 +1876,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 10; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -2409,7 +1908,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -2454,7 +1953,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 10; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       };
 

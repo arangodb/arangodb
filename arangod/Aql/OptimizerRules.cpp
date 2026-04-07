@@ -81,6 +81,7 @@
 #include "Aql/SortElement.h"
 #include "Aql/SortInformation.h"
 #include "Aql/TraversalConditionFinder.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
@@ -557,8 +558,9 @@ void findShardKeyInComparison(arangodb::aql::AstNode const* root,
   AstNode const* value = nullptr;
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> pair;
 
-  auto lhs = root->getMember(0);
-  auto rhs = root->getMember(1);
+  arangodb::aql::ast::RelationalOperatorNode eqOp(root);
+  auto lhs = eqOp.getLeft();
+  auto rhs = eqOp.getRight();
   std::string result;
 
   if (lhs->isAttributeAccessForVariable(pair, false) &&
@@ -594,10 +596,12 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
 
   switch (root->type) {
     case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR: {
-      if (root->numMembers() != 1) {
+      arangodb::aql::ast::NaryOperatorNode naryOr(root);
+      auto operands = naryOr.getOperands();
+      if (operands.size() != 1) {
         return;
       }
-      root = root->getMember(0);
+      root = operands[0];
       if (root == nullptr ||
           root->type !=
               arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
@@ -606,12 +610,11 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
     }  // falls through
     case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_AND:
     case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND: {
-      for (size_t i = 0; i < root->numMembers(); ++i) {
-        if (root->getMember(i) != nullptr &&
-            root->getMember(i)->type ==
+      for (auto* member : root->getMemberList()) {
+        if (member != nullptr &&
+            member->type ==
                 arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
-          findShardKeyInComparison(root->getMember(i), inputVariable, toFind,
-                                   builder);
+          findShardKeyInComparison(member, inputVariable, toFind, builder);
         }
       }
       break;
@@ -779,11 +782,12 @@ std::optional<arangodb::ShardID> getSingleShardId(
           continue;
         }
 
+        arangodb::aql::ast::ObjectElementNode objElem(sub);
         auto it = toFind.find(sub->getString());
 
         if (it != toFind.end()) {
           // we found one of the shard keys!
-          auto v = sub->getMember(0);
+          auto v = objElem.getValue();
           if (v->isConstant()) {
             // if the attribute value is a constant, we copy it into our
             // builder
@@ -1100,33 +1104,6 @@ bool optimizeTraversalPathVariable(
   return false; /*modified*/
 }
 
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
-                                 char const* context) {
-  aql::Collection* coll = nullptr;
-
-  if (!cname.empty()) {
-    coll = query.collections().add(cname, AccessMode::Type::READ,
-                                   aql::Collection::Hint::Collection);
-    // simon: code below is used for FULLTEXT(), WITHIN(), NEAR(), ..
-    // could become unnecessary if the AST takes care of adding the collections
-    if (!ServerState::instance()->isCoordinator()) {
-      TRI_ASSERT(coll != nullptr);
-      query.trxForOptimization()
-          .addCollectionAtRuntime(cname, AccessMode::Type::READ)
-          .waitAndGet();
-    }
-  }
-
-  if (coll == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-        std::string("collection '") + cname + "' used in " + context +
-            " not found");
-  }
-
-  return coll;
-}
-
 }  // namespace aql
 }  // namespace arangodb
 
@@ -1165,7 +1142,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       continue;
     }
 
-    auto rhs = inNode->getMember(1);
+    ast::RelationalOperatorNode inOp(inNode);
+    auto rhs = inOp.getRight();
 
     if (rhs->type != NODE_TYPE_REFERENCE && rhs->type != NODE_TYPE_ARRAY) {
       continue;
@@ -1226,10 +1204,11 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
               ->hasFlag(Function::Flags::NoEval)) {
         // bypass NOOPT(...) for testing
         TRI_ASSERT(originalNode->numMembers() == 1);
-        auto args = originalNode->getMember(0);
+        ast::FunctionCallNode fcall(originalNode);
+        auto args = fcall.getArguments().getElements();
 
-        if (args->numMembers() > 0) {
-          testNode = args->getMember(0);
+        if (args.size() > 0) {
+          testNode = args[0];
         }
       }
 
@@ -2274,7 +2253,8 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
                 member->getStringView() == attributeName) {
               // found the attribute!
-              AstNode* next = member->getMember(0);
+              ast::ObjectElementNode objElem(member);
+              AstNode* next = objElem.getValue();
               if (!next->isDeterministic()) {
                 // do not descend into non-deterministic nodes
                 return node;
@@ -2297,7 +2277,8 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           }
         }
       } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-        auto const* accessed = node->getMember(0);
+        ast::IndexedAccessNode indexAccess(node);
+        auto const* accessed = indexAccess.getObject();
 
         if (accessed->type == NODE_TYPE_REFERENCE) {
           Variable const* v = static_cast<Variable const*>(accessed->getData());
@@ -2317,7 +2298,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           }
         }
 
-        auto indexValue = node->getMember(1);
+        auto indexValue = indexAccess.getIndex();
 
         if (!indexValue->isConstant() ||
             !(indexValue->isStringValue() || indexValue->isNumericValue())) {
@@ -2348,7 +2329,8 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
                 member->getStringView() == attributeName) {
               // found the attribute!
-              AstNode* next = member->getMember(0);
+              ast::ObjectElementNode objElem2(member);
+              AstNode* next = objElem2.getValue();
               if (!next->isDeterministic()) {
                 // do not descend into non-deterministic nodes
                 return node;
@@ -2394,7 +2376,8 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             position = n + position;
           }
           if (position >= 0 && position < n) {
-            AstNode* next = accessed->getMember(static_cast<size_t>(position));
+            ast::ArrayNode arr(accessed);
+            AstNode* next = arr.getElements()[static_cast<size_t>(position)];
             if (!next->isDeterministic()) {
               // do not descend into non-deterministic nodes
               return node;
@@ -2993,11 +2976,12 @@ struct SortToIndexNode final
           std::vector<arangodb::basics::AttributeName>>& nonNullAttributes)
       const {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      auto andOp = ast::LogicalOperatorNode(node);
       // recurse into both sides
-      getSpecialAttributes(node->getMemberUnchecked(0), variable,
-                           constAttributes, nonNullAttributes);
-      getSpecialAttributes(node->getMemberUnchecked(1), variable,
-                           constAttributes, nonNullAttributes);
+      getSpecialAttributes(andOp.getLeft(), variable, constAttributes,
+                           nonNullAttributes);
+      getSpecialAttributes(andOp.getRight(), variable, constAttributes,
+                           nonNullAttributes);
       return;
     }
 
@@ -3591,9 +3575,9 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
   // in the plan, at least not the expected ones that come from
   // substituing a full collection scan with an index etc.
   // we may find indexes in the plan when this rule runs, but
-  // only some geo/fulltext indexes which are inserted into the
+  // only some fulltext indexes which are inserted into the
   // plan by an optimizer rule that replaces old AQL functions
-  // FULLTEXT/WITHIN/NEAR with actual FOR loop-index lookups
+  // FULLTEXT with actual FOR loop-index lookups
   plan->findNodesOfType(nodes, ::interchangeAdjacentEnumerationsNodeTypes,
                         true);
 
@@ -5521,23 +5505,25 @@ class RemoveToEnumCollFinder final
                 continue;
               }
 
+              ast::ObjectElementNode objElem(sub);
               std::string attributeName = sub->getString();
               auto it = toFind.find(attributeName);
 
               if (it != toFind.end()) {
                 // we found one of the shard keys!
                 // remove the attribute from our to-do list
-                auto value = sub->getMember(0);
+                auto value = objElem.getValue();
 
                 // check if we have something like: { key: source.key }
                 if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
                     value->getStringView() == attributeName) {
                   // check if all values for the shard keys are referring to
                   // the same FOR loop variable
-                  auto var = value->getMember(0);
+                  ast::AttributeAccessNode attrAccess(value);
+                  auto var = attrAccess.getObject();
                   if (var->type == NODE_TYPE_REFERENCE) {
-                    auto accessedVariable =
-                        static_cast<Variable const*>(var->getData());
+                    ast::ReferenceNode ref(var);
+                    auto accessedVariable = ref.getVariable();
 
                     if (lastVariable == nullptr) {
                       lastVariable = accessedVariable;
@@ -5697,8 +5683,9 @@ struct CommonNodeFinder {
   bool find(AstNode const* node, AstNodeType condition,
             AstNode const*& commonNode, std::string& commonName) {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return (find(node->getMember(0), condition, commonNode, commonName) &&
-              find(node->getMember(1), condition, commonNode, commonName));
+      ast::LogicalOperatorNode orOp(node);
+      return (find(orOp.getLeft(), condition, commonNode, commonName) &&
+              find(orOp.getRight(), condition, commonNode, commonName));
     }
 
     if (node->type == NODE_TYPE_VALUE) {
@@ -5713,8 +5700,9 @@ struct CommonNodeFinder {
           node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
           node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
           node->type == NODE_TYPE_OPERATOR_BINARY_IN))) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
+      ast::BinaryOperatorNode binOp(node);
+      auto lhs = binOp.getLeft();
+      auto rhs = binOp.getRight();
 
       bool const isIn =
           (node->type == NODE_TYPE_OPERATOR_BINARY_IN && rhs->isArray());
@@ -5831,8 +5819,9 @@ struct OrSimplifier {
     attributeName.clear();
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
+      ast::RelationalOperatorNode eqOp(node);
+      auto lhs = eqOp.getLeft();
+      auto rhs = eqOp.getRight();
       if (!preferRight && qualifies(lhs, attributeName)) {
         if (rhs->isDeterministic()) {
           attr = lhs;
@@ -5850,8 +5839,9 @@ struct OrSimplifier {
       }
       // intentionally falls through
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
+      ast::RelationalOperatorNode inOp(node);
+      auto lhs = inOp.getLeft();
+      auto rhs = inOp.getRight();
       if (rhs->isArray() && qualifies(lhs, attributeName)) {
         if (rhs->isDeterministic()) {
           attr = lhs;
@@ -5897,8 +5887,9 @@ struct OrSimplifier {
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
+      ast::LogicalOperatorNode orOp(node);
+      auto lhs = orOp.getLeft();
+      auto rhs = orOp.getRight();
 
       auto lhsNew = simplify(lhs);
       auto rhsNew = simplify(rhs);
@@ -5963,8 +5954,9 @@ struct OrSimplifier {
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
+      ast::LogicalOperatorNode andOp(node);
+      auto lhs = andOp.getLeft();
+      auto rhs = andOp.getRight();
 
       auto lhsNew = simplify(lhs);
       auto rhsNew = simplify(rhs);
@@ -6099,16 +6091,18 @@ struct RemoveRedundantOr {
     AstNodeType type = node->type;
 
     if (type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return (hasRedundantConditionWalker(node->getMember(0)) &&
-              hasRedundantConditionWalker(node->getMember(1)));
+      ast::LogicalOperatorNode orOp(node);
+      return (hasRedundantConditionWalker(orOp.getLeft()) &&
+              hasRedundantConditionWalker(orOp.getRight()));
     }
 
     if (type == NODE_TYPE_OPERATOR_BINARY_LE ||
         type == NODE_TYPE_OPERATOR_BINARY_LT ||
         type == NODE_TYPE_OPERATOR_BINARY_GE ||
         type == NODE_TYPE_OPERATOR_BINARY_GT) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
+      ast::RelationalOperatorNode relOp(node);
+      auto lhs = relOp.getLeft();
+      auto rhs = relOp.getRight();
 
       if (hasRedundantConditionWalker(rhs) &&
           !hasRedundantConditionWalker(lhs) && lhs->isConstant()) {
@@ -7236,18 +7230,22 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node,
       }
       return false;
     // only DISTANCE is allowed with <=, <, >=, >
-    case NODE_TYPE_OPERATOR_BINARY_LE:
-      TRI_ASSERT(node->numMembers() == 2);
-      return eval(node->getMember(0), node->getMember(1), true);
-    case NODE_TYPE_OPERATOR_BINARY_LT:
-      TRI_ASSERT(node->numMembers() == 2);
-      return eval(node->getMember(0), node->getMember(1), false);
-    case NODE_TYPE_OPERATOR_BINARY_GE:
-      TRI_ASSERT(node->numMembers() == 2);
-      return eval(node->getMember(1), node->getMember(0), true);
-    case NODE_TYPE_OPERATOR_BINARY_GT:
-      TRI_ASSERT(node->numMembers() == 2);
-      return eval(node->getMember(1), node->getMember(0), false);
+    case NODE_TYPE_OPERATOR_BINARY_LE: {
+      ast::RelationalOperatorNode relOp(node);
+      return eval(relOp.getLeft(), relOp.getRight(), true);
+    }
+    case NODE_TYPE_OPERATOR_BINARY_LT: {
+      ast::RelationalOperatorNode relOp(node);
+      return eval(relOp.getLeft(), relOp.getRight(), false);
+    }
+    case NODE_TYPE_OPERATOR_BINARY_GE: {
+      ast::RelationalOperatorNode relOp(node);
+      return eval(relOp.getRight(), relOp.getLeft(), true);
+    }
+    case NODE_TYPE_OPERATOR_BINARY_GT: {
+      ast::RelationalOperatorNode relOp(node);
+      return eval(relOp.getRight(), relOp.getLeft(), false);
+    }
     default:
       return false;
   }
@@ -7820,14 +7818,14 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
           }
         }
       } else if (node->type == NODE_TYPE_FCALL && node->numMembers() > 0) {
-        auto func = static_cast<Function const*>(node->getData());
-        auto args = node->getMember(0);
+        ast::FunctionCallNode fcall(node);
+        auto func = fcall.getFunction();
+        auto args = fcall.getArguments().getElements();
         if (func->name == "FIRST" || func->name == "LENGTH" ||
             func->name == "COUNT") {
-          if (args->numMembers() > 0 &&
-              args->getMember(0)->type == NODE_TYPE_REFERENCE) {
-            Variable const* v =
-                static_cast<Variable const*>(args->getMember(0)->getData());
+          if (args.size() > 0 && args[0]->type == NODE_TYPE_REFERENCE) {
+            ast::ReferenceNode ref(args[0]);
+            Variable const* v = ref.getVariable();
             auto setter = plan->getVarSetBy(v->id);
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
               found.first = setter;
@@ -8218,13 +8216,13 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
     // look for all expressions that contain COUNT(subquery) or LENGTH(subquery)
     auto visitor = [&localCandidates, &plan](AstNode const* node) -> bool {
       if (node->type == NODE_TYPE_FCALL && node->numMembers() > 0) {
-        auto func = static_cast<Function const*>(node->getData());
-        auto args = node->getMember(0);
+        ast::FunctionCallNode fcall(node);
+        auto func = fcall.getFunction();
+        auto args = fcall.getArguments().getElements();
         if (func->name == "LENGTH" || func->name == "COUNT") {
-          if (args->numMembers() > 0 &&
-              args->getMember(0)->type == NODE_TYPE_REFERENCE) {
-            Variable const* v =
-                static_cast<Variable const*>(args->getMember(0)->getData());
+          if (args.size() > 0 && args[0]->type == NODE_TYPE_REFERENCE) {
+            ast::ReferenceNode ref(args[0]);
+            Variable const* v = ref.getVariable();
             auto setter = plan->getVarSetBy(v->id);
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
               // COUNT(subquery) / LENGTH(subquery)

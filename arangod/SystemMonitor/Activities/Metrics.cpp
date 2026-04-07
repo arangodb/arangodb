@@ -21,11 +21,10 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics.h"
-
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 
-using namespace arangodb::activities;
+namespace arangodb::activities {
 
 auto RegistryMetrics::increment_total_nodes() -> void {
   activities_total->count();
@@ -33,21 +32,8 @@ auto RegistryMetrics::increment_total_nodes() -> void {
 auto RegistryMetrics::increment_registered_nodes() -> void {
   existing_activities->fetch_add(1);
 }
-auto RegistryMetrics::decrement_registered_nodes() -> void {
-  existing_activities->fetch_sub(1);
+auto RegistryMetrics::store_registered_nodes(std::uint64_t count) -> void {
+  existing_activities->store(count, std::memory_order_relaxed);
 }
-auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_activities->fetch_add(1);
-}
-auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_activities->fetch_sub(1);
-}
-auto RegistryMetrics::increment_total_lists() -> void {
-  thread_registries_total->count();
-}
-auto RegistryMetrics::increment_existing_lists() -> void {
-  existing_thread_registries->fetch_add(1);
-}
-auto RegistryMetrics::decrement_existing_lists() -> void {
-  existing_thread_registries->fetch_sub(1);
-}
+
+}  // namespace arangodb::activities

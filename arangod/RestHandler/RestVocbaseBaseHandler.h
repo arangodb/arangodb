@@ -82,9 +82,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // gharial graph api path
   static std::string const GHARIAL_PATH;
 
-  // endpoint path
-  static std::string const ENDPOINT_PATH;
-
   // document import path
   static std::string const IMPORT_PATH;
 
@@ -96,9 +93,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   // tasks path
   static std::string const TASKS_PATH;
-
-  // upload path
-  static std::string const UPLOAD_PATH;
 
   // users path
   static std::string const USERS_PATH;

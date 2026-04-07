@@ -22,45 +22,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Containers/Concurrent/metrics.h"
+#include "Activities/IRegistryMetrics.h"
 #include "Metrics/Fwd.h"
+
+#include <memory>
 
 namespace arangodb::activities {
 
-struct RegistryMetrics : arangodb::containers::Metrics {
-  RegistryMetrics(
-      std::shared_ptr<arangodb::metrics::Counter> activities_total,
-      std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-          existing_activities,
-      std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-          ready_for_deletion_activities,
-      std::shared_ptr<arangodb::metrics::Counter> thread_registries_total,
-      std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-          existing_thread_registries)
+struct RegistryMetrics : IRegistryMetrics {
+  RegistryMetrics(std::shared_ptr<arangodb::metrics::Counter> activities_total,
+                  std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
+                      existing_activities)
+
       : activities_total{activities_total},
-        existing_activities{existing_activities},
-        ready_for_deletion_activities{ready_for_deletion_activities},
-        thread_registries_total{thread_registries_total},
-        existing_thread_registries{existing_thread_registries} {}
+        existing_activities{existing_activities} {}
   ~RegistryMetrics() = default;
   auto increment_total_nodes() -> void override;
   auto increment_registered_nodes() -> void override;
-  auto decrement_registered_nodes() -> void override;
-  auto increment_ready_for_deletion_nodes() -> void override;
-  auto decrement_ready_for_deletion_nodes() -> void override;
-  auto increment_total_lists() -> void override;
-  auto increment_existing_lists() -> void override;
-  auto decrement_existing_lists() -> void override;
+  auto store_registered_nodes(std::uint64_t count) -> void override;
 
  private:
   std::shared_ptr<arangodb::metrics::Counter> activities_total = nullptr;
   std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>> existing_activities =
       nullptr;
-  std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-      ready_for_deletion_activities = nullptr;
-  std::shared_ptr<arangodb::metrics::Counter> thread_registries_total = nullptr;
-  std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-      existing_thread_registries = nullptr;
 };
 
 }  // namespace arangodb::activities

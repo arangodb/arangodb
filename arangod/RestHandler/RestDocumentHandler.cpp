@@ -157,27 +157,23 @@ async<void> RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting " + DOCUMENT_PATH +
-                      "?collection=<identifier>");
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+        "superfluous suffix, expecting " + DOCUMENT_PATH + "/<collection>");
     co_return;
   }
 
-  bool found;
-  std::string cname;
-  if (suffixes.size() == 1) {
-    cname = suffixes[0];
-    found = true;
-  } else {
-    cname = _request->value("collection", found);
-  }
-
-  if (!found || cname.empty()) {
+  if (suffixes.empty() || suffixes[0].empty()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      " POST /_api/document/<collection> or query parameter "
-                      "'collection'");
+                      " POST /_api/document/<collection>");
+    co_return;
+  }
+
+  std::string const& cname = suffixes[0];
+  // if name is a numeric collection id, generate a 400 error
+  if (rejectNumericCollectionId(cname)) {
     co_return;
   }
 
@@ -203,9 +199,11 @@ async<void> RestDocumentHandler::insertDocument() {
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   handleFillIndexCachesValue(opOptions);
 
-  if (_request->parsedValue(StaticStrings::Overwrite, false)) {
-    // the default behavior if just "overwrite" is set
-    opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  if (_request->parsedValue("overwrite", false)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "the 'overwrite' option has been removed, use "
+                  "'overwriteMode' instead");
+    co_return;
   }
 
   std::string const& mode = _request->value(StaticStrings::OverwriteMode);
@@ -334,6 +332,11 @@ async<void> RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   // split the document reference
   std::string const& collection = suffixes[0];
+
+  // if name is a numeric collection id, generate a 400 error
+  if (rejectNumericCollectionId(collection)) {
+    co_return;
+  }
 
   std::string const& key = suffixes[1];
 
@@ -466,41 +469,31 @@ async<void> RestDocumentHandler::updateDocument() {
 async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if (suffixes.size() > 2) {
+  if (suffixes.size() == 0 || suffixes.size() > 2) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(
         " /_api/document/<collection> or"
-        " /_api/document/<collection>/<key> or"
-        " /_api/document and query parameter 'collection'");
-
+        " /_api/document/<collection>/<key>");
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     co_return;
   }
 
-  bool isArrayCase = suffixes.size() <= 1;
+  // if name is a numeric collection id, generate a 400 error
+  if (rejectNumericCollectionId(suffixes[0])) {
+    co_return;
+  }
 
-  std::string cname;
+  bool isArrayCase = suffixes.size() == 1;
+  std::string const& cname = suffixes[0];
   std::string key;
-
-  if (isArrayCase) {
-    bool found;
-    if (suffixes.size() == 1) {
-      cname = suffixes[0];
-      found = true;
-    } else {
-      cname = _request->value("collection", found);
-    }
-    if (!found) {
-      std::string msg(
-          "collection must be given in URL path or query parameter "
-          "'collection' must be specified");
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
-      co_return;
-    }
-  } else {
-    cname = suffixes[0];
+  if (!isArrayCase) {
     key = suffixes[1];
+  }
+  if (cname.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "collection name must be non-empty in URL path");
+    co_return;
   }
 
   bool parseSuccess = false;
@@ -678,6 +671,11 @@ async<void> RestDocumentHandler::removeDocument() {
 
   // split the document reference
   std::string const& cname = suffixes[0];
+
+  // if name is a numeric collection id, generate a 400 error
+  if (rejectNumericCollectionId(cname)) {
+    co_return;
+  }
 
   std::string key;
   if (suffixes.size() == 2) {

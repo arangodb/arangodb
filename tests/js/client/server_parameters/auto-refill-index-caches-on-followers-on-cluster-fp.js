@@ -28,9 +28,7 @@
 if (getOptions === true) {
   return {
     'rocksdb.auto-refill-index-caches-on-modify' : 'true',
-    'rocksdb.auto-refill-index-caches-on-followers' : 'true',
-    'server.statistics' : 'false',
-    'foxx.queues' : 'false',
+    'rocksdb.auto-refill-index-caches-on-followers' : 'true'
   };
 }
 

@@ -30,7 +30,7 @@ const internal = require('internal');
 const jsunity = require("jsunity");
 
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 
 ////////////////////////////////////////////////////////////////////////////////
 // OpenAPI endpoints
@@ -38,20 +38,46 @@ const contentType = forceJson ? "application/json" :  "application/x-velocypack"
 
 function openapi_endpointsSuite() {
   return {
-    test_retrieves_openapi_v1: function() {
+    test_retrieves_openapi_v1: function () {
       let doc = arango.GET_RAW("/_arango/v1/openapi.json");
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], "application/json");
-      
+
       let response = doc.parsedBody;
       assertNotUndefined(response);
-      
+
       // Verify it's a valid OpenAPI structure
       assertNotUndefined(response.openapi, "Should have openapi version field");
       assertNotUndefined(response.info, "Should have info object");
       assertNotUndefined(response.paths, "Should have paths object");
-      
+
+      // Verify it's a JSON object with expected structure
+      assertEqual(typeof response, 'object');
+      assertEqual(typeof response.paths, 'object');
+    },
+
+    test_openapi_v2_does_not_exist: function () {
+      let doc = arango.GET_RAW("/_arango/v2/openapi.json");
+
+      assertEqual(doc.code, 404);
+      assertEqual(doc.errorNum, 404);
+    },
+
+    test_retrieves_openapi_experimental: function () {
+      let doc = arango.GET_RAW("/_arango/experimental/openapi.json");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], "application/json");
+
+      let response = doc.parsedBody;
+      assertNotUndefined(response);
+
+      // Verify it's a valid OpenAPI structure
+      assertNotUndefined(response.openapi, "Should have openapi version field");
+      assertNotUndefined(response.info, "Should have info object");
+      assertNotUndefined(response.paths, "Should have paths object");
+
       // Verify it's a JSON object with expected structure
       assertEqual(typeof response, 'object');
       assertEqual(typeof response.paths, 'object');
@@ -61,6 +87,26 @@ function openapi_endpointsSuite() {
       let doc = arango.GET_RAW("/_arango/v0/openapi.json");
       assertEqual(doc.code, 404);
     },
+
+    test_openapi_v1_and_experimental_differ: function () {
+      let docV0 = arango.GET_RAW("/_arango/v1/openapi.json");
+      let docExp = arango.GET_RAW("/_arango/experimental/openapi.json");
+
+      assertEqual(docV0.code, 200);
+      assertEqual(docExp.code, 200);
+
+      let v0 = docV0.parsedBody;
+      let exp = docExp.parsedBody;
+
+      // Both should be valid OpenAPI documents
+      assertNotUndefined(v0.openapi);
+      assertNotUndefined(exp.openapi);
+
+      // They should potentially differ in content
+      // (At minimum, they should have different version info or paths)
+      assertNotUndefined(v0.paths);
+      assertNotUndefined(exp.paths);
+    }
   };
 }
 

@@ -917,39 +917,4 @@ template Result parseCoordinates<false>(velocypack::Slice vpack,
                                         coding::Options options,
                                         Encoder* encoder);
 
-Result parseLoop(velocypack::Slice vpack, S2Loop& loop, bool geoJson) {
-  static constexpr bool Validation = true;
-  if (ADB_UNLIKELY(!vpack.isArray())) {
-    return {TRI_ERROR_BAD_PARAMETER, "Coordinates missing."};
-  }
-  std::vector<S2LatLng> vertices;
-  auto r = geoJson ? parseImpl<Validation, true>(vpack, vertices)
-                   : parseImpl<Validation, false>(vpack, vertices);
-  if (ADB_UNLIKELY(!r.ok())) {
-    return r;
-  }
-  removeAdjacentDuplicates(vertices);
-  switch (vertices.size()) {
-    case 0:
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Loop should be 3 different vertices or be empty or full."};
-    case 1:
-      break;
-    default:
-      if (vertices.front() == vertices.back()) {
-        vertices.pop_back();
-      }
-      break;
-  }
-  // size() 2 here is incorrect but it will be handled by FindValidationError
-  loop = S2Loop{vertices, S2Debug::DISABLE};
-  S2Error error;
-  if (ADB_UNLIKELY(loop.FindValidationError(&error))) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("Invalid loop: ", error.text())};
-  }
-  loop.Normalize();
-  return {};
-}
-
 }  // namespace arangodb::geo::json

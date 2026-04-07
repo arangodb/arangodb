@@ -32,8 +32,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -57,19 +55,9 @@ RestStatus RocksDBRestWalHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
   std::string const& operation = suffixes[0];
-  if (operation == "transactions") {
-    if (type == rest::RequestType::GET) {
-      transactions();
-      return RestStatus::DONE;
-    }
-  } else if (operation == "flush") {
+  if (operation == "flush") {
     if (type == rest::RequestType::PUT) {
       flush();
-      return RestStatus::DONE;
-    }
-  } else if (operation == "properties") {
-    if (type == rest::RequestType::GET || type == rest::RequestType::PUT) {
-      properties();
       return RestStatus::DONE;
     }
   } else if (operation == "wait_for_estimator_sync") {
@@ -102,12 +90,6 @@ RestStatus RocksDBRestWalHandler::execute() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
-}
-
-void RocksDBRestWalHandler::properties() {
-  // not supported on rocksdb
-  generateResult(rest::ResponseCode::NOT_IMPLEMENTED,
-                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void RocksDBRestWalHandler::flush() {
@@ -157,14 +139,4 @@ void RocksDBRestWalHandler::flush() {
   }
   generateResult(rest::ResponseCode::OK,
                  arangodb::velocypack::Slice::emptyObjectSlice());
-}
-
-void RocksDBRestWalHandler::transactions() {
-  transaction::Manager* mngr = transaction::ManagerFeature::manager();
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("runningTransactions",
-              VPackValue(mngr->getActiveTransactionCount()));
-  builder.close();
-  generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

@@ -219,16 +219,8 @@ function recoverySuite () {
         assertEqual(rev, c1, c.name());
         assertTrue(ver.equal, c.name());
       }
-
-      ["_queues"].forEach((colName) => {
-        let c = db._collection(colName);
-        assertEqual(c.count(), toArray(c));
-        assertEqual(c._revisionTreeSummary().count, c.count());
-        assertTrue(c._revisionTreeVerification().equal);
-      });
     },
-
-  };
+  };  
 }
 
 function main (argv, config) {

@@ -40,10 +40,6 @@ namespace tests {
 
 using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
-VPackBufferPtr vpackFromJsonString(char const* c);
-
-VPackBufferPtr operator"" _vpack(const char* json, size_t);
-
 void VPackToAqlItemBlock(velocypack::Slice data,
                          arangodb::aql::RegisterCount nrRegs,
                          arangodb::aql::AqlItemBlock& block);

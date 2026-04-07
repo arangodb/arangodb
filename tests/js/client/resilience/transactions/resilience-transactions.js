@@ -29,7 +29,6 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
-const tasks = require("@arangodb/tasks");
 const _ = require("lodash");
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
@@ -39,25 +38,6 @@ const {
   getEndpointById
 } = require("@arangodb/test-helper");
 const CI = require('@arangodb/cluster-info');
-
-const tasksCompleted = () => {
-  return 0 === tasks.get().filter((task) => {
-    return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/));
-  }).length;
-};
-const waitForTasks = () => {
-  const time = require("internal").time;
-  const start = time();
-  while (!tasksCompleted()) {
-    if (time() - start > 300) { // wait for 5 minutes maximum
-      fail("Timeout after 5 minutes");
-    }
-    require("internal").wait(0.5, false);
-  }
-  require('internal').wal.flush(true, true);
-  // wait an extra second for good measure
-  require("internal").wait(1.0, false);
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -200,46 +180,8 @@ function ClusterTransactionSuite() {
       assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief check transaction abort when a leader fails
-    ////////////////////////////////////////////////////////////////////////////////
-    /*testFailLeader: function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-
-      let docs = [];
-      let x = 0;
-      while (x++ < 1000) {
-        docs.push({_key: 'test' + x});
-      }
-      db._collection(cn).save(docs);
-      assertEqual(db._collection(cn).count(), 1000);
-
-      const cmd = `const db = require('internal').db; 
-      var trx = { 
-        collections: { write: ['${cn}'] }, 
-        action: function () {
-          const db = require('internal').db; 
-          var ops = db._query('FOR i IN ${cn} REMOVE i._key IN ${cn}').getExtra().stats; 
-          require('internal').sleep(25.0);
-        }
-      };
-      db._executeTransaction(trx);`;
-      
-      tasks.register({ name: "UnitTestsSlowTrx", command: cmd });
-      wait(2.0);
-      failLeader();
-      wait(15.0); // wait for longer than grace period
-      healLeader();
-      waitForTasks();
-
-      // transaction should have been aborted
-      assertTrue(waitForSynchronousReplication("_system"));
-      assertEqual(db._collection(cn).count(), 1000);
-      assertEqual(db._collection(cn).all().toArray().length, 1000);
-    },*/
-    
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fail the follower, transaction should succeeed regardless
+  /// @brief fail the follower, transaction should succeed regardless
   ////////////////////////////////////////////////////////////////////////////////
     testFailFollower: function () {
       assertTrue(waitForSynchronousReplication("_system"));
@@ -252,23 +194,37 @@ function ClusterTransactionSuite() {
       db._collection(cn).save(docs);
       assertEqual(db._collection(cn).count(), 1000);
 
-      const cmd = `const db = require('internal').db; 
-      var trx = { 
-        collections: { write: ['${cn}'] }, 
-        action: function () {
-          const db = require('internal').db; 
-          var ops = db._query('FOR i IN ${cn} REMOVE i._key IN ${cn}').getExtra().stats; 
-          require('internal').sleep(25.0);
-        }
+      // Run a long-lived streaming transaction in a background process, keeping
+      // it open while the follower is failed and healed — mirrors the original
+      // task-based JS transaction test.
+      const ct = require('@arangodb/testutils/client-tools');
+      const IM = global.instanceManager;
+      let func = function (cn) {
+        let db = require('internal').db;
+        const tx = db._createTransaction({
+          collections: { write: [cn] }
+        });
+        tx.query('FOR i IN ' + cn + ' REMOVE i._key IN ' + cn);
+        require('internal').sleep(25.0); // hold transaction open across the follower failure
+        tx.commit();
       };
-      db._executeTransaction(trx);`;
-      
-      tasks.register({ name: "UnitTestsSlowTrx", command: cmd });
-      wait(2.0);
+      let bgJob = ct.run.launchPlainSnippetInBG(`(${String(func)})("${cn}");`, 0);
+
+      wait(2.0); // let the BG process open the transaction and enter the sleep
       failFollower();
-      wait(15.0); // wait for longer than grace period
+      wait(15.0); // follower is down for 15s while the transaction is open
       healFollower();
-      waitForTasks();
+
+      // wait for the BG snippet to finish naturally (remaining sleep + commit)
+      let deadline = require('internal').time() + 60;
+      while (require('internal').time() < deadline) {
+        if (require('internal').statusExternal(bgJob.pid).status !== 'RUNNING') {
+          break;
+        }
+        wait(1.0);
+      }
+      ct.run.joinForceBGShells(IM.options, [bgJob]);
+      assertTrue(!bgJob.failed, 'background transaction failed');
 
       // transaction should have been successful
       assertTrue(waitForSynchronousReplication("_system"));

@@ -35,13 +35,18 @@ const jsunity = require('jsunity');
 
 function testSuite() {
   return {
-    testApiGet : function() {
-      let res = arango.GET("/_admin/log");
-      assertTrue(res.hasOwnProperty("totalAmount"));
-      assertTrue(res.hasOwnProperty("lid"));
-      assertTrue(res.hasOwnProperty("timestamp"));
-      assertTrue(res.hasOwnProperty("level"));
-      assertTrue(res.hasOwnProperty("text"));
+    testApiGetEntries : function() {
+      let res = arango.GET("/_admin/log/entries");
+      assertTrue(res.hasOwnProperty("total"));
+      assertTrue(res.hasOwnProperty("messages"));
+      assertTrue(Array.isArray(res.messages));
+      res.messages.forEach((message) => {
+        assertTrue(message.hasOwnProperty("id"));
+        assertTrue(message.hasOwnProperty("topic"));
+        assertTrue(message.hasOwnProperty("level"));
+        assertTrue(message.hasOwnProperty("date"));
+        assertTrue(message.hasOwnProperty("message"));
+      });
     },
     
     testApiGetLevel : function() {
@@ -74,11 +79,22 @@ function testSuite() {
       });
     },
     
-    testApiDelete : function() {
-      let res = arango.DELETE("/_admin/log");
+    testApiDeleteEntries : function() {
+      let res = arango.DELETE("/_admin/log/entries");
       assertEqual(200, res.code);
     },
-    
+
+    testDeprecatedApiGet : function() {
+      let res = arango.GET("/_admin/log");
+      assertTrue(res.error);
+      assertEqual(410, res.code);
+    },
+
+    testDeprecatedApiDelete : function() {
+      let res = arango.DELETE("/_admin/log");
+      assertTrue(res.error);
+      assertEqual(410, res.code);
+    },
   };
 }
 

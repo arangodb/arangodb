@@ -22,7 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Feature.h"
 
-#include "Activities/activity_registry_variable.h"
+#include "Activities/RegistryGlobalVariable.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FutureSharedLock.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -31,7 +32,9 @@
 #include "velocypack/SharedSlice.h"
 #include "Inspection/VPack.h"
 
+#include <chrono>
 #include <thread>
+#include <unordered_map>
 
 using namespace arangodb::activities;
 using namespace arangodb;
@@ -41,18 +44,7 @@ DECLARE_COUNTER(
     "Total number of created activities since database process start");
 
 DECLARE_GAUGE(arangodb_activities_existing, std::uint64_t,
-              "Number of currently existing activities");
-
-DECLARE_GAUGE(arangodb_activities_ready_for_deletion, std::uint64_t,
-              "Number of currently existing activities that wait "
-              "for their garbage collection");
-
-DECLARE_COUNTER(arangodb_activities_thread_registries_total,
-                "Total number of threads that started activities "
-                "since database process start");
-
-DECLARE_GAUGE(arangodb_activities_existing_thread_registries, std::uint64_t,
-              "Number of currently existing activity thread registries");
+              "Number of currently registered activities");
 
 Feature::Feature(
     application_features::ApplicationServer& server,
@@ -66,37 +58,25 @@ auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
       metrics_feature.addShared(arangodb_activities_total{}),
-      metrics_feature.addShared(arangodb_activities_existing{}),
-      metrics_feature.addShared(arangodb_activities_ready_for_deletion{}),
-      metrics_feature.addShared(arangodb_activities_thread_registries_total{}),
-      metrics_feature.addShared(
-          arangodb_activities_existing_thread_registries{}));
+      metrics_feature.addShared(arangodb_activities_existing{}));
 }
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)
-      : _thread([gc_timeout, this](std::stop_token stoken) {
+      : _thread([gc_timeout](std::stop_token stoken) {
           while (not stoken.stop_requested()) {
-            std::unique_lock guard(_mutex);
-            auto status = _cv.wait_for(guard, std::chrono::seconds{gc_timeout});
-            if (status == std::cv_status::timeout) {
-              activities::registry.run_external_cleanup();
-            }
+            std::this_thread::sleep_for(std::chrono::seconds{gc_timeout});
+            activities::registry.garbageCollect();
           }
         }) {}
 
-  ~CleanupThread() {
-    _thread.request_stop();
-    _cv.notify_one();
-  }
+  ~CleanupThread() { _thread.request_stop(); }
 
-  std::mutex _mutex;
-  std::condition_variable _cv;
   std::jthread _thread;
 };
 
 void Feature::prepare() {
   _metrics = create_metrics(server().getFeature<metrics::MetricsFeature>());
-  registry.set_metrics(_metrics);
+  registry.setMetrics(_metrics);
 }
 
 void Feature::start() {
@@ -114,8 +94,10 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
           "Timeout in seconds between activity registry garbage collections.",
           new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
                                       /*minValue*/ 1))
-      .setLongDescription(
-          R"(Each thread that is involved in the activity-registry needs to garbage collect its finished activities regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
+      .setLongDescription(R"(Each thread that is involved in the
+activity-registry needs to garbage collect its finished activities regularly.
+This option controls how often this is done in seconds. This can possibly be
+performance-relevant because each involved thread acquires a lock.)");
 
   options
       ->addOption(
@@ -123,40 +105,31 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
           "Whether only superusers can request the API or all admin users",
           new options::BooleanParameter(&_options.isOnlySuperUserEnabled),
           options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
-      .setLongDescription(
-          R"(Switched on, only superuser is allowed to query this endpoint.
-      Default is that admin users are allowed to query the endpoint.)");
+      .setLongDescription(R"(If enabled, only the superuser is allowed to query
+this endpoint. The default is that all admin users are allowed to query the
+endpoint.)");
 }
 
-struct ActivityOutput {
-  std::string type;
-  ActivityId id;
-  ActivityId parent;
-  Metadata metadata;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ActivityOutput& x) {
-  return f.object(x).fields(f.embedFields(x.id), f.field("type", x.type),
-                            f.field("parent", x.parent),
-                            f.field("metadata", x.metadata));
-}
-
-velocypack::Builder Feature::getData() const {
-  VPackBuilder builder;
-  builder.openArray();
-  registry.for_node([&](ActivityInRegistrySnapshot activity) {
-    if (activity.state != activities::State::Deleted) {
-      auto a = ActivityOutput{.type = std::move(activity.type),
-                              .id = std::move(activity.id),
-                              .parent = std::move(activity.parent),
-                              .metadata = std::move(activity.metadata)};
-      velocypack::serialize(builder, a);
-    }
-  });
-  builder.close();
-  return builder;
+velocypack::SharedSlice Feature::getData() const {
+  auto res = registry.snapshot();
+  if (res.ok()) {
+    return res.get();
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::format("Failed to serialize snapshot with error: {}",
+                    res.error().error()));
+  }
 }
 
 velocypack::SharedSlice Feature::getCrashData() const {
-  return getData().sharedSlice();
+  auto res = registry.snapshot();
+  if (res.ok()) {
+    return getData();
+  } else {
+    // YOLO.  If an exception is thrown here it happens inside crash
+    // data collection and the synthetic text extrusion machine
+    // complains.
+    return velocypack::SharedSlice();
+  }
 }

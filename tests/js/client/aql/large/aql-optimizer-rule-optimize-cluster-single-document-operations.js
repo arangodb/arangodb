@@ -324,20 +324,20 @@ function optimizerClusterSingleDocumentTestSuite() {
         [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0],
         [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0],
 
-        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0],
-        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0],
+        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwriteMode: 'replace'} RETURN OLD`, 0, 1, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwriteMode: 'replace'} RETURN OLD`, 0, 1, true, setupC2, 0],
 
-        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0],
-        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0],
+        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwriteMode: 'replace'} RETURN NEW`, 0, 1, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwriteMode: 'replace'} RETURN NEW`, 0, 1, true, setupC2, 0],
 
-        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, 0],
-        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
+        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true} RETURN NEW`, 0, 1, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
 
-        [`INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 2, true, setupC2, 0],
-        [`INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 2, true, setupC2, 0],
-        [`LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW, a]`, 2, 2, true, setupC2, 0],
-        [`LET a = { a: 123 } INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW, a: a }`, 2, 2, true, setupC2, 0],
-        [`LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN  ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN a`, 3, 3, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwriteMode: 'replace'} RETURN [OLD, NEW]`, 1, 2, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwriteMode: 'replace'} RETURN { old: OLD, new: NEW }`, 1, 2, true, setupC2, 0],
+        [`LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwriteMode: 'replace'} RETURN [OLD, NEW, a]`, 2, 2, true, setupC2, 0],
+        [`LET a = { a: 123 } INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwriteMode: 'replace'} RETURN { old: OLD, new: NEW, a: a }`, 2, 2, true, setupC2, 0],
+        [`LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN  ${cn2} OPTIONS {waitForSync: true, overwriteMode: 'replace'} RETURN a`, 3, 3, true, setupC2, 0],
         [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW`, 0, 1, true, setupC2, 0],
         [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW._key`, 0, 2, true, setupC2, 0],
       ];

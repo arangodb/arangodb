@@ -716,26 +716,29 @@ void ExecutionPlan::extendCollectionsByViewsFromVelocyPack(
 
 /// @brief create an execution plan from VelocyPack
 std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
-    Ast* ast, velocypack::Slice slice, bool simpleSnippetFormat) {
+    Ast* ast, velocypack::Slice slice) {
   TRI_ASSERT(ast != nullptr);
+  TRI_ASSERT(slice.isObject());
+
+  VPackSlice nodes = slice.get("nodes");
+  if (!nodes.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "plan \"nodes\" attribute is not an array");
+  }
 
   auto plan = std::make_unique<ExecutionPlan>(ast, /*trackMemoryUsage*/ true);
-  plan->_root = plan->fromSlice(slice, simpleSnippetFormat);
+  plan->_root = plan->fromSlice(nodes);
   plan->setVarUsageComputed();
 
-  if (!simpleSnippetFormat) {
-    TRI_ASSERT(slice.isObject());
-
-    if (auto rules = slice.get("rules"); rules.isArray()) {
-      for (auto rule : VPackArrayIterator(rules)) {
-        int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
-        plan->_appliedRules.push_back(ruleId);
-      }
+  if (auto rules = slice.get("rules"); rules.isArray()) {
+    for (auto rule : VPackArrayIterator(rules)) {
+      int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
+      plan->_appliedRules.push_back(ruleId);
     }
+  }
 
-    if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
-      plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
-    }
+  if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
+    plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
   }
 
   return plan;
@@ -871,15 +874,13 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
   bool containsCollection = false;
   // replace occurrences of collection names used as function call arguments
   // (that are of type NODE_TYPE_COLLECTION) with their string equivalents
-  // for example, this will turn `WITHIN(collection, ...)` into
-  // `WITHIN("collection", ...)`
   auto visitor = [this, &containsCollection](AstNode* node) {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
 
       // check function arguments
       ast::FunctionCallNode funcCall(node);
-      auto args = funcCall.getArguments();
+      auto args = funcCall.getArgumentsNode();
       size_t const n = args->numMembers();
 
       for (size_t i = 0; i < n; ++i) {
@@ -915,47 +916,13 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
     // we found at least one occurence of NODE_TYPE_COLLECTION
     // now replace them with proper (FOR doc IN collection RETURN doc)
     // subqueries
-    auto visitor = [this, &previous](AstNode* node) {
+    auto visitor = [](AstNode* node) {
       if (node->type == NODE_TYPE_COLLECTION) {
         // collection name used inside an expression...
-
-        auto& vocbase = _ast->query().vocbase();
-        if (!vocbase.server()
-                 .getFeature<QueryRegistryFeature>()
-                 .allowCollectionsInExpressions()) {
-          // this is disallowed here, so fail the query
-          std::string cn = node->getString();
-          THROW_ARANGO_EXCEPTION_PARAMS(
-              TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, cn.c_str());
-        }
-
-        // create an on-the-fly subquery for a full collection access
-        AstNode* rootNode = _ast->createNodeSubquery();
-
-        // FOR part
-        Variable* v = _ast->variables()->createTemporaryVariable();
-        AstNode* forNode = _ast->createNodeFor(v, node, nullptr);
-        // RETURN part
-        AstNode* returnNode =
-            _ast->createNodeReturn(_ast->createNodeReference(v));
-
-        // add both nodes to subquery
-        rootNode->addMember(forNode);
-        rootNode->addMember(returnNode);
-
-        // produce the proper ExecutionNodes from the subquery AST
-        auto subquery = fromNode(rootNode);
-        if (subquery == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
-
-        // and register a reference to the subquery result in the expression
-        v = _ast->variables()->createTemporaryVariable();
-        auto en = createNode<SubqueryNode>(this, nextId(), subquery, v);
-        _subqueries[v->id] = en;
-        en->addDependency(previous);
-        previous = en;
-        return _ast->createNodeReference(v);
+        // this is disallowed here, so fail the query
+        std::string cn = node->getString();
+        THROW_ARANGO_EXCEPTION_PARAMS(
+            TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, cn.c_str());
       }
 
       return node;
@@ -1163,12 +1130,11 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
                                           : RefillIndexCaches::kDontRefill;
         } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
-        } else if (name == StaticStrings::Overwrite) {
-          // legacy: overwrite is set, superseded by overwriteMode
-          // default behavior if only "overwrite" is specified
-          if (!options.isOverwriteModeSet() && value->isTrue()) {
-            options.overwriteMode = OperationOptions::OverwriteMode::Replace;
-          }
+        } else if (name == "overwrite" && value->isTrue()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "the 'overwrite' option has been removed, use "
+              "'overwriteMode' instead");
         } else if (name == StaticStrings::OverwriteMode &&
                    value->isStringValue()) {
           auto overwriteMode =
@@ -2814,29 +2780,9 @@ void ExecutionPlan::insertBefore(ExecutionNode* current,
   current->addDependency(newNode);
 }
 
-/// @brief create a plan from VPack
-ExecutionNode* ExecutionPlan::fromSlice(velocypack::Slice slice,
-                                        bool simpleSnippetFormat) {
-  VPackSlice nodes = VPackSlice::noneSlice();
-
-  if (simpleSnippetFormat) {
-    // simple format. we are expecting just an array with the nodes
-    nodes = slice;
-  } else {
-    // complex format. we are expecting an object with a "nodes" attribute
-    // that contains an array with the nodes
-    if (!slice.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "plan slice is not an object");
-    }
-
-    nodes = slice.get("nodes");
-  }
-
-  if (!nodes.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "plan \"nodes\" attribute is not an array");
-  }
+/// @brief create a plan from a VPack array of nodes
+ExecutionNode* ExecutionPlan::fromSlice(velocypack::Slice nodes) {
+  TRI_ASSERT(nodes.isArray());
 
   ExecutionNode* ret = nullptr;
 
@@ -2865,9 +2811,9 @@ ExecutionNode* ExecutionPlan::fromSlice(velocypack::Slice slice,
 
     if (ret->getType() == arangodb::aql::ExecutionNode::SUBQUERY) {
       // found a subquery node. now do magick here
-      VPackSlice subquery = it.get("subquery");
-      // create the subquery nodes from the "subquery" sub-node
-      auto subqueryNode = fromSlice(subquery, /*simple*/ false);
+      VPackSlice subqueryNodes = it.get("subquery").get("nodes");
+      TRI_ASSERT(subqueryNodes.isArray());
+      auto subqueryNode = fromSlice(subqueryNodes);
 
       // register the just created subquery
       ExecutionNode::castTo<SubqueryNode*>(ret)->setSubquery(subqueryNode,
@@ -2991,14 +2937,11 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(
     TRI_ASSERT(func != nullptr);
 
     // function should have one argument (an array with the parameters)
-    auto args = funcCall.getArguments();
-    // the number of arguments should also be one (note: this has been
-    // validated before)
-    TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
+    auto args = funcCall.getArguments().getElements();
     std::string_view functionName = Aggregator::translateAlias(func->name);
     Variable const* variable = nullptr;
-    if (args->numMembers() == 1) {
-      auto arg = args->getMember(0);
+    if (args.size() == 1) {
+      auto arg = args[0];
       if (arg->type == NODE_TYPE_REFERENCE) {
         // operand is a variable
         ast::ReferenceNode refNode(arg);

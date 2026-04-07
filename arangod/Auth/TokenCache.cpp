@@ -403,7 +403,7 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
 
   // Extract roles from JWT token if present
   VPackSlice const rolesSlice = bodySlice.get("roles");
-  if (!rolesSlice.isNone()) {
+  if (!rolesSlice.isNone() && !rolesSlice.isNull()) {
     if (!rolesSlice.isArray()) {
       LOG_TOPIC("89899", TRACE, arangodb::Logger::AUTHENTICATION)
           << "roles must be an array";

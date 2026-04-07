@@ -66,6 +66,10 @@ RestStatusHandler::RestStatusHandler(
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
@@ -132,9 +136,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
                VPackValue(serverState->isStartupOrMaintenance()));
     result.add("role",
                VPackValue(ServerState::roleToString(serverState->getRole())));
-    result.add(
-        "writeOpsEnabled",
-        VPackValue(!serverState->readOnly()));  // to be deprecated - 3.3 compat
     result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!isStartup && !serverState->isSingleServer()) {
@@ -168,11 +169,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
         result.add("leaderId", VPackValue(agent->leaderID()));
         result.add("leading", VPackValue(agent->leading()));
 
-        result.close();
-      }
-
-      if (serverState->isCoordinator()) {
-        result.add("coordinator", VPackValue(VPackValueType::Object));
         result.close();
       }
 

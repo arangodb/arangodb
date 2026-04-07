@@ -117,16 +117,6 @@ void AuthenticationFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   using namespace arangodb::options;
 
-  options->addObsoleteOption(
-      "server.disable-authentication",
-      "Whether to use authentication for all client requests.", false);
-  options->addObsoleteOption(
-      "server.disable-authentication-unix-sockets",
-      "Whether to use authentication for requests via UNIX domain sockets.",
-      false);
-  options->addOldOption("server.authenticate-system-only",
-                        "server.authentication-system-only");
-
   options
       ->addOption("--server.authentication",
                   "Whether to use authentication for all client requests.",
@@ -145,8 +135,7 @@ the server to `localhost` to not expose it to the public internet)");
       ->addOption(
           "--server.session-timeout",
           "The lifetime for tokens (in seconds) that can be obtained from "
-          "the `POST /_open/auth` endpoint. Used by the web interface "
-          "for JWT-based sessions.",
+          "the `POST /_open/auth` endpoint.",
           new DoubleParameter(&_options.sessionTimeout, /*base*/ 1.0,
                               /*minValue*/ 1.0,
                               /*maxValue*/ std::numeric_limits<double>::max(),
@@ -220,26 +209,6 @@ disabled and instead the old permission system is used.)");
       "--server.local-authentication",
       "Whether to use ArangoDB's built-in authentication system.", false);
 
-  options
-      ->addOption("--server.authentication-system-only",
-                  "Use HTTP authentication only for requests to /_api and "
-                  "/_admin endpoints.",
-                  new BooleanParameter(&_options.authenticationSystemOnly))
-      .setLongDescription(R"(If you set this option to `true`, then HTTP
-authentication is only required for requests going to URLs starting with `/_`,
-but not for other endpoints. You can thus use this option to expose custom APIs
-of Foxx microservices without HTTP authentication to the outside world, but
-prevent unauthorized access of ArangoDB APIs and the admin interface.
-
-Note that checking the URL is performed after any database name prefix has been
-removed. That means, if the request URL is `/_db/_system/myapp/myaction`, the
-URL `/myapp/myaction` is checked for the `/_` prefix.
-
-Authentication still needs to be enabled for the server via
-`--server.authentication` in order for HTTP authentication to be forced for the
-ArangoDB APIs and the web interface. Only setting
-`--server.authentication-system-only` is not enough.)");
-
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   options
       ->addOption(
@@ -253,13 +222,6 @@ Clients located on the same host as the ArangoDB server can use UNIX domain
 sockets to connect to the server without authentication. Requests coming in by
 other means (e.g. TCP/IP) are not affected by this option.)");
 #endif
-
-  options
-      ->addOption("--server.jwt-secret",
-                  "The secret to use when doing JWT authentication.",
-                  new StringParameter(&_options.jwtSecretProgramOption))
-      .setDeprecatedIn(30322)
-      .setDeprecatedIn(30402);
 
   options
       ->addOption("--server.jwt-secret-keyfile",
@@ -285,10 +247,6 @@ In single server setups, ArangoDB generates a secret if none is specified.
 
 In cluster deployments which have authentication enabled, a secret must
 be set consistently across all cluster nodes so they can talk to each other.
-
-ArangoDB also supports an `--server.jwt-secret` option to pass the secret
-directly (without a file). However, this is discouraged for security
-reasons.
 
 You can reload JWT secrets from disk without restarting the server or the nodes
 of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
@@ -338,12 +296,6 @@ void AuthenticationFeature::validateOptions(
           << " have " << _options.jwtSecretProgramOption.length();
       FATAL_ERROR_EXIT();
     }
-  }
-
-  if (options->processingResult().touched("server.jwt-secret")) {
-    LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
-        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
-           "instead.";
   }
 
   // Validate JWT expiry time settings
@@ -412,10 +364,6 @@ void AuthenticationFeature::start() {
 
   out << "Authentication is turned " << (_options.active ? "on" : "off");
 
-  if (_options.active && _options.authenticationSystemOnly) {
-    out << " (system only)";
-  }
-
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   out << ", authentication for unix sockets is turned "
       << (_options.authenticationUnixSockets ? "on" : "off");
@@ -444,10 +392,6 @@ bool AuthenticationFeature::isActive() const noexcept {
 
 bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
   return _options.authenticationUnixSockets;
-}
-
-bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
-  return _options.authenticationSystemOnly;
 }
 
 std::string_view AuthenticationFeature::externalRBACservice() const noexcept {

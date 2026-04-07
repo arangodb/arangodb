@@ -23,6 +23,7 @@
 
 #include "RestHandler.h"
 
+#include "Activities/GenericActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
 #include "Basics/dtrace-wrapper.h"
@@ -32,6 +33,7 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogStructuredParamsAllowList.h"
@@ -41,17 +43,18 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
-#include "Activities/activity.h"
+#include "Activities/RegistryGlobalVariable.h"
 
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
 #include <absl/strings/str_cat.h>
 #include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
+#include <cstdint>
+#include <unordered_map>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -62,7 +65,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
     : _request(request),
       _response(response),
       _server(server),
-      _statistics(),
+      _timingData(),
       _handlerId(0),
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
@@ -77,6 +80,12 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 }
 
 RestHandler::~RestHandler() {
+  if (_timingData.readStart != RequestTimingData::time_point{}) {
+    // An async path doesn't call stealTimingData, so we need to finalize it
+    // here. RestHandler is destroyed as soon as the execution is finished.
+    arangodb::finalizeTimingData(_server, _timingData);
+  }
+
   if (_trackedAsOngoingLowPrio) {
     // someone forgot to call trackTaskEnd 🤔
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
@@ -114,15 +123,6 @@ RequestLane RestHandler::determineRequestLane() {
   if (_lane == RequestLane::UNDEFINED) {
     bool found;
     _request->header(StaticStrings::XArangoFrontend, found);
-
-    if (!found) {
-      // header not found, but for requests to root and to /_admin/aardvark/ we
-      // are still increasing the priority
-      auto const& requestPath = _request->requestPath();
-      if (requestPath == "/" || requestPath.starts_with("/_admin/aardvark/")) {
-        found = true;
-      }
-    }
 
     if (found) {
       _lane = RequestLane::CLIENT_UI;
@@ -164,11 +164,14 @@ RequestLane RestHandler::determineRequestLane() {
 
 void RestHandler::trackQueueStart() noexcept {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  _statistics.SET_QUEUE_START(
-      SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+  _timingData.queueStart = RequestTimingData::now();
+  _timingData.queueSize =
+      SchedulerFeature::SCHEDULER->queueStatistics()._queued;
 }
 
-void RestHandler::trackQueueEnd() noexcept { _statistics.SET_QUEUE_END(); }
+void RestHandler::trackQueueEnd() noexcept {
+  _timingData.queueEnd = RequestTimingData::now();
+}
 
 void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);
@@ -182,7 +185,7 @@ void RestHandler::trackTaskStart() noexcept {
 
 void RestHandler::trackTaskEnd() noexcept {
   // the queueing time in seconds
-  double queueTime = _statistics.ELAPSED_WHILE_QUEUED();
+  double queueTime = _timingData.elapsedWhileQueued();
 
   if (_trackedAsOngoingLowPrio) {
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
@@ -209,20 +212,24 @@ void RestHandler::trackTaskEnd() noexcept {
 }
 
 void RestHandler::startActivity() {
-  _activity = std::make_unique<activities::Activity>(
-      "RestHandler", activities::Metadata{
+  _activity = activities::make<activities::GenericActivity>(
+      "RestHandler", std::unordered_map<std::string, std::string>{
                          {"handler", name()},
                          {"url", _request->fullUrl()},
                          {"method", std::string{GeneralRequest::translateMethod(
                                         _request->requestType())}}});
 }
 
-RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
-  return std::move(_statistics);
+RequestTimingData RestHandler::stealTimingData() {
+  // We need to use exchange here instead of move to avoid a copy of the
+  // time_point. time_point is a trivial type, so it will be copied even when
+  // moved. Destructor of RestHandler will check if readStart != time_point() to
+  // determine whether or not to finalize.
+  return std::exchange(_timingData, RequestTimingData{});
 }
 
-void RestHandler::setRequestStatistics(RequestStatistics::Item&& stat) {
-  _statistics = std::move(stat);
+void RestHandler::setTimingData(RequestTimingData&& data) {
+  _timingData = std::move(data);
 }
 
 futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
@@ -422,8 +429,8 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
 auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   auto fail = [&]() {
     TRI_ASSERT(_state == HandlerState::FAILED);
-    _statistics.SET_REQUEST_END();
-    // Callback may stealStatistics!
+    _timingData.requestEnd = RequestTimingData::now();
+    // Callback may stealTimingData!
     _sendResponseCallback(this);
 
     shutdownExecute(false);
@@ -445,7 +452,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   }
 
   TRI_ASSERT(_state == HandlerState::FINALIZE);
-  _statistics.SET_REQUEST_END();
+  _timingData.requestEnd = RequestTimingData::now();
 
   // shutdownExecute is noexcept
   shutdownExecute(true);  // may not be moved down
@@ -454,7 +461,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 
   // compress response if required
   compressResponse();
-  // Callback may stealStatistics!
+  // Callback may stealTimingData!
   _sendResponseCallback(this);
 }
 
@@ -464,7 +471,8 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 
 void RestHandler::prepareEngine() {
   // set end immediately so we do not get negative statistics
-  _statistics.SET_REQUEST_START_END();
+  _timingData.requestStart = RequestTimingData::now();
+  _timingData.requestEnd = _timingData.requestStart;
 
   if (_canceled) {
     _state = HandlerState::FAILED;
@@ -681,6 +689,34 @@ void RestHandler::generateError(rest::ResponseCode code,
 void RestHandler::generateError(arangodb::Result const& r) {
   ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
   generateError(code, r.errorNumber(), r.errorMessage());
+}
+
+// checks if the HTTP method is allowed and generates an error if not
+bool RestHandler::isAllowedHttpMethod(
+    std::initializer_list<rest::RequestType> allowed) {
+  auto method = _request->requestType();
+  if (std::find(allowed.begin(), allowed.end(), method) != allowed.end()) {
+    return true;
+  }
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return false;
+}
+
+// checks if collection name is a numeric collection id (= all chars are digits)
+// and generates an error if so
+bool RestHandler::rejectNumericCollectionId(std::string_view cname) {
+  if (cname.empty() || cname.front() < '0' || cname.front() > '9') {
+    return false;  // early exit
+  }
+  if (std::all_of(cname.begin(), cname.end(),
+                  [](unsigned char c) { return c >= '0' && c <= '9'; })) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Numeric collection IDs are not allowed; please use the "
+                  "collection name instead");
+    return true;
+  }
+  return false;
 }
 
 // -----------------------------------------------------------------------------

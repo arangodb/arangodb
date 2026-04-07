@@ -266,21 +266,6 @@ void V8SecurityFeature::collectOptions(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnSingle));
-
-  options->addOldOption("--javascript.startup-options-whitelist",
-                        "--javascript.startup-options-allowlist");
-  options->addOldOption("--javascript.startup-options-blacklist",
-                        "--javascript.startup-options-denylist");
-  options->addOldOption("--javascript.environment-variables-whitelist",
-                        "--javascript.environment-variables-allowlist");
-  options->addOldOption("--javascript.environment-variables-blacklist",
-                        "--javascript.environment-variables-denylist");
-  options->addOldOption("--javascript.endpoints-whitelist",
-                        "--javascript.endpoints-allowlist");
-  options->addOldOption("--javascript.endpoints-blacklist",
-                        "--javascript.endpoints-denylist");
-  options->addOldOption("--javascript.files-whitelist",
-                        "--javascript.files-allowlist");
 }
 
 void V8SecurityFeature::validateOptions(
@@ -345,7 +330,7 @@ void V8SecurityFeature::start() {
 }
 
 void V8SecurityFeature::dumpAccessLists() const {
-  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY)
+  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::V8)
       << "files allowed by user:" << _filesAllowList
       << ", internal read allow list:" << _readAllowList
       << ", internal write allow list:" << _writeAllowList

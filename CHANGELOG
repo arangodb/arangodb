@@ -1,5 +1,184 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Remove `RequestStatistics` and `--server.statistics` option; HTTP request metrics
+  are now recorded synchronously via Prometheus metrics.
+
+* COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
+  `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
+  `/_admin/wal/transactions`.
+
+* Updated ArangoDB Starter to v0.20.0-preview-6.
+
+* Removed leftover unit test and handling of `@arangodb/locals` module that was
+  only used for Foxx.
+
+* Remove `GET | DELETE /_admin/log` (superseded by `GET | DELETE /_admin/log/entries`).
+
+* Remove deprecated `Timestamp` attribute from `GET /_admin/cluster/health`.
+
+* COR-353: Removed deprecated JS index creation functions `ensureUniqueConstraint()`,
+  `ensureGeoIndex()`, and `ensureGeoConstraint()` from collection objects.
+* COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
+
+* Removed leftover range() method from collection objects in JavaScript API
+
+* COR-325 Remove FULLTEXT remnants
+
+* Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
+  `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
+
+* COR-330: Removed APIs associated with foxx.
+
+* COR-283: Removed remainded active failover references.
+
+* Remove 30xx FOXX error codes
+
+* Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
+  dependencies.
+
+* Changed the remaining two uses of the log topics BENCH and SECURITY and
+  removed these log topics.
+
+* No longer support `/_api/collection?collection=<collection-name>`,
+  `/_api/document/<collection-id>`, and `/_api/collection/<collection-id>`.
+
+* Raised minimal CPU architecture to Haswell-like (x86-64) and graviton2-like
+  (aarch64).
+
+* Legacy geo index types `geo1` and `geo2` are no longer supported. Existing
+  indexes of these types are automatically dropped during database upgrade.
+
+* Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
+  and `/_admin/support-info`.
+
+* Remove `GET /_admin/statistics`, `GET /_admin/statistics-description`, and
+  cluster endpoints `/_admin/cluster/nodeStatistics` and
+  `/_admin/cluster/statistics`.
+  
+* COR-198: Removed the overwrite query option for insert operations in favor of
+  using overwriteMode
+
+* Existing `hash` and `skiplist` indexes are automatically converted to
+  `persistent` during database upgrade. Converted indexes are renamed by
+  appending `_migrated` to their name (e.g. `myIndex` becomes
+  `myIndex_migrated`).
+
+* Removed deprecated logger-follow API endpoint.
+
+* Remove the following commandline options which have been replaced a while ago:
+    - check-version (replaced by "database.check-version")
+    - database.disable-query-tracking (replaced by "query.tracking")
+    - database.query-cache-max-results (replaced by "query.cache-entries")
+    - database.query-cache-mode (replaced by "query.cache-mode")
+    - database.replication-applier (replaced by "replication.auto-start")
+    - javascript.endpoints-blacklist (replaced by "javascript.endpoints-denylist")
+    - javascript.endpoints-whitelist (replaced by "javascript.endpoints-allowlist")
+    - javascript.environment-variables-blacklist (replaced by "javascript.environment-variables-denylist")
+    - javascript.environment-variables-whitelist (replaced by "javascript.environment-variables-allowlist")
+    - javascript.files-whitelist (replaced by "javascript.files-allowlist")
+    - javascript.startup-options-blacklist (replaced by "javascript.startup-options-denylist")
+    - javascript.startup-options-whitelist (replaced by "javascript.startup-options-allowlist")
+    - log.tty (replaced by "log.foreground-tty")
+    - no-server (replaced by "server.rest-server")
+    - rocksdb.delayed_write_rate (replaced by "rocksdb.delayed-write-rate")
+    - scheduler.threads (replaced by "server.maximal-threads")
+    - server.allow-method-override (replaced by "http.allow-method-override")
+    - server.authenticate-system-only (replaced by "server.authentication-system-only")
+    - server.backlog-size (replaced by "tcp.backlog-size")
+    - server.cafile (replaced by "ssl.cafile")
+    - server.disable-replication-applier (replaced by "replication.auto-start")
+    - server.disable-statistics (replaced by "server.statistics")
+    - server.hide-product-header (replaced by "http.hide-product-header")
+    - server.keep-alive-timeout (replaced by "http.keep-alive-timeout")
+    - server.keyfile (replaced by "ssl.keyfile")
+    - server.reuse-address (replaced by "tcp.reuse-address")
+    - server.ssl-cache ((replaced by "ssl.session-cache")
+    - server.ssl-cipher-list (replaced by "ssl.cipher-list")
+    - server.ssl-options (replaced by "ssl.options")
+    - server.ssl-protocol (replaced by "ssl.protocol")
+    - temp-path (replaced by "temp.path")
+    - upgrade (replaced by "database.auto-upgrade")
+
+* Remove the following deprecated commandline options:
+    - agency.pool-size
+    - arangosearch.threads
+    - arangosearch.threads-limit
+    - network.protocol
+    - query.allow-collections-in-expressions
+    - rocksdb.exclusive-writes
+    - log
+
+* Remove the following obsolete commandline options from arangod executable:
+    - query.parallelize-gather-writes
+    - cluster.dbserver-config
+    - cluster.coordinator-config
+    - cluster.data-path
+    - cluster.log-path
+    - cluster.arangod-path
+    - cluster.my-local-info
+    - cluster.my-id
+    - cluster.agency-prefix
+    - server.local-authentication
+    - server.disable-authentication
+    - server.disable-authentication-unix-sockets
+    - http.allow-method-override
+    - http.hide-product-header
+    - replication.active-failover
+    - replication.active-failover-leader-grace-period
+    - database.force-sync-properties
+    - database.throw-collection-not-loaded-error
+    - database.maximal-journal-size
+    - database.index-threads
+    - database.check-30-revisions
+    - database.revision-cache-chunk-size
+    - database.revision-cache-target-size
+    - server.flush-interval
+    - server.check-max-memory-mappings
+    - nonce.size
+    - wal.allow-oversize-entries
+    - wal.use-mlock
+    - wal.directory
+    - wal.historic-logfiles
+    - wal.ignore-logfile-errors
+    - wal.ignore-recovery-errors
+    - wal.flush-timeout
+    - wal.logfile-size
+    - wal.open-logfiles
+    - wal.reserve-logfiles
+    - wal.slots
+    - wal.sync-interval
+    - wal.throttle-when-pending
+    - wal.throttle-wait
+    - ttl.only-loaded-collection
+    - rocksdb.use-range-delete-in-wal
+    - rocksdb.edge-cache
+    - rocksdb.enabled
+    - server.threads
+    - server.max-number-detached-threads
+    - log.content-filter
+    - log.source-filter
+    - log.application
+    - log.facility
+
+* Remove the following deprecated commandline options from client tools
+  arangodump:
+    - envelope
+    - tick-start
+    - tick-end
+  arangorestore:
+    - recycle-ids
+    - envelope  
+
+* Remove /_admin/database/target-version endpoint in favor of /_api/version
+
+* The following keywords should be reserved in AQL, i.e. added to the lexer (tokens.ll):
+  MATCH, WHILE, UNTIL, SCAN, FOLD
+
+* Uninstall all routes for API version 0, which no longer exists in 4.0.
+
+* Remove deprecated option `--server.jwt-secret` because it is insecure.
+
+* Reject creation of Smart Edge collection without `distributeShardsLike`.
 
 * Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
   They are still accepted for backward compatibility but are ignored and no longer
@@ -18,11 +197,6 @@
 * arangorestore now automatically converts deprecated `fulltext` indexes to
   `inverted` indexes when restoring dumps from older versions.
 
-* Updated ArangoDB Starter to v0.20.0-preview-1.
-
-* Upgraded included rclone to v1.73.1 with go1.24.13 and non-vulnerable
-  dependencies.
-
 * Remove leftovers of arangoimp.
 
 * Remove /_admin/database/target-version endpoint in favor of /_api/version.
@@ -35,6 +209,7 @@
     - /_api/simple/remove-by-keys
   Also the following arangosh collection APIs are removed in favor of AQL:
     - byCondition
+    - closedRange
     - geo
     - near
     - within
@@ -106,16 +281,75 @@
 
 * Remove FoxxMaster code.
 
+
+3.12.9-devel (XXXX-XX-XX)
+-------------------------
+
+* Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
+
+* Fixed a bug in arangosh that made it quit when entering `global`.
+
+* COR-324, github issue #21782: Added information to query extra output
+  about parallelism achieved in SEARCH queries.
+
+* COR-328: Fixed incomplete results in vector search queries when LIMIT exceeded the
+  internal batch size.
+
+* Updated ArangoDB Starter to v0.19.18.
+
+* COR-123: The push-filter-into-enumerate-near optimizer rule now considers all
+  compatible vector indexes on a collection to find if one whose storedValues cover
+  the filter expression.
+
+* COR-267, github issue #21944: Fixed a bug in the handling of post filters
+  with array expansion operators and inverted indexes.
+
+* COR-286: Fixed a crash when executing AQL queries with `usePlanCache: true` on
+  cluster-one-shard databases containing graph traversals. When a cached
+  plan was restored, the `_appliedRules` metadata (including
+  `cluster-one-shard`) was not deserialized, causing the coordinator to
+  incorrectly attempt distributed execution on a plan optimized for a
+  single DB server. Additionally, graph nodes lost their
+  `LocalGraphNode` type during cache round-trip.
+
+* Fixed a bug in arangodump that prevented the `--local-network-threads`
+  startup option from accepting the specified value and potentially
+  overwriting the `--dbserver-worker-threads` setting.
+
+* COR-271: If a query uses an OR condition that affects multiple indexes
+  the covering index optimisation is now applied.
+
+* COR-168: Fixed the projections and filterProjections that were being cleared
+  up when an IndexNode had multiple indexes because of an OR operand in a query.
+
+* COR-298: Merge satellite joins to snippets that start with a Distribute node.
+  This is reduced inter-node communcation for some AQL queries.
+
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
+
+
+3.12.8 (2026-03-05)
+-------------------
+
+* COR-77: Pick correct replica during smart graph traversal when reading from
+  followers.
+
+* Updated minimatch to 10.2.3.
+
+* Fix potential shutdown blockage in UserManager which could block an upgrade.
+
+* Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
+
+* Accept `null` as valid value for the `roles` attribute in JWT tokens.
 
 * Serve OpenAPI spec on /_arango/vX/openapi.json .
 
 * Fixed BTS-2309: Treat empty object as null with respect to schema.
 
-* Updated minimatch to 10.2.1.
-
 * Add new API GET /_admin/options-public for new platform UI.
+
+* Fix ES-2824: SEARCH query produces wrong results.
 
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.

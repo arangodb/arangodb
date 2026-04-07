@@ -90,7 +90,7 @@ while(true) {
             };
           }
         } else {
-          let reply = download(arangod.url + '/_admin/statistics', '', opts);
+          let reply = download(arangod.url + '/_admin/metrics', '', opts);
           if (reply.hasOwnProperty('error') || reply.code !== 200) {
             print("fail: " + JSON.stringify(reply) +
                   " - ps before: " + JSON.stringify(procStats) +
@@ -103,12 +103,13 @@ while(true) {
               delta: time() - beforeCall
             };
           } else {
-            let statisticsReply = JSON.parse(reply.body);
+            const text = typeof reply.body === 'string' ? reply.body : String(reply.body);
+            const uptime = internal.parsePrometheusMetric(text, 'arangodb_server_statistics_server_uptime_total'); // from internal.js
             oneSet[serverId] = {
               error: false,
               start: beforeCall,
               delta: time() - beforeCall,
-              uptime: statisticsReply.server.uptime
+              uptime: uptime !== undefined ? uptime : null
             };
           }
         }

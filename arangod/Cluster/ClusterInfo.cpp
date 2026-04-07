@@ -1640,6 +1640,54 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       }
     }
 
+    // Clean up shards for dropped isBuilding collections. They are not in
+    // _newPlannedCollections (building not finished), so the loop above only
+    // removes shards for fully planned collections. Erase their shards here to
+    // avoid stale entries in newShardsToPlanServers, which will be swapped with
+    // _shardsToPlanServers in the end of this function.
+    if (auto np = newPlan.find(databaseName); np != newPlan.end()) {
+      auto const& nps = np->second->slice()[0];
+      std::vector<ShardID> shardsToErase;
+      {
+        READ_LOCKER(guard, _planProt.lock);
+        auto const oldPlanIt = _plan.find(databaseName);
+        if (oldPlanIt != _plan.end()) {
+          auto const oldCollectionsPath = std::vector<std::string_view>{
+              AgencyCommHelper::path(), "Plan", "Collections", databaseName};
+          auto const oldCollectionsSlice = oldPlanIt->second->slice()[0];
+          if (oldCollectionsSlice.hasKey(oldCollectionsPath)) {
+            for (auto colPair : VPackObjectIterator(
+                     oldCollectionsSlice.get(oldCollectionsPath))) {
+              if (!basics::VelocyPackHelper::getBooleanValue(
+                      colPair.value, StaticStrings::AttrIsBuilding, false)) {
+                continue;
+              }
+              auto const colId = colPair.key.copyString();
+              collectionsPath.push_back(colId);
+              bool const stillExists = nps.hasKey(collectionsPath);
+              collectionsPath.pop_back();
+              if (stillExists) {
+                continue;  // still in new plan, nothing to clean up
+              }
+              if (auto shardsSlice = colPair.value.get("shards");
+                  shardsSlice.isObject()) {
+                for (auto sh : VPackObjectIterator(shardsSlice)) {
+                  shardsToErase.emplace_back(sh.key.copyString());
+                }
+              }
+            }
+          }
+        }
+      }
+      for (auto const& sId : shardsToErase) {
+        newShardsToPlanServers.erase(sId);
+        newShardToName.erase(sId);
+        newShardToDb.erase(sId);
+        newShardToShardGroupLeader.erase(sId);
+        newShardGroups.erase(sId);
+      }
+    }
+
     for (auto collectionPairSlice :
          velocypack::ObjectIterator(collectionsSlice)) {
       auto collectionSlice = collectionPairSlice.value;
@@ -5559,7 +5607,6 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       SetOldEntry("Plan/Views", {"arango", "Plan", "Views"}, plan),
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
-      {"Sync/FoxxQueueVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}};
 
   // For replication 2 we need to include some parts of target.

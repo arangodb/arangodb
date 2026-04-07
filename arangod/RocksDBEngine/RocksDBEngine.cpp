@@ -687,11 +687,6 @@ on the write rate.)");
                          arangodb::options::Flags::Enterprise));
 #endif
 
-  // range deletes are now always enabled
-  options->addObsoleteOption(
-      "--rocksdb.use-range-delete-in-wal",
-      "Enable range delete markers in the write-ahead log (WAL).", false);
-
   options
       ->addOption("--rocksdb.debug-logging",
                   "Whether to enable RocksDB debug logging.",
@@ -708,10 +703,6 @@ RocksDB's actions into the logfile written by ArangoDB (if the
 
 This option is turned off by default, but you can enable it for debugging
 RocksDB internals and performance.)");
-
-  options->addObsoleteOption("--rocksdb.edge-cache",
-                             "Whether to use the in-memory cache for edges",
-                             false);
 
   options
       ->addOption("--rocksdb.verify-sst",
@@ -3836,58 +3827,6 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   builder.close();  // base
 
   return {};
-}
-
-Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
-  rocksdb::VectorLogPtr walFiles;
-  rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
-
-  Result res = rocksutils::convertStatus(s);
-  if (res.fail()) {
-    return res;
-  }
-
-  builder.openArray();
-  for (auto lfile = walFiles.begin(); lfile != walFiles.end(); ++lfile) {
-    auto& logfile = *lfile;
-    builder.openObject();
-    // filename and state are already of type string
-    builder.add("datafile", VPackValue(logfile->PathName()));
-    if (logfile->Type() == rocksdb::WalFileType::kAliveLogFile) {
-      builder.add("status", VPackValue("open"));
-    } else if (logfile->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-      builder.add("status", VPackValue("collected"));
-    }
-    rocksdb::SequenceNumber min = logfile->StartSequence();
-    builder.add("tickMin", VPackValue(std::to_string(min)));
-    rocksdb::SequenceNumber max;
-    if (std::next(lfile) != walFiles.end()) {
-      max = (*std::next(lfile))->StartSequence();
-    } else {
-      max = _db->GetLatestSequenceNumber();
-    }
-    builder.add("tickMax", VPackValue(std::to_string(max)));
-    builder.close();
-  }
-  builder.close();
-
-  return {};
-}
-
-Result RocksDBEngine::firstTick(uint64_t& tick) {
-  rocksdb::VectorLogPtr walFiles;
-  rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
-
-  Result res;
-  if (!s.ok()) {
-    res = rocksutils::convertStatus(s);
-  } else {
-    // read minium possible tick
-    if (!walFiles.empty()) {
-      tick = walFiles[0]->StartSequence();
-    }
-  }
-  return res;
 }
 
 Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,

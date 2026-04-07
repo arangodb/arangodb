@@ -44,7 +44,6 @@ struct QueryRegistryFeatureOptions {
   bool smartJoins = true;
   bool parallelizeTraversals = true;
 #endif
-  bool allowCollectionsInExpressions = false;
   bool logFailedQueries = false;
   size_t maxAsyncPrefetchSlotsTotal = 256;
   size_t maxAsyncPrefetchSlotsPerQuery = 32;

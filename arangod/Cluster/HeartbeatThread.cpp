@@ -661,8 +661,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     updateServerMode(readOnlySlice);
   }
 
-  // the Foxx stuff needs an updated list of coordinators
-  // and this is only updated when current version has changed
+  // this is only updated when current version has changed
   if (_invalidateCoordinators) {
     ci.invalidateCurrentCoordinators();
   }

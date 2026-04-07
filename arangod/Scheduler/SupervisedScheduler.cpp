@@ -45,7 +45,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/SharedPRNGFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "Statistics/RequestStatistics.h"
 #include "Cluster/ServerState.h"
 
 using namespace arangodb;

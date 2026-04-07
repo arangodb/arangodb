@@ -940,8 +940,161 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
     };
 }
 
+function VectorIndexL2FilterStoredValuesIndexSelectionSuite() {
+    let collection;
+    let randomPoint;
+    const dimension = 20;
+    const numberOfDocs = 500;
+    const seed = 5229487420515249;
+    const nProbeAndNlists = 10;
+
+    const shuffleArray = function(arr, seed) {
+        let gen = randomNumberGeneratorFloat(seed);
+        let shuffled = arr.slice();
+        for (let i = shuffled.length - 1; i > 0; --i) {
+            let j = Math.floor(Math.abs(gen()) * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    };
+
+    const makeVectorIndexDef = function(name, storedValues, nLists) {
+        let def = {
+            name,
+            type: "vector",
+            fields: ["vector"],
+            inBackground: false,
+            params: {
+                metric: "l2",
+                dimension: dimension,
+                nLists: nLists,
+                trainingIterations: 10,
+                defaultNProbe: nProbeAndNlists,
+            },
+        };
+        if (storedValues) {
+            def.storedValues = storedValues;
+        }
+        return def;
+    };
+
+    return {
+        setUpAll: function() {
+            print("Using seed: " + seed);
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, {
+                numberOfShards: 3
+            });
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < numberOfDocs; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                if (i === (numberOfDocs / 2)) {
+                    randomPoint = vector;
+                }
+                docs.push({
+                    vector,
+                    val: i,
+                    category: i < 250 ? "A" : "B",
+                    extra: i * 2,
+                    unrelated: "x",
+                });
+            }
+            collection.insert(docs);
+
+            // 5 indexes: only "vector_winner" covers both val and category.
+            // Created in random order to ensure the rule does not depend on
+            // creation order.
+            const indexDefs = shuffleArray([
+                makeVectorIndexDef("vector_no_sv", null, 1),
+                makeVectorIndexDef("vector_sv_extra", ["extra"], 2),
+                makeVectorIndexDef("vector_sv_val_only", ["val"], 3),
+                makeVectorIndexDef("vector_sv_unrelated", ["unrelated"], 4),
+                makeVectorIndexDef("vector_winner", ["val", "category"], 5),
+            ], seed);
+
+            print("Index creation order: " + JSON.stringify(indexDefs.map(d => d.name)));
+            for (let def of indexDefs) {
+                collection.ensureIndex(def);
+            }
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testSingleIndexCoveringStoredValuesAmongFiveIndexes: function() {
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val < 50 AND d.category == "A"
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, category: d.category, dist}`;
+
+            const bindVars = {qp: randomPoint};
+            const plan = verifyPlan(query, bindVars);
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertEqual(1, indexNodes.length);
+            assertEqual("vector_winner", indexNodes[0].index.name);
+            assertTrue(indexNodes[0].isCoveredByStoredValues);
+
+            const results = db._query(query, bindVars).toArray();
+            assertTrue(results.length <= 5);
+            verifyResultsMatchFilter(results, r => r.val < 50 && r.category === "A");
+            verifyDistancesAscending(results);
+        },
+
+        testMultipleIndexesCoveringStoredValuesAmong: function() {
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val < 50
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = {qp: randomPoint};
+            const plan = verifyPlan(query, bindVars);
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertEqual(1, indexNodes.length);
+            assertTrue(indexNodes[0].isCoveredByStoredValues);
+            assertTrue(
+                ["vector_sv_val_only", "vector_winner"].includes(indexNodes[0].index.name),
+                "Expected one of the indexes covering 'val', got: " + indexNodes[0].index.name
+            );
+
+            const results = db._query(query, bindVars).toArray();
+            assertTrue(results.length <= 5);
+            verifyResultsMatchFilter(results, r => r.val < 50);
+            verifyDistancesAscending(results);
+        },
+
+        testNoIndexCoveringStoredValuesAmongFiveIndexes: function() {
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.extra < 100 AND d.unrelated == "x"
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, extra: d.extra, unrelated: d.unrelated, dist}`;
+
+            const bindVars = {qp: randomPoint};
+            const plan = verifyPlan(query, bindVars);
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertEqual(1, indexNodes.length);
+            assertFalse(indexNodes[0].isCoveredByStoredValues);
+
+            const results = db._query(query, bindVars).toArray();
+            assertTrue(results.length <= 5);
+            verifyResultsMatchFilter(results, r => r.extra < 100 && r.unrelated === "x");
+        },
+    };
+}
+
 jsunity.run(VectorIndexL2FilterTestSuite);
 jsunity.run(VectorIndexL2FilterTestMultipleCollectionsSuite);
 jsunity.run(VectorIndexL2FilterStoredValuesTestSuite);
+jsunity.run(VectorIndexL2FilterStoredValuesIndexSelectionSuite);
 
 return jsunity.done();

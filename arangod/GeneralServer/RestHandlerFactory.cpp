@@ -30,6 +30,8 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -55,7 +57,9 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   uint32_t apiVersion = req->requestedApiVersion();
 
   // Check if the requested API version is valid
-  if (apiVersion >= _constructors.size()) {
+  if (apiVersion >= _constructors.size() ||
+      (!ApiVersion::isApiVersionSupported(apiVersion) &&
+       apiVersion != ApiVersion::experimentalApiVersion)) {
     LOG_TOPIC("a8f2e", DEBUG, arangodb::Logger::FIXME)
         << "requested API version " << apiVersion
         << " is not supported (max: " << (_constructors.size() - 1) << ")";
@@ -65,8 +69,10 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     errorBuilder.add("error", VPackValue(true));
     errorBuilder.add("code", VPackValue(404));
     errorBuilder.add("errorNum", VPackValue(404));
-    errorBuilder.add("errorMessage", VPackValue("unknown API version '" +
-                                                req->fullUrl() + "'"));
+    errorBuilder.add("errorMessage",
+                     VPackValue(absl::StrCat(
+                         "unknown API version ", std::to_string(apiVersion),
+                         " for path '", req->fullUrl(), "'")));
     errorBuilder.close();
 
     return nullptr;
@@ -165,6 +171,13 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
   TRI_ASSERT(!_sealed);
 
   for (uint32_t apiVersion : apiVersions) {
+    if (!ApiVersion::isApiVersionSupported(apiVersion) &&
+        apiVersion != ApiVersion::experimentalApiVersion) {
+      // version 1 has been removed from the list of supported versions, but we
+      // did not change the version list in the handler factory, so we need to
+      // ignore attempts to register handlers for version 1
+      continue;
+    }
     TRI_ASSERT(apiVersion < _constructors.size());
     auto& constructors = _constructors[apiVersion];
     if (!constructors.try_emplace(path, func, data).second) {
@@ -189,6 +202,13 @@ void RestHandlerFactory::addPrefixHandler(
   addHandler(path, func, apiVersions, data);
 
   for (uint32_t apiVersion : apiVersions) {
+    if (!ApiVersion::isApiVersionSupported(apiVersion) &&
+        apiVersion != ApiVersion::experimentalApiVersion) {
+      // version 1 has been removed from the list of supported versions, but we
+      // did not change the version list in the handler factory, so we need to
+      // ignore attempts to register handlers for version 1
+      continue;
+    }
     TRI_ASSERT(apiVersion < _prefixes.size());
     _prefixes[apiVersion].emplace_back(path);
   }

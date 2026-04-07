@@ -38,6 +38,10 @@ RestTimeHandler::RestTimeHandler(
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestTimeHandler::execute() {
+  if (!isAllowedHttpMethod({RequestType::GET})) {
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
   result.openObject(true);
   result.add(StaticStrings::Error, VPackValue(false));

@@ -1153,6 +1153,54 @@ function CreateCollectionsSuite() {
       }
     },
 
+    testCreateSmartEdgeWithoutDistributeShardsLike: function () {
+      if (!isEnterprise || !isCluster) {
+        return;
+      }
+
+      const vertexName = "UnitTestSmartVertex";
+      const edgeName = "UnitTestSmartEdgeNoDSL";
+
+      // Intentionally don't refer to this coll via distributeShardsLike.
+      const vertex = tryCreate({
+        name: vertexName,
+        type: 2,
+        numberOfShards: 3,
+        replicationFactor: 2,
+        isSmart: true,
+        shardKeys: ["_key:"],
+        smartGraphAttribute: "test",
+      });
+
+      try {
+        assertTrue(vertex.result, `Vertex create failed: ${JSON.stringify(vertex)}`);
+
+        // Without distributeShardsLike
+        try {
+          db._create(edgeName, {
+            replicationFactor: 2,
+            isSmart: true,
+            shardKeys: ["_key:"],
+            numberOfShards: 1
+          }, "edge");
+
+          fail(`Expected creation of smart edge without distributeShardsLike to fail`);
+        } catch (err) {
+          assertEqual(err.code, ERROR_HTTP_BAD_PARAMETER.code, `Unexpected error: ${JSON.stringify(err)}`);
+          assertEqual(err.errorNum, ERROR_BAD_PARAMETER.code, `Unexpected errorNum: ${JSON.stringify(err)}`);
+
+          const msg = String(err.message || "");
+          assertTrue(
+            msg.toLowerCase().includes("distributeshardslike"),
+            `Expected error message to mention distributeShardsLike, got: ${msg}`
+          );
+        }
+      } finally {
+        try { db._drop(edgeName, true); } catch (e) {}
+        db._drop(vertexName, true);
+      }
+    },
+
     testDuplicateName: function () {
       const res = tryCreate({name: collname});
       try {

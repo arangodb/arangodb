@@ -31,7 +31,6 @@ const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
-let IM = global.instanceManager;
 
 let sgm;
 let satgm;
@@ -296,69 +295,6 @@ function createStrings() {
   });
 }
 
-function createTransactional() {
-  if (!IM.options.skipServerJS) {
-    db._useDatabase("UnitTestsDumpSrc");
-    let c = db._create("UnitTestsDumpTransactionCommit");
-    db._executeTransaction({
-      collections: {
-        write: "UnitTestsDumpTransactionCommit"
-      },
-      action: function (params) {
-        var c = require("internal").db.UnitTestsDumpTransactionCommit;
-        let docs = [];
-        for (var i = 0; i < 1000; ++i) {
-          docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-        }
-        c.save(docs);
-      }
-    });
-
-
-    c = db._create("UnitTestsDumpTransactionUpdate");
-    let docs = [];
-    for (let i = 0; i < 1000; ++i) {
-      docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-    }
-    c.save(docs);
-
-    db._executeTransaction({
-      collections: {
-        write: "UnitTestsDumpTransactionUpdate"
-      },
-      action: function (params) {
-        var c = require("internal").db.UnitTestsDumpTransactionUpdate;
-        for (var i = 0; i < 1000; i += 2) {
-          c.update("test" + i, {value3: i});
-        }
-      }
-    });
-
-
-    c = db._create("UnitTestsDumpTransactionAbort");
-    c.save({_key: "foo"});
-    try {
-      db._executeTransaction({
-        collections: {
-          write: "UnitTestsDumpTransactionAbort"
-        },
-        action: function (params) {
-          var c = require("internal").db.UnitTestsDumpTransactionAbort;
-          c.remove("foo");
-          let docs = [];
-          for (let i = 0; i < 1000; ++i) {
-            docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-          }
-          c.save(docs);
-          throw "rollback!";
-        }
-      });
-      throw "unexpected!";
-    } catch (err) {
-    }
-  }
-}
-
 function createPersistent() {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpPersistent");
@@ -536,37 +472,6 @@ function createInvertedIndex() {
 function createReplicationFactors() {
   db._create("UnitTestsDumpReplicationFactor1", {replicationFactor: 2, numberOfShards: getNoShards(7)});
   db._create("UnitTestsDumpReplicationFactor2", {replicationFactor: 2, numberOfShards: getNoShards(6)});
-}
-
-function createJobs() {
-  db._useDatabase("UnitTestsDumpSrc");
-  // insert an entry into _jobs collection
-  try {
-    db._jobs.remove("test");
-  } catch (err) {
-  }
-  db._jobs.insert({_key: "test", status: "completed"});
-
-  // insert an entry into _queues collection
-  try {
-    db._queues.remove("test");
-  } catch (err) {
-  }
-  db._queues.insert({_key: "test"});
-}
-
-function createFoxx() {
-  if (!IM.options.skipServerJS) {
-
-    db._useDatabase("UnitTestsDumpSrc");
-    // Install Foxx
-    const fs = require('fs');
-    const SERVICE_PATH = fs.makeAbsolute(fs.join(
-      require('internal').pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service'
-    ));
-    const FoxxManager = require('@arangodb/foxx/manager');
-    FoxxManager.install(SERVICE_PATH, '/test');
-  }
 }
 
 function createAnalyzers() {
@@ -1448,13 +1353,10 @@ exports.createAutoIncKeyGen = createAutoIncKeyGen;
 exports.createPaddedKeyGen = createPaddedKeyGen;
 exports.createUUIDKeyGen = createUUIDKeyGen;
 exports.createStrings = createStrings;
-exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;
 exports.createView = createView;
 exports.createSearch = createSearch;
 exports.createInvertedIndex = createInvertedIndex;
 exports.createReplicationFactors = createReplicationFactors;
-exports.createJobs = createJobs;
-exports.createFoxx = createFoxx;
 exports.createAnalyzers = createAnalyzers;
 exports.extendedName = extendedName;

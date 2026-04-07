@@ -162,13 +162,6 @@ TEST_F(IResearchFeatureTest, test_options_default) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -193,8 +186,6 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   uint32_t const expectedNumExecuteThreads =
       uint32_t(arangodb::NumberOfCores::getValue()) * 2;
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedNumThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedNumThreads, *commitThreads->ptr);
   ASSERT_EQ(expectedNumExecuteThreads, *executeThreadsLimit->ptr);
@@ -250,13 +241,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -287,8 +271,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   opts->processingResult().touch("arangosearch.default-parallelism");
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
   ASSERT_EQ(0, *executeThreadsLimit->ptr);
@@ -346,13 +328,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -370,8 +345,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
   *commitThreads->ptr = expectedCommitThreads;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
@@ -429,13 +402,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -453,8 +419,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
   *commitThreads->ptr = 6;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -510,13 +474,6 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -534,8 +491,6 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
   *consolidationThreads->ptr = 6;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -591,13 +546,6 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -615,8 +563,6 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
   *consolidationThreads->ptr = 6;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -672,13 +618,6 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -696,8 +635,6 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
   *consolidationThreads->ptr = 6;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -754,13 +691,6 @@ TEST_F(IResearchFeatureTest,
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -778,8 +708,6 @@ TEST_F(IResearchFeatureTest,
   *consolidationThreads->ptr = 6;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -837,13 +765,6 @@ TEST_F(
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -861,8 +782,6 @@ TEST_F(
   *consolidationThreads->ptr = 6;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -918,13 +837,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -942,8 +854,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
   *commitThreads->ptr = 6;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -999,13 +909,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -1023,8 +926,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
   *commitThreads->ptr = 6;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -1081,13 +982,6 @@ TEST_F(IResearchFeatureTest,
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -1105,8 +999,6 @@ TEST_F(IResearchFeatureTest,
   *commitThreads->ptr = 6;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -1162,13 +1054,6 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -1187,8 +1072,6 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
   *consolidationThreads->ptr = expectedConsolidationThreads;
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -1244,13 +1127,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   auto* consolidationThreads =
       opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
   ASSERT_NE(nullptr, consolidationThreads);
@@ -1269,8 +1145,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
   *commitThreads->ptr = std::numeric_limits<uint32_t>::max();
 
   feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
 
@@ -1297,318 +1171,6 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
   waitForStats(std::make_tuple(size_t(0), size_t(0),
                                size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
-  feature.stop();
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_1));
-}
-
-TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
-  using namespace arangodb::options;
-  using namespace arangodb::iresearch;
-
-  IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_1));
-
-  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
-                          arangodb::iresearch::ThreadGroup group,
-                          std::chrono::steady_clock::duration timeout = 10s) {
-    auto const end = std::chrono::steady_clock::now() + timeout;
-    while (expectedStats != feature.stats(group)) {
-      std::this_thread::sleep_for(10ms);
-      ASSERT_LE(std::chrono::steady_clock::now(), end);
-    }
-  };
-
-  auto opts = std::make_shared<ProgramOptions>("", "", "", "");
-  feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads =
-      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
-  ASSERT_NE(nullptr, consolidationThreads);
-  ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* commitThreads =
-      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
-  ASSERT_NE(nullptr, commitThreads);
-  ASSERT_EQ(0, *commitThreads->ptr);
-
-  opts->processingResult().touch("arangosearch.threads");
-
-  uint32_t const expectedNumThreads = std::max(
-      1U, std::min(4U, (uint32_t(arangodb::NumberOfCores::getValue()) / 8)));
-  feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
-  ASSERT_EQ(expectedNumThreads, *consolidationThreads->ptr);
-  ASSERT_EQ(expectedNumThreads, *commitThreads->ptr);
-
-  feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_1));
-
-  feature.start();
-  ASSERT_EQ(
-      std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreads->ptr)),
-      feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreads->ptr)),
-            feature.limits(ThreadGroup::_1));
-  waitForStats(
-      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
-      ThreadGroup::_0);
-  waitForStats(
-      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
-      ThreadGroup::_1);
-  feature.stop();
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_1));
-}
-
-TEST_F(IResearchFeatureTest, test_options_threads) {
-  using namespace arangodb::options;
-  using namespace arangodb::iresearch;
-
-  IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_1));
-
-  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
-                          arangodb::iresearch::ThreadGroup group,
-                          std::chrono::steady_clock::duration timeout = 10s) {
-    auto const end = std::chrono::steady_clock::now() + timeout;
-    while (expectedStats != feature.stats(group)) {
-      std::this_thread::sleep_for(10ms);
-      ASSERT_LE(std::chrono::steady_clock::now(), end);
-    }
-  };
-
-  auto opts = std::make_shared<ProgramOptions>("", "", "", "");
-  feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads =
-      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
-  ASSERT_NE(nullptr, consolidationThreads);
-  ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* commitThreads =
-      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
-  ASSERT_NE(nullptr, commitThreads);
-  ASSERT_EQ(0, *commitThreads->ptr);
-
-  opts->processingResult().touch("arangosearch.threads");
-  *threads->ptr = 3;
-
-  uint32_t const expectedNumThreads = *threads->ptr / 2;
-  feature.validateOptions(opts);
-  ASSERT_EQ(3, *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
-  ASSERT_EQ(expectedNumThreads, *consolidationThreads->ptr);
-  ASSERT_EQ(expectedNumThreads, *commitThreads->ptr);
-
-  feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_1));
-
-  feature.start();
-  ASSERT_EQ(
-      std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreads->ptr)),
-      feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreads->ptr)),
-            feature.limits(ThreadGroup::_1));
-  waitForStats(
-      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
-      ThreadGroup::_0);
-  waitForStats(
-      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
-      ThreadGroup::_1);
-  feature.stop();
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_1));
-}
-
-TEST_F(IResearchFeatureTest, test_options_threads_max) {
-  using namespace arangodb::options;
-  using namespace arangodb::iresearch;
-
-  IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_1));
-
-  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
-                          arangodb::iresearch::ThreadGroup group,
-                          std::chrono::steady_clock::duration timeout = 10s) {
-    auto const end = std::chrono::steady_clock::now() + timeout;
-    while (expectedStats != feature.stats(group)) {
-      std::this_thread::sleep_for(10ms);
-      ASSERT_LE(std::chrono::steady_clock::now(), end);
-    }
-  };
-
-  auto opts = std::make_shared<ProgramOptions>("", "", "", "");
-  feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads =
-      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
-  ASSERT_NE(nullptr, consolidationThreads);
-  ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* commitThreads =
-      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
-  ASSERT_NE(nullptr, commitThreads);
-  ASSERT_EQ(0, *commitThreads->ptr);
-
-  opts->processingResult().touch("arangosearch.threads");
-  *threads->ptr = std::numeric_limits<uint32_t>::max();
-
-  uint32_t const expectedNumThreads = 8 / 2;
-  feature.validateOptions(opts);
-  ASSERT_EQ(std::numeric_limits<uint32_t>::max(), *threads->ptr);
-  ASSERT_EQ(0, *threadsLimit->ptr);
-  ASSERT_EQ(expectedNumThreads, *consolidationThreads->ptr);
-  ASSERT_EQ(expectedNumThreads, *commitThreads->ptr);
-
-  feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_1));
-
-  feature.start();
-  ASSERT_EQ(
-      std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreads->ptr)),
-      feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreads->ptr)),
-            feature.limits(ThreadGroup::_1));
-  waitForStats(
-      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
-      ThreadGroup::_0);
-  waitForStats(
-      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
-      ThreadGroup::_1);
-  feature.stop();
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_1));
-}
-
-TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
-  using namespace arangodb::options;
-  using namespace arangodb::iresearch;
-
-  IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_1));
-
-  auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
-                          arangodb::iresearch::ThreadGroup group,
-                          std::chrono::steady_clock::duration timeout = 10s) {
-    auto const end = std::chrono::steady_clock::now() + timeout;
-    while (expectedStats != feature.stats(group)) {
-      std::this_thread::sleep_for(10ms);
-      ASSERT_LE(std::chrono::steady_clock::now(), end);
-    }
-  };
-
-  auto opts = std::make_shared<ProgramOptions>("", "", "", "");
-  feature.collectOptions(opts);
-  auto* threads = opts->get<UInt32Parameter>("--arangosearch.threads");
-  ASSERT_NE(nullptr, threads);
-  ASSERT_EQ(0, *threads->ptr);
-  auto* threadsLimit =
-      opts->get<UInt32Parameter>("--arangosearch.threads-limit");
-  ASSERT_NE(nullptr, threadsLimit);
-  ASSERT_EQ(0, *threadsLimit->ptr);
-  auto* consolidationThreads =
-      opts->get<UInt32Parameter>("--arangosearch.consolidation-threads");
-  ASSERT_NE(nullptr, consolidationThreads);
-  ASSERT_EQ(0, *consolidationThreads->ptr);
-  auto* commitThreads =
-      opts->get<UInt32Parameter>("--arangosearch.commit-threads");
-  ASSERT_NE(nullptr, commitThreads);
-  ASSERT_EQ(0, *commitThreads->ptr);
-
-  opts->processingResult().touch("arangosearch.threads-limit");
-  *threadsLimit->ptr = 1;
-
-  uint32_t const expectedNumThreads = 1;
-  feature.validateOptions(opts);
-  ASSERT_EQ(0, *threads->ptr);
-  ASSERT_EQ(1, *threadsLimit->ptr);
-  ASSERT_EQ(expectedNumThreads, *consolidationThreads->ptr);
-  ASSERT_EQ(expectedNumThreads, *commitThreads->ptr);
-
-  feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
-            feature.limits(ThreadGroup::_1));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_0));
-  ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
-            feature.stats(ThreadGroup::_1));
-
-  feature.start();
-  ASSERT_EQ(
-      std::make_pair(size_t(*commitThreads->ptr), size_t(*commitThreads->ptr)),
-      feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreads->ptr)),
-            feature.limits(ThreadGroup::_1));
-  waitForStats(
-      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
-      ThreadGroup::_0);
-  waitForStats(
-      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
-      ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -2251,10 +1813,6 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
-  server.server()
-      .options()
-      ->get<arangodb::options::UInt32Parameter>("arangosearch.threads")
-      ->set("8");
   feature.validateOptions(server.server().options());
   feature.prepare();
   std::condition_variable cond;

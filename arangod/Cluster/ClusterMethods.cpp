@@ -1201,7 +1201,7 @@ futures::Future<OperationResult> countOnCoordinator(
 
   if (NameValidator::isSystemName(cname) &&
       !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
-    // system collection (e.g. _apps, _jobs, _graphs...) that is not
+    // system collection (e.g. _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
     reqOpts.timeout = network::Timeout(10.0);
@@ -1379,7 +1379,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
 
   if (NameValidator::isSystemName(collname) &&
       !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
-    // system collection (e.g. _apps, _jobs, _graphs...) that is not
+    // system collection (e.g. _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
     reqOpts.timeout = network::Timeout(10.0);

@@ -200,6 +200,9 @@ class CircleCIGenerator(OutputGenerator):
         """Create compilation job definition."""
         preset = "enterprise-pr"
 
+        if build_config.architecture == Architecture.AARCH64:
+            preset += "-arm"
+
         preset += build_config.build_variant.get_suffix()
 
         suffix = build_config.build_variant.get_suffix()
@@ -323,15 +326,10 @@ class CircleCIGenerator(OutputGenerator):
         A single TestJob may result in multiple CircleCI jobs if:
         - Deployment type is None (both single and cluster)
         - Replication version 2 is enabled (additional cluster job)
-        - RTA UI tests (one job per deployment: SG, CL)
 
         Returns:
             List of job definitions (excludes jobs with no suites after filtering)
         """
-        # Handle RTA UI tests specially - they generate multiple jobs
-        if job.job_type == "run-rta-tests":
-            return self._create_rta_test_jobs(job, build_config, build_jobs)
-
         result = []
         deployment_type = job.options.deployment_type
         add_job_to_result = lambda job_def: result.append(job_def) if job_def else None
@@ -599,60 +597,6 @@ class CircleCIGenerator(OutputGenerator):
         elif build_config.build_variant.is_alubsan:
             return "alubsan"
         return ""
-
-    def _create_rta_test_jobs(
-        self,
-        job: TestJob,
-        build_config: BuildConfig,
-        build_jobs: List[str],
-    ) -> List[Dict[str, Any]]:
-        """
-        Create RTA UI test job definitions.
-
-        RTA tests use run-rta-tests job with different parameters than regular tests.
-
-        Returns:
-            List of job definitions (one per deployment).
-        """
-        # Build filter string with trailing space (matches old generator behavior)
-        ui_filter = "".join(
-            f"--ui-include-test-suite {suite.name} " for suite in job.suites
-        )
-        # Ensure trailing space is preserved (old generator compatibility)
-        if ui_filter and not ui_filter.endswith(" "):
-            ui_filter += " "
-
-        # Calculate bucket count
-        bucket_count = job.get_bucket_count()
-        if bucket_count is None or bucket_count == "auto":
-            bucket_count = len(job.suites)
-
-        # Get RTA branch from repository config
-        rta_branch = "main"
-        if job.repository and job.repository.git_branch:
-            rta_branch = job.repository.git_branch
-
-        deployments = ["single", "cluster"]
-        sanitizer_suffix = build_config.build_variant.get_suffix()
-
-        result_jobs = []
-        for deployment in deployments:
-            job_dict = {
-                "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
-                "suiteName": f"{deployment}-UI",
-                "arangosh_args": "",
-                "deployment": "SG" if deployment == "single" else "CL",
-                "browser": "Remote_CHROME",
-                "enterprise": "EP",
-                "filterStatement": ui_filter,
-                "requires": build_jobs,
-                "rta-branch": rta_branch,
-                "buckets": bucket_count,
-                "sanitizer": self._get_sanitizer_param(build_config),
-            }
-            result_jobs.append({"run-rta-tests": job_dict})
-
-        return result_jobs
 
     def _add_repository_config(self, job_dict: Dict[str, Any], job: TestJob) -> None:
         """Add repository configuration to job dict if job has external repo."""

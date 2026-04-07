@@ -32,7 +32,6 @@
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
 #include "Basics/FloatingPoint.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -723,7 +722,8 @@ std::string_view AstNode::getStringView() const noexcept {
       type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_COLLECTION ||
       type == NODE_TYPE_VIEW || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_FCALL_USER);
+      type == NODE_TYPE_FCALL_USER)
+      << getTypeString(type);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
   return std::string_view(getStringValue(), getStringLength());
 }

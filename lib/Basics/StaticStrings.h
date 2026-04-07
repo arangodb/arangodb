@@ -72,7 +72,6 @@ class StaticStrings {
   static std::string const Group;
   static std::string const Namespace;
   static std::string const Prefix;
-  static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
   static std::string const DontWaitForCommit;
@@ -101,12 +100,6 @@ class StaticStrings {
   static std::string const LegacyAnalyzersCollection;
   static std::string const UsersCollection;
   static std::string const GraphsCollection;
-  static std::string const AqlFunctionsCollection;
-  static std::string const QueuesCollection;
-  static std::string const JobsCollection;
-  static std::string const AppsCollection;
-  static std::string const AppBundlesCollection;
-  static std::string const FrontendCollection;
   static std::string const QueriesCollection;
 
   // analyzers names
