@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <chrono>
+#include <filesystem>
 #include <stdexcept>
 #include <thread>
 #include <filesystem>
@@ -35,7 +36,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileResult.h"
 #include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -108,7 +108,7 @@ void DaemonFeature::validateOptions(
   }
 
   // make the pid filename absolute
-  std::string currentDir = FileUtils::currentDirectory().result();
+
   std::string absoluteFile =
       std::filesystem::absolute(std::filesystem::path(_options.pidFile))
           .string();
@@ -292,24 +292,23 @@ int DaemonFeature::forkProcess() {
   }
 
   // store current working directory
-  FileResultString cwd = FileUtils::currentDirectory();
-
-  if (!cwd.ok()) {
+  std::error_code cwdEc;
+  _current = std::filesystem::current_path(cwdEc).string();
+  if (cwdEc) {
     LOG_TOPIC("a681c", FATAL, arangodb::Logger::FIXME)
-        << "cannot get current directory: " << cwd.errorMessage();
+        << "cannot get current directory: " << cwdEc.message();
     FATAL_ERROR_EXIT();
   }
 
-  _current = cwd.result();
-
   // change the current working directory
   if (!_options.workingDirectory.empty()) {
-    FileResult res = FileUtils::changeDirectory(_options.workingDirectory);
+    std::error_code ec;
+    std::filesystem::current_path(_options.workingDirectory, ec);
 
-    if (!res.ok()) {
+    if (ec) {
       LOG_TOPIC("d9f9d", FATAL, arangodb::Logger::STARTUP)
           << "cannot change into working directory '"
-          << _options.workingDirectory << "': " << res.errorMessage();
+          << _options.workingDirectory << "': " << ec.message();
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC("ae8be", INFO, arangodb::Logger::STARTUP)

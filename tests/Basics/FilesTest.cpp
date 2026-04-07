@@ -256,7 +256,13 @@ TEST_F(FilesTest, tst_filesize_non) {
 
 TEST_F(FilesTest, tst_absolute_paths) {
   std::string path;
-  std::string cwd = FileUtils::currentDirectory().result();
+  std::error_code cwdEc;
+  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
+  if (cwdEc) {
+    throw std::filesystem::filesystem_error(
+        "cannot get current working directory", std::filesystem::path(), cwdEc);
+  }
+  std::string const cwd = cwdPath.string();
 
   path = std::filesystem::absolute(std::filesystem::path(".") / "").string();
   EXPECT_EQ(std::filesystem::path(cwd) / "./", path);
