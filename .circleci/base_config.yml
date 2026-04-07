@@ -534,6 +534,7 @@ jobs:
           command: |
             echo "building frontend"
       - when:
+          # if we're building a docker image, the regular build does the frontend.
           condition:
             not:
               << pipeline.parameters.create-docker-images >>
@@ -654,6 +655,10 @@ jobs:
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
                   tar -czf install.tar.gz -C install ./
+            - persist_to_workspace:
+                root: .
+                paths:
+                  - install.tar.gz
       - run:
           name: Size leaderboard
           command: |
