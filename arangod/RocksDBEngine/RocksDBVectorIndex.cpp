@@ -352,7 +352,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
   if (_faissIndex == nullptr) {
-    LOG_TOPIC("d1e0a", WARN, Logger::ENGINES)
+    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
         << "vector index " << _iid.id() << " not yet trained, skipping insert";
     return {};
   }
@@ -422,7 +422,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
   if (_faissIndex == nullptr) {
-    LOG_TOPIC("d1e0b", WARN, Logger::ENGINES)
+    LOG_TOPIC("d1e0b", DEBUG, Logger::ENGINES)
         << "vector index " << _iid.id() << " not yet trained, skipping remove";
     return {};
   }

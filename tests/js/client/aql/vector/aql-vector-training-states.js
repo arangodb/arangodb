@@ -68,9 +68,9 @@ function createIndex(collection, sparse, inBackground = false) {
   });
 }
 
-function buildSearchQuery(collection, qp, nListsValue = nLists) {
+function buildSearchQuery(collection, qp, nProbe = nLists) {
   return aql`FOR d IN ${collection}
-    SORT APPROX_NEAR_L2(d.vector, ${qp}, {nProbe: ${nListsValue}})
+    SORT APPROX_NEAR_L2(d.vector, ${qp}, {nProbe: ${nProbe}})
     LIMIT 5 RETURN d._key`;
 }
 
@@ -380,6 +380,13 @@ function SparseScalingVectorIndexTestSuite() {
       assertFalse(
         result.hasOwnProperty("errorMessage") && result.errorMessage.length > 0,
         "ensureIndex should not return an errorMessage when index becomes ready"
+      );
+
+      assertTrue(
+        waitForVectorIndexState(
+          collection, "vec_l2", VectorIndexTrainingState.kReady, 120),
+        "Sparse scaling index should become ready with " +
+        vectorDocsAboveThreshold + " vector-bearing docs"
       );
 
       assertIndexReady(collection, "vec_l2");

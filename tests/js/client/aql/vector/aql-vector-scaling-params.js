@@ -55,6 +55,7 @@ function VectorIndexScalingTestSuite() {
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -201,6 +202,7 @@ function VectorIndexScalingEmptyCollectionTestSuite() {
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
             collection = db._create(collName, { numberOfShards: 3 });

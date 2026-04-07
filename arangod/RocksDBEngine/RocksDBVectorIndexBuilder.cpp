@@ -244,7 +244,8 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   std::size_t trainingDatasetCounter{0};
   std::size_t iterationCounter{0};
   while (it.Valid() &&
-         (shouldDoFullIteration || trainingDatasetCounter < *maxVectors)) {
+         (shouldDoFullIteration ||
+          (maxVectors.has_value() && trainingDatasetCounter < *maxVectors))) {
     if (iterationCounter % 1000 == 0 && stopToken.stop_requested()) {
       return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "vector training aborted"};
