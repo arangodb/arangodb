@@ -531,27 +531,27 @@ jobs:
     resource_class: arangodb/large-amd64
     steps:
       - when:
-        condition:
-          not:
-            << pipeline.parameters.create-docker-images >>
-        steps:
-          - checkout-arangodb:
-              with-submodules: false
-              destination: "/root/project"
-          - run:
-              name: Build frontend
-              command: |
-                cd js/apps/system/_admin/aardvark/APP/react
-                tar -xJf /node_modules.tar.xz
-                yarn install
-                yarn build
-          - persist_to_workspace:
-              root: .
-              paths: js/apps/system/_admin/aardvark/APP/react/build
-          - persist_workspace_to_s3:
-              root: .
-              paths: js/apps/system/_admin/aardvark/APP/react/build
-              archive: frontend.tar.gz
+          condition:
+            not:
+              << pipeline.parameters.create-docker-images >>
+          steps:
+            - checkout-arangodb:
+                with-submodules: false
+                destination: "/root/project"
+            - run:
+                name: Build frontend
+                command: |
+                  cd js/apps/system/_admin/aardvark/APP/react
+                  tar -xJf /node_modules.tar.xz
+                  yarn install
+                  yarn build
+            - persist_to_workspace:
+                root: .
+                paths: js/apps/system/_admin/aardvark/APP/react/build
+            - persist_workspace_to_s3:
+                root: .
+                paths: js/apps/system/_admin/aardvark/APP/react/build
+                archive: frontend.tar.gz
 
   compile-linux:
     parameters:
