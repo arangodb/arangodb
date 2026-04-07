@@ -8,13 +8,6 @@ defmodule Toast.Deployment.DeployPipeline do
   alias Toast.Process.ServerProcess
   alias Toast.Process.Supervisor, as: ProcessSupervisor
 
-  # Buffer for Task.async_stream to account for scheduling/collection overhead
-  # beyond the per-task timeout.
-  @task_stream_buffer 5_000
-
-  # Deploy order: single and agent are both first (they never coexist in one deployment)
-  @role_deploy_order [:single, :agent, :dbserver, :coordinator]
-
   @spec run(State.t(), [map()], timeout(), keyword()) ::
           {:ok, State.t()} | {:error, term(), State.t()}
   def run(state, specs, timeout, opts) do
@@ -89,7 +82,7 @@ defmodule Toast.Deployment.DeployPipeline do
     grouped = Enum.group_by(specs, & &1.role)
 
     Enum.reduce_while(
-      @role_deploy_order,
+      State.role_deploy_order(),
       {:ok, state},
       fn role, {:ok, acc} ->
         case Map.get(grouped, role) do
@@ -97,17 +90,21 @@ defmodule Toast.Deployment.DeployPipeline do
             {:cont, {:ok, acc}}
 
           role_specs ->
-            server_ids = Enum.map(role_specs, & &1.id)
-
-            with {:ok, acc} <- launch_group(acc, server_ids, role_opts(role), deadline),
-                 {:ok, acc} <- post_group_hook(acc, role, deadline) do
-              {:cont, {:ok, acc}}
-            else
-              err -> {:halt, err}
-            end
+            deploy_role_group(acc, role, role_specs, deadline)
         end
       end
     )
+  end
+
+  defp deploy_role_group(state, role, role_specs, deadline) do
+    server_ids = Enum.map(role_specs, & &1.id)
+
+    with {:ok, state} <- launch_group(state, server_ids, role_opts(role), deadline),
+         {:ok, state} <- post_group_hook(state, role, deadline) do
+      {:cont, {:ok, state}}
+    else
+      err -> {:halt, err}
+    end
   end
 
   defp role_opts(:agent), do: [health_check: false]
@@ -117,7 +114,7 @@ defmodule Toast.Deployment.DeployPipeline do
     Logger.info("#{state.id}: waiting for agency consensus")
 
     endpoints_for_role(state, :agent)
-    |> Health.wait_for_agency_ready(timeout: remaining_ms(deadline))
+    |> Health.wait_for_agency_ready(timeout: State.remaining_ms(deadline))
     |> case do
       :ok -> {:ok, state}
       error -> error
@@ -128,7 +125,7 @@ defmodule Toast.Deployment.DeployPipeline do
 
   defp launch_group(state, server_ids, opts, deadline) do
     health_check? = Keyword.get(opts, :health_check, false)
-    timeout = remaining_ms(deadline)
+    timeout = State.remaining_ms(deadline)
     count = length(server_ids)
     deployment_id = state.id
 
@@ -150,7 +147,7 @@ defmodule Toast.Deployment.DeployPipeline do
         ),
         ordered: false,
         max_concurrency: count,
-        timeout: timeout + @task_stream_buffer
+        timeout: timeout + State.task_stream_buffer()
       )
       |> Enum.to_list()
 
@@ -259,11 +256,16 @@ defmodule Toast.Deployment.DeployPipeline do
   end
 
   defp find_toast_id_by_endpoint(state, endpoint) do
-    with {:ok, port} <- extract_port(endpoint) do
-      Enum.find_value(state.servers, fn {toast_id, server} ->
-        if server.port == port, do: toast_id
-      end)
+    case extract_port(endpoint) do
+      {:ok, port} -> find_toast_id_by_port(state.servers, port)
+      :error -> nil
     end
+  end
+
+  defp find_toast_id_by_port(servers, port) do
+    Enum.find_value(servers, fn {toast_id, server} ->
+      if server.port == port, do: toast_id
+    end)
   end
 
   defp extract_port(endpoint) do
@@ -305,10 +307,6 @@ defmodule Toast.Deployment.DeployPipeline do
   end
 
   defp update_server(state, server_id, updates) do
-    %{state | servers: Map.update!(state.servers, server_id, &struct!(&1, updates))}
-  end
-
-  defp remaining_ms(deadline) do
-    max(0, deadline - System.monotonic_time(:millisecond))
+    State.update_server(state, server_id, updates)
   end
 end

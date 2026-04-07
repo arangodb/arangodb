@@ -20,17 +20,19 @@ defmodule Mix.Tasks.Toast.Helpers do
   @spec expand_args([String.t()], String.t()) :: [String.t()]
   def expand_args(args, suites_dir) do
     Enum.flat_map(args, fn arg ->
-      normalized = normalize_arg(arg)
-
-      if glob?(normalized) do
-        case Path.join(suites_dir, normalized) |> Path.wildcard() do
-          [] -> [normalized]
-          paths -> Enum.map(paths, &Path.relative_to(&1, suites_dir))
-        end
-      else
-        [normalized]
-      end
+      arg |> normalize_arg() |> expand_single_arg(suites_dir)
     end)
+  end
+
+  defp expand_single_arg(normalized, suites_dir) do
+    if glob?(normalized) do
+      case Path.join(suites_dir, normalized) |> Path.wildcard() do
+        [] -> [normalized]
+        paths -> Enum.map(paths, &Path.relative_to(&1, suites_dir))
+      end
+    else
+      [normalized]
+    end
   end
 
   defp glob?(arg), do: String.contains?(arg, ["*", "?", "["])

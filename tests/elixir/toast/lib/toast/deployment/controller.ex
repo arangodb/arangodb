@@ -53,6 +53,26 @@ defmodule Toast.Deployment.Controller do
             agency_dump: term(),
             event_listener: module()
           }
+
+    @doc false
+    @spec update_server(t(), String.t(), keyword()) :: t()
+    def update_server(state, server_id, updates) do
+      %{state | servers: Map.update!(state.servers, server_id, &struct!(&1, updates))}
+    end
+
+    @doc false
+    @spec remaining_ms(integer()) :: non_neg_integer()
+    def remaining_ms(deadline) do
+      max(0, deadline - System.monotonic_time(:millisecond))
+    end
+
+    @doc false
+    @spec role_deploy_order() :: [atom()]
+    def role_deploy_order, do: [:single, :agent, :dbserver, :coordinator]
+
+    @doc false
+    @spec task_stream_buffer() :: non_neg_integer()
+    def task_stream_buffer, do: 5_000
   end
 
   # --- Client API ---
@@ -451,9 +471,8 @@ defmodule Toast.Deployment.Controller do
   end
 
   defp do_expect_crash(server_id, acc, timeout) do
-    with {:ok, server} <- fetch_server(acc, server_id),
-         {:ok, acc} <- expect_crash(server_id, timeout, server, acc) do
-      {:ok, acc}
+    with {:ok, server} <- fetch_server(acc, server_id) do
+      expect_crash(server_id, timeout, server, acc)
     end
   end
 
@@ -621,7 +640,7 @@ defmodule Toast.Deployment.Controller do
   end
 
   defp update_server(state, server_id, updates) do
-    %{state | servers: Map.update!(state.servers, server_id, &struct!(&1, updates))}
+    State.update_server(state, server_id, updates)
   end
 
   defp stop_health_monitor(state, server_id) do

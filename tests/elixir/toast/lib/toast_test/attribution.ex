@@ -9,6 +9,8 @@ defmodule ToastTest.Attribution do
   alias ToastTest.Attribution.TimeWindows
   alias ToastTest.Enrichment
 
+  import Toast.Utils, only: [maybe_put: 3]
+
   require Logger
 
   @spec run(
@@ -145,9 +147,6 @@ defmodule ToastTest.Attribution do
       paths -> %{artifacts | coredump_paths: paths}
     end
   end
-
-  defp maybe_put(map, _key, nil), do: map
-  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   defp maybe_put_coredump_paths(detail, []), do: detail
   defp maybe_put_coredump_paths(detail, paths), do: Map.put(detail, :coredump_paths, paths)

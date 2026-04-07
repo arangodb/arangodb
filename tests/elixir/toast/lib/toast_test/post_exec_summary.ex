@@ -33,7 +33,7 @@ defmodule ToastTest.PostExecSummary do
   defp print_warnings([]), do: :ok
 
   defp print_warnings(warnings) do
-    colors = %{colors_enabled: IO.ANSI.enabled?()}
+    colors = IO.ANSI.enabled?()
     bar = String.duplicate("!", 80)
 
     IO.puts("")
@@ -120,21 +120,23 @@ defmodule ToastTest.PostExecSummary do
       server_word = if server_count == 1, do: "server", else: "servers"
       IO.puts("    Aborted #{server_count} #{server_word}:")
 
-      Enum.each(servers, fn server ->
-        pid_part = if server.os_pid, do: " (PID #{server.os_pid})", else: ""
-        IO.puts("    #{colorize("#{server.server_id}#{pid_part}", :cyan, colors)}")
-
-        if server.log_file do
-          IO.puts(IO.ANSI.format([:blue, "      Log: #{server.log_file}", :reset]))
-        end
-
-        if server[:coredump] do
-          IO.puts(IO.ANSI.format([:blue, "      Coredump: #{server.coredump}", :reset]))
-        end
-      end)
+      Enum.each(servers, &print_server_detail(&1, colors))
     end
 
     counter + 1
+  end
+
+  defp print_server_detail(server, colors) do
+    pid_part = if server.os_pid, do: " (PID #{server.os_pid})", else: ""
+    IO.puts("    #{colorize("#{server.server_id}#{pid_part}", :cyan, colors)}")
+
+    if server.log_file do
+      IO.puts(IO.ANSI.format([:blue, "      Log: #{server.log_file}", :reset]))
+    end
+
+    if server[:coredump] do
+      IO.puts(IO.ANSI.format([:blue, "      Coredump: #{server.coredump}", :reset]))
+    end
   end
 
   # --- Crash details ---

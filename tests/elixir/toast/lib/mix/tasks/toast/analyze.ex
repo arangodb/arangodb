@@ -133,13 +133,7 @@ defmodule Mix.Tasks.Toast.Analyze do
       {"issues", args}
     else
       message = "Unknown subcommand: #{arg}."
-
-      suggestion =
-        @canonical_subcommands
-        |> Enum.max_by(&String.jaro_distance(&1, arg))
-        |> then(fn best ->
-          if String.jaro_distance(best, arg) >= 0.7, do: best
-        end)
+      suggestion = jaro_suggestion(@canonical_subcommands, arg)
 
       hint =
         if suggestion,
@@ -151,6 +145,11 @@ defmodule Mix.Tasks.Toast.Analyze do
   end
 
   defp pop_subcommand([]), do: {"issues", []}
+
+  defp jaro_suggestion(candidates, input) do
+    best = Enum.max_by(candidates, &String.jaro_distance(&1, input))
+    if String.jaro_distance(best, input) >= 0.7, do: best
+  end
 
   defp print_help do
     Mix.shell().info(@moduledoc)
@@ -276,27 +275,26 @@ defmodule Mix.Tasks.Toast.Analyze do
 
     deployments
     |> Enum.sort_by(fn {did, _} -> did end)
-    |> Enum.each(fn {did, deployment} ->
-      mode = if deployment[:mode], do: " (#{deployment.mode})", else: ""
-      Mix.shell().info("")
-      Mix.shell().info("    #{colorize("#{did}#{mode}", :cyan, color)}")
-
-      if deployment[:started_at] do
-        stopped = if deployment[:stopped_at], do: fmt_dt(deployment.stopped_at), else: "running"
-        Mix.shell().info("      Time: #{fmt_dt(deployment.started_at)} .. #{stopped}")
-      end
-
-      servers = Map.get(deployment, :servers, %{})
-
-      servers
-      |> Enum.sort_by(fn {sid, _} -> sid end)
-      |> Enum.each(fn {sid, meta} ->
-        print_server_info(sid, meta, color)
-      end)
-    end)
+    |> Enum.each(&print_deployment_info(&1, color))
 
     # Coredump data
     print_coredump_data(Map.get(result, :coredumps, []), color)
+  end
+
+  defp print_deployment_info({did, deployment}, color) do
+    mode = if deployment[:mode], do: " (#{deployment.mode})", else: ""
+    Mix.shell().info("")
+    Mix.shell().info("    #{colorize("#{did}#{mode}", :cyan, color)}")
+
+    if deployment[:started_at] do
+      stopped = if deployment[:stopped_at], do: fmt_dt(deployment.stopped_at), else: "running"
+      Mix.shell().info("      Time: #{fmt_dt(deployment.started_at)} .. #{stopped}")
+    end
+
+    deployment
+    |> Map.get(:servers, %{})
+    |> Enum.sort_by(fn {sid, _} -> sid end)
+    |> Enum.each(fn {sid, meta} -> print_server_info(sid, meta, color) end)
   end
 
   defp print_coredump_data([], _color), do: :ok
@@ -333,40 +331,13 @@ defmodule Mix.Tasks.Toast.Analyze do
     role = if meta[:role], do: " (#{meta.role})", else: ""
     Mix.shell().info("      #{colorize("#{sid}#{role}", :cyan, color)}")
 
-    parts = []
-
-    parts =
-      case meta[:endpoint] do
-        ep when is_binary(ep) -> parts ++ ["endpoint=#{ep}"]
-        _ -> parts
-      end
-
-    parts =
-      case meta[:arango_id] do
-        id when is_binary(id) -> parts ++ ["arango=#{id}"]
-        _ -> parts
-      end
-
-    parts =
-      case meta[:log_file] do
-        f when is_binary(f) -> parts ++ ["log=#{f}"]
-        _ -> parts
-      end
+    parts = server_detail_parts(meta)
 
     if parts != [] do
       Mix.shell().info("        #{Enum.join(parts, "  ")}")
     end
 
-    # Incarnations
-    incarnations = meta[:incarnations] || []
-
-    if incarnations != [] do
-      Enum.each(incarnations, fn inc ->
-        stopped = if inc[:stopped_at], do: fmt_dt(inc.stopped_at), else: "running"
-
-        Mix.shell().info("        pid=#{inc.pid}  #{fmt_dt(inc.started_at)} .. #{stopped}")
-      end)
-    end
+    Enum.each(meta[:incarnations] || [], &print_incarnation/1)
 
     # Collected log windows
     logs = meta[:logs] || []
@@ -375,19 +346,38 @@ defmodule Mix.Tasks.Toast.Analyze do
     Mix.shell().info("        Logs: #{length(logs)} window(s), #{total_entries} entries")
   end
 
+  defp server_detail_parts(meta) do
+    []
+    |> maybe_append_part(meta[:endpoint], "endpoint")
+    |> maybe_append_part(meta[:arango_id], "arango")
+    |> maybe_append_part(meta[:log_file], "log")
+  end
+
+  defp maybe_append_part(parts, value, label) when is_binary(value),
+    do: parts ++ ["#{label}=#{value}"]
+
+  defp maybe_append_part(parts, _value, _label), do: parts
+
+  defp print_incarnation(inc) do
+    stopped = if inc[:stopped_at], do: fmt_dt(inc.stopped_at), else: "running"
+    Mix.shell().info("        pid=#{inc.pid}  #{fmt_dt(inc.started_at)} .. #{stopped}")
+  end
+
   defp count_tests(modules) do
     Enum.reduce(modules, %{total: 0, passed: 0, failed: 0, skipped: 0}, fn {_mod, data}, acc ->
-      Enum.reduce(data.tests, acc, fn test, acc ->
-        acc = %{acc | total: acc.total + 1}
-
-        case test.outcome do
-          :passed -> %{acc | passed: acc.passed + 1}
-          :failed -> %{acc | failed: acc.failed + 1}
-          outcome when outcome in [:skipped, :excluded] -> %{acc | skipped: acc.skipped + 1}
-          _ -> acc
-        end
-      end)
+      Enum.reduce(data.tests, acc, &tally_test/2)
     end)
+  end
+
+  defp tally_test(test, acc) do
+    acc = %{acc | total: acc.total + 1}
+
+    case test.outcome do
+      :passed -> %{acc | passed: acc.passed + 1}
+      :failed -> %{acc | failed: acc.failed + 1}
+      outcome when outcome in [:skipped, :excluded] -> %{acc | skipped: acc.skipped + 1}
+      _ -> acc
+    end
   end
 
   defp format_freq(freq) when map_size(freq) == 0, do: ""
@@ -513,19 +503,20 @@ defmodule Mix.Tasks.Toast.Analyze do
 
     if detail.servers != [] do
       Mix.shell().info("")
+      Enum.each(detail.servers, &print_timeout_server(&1, color))
+    end
+  end
 
-      Enum.each(detail.servers, fn server ->
-        pid_part = if server.os_pid, do: " (PID #{server.os_pid})", else: ""
-        Mix.shell().info("  #{colorize("#{server.server_id}#{pid_part}", :cyan, color)}")
+  defp print_timeout_server(server, color) do
+    pid_part = if server.os_pid, do: " (PID #{server.os_pid})", else: ""
+    Mix.shell().info("  #{colorize("#{server.server_id}#{pid_part}", :cyan, color)}")
 
-        if server.log_file do
-          Mix.shell().info(colorize("    Log: #{server.log_file}", :blue, color))
-        end
+    if server.log_file do
+      Mix.shell().info(colorize("    Log: #{server.log_file}", :blue, color))
+    end
 
-        if server[:coredump] do
-          Mix.shell().info(colorize("    Coredump: #{server.coredump}", :blue, color))
-        end
-      end)
+    if server[:coredump] do
+      Mix.shell().info(colorize("    Coredump: #{server.coredump}", :blue, color))
     end
   end
 
@@ -763,29 +754,33 @@ defmodule Mix.Tasks.Toast.Analyze do
         Mix.shell().info(colorize("  No time bounds available for this issue.", :faint, color))
 
       {win_start, win_end} = window ->
-        print_log_context(issue, win_start, win_end, log_opts, servers, color)
-        filtered = Logs.filter_servers(servers, log_opts.server_filter)
-        filtered_map = Map.new(filtered)
+        print_log_window(issue, window, win_start, win_end, log_opts, servers, color)
+    end
+  end
 
-        entries =
-          Logs.extract(filtered_map, window,
-            level_filter: log_opts.level_filter,
-            excluded_ids: log_opts.excluded_ids
-          )
+  defp print_log_window(issue, window, win_start, win_end, log_opts, servers, color) do
+    print_log_context(issue, win_start, win_end, log_opts, servers, color)
+    filtered = Logs.filter_servers(servers, log_opts.server_filter)
+    filtered_map = Map.new(filtered)
 
-        events =
-          if log_opts.event_detail != :none,
-            do: Logs.extract_events(issue[:events] || [], window),
-            else: []
+    entries =
+      Logs.extract(filtered_map, window,
+        level_filter: log_opts.level_filter,
+        excluded_ids: log_opts.excluded_ids
+      )
 
-        if entries == [] and events == [] do
-          Mix.shell().info(colorize("  No matching log lines found.", :faint, color))
-        else
-          Mix.shell().info("")
-          merged = Logs.merge_streams(entries, events)
-          server_roles = Map.new(servers, fn {sid, meta} -> {sid, meta[:role]} end)
-          Mix.shell().info(Logs.format_merged(merged, color, log_opts.event_detail, server_roles))
-        end
+    events =
+      if log_opts.event_detail != :none,
+        do: Logs.extract_events(issue[:events] || [], window),
+        else: []
+
+    if entries == [] and events == [] do
+      Mix.shell().info(colorize("  No matching log lines found.", :faint, color))
+    else
+      Mix.shell().info("")
+      merged = Logs.merge_streams(entries, events)
+      server_roles = Map.new(servers, fn {sid, meta} -> {sid, meta[:role]} end)
+      Mix.shell().info(Logs.format_merged(merged, color, log_opts.event_detail, server_roles))
     end
   end
 
@@ -814,19 +809,23 @@ defmodule Mix.Tasks.Toast.Analyze do
         Mix.shell().info(colorize(format_server_label(server_id, servers), :faint, color))
       end)
     else
-      grouped
-      |> Enum.sort_by(fn {did, _} -> did end)
-      |> Enum.each(fn {did, server_ids} ->
-        deployment_label = format_deployment_label(did, deployments)
-        Mix.shell().info(colorize("    #{deployment_label}", :faint, color))
-
-        Enum.each(server_ids, fn server_id ->
-          Mix.shell().info(
-            colorize(format_server_label(server_id, servers, "      "), :faint, color)
-          )
-        end)
-      end)
+      print_grouped_server_list(grouped, servers, deployments, color)
     end
+  end
+
+  defp print_grouped_server_list(grouped, servers, deployments, color) do
+    grouped
+    |> Enum.sort_by(fn {did, _} -> did end)
+    |> Enum.each(fn {did, server_ids} ->
+      deployment_label = format_deployment_label(did, deployments)
+      Mix.shell().info(colorize("    #{deployment_label}", :faint, color))
+
+      Enum.each(server_ids, fn server_id ->
+        Mix.shell().info(
+          colorize(format_server_label(server_id, servers, "      "), :faint, color)
+        )
+      end)
+    end)
   end
 
   defp group_servers_by_deployment(server_ids, servers) do
@@ -849,34 +848,26 @@ defmodule Mix.Tasks.Toast.Analyze do
     meta = servers[server_id] || %{}
     tag = Logs.server_tag(server_id, meta[:role])
 
-    parts = ["#{indent}#{tag}  #{server_id}"]
-
-    parts =
-      case meta do
-        %{arango_id: id} when is_binary(id) -> parts ++ ["arango=#{id}"]
-        _ -> parts
-      end
-
-    parts =
-      case meta do
-        %{endpoint: ep} when is_binary(ep) -> parts ++ ["endpoint=#{ep}"]
-        _ -> parts
-      end
-
-    parts =
+    pid_part =
       case meta do
         %{incarnations: [%{pid: pid}]} ->
-          parts ++ ["pid=#{pid}"]
+          "pid=#{pid}"
 
         %{incarnations: incs} when length(incs) > 1 ->
-          pids = Enum.map_join(incs, ",", &to_string(&1.pid))
-          parts ++ ["pids=#{pids}"]
+          "pids=#{Enum.map_join(incs, ",", &to_string(&1.pid))}"
 
         _ ->
-          parts
+          nil
       end
 
-    Enum.join(parts, "  ")
+    [
+      "#{indent}#{tag}  #{server_id}",
+      if(match?(%{arango_id: id} when is_binary(id), meta), do: "arango=#{meta.arango_id}"),
+      if(match?(%{endpoint: ep} when is_binary(ep), meta), do: "endpoint=#{meta.endpoint}"),
+      pid_part
+    ]
+    |> Toast.Utils.compact()
+    |> Enum.join("  ")
   end
 
   defp fmt_dt(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
@@ -1359,7 +1350,7 @@ defmodule Mix.Tasks.Toast.Analyze do
   defp format_server(%{type: :sanitizer_report, detail: %{server: server}}), do: server
 
   defp format_server(%{type: :timeout, detail: %{servers: servers}}) when is_list(servers) do
-    servers |> Enum.map(& &1.server_id) |> Enum.join(", ")
+    servers |> Enum.map_join(", ", & &1.server_id)
   end
 
   defp format_server(_), do: "\u2014"

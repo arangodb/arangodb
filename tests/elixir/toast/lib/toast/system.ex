@@ -17,9 +17,8 @@ defmodule Toast.System do
   """
   @spec total_memory() :: {:ok, pos_integer()} | :error
   def total_memory do
-    with :error <- read_cgroup_v2_memory(),
-         :error <- read_proc_meminfo() do
-      :error
+    with :error <- read_cgroup_v2_memory() do
+      read_proc_meminfo()
     end
   end
 

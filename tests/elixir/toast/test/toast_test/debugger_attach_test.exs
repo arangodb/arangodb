@@ -10,7 +10,7 @@ defmodule ToastTest.DebuggerAttachTest do
 
   describe "format_server_table/1" do
     test "formats single server with pid and endpoint" do
-      servers = [server("single", "http://127.0.0.1:8529", 12345)]
+      servers = [server("single", "http://127.0.0.1:8529", 12_345)]
 
       assert DebuggerAttach.format_server_table(servers) == [
                "  single  pid=12345  http://127.0.0.1:8529"

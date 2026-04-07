@@ -49,13 +49,7 @@ defmodule Toast.Diagnostics.Coredump do
   @doc "Analyze a core file and extract stack traces."
   @spec analyze(Path.t(), Path.t(), keyword()) :: {:ok, Report.t()} | {:error, term()}
   def analyze(core_path, binary_path, opts \\ []) do
-    {debugger_mod, executable} =
-      case Keyword.fetch(opts, :debugger) do
-        {:ok, {mod, exec}} -> {mod, exec}
-        {:ok, mod} when is_atom(mod) and not is_nil(mod) -> {mod, mod.executable()}
-        {:ok, nil} -> {nil, nil}
-        :error -> resolve_debugger(:auto) || {nil, nil}
-      end
+    {debugger_mod, executable} = resolve_debugger_from_opts(opts)
 
     timeout = Keyword.get(opts, :timeout, @default_timeout_ms)
 
@@ -105,6 +99,15 @@ defmodule Toast.Diagnostics.Coredump do
           {:ok, path} -> {:ok, GDB, path}
           :not_found -> :none
         end
+    end
+  end
+
+  defp resolve_debugger_from_opts(opts) do
+    case Keyword.fetch(opts, :debugger) do
+      {:ok, {mod, exec}} -> {mod, exec}
+      {:ok, mod} when is_atom(mod) and not is_nil(mod) -> {mod, mod.executable()}
+      {:ok, nil} -> {nil, nil}
+      :error -> resolve_debugger(:auto) || {nil, nil}
     end
   end
 
@@ -299,18 +302,20 @@ defmodule Toast.Diagnostics.Coredump do
   def coredump_discovery_warning(dir) when not is_nil(dir), do: nil
 
   def coredump_discovery_warning(nil) do
-    with {:ok, raw} <- File.read("/proc/sys/kernel/core_pattern") do
-      pattern = String.trim(raw)
-      handler = pipe_handler_name(pattern)
+    case File.read("/proc/sys/kernel/core_pattern") do
+      {:ok, raw} ->
+        pattern = String.trim(raw)
+        handler = pipe_handler_name(pattern)
 
-      if String.starts_with?(pattern, "|") and
-           not (handler =~ "apport") and
-           System.find_executable("coredumpctl") == nil do
-        "Coredump discovery may not work: core_pattern pipes to unknown handler '#{handler}'. " <>
-          "Set TOAST_COREDUMP_DIR or --coredump-dir to the directory where your system stores core dumps."
-      end
-    else
-      _ -> nil
+        if String.starts_with?(pattern, "|") and
+             not (handler =~ "apport") and
+             System.find_executable("coredumpctl") == nil do
+          "Coredump discovery may not work: core_pattern pipes to unknown handler '#{handler}'. " <>
+            "Set TOAST_COREDUMP_DIR or --coredump-dir to the directory where your system stores core dumps."
+        end
+
+      _ ->
+        nil
     end
   end
 
@@ -345,17 +350,7 @@ defmodule Toast.Diagnostics.Coredump do
   defp cores_in_override_dir(dir, os_pids) do
     if File.dir?(dir) do
       all_files = Path.wildcard(Path.join(dir, "*"))
-
-      result =
-        if os_pids == [] do
-          all_files
-        else
-          pid_strings = Enum.map(os_pids, &to_string/1)
-
-          Enum.filter(all_files, fn path ->
-            Enum.any?(pid_strings, &filename_contains_pid?(path, &1))
-          end)
-        end
+      result = filter_cores_by_pid(all_files, os_pids)
 
       Logger.debug(
         "Coredump: override dir has #{length(all_files)} file(s), #{length(result)} matched"
@@ -366,6 +361,16 @@ defmodule Toast.Diagnostics.Coredump do
       Logger.warning("Coredump override directory does not exist: #{dir}")
       []
     end
+  end
+
+  defp filter_cores_by_pid(files, []), do: files
+
+  defp filter_cores_by_pid(files, os_pids) do
+    pid_strings = Enum.map(os_pids, &to_string/1)
+
+    Enum.filter(files, fn path ->
+      Enum.any?(pid_strings, &filename_contains_pid?(path, &1))
+    end)
   end
 
   defp cores_in_tmp(nil), do: []

@@ -108,17 +108,7 @@ defmodule ToastTest.Runner.PostExecution do
     if has_error and test_config.dump_agency_on_error do
       case Toast.Deployment.dump_agency(deployment) do
         {:ok, json} when json != nil ->
-          case Toast.Diagnostics.AgencyDump.write(
-                 json,
-                 test_config.result_dir,
-                 deployment.id
-               ) do
-            {:ok, path} ->
-              Logger.info("Agency dump written to #{path}")
-
-            {:error, reason} ->
-              Logger.warning("Failed to write agency dump: #{inspect(reason)}")
-          end
+          write_agency_dump(json, test_config.result_dir, deployment.id)
 
         {:ok, nil} ->
           Logger.warning("Agency dump returned nil (no responsive agents?)")
@@ -130,6 +120,16 @@ defmodule ToastTest.Runner.PostExecution do
   rescue
     e ->
       Logger.warning("Agency dump failed: #{Exception.message(e)}")
+  end
+
+  defp write_agency_dump(json, result_dir, deployment_id) do
+    case Toast.Diagnostics.AgencyDump.write(json, result_dir, deployment_id) do
+      {:ok, path} ->
+        Logger.info("Agency dump written to #{path}")
+
+      {:error, reason} ->
+        Logger.warning("Failed to write agency dump: #{inspect(reason)}")
+    end
   end
 
   defp print_post_exec_summary(suite_result) do

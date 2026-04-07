@@ -3,6 +3,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   alias ToastTest.IssueFormatting.Logs
 
+  import Toast.Utils, only: [maybe_put: 3]
   import ToastTest.TimeTestHelpers, only: [to_us: 1]
 
   @usec_per_sec 1_000_000
@@ -568,7 +569,7 @@ defmodule ToastTest.IssueFormatting.LogsTest do
 
   describe "format_event/1" do
     test "server_started" do
-      event = %{event: :server_started, server_id: "dbserver1", pid: 12345, timestamp: 0}
+      event = %{event: :server_started, server_id: "dbserver1", pid: 12_345, timestamp: 0}
       assert Logs.format_event(event) == ">>> server_started dbserver1 (pid=12345)"
     end
 
@@ -1007,7 +1008,4 @@ defmodule ToastTest.IssueFormatting.LogsTest do
     |> maybe_put(:id, opts[:id])
     |> maybe_put(:pid, opts[:pid])
   end
-
-  defp maybe_put(map, _key, nil), do: map
-  defp maybe_put(map, key, val), do: Map.put(map, key, val)
 end

@@ -138,8 +138,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
   defp render_infra_errors(_outcome, issues) do
     message =
       issues
-      |> Enum.map(&issue_type_label/1)
-      |> Enum.join(", ")
+      |> Enum.map_join(", ", &issue_type_label/1)
 
     details =
       issues

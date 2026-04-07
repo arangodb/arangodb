@@ -137,28 +137,26 @@ defmodule ToastTest.ResultPackaging do
 
   defp package_base_dir(opts, result_dir) do
     case Keyword.get(opts, :base_dir) do
-      nil ->
-        :ok
+      nil -> :ok
+      base_dir -> archive_base_dir(base_dir, result_dir)
+    end
+  end
 
-      base_dir ->
-        if File.dir?(base_dir) do
-          archive_path = Path.join(result_dir, "work-dir.tar.gz")
-          Logger.info("Archiving base dir #{base_dir} → #{archive_path}")
+  defp archive_base_dir(base_dir, result_dir) do
+    if File.dir?(base_dir) do
+      archive_path = Path.join(result_dir, "work-dir.tar.gz")
+      Logger.info("Archiving base dir #{base_dir} → #{archive_path}")
 
-          case :erl_tar.create(
-                 String.to_charlist(archive_path),
-                 [{String.to_charlist("work-dir"), String.to_charlist(base_dir)}],
-                 [:compressed, :dereference]
-               ) do
-            :ok ->
-              :ok
-
-            {:error, reason} ->
-              Logger.warning("Failed to archive work dir: #{inspect(reason)}")
-          end
-        else
-          :ok
-        end
+      case :erl_tar.create(
+             String.to_charlist(archive_path),
+             [{String.to_charlist("work-dir"), String.to_charlist(base_dir)}],
+             [:compressed, :dereference]
+           ) do
+        :ok -> :ok
+        {:error, reason} -> Logger.warning("Failed to archive work dir: #{inspect(reason)}")
+      end
+    else
+      :ok
     end
   end
 

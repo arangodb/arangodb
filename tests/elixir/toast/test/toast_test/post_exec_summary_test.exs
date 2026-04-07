@@ -70,7 +70,7 @@ defmodule ToastTest.PostExecSummaryTest do
       exit_status: Keyword.get(opts, :exit_status, 139),
       timestamp:
         Keyword.get(opts, :timestamp, DateTime.to_unix(~U[2026-03-09 10:00:05Z], :microsecond)),
-      os_pid: Keyword.get(opts, :os_pid, 22788)
+      os_pid: Keyword.get(opts, :os_pid, 22_788)
     }
   end
 
@@ -227,14 +227,19 @@ defmodule ToastTest.PostExecSummaryTest do
         servers: [
           %{
             server_id: "agent1",
-            os_pid: 22788,
+            os_pid: 22_788,
             log_file: "/tmp/agent1.log",
             coredump: "/tmp/core.22788"
           },
-          %{server_id: "dbserver1", os_pid: 22790, log_file: "/tmp/dbserver1.log", coredump: nil},
+          %{
+            server_id: "dbserver1",
+            os_pid: 22_790,
+            log_file: "/tmp/dbserver1.log",
+            coredump: nil
+          },
           %{
             server_id: "coordinator1",
-            os_pid: 22792,
+            os_pid: 22_792,
             log_file: "/tmp/coordinator1.log",
             coredump: "/tmp/core.22792"
           }
@@ -291,7 +296,7 @@ defmodule ToastTest.PostExecSummaryTest do
         reason: "Shutdown timeout — server(s) did not respond to SIGTERM",
         timestamp: ~U[2026-03-09 10:05:00Z],
         servers: [
-          %{server_id: "single", os_pid: 12345, log_file: "/tmp/single.log", coredump: nil}
+          %{server_id: "single", os_pid: 12_345, log_file: "/tmp/single.log", coredump: nil}
         ]
       }
     }

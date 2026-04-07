@@ -177,18 +177,21 @@ defmodule ToastTest.IssueFormatting.Logs do
     servers
     |> Enum.flat_map(fn {server_id, meta} ->
       entries =
-        (meta[:logs] || [])
-        |> Enum.flat_map(fn {_start, _end, entries} ->
-          Enum.filter(entries, fn entry ->
-            entry.time >= start_us and entry.time <= end_us and
-              level_passes?(entry, level_filter) and
-              not id_excluded?(entry, excluded_ids)
-          end)
-        end)
+        filter_server_entries(meta[:logs] || [], start_us, end_us, level_filter, excluded_ids)
 
       if entries == [], do: [], else: [{server_id, entries}]
     end)
     |> Enum.sort_by(&elem(&1, 0))
+  end
+
+  defp filter_server_entries(log_chunks, start_us, end_us, level_filter, excluded_ids) do
+    Enum.flat_map(log_chunks, fn {_start, _end, entries} ->
+      Enum.filter(entries, fn entry ->
+        entry.time >= start_us and entry.time <= end_us and
+          level_passes?(entry, level_filter) and
+          not id_excluded?(entry, excluded_ids)
+      end)
+    end)
   end
 
   defp id_excluded?(_entry, nil), do: false
@@ -280,10 +283,9 @@ defmodule ToastTest.IssueFormatting.Logs do
 
     if length(servers) <= 1 and not has_events do
       merged
-      |> Enum.map(fn
+      |> Enum.map_join("\n", fn
         {_server_id, entry} -> format_entry(entry, color_enabled)
       end)
-      |> Enum.join("\n")
     else
       {tag_map, color_map} =
         Enum.reduce(servers, {%{}, %{}}, fn sid, {tags, colors} ->
@@ -303,35 +305,41 @@ defmodule ToastTest.IssueFormatting.Logs do
         end
 
       merged
-      |> Enum.map(fn
+      |> Enum.map_join("\n", fn
         {:event, event} ->
-          padding = String.duplicate(" ", max_tag_len + 2)
-          ts = event.timestamp |> DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
-          line = "#{padding} #{ts} #{format_event(event)}"
-
-          if event_detail == :full do
-            line <> "\n#{padding}   #{inspect(event, pretty: true, width: 120)}"
-          else
-            line
-          end
+          format_event_line(event, max_tag_len, event_detail)
 
         {server_id, entry} ->
-          tag = String.pad_trailing(tag_map[server_id], max_tag_len)
-          line = format_entry_line(entry)
-
-          if color_enabled do
-            color_code = color_map[server_id]
-            level_extra = level_emphasis(entry)
-            "\e[38;5;#{color_code}m#{level_extra}[#{tag}] #{line}\e[0m"
-          else
-            "[#{tag}] #{line}"
-          end
+          format_tagged_entry(server_id, entry, tag_map, color_map, max_tag_len, color_enabled)
       end)
-      |> Enum.join("\n")
     end
   end
 
-  @doc "Format a single event as a `>>> event_name details` string."
+  defp format_event_line(event, max_tag_len, event_detail) do
+    padding = String.duplicate(" ", max_tag_len + 2)
+    ts = event.timestamp |> DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
+    line = "#{padding} #{ts} #{format_event(event)}"
+
+    if event_detail == :full do
+      line <> "\n#{padding}   #{inspect(event, pretty: true, width: 120)}"
+    else
+      line
+    end
+  end
+
+  defp format_tagged_entry(server_id, entry, tag_map, color_map, max_tag_len, color_enabled) do
+    tag = String.pad_trailing(tag_map[server_id], max_tag_len)
+    line = format_entry_line(entry)
+
+    if color_enabled do
+      color_code = color_map[server_id]
+      level_extra = level_emphasis(entry)
+      "\e[38;5;#{color_code}m#{level_extra}[#{tag}] #{line}\e[0m"
+    else
+      "[#{tag}] #{line}"
+    end
+  end
+
   def format_event(%{event: :server_started, server_id: sid, pid: pid}),
     do: ">>> server_started #{sid} (pid=#{pid})"
 

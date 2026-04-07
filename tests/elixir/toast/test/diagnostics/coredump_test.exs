@@ -85,7 +85,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
       File.write!(core_path, "old core")
 
       # Set not_before to a time far in the future so the file is "too old"
-      future_ts = DateTime.to_unix(DateTime.utc_now()) + 86400
+      future_ts = DateTime.to_unix(DateTime.utc_now()) + 86_400
 
       cores = Coredump.discover(server_dir: dir, not_before: future_ts)
       assert cores == []
@@ -290,7 +290,7 @@ defmodule Toast.Diagnostics.CoredumpOverrideDirTest do
         Coredump.discover(
           server_dir: server_dir,
           coredump_dir: override_dir,
-          os_pids: [12345]
+          os_pids: [12_345]
         )
 
       basenames = Enum.map(cores, &Path.basename/1)

@@ -6,6 +6,8 @@ defmodule ToastTest.Enrichment.Logs do
   parsed into a map with atoms for `time`, `level`, and `role` fields.
   """
 
+  import Toast.Utils, only: [maybe_put: 3]
+
   # Read backwards in 64 KB chunks
   @chunk_size 64 * 1024
 
@@ -63,9 +65,6 @@ defmodule ToastTest.Enrichment.Logs do
     |> maybe_put(:line, raw["line"])
     |> maybe_put(:function, raw["function"])
   end
-
-  defp maybe_put(entry, _key, nil), do: entry
-  defp maybe_put(entry, key, value), do: Map.put(entry, key, value)
 
   defp maybe_put_atom(entry, _key, nil), do: entry
   defp maybe_put_atom(entry, key, value), do: Map.put(entry, key, String.to_atom(value))
@@ -191,33 +190,39 @@ defmodule ToastTest.Enrichment.Logs do
 
   defp collect_multi_windows(
          device,
-         [{win_start, win_end} | rest_windows] = windows,
+         [{_win_start, _win_end} | rest_windows] = windows,
          acc,
          results
        ) do
     case IO.read(device, :line) do
       line when is_binary(line) ->
-        case parse_line(line) do
-          {:ok, entry} ->
-            cond do
-              entry.time < win_start ->
-                collect_multi_windows(device, windows, acc, results)
-
-              entry.time > win_end ->
-                recheck_entry(device, rest_windows, entry, results, acc)
-
-              true ->
-                collect_multi_windows(device, windows, [entry | acc], results)
-            end
-
-          :error ->
-            collect_multi_windows(device, windows, acc, results)
-        end
+        classify_line(device, windows, rest_windows, line, acc, results)
 
       _ ->
         remaining = [Enum.reverse(acc) | results]
         padded = List.duplicate([], length(rest_windows))
         Enum.reverse(remaining) ++ padded
+    end
+  end
+
+  defp classify_line(device, windows, rest_windows, line, acc, results) do
+    {win_start, win_end} = hd(windows)
+
+    case parse_line(line) do
+      {:ok, entry} ->
+        cond do
+          entry.time < win_start ->
+            collect_multi_windows(device, windows, acc, results)
+
+          entry.time > win_end ->
+            recheck_entry(device, rest_windows, entry, results, acc)
+
+          true ->
+            collect_multi_windows(device, windows, [entry | acc], results)
+        end
+
+      :error ->
+        collect_multi_windows(device, windows, acc, results)
     end
   end
 

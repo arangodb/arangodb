@@ -211,34 +211,33 @@ defmodule ToastTest.Runner do
         _ -> []
       end
 
-    cluster_override =
-      case mode do
-        :cluster ->
-          topology =
-            for {suite_key, cluster_key} <- [
-                  cluster_agents: :agents,
-                  cluster_dbservers: :dbservers,
-                  cluster_coordinators: :coordinators,
-                  replication_factor: :replication_factor
-                ],
-                val = Keyword.get(suite_config, suite_key),
-                val != nil,
-                do: {cluster_key, val}
-
-          role_args =
-            for key <- [:coordinator_args, :dbserver_args, :agent_args],
-                args = Keyword.get(suite_config, key, %{}),
-                args != %{},
-                do: {key, args}
-
-          opts = topology ++ role_args
-          [cluster: if(opts == [], do: true, else: opts)]
-
-        :single_server ->
-          []
-      end
+    cluster_override = cluster_override_opts(mode, suite_config)
 
     Toast.Deployment.Config.new(server_args_override ++ cluster_override)
+  end
+
+  defp cluster_override_opts(:single_server, _suite_config), do: []
+
+  defp cluster_override_opts(:cluster, suite_config) do
+    topology =
+      for {suite_key, cluster_key} <- [
+            cluster_agents: :agents,
+            cluster_dbservers: :dbservers,
+            cluster_coordinators: :coordinators,
+            replication_factor: :replication_factor
+          ],
+          val = Keyword.get(suite_config, suite_key),
+          val != nil,
+          do: {cluster_key, val}
+
+    role_args =
+      for key <- [:coordinator_args, :dbserver_args, :agent_args],
+          args = Keyword.get(suite_config, key, %{}),
+          args != %{},
+          do: {key, args}
+
+    opts = topology ++ role_args
+    [cluster: if(opts == [], do: true, else: opts)]
   end
 
   ## Event pipeline

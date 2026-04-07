@@ -53,15 +53,36 @@ defmodule Toast.Env do
   def default_result_dir, do: @default_result_dir
 
   defp resolve_all(opts, local) do
+    [
+      &resolve_paths/2,
+      &resolve_timeouts/2,
+      &resolve_cluster/2,
+      &resolve_resources/2,
+      &resolve_server_args/2,
+      &resolve_deployment/2,
+      &resolve_execution/2
+    ]
+    |> Enum.reduce(%{}, fn resolver, acc -> Map.merge(acc, resolver.(opts, local)) end)
+    |> then(fn values ->
+      # dump_agency_on_error defaults to true if not explicitly set
+      if values.dump_agency_on_error == nil,
+        do: %{values | dump_agency_on_error: true},
+        else: values
+    end)
+  end
+
+  defp resolve_paths(opts, local) do
     %{
-      # Paths
       build_dir: resolve(opts, local, :build_dir, &env/1, "TOAST_BUILD_DIR"),
       base_dir: resolve(opts, local, :base_dir, &env/1, "TOAST_BASE_DIR"),
       result_dir:
         resolve(opts, local, :result_dir, &env/1, "TOAST_RESULT_DIR") || @default_result_dir,
-      coredump_dir: resolve(opts, local, :coredump_dir, &env/1, "TOAST_COREDUMP_DIR"),
+      coredump_dir: resolve(opts, local, :coredump_dir, &env/1, "TOAST_COREDUMP_DIR")
+    }
+  end
 
-      # Timeouts
+  defp resolve_timeouts(opts, local) do
+    %{
       global_timeout:
         resolve(opts, local, :global_timeout, &read_pos_int/1, "TOAST_GLOBAL_TIMEOUT") ||
           3_600_000,
@@ -77,9 +98,12 @@ defmodule Toast.Env do
         resolve(opts, local, :coredump_timeout, &read_pos_int/1, "TOAST_COREDUMP_TIMEOUT") ||
           180_000,
       timeout_factor:
-        resolve(opts, local, :timeout_factor, &read_pos_int/1, "TOAST_TIMEOUT_FACTOR"),
+        resolve(opts, local, :timeout_factor, &read_pos_int/1, "TOAST_TIMEOUT_FACTOR")
+    }
+  end
 
-      # Cluster topology
+  defp resolve_cluster(opts, local) do
+    %{
       cluster_agents:
         resolve(opts, local, :cluster_agents, &read_pos_int/1, "TOAST_CLUSTER_AGENTS") || 3,
       cluster_dbservers:
@@ -94,20 +118,29 @@ defmodule Toast.Env do
           :cluster_replication_factor,
           &read_pos_int/1,
           "TOAST_CLUSTER_REPLICATION_FACTOR"
-        ) || 2,
+        ) || 2
+    }
+  end
 
-      # Resources
+  defp resolve_resources(opts, local) do
+    %{
       memory_budget:
         resolve(opts, local, :memory_budget, &read_pos_int/1, "TOAST_MEMORY_BUDGET") ||
-          detect_memory(),
+          detect_memory()
+    }
+  end
 
-      # Server args (no env var — only via opts or local config)
+  defp resolve_server_args(opts, local) do
+    %{
       server_args: Keyword.get(opts, :server_args, local[:server_args]) || %{},
       coordinator_args: Keyword.get(opts, :coordinator_args, local[:coordinator_args]) || %{},
       dbserver_args: Keyword.get(opts, :dbserver_args, local[:dbserver_args]) || %{},
-      agent_args: Keyword.get(opts, :agent_args, local[:agent_args]) || %{},
+      agent_args: Keyword.get(opts, :agent_args, local[:agent_args]) || %{}
+    }
+  end
 
-      # Deployment
+  defp resolve_deployment(opts, local) do
+    %{
       show_server_logs:
         resolve(opts, local, :show_server_logs, &read_bool/1, "TOAST_SHOW_SERVER_LOGS") || false,
       deployment_mode:
@@ -117,11 +150,12 @@ defmodule Toast.Env do
       sanitizer_override:
         resolve(opts, local, :sanitizer_override, &read_sanitizer/1, "TOAST_SANITIZER"),
       active_sanitizers: nil,
+      protocol: resolve(opts, local, :protocol, &read_protocol/1, "TOAST_PROTOCOL") || :http1
+    }
+  end
 
-      # HTTP protocol
-      protocol: resolve(opts, local, :protocol, &read_protocol/1, "TOAST_PROTOCOL") || :http1,
-
-      # Test execution
+  defp resolve_execution(opts, local) do
+    %{
       keep_data: resolve(opts, local, :keep_data, &read_bool/1, "TOAST_KEEP_DATA") || false,
       ci: resolve(opts, local, :ci, &read_bool/1, "TOAST_CI") || false,
       debugger: resolve(opts, local, :debugger, &read_debugger/1, "TOAST_DEBUGGER") || :auto,
@@ -132,12 +166,6 @@ defmodule Toast.Env do
       dump_agency_on_error:
         resolve(opts, local, :dump_agency_on_error, &read_opt_bool/1, "TOAST_DUMP_AGENCY")
     }
-    |> then(fn values ->
-      # dump_agency_on_error defaults to true if not explicitly set
-      if values.dump_agency_on_error == nil,
-        do: %{values | dump_agency_on_error: true},
-        else: values
-    end)
   end
 
   # Precedence: opts > env var > local file

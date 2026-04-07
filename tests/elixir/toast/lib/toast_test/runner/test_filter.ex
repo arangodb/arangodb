@@ -12,7 +12,7 @@ defmodule ToastTest.Runner.TestFilter do
   - `:only_test_ids` — nil (all) or MapSet of `{module, test_name}` tuples
   - `:test_name_pattern` — nil (all) or case-insensitive substring to match
   """
-  @spec filter(map(), [%ExUnit.Test{}]) :: {[%ExUnit.Test{}], [%ExUnit.Test{}]}
+  @spec filter(map(), [ExUnit.Test.t()]) :: {[ExUnit.Test.t()], [ExUnit.Test.t()]}
   def filter(filters, tests) do
     %{
       include: include,
@@ -20,8 +20,6 @@ defmodule ToastTest.Runner.TestFilter do
       only_test_ids: test_ids,
       test_name_pattern: name_pattern
     } = filters
-
-    name_pattern = name_pattern && String.downcase(name_pattern)
 
     {to_run, to_skip} =
       for test <- tests,
@@ -40,14 +38,14 @@ defmodule ToastTest.Runner.TestFilter do
     {Enum.reverse(to_run), Enum.reverse(to_skip)}
   end
 
-  @spec include_test?(MapSet.t() | nil, %ExUnit.Test{}) :: boolean()
+  @spec include_test?(MapSet.t() | nil, ExUnit.Test.t()) :: boolean()
   def include_test?(nil, _test), do: true
 
   def include_test?(test_ids, test) do
     MapSet.member?(test_ids, {test.module, test.name})
   end
 
-  @spec match_test_name?(String.t() | nil, %ExUnit.Test{}) :: boolean()
+  @spec match_test_name?(String.t() | nil, ExUnit.Test.t()) :: boolean()
   def match_test_name?(nil, _test), do: true
 
   def match_test_name?(pattern, test) do

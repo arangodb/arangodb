@@ -8,13 +8,6 @@ defmodule Toast.Deployment.ShutdownPipeline do
   alias Toast.Process.ServerProcess
   alias Toast.Process.Supervisor, as: ProcessSupervisor
 
-  # Buffer for Task.async_stream to account for scheduling/collection overhead
-  # beyond the per-task timeout.
-  @task_stream_buffer 5_000
-
-  # Shutdown order is reverse of deploy order
-  @role_deploy_order [:single, :agent, :dbserver, :coordinator]
-
   @abort_timeout 60_000
 
   # --- Public API ---
@@ -98,16 +91,8 @@ defmodule Toast.Deployment.ShutdownPipeline do
     grouped = Enum.group_by(state.servers, fn {_id, s} -> s.role end)
 
     escalated =
-      Enum.flat_map(Enum.reverse(@role_deploy_order), fn role ->
-        case Map.get(grouped, role) do
-          nil ->
-            []
-
-          servers ->
-            ids = Enum.map(servers, fn {id, _} -> id end)
-            Logger.debug("#{state.id}: stopping #{role}s")
-            stop_server_group(ids, state, remaining_ms(deadline))
-        end
+      Enum.flat_map(Enum.reverse(State.role_deploy_order()), fn role ->
+        shutdown_role_group(grouped, role, state, deadline)
       end)
 
     record_shutdown_escalations(state.id, state.event_listener, escalated)
@@ -117,12 +102,24 @@ defmodule Toast.Deployment.ShutdownPipeline do
     %{state | status: :stopped, servers: clear_server_pids(state.servers)}
   end
 
+  defp shutdown_role_group(grouped, role, state, deadline) do
+    case Map.get(grouped, role) do
+      nil ->
+        []
+
+      servers ->
+        ids = Enum.map(servers, fn {id, _} -> id end)
+        Logger.debug("#{state.id}: stopping #{role}s")
+        stop_server_group(ids, state, State.remaining_ms(deadline))
+    end
+  end
+
   defp stop_server_group(server_ids, state, timeout) do
     Task.async_stream(
       server_ids,
       &stop_server_process(state, &1, timeout),
       ordered: false,
-      timeout: timeout + ServerProcess.escalation_overhead() + @task_stream_buffer
+      timeout: timeout + ServerProcess.escalation_overhead() + State.task_stream_buffer()
     )
     |> Enum.flat_map(fn
       {:ok, {:escalated, info}} -> [info]
@@ -176,9 +173,5 @@ defmodule Toast.Deployment.ShutdownPipeline do
       "Shutdown timeout — server(s) did not respond to SIGTERM",
       escalated
     )
-  end
-
-  defp remaining_ms(deadline) do
-    max(0, deadline - System.monotonic_time(:millisecond))
   end
 end

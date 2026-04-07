@@ -8,4 +8,9 @@ defmodule Toast.Utils do
   @doc false
   @spec compact_join([term()], String.t()) :: String.t()
   def compact_join(list, joiner \\ ""), do: list |> compact() |> Enum.join(joiner)
+
+  @doc "Put `key`/`value` into `map` only when `value` is non-nil."
+  @spec maybe_put(map(), term(), term()) :: map()
+  def maybe_put(map, _key, nil), do: map
+  def maybe_put(map, key, value), do: Map.put(map, key, value)
 end
