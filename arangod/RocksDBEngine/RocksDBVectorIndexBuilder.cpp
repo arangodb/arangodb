@@ -638,18 +638,13 @@ Result VectorIndexBuilder::build(
     metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
     metrics::Histogram<metrics::LogScale<double>>& ingestionDuration,
     std::stop_token stopToken) {
+    auto const shouldAbort = [&]() -> bool {
+      return stopToken.stop_requested() || _index.collection().deleted();
+    };
+
   if (!_index.setTrainingState(VectorIndexTrainingState::kUnusable,
                                VectorIndexTrainingState::kTraining)) {
     return Result{TRI_ERROR_INTERNAL, "vector index is not in unusable state"};
-  }
-
-  auto shouldAbort = [&]() -> bool {
-    return stopToken.stop_requested() || _index.collection().deleted();
-  };
-
-  if (shouldAbort()) {
-    _index.resetTrainingState();
-    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   rocksdb::Slice upper(_bounds.end());
@@ -678,6 +673,7 @@ Result VectorIndexBuilder::build(
     _index.resetTrainingState();
     return std::move(faissIndexResult).result();
   }
+
   auto faissIndex = std::move(faissIndexResult).get();
   trainingDuration.count(
       std::chrono::duration<double>(trainEnd - trainStart).count());
