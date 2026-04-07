@@ -621,9 +621,9 @@ jobs:
                 strip ./install/usr/sbin/arangod
                 tar -czf install.tar.gz -C install ./
             - persist_to_workspace:
-              root: .
-              paths:
-                - install.tar.gz
+                root: .
+                paths:
+                  - install.tar.gz
       - run:
           name: Size leaderboard
           command: |
