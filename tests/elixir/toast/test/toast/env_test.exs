@@ -250,6 +250,59 @@ defmodule Toast.EnvTest do
     end
   end
 
+  describe "protocol option" do
+    test "defaults to :http1" do
+      config = load()
+      assert config.protocol == :http1
+    end
+
+    test "opts override default" do
+      config = load(protocol: :http2)
+      assert config.protocol == :http2
+    end
+
+    test "TOAST_PROTOCOL env var" do
+      System.put_env("TOAST_PROTOCOL", "http2")
+      on_exit(fn -> System.delete_env("TOAST_PROTOCOL") end)
+
+      config = load()
+      assert config.protocol == :http2
+    end
+
+    test "TOAST_PROTOCOL accepts h2 alias" do
+      System.put_env("TOAST_PROTOCOL", "h2")
+      on_exit(fn -> System.delete_env("TOAST_PROTOCOL") end)
+
+      config = load()
+      assert config.protocol == :http2
+    end
+
+    test "TOAST_PROTOCOL accepts h1 alias" do
+      System.put_env("TOAST_PROTOCOL", "h1")
+      on_exit(fn -> System.delete_env("TOAST_PROTOCOL") end)
+
+      config = load()
+      assert config.protocol == :http1
+    end
+
+    test "opts override TOAST_PROTOCOL env var" do
+      System.put_env("TOAST_PROTOCOL", "http2")
+      on_exit(fn -> System.delete_env("TOAST_PROTOCOL") end)
+
+      config = load(protocol: :http1)
+      assert config.protocol == :http1
+    end
+
+    test "invalid TOAST_PROTOCOL raises" do
+      System.put_env("TOAST_PROTOCOL", "bogus")
+      on_exit(fn -> System.delete_env("TOAST_PROTOCOL") end)
+
+      assert_raise ArgumentError, ~r/Invalid TOAST_PROTOCOL/, fn ->
+        load()
+      end
+    end
+  end
+
   describe "error paths" do
     test "invalid deployment mode raises" do
       System.put_env("TOAST_DEPLOYMENT_MODE", "bogus")

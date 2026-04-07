@@ -125,6 +125,13 @@ defmodule Mix.Tasks.Toast.Helpers do
         do: Keyword.put(config_list, :dump_agency_on_error, false),
         else: config_list
 
+    config_list =
+      case Keyword.fetch(opts, :http2) do
+        {:ok, true} -> Keyword.put(config_list, :protocol, :http2)
+        {:ok, false} -> Keyword.put(config_list, :protocol, :http1)
+        :error -> config_list
+      end
+
     cond do
       opts[:cluster] -> Keyword.put(config_list, :deployment_mode, :cluster)
       opts[:single] -> Keyword.put(config_list, :deployment_mode, :single_server)

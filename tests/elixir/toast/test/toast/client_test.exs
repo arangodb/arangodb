@@ -45,6 +45,26 @@ defmodule Toast.ClientTest do
       client = Client.new("http://localhost:8529")
       assert client.req.options.retry == false
     end
+
+    test "defaults protocol to :http1" do
+      client = Client.new("http://localhost:8529")
+      assert client.protocol == :http1
+    end
+
+    test "pops protocol from opts" do
+      client = Client.new("http://localhost:8529", protocol: :http2)
+      assert client.protocol == :http2
+    end
+
+    test "sets http2 connect_options on Req when protocol is :http2" do
+      client = Client.new("http://localhost:8529", protocol: :http2)
+      assert client.req.options.connect_options == [protocols: [:http2]]
+    end
+
+    test "does not set connect_options when protocol is :http1" do
+      client = Client.new("http://localhost:8529")
+      refute Map.has_key?(client.req.options, :connect_options)
+    end
   end
 
   describe "scoping functions" do
@@ -351,6 +371,16 @@ defmodule Toast.ClientTest do
       client = client_with_plug(plug, content_type: :json)
       assert {:ok, %{status: 200, body: body}} = Client.get(client, "/_api/test")
       assert body == payload
+    end
+  end
+
+  describe "protocol_connect_options/1" do
+    test "returns empty list for :http1" do
+      assert Client.protocol_connect_options(:http1) == []
+    end
+
+    test "returns http2 connect_options for :http2" do
+      assert Client.protocol_connect_options(:http2) == [connect_options: [protocols: [:http2]]]
     end
   end
 

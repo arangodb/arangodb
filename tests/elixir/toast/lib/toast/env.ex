@@ -118,6 +118,9 @@ defmodule Toast.Env do
         resolve(opts, local, :sanitizer_override, &read_sanitizer/1, "TOAST_SANITIZER"),
       active_sanitizers: nil,
 
+      # HTTP protocol
+      protocol: resolve(opts, local, :protocol, &read_protocol/1, "TOAST_PROTOCOL") || :http1,
+
       # Test execution
       keep_data: resolve(opts, local, :keep_data, &read_bool/1, "TOAST_KEEP_DATA") || false,
       ci: resolve(opts, local, :ci, &read_bool/1, "TOAST_CI") || false,
@@ -358,6 +361,22 @@ defmodule Toast.Env do
     end
   end
 
+  defp read_protocol(var) do
+    case env(var) do
+      val when val in ~w(http1 h1) ->
+        :http1
+
+      val when val in ~w(http2 h2) ->
+        :http2
+
+      nil ->
+        nil
+
+      other ->
+        raise ArgumentError, "Invalid #{var}: #{inspect(other)} (expected \"http1\" or \"http2\")"
+    end
+  end
+
   defp read_debugger(var) do
     case env(var) do
       "gdb" -> :gdb
@@ -390,7 +409,8 @@ defmodule Toast.Env do
         shutdown_timeout: "#{values.shutdown_timeout}ms",
         active_sanitizers: inspect(MapSet.to_list(values.active_sanitizers)),
         rr: inspect(values.rr),
-        memory_budget: inspect(values.memory_budget)
+        memory_budget: inspect(values.memory_budget),
+        protocol: values.protocol
       ]
 
       "Toast.Env: " <> Enum.map_join(fields, " ", fn {k, v} -> "#{k}=#{v}" end)

@@ -31,6 +31,7 @@ defmodule Mix.Tasks.Toast do
       --keep-data                 - Keep server data/logs even on success
       --sanitizer TYPE            - Sanitizer: tsan or alubsan (auto-detected from build dir)
       --attach-debugger           - Pause after deployment for live debugger attachment
+      --http2                     - Use HTTP/2 (h2c) for client requests (default: HTTP/1.1)
       --rr ROLES                  - Record with rr: "default", "all", or comma-separated roles
                                     (single, agent, dbserver, coordinator)
                                     "default" = single server or dbserver,coordinator in cluster
@@ -95,6 +96,7 @@ defmodule Mix.Tasks.Toast do
     sanitizer: :string,
     attach_debugger: :boolean,
     rr: :string,
+    http2: :boolean,
     cluster_agents: :integer,
     cluster_dbservers: :integer,
     cluster_coordinators: :integer,

@@ -374,6 +374,24 @@ defmodule Mix.Tasks.ToastTest do
 
       assert config == []
     end
+
+    test "--http2 sets protocol: :http2" do
+      config = Helpers.opts_to_env_list(http2: true)
+
+      assert Keyword.get(config, :protocol) == :http2
+    end
+
+    test "--no-http2 sets protocol: :http1" do
+      config = Helpers.opts_to_env_list(http2: false)
+
+      assert Keyword.get(config, :protocol) == :http1
+    end
+
+    test "no --http2 omits protocol" do
+      config = Helpers.opts_to_env_list([])
+
+      refute Keyword.has_key?(config, :protocol)
+    end
   end
 
   describe "discover_suite_files/1" do

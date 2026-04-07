@@ -37,7 +37,11 @@ defmodule Toast.Deployment.Health do
     http_timeout = Keyword.get(opts, :http_timeout, 2_000)
     url = endpoint <> "/_api/version"
 
-    case Req.get(url, receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false) do
+    req_opts =
+      [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false] ++
+        protocol_opts()
+
+    case Req.get(url, req_opts) do
       {:ok, %{status: status}} when status in 200..299 ->
         Logger.debug("#{endpoint} responded with status #{status}")
         :ok
@@ -85,7 +89,11 @@ defmodule Toast.Deployment.Health do
     http_timeout = Keyword.get(opts, :http_timeout, 2_000)
     url = endpoint <> "/_api/agency/config"
 
-    case Req.get(url, receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false) do
+    req_opts =
+      [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false] ++
+        protocol_opts()
+
+    case Req.get(url, req_opts) do
       {:ok, %{status: status, body: body}} when status in 200..299 and is_map(body) ->
         {:ok, body}
 
@@ -176,5 +184,10 @@ defmodule Toast.Deployment.Health do
       Process.sleep(poll_interval)
       poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, false)
     end
+  end
+
+  defp protocol_opts do
+    Application.get_env(:toast, :protocol, :http1)
+    |> Toast.Client.protocol_connect_options()
   end
 end

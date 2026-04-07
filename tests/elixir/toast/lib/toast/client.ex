@@ -5,24 +5,38 @@ defmodule Toast.Client do
 
   @type content_type_t :: :json | :vpack
 
+  @type protocol_t :: :http1 | :http2
+
   @type t :: %__MODULE__{
           base_url: String.t(),
           database: String.t() | nil,
           api_version: non_neg_integer() | String.t() | nil,
           auth: auth_t() | nil,
           content_type: content_type_t(),
+          protocol: protocol_t(),
           req: Req.Request.t()
         }
 
   @enforce_keys [:base_url, :req]
-  defstruct [:base_url, :database, :api_version, :auth, :req, content_type: :vpack]
+  defstruct [
+    :base_url,
+    :database,
+    :api_version,
+    :auth,
+    :req,
+    content_type: :vpack,
+    protocol: :http1
+  ]
 
   @spec new(String.t(), keyword()) :: t()
   def new(base_url, opts \\ []) do
     {database, opts} = Keyword.pop(opts, :database)
     {api_version, opts} = Keyword.pop(opts, :api_version)
     {auth, opts} = Keyword.pop(opts, :auth)
-    {content_type, req_opts} = Keyword.pop(opts, :content_type, :vpack)
+    {content_type, opts} = Keyword.pop(opts, :content_type, :vpack)
+    {protocol, req_opts} = Keyword.pop(opts, :protocol, :http1)
+
+    req_opts = apply_protocol(protocol, req_opts)
 
     req =
       Req.new([base_url: base_url, retry: false] ++ req_opts)
@@ -34,6 +48,7 @@ defmodule Toast.Client do
       api_version: api_version,
       auth: auth,
       content_type: content_type,
+      protocol: protocol,
       req: req
     }
   end
@@ -159,6 +174,18 @@ defmodule Toast.Client do
       {"content-type", "application/x-velocypack"},
       {"accept", "application/x-velocypack"} | existing
     ])
+  end
+
+  @doc false
+  @spec protocol_connect_options(protocol_t()) :: keyword()
+  def protocol_connect_options(:http1), do: []
+  def protocol_connect_options(:http2), do: [connect_options: [protocols: [:http2]]]
+
+  defp apply_protocol(protocol, req_opts) do
+    Keyword.merge(req_opts, protocol_connect_options(protocol), fn
+      :connect_options, existing, new -> Keyword.merge(existing, new)
+      _key, _existing, new -> new
+    end)
   end
 
   defp decode_vpack_response({request, response}) do

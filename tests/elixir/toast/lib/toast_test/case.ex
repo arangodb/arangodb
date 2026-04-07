@@ -64,7 +64,11 @@ defmodule ToastTest.Case do
     base = %{
       deployment: deployment,
       endpoint: endpoint,
-      client: Toast.Client.new(endpoint, api_version: deployment.api_version)
+      client:
+        Toast.Client.new(endpoint,
+          api_version: deployment.api_version,
+          protocol: Application.get_env(:toast, :protocol, :http1)
+        )
     }
 
     Map.merge(base, extra_context)
