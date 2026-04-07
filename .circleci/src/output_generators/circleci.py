@@ -290,7 +290,7 @@ class CircleCIGenerator(OutputGenerator):
                 "create-docker-image": {
                     "name": f"create-{build_config.architecture.value}-docker-image",
                     "resource-class": self.sizer.get_resource_class(
-                        ResourceSize.LARGE, build_config.architecture
+                        ResourceSize.CIRCLECI_LARGE, build_config.architecture
                     ),
                     "arch": arch,
                     "tag": f"{image}:{tag}",
