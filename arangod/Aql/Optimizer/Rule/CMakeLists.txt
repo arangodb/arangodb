@@ -15,6 +15,7 @@ target_sources(arango_aql PRIVATE
   RemoveRedundantCalculations.cpp
   RemoveUnnecessaryCalculations.cpp
   OptimizerRulesCluster.cpp
+  OptimizerRulesFilter.cpp
   OptimizerRulesGraph.cpp
   OptimizerRulesIResearchView.cpp
   OptimizerRulesIndexNode.cpp

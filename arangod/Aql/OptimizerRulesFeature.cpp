@@ -28,6 +28,7 @@
 #include "Aql/Optimizer/Rule/MoveCalculationsUp.h"
 #include "Aql/Optimizer/Rule/RemoveRedundantCalculations.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryCalculations.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesFilter.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
