@@ -308,7 +308,7 @@ std::int64_t VectorIndexTrainer::resolveNLists(
     std::uint64_t numDocsHint) const {
   if (isNListsScaling(_definition.nLists) && numDocsHint == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
+        TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
         "For the vector index to be created documents "
         "must be present in the respective collection for the training "
         "process.");
