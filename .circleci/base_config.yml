@@ -660,7 +660,7 @@ jobs:
             find build/ -iname *.o.d -delete || true
             # avoid duplicates in the package
             rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
-            rm -rf install/usr/share/arangodb3/js/apps/system/_admin/aardvark/APP
+            rm -rf build/install/usr/share/arangodb3/js/apps/system/_admin/aardvark/APP
       - run:
           name: List build artifacts
           command: |
