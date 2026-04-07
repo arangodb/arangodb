@@ -530,23 +530,28 @@ jobs:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: arangodb/large-amd64
     steps:
-      - checkout-arangodb:
-          with-submodules: false
-          destination: "/root/project"
-      - run:
-          name: Build frontend
-          command: |
-            cd js/apps/system/_admin/aardvark/APP/react
-            tar -xJf /node_modules.tar.xz
-            yarn install
-            yarn build
-      - persist_to_workspace:
-          root: .
-          paths: js/apps/system/_admin/aardvark/APP/react/build
-      - persist_workspace_to_s3:
-          root: .
-          paths: js/apps/system/_admin/aardvark/APP/react/build
-          archive: frontend.tar.gz
+      - when:
+          condition:
+            not:
+              << pipeline.parameters.create-docker-images >>
+        steps:
+        - checkout-arangodb:
+            with-submodules: false
+            destination: "/root/project"
+        - run:
+            name: Build frontend
+            command: |
+              cd js/apps/system/_admin/aardvark/APP/react
+              tar -xJf /node_modules.tar.xz
+              yarn install
+              yarn build
+        - persist_to_workspace:
+            root: .
+            paths: js/apps/system/_admin/aardvark/APP/react/build
+        - persist_workspace_to_s3:
+            root: .
+            paths: js/apps/system/_admin/aardvark/APP/react/build
+            archive: frontend.tar.gz
 
   compile-linux:
     parameters:
@@ -645,9 +650,6 @@ jobs:
                   fi
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
-                  # avoid duplicates in the package
-                  find -type d |grep js/apps/system/_admin/aardvark/APP
-                  rm -rf install/usr/share/arangodb3/js/apps/system/_admin/aardvark/APP
                   tar -czf install.tar.gz -C install ./
       - run:
           name: Size leaderboard
@@ -661,9 +663,6 @@ jobs:
             find build/ -iname *.o.d -delete || true
             # avoid duplicates in the package
             find .. -type d |grep js/apps/system/_admin/aardvark/APP
-            rm js/apps/system/_admin/aardvark/APP/react/node_modules js/apps/system/_admin/aardvark/APP/react/build -rf
-            rm ../js/apps/system/_admin/aardvark/APP/react/node_modules ../js/apps/system/_admin/aardvark/APP/react/build -rf
-            rm -rf build/install/usr/share/arangodb3/js/apps/system/_admin/aardvark/APP
       - run:
           name: List build artifacts
           command: |
