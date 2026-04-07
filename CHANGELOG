@@ -1,6 +1,13 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-231: Vector index `nLists` now supports a tiered scaling specification
+  alongside fixed integer values. The scaling spec uses
+  `{ "multiplier": M, "minNLists": N, "tiers": [...] }` to compute nLists
+  based on document count per shard at training time: tiers provide fixed
+  values for large collections, while smaller collections use
+  `max(minNLists, multiplier * sqrt(docCount))`.
+  Factory string are not supported for scaling mode.
 
 3.12.9 (2026-04-03)
 -------------------
@@ -127,16 +134,6 @@
 * Add new API GET /_admin/options-public for new platform UI.
 
 * Fix ES-2824: SEARCH query produces wrong results.
-
-* COR-231: Vector index `nLists` now supports a tiered scaling specification
-  alongside fixed integer values. The scaling spec uses
-  `{ "multiplier": M, "minNLists": N, "tiers": [...] }` to compute nLists
-  based on document count per shard at training time: tiers provide fixed
-  values for large collections, while smaller collections use
-  `max(minNLists, multiplier * sqrt(docCount))`. The `defaultNProbe` is now
-  automatically computed as `sqrt(resolvedNLists)` (minimum 1) when not
-  explicitly set. Factory string templates with `{nLists}` placeholder are
-  supported for scaling mode.
 
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.
