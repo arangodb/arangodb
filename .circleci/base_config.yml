@@ -590,7 +590,7 @@ jobs:
       - run:
           name: Build
           command: |
-            TARGETS='<< pipeline.parameters.build-targets >>'
+            TARGETS="<< pipeline.parameters.build-targets >>"
             if [ << parameters.build-tests >> = true ]; then
               TARGETS="$TARGETS << pipeline.parameters.test-build-targets >>"
             fi
