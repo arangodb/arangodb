@@ -347,7 +347,16 @@ function aqlMatchStatementTestSuite() {
           const traversal_result = db._query(traversal_query, {}, options).toArray();
           assertEqual(match_result, traversal_result); // , JSON.stringify(result));
         },
+      testMatchFixedAndVariableLength: function() {
+          const match_query = aql`MATCH (v1:vc) -[ e1:ec_paths]-> (v2:ec)
+                                              -[ e2:ec_paths * 2..3 ]-> (v3:vc)
+                                              -[ e3:ec_paths ]-> (v4:ec) 
+                                  RETURN [v1, e1, v2, e2, v3, e3, v4]`;
+          db._explain(match_query, {}, options);
+          const match_result = db._query(match_query, {}, options).toArray();
 
+          
+      },
     };
 }
 
