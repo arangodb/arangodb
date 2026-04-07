@@ -645,6 +645,8 @@ jobs:
                   fi
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
+                  # avoid duplicates in the package
+                  rm -rf install/usr/share/arangodb3/js/apps/system/_admin/aardvark/APP
                   tar -czf install.tar.gz -C install ./
       - run:
           name: Size leaderboard
@@ -656,7 +658,9 @@ jobs:
             find build/ -iname *.a -delete || true
             find build/ -iname *.o -delete || true
             find build/ -iname *.o.d -delete || true
+            # avoid duplicates in the package
             rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
+            rm -rf install/usr/share/arangodb3/js/apps/system/_admin/aardvark/APP
       - run:
           name: List build artifacts
           command: |
