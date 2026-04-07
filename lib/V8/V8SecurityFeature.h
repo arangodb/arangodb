@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/DenyAllow.h"
+#include "Basics/AllowedPaths.h"
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeatureOptions.h"
 
@@ -117,7 +118,8 @@ class V8SecurityFeature final
   bool isInternalContext(v8::Isolate* isolate) const;
   bool isAdminScriptContext(v8::Isolate* isolate) const;
 
-  void addToInternalAllowList(std::string const& item, FSAccessType);
+  void addToInternalReadAllowList(std::filesystem::path item);
+  void addToInternalWriteAllowList(std::filesystem::path item);
 
  private:
   V8SecurityFeatureOptions _options;
@@ -128,23 +130,14 @@ class V8SecurityFeature final
   // an logical OR to the final expression. That in turn
   // will be compiled into an std::regex.
 
-  /// @brief variables for file access
-  std::string _readAllowList;
-  std::unordered_set<std::string> _readAllowListSet;
-
-  std::string _writeAllowList;
-  std::unordered_set<std::string> _writeAllowListSet;
+  AllowedPaths _internalReadAllow;
+  AllowedPaths _internalWriteAllow;
 
   AllowListStrictness _strictness;
 
   DenyAllow _startupOptions;
   DenyAllow _endpoints;
   DenyAllow _environmentVariables;
-
-  // TODO: COR-348, replace internal allow regexes by a simpler
-  // construct
-  std::optional<std::regex> _readAllowRegex{std::nullopt};
-  std::optional<std::regex> _writeAllowRegex{std::nullopt};
 
   DenyAllow _files;
 };
