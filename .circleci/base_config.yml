@@ -334,7 +334,7 @@ commands:
       - when:
           condition:
             not:
-              equal: [ << parameters.sanitizer >>, ""]
+              equal: [<< parameters.sanitizer >>, ""]
           steps:
             - run:
                 name: Symbolizer server
@@ -531,27 +531,27 @@ jobs:
     resource_class: arangodb/large-amd64
     steps:
       - when:
-          condition:
-            not:
-              << pipeline.parameters.create-docker-images >>
+        condition:
+          not:
+            << pipeline.parameters.create-docker-images >>
         steps:
-        - checkout-arangodb:
-            with-submodules: false
-            destination: "/root/project"
-        - run:
-            name: Build frontend
-            command: |
-              cd js/apps/system/_admin/aardvark/APP/react
-              tar -xJf /node_modules.tar.xz
-              yarn install
-              yarn build
-        - persist_to_workspace:
-            root: .
-            paths: js/apps/system/_admin/aardvark/APP/react/build
-        - persist_workspace_to_s3:
-            root: .
-            paths: js/apps/system/_admin/aardvark/APP/react/build
-            archive: frontend.tar.gz
+          - checkout-arangodb:
+              with-submodules: false
+              destination: "/root/project"
+          - run:
+              name: Build frontend
+              command: |
+                cd js/apps/system/_admin/aardvark/APP/react
+                tar -xJf /node_modules.tar.xz
+                yarn install
+                yarn build
+          - persist_to_workspace:
+              root: .
+              paths: js/apps/system/_admin/aardvark/APP/react/build
+          - persist_workspace_to_s3:
+              root: .
+              paths: js/apps/system/_admin/aardvark/APP/react/build
+              archive: frontend.tar.gz
 
   compile-linux:
     parameters:
@@ -574,7 +574,7 @@ jobs:
         type: string
         default: ""
       arch:
-          type: string
+        type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
@@ -729,11 +729,11 @@ jobs:
   create-docker-image:
     parameters:
       resource-class:
-          type: string
+        type: string
       arch:
-          type: string
+        type: string
       tag:
-          type: string
+        type: string
     docker:
       - image: cimg/base:current
     resource_class: << parameters.resource-class >>
@@ -1060,7 +1060,7 @@ workflows:
             - minimal-checkout
       - eslint:
           name: eslint
-          context: [ circleci-token ]
+          context: [circleci-token]
           requires:
             - minimal-checkout
-  # all other workflows are defined in generate_config.py
+# all other workflows are defined in generate_config.py
