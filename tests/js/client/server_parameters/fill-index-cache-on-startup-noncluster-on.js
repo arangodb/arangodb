@@ -31,7 +31,6 @@ const db = require('@arangodb').db;
 if (getOptions === true) {
   return {
     'rocksdb.auto-fill-index-caches-on-startup' : 'true',
-    'server.statistics' : 'false',
     runSetup: true,
   };
 }

@@ -40,7 +40,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class Thread;
 namespace stats {
 class Descriptions;
 }
@@ -65,24 +64,6 @@ constexpr size_t MethodRequestsStatisticsSize =
 using MethodRequestCounters = std::array<Counter, MethodRequestsStatisticsSize>;
 extern MethodRequestCounters MethodRequests;
 extern Distribution ConnectionTimeDistribution;
-
-struct RequestFigures {
-  RequestFigures();
-
-  RequestFigures(RequestFigures const&) = delete;
-  RequestFigures(RequestFigures&&) = delete;
-  RequestFigures& operator=(RequestFigures const&) = delete;
-  RequestFigures& operator=(RequestFigures&&) = delete;
-
-  Distribution bytesReceivedDistribution;
-  Distribution bytesSentDistribution;
-  Distribution ioTimeDistribution;
-  Distribution queueTimeDistribution;
-  Distribution requestTimeDistribution;
-  Distribution totalTimeDistribution;
-};
-extern RequestFigures SuperuserRequestFigures;
-extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 
 class StatisticsFeature final
@@ -103,9 +84,6 @@ class StatisticsFeature final
 
   stats::Descriptions const& descriptions() const { return _descriptions; }
 
-  static arangodb::velocypack::Builder fillDistribution(
-      statistics::Distribution const& dist);
-
   bool allDatabases() const noexcept { return _statisticsAllDatabases; }
 
  private:
@@ -120,20 +98,11 @@ class StatisticsFeature final
                                         std::string_view globals,
                                         bool ensureWhitespace);
 
-  static void appendHistogram(std::string& result,
-                              statistics::Distribution const& dist,
-                              std::string const& label,
-                              std::initializer_list<std::string> const& les,
-                              bool isInteger, std::string_view globals,
-                              bool ensureWhitespace);
-  bool _statistics;
   bool _statisticsAllDatabases;
   StatisticsFeatureOptions _options;
 
   stats::Descriptions _descriptions;
-  std::unique_ptr<Thread> _statisticsThread;
 
-  metrics::Gauge<uint64_t>& _requestStatisticsMemoryUsage;
   metrics::Gauge<uint64_t>& _connectionStatisticsMemoryUsage;
 };
 
