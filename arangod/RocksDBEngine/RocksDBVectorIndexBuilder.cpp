@@ -238,11 +238,13 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   if (!shouldDoFullIteration) {
     maxVectors = resolveNLists(numDocsHint) * kMaxTrainingSizePerNLists;
   }
+  // only one of these can be true
+  TRI_ASSERT(shouldDoFullIteration ^ maxVectors.has_value());
 
   std::size_t trainingDatasetCounter{0};
   std::size_t iterationCounter{0};
   while (it.Valid() &&
-         (trainingDatasetCounter < maxVectors || shouldDoFullIteration)) {
+         (shouldDoFullIteration || trainingDatasetCounter < *maxVectors)) {
     if (iterationCounter % 1000 == 0 && stopToken.stop_requested()) {
       return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "vector training aborted"};
