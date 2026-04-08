@@ -110,6 +110,9 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
     : _vocbase(vocbase),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
+      _transactionStatistics(vocbase.server()
+                                 .getFeature<metrics::MetricsFeature>()
+                                 .transactionStatistics()),
       _id(tid),
       _operationOrigin(operationOrigin),
       // set usage tracking mode to disabled initially. this may be overriden
@@ -882,9 +885,7 @@ void TransactionState::coordinatorRerollTransactionId() {
 
 /// @brief return a reference to the global transaction statistics
 TransactionStatistics& TransactionState::statistics() const noexcept {
-  return _vocbase.server()
-      .getFeature<metrics::MetricsFeature>()
-      .transactionStatistics();
+  return _transactionStatistics;
 }
 
 void TransactionState::chooseReplicasNolock(
