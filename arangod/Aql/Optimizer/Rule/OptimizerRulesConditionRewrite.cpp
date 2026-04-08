@@ -489,7 +489,8 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         auto const* accessed = node->getMemberUnchecked(0);
 
         if (accessed->type == NODE_TYPE_REFERENCE) {
-          Variable const* v = static_cast<Variable const*>(accessed->getData());
+          ast::ReferenceNode ref(accessed);
+          Variable const* v = ref.getVariable();
           TRI_ASSERT(v != nullptr);
 
           auto setter = p->getVarSetBy(v->id);
@@ -546,7 +547,8 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         auto const* accessed = indexAccess.getObject();
 
         if (accessed->type == NODE_TYPE_REFERENCE) {
-          Variable const* v = static_cast<Variable const*>(accessed->getData());
+          ast::ReferenceNode ref(accessed);
+          Variable const* v = ref.getVariable();
           TRI_ASSERT(v != nullptr);
 
           auto setter = p->getVarSetBy(v->id);
