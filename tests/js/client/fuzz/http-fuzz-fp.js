@@ -158,10 +158,7 @@ function httpRequestsFuzzerTestSuite() {
       gatherResources();
     },
     tearDownAll: function () {
-      let moreargv = [];
-      if (IM.options.skipServerJS) {
-        moreargv = ['--skip', "070,071,801,550,900,960"].concat(moreargv);
-      }
+      let moreargv = ['--testFoxx', 'false'];
       let logFile = fs.join(fs.getTempPath(), `rta_out_clean.log`);
       let rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
       if (!rc.status) {
