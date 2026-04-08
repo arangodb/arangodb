@@ -655,7 +655,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     if (!engine.inRecovery()) {
       // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
-          {"path", "statusString"},
+          {"path"},
           LogicalDataSource::Serialization::PersistenceWithInProgress);
       VPackBuilder indexInfo;
       newIdx->toVelocyPack(indexInfo,
@@ -693,8 +693,7 @@ Result RocksDBCollection::duringDropIndex(std::shared_ptr<Index> idx) {
   TRI_ASSERT(!engine.inRecovery());
 
   auto builder = _logicalCollection.toVelocyPackIgnore(
-      {"path", "statusString"},
-      LogicalDataSource::Serialization::PersistenceWithInProgress);
+      {"path"}, LogicalDataSource::Serialization::PersistenceWithInProgress);
   // log this event in the WAL and in the collection meta-data
   return engine.writeCreateCollectionMarker(  // write marker
       _logicalCollection.vocbase().id(),      // vocbase id
