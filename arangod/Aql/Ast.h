@@ -475,6 +475,8 @@ class Ast {
   AstNode* createNodeMatchExpr();
   AstNode* createNodeVariableOrReference(std::string_view name);
 
+  AstNode* createNodeArraySplice(AstNode const* in);
+
   /// @brief injects first-stage bind parameter values into the AST
   /// (i.e. collection bind parameters and bound attribute names,
   /// e.g. @@foo and `doc.@attr`).

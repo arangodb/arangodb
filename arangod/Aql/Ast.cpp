@@ -2073,6 +2073,12 @@ AstNode* Ast::createNodeVariableOrReference(std::string_view name) {
   return node;
 }
 
+AstNode* Ast::createNodeArraySplice(AstNode const* in) {
+  AstNode* node = createNode(NODE_TYPE_ARRAY_SPLICE);
+  node->addMember(in);
+  return node;
+}
+
 /// @brief injects first-stage bind parameter values into the AST
 /// (i.e. collection bind parameters and bound attribute names,
 /// e.g. @@foo and `doc.@attr`).
