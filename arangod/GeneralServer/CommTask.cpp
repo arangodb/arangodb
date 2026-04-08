@@ -151,8 +151,6 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
   TRI_ASSERT(_auth != nullptr);
 }
 
-CommTask::~CommTask() = default;
-
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
 CommTask::Flow CommTask::prepareExecution(

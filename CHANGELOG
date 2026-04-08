@@ -1,10 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
+
 * COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
   `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
   `/_admin/wal/transactions`.
-
-* COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
 
 * Updated ArangoDB Starter to v0.20.0-preview-6.
 

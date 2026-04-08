@@ -92,7 +92,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
  public:
   CommTask(GeneralServer& server, ConnectionInfo info);
 
-  virtual ~CommTask();
+  virtual ~CommTask() = default;
 
   // callable from any thread
   virtual void start() = 0;
