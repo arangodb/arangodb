@@ -38,6 +38,7 @@
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/Range.h"
 #include "Aql/TypedAstNodes.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
@@ -662,12 +663,32 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    bool localMustDestroy = false;
-    AqlValue result =
-        executeSimpleExpression(ctx, member, localMustDestroy, false);
-    AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx.vpackOptions(), *builder.get(),
-                        /*allowUnindexed*/ false);
+
+    if (member->type == NODE_TYPE_ARRAY_SPLICE) {
+      auto member2 = member->getMember(0);
+
+      bool localMustDestroy = false;
+      AqlValue result =
+          executeSimpleExpression(ctx, member2, localMustDestroy, false);
+      AqlValueGuard guard(result, localMustDestroy);
+
+      if (result.isArray()) {
+        for (auto e : VPackArrayIterator(result.slice())) {
+          builder->add(e);
+        }
+      } else {
+        // TODO: What to do? maybe throw?
+        result.toVelocyPack(&trx.vpackOptions(), *builder.get(), false);
+      }
+    } else {
+      bool localMustDestroy = false;
+      AqlValue result =
+          executeSimpleExpression(ctx, member, localMustDestroy, false);
+      AqlValueGuard guard(result, localMustDestroy);
+
+      result.toVelocyPack(&trx.vpackOptions(), *builder.get(),
+                          /*allowUnindexed*/ false);
+    }
   }
 
   builder->close();

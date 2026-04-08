@@ -258,6 +258,7 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_PATTERN_PATH_VARIABLE = 87,
   NODE_TYPE_PATTERN_MATCH_EXPRESSION = 88,
   NODE_TYPE_MATCH = 89,
+  NODE_TYPE_ARRAY_SPLICE = 90,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
