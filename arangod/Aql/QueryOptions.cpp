@@ -53,6 +53,8 @@ bool QueryOptions::defaultFailOnWarning =
     QueryOptions::defaultInitialFailOnWarning;
 bool QueryOptions::allowMemoryLimitOverride =
     QueryOptions::defaultInitialAllowMemoryLimitOverride;
+// empty string is considered disabled
+std::string QueryOptions::defaultEnableMatchStatement = {};
 
 QueryOptions::QueryOptions()
     : memoryLimit(0),
@@ -282,6 +284,15 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   }
 #endif
 
+  if (VPackSlice value = slice.get("matchStatement"); value.isString()) {
+    enableMatchStatement = value.copyString();
+    if (!enableMatchStatement.empty() &&
+        enableMatchStatement != "experimental") {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid value for `matchStatement`");
+    }
+  }
+
   // also handle transaction options
   transactionOptions.fromVelocyPack(slice);
 }
@@ -319,6 +330,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("usePlanCache", VPackValue(usePlanCache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
+  builder.add("matchStatement", VPackValue(enableMatchStatement));
 
   if (desiredJoinStrategy == JoinStrategyType::kGeneric) {
     builder.add(StaticStrings::JoinStrategyType, VPackValue("generic"));
