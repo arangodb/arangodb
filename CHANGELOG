@@ -1,6 +1,13 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-231: Vector index `nLists` now supports a tiered scaling specification
+  alongside fixed integer values. The scaling spec uses
+  `{ "multiplier": M, "minNLists": N, "tiers": [...] }` to compute nLists
+  based on document count per shard at training time: tiers provide fixed
+  values for large collections, while smaller collections use
+  `max(minNLists, multiplier * sqrt(docCount))`.
+  Factory string are not supported in scaling mode.
 
 3.12.9 (2026-04-03)
 -------------------

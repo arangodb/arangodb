@@ -45,7 +45,7 @@
 #include "Assertions/Assert.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Basics/ResourceUsage.h"
@@ -136,8 +136,9 @@ bool checkApproxNearExpressionMatchesVectorIndex(
 
 // Currently this only returns nProbe, in the future it might be possible to
 // set other search parameters
-SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
-                                     ResourceMonitor& resourceMonitor) {
+vector::SearchParameters getSearchParameters(
+    auto const* calculationNodeExpressionNode,
+    ResourceMonitor& resourceMonitor) {
   ast::FunctionCallNode fcall(calculationNodeExpressionNode);
   auto approxFunctionParameters = fcall.getArguments().getElements();
 
@@ -145,7 +146,7 @@ SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
       approxFunctionParameters[2]->isObject()) {
     auto const searchParametersNode = approxFunctionParameters[2];
 
-    SearchParameters searchParameters;
+    vector::SearchParameters searchParameters;
     // Buffer won't escape from this function's scope
     velocypack::SupervisedBuffer sb(resourceMonitor);
     VPackBuilder builder(sb);
