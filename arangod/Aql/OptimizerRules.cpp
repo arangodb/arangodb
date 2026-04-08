@@ -74,6 +74,7 @@
 #include "Aql/IndexHint.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Utils/VariableReplacer.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
@@ -5549,7 +5550,7 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
                  setter->getType() == EN::INDEX)) {
               std::unordered_map<VariableId, Variable const*> replacements;
               replacements.try_emplace(old->id, inVariable);
-              utils::VariableReplacer finder(replacements);
+              VariableReplacer finder(replacements);
               plan->root()->walk(finder);
               modified = true;
             }
@@ -5566,7 +5567,7 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
                setter->getType() == EN::INDEX)) {
             std::unordered_map<VariableId, Variable const*> replacements;
             replacements.try_emplace(old->id, inVariable);
-            utils::VariableReplacer finder(replacements);
+            VariableReplacer finder(replacements);
             plan->root()->walk(finder);
             modified = true;
           }
@@ -6132,7 +6133,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           std::unordered_map<VariableId, Variable const*> replacements;
           replacements.try_emplace(listNode->outVariable()[0]->id,
                                    returnNode->inVariable());
-          utils::VariableReplacer finder(replacements);
+          VariableReplacer finder(replacements);
           plan->root()->walk(finder);
 
           plan->clearVarUsageComputed();

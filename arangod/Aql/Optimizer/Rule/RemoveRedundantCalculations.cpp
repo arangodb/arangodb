@@ -30,7 +30,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/VariableReplacer.h"
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
 
@@ -125,7 +125,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
   }
 
   if (!replacements.empty()) {
-    utils::VariableReplacer finder(replacements);
+    VariableReplacer finder(replacements);
     plan->root()->walk(finder);
   }
 

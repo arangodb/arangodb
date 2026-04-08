@@ -24,14 +24,12 @@
 
 #include "MoveCalculationsUp.h"
 
-#include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Variable.h"
+#include "Aql/Optimizer/Utils/AccessesCollectionVariable.h"
 #include "Cluster/ServerState.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
@@ -39,39 +37,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
-
-namespace {
-bool accessesCollectionVariable(ExecutionPlan const* plan,
-                                ExecutionNode const* node, VarSet& vars) {
-  if (node->getType() == EN::CALCULATION) {
-    auto nn = EN::castTo<CalculationNode const*>(node);
-    vars.clear();
-    Ast::getReferencedVariables(nn->expression()->node(), vars);
-  } else if (node->getType() == EN::SUBQUERY) {
-    auto nn = EN::castTo<SubqueryNode const*>(node);
-    vars.clear();
-    nn->getVariablesUsedHere(vars);
-  }
-
-  for (auto const& it : vars) {
-    auto setter = plan->getVarSetBy(it->id);
-    if (setter == nullptr) {
-      continue;
-    }
-    if (setter->getType() == EN::INDEX ||
-        setter->getType() == EN::ENUMERATE_COLLECTION ||
-        setter->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
-        setter->getType() == EN::SUBQUERY ||
-        setter->getType() == EN::TRAVERSAL ||
-        setter->getType() == EN::ENUMERATE_PATHS ||
-        setter->getType() == EN::SHORTEST_PATH) {
-      return true;
-    }
-  }
-
-  return false;
-}
-}  // namespace
 
 void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
                                            std::unique_ptr<ExecutionPlan> plan,
@@ -109,7 +74,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
     }
     if (n->getType() == EN::CALCULATION) {
       auto nn = ExecutionNode::castTo<CalculationNode*>(n);
-      if (::accessesCollectionVariable(plan.get(), nn, vars)) {
+      if (accessesCollectionVariable(plan.get(), nn, vars)) {
         isAccessCollection = true;
       }
     }
