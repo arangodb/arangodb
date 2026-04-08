@@ -124,19 +124,23 @@ extern int Aqldebug;
     T_OBJECT_CLOSE = 324,          /* "}"  */
     T_ARRAY_OPEN = 325,            /* "["  */
     T_ARRAY_CLOSE = 326,           /* "]"  */
-    T_OUTBOUND = 327,              /* "outbound modifier"  */
-    T_INBOUND = 328,               /* "inbound modifier"  */
-    T_ANY = 329,                   /* "any modifier"  */
-    T_ALL = 330,                   /* "all modifier"  */
-    T_NONE = 331,                  /* "none modifier"  */
-    T_AT_LEAST = 332,              /* "at least modifier"  */
-    UMINUS = 333,                  /* UMINUS  */
-    UPLUS = 334,                   /* UPLUS  */
-    UNEGATION = 335,               /* UNEGATION  */
-    FUNCCALL = 336,                /* FUNCCALL  */
-    REFERENCE = 337,               /* REFERENCE  */
-    INDEXED = 338,                 /* INDEXED  */
-    EXPANSION = 339                /* EXPANSION  */
+    T_RELATION_OPEN = 327,         /* "-["  */
+    T_RELATION_IN_OPEN = 328,      /* "<-["  */
+    T_RELATION_CLOSE = 329,        /* "]-"  */
+    T_RELATION_OUT_CLOSE = 330,    /* "]->"  */
+    T_OUTBOUND = 331,              /* "outbound modifier"  */
+    T_INBOUND = 332,               /* "inbound modifier"  */
+    T_ANY = 333,                   /* "any modifier"  */
+    T_ALL = 334,                   /* "all modifier"  */
+    T_NONE = 335,                  /* "none modifier"  */
+    T_AT_LEAST = 336,              /* "at least modifier"  */
+    UMINUS = 337,                  /* UMINUS  */
+    UPLUS = 338,                   /* UPLUS  */
+    UNEGATION = 339,               /* UNEGATION  */
+    FUNCCALL = 340,                /* FUNCCALL  */
+    REFERENCE = 341,               /* REFERENCE  */
+    INDEXED = 342,                 /* INDEXED  */
+    EXPANSION = 343                /* EXPANSION  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -155,7 +159,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 158 "grammar.hpp"
+#line 162 "grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

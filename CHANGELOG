@@ -1,6 +1,13 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
+
+* Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
+  They are still accepted for backward compatibility but are ignored and no longer
+  appear in `--help`. Coordinator runs with `--database.auto-upgrade` now disable
+  the HTTP listener stack without requiring `--server.rest-server false`. Packaging
+  and init scripts no longer pass these flags.
+
 * Remove `RequestStatistics` and `--server.statistics` option; HTTP request metrics
   are now recorded synchronously via Prometheus metrics.
 
