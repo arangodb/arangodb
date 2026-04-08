@@ -29,16 +29,8 @@
 namespace arangodb::aql {
 class Optimizer;
 
-/// @brief useIndex, try to use an index for filtering
-void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                    OptimizerRule const&);
-
 /// @brief try to use the index for sorting
 void useIndexForSortRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                          OptimizerRule const&);
-
-/// @brief try to remove filters which are covered by indexes
-void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
 
 }  // namespace arangodb::aql

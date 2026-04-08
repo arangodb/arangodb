@@ -32,5 +32,7 @@ target_sources(arango_aql PRIVATE
   ParallelizeGather.cpp
   RemoveRedundantSorts.cpp
   SortLimit.cpp
-  OptimizerRulesUseIndexes.cpp
+  RemoveFiltersCoveredByIndex.cpp
+  UseIndexForSort.cpp
+  UseIndexes.cpp
 )
