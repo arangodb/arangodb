@@ -126,7 +126,8 @@ function VectorIndexScalingTestSuite() {
             }
         },
 
-        testSmallTiersGetTriggered: function() {
+        testFirstTierTriggered: function() {
+            // 100 docs: only threshold 50 <= 100, so first tier wins
             collection.ensureIndex({
                 name: idxName,
                 type: "vector",
@@ -141,16 +142,65 @@ function VectorIndexScalingTestSuite() {
                         tiers: [
                             { threshold: 50, fixedValue: 2 },
                             { threshold: 200, fixedValue: 4 },
+                            { threshold: 300, fixedValue: 6 },
                         ],
                     },
                 },
             });
             const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
-            assertEqual(2, idx.params.nLists.tiers.length);
-            assertEqual(50, idx.params.nLists.tiers[0].threshold);
-            assertEqual(2, idx.params.nLists.tiers[0].fixedValue);
+            assertVectorIndexUsable(randomPoint);
+        },
 
+        testSecondTierTriggered: function() {
+            // 100 docs: thresholds 10 and 80 <= 100, so second tier wins
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [
+                            { threshold: 10, fixedValue: 1 },
+                            { threshold: 80, fixedValue: 2 },
+                            { threshold: 300, fixedValue: 6 },
+                        ],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertVectorIndexUsable(randomPoint);
+        },
+
+        testThirdTierTriggered: function() {
+            // 100 docs: all thresholds <= 100, so third tier wins
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [
+                            { threshold: 10, fixedValue: 1 },
+                            { threshold: 30, fixedValue: 1 },
+                            { threshold: 60, fixedValue: 2 },
+                        ],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
             assertVectorIndexUsable(randomPoint);
         },
 

@@ -298,6 +298,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   }
 
   if (trainingData.empty()) {
+    // This should never happen
     return Result{TRI_ERROR_NOT_IMPLEMENTED,
                   "For the vector index to be created documents "
                   "must be present in the respective collection for the "
@@ -311,7 +312,7 @@ ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
     std::uint64_t numDocsHint) const {
   auto const& nLists = _index.getDefinition().nLists;
   if (isNListsScaling(nLists) && numDocsHint == 0) {
-    return Result{TRI_ERROR_NOT_IMPLEMENTED,
+    return Result{TRI_ERROR_BAD_PARAMETER,
                   "Cannot resolve nLists with scaling mode when "
                   "numDocsHint is 0"};
   }
