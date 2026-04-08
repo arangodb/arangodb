@@ -27,16 +27,16 @@ defmodule ToastTest.CaseContextSurvivalTest do
 
     defp ensure_registered do
       alias ToastTest.DeploymentRegistry
-      DeploymentRegistry.ensure_init()
 
-      case :ets.lookup(:toast_deployment_registry, __MODULE__) do
-        [{_, _}] ->
-          :ok
-
-        [] ->
+      try do
+        DeploymentRegistry.get(__MODULE__)
+      rescue
+        RuntimeError ->
           DeploymentRegistry.put(__MODULE__, @deployment)
           DeploymentRegistry.put_extra_context(__MODULE__, @extra_context)
       end
+
+      :ok
     end
   end
 

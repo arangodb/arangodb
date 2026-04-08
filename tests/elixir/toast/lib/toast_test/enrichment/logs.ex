@@ -67,6 +67,10 @@ defmodule ToastTest.Enrichment.Logs do
   end
 
   defp maybe_put_atom(entry, _key, nil), do: entry
+
+  # String.to_atom/1 is safe here: ArangoDB log topics are a fixed, bounded set
+  # defined in the server binary. Values come from our own process logs, not
+  # untrusted external input, so atom table exhaustion is not a concern.
   defp maybe_put_atom(entry, key, value), do: Map.put(entry, key, String.to_atom(value))
 
   @doc """
@@ -182,6 +186,22 @@ defmodule ToastTest.Enrichment.Logs do
         List.duplicate([], length(windows))
     end
   end
+
+  # Single-pass multi-window scan across a sorted log file.
+  #
+  # Invariants:
+  #   - `windows` is a non-empty list of non-overlapping `{start_us, end_us}` tuples in ascending order.
+  #   - `acc` accumulates entries for the *current* (head) window, in reverse order.
+  #   - `results` is a list of already-finalized entry lists (one per completed window), in reverse order.
+  #   - The log file is read forward; entries are assumed to be monotonically non-decreasing by time.
+  #
+  # Transitions:
+  #   - Entry time < window start  → discard entry, advance file.
+  #   - Entry time in window       → append to acc, advance file.
+  #   - Entry time > window end    → finalize acc into results, advance to next window without
+  #                                  reading a new line (`recheck_entry` re-evaluates the same entry).
+  #   - EOF                        → finalize acc, pad remaining windows with empty lists.
+  #   - Windows exhausted          → done.
 
   # All windows consumed — finalize current accumulator and pad remaining
   defp collect_multi_windows(_device, [], acc, results) do

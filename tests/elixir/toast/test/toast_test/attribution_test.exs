@@ -5,7 +5,7 @@ defmodule ToastTest.AttributionTest do
 
   alias Toast.Deployment.Factory.LaunchSpec
   alias Toast.Deployment.ServerInstance
-  alias Toast.Process.CrashEvent
+  alias ToastTest.CrashEvent
   alias Toast.Process.CrashInfo
   alias ToastTest.Attribution
 

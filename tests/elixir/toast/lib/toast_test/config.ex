@@ -3,6 +3,10 @@ defmodule ToastTest.Config do
   Configuration for test execution — timeouts, result directories,
   diagnostics, and CI settings.
 
+  This is intentionally separate from `Toast.Deployment.Config`, which holds
+  deployment infrastructure concerns. See that module's docs for the rationale
+  behind the split.
+
   Constructed via `new/1` which reads defaults from application env
   (populated by `Toast.Env.load/1`) and applies optional overrides.
   """
@@ -42,11 +46,6 @@ defmodule ToastTest.Config do
   """
   @spec new(keyword()) :: t()
   def new(overrides \\ []) do
-    base =
-      Enum.reduce(Map.from_struct(%__MODULE__{}), %__MODULE__{}, fn {key, default}, acc ->
-        Map.put(acc, key, Application.get_env(:toast, key, default))
-      end)
-
-    struct!(base, overrides)
+    struct!(Toast.Env.struct_from_env(%__MODULE__{}), overrides)
   end
 end

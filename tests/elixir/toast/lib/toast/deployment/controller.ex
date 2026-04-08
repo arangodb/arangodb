@@ -8,6 +8,7 @@ defmodule Toast.Deployment.Controller do
   alias Toast.Deployment.Config
 
   alias Toast.Deployment.{
+    CrashExpectation,
     DefaultEventListener,
     DeployPipeline,
     Events,
@@ -480,7 +481,7 @@ defmodule Toast.Deployment.Controller do
 
   defp handle_crash(server_id, crash_info, server, state) do
     case Map.get(state.expected_crashes, server_id) do
-      %{timer: _timer} = entry ->
+      %CrashExpectation{} = entry ->
         handle_expected_crash(server_id, crash_info, entry, state)
 
       nil ->
@@ -576,7 +577,7 @@ defmodule Toast.Deployment.Controller do
       Logger.debug("Registered expected crash for #{server_id} (timeout=#{timeout}ms)")
       ServerLifecycle.suspend_health_monitor(server)
       timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, timeout)
-      entry = %{timer: timer, crash_info: nil, waiter: nil}
+      entry = %CrashExpectation{timer: timer}
       {:ok, %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}}
     end
   end
@@ -586,12 +587,12 @@ defmodule Toast.Deployment.Controller do
       nil ->
         {:reply, {:error, :no_expectation}, state}
 
-      %{crash_info: nil} = entry ->
+      %CrashExpectation{crash_info: nil} = entry ->
         verify_timer = Process.send_after(self(), {:verify_crash_timeout, server_id}, timeout)
         entry = %{entry | waiter: {from, verify_timer}}
         {:noreply, %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}}
 
-      %{crash_info: crash_info, timer: timer} ->
+      %CrashExpectation{crash_info: crash_info, timer: timer} ->
         Process.cancel_timer(timer)
 
         {:reply, {:ok, crash_info},
@@ -601,7 +602,7 @@ defmodule Toast.Deployment.Controller do
 
   defp handle_expect_crash_timeout(server_id, state) do
     case Map.get(state.expected_crashes, server_id) do
-      %{crash_info: nil} = entry ->
+      %CrashExpectation{crash_info: nil} = entry ->
         Logger.warning("Expected crash for #{server_id} timed out")
         notify_waiter_timeout(entry)
         server = Map.get(state.servers, server_id)
@@ -615,7 +616,7 @@ defmodule Toast.Deployment.Controller do
 
   defp handle_verify_crash_timeout(server_id, state) do
     case Map.get(state.expected_crashes, server_id) do
-      %{waiter: {from, _}} ->
+      %CrashExpectation{waiter: {from, _}} ->
         GenServer.reply(from, {:error, :timeout})
         server = Map.get(state.servers, server_id)
         ServerLifecycle.resume_health_monitor(server)

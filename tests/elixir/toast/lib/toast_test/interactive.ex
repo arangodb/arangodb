@@ -25,7 +25,6 @@ defmodule ToastTest.Interactive do
         do: module.__toast_suite__(),
         else: :__standalone__
 
-    ToastTest.DeploymentRegistry.ensure_init()
     ToastTest.DeploymentRegistry.put(suite_key, deployment)
 
     test_module = module.__ex_unit__()

@@ -1,5 +1,12 @@
 defmodule Toast.Deployment.Health do
-  @moduledoc "HTTP health check polling for ArangoDB servers."
+  @moduledoc """
+  HTTP health check polling for ArangoDB servers.
+
+  Health checks always use HTTP/1, regardless of the configured client protocol.
+  They are simple liveness pings against `/_api/version` — they don't need
+  protocol negotiation, and using HTTP/1 avoids introducing a dependency on
+  the application protocol setting into the deployment infrastructure layer.
+  """
 
   require Logger
 
@@ -37,9 +44,7 @@ defmodule Toast.Deployment.Health do
     http_timeout = Keyword.get(opts, :http_timeout, 2_000)
     url = endpoint <> "/_api/version"
 
-    req_opts =
-      [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false] ++
-        protocol_opts()
+    req_opts = [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false]
 
     case Req.get(url, req_opts) do
       {:ok, %{status: status}} when status in 200..299 ->
@@ -89,9 +94,7 @@ defmodule Toast.Deployment.Health do
     http_timeout = Keyword.get(opts, :http_timeout, 2_000)
     url = endpoint <> "/_api/agency/config"
 
-    req_opts =
-      [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false] ++
-        protocol_opts()
+    req_opts = [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false]
 
     case Req.get(url, req_opts) do
       {:ok, %{status: status, body: body}} when status in 200..299 and is_map(body) ->
@@ -184,10 +187,5 @@ defmodule Toast.Deployment.Health do
       Process.sleep(poll_interval)
       poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, false)
     end
-  end
-
-  defp protocol_opts do
-    Application.get_env(:toast, :protocol, :http1)
-    |> Toast.Client.protocol_connect_options()
   end
 end

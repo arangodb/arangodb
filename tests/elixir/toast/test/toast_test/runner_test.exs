@@ -6,6 +6,7 @@ defmodule ToastTest.RunnerTest do
   alias Toast.Deployment.ServerInstance
   alias Toast.Process.CrashInfo
   alias ToastTest.{Abort, Runner}
+  alias ToastTest.Runner.BetweenTests
 
   setup do
     Abort.clear!()
@@ -39,11 +40,10 @@ defmodule ToastTest.RunnerTest do
   end
 
   describe "health check between tests" do
-    # The runner calls Deployment.check_health/1 between tests via
-    # check_config_deployments. This tests the decision function that
-    # determines whether to abort based on deployment status.
+    # BetweenTests.check/2 is the default between-tests function used by the runner.
+    # This tests the decision logic based on deployment status.
 
-    test "check_health returns :ok for :ready status" do
+    test "check returns :ok for :ready status" do
       {:ok, ctrl} =
         Controller.start_link(
           config: Toast.Deployment.Config.new(),
@@ -52,10 +52,10 @@ defmodule ToastTest.RunnerTest do
         )
 
       deployment = mock_deployment(ctrl)
-      assert Deployment.check_health(deployment) == :ok
+      assert BetweenTests.check(deployment, nil) == :ok
     end
 
-    test "check_health returns error for :degraded status" do
+    test "check returns error for :degraded status" do
       id = "runner-test-#{System.unique_integer([:positive])}"
 
       server = %ServerInstance{
@@ -74,11 +74,11 @@ defmodule ToastTest.RunnerTest do
         )
 
       deployment = mock_deployment(ctrl)
-      assert {:error, msg} = Deployment.check_health(deployment)
+      assert {:error, msg} = BetweenTests.check(deployment, nil)
       assert msg =~ "degraded"
     end
 
-    test "check_health returns error for :failed status" do
+    test "check returns error for :failed status" do
       id = "runner-test-#{System.unique_integer([:positive])}"
 
       {:ok, ctrl} =
@@ -99,11 +99,11 @@ defmodule ToastTest.RunnerTest do
       Controller.notify_crash(ctrl, "test-server", crash_info)
 
       deployment = mock_deployment(ctrl)
-      assert {:error, msg} = Deployment.check_health(deployment)
+      assert {:error, msg} = BetweenTests.check(deployment, nil)
       assert msg =~ "crashed" or msg =~ "failed"
     end
 
-    test "check_health returns error for :stopped status" do
+    test "check returns error for :stopped status" do
       {:ok, ctrl} =
         Controller.start_link(
           config: Toast.Deployment.Config.new(),
@@ -112,7 +112,7 @@ defmodule ToastTest.RunnerTest do
 
       deployment = mock_deployment(ctrl)
       # Controller starts in :stopped status
-      assert {:error, msg} = Deployment.check_health(deployment)
+      assert {:error, msg} = BetweenTests.check(deployment, nil)
       assert msg =~ "not ready"
     end
   end

@@ -16,7 +16,7 @@ defmodule ToastTest.Attribution do
   @spec run(
           ToastTest.ResultCollector.test_data(),
           ToastTest.ArtifactCollector.t(),
-          [Toast.Process.CrashEvent.t()],
+          [ToastTest.CrashEvent.t()],
           keyword()
         ) ::
           {[ToastTest.SuiteResult.issue()], [ToastTest.SuiteResult.coredump_report()]}

@@ -211,34 +211,4 @@ defmodule Toast.Deployment.FailurePointTest do
       assert :ok = FailurePoint.clear_all(d)
     end
   end
-
-  # --- Deployment delegates ---
-
-  describe "Deployment delegates" do
-    setup do
-      {:ok, pid} = MockController.start_link(servers: [])
-
-      on_exit(fn ->
-        try do
-          GenServer.stop(pid)
-        catch
-          :exit, _ -> :ok
-        end
-      end)
-
-      %{deployment: deployment(pid)}
-    end
-
-    test "set_failure_point/3 delegates to FailurePoint.set/3", %{deployment: d} do
-      assert FailurePoint.set(d, "s1", "fp") == Deployment.set_failure_point(d, "s1", "fp")
-    end
-
-    test "clear_failure_point/3 delegates to FailurePoint.clear/3", %{deployment: d} do
-      assert FailurePoint.clear(d, "s1", "fp") == Deployment.clear_failure_point(d, "s1", "fp")
-    end
-
-    test "clear_all_failure_points/1 delegates to FailurePoint.clear_all/1", %{deployment: d} do
-      assert FailurePoint.clear_all(d) == Deployment.clear_all_failure_points(d)
-    end
-  end
 end

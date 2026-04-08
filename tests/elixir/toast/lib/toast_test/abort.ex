@@ -1,10 +1,14 @@
 defmodule ToastTest.Abort do
-  @moduledoc "Manages suite-level abort state via an ETS table."
+  @moduledoc "Manages suite-level abort state."
 
-  @table :toast_suite_abort
+  use Agent
+
   @prefix "Suite aborted: "
 
-  @doc "Returns the abort-skipped message prefix."
+  def start_link(_opts \\ []) do
+    Agent.start_link(fn -> %{aborted: nil, test_pid: nil} end, name: __MODULE__)
+  end
+
   @spec prefix() :: String.t()
   def prefix, do: @prefix
 
@@ -16,9 +20,15 @@ defmodule ToastTest.Abort do
   """
   @spec abort!(String.t() | {atom(), String.t()}) :: :ok
   def abort!(reason) do
-    bar = String.duplicate("\u2550", 80)
+    first? =
+      Agent.get_and_update(__MODULE__, fn
+        %{aborted: nil} = s -> {true, %{s | aborted: reason}}
+        s -> {false, s}
+      end)
 
-    if :ets.insert_new(@table, {:aborted, reason}) do
+    if first? do
+      bar = String.duplicate("\u2550", 80)
+
       IO.puts(
         IO.ANSI.format([
           :red,
@@ -36,57 +46,37 @@ defmodule ToastTest.Abort do
     :ok
   end
 
-  @doc "Clears the abort state (re-creates the ETS table)."
   @spec clear!() :: :ok
   def clear! do
-    :ets.delete(@table)
-  catch
-    :error, :badarg -> :ok
-  after
-    :ets.new(@table, [:named_table, :set, :public])
-    :ok
+    Agent.update(__MODULE__, fn _ -> %{aborted: nil, test_pid: nil} end)
   end
 
   @doc "Register the currently running test process so it can be killed on abort."
   @spec register_test_pid(pid()) :: :ok
   def register_test_pid(pid) do
-    :ets.insert(@table, {:test_pid, pid})
-    :ok
-  catch
-    :error, :badarg -> :ok
+    Agent.update(__MODULE__, &%{&1 | test_pid: pid})
   end
 
   @doc "Clear the registered test process."
   @spec unregister_test_pid() :: :ok
   def unregister_test_pid do
-    :ets.delete(@table, :test_pid)
-    :ok
-  catch
-    :error, :badarg -> :ok
+    Agent.update(__MODULE__, &%{&1 | test_pid: nil})
   end
 
   @doc "Kill the currently registered test process, if any."
   @spec kill_test_pid() :: :ok
   def kill_test_pid do
-    case :ets.lookup(@table, :test_pid) do
-      [{:test_pid, pid}] -> Process.exit(pid, :kill)
-      [] -> :ok
+    if pid = Agent.get(__MODULE__, & &1.test_pid) do
+      Process.exit(pid, :kill)
     end
 
     :ok
-  catch
-    :error, :badarg -> :ok
   end
 
   @doc "Returns the abort reason, or nil if not aborted."
   @spec reason() :: String.t() | {atom(), String.t()} | nil
   def reason do
-    case :ets.lookup(@table, :aborted) do
-      [{:aborted, reason}] -> reason
-      [] -> nil
-    end
-  catch
-    :error, :badarg -> nil
+    Agent.get(__MODULE__, & &1.aborted)
   end
 
   @doc "Extracts a human-readable message from an abort reason."

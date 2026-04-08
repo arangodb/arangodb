@@ -2,20 +2,10 @@ defmodule Toast.DeploymentTestHelpers do
   @moduledoc false
 
   def setup_deployment_registry(_context) do
-    try do
-      :ets.delete(:toast_deployment_registry)
-    catch
-      :error, :badarg -> :ok
-    end
-
-    ToastTest.DeploymentRegistry.init()
+    ToastTest.DeploymentRegistry.clear()
 
     ExUnit.Callbacks.on_exit(fn ->
-      try do
-        :ets.delete(:toast_deployment_registry)
-      catch
-        :error, :badarg -> :ok
-      end
+      ToastTest.DeploymentRegistry.clear()
     end)
 
     :ok

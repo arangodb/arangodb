@@ -52,6 +52,14 @@ defmodule Toast.Env do
   @spec default_result_dir() :: String.t()
   def default_result_dir, do: @default_result_dir
 
+  @doc "Fill a struct's fields from Application env under :toast, using the struct's defaults as fallback."
+  @spec struct_from_env(struct()) :: struct()
+  def struct_from_env(struct) do
+    Enum.reduce(Map.from_struct(struct), struct, fn {key, default}, acc ->
+      Map.put(acc, key, Application.get_env(:toast, key, default))
+    end)
+  end
+
   defp resolve_all(opts, local) do
     [
       &resolve_paths/2,

@@ -21,14 +21,16 @@ defmodule ToastTest.Formatting.RunSummary do
   end
 
   defp count(suite_results) do
-    Enum.reduce(suite_results, {zero_counts(), zero_counts()}, fn sr, {mod_acc, test_acc} ->
+    Enum.reduce(suite_results, {zero_module_counts(), zero_counts()}, fn sr,
+                                                                         {mod_acc, test_acc} ->
       {mod_counts, test_counts} = count_suite(sr)
       {merge(mod_acc, mod_counts), merge(test_acc, test_counts)}
     end)
   end
 
   defp count_suite(%ToastTest.SuiteResult{modules: modules}) do
-    Enum.reduce(modules, {zero_counts(), zero_counts()}, fn {_mod, mod_result}, {m_acc, t_acc} ->
+    Enum.reduce(modules, {zero_module_counts(), zero_counts()}, fn {_mod, mod_result},
+                                                                   {m_acc, t_acc} ->
       test_counts = count_tests(mod_result.tests)
       mod_counts = module_counts(test_counts)
       {merge(m_acc, mod_counts), merge(t_acc, test_counts)}
@@ -39,10 +41,10 @@ defmodule ToastTest.Formatting.RunSummary do
     Enum.reduce(tests, zero_counts(), fn test, acc ->
       case test.outcome do
         :passed ->
-          %{acc | total: acc.total + 1, successful: acc.successful + 1}
+          %{acc | total: acc.total + 1, passed: acc.passed + 1}
 
         :failed ->
-          %{acc | total: acc.total + 1, successful: acc.successful + 1, failed: acc.failed + 1}
+          %{acc | total: acc.total + 1, failed: acc.failed + 1}
 
         _ ->
           %{acc | total: acc.total + 1, skipped: acc.skipped + 1}
@@ -51,46 +53,45 @@ defmodule ToastTest.Formatting.RunSummary do
   end
 
   defp module_counts(test_counts) do
+    outcomes = Enum.count([:passed, :failed, :skipped], &(test_counts[&1] > 0))
+
     cond do
-      test_counts.total == 0 ->
-        %{total: 1, successful: 0, failed: 0, skipped: 1}
-
-      test_counts.failed > 0 ->
-        %{total: 1, successful: 1, failed: 1, skipped: 0}
-
-      test_counts.successful > 0 ->
-        %{total: 1, successful: 1, failed: 0, skipped: 0}
-
-      true ->
-        %{total: 1, successful: 0, failed: 0, skipped: 1}
+      outcomes > 1 -> %{total: 1, passed: 0, mixed: 1, failed: 0, skipped: 0}
+      test_counts.failed > 0 -> %{total: 1, passed: 0, mixed: 0, failed: 1, skipped: 0}
+      test_counts.passed > 0 -> %{total: 1, passed: 1, mixed: 0, failed: 0, skipped: 0}
+      true -> %{total: 1, passed: 0, mixed: 0, failed: 0, skipped: 1}
     end
   end
 
-  defp zero_counts, do: %{total: 0, successful: 0, failed: 0, skipped: 0}
+  defp zero_counts, do: %{total: 0, passed: 0, failed: 0, skipped: 0}
 
-  defp merge(a, b) do
-    %{
-      total: a.total + b.total,
-      successful: a.successful + b.successful,
-      failed: a.failed + b.failed,
-      skipped: a.skipped + b.skipped
-    }
-  end
+  defp zero_module_counts, do: %{total: 0, passed: 0, mixed: 0, failed: 0, skipped: 0}
+
+  defp merge(a, b), do: Map.merge(a, b, fn _k, v1, v2 -> v1 + v2 end)
+
+  @outcomes [
+    total: :default_color,
+    passed: :green,
+    mixed: :yellow,
+    failed: :red,
+    skipped: :yellow
+  ]
 
   defp format_line(label, counts, colors) do
     padded = String.pad_trailing(label <> ":", 13)
 
-    [
-      "  #{padded}",
-      colorize_count(counts.total, " total", :default_color, colors),
-      ", ",
-      colorize_count(counts.successful, " successful", :green, colors),
-      ", ",
-      colorize_count(counts.failed, " failed", :red, colors),
-      ", ",
-      colorize_count(counts.skipped, " skipped", :yellow, colors)
-    ]
-    |> IO.iodata_to_binary()
+    items =
+      for {key, color} <- @outcomes do
+        if Map.has_key?(counts, key) do
+          colorize_count(counts[key], " #{key}", color, colors)
+        else
+          nil
+        end
+      end
+      |> Toast.Utils.compact()
+      |> Enum.intersperse(", ")
+
+    IO.iodata_to_binary(["  ", padded | items])
   end
 
   defp format_duration(us) when us < 1_000, do: "#{us}µs"

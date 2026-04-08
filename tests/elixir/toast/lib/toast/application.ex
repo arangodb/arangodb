@@ -16,7 +16,13 @@ defmodule Toast.Application do
     children = [
       {Toast.PortAllocator, []},
       {Toast.Process.Supervisor, []},
-      {Toast.Deployment.Supervisor, []}
+      {Toast.Deployment.Supervisor, []},
+      # ToastTest.Supervisor owns the ETS-backed state processes (Abort, DeploymentRegistry).
+      # They live here rather than under a ToastTest runner process so that their lifetime
+      # is tied to the OTP application, not to any individual suite run. This guarantees
+      # stable table ownership even if a runner process crashes mid-run, and also covers
+      # interactive sessions where ToastTest.Runner is never started at all.
+      {ToastTest.Supervisor, []}
     ]
 
     opts = [strategy: :one_for_one, name: Toast.Supervisor]

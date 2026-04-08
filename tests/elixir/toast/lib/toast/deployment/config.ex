@@ -1,10 +1,18 @@
 defmodule Toast.Deployment.Config do
   @moduledoc """
-  Configuration for a deployment — what the deployment infrastructure needs
-  to build and manage ArangoDB server processes.
+  Configuration for a deployment — what the deployment infrastructure (Toast)
+  needs to build and manage ArangoDB server processes.
+
+  This is intentionally separate from `ToastTest.Config`, which holds
+  test-execution concerns (timeouts, diagnostics, CI settings). The split
+  reflects the layering: Toast is reusable infrastructure; ToastTest is the
+  test runner built on top of it. In an interactive session, only this config
+  is needed — ToastTest is never involved.
 
   Constructed via `new/1` which reads defaults from application env
   (populated by `Toast.Env.load/1`) and applies optional overrides.
+  This means env vars and CLI flags set the defaults, but callers can
+  override any field when starting a deployment explicitly.
 
   The `cluster` field determines the deployment mode:
   - `nil` → single server
@@ -72,15 +80,8 @@ defmodule Toast.Deployment.Config do
   def new(overrides \\ []) do
     {cluster_opt, overrides} = Keyword.pop(overrides, :cluster)
 
-    # Read each field from app env, falling back to the struct default.
-    # The :cluster field is special — built from ClusterOpts, not a direct env read.
-    base =
-      Enum.reduce(Map.from_struct(%__MODULE__{}), %__MODULE__{}, fn
-        {:cluster, _default}, acc -> Map.put(acc, :cluster, build_cluster_opts(cluster_opt))
-        {key, default}, acc -> Map.put(acc, key, Application.get_env(:toast, key, default))
-      end)
-
-    struct!(base, overrides)
+    base = Toast.Env.struct_from_env(%__MODULE__{})
+    struct!(%{base | cluster: build_cluster_opts(cluster_opt)}, overrides)
   end
 
   @doc "Returns true if this is a cluster configuration."

@@ -376,48 +376,10 @@ defmodule Toast.Deployment do
     end
   end
 
-  @doc """
-  Check whether the deployment is healthy.
-
-  Checks the controller status. Per-server HTTP health monitoring is handled
-  continuously by `Toast.Process.HealthMonitor` — if any server becomes
-  unresponsive, the controller is already notified and status set to `:failed`.
-  """
-  @spec check_health(t(), ExUnit.Test.t() | nil) :: :ok | {:error, String.t()}
-  def check_health(%__MODULE__{} = deployment, prev_test \\ nil) do
-    case status(deployment) do
-      :ready ->
-        :ok
-
-      :degraded ->
-        {:error, format_degraded_message(deployment, prev_test)}
-
-      :failed ->
-        {:error, format_crash_message(deployment_error(deployment))}
-
-      other ->
-        {:error, "Deployment not ready (status: #{other})"}
-    end
-  end
-
   @spec resolve_target(t(), server_target()) :: {:ok, [String.t()]} | {:error, term()}
   def resolve_target(%__MODULE__{} = deployment, target) do
     controller_call(deployment, {:resolve_target, target}, {:error, :stopped})
   end
-
-  # --- Failure point operations ---
-
-  defdelegate set_failure_point(deployment, target, name),
-    to: Toast.Deployment.FailurePoint,
-    as: :set
-
-  defdelegate clear_failure_point(deployment, target, name),
-    to: Toast.Deployment.FailurePoint,
-    as: :clear
-
-  defdelegate clear_all_failure_points(deployment),
-    to: Toast.Deployment.FailurePoint,
-    as: :clear_all
 
   # --- Server control operations ---
 
@@ -482,23 +444,6 @@ defmodule Toast.Deployment do
     :exit, _ -> :ok
   end
 
-  defp format_crash_message(nil) do
-    "Deployment failed (no crash details available)"
-  end
-
-  defp format_crash_message({:server_crashed, server_id, crash_info}) do
-    "Server crashed (#{server_id}) #{format_crash_exit(crash_info)}"
-  end
-
-  defp format_crash_message({:server_unhealthy, server_id}) do
-    "Server became unresponsive (#{server_id})"
-  end
-
-  defp format_crash_exit(ci) do
-    signal_part = if ci.signal, do: " signal=#{ci.signal}", else: ""
-    "exit_status=#{ci.exit_status}#{signal_part}"
-  end
-
   defp controller_call_control(deployment, op, target, opts \\ [])
 
   defp controller_call_control(%{controller: nil}, _op, _target, _opts),
@@ -509,23 +454,6 @@ defmodule Toast.Deployment do
   catch
     :exit, _ -> {:error, :controller_not_available}
   end
-
-  defp format_degraded_message(deployment, prev_test) do
-    downed =
-      server_instances(deployment)
-      |> Enum.filter(&(&1.operational_state in [:stopped, :killed, :paused]))
-
-    names = Enum.map_join(downed, ", ", & &1.id)
-    test_context = format_test_context(prev_test)
-
-    "Deployment is degraded#{test_context} -- " <>
-      "servers [#{names}] are still down. " <>
-      "Tests must restore all servers before finishing."
-  end
-
-  defp format_test_context(nil), do: ""
-  defp format_test_context(%{name: name}), do: " after test \"#{name}\""
-  defp format_test_context(_), do: ""
 
   defp build_server_infos(info) do
     info

@@ -39,9 +39,9 @@ defmodule ToastTest.Runner.ResultBuilder do
     end
   end
 
-  @spec to_crash_event(map()) :: Toast.Process.CrashEvent.t()
+  @spec to_crash_event(map()) :: ToastTest.CrashEvent.t()
   def to_crash_event(%{server_id: sid, crash_info: info} = e) do
-    %Toast.Process.CrashEvent{
+    %ToastTest.CrashEvent{
       server_id: sid,
       crash_info: info,
       expected: Map.get(e, :expected, false)

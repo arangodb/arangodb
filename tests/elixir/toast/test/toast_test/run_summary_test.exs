@@ -44,8 +44,8 @@ defmodule ToastTest.Formatting.RunSummaryTest do
 
       output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
 
-      assert output =~ "Modules:     2 total, 2 successful, 0 failed, 0 skipped"
-      assert output =~ "Test cases:  3 total, 3 successful, 0 failed, 0 skipped"
+      assert output =~ "Modules:     2 total, 2 passed, 0 mixed, 0 failed, 0 skipped"
+      assert output =~ "Test cases:  3 total, 3 passed, 0 failed, 0 skipped"
     end
 
     test "mixed outcomes" do
@@ -58,8 +58,8 @@ defmodule ToastTest.Formatting.RunSummaryTest do
 
       output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
 
-      assert output =~ "Modules:     3 total, 2 successful, 1 failed, 1 skipped"
-      assert output =~ "Test cases:  6 total, 4 successful, 1 failed, 2 skipped"
+      assert output =~ "Modules:     3 total, 1 passed, 1 mixed, 0 failed, 1 skipped"
+      assert output =~ "Test cases:  6 total, 3 passed, 1 failed, 2 skipped"
     end
 
     test "multiple suites" do
@@ -68,8 +68,8 @@ defmodule ToastTest.Formatting.RunSummaryTest do
 
       output = capture_io(fn -> RunSummary.print([suite1, suite2], 0) end) |> strip_ansi()
 
-      assert output =~ "Modules:     3 total, 2 successful, 1 failed, 1 skipped"
-      assert output =~ "Test cases:  4 total, 3 successful, 1 failed, 1 skipped"
+      assert output =~ "Modules:     3 total, 1 passed, 1 mixed, 0 failed, 1 skipped"
+      assert output =~ "Test cases:  4 total, 2 passed, 1 failed, 1 skipped"
     end
 
     test "empty suite" do
@@ -77,15 +77,15 @@ defmodule ToastTest.Formatting.RunSummaryTest do
 
       output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
 
-      assert output =~ "Modules:     0 total, 0 successful, 0 failed, 0 skipped"
-      assert output =~ "Test cases:  0 total, 0 successful, 0 failed, 0 skipped"
+      assert output =~ "Modules:     0 total, 0 passed, 0 mixed, 0 failed, 0 skipped"
+      assert output =~ "Test cases:  0 total, 0 passed, 0 failed, 0 skipped"
     end
 
     test "no suites" do
       output = capture_io(fn -> RunSummary.print([], 0) end) |> strip_ansi()
 
-      assert output =~ "Modules:     0 total, 0 successful, 0 failed, 0 skipped"
-      assert output =~ "Test cases:  0 total, 0 successful, 0 failed, 0 skipped"
+      assert output =~ "Modules:     0 total, 0 passed, 0 mixed, 0 failed, 0 skipped"
+      assert output =~ "Test cases:  0 total, 0 passed, 0 failed, 0 skipped"
       assert output =~ "Runtime:     0µs"
     end
 
@@ -95,6 +95,51 @@ defmodule ToastTest.Formatting.RunSummaryTest do
       output = capture_io(fn -> RunSummary.print([suite], 72_500_000) end) |> strip_ansi()
 
       assert output =~ "Runtime:     1m 12.5s"
+    end
+
+    test "module with only failing tests counts as failed" do
+      suite = make_suite([{"failing", [:failed, :failed]}])
+
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
+
+      assert output =~ "Modules:     1 total, 0 passed, 0 mixed, 1 failed, 0 skipped"
+      assert output =~ "Test cases:  2 total, 0 passed, 2 failed, 0 skipped"
+    end
+
+    test "module with passed and skipped tests (no failures) counts as mixed" do
+      suite = make_suite([{"mixed", [:passed, :skipped]}])
+
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
+
+      assert output =~ "Modules:     1 total, 0 passed, 1 mixed, 0 failed, 0 skipped"
+      assert output =~ "Test cases:  2 total, 1 passed, 0 failed, 1 skipped"
+    end
+
+    test "module with failed and skipped tests (no passes) counts as mixed" do
+      suite = make_suite([{"mixed", [:failed, :skipped]}])
+
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
+
+      assert output =~ "Modules:     1 total, 0 passed, 1 mixed, 0 failed, 0 skipped"
+      assert output =~ "Test cases:  2 total, 0 passed, 1 failed, 1 skipped"
+    end
+
+    test "module with only a single skipped test counts as skipped" do
+      suite = make_suite([{"skipped", [:skipped]}])
+
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
+
+      assert output =~ "Modules:     1 total, 0 passed, 0 mixed, 0 failed, 1 skipped"
+      assert output =~ "Test cases:  1 total, 0 passed, 0 failed, 1 skipped"
+    end
+
+    test "non-pass non-fail outcomes (e.g. :excluded) are classified as skipped" do
+      suite = make_suite([{"excluded_only", [:excluded, :excluded]}])
+
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
+
+      assert output =~ "Modules:     1 total, 0 passed, 0 mixed, 0 failed, 1 skipped"
+      assert output =~ "Test cases:  2 total, 0 passed, 0 failed, 2 skipped"
     end
   end
 end

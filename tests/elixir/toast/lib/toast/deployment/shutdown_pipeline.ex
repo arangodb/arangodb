@@ -3,7 +3,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
 
   require Logger
 
-  alias Toast.Deployment.{Events, ServerInstance, ServerLifecycle}
+  alias Toast.Deployment.{CrashExpectation, Events, ServerInstance, ServerLifecycle}
   alias Toast.Deployment.Controller.State
   alias Toast.Process.ServerProcess
   alias Toast.Process.Supervisor, as: ProcessSupervisor
@@ -52,7 +52,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
         else
           ServerLifecycle.suspend_health_monitor(server)
           timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, @abort_timeout)
-          Map.put(acc, server_id, %{timer: timer, crash_info: nil, waiter: nil})
+          Map.put(acc, server_id, %CrashExpectation{timer: timer})
         end
       end)
 

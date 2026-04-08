@@ -6,8 +6,7 @@ defmodule ToastTest.EventStore do
   microseconds). Stored in an `ordered_set` ETS table keyed by
   `{timestamp, sequence}` so reads are always in chronological order.
 
-  Any process can call `notify/1` — if the table doesn't exist, the
-  event is silently dropped.
+  The store is supervised and runs for the entire lifetime of the application.
   """
 
   use GenServer
@@ -22,9 +21,7 @@ defmodule ToastTest.EventStore do
   end
 
   @doc """
-  Record an event. Silently drops if the event store is not running.
-
-  If the event has no `:timestamp`, one is added automatically.
+  Record an event. If the event has no `:timestamp`, one is added automatically.
   """
   @spec notify(map()) :: :ok
   def notify(%{event: _} = event) do
@@ -34,16 +31,12 @@ defmodule ToastTest.EventStore do
     log_event(event)
     :ets.insert(@table, {{ts, seq}, event})
     :ok
-  catch
-    :error, :badarg -> :ok
   end
 
   @doc "Return all recorded events in chronological order."
   @spec events() :: [map()]
   def events do
     :ets.tab2list(@table) |> Enum.map(&elem(&1, 1))
-  catch
-    :error, :badarg -> []
   end
 
   @doc "Remove all recorded events."
@@ -51,8 +44,6 @@ defmodule ToastTest.EventStore do
   def clear do
     :ets.delete_all_objects(@table)
     :ok
-  catch
-    :error, :badarg -> :ok
   end
 
   @doc "Return a map of `%{server_id => [os_pid, ...]}` from `:server_started` events."
@@ -120,8 +111,6 @@ defmodule ToastTest.EventStore do
   @impl true
   def terminate(_reason, %{table: table}) do
     :ets.delete(table)
-  catch
-    :error, :badarg -> :ok
   end
 
   # --- Logging ---

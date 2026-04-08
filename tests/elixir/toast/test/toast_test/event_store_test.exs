@@ -6,16 +6,8 @@ defmodule ToastTest.EventStoreTest do
   import ToastTest.TimeTestHelpers, only: [to_us: 1]
 
   setup do
-    {:ok, pid} = EventStore.start_link()
-
-    on_exit(fn ->
-      try do
-        GenServer.stop(pid)
-      catch
-        :exit, _ -> :ok
-      end
-    end)
-
+    EventStore.clear()
+    on_exit(fn -> EventStore.clear() end)
     :ok
   end
 
@@ -28,13 +20,6 @@ defmodule ToastTest.EventStoreTest do
 
     test "ETS table exists" do
       assert :ets.info(ToastTest.EventStore) != :undefined
-    end
-  end
-
-  describe "notify/1" do
-    test "silently drops events when not running" do
-      GenServer.stop(EventStore)
-      assert :ok = EventStore.notify(%{event: :test, timestamp: ts()})
     end
   end
 

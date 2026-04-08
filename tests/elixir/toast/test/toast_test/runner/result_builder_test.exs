@@ -146,7 +146,7 @@ defmodule ToastTest.Runner.ResultBuilderTest do
       crash = %{server_id: "s1", crash_info: %{signal: 11, pid: 1234}}
       result = ResultBuilder.to_crash_event(crash)
 
-      assert %Toast.Process.CrashEvent{} = result
+      assert %ToastTest.CrashEvent{} = result
       assert result.server_id == "s1"
       assert result.crash_info == %{signal: 11, pid: 1234}
       assert result.expected == false
@@ -174,7 +174,7 @@ defmodule ToastTest.Runner.ResultBuilderTest do
 
     test "crashes with coredumps returns empty list" do
       crash_events = [
-        %Toast.Process.CrashEvent{server_id: "s1", crash_info: %{}, expected: false}
+        %ToastTest.CrashEvent{server_id: "s1", crash_info: %{}, expected: false}
       ]
 
       artifacts = %{"s1" => %{coredump_paths: ["/tmp/core.1234"]}}
@@ -184,7 +184,7 @@ defmodule ToastTest.Runner.ResultBuilderTest do
 
     test "crashes without coredumps and no sanitizers produces no sanitizer warning" do
       crash_events = [
-        %Toast.Process.CrashEvent{server_id: "s1", crash_info: %{}, expected: false}
+        %ToastTest.CrashEvent{server_id: "s1", crash_info: %{}, expected: false}
       ]
 
       artifacts = %{"s1" => %{coredump_paths: []}}
@@ -196,7 +196,7 @@ defmodule ToastTest.Runner.ResultBuilderTest do
 
     test "crashes without coredumps and active sanitizers includes sanitizer warning" do
       crash_events = [
-        %Toast.Process.CrashEvent{server_id: "s1", crash_info: %{}, expected: false}
+        %ToastTest.CrashEvent{server_id: "s1", crash_info: %{}, expected: false}
       ]
 
       artifacts = %{"s1" => %{coredump_paths: []}}
@@ -209,7 +209,7 @@ defmodule ToastTest.Runner.ResultBuilderTest do
 
     test "crashes without coredumps with coredump_dir skips discovery warning" do
       crash_events = [
-        %Toast.Process.CrashEvent{server_id: "s1", crash_info: %{}, expected: false}
+        %ToastTest.CrashEvent{server_id: "s1", crash_info: %{}, expected: false}
       ]
 
       artifacts = %{"s1" => %{coredump_paths: []}}
