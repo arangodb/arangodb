@@ -271,13 +271,16 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     } else {
       // We collect only in case when we are below minimum 1000 docs or when we
       // have do not have enough docs for the currently projected nLists value
-      auto resolved = resolveNLists(trainingDatasetCounter);
-      if (resolved.fail()) {
-        return std::move(resolved).result();
+      bool shouldCollect =
+          trainingDatasetCounter < kSparseScalingBootstrapVectors;
+      if (!shouldCollect) {
+        auto resolved = resolveNLists(trainingDatasetCounter);
+        if (resolved.fail()) {
+          return std::move(resolved).result();
+        }
+        shouldCollect =
+            trainingDatasetCounter < resolved.get() * kMaxTrainingSizePerNLists;
       }
-      bool const shouldCollect =
-          trainingDatasetCounter < kSparseScalingBootstrapVectors ||
-          trainingDatasetCounter < resolved.get() * kMaxTrainingSizePerNLists;
       if (shouldCollect) {
         trainingData.insert(trainingData.end(), input.begin(), input.end());
         ++trainingDatasetCounter;
