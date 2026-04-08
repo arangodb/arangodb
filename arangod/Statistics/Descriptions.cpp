@@ -31,8 +31,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
-#include "Statistics/RequestStatistics.h"
-#include "Metrics/MetricsFeature.h"
+#include "Statistics/TransactionStatistics.h"
 
 #include <velocypack/Builder.h>
 
@@ -426,41 +425,25 @@ stats::Descriptions::Descriptions(
                                {}});
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the distribution
-////////////////////////////////////////////////////////////////////////////////
+void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
+  metrics::MetricsFeature& metricsFeature =
+      _server.getFeature<metrics::MetricsFeature>();
+  TransactionStatistics const& info = metricsFeature.transactionStatistics();
+  b.add("uptime", VPackValue(metricsFeature.uptime()));
+  b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 
-static void FillDistribution(VPackBuilder& b, std::string const& name,
-                             statistics::Distribution const& dist) {
-  b.add(name, VPackValue(VPackValueType::Object, true));
-  b.add("sum", VPackValue(dist._total));
-  b.add("count", VPackValue(dist._count));
-  b.add("counts", VPackValue(VPackValueType::Array, true));
-  for (auto const& it : dist._counts) {
-    b.add(VPackValue(it));
-  }
+  b.add("transactions", VPackValue(VPackValueType::Object));
+  b.add("started", VPackValue(info._transactionsStarted.load()));
+  b.add("aborted", VPackValue(info._transactionsAborted.load()));
+  b.add("committed", VPackValue(info._transactionsCommitted.load()));
+  b.add("intermediateCommits", VPackValue(info._intermediateCommits.load()));
+  b.add("readOnly", VPackValue(info._readTransactions.load()));
+  b.add("dirtyReadOnly", VPackValue(info._dirtyReadTransactions.load()));
   b.close();
+
+  b.add("threads", VPackValue(VPackValueType::Object, true));
+  SchedulerFeature::SCHEDULER->toVelocyPack(b);
   b.close();
-}
-
-void stats::Descriptions::clientStatistics(
-    velocypack::Builder& b, RequestStatisticsSource source) const {
-  // FIXME why are httpConnections in here ?
-  ConnectionStatistics::Snapshot connectionStats;
-  ConnectionStatistics::getSnapshot(connectionStats);
-
-  b.add("httpConnections", VPackValue(connectionStats.httpConnections.get()));
-  FillDistribution(b, "connectionTime", connectionStats.connectionTime);
-
-  RequestStatistics::Snapshot requestStats;
-  RequestStatistics::getSnapshot(requestStats, source);
-
-  FillDistribution(b, "totalTime", requestStats.totalTime);
-  FillDistribution(b, "requestTime", requestStats.requestTime);
-  FillDistribution(b, "queueTime", requestStats.queueTime);
-  FillDistribution(b, "ioTime", requestStats.ioTime);
-  FillDistribution(b, "bytesSent", requestStats.bytesSent);
-  FillDistribution(b, "bytesReceived", requestStats.bytesReceived);
 }
 
 void stats::Descriptions::httpStatistics(velocypack::Builder& b) const {

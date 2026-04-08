@@ -499,6 +499,10 @@ struct BinaryOperatorNode : TypedAstNode {
   AstNode* getLeft() const { return _node->getMember(0); }
 
   AstNode* getRight() const { return _node->getMember(1); }
+
+  auto getType() const { return _node->type; }
+
+  bool getBoolValue() const { return _node->getBoolValue(); }
 };
 
 /// @brief Logical binary operator node wrapper (AND, OR)

@@ -77,8 +77,7 @@ class Descriptions final {
 
   std::vector<stats::Figure> const& figures() const { return _figures; }
 
-  void clientStatistics(velocypack::Builder&,
-                        RequestStatisticsSource source) const;
+  void serverStatistics(velocypack::Builder&) const;
   void httpStatistics(velocypack::Builder&) const;
   void processStatistics(velocypack::Builder&) const;
 

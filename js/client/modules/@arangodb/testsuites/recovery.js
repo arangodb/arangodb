@@ -69,7 +69,6 @@ const doNotKillTests = [
 
 function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   let additionalParams= {
-    'server.statistics': 'false',
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
     'temp.path': params.temp_path

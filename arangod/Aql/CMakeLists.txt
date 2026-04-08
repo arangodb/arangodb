@@ -164,7 +164,7 @@ if (USE_MAINTAINER_MODE AND NOT MSVC)
     OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/grammar.cpp
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND ${CMAKE_SOURCE_DIR}/utils/bison-c.sh
-      ${BISON_EXECUTABLE} grammar.cpp grammar.y
+      ${BISON_EXECUTABLE} grammar.cpp grammar.y -Wcounterexamples
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/grammar.y
     VERBATIM
   )

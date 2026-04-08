@@ -30,7 +30,6 @@ const cn = 'UnitTestsCollection';
 
 if (getOptions === true) {
   return {
-    'server.statistics' : 'false',
     runSetup: true,
   };
 }
