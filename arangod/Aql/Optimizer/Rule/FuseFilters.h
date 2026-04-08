@@ -29,27 +29,8 @@
 namespace arangodb::aql {
 class Optimizer;
 
-/// @brief remove all unnecessary filters
-/// this rule modifies the plan in place:
-/// - filters that are always true are removed completely
-/// - filters that are always false will be replaced by a NoResults node
-void removeUnnecessaryFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
-
-/// @brief move filters up in the plan
-/// this rule modifies the plan in place
-/// filters are moved as far up in the plan as possible to make result sets
-/// as small as possible as early as possible
-/// filters are not pushed beyond limits
-void moveFiltersUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                       OptimizerRule const&);
-
 /// @brief fuse filter conditions that follow each other
 void fuseFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                      OptimizerRule const&);
-
-/// @brief move filters into EnumerateCollection nodes
-void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
 
 }  // namespace arangodb::aql

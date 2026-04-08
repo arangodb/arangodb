@@ -15,7 +15,10 @@ target_sources(arango_aql PRIVATE
   RemoveRedundantCalculations.cpp
   RemoveUnnecessaryCalculations.cpp
   OptimizerRulesCluster.cpp
-  OptimizerRulesFilter.cpp
+  FuseFilters.cpp
+  MoveFiltersIntoEnumerate.cpp
+  MoveFiltersUp.cpp
+  RemoveUnnecessaryFilters.cpp
   OptimizerRulesGraph.cpp
   OptimizerRulesIResearchView.cpp
   OptimizerRulesIndexNode.cpp
