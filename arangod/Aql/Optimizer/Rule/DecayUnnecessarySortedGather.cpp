@@ -22,30 +22,39 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "DecayUnnecessarySortedGather.h"
 
+#include "Aql/Collection.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Optimizer.h"
+#include "Containers/SmallVector.h"
 
 namespace arangodb::aql {
-class Optimizer;
+using EN = ExecutionNode;
 
-/// @brief remove redundant sorts
-/// this rule modifies the plan in place:
-/// - sorts that are covered by earlier sorts will be removed
-void removeRedundantSortsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
+void decayUnnecessarySortedGather(Optimizer* opt,
+                                  std::unique_ptr<ExecutionPlan> plan,
+                                  OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, EN::GATHER, true);
 
-/// @brief make sort node aware of limit to enable internal optimizations
-void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
-                   OptimizerRule const&);
+  bool modified = false;
 
-/// @brief parallelize Gather nodes (cluster-only)
-void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
+  for (auto& n : nodes) {
+    auto gatherNode = ExecutionNode::castTo<GatherNode*>(n);
+    if (gatherNode->elements().empty()) {
+      continue;
+    }
 
-//// @brief reduces a sorted gather to an unsorted gather if only one shard is
-/// involved
-void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
+    auto const* collection = GatherNode::findCollection(*gatherNode);
 
+    if (collection && collection->numberOfShards() == 1) {
+      modified = true;
+      gatherNode->elements().clear();
+    }
+  }
+  opt->addPlan(std::move(plan), rule, modified);
+}
 }  // namespace arangodb::aql
