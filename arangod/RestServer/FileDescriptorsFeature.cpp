@@ -122,9 +122,11 @@ void FileDescriptorsFeature::countOpenFiles() {
     size_t numFiles = 0;
 
     std::error_code ec;
-    if (std::filesystem::exists(fdPath, ec)) {
-      for (auto const& entry :
-           std::filesystem::directory_iterator(fdPath, ec)) {
+    if (std::filesystem::exists(fdPath)) {
+      for (auto const& entry : std::filesystem::directory_iterator(fdPath)) {
+        // The intent is simply to increment numFiles for each entry in
+        // fdPath, not to inspect the entries themselves. Hence Ignore
+        // entry
         (void)entry;  // explicitly ignore
         ++numFiles;
       }

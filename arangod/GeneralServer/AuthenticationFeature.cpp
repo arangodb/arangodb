@@ -570,9 +570,10 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
                    if (file.ends_with(".tmp")) {
                      return true;
                    }
-                   auto p = basics::FileUtils::buildFilename(
-                       _options.jwtSecretFolderProgramOption, file);
-                   if (std::filesystem::is_symlink(std::filesystem::path(p))) {
+                   auto p =
+                       std::filesystem::path(basics::FileUtils::buildFilename(
+                           _options.jwtSecretFolderProgramOption, file));
+                   if (std::filesystem::is_symlink(p)) {
                      return true;
                    }
                    return false;

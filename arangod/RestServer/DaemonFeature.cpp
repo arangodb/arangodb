@@ -174,10 +174,9 @@ void DaemonFeature::checkPidFile() {
           << "pid-file '" << _options.pidFile << "' is a directory";
       FATAL_ERROR_EXIT();
     } else if (FileUtils::exists(_options.pidFile)) {
-      std::error_code sizeEc;
       std::uintmax_t const pidFileSize =
-          std::filesystem::file_size(_options.pidFile, sizeEc);
-      if (!sizeEc && pidFileSize > 0) {
+          std::filesystem::file_size(_options.pidFile);
+      if (pidFileSize > 0) {
         LOG_TOPIC("cf10a", INFO, Logger::STARTUP)
             << "pid-file '" << _options.pidFile
             << "' already exists, verifying pid";
