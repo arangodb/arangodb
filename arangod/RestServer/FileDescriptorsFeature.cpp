@@ -46,6 +46,7 @@
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <filesystem>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -117,7 +118,18 @@ uint64_t FileDescriptorsFeature::limit() const noexcept {
 
 void FileDescriptorsFeature::countOpenFiles() {
   try {
-    size_t numFiles = FileUtils::countFiles("/proc/self/fd");
+    std::filesystem::path fdPath{"/proc/self/fd"};
+    size_t numFiles = 0;
+
+    std::error_code ec;
+    if (std::filesystem::exists(fdPath, ec)) {
+      for (auto const& entry :
+           std::filesystem::directory_iterator(fdPath, ec)) {
+        (void)entry;  // explicitly ignore
+        ++numFiles;
+      }
+    }
+
     _fileDescriptorsCurrent.store(numFiles, std::memory_order_relaxed);
   } catch (std::exception const& ex) {
     LOG_TOPIC("bee41", DEBUG, Logger::SYSCALL)
