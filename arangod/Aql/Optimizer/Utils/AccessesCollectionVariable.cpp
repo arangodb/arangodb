@@ -35,8 +35,7 @@ namespace arangodb::aql {
 using EN = ExecutionNode;
 
 bool accessesCollectionVariable(ExecutionPlan const* plan,
-                                               ExecutionNode const* node,
-                                               VarSet& vars) {
+                                ExecutionNode const* node, VarSet& vars) {
   if (node->getType() == EN::CALCULATION) {
     auto nn = EN::castTo<CalculationNode const*>(node);
     vars.clear();

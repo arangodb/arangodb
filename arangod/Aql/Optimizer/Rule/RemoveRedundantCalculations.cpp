@@ -37,9 +37,9 @@
 namespace arangodb::aql {
 using EN = ExecutionNode;
 
-void removeRedundantCalculationsRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void removeRedundantCalculationsRule(Optimizer* opt,
+                                     std::unique_ptr<ExecutionPlan> plan,
+                                     OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
 

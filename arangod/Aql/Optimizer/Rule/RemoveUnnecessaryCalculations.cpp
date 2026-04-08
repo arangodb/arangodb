@@ -46,9 +46,9 @@ static constexpr std::initializer_list<ExecutionNode::NodeType>
                                            ExecutionNode::SUBQUERY};
 }  // namespace
 
-void removeUnnecessaryCalculationsRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void removeUnnecessaryCalculationsRule(Optimizer* opt,
+                                       std::unique_ptr<ExecutionPlan> plan,
+                                       OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, removeUnnecessaryCalculationsNodeTypes, true);
 
