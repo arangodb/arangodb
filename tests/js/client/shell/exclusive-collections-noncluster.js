@@ -222,12 +222,6 @@ function ExclusiveSuite () {
         while (!c2.exists("runner1")) {
           require("internal").sleep(0.02);
         }
-        let trx = db._createTransaction({
-          collections: {
-            write: [cn1, cn2],
-            exclusive: [ ]
-          }
-        });
         for (let i = 0; i < 10000; i++) {
           db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN @@cn", {'@cn': cn1});
         }
@@ -278,7 +272,7 @@ function ExclusiveSuite () {
 
       joinShells(shells);
 
-      // both transactions should have succeeded
+      // both set of queries should have succeeded
       assertEqual(2, c2.count());
       let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
       assertTrue(docs[0].value);
