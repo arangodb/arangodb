@@ -32,6 +32,7 @@
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/Utils/VectorIndexShardStates.h"
 #include "Cluster/ServerState.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -138,20 +139,6 @@ VPackBuilder enrichVectorIndexes(
           } else {
             result.add(StaticStrings::ErrorMessage, VPackValue(shardError));
           }
-        }
-
-        {
-          std::size_t minResolved = 0;
-          for (auto const& [_, shardState] : states) {
-            if (shardState.resolvedNLists > 0) {
-              minResolved =
-                  minResolved == 0
-                      ? shardState.resolvedNLists
-                      : std::min(minResolved, shardState.resolvedNLists);
-            }
-          }
-          result.add(StaticStrings::IndexResolvedNLists,
-                     VPackValue(minResolved));
         }
 
         if (withShardDetails) {
@@ -778,6 +765,17 @@ futures::Future<Result> RestIndexHandler::awaitAndRefreshVectorIndex(
     patch.add(StaticStrings::IndexTrainingState,
               VPackValue(StaticStrings::IndexTrainingStateReady));
     patch.add(StaticStrings::ErrorMessage, VPackValue(""));
+
+    // On single-server, include the resolved nLists from the now-trained index.
+    if (!ServerState::instance()->isCoordinator()) {
+      auto idx = coll->lookupIndex(indexId.get());
+      if (idx != nullptr && idx->isVectorIndexReady()) {
+        auto const& vecIdx = static_cast<RocksDBVectorIndex const&>(*idx);
+        if (auto nLists = vecIdx.resolvedNLists(); nLists.has_value()) {
+          patch.add(StaticStrings::IndexResolvedNLists, VPackValue(*nLists));
+        }
+      }
+    }
   }
   response = VPackCollection::merge(response.slice(), patch.slice(), false);
 

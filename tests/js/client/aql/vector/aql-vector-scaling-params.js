@@ -33,11 +33,25 @@ const {
     generateSeed
 } = require("@arangodb/testutils/seededRandom");
 
+const isCluster = internal.isCluster();
 const dbName = "vectorScalingDB";
 const collName = "coll";
 const idxName = "vector_scaling_test";
 const dimension = 128;
 const insertedDocsCount = 100;
+
+function getResolvedNLists(collection) {
+    if (isCluster) {
+        const idx = collection.getIndexes(true, true).find(i => i.name === idxName);
+        assertTrue(idx !== undefined);
+        const shardKeys = Object.keys(idx.shards);
+        assertEqual(1, shardKeys.length, "tier tests require numberOfShards: 1");
+        return idx.shards[shardKeys[0]].resolvedNLists;
+    }
+    const idx = collection.getIndexes().find(i => i.name === idxName);
+    assertTrue(idx !== undefined);
+    return idx.resolvedNLists;
+}
 
 function assertVectorIndexUsable(queryPoint, limit = 5) {
     const query = `FOR d IN ${collName}
@@ -108,7 +122,9 @@ function VectorIndexScalingTestSuite() {
             assertEqual(131072, idx.params.nLists.tiers[2].fixedValue);
 
             // No tiers match for 100 docs, so autoSqrt applies: max(2, 4*sqrt(N))
-            assertTrue(idx.resolvedNLists > 0, "resolvedNLists should be set after training");
+            if (!isCluster) {
+                assertTrue(idx.resolvedNLists > 0, "resolvedNLists should be set after training");
+            }
         },
 
         testZeroMultiplierFails: function() {
@@ -149,7 +165,9 @@ function VectorIndexScalingTestSuite() {
             assertTrue(idx !== undefined);
             assertEqual(15, idx.params.nLists.minNLists);
             // multiplier=1, sqrt(N) < 15 for any per-shard count, so minNLists dominates
-            assertEqual(15, idx.resolvedNLists);
+            if (!isCluster) {
+                assertEqual(15, idx.resolvedNLists);
+            }
 
             assertVectorIndexUsable(randomPoint);
         },
@@ -233,9 +251,7 @@ function VectorIndexScalingTiersTestSuite() {
                     },
                 },
             });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertEqual(2, idx.resolvedNLists);
+            assertEqual(2, getResolvedNLists(collection));
             assertVectorIndexUsable(randomPoint);
         },
 
@@ -260,9 +276,7 @@ function VectorIndexScalingTiersTestSuite() {
                     },
                 },
             });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertEqual(2, idx.resolvedNLists);
+            assertEqual(2, getResolvedNLists(collection));
             assertVectorIndexUsable(randomPoint);
         },
 
@@ -287,9 +301,7 @@ function VectorIndexScalingTiersTestSuite() {
                     },
                 },
             });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertEqual(2, idx.resolvedNLists);
+            assertEqual(2, getResolvedNLists(collection));
             assertVectorIndexUsable(randomPoint);
         },
     };

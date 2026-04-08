@@ -108,6 +108,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _faissIndex;
   }
 
+  std::optional<std::size_t> resolvedNLists() const noexcept {
+    if (_faissIndex != nullptr) {
+      return _faissIndex->nlist;
+    }
+    return std::nullopt;
+  }
+
   // Absolute minimum number of vectors required for training, might give false
   // positives with sparse indexes
   std::size_t trainingThreshold() const noexcept { return _trainingThreshold; }

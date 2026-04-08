@@ -194,9 +194,8 @@ void RocksDBVectorIndex::toVelocyPack(
                 VPackValue("not enough training data for vector index"));
   }
 
-  if (_faissIndex != nullptr) {
-    builder.add(StaticStrings::IndexResolvedNLists,
-                VPackValue(_faissIndex->nlist));
+  if (auto nLists = resolvedNLists(); nLists.has_value()) {
+    builder.add(StaticStrings::IndexResolvedNLists, VPackValue(*nLists));
   }
 }
 
