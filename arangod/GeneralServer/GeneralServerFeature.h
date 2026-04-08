@@ -150,6 +150,18 @@ class GeneralServerFeature final
   metrics::Histogram<metrics::FixScale<double>>& _histBytesSentUser;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
+  metrics::Counter& _httpReqsTotal;
+  metrics::Counter& _httpReqsSuperuser;
+  metrics::Counter& _httpReqsUser;
+  metrics::Counter& _httpReqsAsync;
+  metrics::Counter& _httpReqsDelete;
+  metrics::Counter& _httpReqsGet;
+  metrics::Counter& _httpReqsHead;
+  metrics::Counter& _httpReqsOptions;
+  metrics::Counter& _httpReqsPatch;
+  metrics::Counter& _httpReqsPost;
+  metrics::Counter& _httpReqsPut;
+  metrics::Counter& _httpReqsOther;
 
   metrics::Histogram<metrics::FixScale<double>>& _connectionDuration;
   metrics::Gauge<double>& _connectionHttp;

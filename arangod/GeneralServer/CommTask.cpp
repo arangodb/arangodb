@@ -38,6 +38,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RequestTimingData.h"
+#include "Statistics/StatisticsFeature.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"

@@ -160,9 +160,6 @@ struct ConnectionTimeScale {
 };
 }  // namespace
 
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_connection_time,
-                  ConnectionTimeScale, "Total connection time of a client");
-
 DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
               "The number of client connections that are currently open");
 
@@ -192,6 +189,30 @@ GeneralServerFeature::GeneralServerFeature(
           metrics.add(arangodb_client_user_connection_statistics_bytes_sent{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
       _http2Connections(metrics.add(arangodb_http2_connections_total{})),
+      _httpReqsTotal(
+          metrics.add(arangodb_http_request_statistics_total_requests_total{})),
+      _httpReqsSuperuser(metrics.add(
+          arangodb_http_request_statistics_superuser_requests_total{})),
+      _httpReqsUser(
+          metrics.add(arangodb_http_request_statistics_user_requests_total{})),
+      _httpReqsAsync(
+          metrics.add(arangodb_http_request_statistics_async_requests_total{})),
+      _httpReqsDelete(metrics.add(
+          arangodb_http_request_statistics_http_delete_requests_total{})),
+      _httpReqsGet(metrics.add(
+          arangodb_http_request_statistics_http_get_requests_total{})),
+      _httpReqsHead(metrics.add(
+          arangodb_http_request_statistics_http_head_requests_total{})),
+      _httpReqsOptions(metrics.add(
+          arangodb_http_request_statistics_http_options_requests_total{})),
+      _httpReqsPatch(metrics.add(
+          arangodb_http_request_statistics_http_patch_requests_total{})),
+      _httpReqsPost(metrics.add(
+          arangodb_http_request_statistics_http_post_requests_total{})),
+      _httpReqsPut(metrics.add(
+          arangodb_http_request_statistics_http_put_requests_total{})),
+      _httpReqsOther(metrics.add(
+          arangodb_http_request_statistics_other_http_requests_total{})),
       _connectionDuration(
           metrics.add(arangodb_client_connection_statistics_connection_time{})),
       _connectionHttp(metrics.add(
