@@ -75,10 +75,10 @@ struct SortToIndexNode final
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
       ast::LogicalOperatorNode andOp(node);
       // recurse into both sides
-      getSpecialAttributes(andOp.getLeft(), variable,
-                           constAttributes, nonNullAttributes);
-      getSpecialAttributes(andOp.getRight(), variable,
-                           constAttributes, nonNullAttributes);
+      getSpecialAttributes(andOp.getLeft(), variable, constAttributes,
+                           nonNullAttributes);
+      getSpecialAttributes(andOp.getRight(), variable, constAttributes,
+                           nonNullAttributes);
       return;
     }
 
