@@ -34,6 +34,7 @@
 #include <unicode/unistr.h>
 #include <unicode/unorm2.h>
 #include <unicode/utypes.h>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -55,7 +56,6 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
 #include "Basics/PhysicalMemory.h"
@@ -1652,18 +1652,17 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
 
-  FileResultString cwd = FileUtils::currentDirectory();
-
-  if (!cwd.ok()) {
-    errno = cwd.sysErrorNumber();
-    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  std::error_code cwdEc;
+  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
+  if (cwdEc) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        res, StringUtils::concatT("cannot get current working directory: ",
-                                  cwd.errorMessage()));
+        TRI_set_errno(TRI_ERROR_SYS_ERROR),
+        StringUtils::concatT("cannot get current working directory: ",
+                             cwdEc.message()));
   }
 
   if (name.length() == 0) {
-    TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, cwd.result()));
+    TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, cwdPath.string()));
   }
 
   std::string abs =
@@ -1673,7 +1672,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!abs.empty()) {
     res = TRI_V8_STD_STRING(isolate, abs);
   } else {
-    res = TRI_V8_STD_STRING(isolate, cwd.result());
+    res = TRI_V8_STD_STRING(isolate, cwdPath.string());
   }
 
   // return result
@@ -4567,7 +4566,7 @@ static void JS_ExecuteExternal(
     }
   }
 
-  auto workingDirectory = FileUtils::currentDirectory().result();
+  auto const workingDirectory = std::filesystem::current_path();
   std::string subProcessWorkingDirectory = workingDirectory;
 
   if (5 <= args.Length()) {
@@ -4580,11 +4579,21 @@ static void JS_ExecuteExternal(
   }
   ExternalId external;
   if (subProcessWorkingDirectory != workingDirectory) {
-    FileUtils::changeDirectory(subProcessWorkingDirectory);
+    std::error_code ec;
+    std::filesystem::current_path(subProcessWorkingDirectory, ec);
+    if (ec) {
+      TRI_V8_THROW_EXCEPTION_SYS("cannot change working directory");
+    }
   }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes,
                             &external);
-  FileUtils::changeDirectory(workingDirectory);
+  {
+    std::error_code ec;
+    std::filesystem::current_path(workingDirectory, ec);
+    if (ec) {
+      TRI_V8_THROW_EXCEPTION_SYS("cannot restore working directory");
+    }
+  }
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -4834,7 +4843,7 @@ static void JS_ExecuteExternalAndWait(
     }
   }
 
-  auto workingDirectory = FileUtils::currentDirectory().result();
+  auto const workingDirectory = std::filesystem::current_path();
   std::string subProcessWorkingDirectory = workingDirectory;
 
   if (6 <= args.Length()) {
@@ -4847,11 +4856,21 @@ static void JS_ExecuteExternalAndWait(
   }
   ExternalId external;
   if (subProcessWorkingDirectory != workingDirectory) {
-    FileUtils::changeDirectory(subProcessWorkingDirectory);
+    std::error_code ec;
+    std::filesystem::current_path(subProcessWorkingDirectory, ec);
+    if (ec) {
+      TRI_V8_THROW_EXCEPTION_SYS("cannot change working directory");
+    }
   }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes,
                             &external);
-  FileUtils::changeDirectory(workingDirectory);
+  {
+    std::error_code ec;
+    std::filesystem::current_path(workingDirectory, ec);
+    if (ec) {
+      TRI_V8_THROW_EXCEPTION_SYS("cannot restore working directory");
+    }
+  }
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");

@@ -25,6 +25,8 @@
 
 #include "TemporaryStorageFeature.h"
 
+#include <filesystem>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryOptions.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -222,7 +224,7 @@ void TemporaryStorageFeature::validateOptions(
   _options.basePath = basics::StringUtils::replace(
       _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
 
-  std::string currentDir = FileUtils::currentDirectory().result();
+  auto const currentDir = std::filesystem::current_path();
 
   // get regular database path
   std::string dbPath = normalizePath(
