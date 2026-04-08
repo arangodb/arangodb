@@ -29,19 +29,6 @@
 namespace arangodb::aql {
 class Optimizer;
 
-/// @brief simplify some conditions in CalculationNodes
-void simplifyConditionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
-/// @brief this rule replaces expressions of the type:
-///   x.val == 1 || x.val == 2 || x.val == 3
-//  with
-//    x.val IN [1,2,3]
-//  when the OR conditions are present in the same FILTER node, and refer to the
-//  same (single) attribute.
-void replaceOrWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
-
 void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                            OptimizerRule const&);
 

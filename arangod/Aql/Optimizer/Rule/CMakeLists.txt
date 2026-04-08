@@ -19,7 +19,9 @@ target_sources(arango_aql PRIVATE
   MoveFiltersIntoEnumerate.cpp
   MoveFiltersUp.cpp
   RemoveUnnecessaryFilters.cpp
-  OptimizerRulesConditionRewrite.cpp
+  RemoveRedundantOr.cpp
+  ReplaceOrWithIn.cpp
+  SimplifyConditions.cpp
   OptimizerRulesGraph.cpp
   OptimizerRulesIResearchView.cpp
   OptimizerRulesIndexNode.cpp
