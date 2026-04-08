@@ -88,7 +88,7 @@ constexpr frozen::unordered_map<int, std::string_view, 26> kOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 /// @brief type names for AST nodes
-frozen::unordered_map<int, std::string_view, 88> kTypeNames{
+frozen::unordered_map<int, std::string_view, 89> kTypeNames{
     {static_cast<int>(NODE_TYPE_ROOT), "root"},
     {static_cast<int>(NODE_TYPE_FOR), "for"},
     {static_cast<int>(NODE_TYPE_LET), "let"},
