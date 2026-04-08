@@ -46,6 +46,7 @@
 #include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
+#include "Inspection/Format.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -63,18 +64,6 @@ namespace {
 
 auto disjunctionOfRegexes(std::vector<std::string> values) -> std::string {
   return "(" + arangodb::basics::StringUtils::join(values, '|') + ")";
-}
-
-auto disjunctionOfRegexes(std::unordered_set<std::string> values)
-    -> std::string {
-  auto ss = std::stringstream();
-
-  ss << "(" << *values.cbegin();
-  for (auto it = std::next(values.cbegin()); it != values.cend(); ++it) {
-    ss << "|" << *it;
-  }
-  ss << ")";
-  return ss.str();
 }
 
 auto tryStringToRegex(std::string regexString, std::string optionName,
@@ -95,20 +84,6 @@ auto optionToRegex(std::vector<std::string> values, std::string optionName,
     return std::nullopt;
   }
   return tryStringToRegex(disjunctionOfRegexes(values), optionName, listName);
-}
-
-auto canonicalPath(std::string path) -> std::string {
-  auto result = std::filesystem::path(path);
-
-  if (result.is_relative()) {
-    result = std::filesystem::absolute(result);
-  }
-
-  result = std::filesystem::weakly_canonical(std::move(result));
-  if (std::filesystem::is_directory(result)) {
-    result /= "";
-  }
-  return result;
 }
 
 }  // namespace
@@ -292,17 +267,17 @@ void V8SecurityFeature::validateOptions(
 }
 
 void V8SecurityFeature::prepare() {
-  addToInternalAllowList(TRI_GetTempPath(), FSAccessType::READ);
-  addToInternalAllowList(TRI_GetTempPath(), FSAccessType::WRITE);
-  TRI_ASSERT(!_writeAllowList.empty());
-  TRI_ASSERT(!_readAllowList.empty());
+  addToInternalReadAllowList(TRI_GetTempPath());
+  addToInternalWriteAllowList(TRI_GetTempPath());
+  TRI_ASSERT(!_internalWriteAllow.empty());
+  TRI_ASSERT(!_internalReadAllow.empty());
 }
 
 void V8SecurityFeature::dumpAccessLists() const {
   LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY)
       << "files allowed by user:" << _options.filesAllowList
-      << ", internal read allow list:" << _readAllowList
-      << ", internal write allow list:" << _writeAllowList
+      << ", internal read allow list:" << inspection::json(_internalReadAllow)
+      << ", internal write allow list:" << inspection::json(_internalWriteAllow)
       << ", internal startup options allow list:"
       << _options.startupOptionsAllowList
       << ", internal startup options deny list: "
@@ -315,35 +290,13 @@ void V8SecurityFeature::dumpAccessLists() const {
       << ", internal endpoints deny list: " << _options.endpointsDenyList;
 }
 
-void V8SecurityFeature::addToInternalAllowList(std::string const& inItem,
-                                               FSAccessType type) {
-  auto [set, expression, re] = std::invoke([this, &type]() {
-    switch (type) {
-      case FSAccessType::READ: {
-        return std::tuple(&_readAllowListSet, &_readAllowList,
-                          &_readAllowRegex);
-      }
-      case FSAccessType::WRITE: {
-        return std::tuple(&_writeAllowListSet, &_writeAllowList,
-                          &_writeAllowRegex);
-      }
-    }
-  });
+void V8SecurityFeature::addToInternalReadAllowList(std::filesystem::path item) {
+  _internalReadAllow.addPath(std::filesystem::canonical(std::move(item)));
+}
 
-  auto item = std::filesystem::weakly_canonical(inItem);
-
-  auto path =
-      "^" + arangodb::basics::StringUtils::escapeRegexParams(std::string(item));
-  set->emplace(std::move(path));
-  expression->clear();
-  *expression = disjunctionOfRegexes(*set);
-
-  try {
-    *re = std::regex(*expression, std::regex::nosubs | std::regex::ECMAScript);
-  } catch (std::exception const& ex) {
-    throw std::invalid_argument(ex.what() + std::string(" '") + *expression +
-                                "'");
-  }
+void V8SecurityFeature::addToInternalWriteAllowList(
+    std::filesystem::path item) {
+  _internalWriteAllow.addPath(std::filesystem::canonical(std::move(item)));
 }
 
 bool V8SecurityFeature::isAllowedToControlProcesses() const {
@@ -440,21 +393,19 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
     return true;
   }
 
-  auto canonicalisedPath = canonicalPath(pathPtr);
+  auto canonical = std::filesystem::weakly_canonical(pathPtr);
 
-  if (_readAllowRegex.has_value()) {
-    if (access == FSAccessType::READ &&
-        std::regex_search(canonicalisedPath, _readAllowRegex.value())) {
+  if (access == FSAccessType::READ) {
+    if (_internalReadAllow.isAllowed(canonical)) {
       return true;
     }
   }
 
-  if (_writeAllowRegex.has_value()) {
-    if (access == FSAccessType::WRITE &&
-        std::regex_search(canonicalisedPath, _writeAllowRegex.value())) {
+  if (access == FSAccessType::WRITE) {
+    if (_internalWriteAllow.isAllowed(canonical)) {
       return true;
     }
   }
 
-  return _files.check(canonicalisedPath) == DenyAllowResult::ALLOWED;
+  return _files.check(std::string(canonical)) == DenyAllowResult::ALLOWED;
 }

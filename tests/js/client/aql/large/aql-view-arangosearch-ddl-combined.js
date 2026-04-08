@@ -30,7 +30,6 @@ const internal = require('internal');
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
-const isServer = require("@arangodb").isServer;
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const request = require("@arangodb/request");

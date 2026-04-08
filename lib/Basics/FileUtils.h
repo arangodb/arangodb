@@ -85,11 +85,6 @@ void appendToFile(std::string const& filename, std::string_view s,
 // otherwise, returns TRI_ERROR_SYS_ERROR and sets LastError.
 [[nodiscard]] ErrorCode remove(std::string const& fileName);
 
-// creates a new directory
-bool createDirectory(std::string const& name, ErrorCode* errorNumber = nullptr);
-bool createDirectory(std::string const& name, int mask,
-                     ErrorCode* errorNumber = nullptr);
-
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
 /// returns true (now wrapper for version below with TRI_copy_recursive_e
@@ -144,12 +139,6 @@ off_t size(std::string const& path);
 // strip extension
 std::string stripExtension(std::string const& path,
                            std::string const& extension);
-
-// changes into directory
-FileResult changeDirectory(std::string const& path);
-
-// returns the current directory
-FileResultString currentDirectory();
 
 // returns the home directory
 std::string homeDirectory();
