@@ -212,7 +212,7 @@ endpoint. Requests with expiry times above this value will be rejected.)");
       .setLongDescription(
           R"(When set to a non-empty string, this must be the HTTP or HTTPS
 endpoint of an external RBAC authorization service for use by Coordinators and
-single servers. In this case, all requests with use role-based-access-control
+single servers. In this case, all requests use role-based-access-control
 (RBAC) via the specified service for authorization decisions. When set to an
 empty string, RBAC is disabled and instead the old permission system is used.)");
 
