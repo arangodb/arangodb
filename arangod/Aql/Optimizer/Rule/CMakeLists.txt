@@ -41,9 +41,12 @@ target_sources(arango_aql PRIVATE
   UseIndexForSort.cpp
   UseIndexes.cpp
   OptimizeTraversals.cpp
+  RemoveFiltersCoveredByIndex.cpp
   RemoveFiltersCoveredByTraversal.cpp
   RemoveTraversalPathVariable.cpp
   InlineSubqueries.cpp
   OptimizeSubqueries.cpp
   SpliceSubqueries.cpp
+  UseIndexForSort.cpp
+  UseIndexes.cpp
 )
