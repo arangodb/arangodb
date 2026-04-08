@@ -38,7 +38,6 @@
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Statistics/RequestStatistics.h"
 
 #include <absl/strings/escaping.h>
 

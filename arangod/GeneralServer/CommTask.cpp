@@ -46,7 +46,6 @@
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "Statistics/RequestStatistics.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -523,15 +522,10 @@ void CommTask::setTimingData(uint64_t id, RequestTimingData&& data) {
   _statisticsMap.insert_or_assign(id, std::move(data));
 }
 
-RequestStatistics::Item const& CommTask::acquireRequestStatistics(uint64_t id) {
-  RequestStatistics::Item stat;
-  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
-    // only acquire a new item if the statistics are enabled.
-    stat = RequestStatistics::acquire();
-  }
-
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-  return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
+RequestTimingData& CommTask::acquireTimingData(uint64_t id) {
+  std::lock_guard lock{_statisticsMutex};
+  auto [it, _] = _statisticsMap.try_emplace(id, RequestTimingData{});
+  return it->second;
 }
 
 RequestTimingData& CommTask::timingData(uint64_t id) {

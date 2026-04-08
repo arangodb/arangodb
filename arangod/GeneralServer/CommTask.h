@@ -32,7 +32,6 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Metrics/GaugeCounterGuard.h"
 #include "Statistics/ConnectionTimeRecorder.h"
-#include "Statistics/RequestStatistics.h"
 
 #include <velocypack/Buffer.h>
 
@@ -124,10 +123,10 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                       std::unique_ptr<GeneralResponse> response,
                       ServerState::Mode mode);
 
-  [[nodiscard]] RequestStatistics::Item const& acquireRequestStatistics(
-      uint64_t id);
-  [[nodiscard]] RequestStatistics::Item const& requestStatistics(uint64_t id);
-  [[nodiscard]] RequestStatistics::Item stealRequestStatistics(uint64_t id);
+  [[nodiscard]] RequestTimingData& acquireTimingData(uint64_t id);
+  [[nodiscard]] RequestTimingData& timingData(uint64_t id);
+  [[nodiscard]] RequestTimingData stealTimingData(uint64_t id);
+  void finalizeTimingData(RequestTimingData& data);
 
   /// @brief send response including error response body
   void sendErrorResponse(rest::ResponseCode, rest::ContentType,

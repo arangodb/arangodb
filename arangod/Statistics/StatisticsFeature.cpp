@@ -121,38 +121,6 @@ DECLARE_GAUGE(arangodb_process_statistics_resident_set_size_percent, double,
 DECLARE_GAUGE(
     arangodb_process_statistics_virtual_memory_size, double,
     "This figure contains The size of the virtual memory the process is using");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_total_time,
-                  ConnectionTimeScale, "Total time needed to answer a request");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_request_time,
-                  RequestTimeScale, "Request time needed to answer a request");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_queue_time,
-                  RequestTimeScale, "Queue time needed to answer a request");
-DECLARE_HISTOGRAM(arangodb_client_connection_statistics_io_time,
-                  RequestTimeScale, "IO time needed to answer a request");
-DECLARE_COUNTER(arangodb_http_request_statistics_total_requests_total,
-                "Total number of HTTP requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_superuser_requests_total,
-                "Total number of HTTP requests executed by superuser/JWT");
-DECLARE_COUNTER(arangodb_http_request_statistics_user_requests_total,
-                "Total number of HTTP requests executed by clients");
-DECLARE_COUNTER(arangodb_http_request_statistics_async_requests_total,
-                "Number of asynchronously executed HTTP requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_delete_requests_total,
-                "Number of HTTP DELETE requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_get_requests_total,
-                "Number of HTTP GET requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_head_requests_total,
-                "Number of HTTP HEAD requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_options_requests_total,
-                "Number of HTTP OPTIONS requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_patch_requests_total,
-                "Number of HTTP PATCH requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_post_requests_total,
-                "Number of HTTP POST requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_http_put_requests_total,
-                "Number of HTTP PUT requests");
-DECLARE_COUNTER(arangodb_http_request_statistics_other_http_requests_total,
-                "Number of other HTTP requests");
 DECLARE_COUNTER(arangodb_server_statistics_server_uptime_total,
                 "Number of seconds elapsed since server start");
 DECLARE_GAUGE(arangodb_server_statistics_physical_memory, double,
@@ -176,8 +144,6 @@ DECLARE_GAUGE(arangodb_server_statistics_idle_percent, double,
 DECLARE_GAUGE(
     arangodb_server_statistics_iowait_percent, double,
     "Percentage of time that the system CPUs have been waiting for I/O");
-DECLARE_GAUGE(arangodb_request_statistics_memory_usage, uint64_t,
-              "Memory used by the internal request statistics");
 
 namespace {
 // local_name: {"prometheus_name", "type", "help"}
@@ -427,16 +393,6 @@ Counter TotalRequestsSuperuser;
 Counter TotalRequestsUser;
 MethodRequestCounters MethodRequests;
 
-RequestFigures::RequestFigures()
-    : bytesReceivedDistribution(BytesReceivedDistributionCuts),
-      bytesSentDistribution(BytesSentDistributionCuts),
-      ioTimeDistribution(RequestTimeDistributionCuts),
-      queueTimeDistribution(RequestTimeDistributionCuts),
-      requestTimeDistribution(RequestTimeDistributionCuts),
-      totalTimeDistribution(RequestTimeDistributionCuts) {}
-
-RequestFigures SuperuserRequestFigures;
-RequestFigures UserRequestFigures;
 }  // namespace statistics
 }  // namespace arangodb
 
@@ -447,10 +403,7 @@ RequestFigures UserRequestFigures;
 StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this},
-      _descriptions(server),
-      _requestStatisticsMemoryUsage{
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_request_statistics_memory_usage{})} {
+      _descriptions(server) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
@@ -518,15 +471,7 @@ void StatisticsFeature::collectOptions(
 }
 
 void StatisticsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (_options.statistics) {
-    // initialize counters for all HTTP request types
-    RequestStatistics::initialize();
-  } else {
-    // turn ourselves off
-    disable();
-  }
-}
+    std::shared_ptr<ProgramOptions> options) {}
 
 void StatisticsFeature::start() {
   TRI_ASSERT(isEnabled());
@@ -591,14 +536,6 @@ void StatisticsFeature::appendMetricWithMachineId(std::string& result,
 void StatisticsFeature::toPrometheus(std::string& result, double now,
                                      std::string_view globals,
                                      bool ensureWhitespace) {
-  // these metrics should always be 0 if statistics are disabled
-  TRI_ASSERT(isEnabled() || RequestStatistics::memoryUsage() == 0);
-  if (isEnabled()) {
-    // update arangodb_request_statistics_memory_usage metric
-    _requestStatisticsMemoryUsage.store(RequestStatistics::memoryUsage(),
-                                        std::memory_order_relaxed);
-  }
-
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
@@ -677,44 +614,6 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
   }
 
   if (isEnabled()) {
-    RequestStatistics::Snapshot requestStats;
-    RequestStatistics::getSnapshot(requestStats,
-                                   stats::RequestStatisticsSource::ALL);
-
-    // _clientStatistics()
-    appendHistogram(result, requestStats.totalTime, "totalTime",
-                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    false, globals, ensureWhitespace);
-    appendHistogram(result, requestStats.requestTime, "requestTime",
-                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    false, globals, ensureWhitespace);
-    appendHistogram(result, requestStats.queueTime, "queueTime",
-                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    false, globals, ensureWhitespace);
-    appendHistogram(result, requestStats.ioTime, "ioTime",
-                    {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    false, globals, ensureWhitespace);
-    appendHistogram(result, requestStats.bytesSent, "bytesSent",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
-                    globals, ensureWhitespace);
-    appendHistogram(result, requestStats.bytesReceived, "bytesReceived",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
-                    globals, ensureWhitespace);
-
-    RequestStatistics::Snapshot requestStatsUser;
-    RequestStatistics::getSnapshot(requestStatsUser,
-                                   stats::RequestStatisticsSource::USER);
-    appendHistogram(result, requestStatsUser.bytesSent, "bytesSentUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
-                    globals, ensureWhitespace);
-    appendHistogram(result, requestStatsUser.bytesReceived, "bytesReceivedUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
-                    globals, ensureWhitespace);
-
     // _httpStatistics()
     using rest::RequestType;
     appendMetric(result, std::to_string(statistics::AsyncRequests.get()),
