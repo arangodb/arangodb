@@ -1594,12 +1594,8 @@ void DumpFeature::start() {
         auto f = absl::StrCat(
             basics::FileUtils::buildFilename(_options.outputPath, it));
         if (basics::FileUtils::isRegularFile(f)) {
-          std::error_code ec;
-          auto fileSize =
-              std::filesystem::file_size(std::filesystem::path(f), ec);
-          if (ec) {
-            fileSize = 0;
-          }
+          auto fileSize = std::filesystem::file_size(std::filesystem::path(f));
+
           totalSize += fileSize;
         }
       }

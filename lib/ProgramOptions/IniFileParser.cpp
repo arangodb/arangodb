@@ -145,12 +145,8 @@ bool IniFileParser::parseContent(std::string const& filename,
       _seen.insert(include);
 
       if (!basics::FileUtils::isRegularFile(include)) {
-        std::filesystem::path dirPath =
-            std::filesystem::path(filename).parent_path();
-        if (dirPath.empty()) {
-          dirPath = ".";
-        }
-        include = basics::FileUtils::buildFilename(dirPath.string(), include);
+        include = basics::FileUtils::buildFilename(
+            std::filesystem::path(filename).parent_path().string(), include);
       }
 
       LOG_TOPIC("36d6b", DEBUG, Logger::CONFIG)
