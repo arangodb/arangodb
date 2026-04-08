@@ -170,8 +170,6 @@ GeneralServerFeature::GeneralServerFeature(
       _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
-      _histConnectionTime(
-          metrics.add(arangodb_client_connection_statistics_connection_time{})),
       _histTotalTime(
           metrics.add(arangodb_client_connection_statistics_total_time{})),
       _histRequestTime(
