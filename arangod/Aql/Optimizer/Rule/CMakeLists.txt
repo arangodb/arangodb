@@ -37,4 +37,7 @@ target_sources(arango_aql PRIVATE
   OptimizeTraversals.cpp
   RemoveFiltersCoveredByTraversal.cpp
   RemoveTraversalPathVariable.cpp
+  RemoveFiltersCoveredByIndex.cpp
+  UseIndexForSort.cpp
+  UseIndexes.cpp
 )
