@@ -63,6 +63,10 @@ getVectorIndexShardStates(CollectionInfoCurrent const& collCurrent,
               tsSlice.isString()) {
             state.trainingState = tsSlice.copyString();
           }
+          if (auto const nlSlice = idx.get(StaticStrings::IndexResolvedNLists);
+              nlSlice.isNumber()) {
+            state.resolvedNLists = nlSlice.getNumber<std::size_t>();
+          }
           break;
         }
       }

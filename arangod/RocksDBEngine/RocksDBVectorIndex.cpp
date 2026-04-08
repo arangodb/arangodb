@@ -193,6 +193,11 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.add(StaticStrings::ErrorMessage,
                 VPackValue("not enough training data for vector index"));
   }
+
+  if (_faissIndex != nullptr) {
+    builder.add(StaticStrings::IndexResolvedNLists,
+                VPackValue(_faissIndex->nlist));
+  }
 }
 
 std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>

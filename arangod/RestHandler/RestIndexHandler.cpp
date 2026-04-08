@@ -140,6 +140,20 @@ VPackBuilder enrichVectorIndexes(
           }
         }
 
+        {
+          std::size_t minResolved = 0;
+          for (auto const& [_, shardState] : states) {
+            if (shardState.resolvedNLists > 0) {
+              minResolved =
+                  minResolved == 0
+                      ? shardState.resolvedNLists
+                      : std::min(minResolved, shardState.resolvedNLists);
+            }
+          }
+          result.add(StaticStrings::IndexResolvedNLists,
+                     VPackValue(minResolved));
+        }
+
         if (withShardDetails) {
           result.add(VPackValue("shards"));
           VPackObjectBuilder shardsObj(&result);
@@ -149,6 +163,8 @@ VPackBuilder enrichVectorIndexes(
             result.add(StaticStrings::IndexTrainingState,
                        VPackValue(shardState.trainingState));
             result.add("error", VPackValue(shardState.error));
+            result.add(StaticStrings::IndexResolvedNLists,
+                       VPackValue(shardState.resolvedNLists));
           }
         }
       } else {
