@@ -58,7 +58,7 @@ namespace arangodb::vector {
 
 // Taken from:
 // ClusteringParameters.max_points_per_centroid
-static constexpr std::int64_t kMaxTrainingSizePerNLists{256};
+static constexpr std::size_t kMaxTrainingSizePerNLists{256};
 
 TrainedData serializeIndex(faiss::IndexIVF const& index);
 
@@ -66,6 +66,15 @@ Result readDocumentVectorData(
     velocypack::Slice doc,
     std::vector<std::vector<basics::AttributeName>> const& fields,
     std::size_t dimension, std::vector<float>& output);
+
+struct BoundedDocumentIterator {
+  RocksDBKeyBounds bounds;
+  rocksdb::Slice upper;
+  rocksdb::ReadOptions ro;
+  std::unique_ptr<rocksdb::Iterator> it;
+
+  explicit BoundedDocumentIterator(RocksDBKeyBounds bounds, rocksdb::DB* db);
+};
 
 class VectorIndexTrainer {
   struct TrainingDataset {
@@ -77,17 +86,14 @@ class VectorIndexTrainer {
   };
 
  public:
-  VectorIndexTrainer(
-      UserVectorIndexDefinition const& definition, bool isSparse,
-      std::vector<std::vector<basics::AttributeName>> const& fields,
-      std::string_view shardName, std::uint64_t indexId,
-      std::int64_t trainingThreshold, rocksdb::DB* db, RocksDBKeyBounds bounds);
+  VectorIndexTrainer(RocksDBVectorIndex const& index, rocksdb::DB* db,
+                     RocksDBKeyBounds bounds);
 
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
       TrainedData const& data);
 
   std::shared_ptr<faiss::IndexIVF> createFaissIndex(
-      std::int64_t resolvedNLists) const;
+      std::size_t resolvedNLists) const;
 
   /// Run the full training pipeline:
   ///  1. Resolve nLists from the definition
@@ -105,18 +111,10 @@ class VectorIndexTrainer {
 
   /// Resolve the nLists value from the definition, using numDocsHint for
   /// scaling mode.
-  std::int64_t resolveNLists(std::uint64_t numDocsHint) const;
+  ResultT<std::size_t> resolveNLists(std::uint64_t numDocsHint) const;
 
-  UserVectorIndexDefinition const& _definition;
-  bool _isSparse;
-  std::vector<std::vector<basics::AttributeName>> const& _fields;
-  std::string _shardName;
-  std::uint64_t _indexId;
-  std::int64_t _trainingThreshold;
-  RocksDBKeyBounds _bounds;
-  rocksdb::Slice _upper;
-  rocksdb::ReadOptions _ro;
-  std::unique_ptr<rocksdb::Iterator> _it;
+  RocksDBVectorIndex const& _index;
+  BoundedDocumentIterator _docIt;
 };
 
 Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,

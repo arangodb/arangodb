@@ -149,35 +149,28 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::restoreFromTrainedData(
   return faissIndex;
 }
 
-VectorIndexTrainer::VectorIndexTrainer(
-    UserVectorIndexDefinition const& definition, bool isSparse,
-    std::vector<std::vector<basics::AttributeName>> const& fields,
-    std::string_view shardName, std::uint64_t indexId,
-    std::int64_t trainingThreshold, rocksdb::DB* db, RocksDBKeyBounds bounds)
-    : _definition(definition),
-      _isSparse(isSparse),
-      _fields(fields),
-      _shardName(shardName),
-      _indexId(indexId),
-      _trainingThreshold(trainingThreshold),
-      _bounds(std::move(bounds)),
-      _upper(_bounds.end()),
-      _ro(false, false) {
-  _ro.prefix_same_as_start = true;
-  _ro.iterate_upper_bound = &_upper;
+BoundedDocumentIterator::BoundedDocumentIterator(RocksDBKeyBounds bounds,
+                                                 rocksdb::DB* db)
+    : bounds(std::move(bounds)), upper(this->bounds.end()), ro(false, false) {
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
   auto* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
-  _it.reset(db->NewIterator(_ro, docCF));
-  _it->Seek(_bounds.start());
+  it.reset(db->NewIterator(ro, docCF));
+  it->Seek(this->bounds.start());
 }
 
+VectorIndexTrainer::VectorIndexTrainer(RocksDBVectorIndex const& index,
+                                       rocksdb::DB* db, RocksDBKeyBounds bounds)
+    : _index(index), _docIt(std::move(bounds), db) {}
+
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
-    std::int64_t resolvedNLists) const {
-  if (_definition.factory) {
-    auto const factoryString = _definition.factory->c_str();
-    std::shared_ptr<faiss::Index> index(
-        faiss::index_factory(_definition.dimension, factoryString,
-                             metricToFaissMetric(_definition.metric)));
+    std::size_t resolvedNLists) const {
+  auto const& def = _index.getDefinition();
+  if (def.factory) {
+    auto const factoryString = def.factory->c_str();
+    std::shared_ptr<faiss::Index> index(faiss::index_factory(
+        def.dimension, factoryString, metricToFaissMetric(def.metric)));
 
     auto ivfIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
     if (ivfIndex == nullptr) {
@@ -185,7 +178,7 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
           TRI_ERROR_BAD_PARAMETER,
           "Index definition not supported. Expected IVF index.");
     }
-    if (std::size_t(resolvedNLists) != ivfIndex->nlist) {
+    if (resolvedNLists != ivfIndex->nlist) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           std::format(
@@ -197,20 +190,20 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
     return ivfIndex;
   } else {
     auto quantizer = std::invoke([&]() -> std::unique_ptr<faiss::Index> {
-      switch (_definition.metric) {
+      switch (def.metric) {
         case SimilarityMetric::kL2:
-          return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
+          return std::make_unique<faiss::IndexFlatL2>(def.dimension);
         case SimilarityMetric::kCosine:
-          return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
+          return std::make_unique<faiss::IndexFlatIP>(def.dimension);
         case SimilarityMetric::kInnerProduct:
-          return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
+          return std::make_unique<faiss::IndexFlatIP>(def.dimension);
       }
     });
 
     std::shared_ptr<faiss::IndexIVF> ivfIndex =
-        std::make_unique<faiss::IndexIVFFlat>(
-            quantizer.get(), _definition.dimension, resolvedNLists,
-            metricToFaissMetric(_definition.metric));
+        std::make_unique<faiss::IndexIVFFlat>(quantizer.get(), def.dimension,
+                                              resolvedNLists,
+                                              metricToFaissMetric(def.metric));
     ivfIndex->own_fields = nullptr != quantizer.release();
     return ivfIndex;
   }
@@ -221,22 +214,27 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
                                            rocksdb::Slice upper,
                                            std::uint64_t numDocsHint,
                                            std::stop_token stopToken) const {
+  auto const& def = _index.getDefinition();
   std::vector<float> trainingData;
   std::vector<float> input;
-  input.reserve(_definition.dimension);
+  input.reserve(def.dimension);
   std::optional<std::size_t> maxVectors;
 
   LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
       "[shard={}, index={}] Collecting training data "
       "dimension {} for training for {} index with the numDocsHint: {}.",
-      _shardName, _indexId, _definition.dimension,
-      _isSparse ? "sparse" : "non-sparse", numDocsHint);
+      _index.collection().name(), _index.id().id(), def.dimension,
+      _index.sparse() ? "sparse" : "non-sparse", numDocsHint);
 
   // We need to do a full iteration to properly resolve the number of nLists
   bool const shouldDoFullIteration =
-      _isSparse && isNListsScaling(_definition.nLists);
+      _index.sparse() && isNListsScaling(def.nLists);
   if (!shouldDoFullIteration) {
-    maxVectors = resolveNLists(numDocsHint) * kMaxTrainingSizePerNLists;
+    auto resolved = resolveNLists(numDocsHint);
+    if (resolved.fail()) {
+      return std::move(resolved).result();
+    }
+    maxVectors = resolved.get() * kMaxTrainingSizePerNLists;
   }
   // only one of these can be true
   TRI_ASSERT(shouldDoFullIteration ^ maxVectors.has_value());
@@ -253,9 +251,9 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     TRI_ASSERT(it.key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it.value().data()));
     if (auto const res =
-            readDocumentVectorData(doc, _fields, _definition.dimension, input);
+            readDocumentVectorData(doc, _index.fields(), def.dimension, input);
         res.fail()) {
-      if (res.is(TRI_ERROR_BAD_PARAMETER) && _isSparse) {
+      if (res.is(TRI_ERROR_BAD_PARAMETER) && _index.sparse()) {
         it.Next();
         continue;
       }
@@ -273,11 +271,13 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     } else {
       // We collect only in case when we are below minimum 1000 docs or when we
       // have do not have enough docs for the currently projected nLists value
+      auto resolved = resolveNLists(trainingDatasetCounter);
+      if (resolved.fail()) {
+        return std::move(resolved).result();
+      }
       bool const shouldCollect =
           trainingDatasetCounter < kSparseScalingBootstrapVectors ||
-          trainingDatasetCounter <
-              static_cast<std::size_t>(resolveNLists(trainingDatasetCounter) *
-                                       kMaxTrainingSizePerNLists);
+          trainingDatasetCounter < resolved.get() * kMaxTrainingSizePerNLists;
       if (shouldCollect) {
         trainingData.insert(trainingData.end(), input.begin(), input.end());
         ++trainingDatasetCounter;
@@ -289,8 +289,8 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     ++iterationCounter;
   }
 
-  if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, trainingDatasetCounter,
+  if (def.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(def.dimension, trainingDatasetCounter,
                           trainingData.data());
   }
 
@@ -304,21 +304,21 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   return ResultT<TrainingDataset>({std::move(trainingData), iterationCounter});
 }
 
-std::int64_t VectorIndexTrainer::resolveNLists(
+ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
     std::uint64_t numDocsHint) const {
-  if (isNListsScaling(_definition.nLists) && numDocsHint == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-        "For the vector index to be created documents "
-        "must be present in the respective collection for the training "
-        "process.");
+  auto const& nLists = _index.getDefinition().nLists;
+  if (isNListsScaling(nLists) && numDocsHint == 0) {
+    return Result{TRI_ERROR_NOT_IMPLEMENTED,
+                  "Cannot resolve nLists with scaling mode when "
+                  "numDocsHint is 0"};
   }
-  return resolveNListsParameter(_definition.nLists, numDocsHint);
+  return static_cast<std::size_t>(resolveNListsParameter(nLists, numDocsHint));
 }
 
 ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
     std::size_t numDocsHint, std::stop_token stopToken) {
-  auto res = collectTrainingDataset(*_it, _upper, numDocsHint, stopToken);
+  auto res =
+      collectTrainingDataset(*_docIt.it, _docIt.upper, numDocsHint, stopToken);
   if (res.fail()) {
     return std::move(res).result();
   }
@@ -326,34 +326,48 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
   // When sparse we take how many document there are, for that we did full
   // iteration otherwise we take the hint provided by the collection
   auto const numberOfVectors = std::invoke([&]() {
-    if (_isSparse && isNListsScaling(_definition.nLists)) {
+    if (_index.sparse() && isNListsScaling(_index.getDefinition().nLists)) {
       return trainingData.totalValidVectorCount;
     }
 
     return numDocsHint;
   });
-  auto const resolvedNLists = resolveNLists(numberOfVectors);
-
-  auto faissIndex = createFaissIndex(resolvedNLists);
-  faissIndex->nprobe = _definition.defaultNProbe;
-  auto const numOfTrainingVectors = static_cast<std::int64_t>(
-      trainingData.data.size() / _definition.dimension);
-
-  if (numOfTrainingVectors < _trainingThreshold) {
+  if (numberOfVectors == 0) {
     return Result{TRI_ERROR_NOT_IMPLEMENTED,
                   std::format("Vector index requires at least {} "
                               "vectors for training, "
-                              "but only {} were found.",
-                              _trainingThreshold, numOfTrainingVectors)};
+                              "but none were found.",
+                              _index.trainingThreshold())};
+  }
+  auto resolvedNLists = resolveNLists(numberOfVectors);
+  if (resolvedNLists.fail()) {
+    return std::move(resolvedNLists).result();
+  }
+
+  auto const& def = _index.getDefinition();
+  auto faissIndex = createFaissIndex(resolvedNLists.get());
+  faissIndex->nprobe = def.defaultNProbe;
+  auto const numOfTrainingVectors =
+      static_cast<std::int64_t>(trainingData.data.size() / def.dimension);
+
+  if (numOfTrainingVectors < _index.trainingThreshold()) {
+    return Result{
+        TRI_ERROR_NOT_IMPLEMENTED,
+        std::format("Vector index requires at least {} "
+                    "vectors for training, "
+                    "but only {} were found.",
+                    _index.trainingThreshold(), numOfTrainingVectors)};
   }
 
   LOG_TOPIC("a162b", INFO, Logger::ENGINES) << std::format(
       "[shard={}, index={}] Loaded {} vectors. Start training "
       "process on {} centroids.",
-      _shardName, _indexId, numOfTrainingVectors, resolvedNLists);
+      _index.collection().name(), _index.id().id(), numOfTrainingVectors,
+      resolvedNLists.get());
   faissIndex->train(numOfTrainingVectors, trainingData.data.data());
-  LOG_TOPIC("a160b", INFO, Logger::ENGINES) << std::format(
-      "[shard={}, index={}] Finished training.", _shardName, _indexId);
+  LOG_TOPIC("a160b", INFO, Logger::ENGINES)
+      << std::format("[shard={}, index={}] Finished training.",
+                     _index.collection().name(), _index.id().id());
 
   return faissIndex;
 }
@@ -660,10 +674,7 @@ Result VectorIndexBuilder::build(
   }
 
   auto numDocsHint = _rcoll->meta().numberDocuments();
-  VectorIndexTrainer trainer(_index.getDefinition(), _index.sparse(),
-                             _index.fields(), _index.collection().name(),
-                             _index.id().id(), _index.trainingThreshold(),
-                             _rootDB, _bounds);
+  VectorIndexTrainer trainer(_index, _rootDB, _bounds);
 
   auto const trainStart = std::chrono::steady_clock::now();
   if (shouldAbort()) {
@@ -720,21 +731,15 @@ Result VectorIndexBuilder::build(
 
   auto const ingestStart = std::chrono::steady_clock::now();
 
-  rocksdb::Slice upper(_bounds.end());
-  rocksdb::ReadOptions ro(false, false);
-  ro.prefix_same_as_start = true;
-  ro.iterate_upper_bound = &upper;
-  auto* docCF = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::Documents);
-  std::unique_ptr<rocksdb::Iterator> ingestIt(_rootDB->NewIterator(ro, docCF));
-  ingestIt->Seek(_bounds.start());
+  BoundedDocumentIterator ingestDocIt(_bounds, _rootDB);
 
   TRI_IF_FAILURE("RocksDBVectorIndex::buildWrongDimension") {
     _index.resetTrainingState();
     return Result{TRI_ERROR_DEBUG};
   }
 
-  Result res = ingestVectors(_index, _rootDB, std::move(ingestIt), stopToken);
+  Result res =
+      ingestVectors(_index, _rootDB, std::move(ingestDocIt.it), stopToken);
   auto const ingestEnd = std::chrono::steady_clock::now();
 
   if (res.fail()) {
