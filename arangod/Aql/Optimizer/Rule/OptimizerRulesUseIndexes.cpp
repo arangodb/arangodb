@@ -73,10 +73,11 @@ struct SortToIndexNode final
           std::vector<arangodb::basics::AttributeName>>& nonNullAttributes)
       const {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      ast::LogicalOperatorNode andOp(node);
       // recurse into both sides
-      getSpecialAttributes(node->getMemberUnchecked(0), variable,
+      getSpecialAttributes(andOp.getLeft(), variable,
                            constAttributes, nonNullAttributes);
-      getSpecialAttributes(node->getMemberUnchecked(1), variable,
+      getSpecialAttributes(andOp.getRight(), variable,
                            constAttributes, nonNullAttributes);
       return;
     }
@@ -86,9 +87,9 @@ struct SortToIndexNode final
     }
 
     TRI_ASSERT(node->isComparisonOperator());
-
-    AstNode const* lhs = node->getMemberUnchecked(0);
-    AstNode const* rhs = node->getMemberUnchecked(1);
+    ast::BinaryOperatorNode binOp(node);
+    AstNode const* lhs = binOp.getLeft();
+    AstNode const* rhs = binOp.getRight();
     AstNode const* check = nullptr;
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
