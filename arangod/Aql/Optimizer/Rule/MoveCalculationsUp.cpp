@@ -34,13 +34,11 @@
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 
-void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
-                                           std::unique_ptr<ExecutionPlan> plan,
-                                           OptimizerRule const& rule) {
+void moveCalculationsUpRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                            OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
   plan->findNodesOfType(nodes, EN::SUBQUERY, true);
@@ -124,3 +122,4 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+}  // namespace arangodb::aql

@@ -31,9 +31,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 
-bool arangodb::aql::accessesCollectionVariable(ExecutionPlan const* plan,
+bool accessesCollectionVariable(ExecutionPlan const* plan,
                                                ExecutionNode const* node,
                                                VarSet& vars) {
   if (node->getType() == EN::CALCULATION) {
@@ -64,3 +65,4 @@ bool arangodb::aql::accessesCollectionVariable(ExecutionPlan const* plan,
 
   return false;
 }
+}  // namespace arangodb::aql

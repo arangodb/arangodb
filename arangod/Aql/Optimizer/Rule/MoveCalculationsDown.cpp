@@ -35,11 +35,10 @@
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 
-void arangodb::aql::moveCalculationsDownRule(
+void moveCalculationsDownRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
@@ -144,3 +143,4 @@ void arangodb::aql::moveCalculationsDownRule(
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+}  // namespace arangodb::aql

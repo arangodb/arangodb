@@ -37,9 +37,8 @@
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 
 namespace {
 static constexpr std::initializer_list<ExecutionNode::NodeType>
@@ -47,11 +46,11 @@ static constexpr std::initializer_list<ExecutionNode::NodeType>
                                            ExecutionNode::SUBQUERY};
 }  // namespace
 
-void arangodb::aql::removeUnnecessaryCalculationsRule(
+void removeUnnecessaryCalculationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, ::removeUnnecessaryCalculationsNodeTypes, true);
+  plan->findNodesOfType(nodes, removeUnnecessaryCalculationsNodeTypes, true);
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
@@ -266,3 +265,4 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
     opt->addPlan(std::move(plan), rule, modified);
   }
 }
+}  // namespace arangodb::aql

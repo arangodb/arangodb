@@ -34,11 +34,10 @@
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 
-void arangodb::aql::removeRedundantCalculationsRule(
+void removeRedundantCalculationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
@@ -131,3 +130,4 @@ void arangodb::aql::removeRedundantCalculationsRule(
 
   opt->addPlan(std::move(plan), rule, !replacements.empty());
 }
+}  // namespace arangodb::aql
