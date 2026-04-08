@@ -3661,7 +3661,7 @@ yyreduce:
 
   case 66: /* pattern_variable_length_relationship: "* operator" expression ".." expression  */
 #line 1169 "grammar.y"
-                                          { (yyval.node) = (yyvsp[-2].node); }
+                                        { (yyval.node) = parser->ast()->createNodeRange((yyvsp[-2].node), (yyvsp[0].node)); }
 #line 3665 "grammar.cpp"
     break;
 

@@ -1166,7 +1166,7 @@ pattern_maybe_property_key_value_expression:
 
 %type<node> pattern_variable_length_relationship;
 pattern_variable_length_relationship:
-    T_TIMES expression T_RANGE expression { $$ = $2; }
+  T_TIMES expression T_RANGE expression { $$ = parser->ast()->createNodeRange($2, $4); }
 
 %type <node> pattern_node_pattern;
 pattern_node_pattern:
