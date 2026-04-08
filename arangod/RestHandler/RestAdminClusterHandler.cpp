@@ -360,7 +360,7 @@ std::string const RestAdminClusterHandler::VPackSortMigrationStatus = "status";
 
 // Mounted at /_admin/cluster (prefix)
 auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
-  // here we first do a glboal check, which is based on the setting in startup
+  // here we first do a global check, which is based on the setting in startup
   // option
   // `--cluster.api-jwt-policy`:
   // - "jwt-all"    = JWT required to access all operations
