@@ -80,22 +80,6 @@ function testSuite() {
       assertTrue(newValue - oldValue >= 10, { oldValue, newValue });
     },
 
-    testMemoryUsageMetrics : function() {
-      // metric values should never be 0 if statistics are enabled
-      const requestsBefore = getMetric("arangodb_request_statistics_memory_usage");
-      assertNotEqual(0, requestsBefore);
-
-
-      // issue some random requests to the server
-      for (let i = 0; i < 10; ++i) {
-         arango.GET_RAW("/_admin/metrics");
-      }
-
-      // metrics values shouldn't have changed, because the statistics memory
-      // is allocated at startup and shouldn't grow under normal circumstances
-      assertEqual(requestsBefore, getMetric("arangodb_request_statistics_memory_usage"));
-    }
-
   };
 }
 

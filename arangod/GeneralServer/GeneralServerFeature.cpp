@@ -128,7 +128,7 @@
 #include <chrono>
 #include <stdexcept>
 #include <thread>
-#include <Metrics/FixScale.h>
+#include "Metrics/FixScale.h"
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
