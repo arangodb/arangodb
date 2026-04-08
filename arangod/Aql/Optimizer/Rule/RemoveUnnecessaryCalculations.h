@@ -29,24 +29,6 @@
 namespace arangodb::aql {
 class Optimizer;
 
-/// @brief move calculations up in the plan
-/// this rule modifies the plan in place
-/// it aims to move up calculations as far up in the plan as possible, to
-/// avoid redundant calculations in inner loops
-void moveCalculationsUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
-/// @brief move calculations down in the plan
-/// this rule modifies the plan in place
-/// it aims to move down calculations as far down in the plan as possible,
-/// beyond FILTER and LIMIT statements
-void moveCalculationsDownRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
-
-/// @brief remove redundant CalculationNodes
-void removeRedundantCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
-
 /// @brief remove CalculationNodes and SubqueryNodes that are never needed
 void removeUnnecessaryCalculationsRule(Optimizer*,
                                        std::unique_ptr<ExecutionPlan>,
