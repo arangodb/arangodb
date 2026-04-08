@@ -31,6 +31,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ServerStatistics.h"
+#include "Statistics/StatisticsFeature.h"
 
 #include <velocypack/Builder.h>
 
