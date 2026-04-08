@@ -44,6 +44,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/RequestStatisticsMetrics.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "Metrics/CounterBuilder.h"
@@ -169,10 +170,26 @@ GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
-      _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_requests_memory_usage{})),
+      _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
+      _histConnectionTime(
+          metrics.add(arangodb_client_connection_statistics_connection_time{})),
+      _histTotalTime(
+          metrics.add(arangodb_client_connection_statistics_total_time{})),
+      _histRequestTime(
+          metrics.add(arangodb_client_connection_statistics_request_time{})),
+      _histQueueTime(
+          metrics.add(arangodb_client_connection_statistics_queue_time{})),
+      _histIoTime(metrics.add(arangodb_client_connection_statistics_io_time{})),
+      _histBytesReceived(
+          metrics.add(arangodb_client_connection_statistics_bytes_received{})),
+      _histBytesSent(
+          metrics.add(arangodb_client_connection_statistics_bytes_sent{})),
+      _histBytesReceivedUser(metrics.add(
+          arangodb_client_user_connection_statistics_bytes_received{})),
+      _histBytesSentUser(
+          metrics.add(arangodb_client_user_connection_statistics_bytes_sent{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
       _http2Connections(metrics.add(arangodb_http2_connections_total{})),
       _connectionDuration(
@@ -493,6 +510,85 @@ std::shared_ptr<rest::RestHandlerFactory> GeneralServerFeature::handlerFactory()
 
 rest::AsyncJobManager& GeneralServerFeature::jobManager() {
   return *_jobManager;
+}
+
+void GeneralServerFeature::countHttpRequestByMethod(
+    rest::RequestType requestType) noexcept {
+  using rest::RequestType;
+  switch (requestType) {
+    case RequestType::DELETE_REQ:
+      _httpReqsDelete.count();
+      break;
+    case RequestType::GET:
+      _httpReqsGet.count();
+      break;
+    case RequestType::POST:
+      _httpReqsPost.count();
+      break;
+    case RequestType::PUT:
+      _httpReqsPut.count();
+      break;
+    case RequestType::HEAD:
+      _httpReqsHead.count();
+      break;
+    case RequestType::PATCH:
+      _httpReqsPatch.count();
+      break;
+    case RequestType::OPTIONS:
+      _httpReqsOptions.count();
+      break;
+    case RequestType::ILLEGAL:
+      _httpReqsOther.count();
+      break;
+  }
+}
+
+void GeneralServerFeature::recordHttpRequestStatistics(
+    RequestTimingData const& data) noexcept {
+  _httpReqsTotal.count();
+  if (data.async) {
+    _httpReqsAsync.count();
+  }
+  countHttpRequestByMethod(data.requestType);
+
+  using td = RequestTimingData;
+  auto readStart = data.readStart;
+
+  if (readStart != td::time_point{} &&
+      (data.async || data.writeEnd != td::time_point{})) {
+    double const totalTime = data.async
+                                 ? td::toSeconds(data.requestEnd - readStart)
+                                 : td::toSeconds(data.writeEnd - readStart);
+
+    if (data.superuser) {
+      _httpReqsSuperuser.count();
+    } else {
+      _httpReqsUser.count();
+    }
+
+    _histTotalTime.count(totalTime);
+    double const reqT = td::toSeconds(data.requestEnd - data.requestStart);
+    _histRequestTime.count(reqT);
+
+    double queueTime = 0.0;
+    if (data.queueStart != td::time_point{} &&
+        data.queueEnd != td::time_point{}) {
+      queueTime = td::toSeconds(data.queueEnd - data.queueStart);
+      _histQueueTime.count(queueTime);
+    }
+
+    double const ioTime = totalTime - reqT - queueTime;
+    if (ioTime >= 0.0) {
+      _histIoTime.count(ioTime);
+    }
+
+    _histBytesSent.count(data.sentBytes);
+    _histBytesReceived.count(data.receivedBytes);
+    if (!data.superuser) {
+      _histBytesSentUser.count(data.sentBytes);
+      _histBytesReceivedUser.count(data.receivedBytes);
+    }
+  }
 }
 
 void GeneralServerFeature::buildServers() {

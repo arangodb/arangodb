@@ -28,6 +28,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -57,6 +58,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <cstdint>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -2340,7 +2342,7 @@ AstNode* Ast::replaceAttributeAccess(Ast* ast, AstNode* node,
 
     while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       attributePath.emplace_back(node->getStringView());
-      node = node->getMember(0);
+      node = const_cast<AstNode*>(ast::AttributeAccessNode(node).getObject());
     }
 
     if (attributePath.size() != attribute.size()) {
@@ -2496,7 +2498,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
       TRI_ASSERT(ctx->filterDepth == -1);
       ctx->filterDepth = 0;
     } else if (node->type == NODE_TYPE_TRAVERSAL) {
-      size_t parallelism = extractParallelism(node->getMember(4));
+      size_t parallelism =
+          extractParallelism(ast::TraversalNode(node).getOptions());
       if (parallelism > 1) {
         setContainsParallelNode();
       }
@@ -3922,7 +3925,7 @@ AstNode* Ast::optimizeIndexedAccess(
       // e.g. array['0'] is not the same as array.0 but must remain a['0'] or
       // (a[0])
       return this->optimizeAttributeAccess(
-          createNodeAttributeAccess(node->getMember(0), indexValue),
+          createNodeAttributeAccess(indexedNode.getObject(), indexValue),
           variableDefinitions);
     }
   }
@@ -4103,7 +4106,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node,
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     attributeNames.push_back(node->getStringView());
-    node = node->getMember(0);
+    node = ast::AttributeAccessNode(node).getObject();
   }
 
   size_t which = attributeNames.size();
@@ -4505,13 +4508,13 @@ namespace {
 auto matchGraphSubject(AstNode const* node) -> std::optional<AstNode const*> {
   switch (node->type) {
     case NODE_TYPE_TRAVERSAL: {
-      return node->getMember(2);
+      return ast::TraversalNode(node).getGraph();
     } break;
     case NODE_TYPE_SHORTEST_PATH: {
-      return node->getMember(3);
+      return ast::ShortestPathNode(node).getGraph();
     } break;
     case NODE_TYPE_ENUMERATE_PATHS: {
-      return node->getMember(4);
+      return ast::EnumeratePathsNode(node).getGraph();
     } break;
     default: {
       return std::nullopt;

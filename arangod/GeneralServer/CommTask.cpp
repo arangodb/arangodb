@@ -25,7 +25,6 @@
 
 #include "CommTask.h"
 
-#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
@@ -38,6 +37,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
+#include "GeneralServer/RequestTimingData.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"
@@ -443,7 +443,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase
-    handler->setRequestStatistics(stealRequestStatistics(messageId));
+    handler->setTimingData(stealTimingData(messageId));
     handleRequestStartup(std::move(handler));
     return;
   }
@@ -452,13 +452,12 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    requestStatistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal(
-        [self(shared_from_this()), h(std::move(handler)),
-         messageId](futures::Try<Result>&& /*ignored*/) -> void {
-          self->sendResponse(h->stealResponse(),
-                             self->stealRequestStatistics(messageId));
-        });
+    timingData(messageId).superuser = true;
+    std::move(res).thenFinal([self(shared_from_this()), h(std::move(handler)),
+                              messageId](
+                                 futures::Try<Result>&& /*ignored*/) -> void {
+      self->sendResponse(h->stealResponse(), self->stealTimingData(messageId));
+    });
     return;
   }
 
@@ -474,9 +473,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
-    RequestStatistics::Item stats = stealRequestStatistics(messageId);
-    stats.SET_ASYNC();
-    handler->setRequestStatistics(std::move(stats));
+    RequestTimingData data = stealTimingData(messageId);
+    data.async = true;
+    handler->setTimingData(std::move(data));
     handler->setIsAsyncRequest();
 
     uint64_t jobId = 0;
@@ -502,14 +501,14 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
         // return the job id we just created
         resp->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
-      sendResponse(std::move(resp), RequestStatistics::Item());
+      sendResponse(std::move(resp), RequestTimingData{});
     } else {
       sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, respType,
                         messageId, TRI_ERROR_QUEUE_FULL);
     }
   } else {
     // synchronous request
-    handler->setRequestStatistics(stealRequestStatistics(messageId));
+    handler->setTimingData(stealTimingData(messageId));
     // handleRequestSync adds an error response
     handleRequestSync(std::move(handler));
   }
@@ -519,9 +518,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
-void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
+void CommTask::setTimingData(uint64_t id, RequestTimingData&& data) {
   std::lock_guard guard{_statisticsMutex};
-  _statisticsMap.insert_or_assign(id, std::move(stat));
+  _statisticsMap.insert_or_assign(id, std::move(data));
 }
 
 RequestStatistics::Item const& CommTask::acquireRequestStatistics(uint64_t id) {
@@ -535,22 +534,50 @@ RequestStatistics::Item const& CommTask::acquireRequestStatistics(uint64_t id) {
   return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
 }
 
-RequestStatistics::Item const& CommTask::requestStatistics(uint64_t id) {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
+RequestTimingData& CommTask::timingData(uint64_t id) {
+  std::lock_guard guard{_statisticsMutex};
   return _statisticsMap[id];
 }
 
-RequestStatistics::Item CommTask::stealRequestStatistics(uint64_t id) {
-  RequestStatistics::Item result;
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-
-  auto iter = _statisticsMap.find(id);
-  if (iter != _statisticsMap.end()) {
-    result = std::move(iter->second);
-    _statisticsMap.erase(iter);
+RequestTimingData CommTask::stealTimingData(uint64_t id) {
+  std::lock_guard guard{_statisticsMutex};
+  auto it = _statisticsMap.find(id);
+  if (it == _statisticsMap.end()) {
+    return RequestTimingData{};  // inactive, no-op
   }
-
+  RequestTimingData result = std::move(it->second);
+  _statisticsMap.erase(it);
   return result;
+}
+
+namespace arangodb {
+void finalizeTimingData(application_features::ApplicationServer& server,
+                        RequestTimingData& data) {
+  statistics::TotalRequests.incCounter();
+  if (data.async) {
+    statistics::AsyncRequests.incCounter();
+  }
+  statistics::MethodRequests[static_cast<size_t>(data.requestType)]
+      .incCounter();
+
+  if (data.readStart != RequestTimingData::time_point{} &&
+      (data.async || data.writeEnd != RequestTimingData::time_point{})) {
+    if (data.superuser) {
+      statistics::TotalRequestsSuperuser.incCounter();
+    } else {
+      statistics::TotalRequestsUser.incCounter();
+    }
+
+    if (server.hasFeature<GeneralServerFeature>()) {
+      server.getFeature<GeneralServerFeature>().recordHttpRequestStatistics(
+          data);
+    }
+  }
+}
+}  // namespace arangodb
+
+void CommTask::finalizeTimingData(RequestTimingData& data) {
+  arangodb::finalizeTimingData(_server.server(), data);
 }
 
 /// @brief send error response including response body
@@ -563,7 +590,7 @@ void CommTask::sendSimpleResponse(rest::ResponseCode code,
     if (!buffer.empty()) {
       resp->setPayload(std::move(buffer), VPackOptions::Defaults);
     }
-    sendResponse(std::move(resp), this->stealRequestStatistics(mid));
+    sendResponse(std::move(resp), this->stealTimingData(mid));
   } catch (...) {
     LOG_TOPIC("fc831", WARN, Logger::REQUESTS)
         << "addSimpleResponse received an exception, closing connection";
@@ -633,8 +660,7 @@ void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
     handler->trackTaskEnd();
     try {
       // Pass the response to the io context
-      self->sendResponse(handler->stealResponse(),
-                         handler->stealRequestStatistics());
+      self->sendResponse(handler->stealResponse(), handler->stealTimingData());
     } catch (...) {
       LOG_TOPIC("e1322", WARN, Logger::REQUESTS)
           << "got an exception while sending response, closing connection";
@@ -672,7 +698,7 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       try {
         // Pass the response to the io context
         self->sendResponse(handler->stealResponse(),
-                           handler->stealRequestStatistics());
+                           handler->stealTimingData());
       } catch (...) {
         LOG_TOPIC("fc834", WARN, Logger::REQUESTS)
             << "got an exception while sending response, closing connection";
@@ -894,7 +920,7 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
   }
 
   // discard request and send response
-  sendResponse(std::move(resp), stealRequestStatistics(req->messageId()));
+  sendResponse(std::move(resp), stealTimingData(req->messageId()));
 }
 
 auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,

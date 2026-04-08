@@ -60,7 +60,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   virtual void setIOTimeout() override;
 
   virtual void sendResponse(std::unique_ptr<GeneralResponse> response,
-                            RequestStatistics::Item stat) override;
+                            RequestTimingData data) override;
 
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override;

@@ -27,7 +27,8 @@
 #include "Auth/TokenCache.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
-#include "Containers/FlatHashMap.h"
+#include "Containers/NodeHashMap.h"
+#include "GeneralServer/RequestTimingData.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Metrics/GaugeCounterGuard.h"
 #include "Statistics/ConnectionTimeRecorder.h"
@@ -46,7 +47,6 @@ class AuthenticationFeature;
 class GeneralRequest;
 class GeneralResponse;
 class GeneralServerFeature;
-class RequestStatistics;
 
 namespace rest {
 class RestHandler;
@@ -98,7 +98,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   virtual void start() = 0;
   virtual void stop() = 0;
 
-  void setStatistics(uint64_t id, RequestStatistics::Item&& stat);
+  void setTimingData(uint64_t id, RequestTimingData&& data);
 
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
@@ -106,7 +106,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
   /// @brief send the response to the client.
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
-                            RequestStatistics::Item) = 0;
+                            RequestTimingData) = 0;
 
   enum class Flow : bool { Continue = true, Abort = false };
   static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
@@ -164,7 +164,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                           uint64_t* jobId = nullptr);
 
   mutable std::mutex _statisticsMutex;
-  containers::FlatHashMap<uint64_t, RequestStatistics::Item> _statisticsMap;
+  containers::NodeHashMap<uint64_t, RequestTimingData> _statisticsMap;
 
  protected:
   GeneralServer& _server;

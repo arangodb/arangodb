@@ -38,6 +38,7 @@
 #include "Statistics/ConnectionTimeRecorder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
+#include "Rest/CommonDefines.h"
 
 #include <cstdint>
 #include <memory>
@@ -46,6 +47,7 @@
 
 namespace arangodb {
 class RestServerThread;
+struct RequestTimingData;
 
 class GeneralServerFeature final
     : public application_features::ApplicationFeature {
@@ -92,6 +94,8 @@ class GeneralServerFeature final
 
   void countHttp2Connection() { _http2Connections.count(); }
 
+  void recordHttpRequestStatistics(RequestTimingData const& data) noexcept;
+
   bool isTelemetricsEnabled() const noexcept {
     return _options.enableTelemetrics;
   }
@@ -125,6 +129,8 @@ class GeneralServerFeature final
   // define remaining REST handlers
   void defineRemainingHandlers(rest::RestHandlerFactory& f);
 
+  void countHttpRequestByMethod(rest::RequestType requestType) noexcept;
+
   GeneralServerOptions _options;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
@@ -133,6 +139,15 @@ class GeneralServerFeature final
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
+  metrics::Histogram<metrics::FixScale<double>>& _histConnectionTime;
+  metrics::Histogram<metrics::FixScale<double>>& _histTotalTime;
+  metrics::Histogram<metrics::FixScale<double>>& _histRequestTime;
+  metrics::Histogram<metrics::FixScale<double>>& _histQueueTime;
+  metrics::Histogram<metrics::FixScale<double>>& _histIoTime;
+  metrics::Histogram<metrics::FixScale<double>>& _histBytesReceived;
+  metrics::Histogram<metrics::FixScale<double>>& _histBytesSent;
+  metrics::Histogram<metrics::FixScale<double>>& _histBytesReceivedUser;
+  metrics::Histogram<metrics::FixScale<double>>& _histBytesSentUser;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
 

@@ -27,6 +27,7 @@
 #include "Aql/Scopes.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/debugging.h"
+#include "Aql/TypedAstNodes.h"
 
 #include <string>
 
@@ -120,9 +121,7 @@ void LazyConditions::flushAssignments() {
         _ast.addOperation(letNode);
 
         TRI_ASSERT(letNode->type == NODE_TYPE_LET);
-        Variable const* variable =
-            static_cast<Variable const*>(letNode->getMember(0)->getData());
-
+        Variable const* variable = ast::LetNode(letNode).getVariable();
         it.variableNode = _ast.createNodeReference(variable);
         TRI_ASSERT(it.variableNode->type == NODE_TYPE_REFERENCE);
 

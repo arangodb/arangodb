@@ -122,6 +122,8 @@ class Histogram final : public HistogramBase<typename Scale::Value> {
 
   uint64_t load(size_t i) const { return _c.load(i); }
 
+  ValueType sum() const { return _sum.load(std::memory_order_relaxed); }
+
   size_t size() const { return _c.size(); }
 
   void toPrometheus(std::string& result, std::string_view globals,

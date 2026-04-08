@@ -58,8 +58,6 @@ function version(options) {
   args.push('true');
   args.push('--server.rest-server');
   args.push('false');
-  args.push('--server.statistics');
-  args.push('false');  
   fs.makeDirectoryRecursive(dataDir);
 
   let results = { failed: 0 };
