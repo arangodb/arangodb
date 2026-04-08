@@ -42,6 +42,7 @@
 #include "Aql/Optimizer/Rule/ParallelizeGather.h"
 #include "Aql/Optimizer/Rule/RemoveRedundantSorts.h"
 #include "Aql/Optimizer/Rule/SortLimit.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesUseIndexes.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
 #include "Basics/Exceptions.h"
