@@ -110,7 +110,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   // Absolute minimum number of vectors required for training, might give false
   // positives with sparse indexes
-  std::int64_t trainingThreshold() const noexcept { return _trainingThreshold; }
+  std::size_t trainingThreshold() const noexcept { return _trainingThreshold; }
 
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
                            vector::TrainedData trainedData);
@@ -153,7 +153,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   vector::TrainedData _trainedData;
   StoredValues const _storedValues;
 
-  std::int64_t _trainingThreshold{0};
+  std::size_t _trainingThreshold{0};
   std::atomic<VectorIndexTrainingState> _trainingState{
       VectorIndexTrainingState::kUnusable};
 };

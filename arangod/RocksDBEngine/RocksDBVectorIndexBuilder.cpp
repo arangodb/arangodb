@@ -312,7 +312,7 @@ ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
                   "Cannot resolve nLists with scaling mode when "
                   "numDocsHint is 0"};
   }
-  return static_cast<std::size_t>(resolveNListsParameter(nLists, numDocsHint));
+  return resolveNListsParameter(nLists, numDocsHint);
 }
 
 ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
@@ -347,8 +347,7 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
   auto const& def = _index.getDefinition();
   auto faissIndex = createFaissIndex(resolvedNLists.get());
   faissIndex->nprobe = def.defaultNProbe;
-  auto const numOfTrainingVectors =
-      static_cast<std::int64_t>(trainingData.data.size() / def.dimension);
+  auto const numOfTrainingVectors = trainingData.data.size() / def.dimension;
 
   if (numOfTrainingVectors < _index.trainingThreshold()) {
     return Result{

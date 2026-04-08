@@ -120,7 +120,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 
   _trainingThreshold = std::visit(
       overload{
-          [](std::int64_t fixed) { return fixed; },
+          [](std::size_t fixed) { return fixed; },
           [](vector::NListsScalingSpec const& spec) { return spec.minNLists; }},
       _definition.nLists);
 }

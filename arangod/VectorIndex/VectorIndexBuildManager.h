@@ -75,14 +75,14 @@ class VectorIndexBuildManager {
 
   struct FailedBuildInfo {
     std::chrono::steady_clock::time_point failedAt;
-    std::int64_t documentCount;
+    std::uint64_t documentCount;
   };
 
   using FailedBuildsMap = std::unordered_map<std::uint64_t, FailedBuildInfo>;
 
   static bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
                               std::uint64_t objectId,
-                              std::int64_t currentDocCount);
+                              std::uint64_t currentDocCount);
 
   void run(std::stop_token stopToken);
 

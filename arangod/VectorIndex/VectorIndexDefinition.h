@@ -93,8 +93,8 @@ inline auto inspect(Inspector& f, NListsStrategy& x) {
 /// @brief A single tier in the NLists scaling specification.
 /// If the document count N >= threshold, use fixedValue for nLists.
 struct NListsTier {
-  std::int64_t threshold;
-  std::int64_t fixedValue;
+  std::size_t threshold;
+  std::size_t fixedValue;
 
   bool operator==(NListsTier const&) const noexcept = default;
 
@@ -139,16 +139,16 @@ struct NListsTier {
 /// N >= 300M: nLists = 131072
 struct NListsScalingSpec {
   NListsStrategy strategy{NListsStrategy::kAutoSqrt};
-  std::int64_t multiplier{4};
-  std::int64_t minNLists{2};
+  std::size_t multiplier{4};
+  std::size_t minNLists{2};
   std::vector<NListsTier> tiers;
 
   bool operator==(NListsScalingSpec const&) const noexcept = default;
 
-  std::int64_t compute(std::int64_t const docCount) const {
+  std::size_t compute(std::size_t docCount) const {
     auto const it =
         std::ranges::max_element(tiers, {}, [&](NListsTier const& t) {
-          return t.threshold <= docCount ? t.threshold : std::int64_t{-1};
+          return t.threshold <= docCount ? t.threshold : std::size_t{0};
         });
     if (it != tiers.end() && it->threshold <= docCount) {
       return it->fixedValue;
@@ -157,7 +157,7 @@ struct NListsScalingSpec {
     // No tier matched: apply strategy.
     switch (strategy) {
       case NListsStrategy::kAutoSqrt: {
-        return std::max(minNLists, static_cast<std::int64_t>(
+        return std::max(minNLists, static_cast<std::size_t>(
                                        multiplier * std::sqrt(docCount)));
       }
     }
@@ -188,13 +188,13 @@ struct NListsScalingSpec {
 };
 
 /// @brief NLists parameter: either a fixed integer or a tiered scaling spec.
-using NListsParameter = std::variant<std::int64_t, NListsScalingSpec>;
+using NListsParameter = std::variant<std::size_t, NListsScalingSpec>;
 
 template<class Inspector>
 inline auto inspect(Inspector& f, NListsParameter& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).unqualified().alternatives(
-      insp::inlineType<std::int64_t>(), insp::inlineType<NListsScalingSpec>());
+      insp::inlineType<std::size_t>(), insp::inlineType<NListsScalingSpec>());
 }
 
 /// @brief Check if an NListsParameter is in scaling mode.
@@ -205,12 +205,12 @@ inline bool isNListsScaling(NListsParameter const& p) {
 /// @brief Resolve an NListsParameter to a concrete value.
 /// In fixed mode, returns the fixed value.
 /// In scaling mode, evaluates tiers or computes multiplier * sqrt(docCount).
-inline std::int64_t resolveNListsParameter(NListsParameter const& p,
-                                           std::int64_t docCount) {
+inline std::size_t resolveNListsParameter(NListsParameter const& p,
+                                          std::size_t docCount) {
   return std::visit(
       overload{
-          [](std::int64_t fixed) -> std::int64_t { return fixed; },
-          [docCount](NListsScalingSpec const& spec) -> std::int64_t {
+          [](std::size_t fixed) -> std::size_t { return fixed; },
+          [docCount](NListsScalingSpec const& spec) -> std::size_t {
             return spec.compute(docCount);
           },
       },
@@ -248,7 +248,7 @@ struct UserVectorIndexDefinition {
                 2,
                 {{1000000, 16384}, {10000000, 65536}, {300000000, 131072}}}})
             .invariant([](NListsParameter const& value) -> inspection::Status {
-              if (auto const* fixed = std::get_if<std::int64_t>(&value)) {
+              if (auto const* fixed = std::get_if<std::size_t>(&value)) {
                 if (*fixed < 1) {
                   return {"nLists must be 1 or greater!"};
                 }
