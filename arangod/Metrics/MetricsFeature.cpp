@@ -62,7 +62,8 @@ MetricsFeature::MetricsFeature(
       _lazyStatisticsFeatureRef(std::move(lazyStatisticsFeatureRef)),
       _lazyEngineSelectorFeatureRef(std::move(lazyEngineSelectorFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
-      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)) {
+      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
+      _transactionStatistics(std::make_unique<TransactionStatistics>(*this)) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
@@ -71,7 +72,6 @@ MetricsFeature::MetricsFeature(
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   _startTime = StatisticsFeature::time();
-  _transactionStatistics = std::make_unique<TransactionStatistics>(*this);
 
   options->addOption(
       "--server.export-metrics-api", "Whether to enable the metrics API.",
