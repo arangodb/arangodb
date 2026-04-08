@@ -12,9 +12,6 @@
 * Fix vector index creation response containing a stale errorMessage after
   training succeeds when the index was created with `inBackground: false`.
 
-* Fix vector index creation response containing a stale errorMessage after
-  training succeeds when the index was created with `inBackground: false`.
-
 * Updated ArangoDB Starter to v0.19.19.
 
 * Create coredumps with correct CPU context.
