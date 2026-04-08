@@ -32,6 +32,7 @@
 #include "Aql/Optimizer/Rule/MoveFiltersIntoEnumerate.h"
 #include "Aql/Optimizer/Rule/MoveFiltersUp.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryFilters.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesConditionRewrite.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
