@@ -106,6 +106,9 @@ function VectorIndexScalingTestSuite() {
             assertEqual(65536, idx.params.nLists.tiers[1].fixedValue);
             assertEqual(300000000, idx.params.nLists.tiers[2].threshold);
             assertEqual(131072, idx.params.nLists.tiers[2].fixedValue);
+
+            // No tiers match for 100 docs, so autoSqrt applies: max(2, 4*sqrt(N))
+            assertTrue(idx.resolvedNLists > 0, "resolvedNLists should be set after training");
         },
 
         testZeroMultiplierFails: function() {
@@ -124,6 +127,89 @@ function VectorIndexScalingTestSuite() {
             } catch (e) {
                 assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
             }
+        },
+
+        testMinNListsValue: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual(15, idx.params.nLists.minNLists);
+            // multiplier=1, sqrt(N) < 15 for any per-shard count, so minNLists dominates
+            assertEqual(15, idx.resolvedNLists);
+
+            assertVectorIndexUsable(randomPoint);
+        },
+
+        testInvalidMinNListsFails: function() {
+            try {
+                collection.ensureIndex({
+                    name: idxName,
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2", dimension,
+                        nLists: { multiplier: 4, minNLists: 0, tiers: [] },
+                    },
+                });
+                fail();
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+            }
+        },
+    };
+}
+
+function VectorIndexScalingTiersTestSuite() {
+    // Uses numberOfShards: 1 so that all documents land in a single shard,
+    // making tier threshold comparisons deterministic.
+    let collection;
+    let randomPoint;
+    const seed = generateSeed();
+
+    return {
+        setUpAll: function() {
+            db._useDatabase("_system");
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, { numberOfShards: 1 });
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < insertedDocsCount; ++i) {
+                const vector = Array.from({ length: dimension }, () => gen());
+                if (i === Math.floor(insertedDocsCount / 2)) {
+                    randomPoint = vector;
+                }
+                docs.push({ vector });
+            }
+            collection.insert(docs);
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        tearDown: function() {
+            try {
+                collection.dropIndex(idxName);
+            } catch(e) {}
         },
 
         testFirstTierTriggered: function() {
@@ -149,6 +235,7 @@ function VectorIndexScalingTestSuite() {
             });
             const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
+            assertEqual(2, idx.resolvedNLists);
             assertVectorIndexUsable(randomPoint);
         },
 
@@ -175,6 +262,7 @@ function VectorIndexScalingTestSuite() {
             });
             const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
+            assertEqual(2, idx.resolvedNLists);
             assertVectorIndexUsable(randomPoint);
         },
 
@@ -201,48 +289,8 @@ function VectorIndexScalingTestSuite() {
             });
             const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
+            assertEqual(2, idx.resolvedNLists);
             assertVectorIndexUsable(randomPoint);
-        },
-
-        testMinNListsValue: function() {
-            collection.ensureIndex({
-                name: idxName,
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2", dimension,
-                    nLists: {
-                        strategy: "autoSqrt",
-                        multiplier: 1,
-                        minNLists: 15,
-                        tiers: [],
-                    },
-                },
-            });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertEqual(15, idx.params.nLists.minNLists);
-
-            assertVectorIndexUsable(randomPoint);
-        },
-
-        testInvalidMinNListsFails: function() {
-            try {
-                collection.ensureIndex({
-                    name: idxName,
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2", dimension,
-                        nLists: { multiplier: 4, minNLists: 0, tiers: [] },
-                    },
-                });
-                fail();
-            } catch (e) {
-                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
-            }
         },
     };
 }
@@ -289,6 +337,7 @@ function VectorIndexScalingEmptyCollectionTestSuite() {
 }
 
 jsunity.run(VectorIndexScalingTestSuite);
+jsunity.run(VectorIndexScalingTiersTestSuite);
 jsunity.run(VectorIndexScalingEmptyCollectionTestSuite);
 
 return jsunity.done();
