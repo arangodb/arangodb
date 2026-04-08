@@ -144,7 +144,7 @@ function VectorTrainingStateTestSuite(sparse) {
 
       assertTrue(
         waitForVectorIndexState(
-          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable),
         "Index should remain unusable with no documents"
       );
 
@@ -169,7 +169,7 @@ function VectorTrainingStateTestSuite(sparse) {
 
       assertTrue(
         waitForVectorIndexState(
-          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable),
         "Index should remain unusable with " + belowThresholdCount + " docs"
       );
 
@@ -215,7 +215,7 @@ function VectorTrainingStateTestSuite(sparse) {
 
       assertTrue(
         waitForVectorIndexState(
-          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable),
         "Index should start as unusable with " + belowThresholdCount + " docs"
       );
 
@@ -281,7 +281,7 @@ function SparseVectorIndexTestSuite() {
 
       assertTrue(
         waitForVectorIndexState(
-          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable),
         "Sparse index should remain unusable when total docs exceed threshold " +
         "but vector-bearing docs (" + belowThresholdCount + ") do not"
       );
