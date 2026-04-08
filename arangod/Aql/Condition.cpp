@@ -36,11 +36,11 @@
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
@@ -764,8 +764,9 @@ std::vector<std::vector<basics::AttributeName>> Condition::getConstAttributes(
     if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       ::clearAttributeAccess(parts);
 
-      auto lhs = member->getMember(0);
-      auto rhs = member->getMember(1);
+      ast::BinaryOperatorNode binOpNode(member);
+      auto lhs = binOpNode.getLeft();
+      auto rhs = binOpNode.getRight();
 
       if (lhs->isAttributeAccessForVariable(parts) &&
           parts.first == reference) {
@@ -818,8 +819,10 @@ Condition::getNonNullAttributes(Variable const* reference) const {
         member->type == NODE_TYPE_OPERATOR_BINARY_LT) {
       ::clearAttributeAccess(parts);
 
-      AstNode const* lhs = member->getMember(0);
-      AstNode const* rhs = member->getMember(1);
+      ast::BinaryOperatorNode binOpNode(member);
+      AstNode const* lhs = binOpNode.getLeft();
+      AstNode const* rhs = binOpNode.getRight();
+
       AstNode const* check = nullptr;
 
       if (lhs->isConstant() && lhs->isNullValue() &&
@@ -1063,8 +1066,9 @@ void Condition::collectOverlappingMembers(
          operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
       // look   for != null   and   > null
       // these can be removed if we are working with a sparse index!
-      auto lhs = operand->getMember(0);
-      auto rhs = operand->getMember(1);
+      ast::BinaryOperatorNode binOpNode(operand);
+      auto lhs = binOpNode.getLeft();
+      auto rhs = binOpNode.getRight();
 
       lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
       rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));

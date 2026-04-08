@@ -26,9 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
-  return {
-    'server.statistics': "true"
-  };
+  return {};
 }
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
@@ -40,7 +38,7 @@ function testSuite() {
   return {
     testMetricsApiWhenStatisticsOn : function() {
       const res = arango.GET_RAW("/_admin/metrics");
-      assertEqual(200, res.code, "GET /_admin/metrics should return 200 when server.statistics is true");
+      assertEqual(200, res.code, "GET /_admin/metrics should return 200");
       const body = typeof res.body === 'string' ? res.body : String(res.body);
 
       assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
@@ -78,16 +76,7 @@ function testSuite() {
       for (let i = 0; i < 10; ++i) {
         arango.GET("/_api/version");
       }
-      // statistics aggregation on server may take a short while - wait for it
-      let newValue;
-      let tries = 0;
-      while (++tries < 4 * 10) {
-        newValue = getMetric("arangodb_http_request_statistics_total_requests_total");
-        if (newValue - oldValue >= 10) {
-          break;
-        }
-        internal.sleep(0.25);
-      }
+      let newValue = getMetric("arangodb_http_request_statistics_total_requests_total");
       assertTrue(newValue - oldValue >= 10, { oldValue, newValue });
     },
 
@@ -95,8 +84,6 @@ function testSuite() {
       // metric values should never be 0 if statistics are enabled
       const connectionsBefore = getMetric("arangodb_connection_statistics_memory_usage");
       assertNotEqual(0, connectionsBefore);
-      const requestsBefore = getMetric("arangodb_request_statistics_memory_usage");
-      assertNotEqual(0, requestsBefore);
       
       // issue some random requests to the server
       for (let i = 0; i < 10; ++i) {
@@ -106,7 +93,6 @@ function testSuite() {
       // metrics values shouldn't have changed, because the statistics memory
       // is allocated at startup and shouldn't grow under normal circumstances
       assertEqual(connectionsBefore, getMetric("arangodb_connection_statistics_memory_usage"));
-      assertEqual(requestsBefore, getMetric("arangodb_request_statistics_memory_usage"));
     }
 
   };

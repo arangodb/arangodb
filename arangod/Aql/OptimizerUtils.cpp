@@ -48,6 +48,7 @@
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Containers/SmallUnorderedMap.h"
+#include "Aql/TypedAstNodes.h"
 
 #include <absl/strings/str_cat.h>
 
