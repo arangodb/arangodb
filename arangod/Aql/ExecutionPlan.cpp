@@ -2484,7 +2484,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       [&](Variable const* startNodeVar,                        //
           AstNode const* edge, /* edge part of the pattern */  //
           AstNode const* node) /* node part of the pattern */  //
-      -> std::tuple<ExecutionNode*, ExecutionNode*> {
+      -> std::tuple<ExecutionNode*, ExecutionNode*, Variable const*> {
     auto const* patternEdgeOutputVariable =
         static_cast<Variable const*>(edge->getMember(0)->getData());
     auto const* patternEdgeCollectionName = edge->getMember(1);
@@ -2570,7 +2570,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         FilterNode* filter = createNode<FilterNode>(this, nextId(), filterVar);
         filter->addDependency(calc);
 
-        return std::make_tuple(traversal, filter);
+        return std::make_tuple(traversal, filter, rightVertexVar);
 
       } break;
       case NODE_TYPE_PATTERN_NODE_PATTERN: {
@@ -2606,37 +2606,35 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         FilterNode* filter = createNode<FilterNode>(this, nextId(), filterVar);
         filter->addDependency(calc);
 
-        return std::make_tuple(traversal, filter);
+        return std::make_tuple(traversal, filter, traversalVertexOutputVar);
       } break;
       default: {
         // Throw
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected match expression member");
-        return std::make_tuple(nullptr, nullptr);
+        return std::make_tuple(nullptr, nullptr, nullptr);
       }
     }
-    return std::make_tuple(nullptr, nullptr);
   };
 
-  auto const constructVariableArray =
-      [&](std::vector<Variable const*> const& vars) {
-        auto root = _ast->createNodeArray();
-        for (auto v : vars) {
-          root->addMember(_ast->createNodeReference(v));
-        }
-        return root;
-      };
+  auto const constructArray = [&](std::vector<AstNode const*> const& vars) {
+    auto root = _ast->createNodeArray();
+    for (auto v : vars) {
+      root->addMember(v);
+    }
+    return root;
+  };
 
   auto const constructPathObject =
       [&](Variable const* outVariable,
-          std::vector<Variable const*> const& vertexVariables,
-          std::vector<Variable const*> const& edgeVariables) {
+          std::vector<AstNode const*> const& vertices,
+          std::vector<AstNode const*> const& edges) {
         auto root = _ast->createNodeObject();
 
+        root->addMember(
+            _ast->createNodeObjectElement("edges", constructArray(edges)));
         root->addMember(_ast->createNodeObjectElement(
-            "edges", constructVariableArray(edgeVariables)));
-        root->addMember(_ast->createNodeObjectElement(
-            "vertices", constructVariableArray(vertexVariables)));
+            "vertices", constructArray(vertices)));
 
         CalculationNode* calc = createNode<CalculationNode>(
             this, nextId(), std::make_unique<Expression>(_ast, root),
@@ -2653,8 +2651,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
     Variable const* prevVar = nullptr;
     Variable const* pathVariable = nullptr;
-    std::vector<Variable const*> pathVertexVariables;
-    std::vector<Variable const*> pathEdgeVariables;
+    std::vector<AstNode const*> pathVertices;
+    std::vector<AstNode const*> pathEdges;
 
     ADB_PROD_ASSERT(matchExpr->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION);
 
@@ -2669,12 +2667,12 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         std::tie(en, lastNode, prevVar) = createCollectionAccess(member);
         en->addDependency(previous);
         previous = en = lastNode;
-        pathVertexVariables.push_back(prevVar);
+        pathVertices.push_back(_ast->createNodeReference(prevVar));
       } else if (member->type == NODE_TYPE_PATTERN_PATH_VARIABLE) {
         pathVariable = static_cast<Variable const*>(member->getData());
       } else if (member->type == NODE_TYPE_REFERENCE) {
         prevVar = static_cast<Variable*>(member->getData());
-        pathVertexVariables.push_back(prevVar);
+        pathVertices.push_back(_ast->createNodeReference(prevVar));
       } else if (member->type == NODE_TYPE_PATTERN_SEGMENT) {
         // generate code like
         //  FOR <outvar> IN <edge>
@@ -2710,17 +2708,29 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
           previous = en = lastNode;
           prevVar = rightVertexVar;
 
-          pathEdgeVariables.push_back(edgeVar);
-          pathVertexVariables.push_back(prevVar);
+          pathEdges.push_back(_ast->createNodeReference(edgeVar));
+          pathVertices.push_back(_ast->createNodeReference(prevVar));
         } else {
-          auto [firstNode, lastNode] =
-              createTraversalForPattern(prevVar, /* start node */             //
-                                        edge, /* edge part of the pattern */  //
-                                        node);
-          /* the node part of the pattern */  //
+          auto [firstNode, lastNode, rightVertexVar] =
+              createTraversalForPattern(prevVar,  // start node
+                                        edge,     // edge part of the pattern
+                                        node      // node part of the pattern
+              );
 
           firstNode->addDependency(previous);
           previous = en = lastNode;
+          prevVar = rightVertexVar;
+
+          pathEdges.push_back(
+              _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
+                  _ast->createNodeReference(static_cast<Variable const*>(
+                      edge->getMember(0)->getData())),
+                  "edges")));
+          pathVertices.push_back(
+              _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
+                  _ast->createNodeReference(static_cast<Variable const*>(
+                      edge->getMember(0)->getData())),
+                  "vertices")));
         }
 
       } else {
@@ -2731,8 +2741,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
     // produce path variable if requested
     if (pathVariable != nullptr) {
-      auto calcNode = constructPathObject(pathVariable, pathVertexVariables,
-                                          pathEdgeVariables);
+      auto calcNode =
+          constructPathObject(pathVariable, pathVertices, pathEdges);
       calcNode->addDependency(previous);
       previous = en = calcNode;
     }
