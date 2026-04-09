@@ -1120,10 +1120,10 @@ version.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000)
       .setLongDescription(
-          R"(Note that format version 6 can only be read by RocksDB versions
->= 8.6.0. Thus switching to format version 6 will make the database files
-incompatible with ArangoDB versions with a lower RocksDB version in case of
-downgrading.)");
+          R"(Note that format version 6 can only be read by RocksDB
+versions >= 8.6.0. Thus switching to format version 6 will make the database
+files incompatible with ArangoDB versions with a lower RocksDB version in case
+of downgrading.)");
 
   options
       ->addOption("--rocksdb.optimize-filters-for-memory",
@@ -1307,8 +1307,8 @@ downgrading.)");
       .setIntroducedIn(31100)
       .setLongDescription(
           R"(The jemalloc-based memory allocator for the RocksDB block cache
-will also exclude the block cache contents from coredumps, potentially making generated
-coredumps a lot smaller.
+will also exclude the block cache contents from coredumps, potentially making
+generated coredumps a lot smaller.
 In order to use this option, the executable needs to be compiled with jemalloc
 support (which is the default on Linux).)");
 

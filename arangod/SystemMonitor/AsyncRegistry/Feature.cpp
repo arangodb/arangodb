@@ -190,7 +190,10 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
           new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
                                       /*minValue*/ 1))
       .setLongDescription(
-          R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
+          R"(Each thread that is involved in the async-registry needs to
+garbage collect its finished async function calls regularly. This option
+controls how often this is done in seconds. This can possibly be performance
+relevant because each involved thread acquires a lock.)");
 }
 
 velocypack::Builder Feature::getData() const {
