@@ -238,8 +238,8 @@ TEST_F(ExecutionNodeTest, annotations) {
             "some-annotated-value");
   EXPECT_EQ(node1->getAnnotatedString("does-not-exist"), std::nullopt);
 
-  // check is the cloned node has the same annotations
-  auto node2 = std::unique_ptr<ExecutionNode>{node1->clone(&plan, false)};
+  // check is the cloned node has the same annotations (plan is owner)
+  auto node2 = node1->clone(&plan, false);
   EXPECT_EQ(node2->getAnnotatedString("my-annotation-1"),
             "some-annotated-value");
   EXPECT_EQ(node2->getAnnotatedString("does-not-exist"), std::nullopt);
@@ -257,7 +257,10 @@ TEST_F(ExecutionNodeTest, annotations) {
 
   // check that annotations are serialized to velocypack
   VPackBuilder builder;
-  node1->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS | ExecutionNode::SERIALIZE_REGISTER_INFORMATION);
+  node1->setVarsUsedLater({{}});
+  node1->setVarsValid({{}});
+  node1->setRegsToKeep({{}});
+  node1->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
   auto annotations = builder.slice().get("annotations");
   EXPECT_TRUE(annotations.isObject());
   EXPECT_EQ(annotations.get("my-annotation-1").stringView(),
