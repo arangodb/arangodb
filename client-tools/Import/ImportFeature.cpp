@@ -397,8 +397,8 @@ void ImportFeature::start() {
           extension == "tsv") {
         _typeImport = extension;
         LOG_TOPIC("4271d", INFO, arangodb::Logger::FIXME)
-            << "Auto-detected file type '" << _typeImport
-            << "' from filename '" << _filename << "'";
+            << "Auto-detected file type '" << _typeImport << "' from filename '"
+            << _filename << "'";
       }
     }
   }
