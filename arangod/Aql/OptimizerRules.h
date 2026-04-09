@@ -213,17 +213,9 @@ void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                        OptimizerRule const&);
 
-/// @brief moves simple subqueries one level higher
-void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                          OptimizerRule const&);
-
 /// @brief replace FILTER and SORT containing DISTANCE function
 void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
                   OptimizerRule const&);
-
-/// @brief push LIMIT into subqueries, and simplify them
-void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
 
 /// @brief replace legacy JS functions in the plan.
 void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -247,10 +239,6 @@ void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// their upstream node.
 void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                        OptimizerRule const&);
-
-//// @brief splice in subqueries
-void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                          OptimizerRule const&);
 
 void createScatterGatherSnippet(
     ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,

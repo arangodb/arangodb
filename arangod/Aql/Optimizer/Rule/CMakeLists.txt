@@ -43,4 +43,7 @@ target_sources(arango_aql PRIVATE
   OptimizeTraversals.cpp
   RemoveFiltersCoveredByTraversal.cpp
   RemoveTraversalPathVariable.cpp
+  InlineSubqueries.cpp
+  OptimizeSubqueries.cpp
+  SpliceSubqueries.cpp
 )
