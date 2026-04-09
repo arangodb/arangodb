@@ -194,7 +194,7 @@ void RocksDBVectorIndex::toVelocyPack(
                 VPackValue("not enough training data for vector index"));
   }
 
-  if (auto nLists = resolvedNLists(); nLists.has_value()) {
+  if (auto const nLists = resolvedNLists(); nLists.has_value()) {
     builder.add(StaticStrings::IndexResolvedNLists, VPackValue(*nLists));
   }
 }
