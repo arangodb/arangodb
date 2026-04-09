@@ -39,12 +39,14 @@
 namespace arangodb::aql {
 using EN = ExecutionNode;
 
+// remove filter nodes already covered by a traversal
 void removeFiltersCoveredByTraversal(Optimizer* opt,
                                      std::unique_ptr<ExecutionPlan> plan,
                                      OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> fNodes;
   plan->findNodesOfType(fNodes, EN::FILTER, true);
   if (fNodes.empty()) {
+    // no filters present
     opt->addPlan(std::move(plan), rule, false);
     return;
   }
@@ -54,6 +56,7 @@ void removeFiltersCoveredByTraversal(Optimizer* opt,
 
   for (auto const& node : fNodes) {
     auto fn = ExecutionNode::castTo<FilterNode const*>(node);
+    // find the node with the filter expression
     auto setter = plan->getVarSetBy(fn->inVariable()->id);
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       continue;
@@ -62,6 +65,7 @@ void removeFiltersCoveredByTraversal(Optimizer* opt,
     auto calculationNode = ExecutionNode::castTo<CalculationNode*>(setter);
     auto conditionNode = calculationNode->expression()->node();
 
+    // build the filter condition
     Condition condition(plan->getAst());
     condition.andCombine(conditionNode);
     condition.normalize(plan.get());
@@ -73,6 +77,7 @@ void removeFiltersCoveredByTraversal(Optimizer* opt,
     size_t const n = condition.root()->numMembers();
 
     if (n != 1) {
+      // either no condition or multiple ORed conditions...
       continue;
     }
 
@@ -83,6 +88,8 @@ void removeFiltersCoveredByTraversal(Optimizer* opt,
         auto traversalNode =
             ExecutionNode::castTo<TraversalNode const*>(current);
 
+        // found a traversal node, now check if the expression
+        // is covered by the traversal
         auto traversalCondition = traversalNode->condition();
 
         if (traversalCondition != nullptr && !traversalCondition->isEmpty()) {
@@ -103,9 +110,15 @@ void removeFiltersCoveredByTraversal(Optimizer* opt,
                 plan.get(), outVariable, traversalCondition->root(),
                 isPathCondition);
             if (newNode == nullptr) {
+              // no condition left...
+              // FILTER node can be completely removed
               toUnlink.emplace(node);
+              // note: we must leave the calculation node intact, in case it
+              // is still used by other nodes in the plan
               return true;
             } else if (newNode != condition.root()) {
+              // some condition is left, but it is a different one than
+              // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
               auto* cn = plan->createNode<CalculationNode>(
                   plan.get(), plan->nextId(), std::move(expr),

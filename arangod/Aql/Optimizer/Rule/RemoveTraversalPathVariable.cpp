@@ -35,6 +35,8 @@
 namespace arangodb::aql {
 using EN = ExecutionNode;
 
+/// @brief removes redundant path variables, after applying
+/// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
 void removeTraversalPathVariable(Optimizer* opt,
                                  std::unique_ptr<ExecutionPlan> plan,
                                  OptimizerRule const& rule) {
@@ -42,6 +44,8 @@ void removeTraversalPathVariable(Optimizer* opt,
   plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
 
   bool modified = false;
+  // first make a pass over all traversal nodes and remove unused
+  // variables from them
 
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
