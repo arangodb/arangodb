@@ -191,14 +191,11 @@ void RestAdminServerHandler::handleMode() {
   if (requestType == rest::RequestType::GET) {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
-    // FIXME: canUseAdminAction - check if this condition is correct (positive
-    // check triggers error)
-    if (ExecContext::current()
-            .canUseAdminAction(arangodb::rbac::Category::AdminMaintenance{})
-            .ok()) {
-      generateError(
-          rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-          "You need AdminMaintenance rights for changing the server mode");
+    if (auto r = ExecContext::current().canUseAdminAction(
+            arangodb::rbac::Category::AdminMaintenance{});
+        r.fail()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    r.errorMessage());
       return;
     }
 
@@ -272,7 +269,7 @@ void RestAdminServerHandler::handleTLS() {
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else if (requestType == rest::RequestType::POST) {
     // Only the superuser may reload TLS data:
-    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "only superusers may reload TLS data");
       return;

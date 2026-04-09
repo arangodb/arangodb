@@ -54,22 +54,6 @@ RestStatus RestShutdownHandler::execute() {
     return RestStatus::DONE;
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl;
-    if (af->userManager() != nullptr) {
-      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
-                                                 /*configured*/ true);
-    } else {
-      lvl = auth::Level::RW;
-    }
-    if (lvl < auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to trigger shutdown");
-      return RestStatus::DONE;
-    }
-  }
-
   auto const& softShutdownFeature{server().getFeature<SoftShutdownFeature>()};
   auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
 
@@ -82,6 +66,14 @@ RestStatus RestShutdownHandler::execute() {
     VPackBuilder builder;
     softShutdownTracker.toVelocyPack(builder);
     generateResult(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
+  }
+
+  if (auto r = ExecContext::current().canUseAdminAction(
+          rbac::Category::AdminShutdown{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
     return RestStatus::DONE;
   }
 
