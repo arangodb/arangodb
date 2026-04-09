@@ -170,7 +170,9 @@ VPackBuilder enrichVectorIndexes(VPackSlice indexes,
           result.add(StaticStrings::IndexTrainingState,
                      VPackValue(shardState.trainingState));
           result.add("error", VPackValue(shardState.error));
-          TRI_ASSERT(shardState.resolvedNLists > 0);
+          TRI_ASSERT(shardState.trainingState !=
+                         StaticStrings::IndexTrainingStateReady ||
+                     shardState.resolvedNLists > 0);
           result.add(StaticStrings::IndexResolvedNLists,
                      VPackValue(shardState.resolvedNLists));
         }
