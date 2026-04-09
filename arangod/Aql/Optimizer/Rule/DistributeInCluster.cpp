@@ -204,7 +204,7 @@ void distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }  // for end subquery in plan
+  }    // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 

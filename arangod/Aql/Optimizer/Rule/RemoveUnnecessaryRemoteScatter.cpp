@@ -76,7 +76,7 @@ void removeUnnecessaryRemoteScatterRule(Optimizer* opt,
             node->getType() != EN::CALCULATION &&
             node->getType() != EN::FILTER) {
           // found some other node type...
-          // this disqualifies the optimization    
+          // this disqualifies the optimization
           canOptimize = false;
           break;
         }
