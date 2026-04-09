@@ -40,18 +40,18 @@ const idxName = "vector_scaling_test";
 const dimension = 128;
 const insertedDocsCount = 100;
 
-function getResolvedNLists(collection) {
-    if (isCluster) {
-        const idx = collection.getIndexes(true, true).find(i => i.name === idxName);
-        assertTrue(idx !== undefined);
-        const shardKeys = Object.keys(idx.shards);
-        assertEqual(1, shardKeys.length, "tier tests require numberOfShards: 1");
-        return idx.shards[shardKeys[0]].resolvedNLists;
-    }
-    const idx = collection.getIndexes().find(i => i.name === idxName);
+function assertResolvedNLists(nLists, collection) {
+    const idx = collection.getIndexes(true, true).find(i => i.name === idxName);
     assertTrue(idx !== undefined);
-    return idx.resolvedNLists;
+    if (isCluster) {
+        assertTrue(idx.shards.length > 0);1
+        idx.shards.array.forEach(shard => {
+            assertEqual(nLists, shard.resolvedNLists, `On shard ${JSON.stringify(shard)} the resolvedNLists do not match ${nLists}`);
+        });
+    }
+    assertEqual(nLists, idx.params.resolvedNLists, `The resolvedNLists: ${idx.params.resolvedNLists} do not match expected nLists: ${nLists}`);
 }
+
 
 function assertVectorIndexUsable(queryPoint, limit = 5) {
     const query = `FOR d IN ${collName}
@@ -122,8 +122,13 @@ function VectorIndexScalingTestSuite() {
             assertEqual(131072, idx.params.nLists.tiers[2].fixedValue);
 
             // No tiers match for 100 docs, so autoSqrt applies: max(2, 4*sqrt(N))
-            if (!isCluster) {
-                assertTrue(idx.resolvedNLists > 0, "resolvedNLists should be set after training");
+            if (isCluster) {
+                const detailed = collection.getIndexes(true, true).find(i => i.name === idxName);
+                for (const [, shard] of Object.entries(detailed.shards)) {
+                    assertTrue(shard.resolvedNLists > 0, "per-shard resolvedNLists should be set");
+                }
+            } else {
+                assertTrue(idx.params.resolvedNLists > 0, "resolvedNLists should be set after training");
             }
         },
 
@@ -165,8 +170,13 @@ function VectorIndexScalingTestSuite() {
             assertTrue(idx !== undefined);
             assertEqual(15, idx.params.nLists.minNLists);
             // multiplier=1, sqrt(N) < 15 for any per-shard count, so minNLists dominates
-            if (!isCluster) {
-                assertEqual(15, idx.resolvedNLists);
+            if (isCluster) {
+                const detailed = collection.getIndexes(true, true).find(i => i.name === idxName);
+                for (const [, shard] of Object.entries(detailed.shards)) {
+                    assertEqual(15, shard.resolvedNLists);
+                }
+            } else {
+                assertEqual(15, idx.params.resolvedNLists);
             }
 
             assertVectorIndexUsable(randomPoint);
@@ -251,7 +261,7 @@ function VectorIndexScalingTiersTestSuite() {
                     },
                 },
             });
-            assertEqual(2, getResolvedNLists(collection));
+            assertResolvedNLists(2, collection);
             assertVectorIndexUsable(randomPoint);
         },
 
@@ -276,7 +286,7 @@ function VectorIndexScalingTiersTestSuite() {
                     },
                 },
             });
-            assertEqual(2, getResolvedNLists(collection));
+            assertResolvedNLists(2, collection);
             assertVectorIndexUsable(randomPoint);
         },
 
@@ -301,7 +311,7 @@ function VectorIndexScalingTiersTestSuite() {
                     },
                 },
             });
-            assertEqual(2, getResolvedNLists(collection));
+            assertResolvedNLists(2, collection);
             assertVectorIndexUsable(randomPoint);
         },
     };
