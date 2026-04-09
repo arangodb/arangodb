@@ -110,7 +110,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
         vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
 
     _faissIndex->replace_invlists(
-        new vector::RocksDBInvertedLists(this, &coll, _definition.nLists,
+        new vector::RocksDBInvertedLists(this, &coll, _faissIndex->nlist,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
 
@@ -118,12 +118,17 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                      VectorIndexTrainingState::kReady);
   }
 
-  _trainingThreshold = _definition.nLists;
+  _trainingThreshold = std::visit(
+      overload{
+          [](std::size_t fixed) { return fixed; },
+          [](vector::NListsScalingSpec const& spec) { return spec.minNLists; }},
+      _definition.nLists);
 }
 
 RocksDBVectorIndex::~RocksDBVectorIndex() = default;
 
-TrainedData RocksDBVectorIndex::loadTrainedData(velocypack::Slice info) const {
+vector::TrainedData RocksDBVectorIndex::loadTrainedData(
+    velocypack::Slice info) const {
   RocksDBKey key;
   key.constructVectorIndexTrainedData(objectId());
 
@@ -131,7 +136,7 @@ TrainedData RocksDBVectorIndex::loadTrainedData(velocypack::Slice info) const {
   rocksdb::ReadOptions ro;
   auto status = _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw);
 
-  TrainedData result;
+  vector::TrainedData result;
   if (status.ok()) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
@@ -151,7 +156,7 @@ bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
 
-  UserVectorIndexDefinition definition;
+  vector::UserVectorIndexDefinition definition;
   velocypack::deserialize(info.get("params"), definition);
   if (definition != _definition) {
     return false;
@@ -192,7 +197,8 @@ void RocksDBVectorIndex::toVelocyPack(
 
 std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
 RocksDBVectorIndex::readBatch(
-    std::vector<float>& inputs, SearchParameters const& searchParameters,
+    std::vector<float>& inputs,
+    vector::SearchParameters const& searchParameters,
     RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
     std::shared_ptr<LogicalCollection> collection, std::size_t topK,
     aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
@@ -205,7 +211,7 @@ RocksDBVectorIndex::readBatch(
       << ", dimension: " << _definition.dimension
       << ", inputs size: " << inputs.size();
 
-  if (_definition.metric == SimilarityMetric::kCosine) {
+  if (_definition.metric == vector::SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
   }
 
@@ -253,7 +259,7 @@ RocksDBVectorIndex::readBatch(
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
-  if (_definition.metric == SimilarityMetric::kL2) {
+  if (_definition.metric == vector::SimilarityMetric::kL2) {
     std::ranges::transform(distances, distances.begin(),
                            [](auto const& elem) { return std::sqrt(elem); });
   }
@@ -273,12 +279,13 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
 }
 
 void RocksDBVectorIndex::applyTrainingResult(
-    std::shared_ptr<faiss::IndexIVF> faissIndex, TrainedData trainedData) {
+    std::shared_ptr<faiss::IndexIVF> faissIndex,
+    vector::TrainedData trainedData) {
   _faissIndex = std::move(faissIndex);
   _trainedData = std::move(trainedData);
 
   _faissIndex->replace_invlists(
-      new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
+      new vector::RocksDBInvertedLists(this, &collection(), _faissIndex->nlist,
                                        _faissIndex->code_size),
       true /* faiss owns the inverted list */);
 }
@@ -344,6 +351,11 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
+  if (_faissIndex == nullptr) {
+    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
+        << "vector index " << _iid.id() << " not yet trained, skipping insert";
+    return {};
+  }
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -364,7 +376,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   }
   TRI_ASSERT(_faissIndex != nullptr);
 
-  if (_definition.metric == SimilarityMetric::kCosine) {
+  if (_definition.metric == vector::SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
@@ -409,6 +421,11 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
+  if (_faissIndex == nullptr) {
+    LOG_TOPIC("d1e0b", DEBUG, Logger::ENGINES)
+        << "vector index " << _iid.id() << " not yet trained, skipping remove";
+    return {};
+  }
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -424,7 +441,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
     return {};
   }
 
-  if (_definition.metric == SimilarityMetric::kCosine) {
+  if (_definition.metric == vector::SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
@@ -444,7 +461,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   return {};
 }
 
-UserVectorIndexDefinition const&
+vector::UserVectorIndexDefinition const&
 RocksDBVectorIndex::getVectorIndexDefinition() {
   return getDefinition();
 }
