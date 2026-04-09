@@ -807,7 +807,7 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
 };
 
 
-exports.DumpRestoreHelper = DumpRestoreHelper;
+exports.persistenceToolkit = persistenceToolkit;
 exports.getClusterStrings = function(options) {
   if (options.hasOwnProperty('allDatabases') && options.allDatabases) {
     return {
