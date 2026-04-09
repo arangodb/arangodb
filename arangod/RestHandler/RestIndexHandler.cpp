@@ -112,14 +112,14 @@ VPackBuilder enrichVectorIndexes(VPackSlice indexes,
   VPackBuilder result;
   {
     VPackArrayBuilder guard(&result);
-    for (auto pi : VPackArrayIterator(indexes)) {
-      auto typeSlice = pi.get("type");
+    for (auto indexSlice : VPackArrayIterator(indexes)) {
+      auto typeSlice = indexSlice.get("type");
       if (!typeSlice.isString() || typeSlice.stringView() != "vector") {
-        result.add(pi);
+        result.add(indexSlice);
         continue;
       }
 
-      std::string_view iid = pi.get("id").stringView();
+      std::string_view iid = indexSlice.get("id").stringView();
       std::string_view bareId = iid;
       if (auto pos = bareId.find('/'); pos != std::string::npos) {
         bareId = bareId.substr(pos + 1);
@@ -127,14 +127,14 @@ VPackBuilder enrichVectorIndexes(VPackSlice indexes,
 
       auto states = getShardStates(bareId);
       if (states.empty()) {
-        result.add(pi);
+        result.add(indexSlice);
         continue;
       }
 
       std::string_view aggregateState = aggregateTrainingState(states);
 
       VPackObjectBuilder o(&result);
-      for (auto it : VPackObjectIterator(pi)) {
+      for (auto it : VPackObjectIterator(indexSlice)) {
         auto key = it.key.stringView();
         if (key == StaticStrings::IndexResolvedNLists ||
             key == StaticStrings::IndexTrainingState ||
