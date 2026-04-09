@@ -234,6 +234,22 @@ workflows:
           size: arangodb/2xlarge-amd64
 
       - test-job:
+          name: small-arango-x64-privileged
+          size: arangodb/small-amd64-privileged
+      - test-job:
+          name: medium-arango-x64-privileged
+          size: arangodb/medium-amd64-privileged
+      - test-job:
+          name: large-arango-x64-privileged
+          size: arangodb/large-amd64-privileged
+      - test-job:
+          name: xlarge-arango-x64-privileged
+          size: arangodb/xlarge-amd64-privileged
+      - test-job:
+          name: 2xlarge-arango-x64-privileged
+          size: arangodb/2xlarge-amd64-privileged
+
+      - test-job:
           name: small-arango-arm
           size: arangodb/small-arm64
       - test-job:
@@ -248,3 +264,19 @@ workflows:
       - test-job:
           name: 2xlarge-arango-arm
           size: arangodb/2xlarge-arm64
+
+      - test-job:
+          name: small-arango-arm-privileged
+          size: arangodb/small-arm64-privileged
+      - test-job:
+          name: medium-arango-arm-privileged
+          size: arangodb/medium-arm64-privileged
+      - test-job:
+          name: large-arango-arm-privileged
+          size: arangodb/large-arm64-privileged
+      - test-job:
+          name: xlarge-arango-arm-privileged
+          size: arangodb/xlarge-arm64-privileged
+      - test-job:
+          name: 2xlarge-arango-arm-privileged
+          size: arangodb/2xlarge-arm64-privileged
