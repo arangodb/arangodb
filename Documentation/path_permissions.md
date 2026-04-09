@@ -264,6 +264,8 @@ central implementation of these methods.
       - DatabaseAccessLevel::Read: needs auth::Level::RO or more
       - DatabaseAccessLevel::Write: needs auth::Level::RW
 
+   If the user is not allowed to see the database, this must return NOT_FOUND!
+  
  - `canSeeCollection(std::string_view db, std::string_view coll) -> Result`
 
    check RO access for database (that is, always return Ok, since this has been checked already)
@@ -282,8 +284,10 @@ central implementation of these methods.
 
       - CollectionAccessLevel::Read: needs auth::Level::RO or more
       - CollectionAccessLevel::WriteData: needs auth::Level::RW
-      - CollectionAccessLevel::WriteMeta: needs auth::Level::RW
+      - CollectionAccessLevel::WriteMeta: needs auth::Level::RW and auth::Level::RW on database!
 
+   If the user is not allowed to see the collection, this must return NOT_FOUND!
+  
  - `canSeeView(std::string_view db, std::string_view view) -> Result`
 
    check RO access for database (no-op)
@@ -302,10 +306,12 @@ central implementation of these methods.
   
       - AccessLevel::Read: needs auth::Level::RO or more
       - AccessLevel::WriteData: needs auth::Level::RW
-      - AccessLevel::WriteMeta: needs auth::Level::RW
+      - AccessLevel::WriteMeta: needs auth::Level::RW and auth::Level::RW on database!
 
    Note that we leave the code as it is to additionally check if the user
    has `canUseCollection(RO)` for all linked collections.
+  
+   If the user is not allowed to see the view, this must return NOT_FOUND!
   
  - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
 
@@ -321,11 +327,9 @@ central implementation of these methods.
 
  - `canUseAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
 
-   check RO access for database: Note that the code contains some useless statements
-   which seem to check for RO access on the `_analyzers` collection, however, since
-   this is a system collection, its auth level is always equal to the one of the
-   database, so this only checks the same auth level again. So we do not change the
-   behaviour, if we change this, and everything will be simpler.
+   assume RO access for database is already checked. Check nothing else without RBAC.
+  
+   If the user is not allowed to see the analyzer, this must return NOT_FOUND!
   
 - `isSuperUser() -> bool`
 
@@ -363,6 +367,8 @@ central implementation of these methods.
    check database access level, i.e. check RBAC actions `db:ReadDatabase` and
    `db:WriteDatabase`
 
+   If the user is not allowed to see the database, this must return NOT_FOUND!
+  
  - `canSeeCollection(std::string_view db, std::string_view coll) -> Result`
 
    check collection access level to be at least RO, i.e., check RBAC action
@@ -384,6 +390,8 @@ central implementation of these methods.
    `db:ReadCollection` and `db:WriteCollectionData` and
    `db:WriteCollectionMeta` to find NONE, or RO, or RWDATA, or RW
 
+   If the user is not allowed to see the collection, this must return NOT_FOUND!
+  
  - `canSeeView(std::string_view db, std::string_view view) -> Result`
 
    check view access level to be at least RO, i.e., check RBAC action
@@ -406,6 +414,8 @@ central implementation of these methods.
 
    Note that we leave the code as it is to additionally check if the user
    has `canUseCollection(RO)` for all linked collections.
+  
+   If the user is not allowed to see the view, this must return NOT_FOUND!
   
  - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
 
@@ -431,6 +441,8 @@ central implementation of these methods.
    To call the API, one has to have at least RO access to the database anyway.
    But writing an analyzer is now done via RBAC and reading, too.
 
+   If the user is not allowed to see the analyzer, this must return NOT_FOUND!
+  
 - `isSuperUser() -> bool`
 
   must return `true` if and only if the authenticated user is the superuser (JWT
@@ -495,6 +507,7 @@ S/A          - API is switchable between superuser and admin access, additionall
 S/A/AU       - API is switchable between superuser only and admin only and AUTHEN
 SA/SW/LEG    - API is switchable between SA (superuser needed for everything), SW (superuser needed for write
                operations), LEG (legacy mode, superuser not needed, further authorization applies
+?/S/A/O      - API is switchable between off, superuser only, admin only and public (which is AUTHEN)
 
 
 |DONE|REVI|TEST| Method | Path                                                         | RestHandler                | Abstract auth call                       | Authorization                       | Comments                                 | Changes to before RBAC |
@@ -568,22 +581,22 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    |    | DELETE | `/_api/job/{id}`                                             | RestJobHandler             | -                                        | AUTHEN                              | We check in the JobManager same use      |                        |
 | X  |    |    | GET    | `/_admin/license`                                            | RestLicenseHandler(EE)     | canAccessHard(License)                   | AdminLicense, HARD                  |                                          |                        |
 | X  |    |    | PUT    | `/_admin/license`                                            | RestLicenseHandler(EE)     | canAccessHard(License)                   | AdminLicense, HARD                  |                                          |                        |
-| X  |    |    | GET    | `/_admin/log`                                                | RestAdminLogHandler        | canUseAdmin(ReadLogs)                    | AdminReadLogs                       | ?/S/A                                    |                        |
-| X  |    |    | GET    | `/_admin/log/entries`                                        | RestAdminLogHandler        | canUseAdmin(ReadLogs)                    | AdminReadLogs                       | ?/S/A                                    |                        |
-| X  |    |    | GET    | `/_admin/log/level`                                          | RestAdminLogHandler        | canUseAdmin(ReadLogs)                    | AdminReadLogs                       | ?/S/A                                    |                        |
-| X  |    |    | GET    | `/_admin/log/structured`                                     | RestAdminLogHandler        | canUseAdmin(ReadLogs)                    | AdminReadLogs                       | ?/S/A                                    |                        |
-| X  |    |    | PUT    | `/_admin/log/level`                                          | RestAdminLogHandler        | canUseAdmin(SetLogLevel)                 | AdminSetLogLevel                    | ?/S/A                                    |                        |
-| X  |    |    | PUT    | `/_admin/log/structured`                                     | RestAdminLogHandler        | canUseAdmin(SetLogLevel)                 | AdminSetLogLevel                    | ?/S/A                                    |                        |
-| X  |    |    | DELETE | `/_admin/log`                                                | RestAdminLogHandler        | canUseAdmin(SetLogLevel)                 | AdminSetLogLevel                    | ?/S/A                                    |                        |
-| X  |    |    | DELETE | `/_admin/log/entries`                                        | RestAdminLogHandler        | canUseAdmin(SetLogLevel)                 | AdminSetLogLevel                    | ?/S/A                                    |                        |
-| X  |    |    | DELETE | `/_admin/log/level`                                          | RestAdminLogHandler        | canUseAdmin(SetLogLevel)                 | AdminSetLogLevel                    | ?/S/A                                    |                        |
+| X  |    |    | GET    | `/_admin/log`                                                | RestAdminLogHandler        | isSuperuser / canUseAdmin(ReadLogs)      | AdminReadLogs                       | ?/S/A                                    |                        |
+| X  |    |    | GET    | `/_admin/log/entries`                                        | RestAdminLogHandler        | isSuperuser / canUseAdmin(ReadLogs)      | AdminReadLogs                       | ?/S/A                                    |                        |
+| X  |    |    | GET    | `/_admin/log/level`                                          | RestAdminLogHandler        | isSuperuser / canUseAdmin(ReadLogs)      | AdminReadLogs                       | ?/S/A                                    |                        |
+| X  |    |    | GET    | `/_admin/log/structured`                                     | RestAdminLogHandler        | isSuperuser / canUseAdmin(ReadLogs)      | AdminReadLogs                       | ?/S/A                                    |                        |
+| X  |    |    | PUT    | `/_admin/log/level`                                          | RestAdminLogHandler        | isSuperuser / canUseAdmin(SetLogLevel)   | AdminSetLogLevel                    | ?/S/A                                    |                        |
+| X  |    |    | PUT    | `/_admin/log/structured`                                     | RestAdminLogHandler        | isSuperuser / canUseAdmin(SetLogLevel)   | AdminSetLogLevel                    | ?/S/A                                    |                        |
+| X  |    |    | DELETE | `/_admin/log`                                                | RestAdminLogHandler        | isSuperuser / canUseAdmin(SetLogLevel)   | AdminSetLogLevel                    | ?/S/A                                    |                        |
+| X  |    |    | DELETE | `/_admin/log/entries`                                        | RestAdminLogHandler        | isSuperuser / canUseAdmin(SetLogLevel)   | AdminSetLogLevel                    | ?/S/A                                    |                        |
+| X  |    |    | DELETE | `/_admin/log/level`                                          | RestAdminLogHandler        | isSuperuser / canUseAdmin(SetLogLevel)   | AdminSetLogLevel                    | ?/S/A                                    |                        |
 | X  |    |    | GET    | `/_admin/metrics`                                            | RestMetricsHandler         | canAccessHard(Monitoring)                | AdminMonitoring, HARD               |                                          |                        |
-| X  |    |    | GET    | `/_admin/options`                                            | RestOptionsHandler         | canUseAdmin(Options)                     | AdminOptions                        | S/A/AU                                   |                        |
-| X  |    |    | GET    | `/_admin/options-description`                                | RestOptionsDescriptionHandler |  canUseAdmin(Options)                 | AdminOptions                        | S/A/AU                                   |                        |
+| X  |    |    | GET    | `/_admin/options`                                            | RestOptionsHandler         | isSuperuser / canUseAdmin(Options) / -   | AdminOptions                        | S/A/AU                                   |                        |
+| X  |    |    | GET    | `/_admin/options-description`                                | RestOptionsDescriptionHandler | isSuperuser / canUseAdmin(Options) / -| AdminOptions                        | S/A/AU                                   |                        |
 | X  |    |    | GET    | `/_admin/options-public`                                     | RestPublicOptionsHandler   | -                                        | AUTHEN                              |                                          |                        |
 | X  |    |    | POST   | `/_admin/routing/reload`                                     | RestAdminRoutingHandler    | -                                        | AUTHEN                              | (V8 required)                            |                        |
-| X  |    |    | GET    | `/_admin/server/api-calls`                                   | RestAdminServerHandler     | canUseAdmin(ApiCalls)                    | AdminApiCalls                       | ?/S/A                                    |                        |
-| X  |    |    | GET    | `/_admin/server/aql-queries`                                 | RestAdminServerHandler     | canUseAdmin(AqlQueries)                  | AdminAqlQueries                     | ?/S/A                                    |                        |
+| X  |    |    | GET    | `/_admin/server/api-calls`                                   | RestAdminServerHandler     | isSuperuser / canUseAdmin(ApiCalls)      | AdminApiCalls                       | ?/S/A                                    |                        |
+| X  |    |    | GET    | `/_admin/server/aql-queries`                                 | RestAdminServerHandler     | isSuperuser / canUseAdmin(AqlQueries)    | AdminAqlQueries                     | ?/S/A                                    |                        |
 | X  |    |    | GET    | `/_admin/server/availability`                                | RestAdminServerHandler     | -                                        | OPEN                                |                                          |                        |
 | X  |    |    | GET    | `/_admin/server/databaseDefaults`                            | RestAdminServerHandler     | -                                        | AUTHEN                              |                                          |                        |
 | X  |    |    | GET    | `/_admin/server/id`                                          | RestAdminServerHandler     | -                                        | AUTHEN                              | (cluster only)                           |                        |
@@ -598,74 +611,74 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    |    | POST   | `/_admin/server/encryption`                                  | RestAdminServerHandler     | isSuperUser                              | SUPER                               | (not on coordinators)                    |                        |
 | X  |    |    | GET    | `/_admin/shutdown`                                           | RestShutdownHandler        | -                                        | AUTHEN                              | (only coordinator for soft shutdown)     |                        |
 | X  |    |    | DELETE | `/_admin/shutdown`                                           | RestShutdownHandler        | canUseAdmin(Shutdown)                    | AdminShutdown                       |                                          |                        |
-|    |    |    | GET    | `/_admin/statistics`                                         | RestAdminStatisticsHandler |                                          | AdminMonitoring HARD                |                                          |                        |
-|    |    |    | GET    | `/_admin/statistics-description`                             | RestAdminStatisticsHandler |                                          | AdminMonitoring HARD                |                                          |                        |
-|    |    |    | GET    | `/_admin/status`                                             | RestAdminStatusHandler     |                                          | AdminMonitoring HARD                |                                          |                        |
-|    |    |    | GET    | `/_admin/supervisionState`                                   | RestSupervisionStateHandler|                                          | AdminSupervisionState               | (cluster only)                           |                        |
-|    |    |    | GET    | `/_admin/support-info`                                       | RestSupportInfoHandler     |                                          | AdminMonitoring                     |                                          |                        |
-|    |    |    | GET    | `/_admin/system-report`                                      | RestSystemReportHandler    |                                          | AdminMonitoringInternal HARD        |                                          |                        |
-|    |    |    | GET    | `/_admin/telemetrics`                                        | RestTelemtricsHandler      |                                          | AdminMonitoringInternal             |                                          |                        |
-|    |    |    | DELETE | `/_admin/telemetrics`                                        | RestTelemetricsHandler     |                                          | AdminMonitoringInternal             |                                          |                        |
-|    |    |    | GET    | `/_admin/time`                                               | RestTimeHandler            |                                          | AUTHEN                              |                                          |                        |
-|    |    |    | GET    | `/_admin/usage-metrics`                                      | RestUsageMetricsHandler    |                                          | AdminMonitoringInternal HARD        |                                          |                        |
-|    |    |    | GET    | `/_admin/version`                                            | RestVersionhandler         |                                          | AUTHEN, details (2)                 |                                          |                        |
-|    |    |    | GET    | `/_admin/wal/properties`                                     | RestWalAccessHandler       |                                          | SUPER                               | (RocksDB engine)                         |                        |
-|    |    |    | PUT    | `/_admin/wal/properties`                                     | RestWalAccessHandler       |                                          | SUPER                               | (RocksDB engine)                         |                        |
-|    |    |    | GET    | `/_admin/wal/transactions`                                   | RestWalAccessHandler       |                                          | SUPER                               | (RocksDB engine)                         |                        |
-|    |    |    | PUT    | `/_admin/wal/flush`                                          | RestWalAccessHandler       |                                          | SUPER                               | (RocksDB engine)                         |                        |
-|    |    |    | PUT    | `/_admin/wal/wait_for_estimator_sync`                        | RestWalAccessHandler       |                                          | SUPER                               | (RocksDB engine)                         |                        |
-|    |    |    | GET    | `/_admin/wal/properties`                                     | ClusterRestWalHandler      |                                          | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
-|    |    |    | PUT    | `/_admin/wal/properties`                                     | ClusterRestWalHandler      |                                          | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
-|    |    |    | GET    | `/_admin/wal/transactions`                                   | ClusterRestWalHandler      |                                          | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
-|    |    |    | PUT    | `/_admin/wal/flush`                                          | ClusterRestWalHandler      |                                          | AUTHEN                              | (Cluster engine) DELEGATED               |                        |
-|    |    |    | PUT    | `/_admin/wal/wait_for_estimator_sync`                        | ClusterRestWalHandler      |                                          | AdminWalAccess (PROD)/SUPER (MAINT) | (Cluster engine)                         |                        |
-|    |    |    | GET    | `/_api/aql-builtin`                                          | RestAqlFunctionsHandler    |                                          | AUTHEN                              |                                          |                        |
-|    |    |    | GET    | `/_api/aqlfunction`                                          | RestAqlUserFunctionsHandler|                                          | AUTHEN + COLL RO _aqlfunctions      | (V8 required)                            |                        |
-|    |    |    | GET    | `/_api/aqlfunction/{namespace}`                              | RestAqlUserFunctionsHandler|                                          | AUTHEN + COLL RO _aqlfunctions      | (V8 required)                            |                        |
-|    |    |    | POST   | `/_api/aqlfunction`                                          | RestAqlUserFunctionsHandler|                                          | AUTHEN + COLL RW _aqlfunctions      | (V8 required)                            |                        |
-|    |    |    | DELETE | `/_api/aqlfunction/{name}`                                   | RestAqlUserFunctionsHandler|                                          | AUTHEN + COLL RW _aqlfunctions      | (V8 required)                            |                        |
-|    |    |    | GET    | `/_api/analyzer`                                             | RestAnalyzerHandler        |                                          | AUTHEN + COLL RO _analyzers         | IS THIS OK???                            |                        |
-|    |    |    | GET    | `/_api/analyzer/{name}`                                      | RestAnalyzerHandler        |                                          | AUTHEN + COLL RO _analyzers         | IS THIS OK???                            |                        |
-|    |    |    | POST   | `/_api/analyzer`                                             | RestAnalyzerHandler        |                                          | AUTHEN + COLL RW _analyzers         | IS THIS OK???                            |                        |
-|    |    |    | DELETE | `/_api/analyzer/{name}`                                      | RestAnalyzerHandler        |                                          | AUTHEN + COLL RW _analyzers         | IS THIS OK???                            |                        |
-|    |    |    | GET    | `/_api/cluster/agency-cache`                                 | RestClusterHandler         |                                          | AdminReadAgency                     | (cluster only)                           | was RW/_system         |
-|    |    |    | GET    | `/_api/cluster/agency-dump`                                  | RestClusterHandler         |                                          | AdminReadAgency                     | (cluster only)                           |                        |
-|    |    |    | GET    | `/_api/cluster/cluster-info`                                 | RestClusterHandler         |                                          | AdminClusterInfo                    | (cluster only)                           |                        |
-|    |    |    | PUT    | `/.../flush`                                                 | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | GET    | `/.../get_collection_info/{db}/{coll}`                       | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | GET    | `/.../get_collection_info_current/{db}/{coll}/{shard}`       | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | POST   | `/.../get_responsible_servers`                               | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | POST   | `/.../get_responsible_shard/{db}/{coll}`                     | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | GET    | `/.../get_analyzers_revision/{db}`                           | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | GET    | `/.../wait_for_plan_version/{version}`                       | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | GET    | `/.../get_max_number_of_shards`                              | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | GET    | `/.../get_max_replication_factor`                            | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | GET    | `/.../get_min_replication_factor`                            | RestClusterHandler         |                                          | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
-|    |    |    | GET    | `/_api/cluster/endpoints`                                    | RestClusterHandler         |                                          | AUTHEN                              | (cluster only)                           |                        |
-|    |    |    | GET    | `/_api/collection`                                           | RestCollectionHandler      |                                          | AUTHEN, details (3)                 |                                          |                        |
-|    |    |    | POST   | `/_api/collection`                                           | RestCollectionHandler      |                                          | DB RW                               | should be canCreateDropCollection        | FIXME                  |
-|    |    |    | GET    | `/_api/collection/{name}`                                    | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | GET    | `/_api/collection/{name}/checksum`                           | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | GET    | `/_api/collection/{name}/count`                              | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | GET    | `/_api/collection/{name}/figures`                            | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | GET    | `/_api/collection/{name}/properties`                         | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | GET    | `/_api/collection/{name}/revision`                           | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | GET    | `/_api/collection/{name}/shards`                             | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | PUT    | `/_api/collection/{name}/compact`                            | RestCollectionHandler      |                                          | canUseCollection(WriteMeta)         |                                          |                        |
-|    |    |    | PUT    | `/_api/collection/{name}/load`                               | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | PUT    | `/_api/collection/{name}/loadIndexesIntoMemory`              | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | PUT    | `/_api/collection/{name}/properties`                         | RestCollectionHandler      |                                          | canUseCollection(WriteMeta)         |                                          |                        |
-|    |    |    | PUT    | `/_api/collection/{name}/rename`                             | RestCollectionHandler      |                                          | DB RW + canUseCollection(WriteMeta) |                                          |                        |
-|    |    |    | PUT    | `/_api/collection/{name}/responsibleShard`                   | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | PUT    | `/_api/collection/{name}/truncate`                           | RestCollectionHandler      |                                          | canUseCollection(WriteData)         |                                          |                        |
-|    |    |    | PUT    | `/_api/collection/{name}/unload`                             | RestCollectionHandler      |                                          | canUseCollection(Read)              |                                          |                        |
-|    |    |    | DELETE | `/_api/collection/{name}`                                    | RestCollectionHandler      |                                          | DB RW + canUseCollection(WriteMeta) | should be canCreateDropCollection        | FIXME                  |
-|    |    |    | POST   | `/_api/cursor`                                               | RestCursorHandler          |                                          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-|    |    |    | POST   | `/_api/cursor/json`                                          | RestCursorHandler          |                                          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-|    |    |    | POST   | `/_api/cursor/{id}`                                          | RestCursorHandler          |                                          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-|    |    |    | POST   | `/_api/cursor/{id}/{batch-id}`                               | RestCursorHandler          |                                          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-|    |    |    | PUT    | `/_api/cursor/{id}`                                          | RestCursorHandler          |                                          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
-|    |    |    | DELETE | `/_api/cursor/{id}`                                          | RestCursorHandler          |                                          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+| X  |    |    | GET    | `/_admin/statistics`                                         | RestAdminStatisticsHandler | canAccessHard(Monitoring)                | AdminMonitoring, HARD               |                                          |                        |
+| X  |    |    | GET    | `/_admin/statistics-description`                             | RestAdminStatisticsHandler | canAccessHard(Monitoring)                | AdminMonitoring, HARD               |                                          |                        |
+| X  |    |    | GET    | `/_admin/status`                                             | RestAdminStatusHandler     | canAccessHard(Monitoring)                | AdminMonitoring HARD                |                                          |                        |
+| X  |    |    | GET    | `/_admin/supervisionState`                                   | RestSupervisionStateHandler| canUseAdmin(SupervisionState)            | AdminSupervisionState               | (coordinator only)                       |                        |
+| X  |    |    | GET    | `/_admin/support-info`                                       | RestSupportInfoHandler     | isSuperUser / canUseAdmin(Monitoring) / -| AdminMonitoring                     | ?/S/A/AU                                 |                        |
+| X  |    |    | GET    | `/_admin/system-report`                                      | RestSystemReportHandler    | canAccessHard(MonitoringInternal)        | AdminMonitoringInternali, HARD      |                                          |                        |
+| X  |    |    | GET    | `/_admin/telemetrics`                                        | RestTelemetricsHandler     | isSuperUser / canUseAdmin(MonitoringInternal) / -  | AdminMonitoringInternal   | ?/S/A/AU                                 |                        |
+| X  |    |    | DELETE | `/_admin/telemetrics`                                        | RestTelemetricsHandler     | isSuperUser / canUseAdmin(MonitoringInternal) / -  | AdminMonitoringInternal   | ?/S/A/AU                                 |                        |
+| X  |    |    | GET    | `/_admin/time`                                               | RestTimeHandler            | -                                        | AUTHEN                              |                                          |                        |
+| X  |    |    | GET    | `/_admin/usage-metrics`                                      | RestUsageMetricsHandler    | canAccessHard(MonitoringInternal)        | AdminMonitoringInternal HARD        |                                          |                        |
+| X  |    |    | GET    | `/_admin/version`                                            | RestVersionhandler         | -/canAccessHard(MonitoringInternal)      | AUTHEN, details (2)                 |                                          |                        |
+| X  |    |    | GET    | `/_admin/wal/properties`                                     | RestWalAccessHandler       | -                                        | SUPER                               | (RocksDB engine) only DBServer           |                        |
+| X  |    |    | PUT    | `/_admin/wal/properties`                                     | RestWalAccessHandler       | -                                        | SUPER                               | (RocksDB engine) only DBServer           |                        |
+| X  |    |    | GET    | `/_admin/wal/transactions`                                   | RestWalAccessHandler       | -                                        | SUPER                               | (RocksDB engine) only DBServer           |                        |
+| X  |    |    | PUT    | `/_admin/wal/flush`                                          | RestWalAccessHandler       | -                                        | SUPER                               | (RocksDB engine) only DBServer           |                        |
+| X  |    |    | PUT    | `/_admin/wal/wait_for_estimator_sync`                        | RestWalAccessHandler       | -                                        | SUPER                               | (RocksDB engine) only DBServer           |                        |
+| X  |    |    | GET    | `/_admin/wal/properties`                                     | ClusterRestWalHandler      | -                                        | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
+| X  |    |    | PUT    | `/_admin/wal/properties`                                     | ClusterRestWalHandler      | -                                        | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
+| X  |    |    | GET    | `/_admin/wal/transactions`                                   | ClusterRestWalHandler      | -                                        | AUTHEN                              | (Cluster engine) NOT_IMPL                |                        |
+| X  |    |    | PUT    | `/_admin/wal/flush`                                          | ClusterRestWalHandler      | -                                        | AUTHEN                              | (Cluster engine) DELEGATED to DBServers  |                        |
+| X  |    |    | PUT    | `/_admin/wal/wait_for_estimator_sync`                        | ClusterRestWalHandler      | canUseAdmin(WalAccess) / isSuperuser     | AdminWalAccess (PROD)/SUPER (MAINT) | (Cluster engine)                         |                        |
+| X  |    |    | GET    | `/_api/aql-builtin`                                          | RestAqlFunctionsHandler    | -                                        | AUTHEN                              |                                          |                        |
+| X  |    |    | GET    | `/_api/aqlfunction`                                          | RestAqlUserFunctionsHandler| -, then run AQL with _aqlfunctions coll  | AUTHEN + COLL RO _aqlfunctions      | (V8 required) Note: system-collection!   |                        |
+| X  |    |    | GET    | `/_api/aqlfunction/{namespace}`                              | RestAqlUserFunctionsHandler| -, then run AQL with _aqlfunctions coll  | AUTHEN + COLL RO _aqlfunctions      | (V8 required) Note: system-collection!   |                        |
+| X  |    |    | POST   | `/_api/aqlfunction`                                          | RestAqlUserFunctionsHandler| -, then run AQL with _aqlfunctions coll  | AUTHEN + COLL RW _aqlfunctions      | (V8 required) Note: system-collection!   |                        |
+| X  |    |    | DELETE | `/_api/aqlfunction/{name}`                                   | RestAqlUserFunctionsHandler| -, then run AQL with _aqlfunctions coll  | AUTHEN + COLL RW _aqlfunctions      | (V8 required) Note: system-collection!   |                        |
+| X  |    |    | GET    | `/_api/analyzer`                                             | RestAnalyzerHandler        | -, then run AQL with _anaylizers coll    | AUTHEN + COLL RO _analyzers         | Note: system-collection!                 |                        |
+| X  |    |    | GET    | `/_api/analyzer/{name}`                                      | RestAnalyzerHandler        | -, then run AQL with _anaylizers coll    | AUTHEN + COLL RO _analyzers         | Note: system-collection!                 |                        |
+| X  |    |    | POST   | `/_api/analyzer`                                             | RestAnalyzerHandler        | -, then run AQL with _anaylizers coll    | AUTHEN + COLL RW _analyzers         | Note: system-collection!                 |                        |
+| X  |    |    | DELETE | `/_api/analyzer/{name}`                                      | RestAnalyzerHandler        | -, then run AQL with _anaylizers coll    | AUTHEN + COLL RW _analyzers         | Note: system-collection!                 |                        |
+| X  |    |    | GET    | `/_api/cluster/agency-cache`                                 | RestClusterHandler         | canUseAdmin(ReadAgency)                  | AdminReadAgency                     | (coordinator only)                       |                        |
+| X  |    |    | GET    | `/_api/cluster/agency-dump`                                  | RestClusterHandler         | canUseAdmin(ReadAgency)                  | AdminReadAgency                     | (coordinator only)                       |                        |
+| X  |    |    | GET    | `/_api/cluster/cluster-info`                                 | RestClusterHandler         | canUseAdmin(ClusterInfo)                 | AdminClusterInfo                    | (cluster only)                           |                        |
+| X  |    |    | PUT    | `/.../flush`                                                 | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | GET    | `/.../get_collection_info/{db}/{coll}`                       | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | GET    | `/.../get_collection_info_current/{db}/{coll}/{shard}`       | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | POST   | `/.../get_responsible_servers`                               | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | POST   | `/.../get_responsible_shard/{db}/{coll}`                     | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | GET    | `/.../get_analyzers_revision/{db}`                           | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | GET    | `/.../wait_for_plan_version/{version}`                       | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | GET    | `/.../get_max_number_of_shards`                              | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | GET    | `/.../get_max_replication_factor`                            | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | GET    | `/.../get_min_replication_factor`                            | RestClusterHandler         | isSuperUser                              | SUPER (no check in MAINTAINERMODE)  | (cluster only)                           |                        |
+| X  |    |    | GET    | `/_api/cluster/endpoints`                                    | RestClusterHandler         | -                                        | AUTHEN                              | (coordinator only)                       |                        |
+| X  |    |    | POST   | `/_api/collection`                                           | RestCollectionHandler      | canCreateCollection                      | COLL RW                             |                                          |                        |
+| X  |    |    | GET    | `/_api/collection`                                           | RestCollectionHandler      | canUseCollection(Read), only see readable| AUTHEN, details (3)                 |                                          |                        |
+| X  |    |    | GET    | `/_api/collection/{name}`                                    | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | GET    | `/_api/collection/{name}/checksum`                           | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | GET    | `/_api/collection/{name}/count`                              | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | GET    | `/_api/collection/{name}/figures`                            | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | GET    | `/_api/collection/{name}/properties`                         | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | GET    | `/_api/collection/{name}/revision`                           | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | GET    | `/_api/collection/{name}/shards`                             | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | PUT    | `/_api/collection/{name}/compact`                            | RestCollectionHandler      | canUseCollection(WriteMeta)              | COLL RW                             |                                          |                        |
+| X  |    |    | PUT    | `/_api/collection/{name}/load`                               | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | PUT    | `/_api/collection/{name}/loadIndexesIntoMemory`              | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | PUT    | `/_api/collection/{name}/properties`                         | RestCollectionHandler      | canUseCollection(WriteMeta)              | COLL RW                             |                                          |                        |
+| X  |    |    | PUT    | `/_api/collection/{name}/rename`                             | RestCollectionHandler      | canUseCollection(WriteMeta)              | COLL RW                             |                                          |                        |
+| X  |    |    | PUT    | `/_api/collection/{name}/responsibleShard`                   | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | PUT    | `/_api/collection/{name}/truncate`                           | RestCollectionHandler      | canUseCollection(WriteData)              | COLL RWDATA                         |                                          |                        |
+| X  |    |    | PUT    | `/_api/collection/{name}/unload`                             | RestCollectionHandler      | canUseCollection(Read)                   | COLL RO                             |                                          |                        |
+| X  |    |    | DELETE | `/_api/collection/{name}`                                    | RestCollectionHandler      | canDropCollection                        | COLL RW                             |                                          |                        |
+| X  |    |    | POST   | `/_api/cursor`                                               | RestCursorHandler          | -, then run AQL and rely on trx          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+| X  |    |    | POST   | `/_api/cursor/json`                                          | RestCursorHandler          | -, then run AQL and rely on trx          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+| X  |    |    | POST   | `/_api/cursor/{id}`                                          | RestCursorHandler          | -, then run AQL and rely on trx          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+| X  |    |    | POST   | `/_api/cursor/{id}/{batch-id}`                               | RestCursorHandler          | -, then run AQL and rely on trx          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+| X  |    |    | PUT    | `/_api/cursor/{id}`                                          | RestCursorHandler          | -, then run AQL and rely on trx          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
+| X  |    |    | DELETE | `/_api/cursor/{id}`                                          | RestCursorHandler          | -, then run AQL and rely on trx          | AUTHEN + COLL ACCESS via trx        |                                          |                        |
 |    |    |    | GET    | `/_api/database`                                             | RestDatabaseHandler        |                                          | AUTHEN, _system, list all           |                                          | FIXME?                 |
 |    |    |    | GET    | `/_api/database/current`                                     | RestDatabaseHandler        |                                          | AUTHEN                              |                                          |                        |
 |    |    |    | GET    | `/_api/database/shardStatistics`                             | RestDatabaseHandler        |                                          | AUTHEN                              |                                          |                        |

@@ -602,12 +602,11 @@ Collections::create(         // create collection
 
   // Let's first check if we are allowed to create the collections
   auto const& exec = ExecContext::current();
-  if (auto r = exec.canUseDatabase(vocbase.name(), DatabaseAccessLevel::Write);
-      r.fail()) {
-    for (auto const& col : collections) {
+  for (auto const& col : collections) {
+    if (auto r = exec.canCreateCollection(vocbase.name(), col.name); r.fail()) {
       events::CreateCollection(vocbase.name(), col.name, TRI_ERROR_FORBIDDEN);
+      return r;
     }
-    return r;
   }
 
   // TODO: Discuss should this be Prod Assert?
@@ -1243,22 +1242,6 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
 /*static*/ Result Collections::drop(  // drop collection
     LogicalCollection& coll,          // collection to drop
     CollectionDropOptions options) {
-  ExecContext const& exec = ExecContext::current();
-  if (auto r = exec.canUseDatabase(coll.vocbase().name(),
-                                   DatabaseAccessLevel::Write);
-      r.fail()) {
-    events::DropCollection(coll.vocbase().name(), coll.name(),
-                           TRI_ERROR_FORBIDDEN);
-    return r;
-  }
-  if (auto r = exec.canUseCollection(coll.vocbase().name(), coll.name(),
-                                     AccessLevel::WriteMeta);
-      r.fail()) {  // collection modifiable
-    events::DropCollection(coll.vocbase().name(), coll.name(),
-                           TRI_ERROR_FORBIDDEN);
-    return r;
-  }
-
   auto const& dbname = coll.vocbase().name();
   std::string const collName = coll.name();
   Result res;

@@ -699,6 +699,14 @@ async<void> RestCollectionHandler::handleCommandDelete() {
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();
 
+  // Check if we are allowed to drop the collection:
+  if (auto r = ExecContext::current().canDropCollection(_vocbase.name(), name);
+      r.fail()) {
+    events::DropCollection(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
+    generateError(r);
+    co_return;
+  }
+
   std::shared_ptr<LogicalCollection> coll;
   Result res = methods::Collections::lookup(_vocbase, name, coll);
   if (res.fail()) {

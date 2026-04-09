@@ -1154,16 +1154,6 @@ bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
 
 bool IResearchAnalyzerFeature::canUse(std::string_view name,
                                       CollectionAccessLevel const& level) {
-  // TODO This methods does not make sense to me.
-  // First:
-  // ctx.canUseCollection(vocbaseName,
-  // arangodb::StaticStrings::AnalyzersCollection, level) will fallback to the
-  // database permissions, because it is a system collection. So it will always
-  // be the same as ctx.canUseDatabase(vocbaseName, level). Second: Whether it's
-  // a static analyzer is checked first by looking it up in a map, but then
-  // again by checking whether the database name (the part before `::`) is
-  // empty. One or either of those should be unnecessary.
-
   auto& staticAnalyzers = getStaticAnalyzers();
 
   if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
@@ -1173,12 +1163,11 @@ bool IResearchAnalyzerFeature::canUse(std::string_view name,
 
   auto split = splitAnalyzerName(name);
   auto const vocbaseName = static_cast<std::string>(split.first);
-  auto& ctx = ExecContext::current();
-  return irs::IsNull(split.first)  // static analyzer (always allowed)
-         || ctx.canUseCollection(vocbaseName,
-                                 arangodb::StaticStrings::AnalyzersCollection,
-                                 level)
-                .ok();  // can use analyzers
+  // We do no further checks here and simply let everything through.
+  // When we later use AQL to access the `_analyzers` collection, we will
+  // get the corresponding checks there.
+  // Note that without RBAC, this will fall back to check the access level
+  // of the database, since `_analyzers is a system collection.
 }
 
 Result IResearchAnalyzerFeature::copyAnalyzerPool(AnalyzerPool::ptr& analyzer,

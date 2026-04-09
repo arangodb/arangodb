@@ -148,16 +148,13 @@ void RestClusterHandler::handleAgencyDump() {
     return;
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af->isActive() && !_request->user().empty()) {
-    auto const& exec = ExecContext::current();
-    if (auto r =
-            exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{});
-        r.fail()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    r.errorMessage());
-      return;
-    }
+  auto const& exec = ExecContext::current();
+  if (auto r =
+          exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
+    return;
   }
 
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
@@ -172,16 +169,13 @@ void RestClusterHandler::handleAgencyDump() {
 }
 
 void RestClusterHandler::handleAgencyCache() {
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af->isActive() && !_request->user().empty()) {
-    auto const& exec = ExecContext::current();
-    if (auto r =
-            exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{});
-        r.fail()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    r.errorMessage());
-      return;
-    }
+  auto const& exec = ExecContext::current();
+  if (auto r =
+          exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
+    return;
   }
 
   auto& ac = server().getFeature<ClusterFeature>().agencyCache();

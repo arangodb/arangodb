@@ -55,13 +55,17 @@ RestStatus RestSupportInfoHandler::execute() {
     }
   }
 
-  if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMonitoring{});
-      apiPolicy == "admin" && r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
-    return RestStatus::DONE;
+  if (apiPolicy == "admin") {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            arangodb::rbac::Category::AdminMonitoring{});
+        r.fail()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    r.errorMessage());
+      return RestStatus::DONE;
+    }
   }
+
+  // If apiPolicy == "public", no more checks!
 
   if (_request->databaseName() != StaticStrings::SystemDatabase) {
     generateError(

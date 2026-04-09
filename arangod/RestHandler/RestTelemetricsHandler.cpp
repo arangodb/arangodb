@@ -145,13 +145,17 @@ RestStatus RestTelemetricsHandler::execute() {
     }
   }
 
-  if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMonitoringInternal{});
-      apiPolicy == "admin" && r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
-    return RestStatus::DONE;
+  if (apiPolicy == "admin") {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            arangodb::rbac::Category::AdminMonitoringInternal{});
+        r.fail()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    r.errorMessage());
+      return RestStatus::DONE;
+    }
   }
+
+  // If apiPolicy == "public", then there are no more further checks!
 
   if (request()->requestType() == rest::RequestType::DELETE_REQ) {
     // reset telemetrics access counter. this is an informal API that we
