@@ -132,7 +132,7 @@ It knows via its `instance`s which processes to start, stop, halt or maybe resta
 
 ## persitenceToolkit
 The persistenceToolkit is here to create compact code to start & stop up to two instances with the `instanceManager`, and run multiple client tools against these instances.
-It can even work with several set of binaries for these respective instances.
+It can even work with several sets of binaries for these respective instances.
 Instance connection parameters are automatically handled targeting the currently active instance. 
 Spawneable tools contain:
 
