@@ -10,6 +10,10 @@ target_sources(arango_aql PRIVATE
   OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRuleVectorIndex.cpp
   OptimizerRuleVectorIndexPushFilter.cpp
+  MoveCalculationsDown.cpp
+  MoveCalculationsUp.cpp
+  RemoveRedundantCalculations.cpp
+  RemoveUnnecessaryCalculations.cpp
   OptimizerRulesCluster.cpp
   OptimizerRulesGraph.cpp
   OptimizerRulesIResearchView.cpp
