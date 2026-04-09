@@ -23,8 +23,7 @@
 
 #pragma once
 
-#include "Activities/Activity.h"
-#include "Activities/GenericActivity.h"
+#include "GeneralServer/RestHandlerActivity.h"
 #include "Async/SuspensionCounter.h"
 #include "Async/async.h"
 #include "Basics/ResultT.h"
@@ -232,9 +231,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // RestHandler::wakeupHandler() does that, and can be called e.g. by the
   // SharedQueryState's wakeup handler (for AQL-related code).
   template<typename F>
-  requires requires(F f) {
-    { f() } -> std::same_as<RestStatus>;
-  }
+    requires requires(F f) {
+      { f() } -> std::same_as<RestStatus>;
+    }
   [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<void> {
     co_await arangodb::waitingFunToCoro(_suspensionCounter,
                                         [&]() -> std::optional<std::monostate> {
@@ -248,9 +247,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
 
   template<typename F, typename T = std::invoke_result_t<F>::value_type>
-  requires requires(F f) {
-    { f() } -> std::same_as<std::optional<T>>;
-  }
+    requires requires(F f) {
+      { f() } -> std::same_as<std::optional<T>>;
+    }
   [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<T> {
     co_return co_await arangodb::waitingFunToCoro(_suspensionCounter,
                                                   std::forward<F>(fun));
@@ -281,7 +280,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::atomic<bool> _canceled;
 
-  std::shared_ptr<activities::GenericActivity> _activity;
+  arangodb::rest::RestHandlerActivity::HandleType _activity;
 };
 
 }  // namespace rest
