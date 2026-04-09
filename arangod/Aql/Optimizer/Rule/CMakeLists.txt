@@ -49,4 +49,11 @@ target_sources(arango_aql PRIVATE
   SpliceSubqueries.cpp
   UseIndexForSort.cpp
   UseIndexes.cpp
+  DistributeInCluster.cpp
+  CollectInCluster.cpp
+  DistributeFilterCalcToCluster.cpp
+  DistributeSortToCluster.cpp
+  RemoveUnnecessaryRemoteScatter.cpp
+  RestrictToSingleShard.cpp
+  UndistributeRemoveAfterEnumColl.cpp
 )
