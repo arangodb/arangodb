@@ -465,7 +465,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   std::shared_ptr<transaction::CounterGuard> _counterGuard;
 
  private:
-  TransactionStatistics& _transactionStatistics;
+  TransactionStatistics* _transactionStatistics = nullptr;
   TransactionId _id;  /// @brief local trx id
 
   /// a collection of stored cookies
