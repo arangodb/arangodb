@@ -121,7 +121,6 @@ void FileDescriptorsFeature::countOpenFiles() {
     std::filesystem::path fdPath{"/proc/self/fd"};
     size_t numFiles = 0;
 
-    std::error_code ec;
     if (std::filesystem::exists(fdPath)) {
       for (auto const& entry : std::filesystem::directory_iterator(fdPath)) {
         // The intent is simply to increment numFiles for each entry in
