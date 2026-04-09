@@ -218,7 +218,8 @@ void RestHandler::startActivity() {
           .url = _request->fullUrl(),  //
           .method = std::string{GeneralRequest::translateMethod(
               _request->requestType())},  //
-          .headers = request()->headers()});
+          .headers = request()->headers(),
+          .connectionInfo = request()->connectionInfo()});
 }
 
 RequestStatistics::Item&& RestHandler::stealRequestStatistics() {

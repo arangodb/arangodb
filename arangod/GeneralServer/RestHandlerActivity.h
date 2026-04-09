@@ -38,16 +38,12 @@ struct RestHandlerActivityData {
 
   template<typename Inspector>
   inline friend auto inspect(Inspector& f, RestHandlerActivityData& d) {
-    return f.object(d).fields(
-        f.field("handler", d.handler),                             //
-        f.field("url", d.url),                                     //
-        f.field("method", d.method),                               //
-        f.field("headers", d.headers),                             //
-        f.field("serverAddress", d.connectionInfo.serverAddress),  //
-        f.field("serverPort", d.connectionInfo.serverPort),        //
-        f.field("clientAddress", d.connectionInfo.clientAddress),  //
-        f.field("clientPort", d.connectionInfo.clientPort)         //
-    );                                                             //
+    return f.object(d).fields(f.field("handler", d.handler),               //
+                              f.field("url", d.url),                       //
+                              f.field("method", d.method),                 //
+                              f.field("headers", d.headers),               //
+                              f.field("connectionInfo", d.connectionInfo)  //
+    );                                                                     //
   }
 };
 
