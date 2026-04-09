@@ -39,19 +39,47 @@ const collName = "coll";
 const idxName = "vector_scaling_test";
 const dimension = 128;
 const insertedDocsCount = 100;
+const numberOfShards = 3;
+
+function resolveNListsForScaling(docCount, multiplier, minNLists) {
+    return Math.max(minNLists, Math.trunc(multiplier * Math.sqrt(docCount)));
+}
+
+function assertScaledResolvedNLists(collection, nLists) {
+    const idx = collection.getIndexes(true, true).find(i => i.name === idxName);
+    assertTrue(idx !== undefined);
+    assertTrue(idx.hasOwnProperty("shards"), "shards object should be present");
+
+    const shardNames = Object.keys(idx.shards);
+    if (isCluster) {
+        assertEqual(numberOfShards, shardNames.length, "shards should not be empty");
+        const shardsCount = collection.count(true);
+        for (const shardName of shardNames) {
+            const vectorIndexShard = idx.shards[shardName];
+            const expectedResolvedNLists = resolveNListsForScaling(shardsCount[shardName], nLists.multiplier, nLists.minNLists);
+            assertEqual(expectedResolvedNLists, vectorIndexShard.resolvedNLists,
+                `On ${shardName} the resolvedNLists ${vectorIndexShard.resolvedNLists} do not match expected ${expectedResolvedNLists}`);
+        }
+    } else {
+        assertEqual(1, shardNames.length, "expected single shard on single-server");
+        const expectedResolvedNLists = resolveNListsForScaling(collection.count(), nLists.multiplier, nLists.minNLists);
+        const shard = idx.shards[shardNames[0]];
+        assertEqual(expectedResolvedNLists, shard.resolvedNLists,
+            `resolvedNLists ${shard.resolvedNLists} does not match expected ${expectedResolvedNLists}`);
+    }
+}
 
 function assertResolvedNLists(nLists, collection) {
     const idx = collection.getIndexes(true, true).find(i => i.name === idxName);
     assertTrue(idx !== undefined);
-    if (isCluster) {
-        assertTrue(idx.shards.length > 0);1
-        idx.shards.array.forEach(shard => {
-            assertEqual(nLists, shard.resolvedNLists, `On shard ${JSON.stringify(shard)} the resolvedNLists do not match ${nLists}`);
-        });
+    assertTrue(idx.hasOwnProperty("shards"), "shards object should be present");
+    const shardNames = Object.keys(idx.shards);
+    for (const shardName of shardNames) {
+        const shard = idx.shards[shardName];
+        assertEqual(nLists, shard.resolvedNLists,
+            `On ${shardName} the resolvedNLists ${shard.resolvedNLists} does not match expected ${nLists}`);
     }
-    assertEqual(nLists, idx.params.resolvedNLists, `The resolvedNLists: ${idx.params.resolvedNLists} do not match expected nLists: ${nLists}`);
 }
-
 
 function assertVectorIndexUsable(queryPoint, limit = 5) {
     const query = `FOR d IN ${collName}
@@ -73,7 +101,7 @@ function VectorIndexScalingTestSuite() {
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
-            collection = db._create(collName, { numberOfShards: 3 });
+            collection = db._create(collName, { numberOfShards: numberOfShards });
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
@@ -121,15 +149,7 @@ function VectorIndexScalingTestSuite() {
             assertEqual(300000000, idx.params.nLists.tiers[2].threshold);
             assertEqual(131072, idx.params.nLists.tiers[2].fixedValue);
 
-            // No tiers match for 100 docs, so autoSqrt applies: max(2, 4*sqrt(N))
-            if (isCluster) {
-                const detailed = collection.getIndexes(true, true).find(i => i.name === idxName);
-                for (const [, shard] of Object.entries(detailed.shards)) {
-                    assertTrue(shard.resolvedNLists > 0, "per-shard resolvedNLists should be set");
-                }
-            } else {
-                assertTrue(idx.params.resolvedNLists > 0, "resolvedNLists should be set after training");
-            }
+            assertScaledResolvedNLists(collection, idx.params.nLists);
         },
 
         testZeroMultiplierFails: function() {
@@ -169,17 +189,9 @@ function VectorIndexScalingTestSuite() {
             const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
             assertEqual(15, idx.params.nLists.minNLists);
-            // multiplier=1, sqrt(N) < 15 for any per-shard count, so minNLists dominates
-            if (isCluster) {
-                const detailed = collection.getIndexes(true, true).find(i => i.name === idxName);
-                for (const [, shard] of Object.entries(detailed.shards)) {
-                    assertEqual(15, shard.resolvedNLists);
-                }
-            } else {
-                assertEqual(15, idx.params.resolvedNLists);
-            }
 
             assertVectorIndexUsable(randomPoint);
+            assertResolvedNLists(15, collection);
         },
 
         testInvalidMinNListsFails: function() {
@@ -325,7 +337,7 @@ function VectorIndexScalingEmptyCollectionTestSuite() {
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
-            collection = db._create(collName, { numberOfShards: 3 });
+            collection = db._create(collName, { numberOfShards: numberOfShards });
         },
 
         tearDownAll: function() {
