@@ -536,6 +536,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_COLON ":"
 %token T_SCOPE "::"
 %token T_RANGE ".."
+%token T_ELLIPSIS "..."
 
 %token T_COMMA ","
 %token T_OPEN "("
@@ -2342,6 +2343,10 @@ array_elements_list:
 array_element:
     expression {
       parser->pushArrayElement($1);
+    }
+  |   expression T_ELLIPSIS {
+      auto x = parser->ast()->createNodeArraySplice($1);
+      parser->pushArrayElement(x);
     }
   ;
 
