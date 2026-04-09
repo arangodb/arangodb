@@ -45,6 +45,7 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
+#include <filesystem>
 
 using namespace arangodb::options;
 
@@ -560,21 +561,23 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
       basics::FileUtils::listFiles(_options.jwtSecretFolderProgramOption);
 
   // filter out empty filenames, hidden files, tmp files and symlinks
-  list.erase(std::remove_if(list.begin(), list.end(),
-                            [this](std::string const& file) {
-                              if (file.empty() || file[0] == '.') {
-                                return true;
-                              }
-                              if (file.ends_with(".tmp")) {
-                                return true;
-                              }
-                              auto p = basics::FileUtils::buildFilename(
-                                  _options.jwtSecretFolderProgramOption, file);
-                              if (basics::FileUtils::isSymbolicLink(p)) {
-                                return true;
-                              }
-                              return false;
-                            }),
+  list.erase(std::remove_if(
+                 list.begin(), list.end(),
+                 [this](std::string const& file) {
+                   if (file.empty() || file[0] == '.') {
+                     return true;
+                   }
+                   if (file.ends_with(".tmp")) {
+                     return true;
+                   }
+                   auto p =
+                       std::filesystem::path(basics::FileUtils::buildFilename(
+                           _options.jwtSecretFolderProgramOption, file));
+                   if (std::filesystem::is_symlink(p)) {
+                     return true;
+                   }
+                   return false;
+                 }),
              list.end());
 
   if (list.empty()) {
