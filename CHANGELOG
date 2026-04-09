@@ -5,9 +5,9 @@
   actual nLists value used by the trained index. When using a fixed `nLists`
   value, `resolvedNLists` will match it. When using the scalable nLists
   specification, `resolvedNLists` shows the value that was computed from
-  the document count at training time. On single-server this is returned at
-  the top level of the index object. In cluster mode it is available per
-  shard via `collection.getIndexes(true, true)` in the `shards` detail.
+  the document count at training time. The value is available per shard in
+  the `shards` detail returned by `collection.getIndexes(true, true)`. On
+  single-server the collection name is used as the shard key.
 
 * COR-231: Vector index `nLists` now supports a tiered scaling specification
   alongside fixed integer values. The scaling spec uses
