@@ -170,6 +170,7 @@ VPackBuilder enrichVectorIndexes(VPackSlice indexes,
           result.add(StaticStrings::IndexTrainingState,
                      VPackValue(shardState.trainingState));
           result.add("error", VPackValue(shardState.error));
+          TRI_ASSERT(shardState.resolvedNLists > 0);
           result.add(StaticStrings::IndexResolvedNLists,
                      VPackValue(shardState.resolvedNLists));
         }
@@ -559,6 +560,8 @@ async<void> RestIndexHandler::getIndexes() {
               tmp.add(StaticStrings::IndexTrainingState,
                       VPackValue(shardState.trainingState));
               tmp.add("error", VPackValue(shardState.error));
+              tmp.add(StaticStrings::IndexResolvedNLists,
+                      VPackValue(shardState.resolvedNLists));
             }
           }
         }
