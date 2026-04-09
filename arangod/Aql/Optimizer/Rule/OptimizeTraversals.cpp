@@ -192,8 +192,7 @@ void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             traversal->edgeOutVariable() == nullptr &&
             traversal->pathOutVariable() == nullptr &&
             options->isUseBreadthFirst() &&
-            options->uniqueVertices ==
-                traverser::TraverserOptions::GLOBAL &&
+            options->uniqueVertices == traverser::TraverserOptions::GLOBAL &&
             !options->usesPrune() && !options->hasDepthLookupInfo()) {
           options->useNeighbors = true;
           modified = true;
