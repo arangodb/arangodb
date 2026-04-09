@@ -45,6 +45,7 @@
 namespace arangodb::aql {
 using EN = ExecutionNode;
 
+/// @brief push LIMIT into subqueries, and simplify them
 void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                             OptimizerRule const& rule) {
   bool modified = false;
@@ -52,6 +53,7 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
 
+  // value type is {limit value, referenced by, used for counting}
   std::unordered_map<
       ExecutionNode*,
       std::tuple<int64_t, std::unordered_set<ExecutionNode const*>, bool>>
@@ -73,8 +75,10 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         Variable const* v = static_cast<Variable const*>(node->getData());
         auto setter = plan->getVarSetBy(v->id);
         if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
+          // we found a subquery result being used somehow in some
+          // way that will make the optimization produce wrong results
           found.first = setter;
-          found.second = -1;
+          found.second = -1;  // negative values will disable the optimization
         }
       } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
         auto sub = node->getMemberUnchecked(0);
@@ -85,8 +89,9 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           if (index->type == NODE_TYPE_VALUE && index->isNumericValue() &&
               setter != nullptr && setter->getType() == EN::SUBQUERY) {
             found.first = setter;
-            found.second = index->getIntValue() + 1;
+            found.second = index->getIntValue() + 1;  // x[0] => LIMIT 1
             if (found.second <= 0) {
+              // turn optimization off
               found.second = -1;
             }
           }
@@ -104,7 +109,7 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
               found.first = setter;
               if (func->name == "FIRST") {
-                found.second = 1;
+                found.second = 1;  // FIRST(x) => LIMIT 1
               } else {
                 found.second = -1;
                 usedForCount = true;
@@ -125,23 +130,29 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         } else {
           auto& sq = (*it).second;
           if (usedForCount) {
+            // COUNT + LIMIT together will turn off the optimization
             std::get<2>(sq) = (std::get<0>(sq) <= 0);
             std::get<0>(sq) = -1;
             std::get<1>(sq).clear();
           } else {
             if (found.second <= 0 || std::get<0>(sq) < 0) {
+              // negative value will turn off the optimization
               std::get<0>(sq) = -1;
               std::get<1>(sq).clear();
             } else {
+              // otherwise, use the maximum of the limits needed, and insert
+              // current node into our "safe" list
               std::get<0>(sq) = std::max(std::get<0>(sq), found.second);
               std::get<1>(sq).emplace(n);
             }
             std::get<2>(sq) = false;
           }
         }
+        // don't descend further
         return false;
       }
 
+      // descend further
       return true;
     };
 
@@ -154,6 +165,7 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     auto sn = ExecutionNode::castTo<SubqueryNode const*>(node);
 
     if (sn->isModificationNode()) {
+      // cannot push a LIMIT into data-modification subqueries
       continue;
     }
 
@@ -161,9 +173,12 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     int64_t limitValue = std::get<0>(sq);
     bool usedForCount = std::get<2>(sq);
     if (limitValue <= 0 && !usedForCount) {
+      // optimization turned off
       continue;
     }
 
+    // scan from the subquery node to the bottom of the ExecutionPlan to check
+    // if any of the following nodes also use the subquery result
     auto out = sn->outVariable();
     VarSet used;
     bool invalid = false;
@@ -172,6 +187,8 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     while (current != nullptr) {
       auto const& referencedBy = std::get<1>(sq);
       if (referencedBy.find(current) == referencedBy.end()) {
+        // node not found in "safe" list
+        // now check if it uses the subquery's out variable
         used.clear();
         current->getVariablesUsedHere(used);
         if (used.find(out) != used.end()) {
@@ -179,6 +196,7 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           break;
         }
       }
+      // continue iteration
       current = current->getFirstParent();
     }
 
@@ -188,17 +206,20 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
     auto root = sn->getSubquery();
     if (root != nullptr && root->getType() == EN::RETURN) {
+      // now inject a limit
       auto f = root->getFirstDependency();
       TRI_ASSERT(f != nullptr);
 
       if (std::get<2>(sq)) {
         Ast* ast = plan->getAst();
+        // generate a calculation node that only produces "true"
         auto expr =
             std::make_unique<Expression>(ast, ast->createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
         auto calcNode = plan->createNode<CalculationNode>(
             plan.get(), plan->nextId(), std::move(expr), outVariable);
         plan->insertAfter(f, calcNode);
+        // change the result value of the existing Return node
         TRI_ASSERT(root->getType() == EN::RETURN);
         ExecutionNode::castTo<ReturnNode*>(root)->inVariable(outVariable);
         modified = true;
@@ -206,6 +227,8 @@ void optimizeSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       }
 
       if (f->getType() == EN::LIMIT) {
+        // subquery already has a LIMIT node at its end
+        // no need to do anything
         continue;
       }
 
