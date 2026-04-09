@@ -2726,6 +2726,9 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
                   _ast->createNodeReference(static_cast<Variable const*>(
                       edge->getMember(0)->getData())),
                   "edges")));
+
+          // The path output of the traversal contains the start vertex.              
+          pathVertices.pop_back();
           pathVertices.push_back(
               _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
                   _ast->createNodeReference(static_cast<Variable const*>(
