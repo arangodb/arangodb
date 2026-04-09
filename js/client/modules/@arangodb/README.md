@@ -28,9 +28,11 @@ All the code structure and the test infrastructure works in a way
 | `testutils/instance.js`                                      | manage one arangod process - to be used via the `instance-manager.js`                                       |
 | `testutils/testrunner.js`                                    | base class to manage the lifecycle of one testsuite.                                                        |
 | `testutils/testrunners.js`                                   | various derived classes of the lifecycle managager of `testrunne.js`.                                       |
+| `testutils/persistence-common.js`                            | persistenceToolkit, for testflows that manipulate instances and spawn client tools against it               |
 | `testutils/clusterstats.js`                                  | can be launched separately to monitor the cluster instances and their resource usage                        |
 | `testsuites/`                                                | modules with testframework that control one set of tests each utilizing the `testrunner.js`.                |
-| `testsuites/dump.js`                                         | complex infrastructure managing several instance lifecycles during serveral dump/restore/hotbackup attempts |
+| `testsuites/dump.js`                                         | persistence toolkit based testsuites for dump/restore of instances                                          |
+| `testsuites/hotbackup.js`                                    | persistence toolkit based testsuites for hot backup including stress tests                                  |
 | `testsuites/[go\|php\|java\|js\|driver\|rta_makedata].js`    | subsidize the lifecycle method of `testRunner` for other instance and testrunner controls.                  |
 | `testsuites/[server_permissions\|recovery[_cluster]].js`     | run several instances and run individual tests on them; vary parameters etc. of SUT                         |
 | `testsuites/chaos.js`                                        | launches several sub-arangoshs to cause randomness, enables failurepoints and so on.                        |
