@@ -21,4 +21,8 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesJoin.cpp
   OptimizerRulesLateMaterializedCommon.cpp
   OptimizerRulesReplaceFunctions.cpp
+  DecayUnnecessarySortedGather.cpp
+  ParallelizeGather.cpp
+  RemoveRedundantSorts.cpp
+  SortLimit.cpp
 )
