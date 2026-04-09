@@ -32,7 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
@@ -190,8 +190,8 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
     // check if the parameters are the same
-    UserVectorIndexDefinition leftDefinition;
-    UserVectorIndexDefinition rightDefinition;
+    vector::UserVectorIndexDefinition leftDefinition;
+    vector::UserVectorIndexDefinition rightDefinition;
     velocypack::deserialize(lhs.get("params"), leftDefinition);
     velocypack::deserialize(rhs.get("params"), rightDefinition);
 
@@ -922,7 +922,7 @@ Result IndexFactory::enhanceJsonIndexVector(
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
 
-  UserVectorIndexDefinition vectorIndexDefinition;
+  vector::UserVectorIndexDefinition vectorIndexDefinition;
   if (res.ok()) {
     auto const paramsSlice = definition.get("params");
     if (auto const res = velocypack::deserializeWithStatus(
@@ -936,6 +936,14 @@ Result IndexFactory::enhanceJsonIndexVector(
 
     if (definition.get("unique").isTrue()) {
       return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
+    }
+
+    // Using scaling nLists and factory is not allowed
+    if (vectorIndexDefinition.factory.has_value() &&
+        vector::isNListsScaling(vectorIndexDefinition.nLists)) {
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          "Using scaling nLists and factory is not allowed in vector index"};
     }
 
     if (auto const res =

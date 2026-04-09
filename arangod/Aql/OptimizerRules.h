@@ -53,12 +53,6 @@ void activateCallstackSplit(ExecutionPlan& plan);
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
 
-/// @brief remove redundant sorts
-/// this rule modifies the plan in place:
-/// - sorts that are covered by earlier sorts will be removed
-void removeRedundantSortsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
-
 /// @brief remove all unnecessary filters
 /// this rule modifies the plan in place:
 /// - filters that are always true are removed completely
@@ -73,20 +67,6 @@ void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief propagate constant attributes in FILTERs
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
-
-/// @brief move calculations up in the plan
-/// this rule modifies the plan in place
-/// it aims to move up calculations as far up in the plan as possible, to
-/// avoid redundant calculations in inner loops
-void moveCalculationsUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
-/// @brief move calculations down in the plan
-/// this rule modifies the plan in place
-/// it aims to move down calculations as far down in the plan as possible,
-/// beyond FILTER and LIMIT statements
-void moveCalculationsDownRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
 
 /// @brief determine the "right" type of CollectNode and
 /// add a sort node for each COLLECT (may be removed later)
@@ -113,15 +93,6 @@ void simplifyConditionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief fuse filter conditions that follow each other
 void fuseFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                      OptimizerRule const&);
-
-/// @brief remove redundant CalculationNodes
-void removeRedundantCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
-
-/// @brief remove CalculationNodes and SubqueryNodes that are never needed
-void removeUnnecessaryCalculationsRule(Optimizer*,
-                                       std::unique_ptr<ExecutionPlan>,
-                                       OptimizerRule const&);
 
 /// @brief useIndex, try to use an index for filtering
 void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -314,10 +285,6 @@ void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
                   OptimizerRule const&);
 
-/// @brief make sort node aware of limit to enable internal optimizations
-void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
-                   OptimizerRule const&);
-
 /// @brief push LIMIT into subqueries, and simplify them
 void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                             OptimizerRule const&);
@@ -344,10 +311,6 @@ void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                        OptimizerRule const&);
 
-/// @brief parallelize Gather nodes (cluster-only)
-void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
-
 /// @brief allows execution nodes to asynchronously prefetch the next batch from
 /// their upstream node.
 void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -356,11 +319,6 @@ void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                           OptimizerRule const&);
-
-//// @brief reduces a sorted gather to an unsorted gather if only one shard is
-/// involved
-void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
 
 void createScatterGatherSnippet(
     ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
