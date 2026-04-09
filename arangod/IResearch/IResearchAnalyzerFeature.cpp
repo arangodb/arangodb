@@ -1154,20 +1154,12 @@ bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
 
 bool IResearchAnalyzerFeature::canUse(std::string_view name,
                                       CollectionAccessLevel const& level) {
-  auto& staticAnalyzers = getStaticAnalyzers();
-
-  if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
-    // special case for singleton static analyzers (always allowed)
-    return true;
-  }
-
-  auto split = splitAnalyzerName(name);
-  auto const vocbaseName = static_cast<std::string>(split.first);
   // We do no further checks here and simply let everything through.
   // When we later use AQL to access the `_analyzers` collection, we will
   // get the corresponding checks there.
   // Note that without RBAC, this will fall back to check the access level
   // of the database, since `_analyzers is a system collection.
+  return true;
 }
 
 Result IResearchAnalyzerFeature::copyAnalyzerPool(AnalyzerPool::ptr& analyzer,
