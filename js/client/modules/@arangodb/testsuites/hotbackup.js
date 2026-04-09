@@ -35,7 +35,7 @@ const { DumpRestoreHelper, getClusterStrings } = require('@arangodb/testutils/du
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
+const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 const errors = require('internal').errors;
@@ -211,17 +211,20 @@ function hotBackup_load_backend (options, which, args) {
         !helper.createHotBackup() ||
         !helper.stopStressArangosh() ||
         !helper.restoreHotBackup() ||
-        !helper.IM.waitForAllShardsInSync() ||
+        !helper.instanceManager.waitForAllShardsInSync() ||
         !retryWaitRestore(args.postRestoreFn, args.args)
         //!helper.runRtaCheckData()
     ) {
       helper.destructor(true);
       return helper.extractResults();
     }
-
-  }
-  catch (ex) {
-    print("Caught exception during testrun: " + ex);
+  } catch (ex) {
+    print(`${RED}${Date()}Caught exception during testrun: ${ex}\n${ex.stack}${RESET}`);
+    helper.results.failed += 1;
+    helper.results['all'] = {
+      failed: true,
+      message: `caught exception during testrun: ${ex}\n${ex.stack}`
+    };
   }
   helper.destructor(true);
   if (helper.doCleanup) {
@@ -234,7 +237,7 @@ function hotBackup_load_demo (options) {
 
   let which = "hot_backup_load_demo";
   return hotBackup_load_backend(options, which, {
-    noiseScript: "",
+    noiseScript: function() {print("hello world");},
     noiseVolume: 1,
     noiseDuration: 60,
     preRestoreFn: function() {
