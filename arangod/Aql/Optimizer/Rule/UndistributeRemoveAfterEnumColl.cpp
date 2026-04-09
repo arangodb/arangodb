@@ -57,8 +57,8 @@ using EN = arangodb::aql::ExecutionNode;
 // static node types used by some optimizer rules
 // having them statically available avoids having to build the lists over
 // and over for each AQL query
-static constexpr std::initializer_list<EN::NodeType>
-    undistributeNodeTypes{EN::UPDATE, EN::REPLACE, EN::REMOVE};
+static constexpr std::initializer_list<EN::NodeType> undistributeNodeTypes{
+    EN::UPDATE, EN::REPLACE, EN::REMOVE};
 
 /// WalkerWorker for undistributeRemoveAfterEnumColl
 class RemoveToEnumCollFinder final
@@ -97,28 +97,24 @@ class RemoveToEnumCollFinder final
         }
 
         // find the variable we are removing . . .
-        auto rn =
-            EN::castTo<arangodb::aql::ModificationNode*>(en);
+        auto rn = EN::castTo<arangodb::aql::ModificationNode*>(en);
         arangodb::aql::Variable const* toRemove = nullptr;
 
         if (en->getType() == EN::REPLACE) {
-          toRemove =
-              EN::castTo<arangodb::aql::ReplaceNode const*>(en)
-                  ->inKeyVariable();
+          toRemove = EN::castTo<arangodb::aql::ReplaceNode const*>(en)
+                         ->inKeyVariable();
         } else if (en->getType() == EN::UPDATE) {
           // first try if we have the pattern UPDATE <key> WITH <doc> IN
           // collection. if so, then toRemove will contain <key>.
           toRemove =
-              EN::castTo<arangodb::aql::UpdateNode const*>(en)
-                  ->inKeyVariable();
+              EN::castTo<arangodb::aql::UpdateNode const*>(en)->inKeyVariable();
 
           if (toRemove == nullptr) {
             // if we don't have that pattern, we can if instead have
             // UPDATE <doc> IN collection.
             // in this case toRemove will contain <doc>.
-            toRemove =
-                EN::castTo<arangodb::aql::UpdateNode const*>(en)
-                    ->inDocVariable();
+            toRemove = EN::castTo<arangodb::aql::UpdateNode const*>(en)
+                           ->inDocVariable();
           }
         } else if (en->getType() == EN::REMOVE) {
           toRemove =
@@ -138,8 +134,7 @@ class RemoveToEnumCollFinder final
 
         if (_setter->getType() == EN::CALCULATION) {
           // this should be an attribute access for _key
-          auto cn =
-              EN::castTo<arangodb::aql::CalculationNode*>(_setter);
+          auto cn = EN::castTo<arangodb::aql::CalculationNode*>(_setter);
 
           auto expr = cn->expression();
           if (expr->isAttributeAccess()) {
@@ -290,8 +285,7 @@ class RemoveToEnumCollFinder final
       }
       case EN::CALCULATION: {
         TRI_vocbase_t& vocbase = _plan->getAst()->query().vocbase();
-        auto calculationNode =
-            EN::castTo<arangodb::aql::CalculationNode*>(en);
+        auto calculationNode = EN::castTo<arangodb::aql::CalculationNode*>(en);
         auto expr = calculationNode->expression();
 
         // If we find an expression that is not allowed to run on a DBServer,

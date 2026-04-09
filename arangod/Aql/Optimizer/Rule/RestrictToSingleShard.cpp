@@ -580,8 +580,7 @@ class RestrictToSingleShardChecker final
       }
 
       case EN::FILTER: {
-        auto node =
-            EN::castTo<arangodb::aql::FilterNode const*>(en);
+        auto node = EN::castTo<arangodb::aql::FilterNode const*>(en);
         arangodb::aql::Variable const* inputVariable = node->inVariable();
         handleInputVariable(en, inputVariable);
         break;
@@ -598,9 +597,8 @@ class RestrictToSingleShardChecker final
       case EN::REPLACE:
       case EN::UPDATE:
       case EN::REMOVE: {
-        auto node =
-            EN::castTo<arangodb::aql::ModificationNode const*>(en);
-        // make sure we don't restrict this collection via a lower filter    
+        auto node = EN::castTo<arangodb::aql::ModificationNode const*>(en);
+        // make sure we don't restrict this collection via a lower filter
         _shardsUsed.clear();
         auto shardId = getSingleShardId(_plan, en, node->collection());
         if (!shardId.has_value()) {
