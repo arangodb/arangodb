@@ -56,7 +56,7 @@ if (versionHas('asan') || versionHas('tsan')) {
     timeoutFactor = 16;
 }
 
-class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
+class persistenceToolkit extends trs.runLocalInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer) {
     super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
     this.serverOptions = serverOptions;
