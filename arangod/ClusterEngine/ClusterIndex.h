@@ -119,7 +119,7 @@ class ClusterIndex : public Index {
     return _prefixFields;
   }
 
-  UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+  vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
   bool isVectorIndexReady() const noexcept override;
 
@@ -132,7 +132,7 @@ class ClusterIndex : public Index {
   bool _estimates;
   std::atomic<double> _clusterSelectivity;
 
-  std::unique_ptr<UserVectorIndexDefinition> _vectorIndexDefinition;
+  std::unique_ptr<vector::UserVectorIndexDefinition> _vectorIndexDefinition;
 
   // Only used in RocksDB edge index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;
