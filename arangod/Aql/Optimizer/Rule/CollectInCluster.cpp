@@ -55,13 +55,20 @@ void replaceGatherNodeVariables(
   std::string cmp;
   std::string buffer;
 
+  // look for all sort elements in the GatherNode and replace them
+  // if they match what we have changed
   arangodb::aql::SortElementVector& elements = gatherNode->elements();
   for (auto& it : elements) {
+    // replace variables
     auto it2 = replacements.find(it.var);
 
     if (it2 != replacements.end()) {
+      // match with our replacement table
       it.resetTo((*it2).second);
     } else {
+      // no match. now check all our replacements and compare how
+      // their sources are actually calculated (e.g. #2 may mean
+      // "foo.bar")
       cmp = it.toVarAccessString();
       for (auto const& it3 : replacements) {
         auto setter = plan->getVarSetBy(it3.first->id);
@@ -73,6 +80,7 @@ void replaceGatherNodeVariables(
         buffer.clear();
         expr->stringify(buffer);
         if (cmp == buffer) {
+          // finally a match!
           it.resetTo(it3.second);
           break;
         }
@@ -101,9 +109,11 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     used.clear();
     node->getVariablesUsedHere(used);
 
+    // found a node we need to replace in the plan
     TRI_ASSERT(node->getDependencies().size() == 1);
 
     auto collectNode = ExecutionNode::castTo<CollectNode*>(node);
+    // look for next remote node
     GatherNode* gatherNode = nullptr;
     auto current = node->getFirstDependency();
 
@@ -112,7 +122,11 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         break;
       }
 
+      // check if any of the nodes we pass use a variable that will not be
+      // available after we insert a new COLLECT on top of it (note: COLLECT
+      // will eliminate all variables from the scope but its own)
       if (current->getType() != EN::GATHER) {
+        // Gather nodes are taken care of separately below
         current->getVariablesUsedHere(allUsed);
       }
 
@@ -132,8 +146,12 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         gatherNode = ExecutionNode::castTo<GatherNode*>(current);
       } else if (current->getType() == ExecutionNode::REMOTE) {
         auto previous = current->getFirstDependency();
+        // now we are on a DB server
 
         {
+          // check if we will deal with more than one shard
+          // if the remote one has one shard, the optimization will actually
+          // be a pessimization and shouldn't be applied
           bool hasFoundMultipleShards = false;
           auto p = previous;
           while (p != nullptr) {
@@ -178,10 +196,14 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             p = p->getFirstDependency();
           }
           if (!hasFoundMultipleShards) {
+            // only a single shard will be contacted - abort the optimization
+            // attempt to not make it a pessimization
             break;
           }
         }
 
+        // we may have moved another CollectNode here already. if so, we need
+        // to move the new CollectNode to the front of multiple CollectNodes
         ExecutionNode* target = current;
         while (previous != nullptr &&
                previous->getType() == ExecutionNode::COLLECT) {
@@ -211,7 +233,11 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
               CollectOptions::CollectMethod::kCount) {
             TRI_ASSERT(collectNode->aggregateVariables().size() == 1);
             TRI_ASSERT(collectNode->hasOutVariable() == false);
+            // clone a COLLECT AGGREGATE var=LENGTH(_) operation from the
+            // coordinator to the DB server(s), and leave an aggregate COLLECT
+            // node on the coordinator for total aggregation
 
+            // add a new CollectNode on the DB server to do the actual counting
             auto outVariable =
                 plan->getAst()->variables()->createTemporaryVariable();
             std::vector<AggregateVarInfo> aggregateVariables;
@@ -229,6 +255,8 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
             dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
 
+            // re-use the existing CollectNode on the coordinator to aggregate
+            // the counts of the DB servers
             collectNode->aggregateVariables()[0].type = "SUM";
             collectNode->aggregateVariables()[0].inVar = outVariable;
             collectNode->aggregationMethod(
@@ -237,6 +265,11 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             removeGatherNodeSort = true;
           } else if (collectNode->aggregationMethod() ==
                      CollectOptions::CollectMethod::kDistinct) {
+            // clone a COLLECT DISTINCT operation from the coordinator to the
+            // DB server(s), and leave an aggregate COLLECT node on the
+            // coordinator for total aggregation
+
+            // create a new result variable
             auto const& groupVars = collectNode->groupVariables();
             TRI_ASSERT(!groupVars.empty());
             auto out = plan->getAst()->variables()->createTemporaryVariable();
@@ -255,6 +288,8 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
             dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
 
+            // will set the input of the coordinator's collect node to the new
+            // variable produced on the DB servers
             auto copy = collectNode->groupVariables();
             TRI_ASSERT(!copy.empty());
             std::unordered_map<Variable const*, Variable const*> replacements;
@@ -266,6 +301,10 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           } else if (!collectNode->hasOutVariable() ||
                      collectNode->getOptions()
                          .aggregateIntoExpressionOnDBServers) {
+            // clone a COLLECT v1 = expr, v2 = expr ... operation from the
+            // coordinator to the DB server(s), and leave an aggregate COLLECT
+            // node on the coordinator for total aggregation
+
             std::vector<AggregateVarInfo> dbServerAggVars;
             for (auto const& it : collectNode->aggregateVariables()) {
               std::string_view func = Aggregator::pushToDBServerAs(it.type);
@@ -273,6 +312,7 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                 eligible = false;
                 break;
               }
+              // eligible!
               auto outVariable =
                   plan->getAst()->variables()->createTemporaryVariable();
               dbServerAggVars.emplace_back(
@@ -283,12 +323,14 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
               break;
             }
 
+            // create new group variables
             auto const& groupVars = collectNode->groupVariables();
             std::vector<GroupVarInfo> outVars;
             outVars.reserve(groupVars.size());
             std::unordered_map<Variable const*, Variable const*> replacements;
 
             for (auto const& it : groupVars) {
+              // create new out variables
               auto out = plan->getAst()->variables()->createTemporaryVariable();
               replacements.try_emplace(it.inVar, out);
               outVars.emplace_back(GroupVarInfo{out, it.inVar});
@@ -322,9 +364,9 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             std::vector<GroupVarInfo> copy;
             size_t i = 0;
             for (GroupVarInfo const& it : collectNode->groupVariables()) {
-              copy.emplace_back(
-                  GroupVarInfo{/*outVar*/ it.outVar,
-                               /*inVar*/ outVars[i].outVar});
+              // replace input variables
+              copy.emplace_back(GroupVarInfo{/*outVar*/ it.outVar,
+                                             /*inVar*/ outVars[i].outVar});
               ++i;
             }
             collectNode->groupVariables(copy);
@@ -344,15 +386,20 @@ void collectInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=
                                     CollectOptions::CollectMethod::kSorted);
 
+            // in case we need to keep the sortedness of the GatherNode,
+            // we may need to replace some variable references in it due
+            // to the changes we made to the COLLECT node
             if (gatherNode != nullptr && !removeGatherNodeSort &&
                 !replacements.empty() && !gatherNode->elements().empty()) {
               replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
             }
           } else {
+            // all other cases cannot be optimized
             break;
           }
 
           if (gatherNode != nullptr && removeGatherNodeSort) {
+            // remove sort(s) from GatherNode if we can
             gatherNode->elements().clear();
           }
 

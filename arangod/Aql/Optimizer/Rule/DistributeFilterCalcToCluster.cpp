@@ -117,6 +117,7 @@ void distributeFilterCalcToClusterRule(Optimizer* opt,
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
         case EN::MATERIALIZE:
+          // do break
           stopSearching = true;
           break;
 
@@ -124,6 +125,7 @@ void distributeFilterCalcToClusterRule(Optimizer* opt,
         case EN::CALCULATION:
         case EN::FILTER: {
           if (inspectNode->getType() == EN::CALCULATION) {
+            // check if the expression can be executed on a DB server safely
             TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
             if (!ExecutionNode::castTo<CalculationNode const*>(inspectNode)
                      ->expression()
@@ -131,7 +133,9 @@ void distributeFilterCalcToClusterRule(Optimizer* opt,
               stopSearching = true;
               break;
             }
+            // intentionally falls through
           }
+          // no special handling for filters here
 
           TRI_ASSERT(inspectNode->getType() == EN::SUBQUERY ||
                      inspectNode->getType() == EN::CALCULATION ||
@@ -141,22 +145,28 @@ void distributeFilterCalcToClusterRule(Optimizer* opt,
           inspectNode->getVariablesUsedHere(used);
           for (auto& v : used) {
             if (varsSetHere.find(v) != varsSetHere.end()) {
+              // do not move over the definition of variables that we need
               stopSearching = true;
               break;
             }
           }
 
           if (!stopSearching) {
+            // remember our cursor...
             parents = inspectNode->getParents();
+            // then unlink the filter/calculator from the plan
             plan->unlinkNode(inspectNode);
+            // and re-insert into plan in front of the remoteNode
             plan->insertDependency(rn, inspectNode);
 
             modified = true;
+            // ready to rumble!
           }
           break;
         }
 
         default: {
+          // should not reach this point
           TRI_ASSERT(false)
               << "Unhandled node type " << inspectNode->getTypeString();
         }

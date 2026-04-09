@@ -82,6 +82,7 @@ arangodb::aql::Variable const* getOutVariable(
       if (n != nullptr) {
         return n->outVariable();
       }
+      // note: modification nodes are not covered here yet
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "node type does not have an out variable");
     }
@@ -94,6 +95,7 @@ void restrictToShard(arangodb::aql::ExecutionNode* node,
   if (n != nullptr) {
     return n->restrictToShard(shardId);
   }
+  // note: modification nodes are not covered here yet
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "node type cannot be restricted to a single shard");
 }
@@ -188,6 +190,12 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
   }
 }
 
+/// @brief find the single shard id for the node to restrict an operation to
+/// this will check the conditions of an IndexNode or a data-modification node
+/// (excluding UPSERT) and check if all shard keys are used in it. If all
+/// shard keys are present and their values are fixed (constants), this
+/// function will try to figure out the target shard. If the operation cannot
+/// be restricted to a single shard, this function will return an empty string
 std::optional<arangodb::ShardID> getSingleShardId(
     arangodb::aql::ExecutionPlan const* plan,
     arangodb::aql::ExecutionNode const* node,
@@ -195,6 +203,7 @@ std::optional<arangodb::ShardID> getSingleShardId(
     arangodb::aql::Variable const* collectionVariable = nullptr) {
   if (collection->isSmart() &&
       collection->getCollection()->type() == TRI_COL_TYPE_EDGE) {
+    // no support for smart edge collections
     return std::nullopt;
   }
 
@@ -233,17 +242,23 @@ std::optional<arangodb::ShardID> getSingleShardId(
 
   TRI_ASSERT(inputVariable != nullptr);
 
+  // check if we can easily find out the setter of the input variable
+  // (and if we can find it, check if the data is constant so we can look
+  // up the shard key attribute values)
   auto setter = plan->getVarSetBy(inputVariable->id);
 
   if (setter == nullptr) {
+    // oops!
     TRI_ASSERT(false);
     return std::nullopt;
   }
 
+  // note for which shard keys we need to look for
   auto shardKeys = collection->shardKeys(true);
   std::unordered_set<std::string> toFind;
   for (auto const& it : shardKeys) {
     if (it.find('.') != std::string::npos) {
+      // shard key containing a "." (sub-attribute). this is not yet supported
       return std::nullopt;
     }
     toFind.emplace(it);
@@ -268,10 +283,14 @@ std::optional<arangodb::ShardID> getSingleShardId(
         return std::nullopt;
       }
 
+      // the lookup value is a string, and the only shard key is _key: so we
+      // can use it
       builder.add(VPackValue(arangodb::StaticStrings::KeyString));
       n->toVelocyPackValue(builder);
       toFind.clear();
     } else if (n->isObject()) {
+      // go through the input object attribute by attribute
+      // and look for our shard keys
       for (size_t i = 0; i < n->numMembers(); ++i) {
         auto sub = n->getMember(i);
 
@@ -283,10 +302,14 @@ std::optional<arangodb::ShardID> getSingleShardId(
         auto it = toFind.find(sub->getString());
 
         if (it != toFind.end()) {
+          // we found one of the shard keys!
           auto v = objElem.getValue();
           if (v->isConstant()) {
+            // if the attribute value is a constant, we copy it into our
+            // builder
             builder.add(VPackValue(sub->getString()));
             v->toVelocyPackValue(builder);
+            // remove the attribute from our to-do list
             toFind.erase(it);
           }
         }
@@ -302,6 +325,7 @@ std::optional<arangodb::ShardID> getSingleShardId(
     auto const* c = EN::castTo<arangodb::aql::IndexNode const*>(setter);
 
     if (c->getIndexes().size() != 1) {
+      // we can only handle a single index here
       return std::nullopt;
     }
     auto const* condition = c->condition();
@@ -329,22 +353,30 @@ std::optional<arangodb::ShardID> getSingleShardId(
     return std::nullopt;
   }
 
+  // all shard keys found!!
+
   if (node->getType() == EN::INSERT && collection->numberOfShards() != 1 &&
       (shardKeys.size() != 1 ||
        shardKeys[0] != arangodb::StaticStrings::KeyString) &&
       builder.slice().get(arangodb::StaticStrings::KeyString).isNone()) {
+    // insert into a collection with more than one shard or custom shard keys,
+    // and _key is not given in inputs.
     return std::nullopt;
   }
 
+  // find the responsible shard for the data
   std::string shardId;
 
   auto res =
       collection->getCollection()->getResponsibleShard(builder.slice(), true);
 
   if (res.fail()) {
+    // some error occurred. better do not use the
+    // single shard optimization here
     return std::nullopt;
   }
 
+  // we will only need a single shard!
   TRI_ASSERT(res.get().isValid());
   return std::move(res.get());
 }
@@ -377,7 +409,7 @@ class CollectionVariableTracker final
         }
       }
     } catch (...) {
-      _stop = true;
+      _stop = true;  // won't be able to recover correctly
     }
   }
 
@@ -417,11 +449,12 @@ class CollectionVariableTracker final
         auto collection = arangodb::aql::utils::getCollection(en);
         auto variable = getOutVariable(en);
 
+        // originates the collection variable, direct dependence
         try {
           _dependencies[variable].emplace(variable, collection);
           _collectionVariables[collection].emplace(variable);
         } catch (...) {
-          _stop = true;
+          _stop = true;  // we won't be able to figure it out
         }
         break;
       }
@@ -452,6 +485,7 @@ class CollectionVariableTracker final
       }
 
       default: {
+        // we don't support other node types yet
         break;
       }
     }
@@ -484,6 +518,8 @@ class RestrictToSingleShardChecker final
       : _plan{plan}, _tracker{tracker}, _stop{false} {}
 
   bool isSafeForOptimization() const {
+    // we have found something in the execution plan that will
+    // render the optimization unsafe
     return (!_stop && !_plan->getAst()->functionsMayAccessDocuments());
   }
 
@@ -518,9 +554,12 @@ class RestrictToSingleShardChecker final
       return false;
     }
 
+    // check for "all" marker
     if (std::holds_alternative<AllShards>(it->second)) {
+      // We do have ALL
       return false;
     } else {
+      // If we have exactly one shard, we can optimize
       return std::get<std::unordered_set<arangodb::ShardID>>(it->second)
                  .size() == 1;
     }
@@ -537,7 +576,7 @@ class RestrictToSingleShardChecker final
       case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH: {
         _stop = true;
-        return true;
+        return true;  // abort enumerating, we are done already!
       }
 
       case EN::FILTER: {
@@ -561,20 +600,24 @@ class RestrictToSingleShardChecker final
       case EN::REMOVE: {
         auto node =
             EN::castTo<arangodb::aql::ModificationNode const*>(en);
+        // make sure we don't restrict this collection via a lower filter    
         _shardsUsed.clear();
         auto shardId = getSingleShardId(_plan, en, node->collection());
         if (!shardId.has_value()) {
+          // mark the collection unsafe to restrict
           _unsafe[node->collection()] = true;
         }
+        // no need to track the shardId, we'll find it again later
         break;
       }
 
       default: {
+        // we don't care about other execution node types here
         break;
       }
     }
 
-    return false;
+    return false;  // go on
   }
 
  private:
@@ -619,6 +662,7 @@ class RestrictToSingleShardChecker final
 
   void handleSourceNode(arangodb::aql::ExecutionNode const* en) {
     auto variable = getOutVariable(en);
+    // now move all shards for this variable to the cleared list
     _shardsCleared[variable] = std::move(_shardsUsed[variable]);
   }
 };
@@ -637,6 +681,7 @@ void restrictToSingleShardRule(Optimizer* opt,
   CollectionVariableTracker tracker;
   plan->root()->walk(tracker);
   if (!tracker.isSafeForOptimization()) {
+    // encountered errors while working on optimization, do not continue
     opt->addPlan(std::move(plan), rule, wasModified);
     return;
   }
@@ -644,6 +689,8 @@ void restrictToSingleShardRule(Optimizer* opt,
   RestrictToSingleShardChecker finder(plan.get(), tracker);
   plan->root()->walk(finder);
   if (!finder.isSafeForOptimization()) {
+    // found something in the execution plan that renders the optimization
+    // unsafe, so do not optimize
     opt->addPlan(std::move(plan), rule, wasModified);
     return;
   }
@@ -655,6 +702,9 @@ void restrictToSingleShardRule(Optimizer* opt,
   std::map<Collection const*, std::unordered_set<ShardID>>
       modificationRestrictions;
 
+  // forward a shard key restriction from one collection to the other if the two
+  // collections are used in a SmartJoin (and use distributeShardsLike on each
+  // other)
   auto forwardRestrictionToPrototype = [&plan](ExecutionNode const* current,
                                                ShardID const& shardId) {
     auto collectionNode = dynamic_cast<CollectionAccessingNode const*>(current);
@@ -676,9 +726,12 @@ void restrictToSingleShardRule(Optimizer* opt,
     auto s2 = utils::getCollection(setter)->shardIds();
 
     if (s1->size() != s2->size()) {
+      // different number of shard ids... should not happen if we have a
+      // prototype
       return;
     }
 
+    // find matching shard key
     for (size_t i = 0; i < s1->size(); ++i) {
       if ((*s1)[i] == shardId) {
         restrictToShard(setter, (*s2)[i]);
@@ -705,6 +758,8 @@ void restrictToSingleShardRule(Optimizer* opt,
         if (shardId.has_value()) {
           TRI_ASSERT(shardId.value().isValid());
           wasModified = true;
+          // we are on a single shard. we must not ignore not-found documents
+          // now
           auto* modNode = ExecutionNode::castTo<ModificationNode*>(current);
           modNode->getOptions().ignoreDocumentNotFound = false;
           modNode->restrictToShard(shardId.value());
@@ -712,6 +767,10 @@ void restrictToSingleShardRule(Optimizer* opt,
 
           auto const& deps = current->getDependencies();
           if (deps.size() && deps[0]->getType() == ExecutionNode::REMOTE) {
+            // if we can apply the single-shard optimization, but still have a
+            // REMOTE node in front of us, we can probably move the remote
+            // parts of the query to our side. this is only the case if the
+            // remote part does not call any remote parts itself
             ::arangodb::containers::HashSet<ExecutionNode*> toRemove;
 
             auto c = deps[0];
@@ -724,6 +783,7 @@ void restrictToSingleShardRule(Optimizer* opt,
               c = c->getFirstDependency();
 
               if (c == nullptr) {
+                // reached the end
                 break;
               }
 
@@ -737,6 +797,8 @@ void restrictToSingleShardRule(Optimizer* opt,
                 auto cn = ExecutionNode::castTo<CalculationNode const*>(c);
                 auto expr = cn->expression();
                 if (!expr->canRunOnDBServer(vocbase.isOneShard())) {
+                  // found something that must not run on a DB server,
+                  // but that must run on a coordinator. stop optimization here!
                   toRemove.clear();
                   break;
                 }
@@ -752,6 +814,8 @@ void restrictToSingleShardRule(Optimizer* opt,
                  currentType == ExecutionNode::ENUMERATE_COLLECTION) {
         bool disable = false;
         if (currentType == ExecutionNode::INDEX) {
+          // Custom analyzer on inverted indexes might be incompatible with
+          // shard key distribution.
           for (auto& index :
                ExecutionNode::castTo<aql::IndexNode*>(current)->getIndexes()) {
             if (Index::TRI_IDX_TYPE_INVERTED_INDEX == index->type()) {
@@ -785,6 +849,8 @@ void restrictToSingleShardRule(Optimizer* opt,
                  currentType == ExecutionNode::REMOTE ||
                  currentType == ExecutionNode::DISTRIBUTE ||
                  currentType == ExecutionNode::SINGLETON) {
+        // we reached a new snippet or the end of the plan - we can abort
+        // searching now. additionally, we cannot yet handle UPSERT well
         break;
       }
 

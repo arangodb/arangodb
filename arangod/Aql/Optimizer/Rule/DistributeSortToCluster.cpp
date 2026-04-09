@@ -104,6 +104,12 @@ void distributeSortToClusterRule(Optimizer* opt,
         case EN::WINDOW:
         case EN::MATERIALIZE:
         case EN::OFFSET_INFO_MATERIALIZE:
+
+          // For all these, we do not want to pull a SortNode further down
+          // out to the DBservers, note that potential FilterNodes and
+          // CalculationNodes that can be moved to the DBservers have
+          // already been moved over by the distribute-filtercalc-to-cluster
+          // rule which is done first.
           stopSearching = true;
           break;
 
@@ -111,22 +117,32 @@ void distributeSortToClusterRule(Optimizer* opt,
           auto thisSortNode = ExecutionNode::castTo<SortNode*>(inspectNode);
           usedBySort.clear();
           thisSortNode->getVariablesUsedHere(usedBySort);
+          // remember our cursor...
           parents = inspectNode->getParents();
+          // then unlink the filter/calculator from the plan
           plan->unlinkNode(inspectNode);
+          // and re-insert into plan in front of the remoteNode
           if (thisSortNode->reinsertInCluster()) {
+            // let's look for the best place for that SORT.
+            // We could skip over several calculations if
+            // they are not needed for our sort. So we could calculate
+            // more lazily and even make late materialization possible
             ExecutionNode* insertPoint = rn;
             auto current = insertPoint->getFirstDependency();
             while (current != nullptr &&
                    current->getType() == EN::CALCULATION) {
               auto nn = ExecutionNode::castTo<CalculationNode*>(current);
               if (!nn->expression()->isDeterministic()) {
+                // let's not touch non-deterministic calculation
+                // as results may depend on calls count and sort could change
+                // this
                 break;
               }
               auto variable = nn->outVariable();
               if (usedBySort.find(variable) == usedBySort.end()) {
                 insertPoint = current;
               } else {
-                break;
+                break;  // first node used by sort. We should stop here.
               }
               current = current->getFirstDependency();
             }
@@ -135,14 +151,17 @@ void distributeSortToClusterRule(Optimizer* opt,
 
           gatherNode->elements(thisSortNode->elements());
           modified = true;
+          // ready to rumble!
           break;
         }
+        // we should not encounter this kind of nodes for now
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
         case EN::ASYNC:
         case EN::MUTEX:
         case EN::MAX_NODE_TYPE_VALUE: {
+          // should not reach this point
           stopSearching = true;
           TRI_ASSERT(false);
           break;

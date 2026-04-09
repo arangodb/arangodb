@@ -44,11 +44,14 @@ void removeUnnecessaryRemoteScatterRule(Optimizer* opt,
                                         std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, EN::REMOTE, false);
+  plan->findNodesOfType(nodes, EN::REMOTE,
+                        false /* do not go into Subqueries */);
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
   for (auto& n : nodes) {
+    // check if the remote node is preceded by a scatter node and any number of
+    // calculation and singleton nodes. if yes, remove remote and scatter
     if (!n->hasDependency()) {
       continue;
     }
@@ -72,12 +75,15 @@ void removeUnnecessaryRemoteScatterRule(Optimizer* opt,
         if (node->getType() != EN::SINGLETON &&
             node->getType() != EN::CALCULATION &&
             node->getType() != EN::FILTER) {
+          // found some other node type...
+          // this disqualifies the optimization    
           canOptimize = false;
           break;
         }
 
         if (node->getType() == EN::CALCULATION) {
           auto calc = ExecutionNode::castTo<CalculationNode const*>(node);
+          // check if the expression can be executed on a DB server safely
           TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
           if (!calc->expression()->canRunOnDBServer(vocbase.isOneShard())) {
             canOptimize = false;

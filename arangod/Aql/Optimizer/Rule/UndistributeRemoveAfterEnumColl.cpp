@@ -54,6 +54,9 @@ namespace {
 
 using EN = arangodb::aql::ExecutionNode;
 
+// static node types used by some optimizer rules
+// having them statically available avoids having to build the lists over
+// and over for each AQL query
 static constexpr std::initializer_list<EN::NodeType>
     undistributeNodeTypes{EN::UPDATE, EN::REPLACE, EN::REMOVE};
 
@@ -93,6 +96,7 @@ class RemoveToEnumCollFinder final
           break;
         }
 
+        // find the variable we are removing . . .
         auto rn =
             EN::castTo<arangodb::aql::ModificationNode*>(en);
         arangodb::aql::Variable const* toRemove = nullptr;
@@ -102,11 +106,16 @@ class RemoveToEnumCollFinder final
               EN::castTo<arangodb::aql::ReplaceNode const*>(en)
                   ->inKeyVariable();
         } else if (en->getType() == EN::UPDATE) {
+          // first try if we have the pattern UPDATE <key> WITH <doc> IN
+          // collection. if so, then toRemove will contain <key>.
           toRemove =
               EN::castTo<arangodb::aql::UpdateNode const*>(en)
                   ->inKeyVariable();
 
           if (toRemove == nullptr) {
+            // if we don't have that pattern, we can if instead have
+            // UPDATE <doc> IN collection.
+            // in this case toRemove will contain <doc>.
             toRemove =
                 EN::castTo<arangodb::aql::UpdateNode const*>(en)
                     ->inDocVariable();
@@ -119,6 +128,7 @@ class RemoveToEnumCollFinder final
         }
 
         if (toRemove == nullptr) {
+          // abort
           break;
         }
 
@@ -127,21 +137,27 @@ class RemoveToEnumCollFinder final
         auto enumColl = _setter;
 
         if (_setter->getType() == EN::CALCULATION) {
+          // this should be an attribute access for _key
           auto cn =
               EN::castTo<arangodb::aql::CalculationNode*>(_setter);
 
           auto expr = cn->expression();
           if (expr->isAttributeAccess()) {
+            // check the variable is the same as the remove variable
             if (cn->outVariable() != toRemove) {
-              break;
+              break;  // abort . . .
             }
+            // check that the modification node's collection is sharded over
+            // _key
             std::vector<std::string> shardKeys =
                 rn->collection()->shardKeys(false);
             if (shardKeys.size() != 1 ||
                 shardKeys[0] != arangodb::StaticStrings::KeyString) {
-              break;
+              break;  // abort . . .
             }
 
+            // set the varsToRemove to the variable in the expression of this
+            // node and also define enumColl
             arangodb::aql::VarSet varsToRemove;
             cn->getVariablesUsedHere(varsToRemove);
             TRI_ASSERT(varsToRemove.size() == 1);
@@ -155,13 +171,18 @@ class RemoveToEnumCollFinder final
               break;
             }
 
+            // note for which shard keys we need to look for
             auto shardKeys = rn->collection()->shardKeys(false);
             std::unordered_set<std::string> toFind;
             for (auto const& it : shardKeys) {
               toFind.emplace(it);
             }
+            // for UPDATE/REPLACE/REMOVE, we must also know the _key value,
+            // otherwise they will not work.
             toFind.emplace(arangodb::StaticStrings::KeyString);
 
+            // go through the input object attribute by attribute
+            // and look for our shard keys
             arangodb::aql::Variable const* lastVariable = nullptr;
             bool doOptimize = true;
 
@@ -177,10 +198,15 @@ class RemoveToEnumCollFinder final
               auto it = toFind.find(attributeName);
 
               if (it != toFind.end()) {
+                // we found one of the shard keys!
+                // remove the attribute from our to-do list
                 auto value = objElem.getValue();
 
+                // check if we have something like: { key: source.key }
                 if (value->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
                     value->getStringView() == attributeName) {
+                  // check if all values for the shard keys are referring to
+                  // the same FOR loop variable
                   arangodb::aql::ast::AttributeAccessNode attrAccess(value);
                   auto var = attrAccess.getObject();
                   if (var->type == arangodb::aql::NODE_TYPE_REFERENCE) {
@@ -201,25 +227,29 @@ class RemoveToEnumCollFinder final
             }
 
             if (!toFind.empty() || !doOptimize || lastVariable == nullptr) {
+              // not all shard keys covered, or different source variables in
+              // use
               break;
             }
 
             TRI_ASSERT(lastVariable != nullptr);
             enumColl = _plan->getVarSetBy(lastVariable->id);
           } else {
+            // cannot optimize this type of input
             break;
           }
         }
 
         if (enumColl->getType() != EN::ENUMERATE_COLLECTION &&
             enumColl->getType() != EN::INDEX) {
-          break;
+          break;  // abort . . .
         }
 
         auto const& projections =
             dynamic_cast<arangodb::aql::DocumentProducingNode const*>(enumColl)
                 ->projections();
         if (projections.isSingle(arangodb::StaticStrings::KeyString)) {
+          // cannot handle projections
           break;
         }
 
@@ -227,36 +257,36 @@ class RemoveToEnumCollFinder final
 
         if (arangodb::aql::utils::getCollection(_enumColl) !=
             rn->collection()) {
-          break;
+          break;  // abort . . .
         }
 
-        _variable = toRemove;
+        _variable = toRemove;  // the variable we'll remove
         _foundModification = true;
-        return false;
+        return false;  // continue . . .
       }
       case EN::REMOTE: {
         _toUnlink.emplace(en);
-        return false;
+        return false;  // continue . . .
       }
       case EN::DISTRIBUTE:
       case EN::SCATTER: {
-        if (_foundScatter) {
-          break;
+        if (_foundScatter) {  // met more than one scatter node
+          break;              // abort . . .
         }
         _foundScatter = true;
         _toUnlink.emplace(en);
-        return false;
+        return false;  // continue . . .
       }
       case EN::GATHER: {
-        if (_foundGather) {
-          break;
+        if (_foundGather) {  // met more than one gather node
+          break;             // abort . . .
         }
         _foundGather = true;
         _toUnlink.emplace(en);
-        return false;
+        return false;  // continue . . .
       }
       case EN::FILTER: {
-        return false;
+        return false;  // continue . . .
       }
       case EN::CALCULATION: {
         TRI_vocbase_t& vocbase = _plan->getAst()->query().vocbase();
@@ -264,21 +294,26 @@ class RemoveToEnumCollFinder final
             EN::castTo<arangodb::aql::CalculationNode*>(en);
         auto expr = calculationNode->expression();
 
+        // If we find an expression that is not allowed to run on a DBServer,
+        // we cannot undistribute (as then the expression *would* run on a
+        // dbserver)
         if (!expr->canRunOnDBServer(vocbase.isOneShard())) {
           break;
         }
-        return false;
+        return false;  // continue . . .
       }
       case EN::WINDOW: {
-        return false;
+        return false;  // continue . . .
       }
       case EN::ENUMERATE_COLLECTION:
       case EN::INDEX: {
+        // check that we are enumerating the variable we are to remove
+        // and that we have already seen a remove node
         TRI_ASSERT(_enumColl != nullptr);
         if (en->id() != _enumColl->id()) {
           break;
         }
-        return true;
+        return true;  // reached the end!
       }
       case EN::SINGLETON:
       case EN::ENUMERATE_LIST:
@@ -294,10 +329,12 @@ class RemoveToEnumCollFinder final
       case EN::TRAVERSAL:
       case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH: {
+        // if we meet any of the above, then we abort . . .
         break;
       }
 
       default: {
+        // should not reach this point
         TRI_ASSERT(false);
       }
     }
