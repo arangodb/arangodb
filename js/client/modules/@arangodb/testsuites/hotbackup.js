@@ -237,7 +237,7 @@ function hotBackup_load_demo (options) {
 
   let which = "hot_backup_load_demo";
   return hotBackup_load_backend(options, which, {
-    noiseScript: function() {print("hello world");},
+    noiseScript: function() {print("hello world! Put your code to work with the system below");},
     noiseVolume: 1,
     noiseDuration: 60,
     preRestoreFn: function() {
