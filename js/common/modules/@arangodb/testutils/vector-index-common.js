@@ -301,7 +301,14 @@ function insertDocsAndEnsureIndex({collection, docs, seed, ensureIndex,
 
     for (let i = 0; i < numBatches; i++) {
         if (i === ensureIndexSlot) {
-            ensureIndex();
+            try {
+                ensureIndex();
+            } catch (e) {
+                // Index creation may fail if not enough data is present yet
+                // (e.g. vector index training threshold not met on a shard).
+                // The index still exists in unusable state and the background
+                // build manager will retry once enough data arrives.
+            }
         }
         const start = i * batchSize;
         const end = Math.min(start + batchSize, docs.length);
