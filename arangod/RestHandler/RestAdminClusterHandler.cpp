@@ -665,6 +665,12 @@ async<void> RestAdminClusterHandler::handleRemoveServer() {
     co_return;
   }
 
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    co_return;
+  }
+
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -1241,7 +1247,7 @@ async<void> RestAdminClusterHandler::handleCancelJob() {
 async<void> RestAdminClusterHandler::handleSingleServerJob(
     std::string const& job) {
   if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMaintenance{});
+          arangodb::rbac::Category::AdminMoveShards{});
       r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   r.errorMessage());
@@ -2085,22 +2091,19 @@ async<void> RestAdminClusterHandler::handleNumberOfServers() {
     co_return;
   }
 
-  // GET requests are allowed for everyone, unless --server.harden is used.
-  // in this case admin privileges are required.
-  // PUT requests always require admin privileges
-  // with RBAC, db:AdminMaintenance is needed for PUT
+  // GET requests are allowed for everyone, PUT, too, unless
+  // --server.harden is used. In this case admin privileges are
+  // required. with RBAC, db:AdminMaintenance is needed for PUT
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
-  bool const needsAdminPrivileges =
-      (request()->requestType() != rest::RequestType::GET ||
-       security.isRestApiHardened());
-
-  if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMaintenance{});
-      needsAdminPrivileges && r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
-    co_return;
+  if (request()->requestType() != rest::RequestType::GET) {
+    if (auto r =
+            security.canAccessHardenedApi(rbac::Category::AdminMaintenance{});
+        r.fail()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    r.errorMessage());
+      co_return;
+    }
   }
 
   switch (request()->requestType()) {
@@ -2575,7 +2578,7 @@ async<void> RestAdminClusterHandler::handleRebalanceShards() {
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (auto r = exec.canUseAdminAction(rbac::Category::AdminMoveShards{});
+  if (auto r = exec.canUseAdminAction(rbac::Category::AdminRebalance{});
       r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   r.errorMessage());
@@ -3079,7 +3082,7 @@ async<void> RestAdminClusterHandler::handleVPackSortMigration(
     std::string const& subCommand) {
   // First we do the authentication: We only allow superuser access, since
   // this is a critical migration operation:
-  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "only superusers may run vpack index migration");
     co_return;
