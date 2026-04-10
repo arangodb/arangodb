@@ -131,6 +131,8 @@ class VectorIndexBuilder {
                std::stop_token stopToken = {});
 
  private:
+  Result persistTrainedData(TrainedData const& trainedData);
+
   RocksDBVectorIndex& _index;
   RocksDBEngine& _engine;
   rocksdb::DB* _rootDB;
