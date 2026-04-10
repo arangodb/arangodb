@@ -209,26 +209,9 @@ void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const& rule);
 #endif
 
-/// @brief optimizes away unused traversal output variables and
-/// merges filter nodes into graph traversal nodes
-void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                            OptimizerRule const&);
-
 /// @brief optimizes away unused K_PATHS things
 void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                        OptimizerRule const&);
-
-/// @brief removes filter nodes already covered by the traversal and removes
-/// unused variables
-void removeFiltersCoveredByTraversal(Optimizer* opt,
-                                     std::unique_ptr<ExecutionPlan> plan,
-                                     OptimizerRule const&);
-
-/// @brief removes redundant path variables, after applying
-/// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
-void removeTraversalPathVariable(Optimizer* opt,
-                                 std::unique_ptr<ExecutionPlan> plan,
-                                 OptimizerRule const&);
 
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
