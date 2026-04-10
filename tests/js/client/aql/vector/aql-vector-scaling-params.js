@@ -81,9 +81,9 @@ function assertResolvedNLists(nLists, collection) {
     }
 }
 
-function assertVectorIndexUsable(queryPoint, limit = 5) {
+function assertVectorIndexUsable(queryPoint, limit = 5, nProbe) {
     const query = `FOR d IN ${collName}
-        SORT APPROX_NEAR_L2(d.vector, @qp)
+        SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: ${nProbe}})
         LIMIT @limit
         RETURN d`;
     const result = db._query(query, { qp: queryPoint, limit }).toArray();
@@ -190,7 +190,7 @@ function VectorIndexScalingTestSuite() {
             assertTrue(idx !== undefined);
             assertEqual(15, idx.params.nLists.minNLists);
 
-            assertVectorIndexUsable(randomPoint);
+            assertVectorIndexUsable(randomPoint, 5, 15);
             assertResolvedNLists(15, collection);
         },
 
@@ -274,7 +274,7 @@ function VectorIndexScalingTiersTestSuite() {
                 },
             });
             assertResolvedNLists(2, collection);
-            assertVectorIndexUsable(randomPoint);
+            assertVectorIndexUsable(randomPoint, 5, 2);
         },
 
         testSecondTierTriggered: function() {
@@ -299,7 +299,7 @@ function VectorIndexScalingTiersTestSuite() {
                 },
             });
             assertResolvedNLists(2, collection);
-            assertVectorIndexUsable(randomPoint);
+            assertVectorIndexUsable(randomPoint, 5, 2);
         },
 
         testThirdTierTriggered: function() {
@@ -324,7 +324,7 @@ function VectorIndexScalingTiersTestSuite() {
                 },
             });
             assertResolvedNLists(2, collection);
-            assertVectorIndexUsable(randomPoint);
+            assertVectorIndexUsable(randomPoint, 5, 2);
         },
     };
 }
