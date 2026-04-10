@@ -662,6 +662,26 @@ VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index)
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
+Result VectorIndexBuilder::persistTrainedData(TrainedData const& trainedData) {
+  velocypack::Builder builder;
+  velocypack::serialize(builder, trainedData);
+
+  RocksDBKey key;
+  key.constructVectorIndexTrainedData(_index.objectId());
+  auto value = RocksDBValue::VectorIndexValue(builder.slice());
+
+  auto* vectorCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::VectorIndex);
+  rocksdb::WriteOptions wo;
+  auto status = _rootDB->Put(wo, vectorCF, key.string(), value.string());
+  if (!status.ok()) {
+    return Result{
+        TRI_ERROR_INTERNAL,
+        std::string{"Failed to persist trained data: "} + status.ToString()};
+  }
+  return {};
+}
+
 Result VectorIndexBuilder::build(
     std::shared_ptr<RocksDBIndex> indexPtr,
     metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
