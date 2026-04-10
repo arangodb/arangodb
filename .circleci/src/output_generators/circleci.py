@@ -185,8 +185,7 @@ class CircleCIGenerator(OutputGenerator):
 
         # Add non-maintainer build for x64 (non-instrumented builds only)
         if (
-            build_config.architecture == Architecture.X64
-            and not build_config.build_variant.is_instrumented
+            not build_config.build_variant.is_instrumented
             and not self.config.circleci.create_docker_images
         ):
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
