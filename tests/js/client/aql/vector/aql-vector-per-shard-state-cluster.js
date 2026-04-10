@@ -34,14 +34,15 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
     VectorIndexTrainingState,
+    waitForVectorIndexState,
 } = require("@arangodb/testutils/vector-index-common");
 const dbName = "vectorPerShardStateDB";
 const dimension = 100;
-const nLists = 1;
-// Training threshold is max(nLists * 39, 1000) = 1000 with nLists=1.
+const nLists = 10;
+// Training threshold is nLists.
 // Use 1200 per shard to comfortably exceed the threshold.
 const docsAboveThreshold = 1200;
-const docsBelowThreshold = 500;
+const docsBelowThreshold = nLists - 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Helpers
@@ -170,7 +171,7 @@ function createVectorIndex(collection, sparse) {
         name: "vec_l2",
         type: "vector",
         fields: ["vector"],
-        inBackground: false,
+        inBackground: true,
         sparse: sparse || false,
         params: {metric: "l2", dimension, nLists},
     });
@@ -269,8 +270,8 @@ function VectorIndexPerShardStateSuite() {
             const shardStates = getPerShardStates(collection, "vec_l2");
             assertEqual(VectorIndexTrainingState.kUnusable, shardStates[starvedShard].trainingState,
                 "Starved shard should remain unusable");
-            assertEqual("", shardStates[starvedShard].error,
-                "Starved shard should have no error");
+            assertTrue(shardStates[starvedShard].error.length > 0,
+                "Starved shard should have error");
             for (const s of fullShards) {
                 assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
                     "Full shard " + s + " should be ready");
@@ -325,6 +326,68 @@ function VectorIndexPerShardStateSuite() {
                 "Shard without vector field docs should be unusable");
             assertTrue(shardStates[emptyVectorShard].error.length > 0,
                 "Shard without vector field docs should have an error");
+            for (const s of fullShards) {
+                assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
+                    "Full shard " + s + " should be ready");
+                assertEqual("", shardStates[s].error,
+                    "Full shard " + s + " should have no error");
+            }
+        },
+
+        testScaledNListsEmptyShardBecomesUnusable: function () {
+            const {shardNames, keysPerShard} = buildKeyPool(collection, docsAboveThreshold);
+            assertEqual(3, shardNames.length);
+
+            const emptyShard = shardNames[0];
+            const fullShards = shardNames.slice(1);
+            for (const shard of fullShards) {
+                insertDocsForShard(collection, keysPerShard[shard], docsAboveThreshold, gen);
+            }
+
+            const expectedCounts = {[emptyShard]: 0};
+            for (const s of fullShards) {
+                expectedCounts[s] = docsAboveThreshold;
+            }
+            assertPerShardCounts(collection, expectedCounts);
+
+            collection.ensureIndex({
+                name: "vec_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: true,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [],
+                    },
+                },
+            });
+
+            const expectations = {};
+            for (const s of fullShards) {
+                expectations[s] = {trainingState: VectorIndexTrainingState.kReady, hasError: false};
+            }
+            expectations[emptyShard] = {trainingState: VectorIndexTrainingState.kUnusable, hasError: true};
+
+            assertTrue(
+                waitForPerShardStates(collection, "vec_l2", expectations, 120),
+                "Full shards should be ready, empty shard should be unusable"
+            );
+
+            assertFalse(
+                waitForVectorIndexState(collection, "vec_l2", VectorIndexTrainingState.kReady, 5),
+                "Overall index should not reach ready when one shard is unusable"
+            );
+
+            const shardStates = getPerShardStates(collection, "vec_l2");
+            assertEqual(VectorIndexTrainingState.kUnusable,
+                shardStates[emptyShard].trainingState,
+                "Empty shard should be unusable with scaled nLists");
+            assertTrue(shardStates[emptyShard].error.length > 0,
+                "Empty shard should have an error message");
             for (const s of fullShards) {
                 assertEqual(VectorIndexTrainingState.kReady, shardStates[s].trainingState,
                     "Full shard " + s + " should be ready");

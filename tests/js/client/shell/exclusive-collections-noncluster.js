@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue */
+/*global assertEqual, assertNotEqual, assertTrue, print, args */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,25 +25,20 @@
 /// @author Copyright 2018, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const ct = require('@arangodb/testutils/client-tools');
 var jsunity = require("jsunity");
+const sleep = require('internal').sleep;
 
 var arangodb = require("@arangodb");
 var db = arangodb.db;
-const {
-  launchPlainSnippetInBG,
-  joinBGShells,
-} = require('@arangodb/testutils/client-tools').run;
-
+var IM = global.instanceManager;
 var ERRORS = arangodb.errors;
-
-let IM = global.instanceManager;
-const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ExclusiveSuite () {
+function ExclusiveSuite() {
   var cn1 = "UnitTestsExclusiveCollection1"; // used for test data
   var cn2 = "UnitTestsExclusiveCollection2"; // used for communication
   var c1, c2;
@@ -51,7 +46,7 @@ function ExclusiveSuite () {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       clients = [];
       db._drop(cn1);
       db._drop(cn2);
@@ -59,202 +54,213 @@ function ExclusiveSuite () {
       c2 = db._create(cn2);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       joinBGShells(IM.options, clients, waitFor, cn1);
       db._drop(cn1);
       db._drop(cn2);
     },
 
-    testExclusiveExpectConflict : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      clients.push(launchPlainSnippetInBG(`
-        let db = require("internal").db;
-        db["${cn2}"].insert({ _key: "runner1", value: false });
+    testExclusiveExpectConflict: function () {
+      c1.insert({ "_key": "XXX", "name": "initial" });
+      let fn1 = function () {
+        let db = require('internal').db;
+        let c2 = db[args.cn2];
+        c2.insert({ _key: "runner1", value: false });
 
-        while (!db["${cn2}"].exists("runner2")) {
+        while (!c2.exists("runner2")) {
           require("internal").sleep(0.02);
         }
 
-        const trx = db._createTransaction({
-          collections: { write: ["${cn1}", "${cn2}"] }
-        });
-        // signal that BG transaction is open so main knows to start
-        db["${cn1}"].insert({ _key: "runner1_trx_open", value: true });
-        try {
-          for (let i = 0; i < 10000; ++i) {
-            trx.collection("${cn1}").update("XXX", { name: "runner1" });
+        let trx = db._createTransaction({
+          collections: {
+            write: [args.cn1, args.cn2],
+            exclusive: []
           }
-          trx.collection("${cn2}").update("runner1", { value: true });
-          trx.commit();
-        } catch (e) {
-          trx.abort();
-          // CONFLICT is expected - the main transaction may have committed first
+        });
+        let ct1 = trx.collection(args.cn1);
+        let ct2 = trx.collection(args.cn2);
+        for (let i = 0; i < 10000; ++i) {
+          ct1.update("XXX", { name: "runner1" });
         }
-      `, 'testExclusiveExpectConflict'));
-
-      db[cn2].insert({ _key: "runner2", value: false });
-      while (!db[cn2].exists("runner1")) {
-        require("internal").sleep(0.02);
+        ct2.update("runner1", { value: true });
+        print('committing spawned');
+        trx.commit();
+      };
+      let shells = [];
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, { cn1, cn2 });
+      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+      while (!c2.exists("runner1")) {
+        sleep(0.02);
       }
-      // wait until BG has opened its transaction before we open ours
-      while (!db[cn1].exists("runner1_trx_open")) {
-        require("internal").sleep(0.02);
-      }
-
       try {
-        const trx = db._createTransaction({
-          collections: { write: [ cn1, cn2 ] }
-        });
-        try {
-          for (let i = 0; i < 10000; ++i) {
-            trx.collection(cn1).update("XXX", { name: "runner2" });
+        let trx = db._createTransaction({
+          collections: {
+            write: [cn1, cn2],
+            exclusive: []
           }
-          trx.collection(cn2).update("runner2", { value: true });
-          trx.commit();
-        } catch (e) {
-          trx.abort();
-          throw e;
+        });
+        let ct1 = trx.collection(cn1);
+        let ct2 = trx.collection(cn2);
+        for (let i = 0; i < 10000; ++i) {
+          ct1.update("XXX", { name: "runner2" });
         }
+        ct2.update("runner2", { value: true });
+        print('commiting local');
+        trx.commit();
       } catch (err) {
+        print('error with local commit');
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
-      joinBGShells(IM.options, clients, waitFor, cn1);
-      clients = [];
+      joinShells(shells);
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) { return l._key < r._key; });
       assertNotEqual(docs[0].value, docs[1].value);
     },
 
-    testExclusiveExpectNoConflict : function () {
+    testExclusiveExpectNoConflict: function () {
       assertEqual(0, c2.count());
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      clients.push(launchPlainSnippetInBG(`
+      c1.insert({ "_key": "XXX", "name": "initial" });
+      let fn1 = function () {
         let db = require("internal").db;
-        db["${cn2}"].insert({ _key: "runner1", value: false });
-        while (!db["${cn2}"].exists("runner2")) {
+        let c2 = db[args.cn2];
+        c2.insert({ _key: "runner1", value: false });
+        while (!c2.exists("runner2")) {
           require("internal").sleep(0.02);
         }
 
-        const trx = db._createTransaction({
-          collections: { exclusive: ["${cn1}", "${cn2}"] }
-        });
-        try {
-          for (let i = 0; i < 10; ++i) {
-            trx.collection("${cn1}").update("XXX", { name: "runner1" });
+        let trx = db._createTransaction({
+          collections: {
+            exclusive: [args.cn1, args.cn2],
           }
-          trx.collection("${cn2}").update("runner1", { value: true });
-          trx.commit();
-        } catch (e) {
-          trx.abort();
-          throw e;
+        });
+        let ct1 = trx.collection(args.cn1);
+        let ct2 = trx.collection(args.cn2);
+        for (let i = 0; i < 10000; ++i) {
+          ct1.update("XXX", { name: "runner1" });
         }
-      `, 'testExclusiveExpectNoConflict'));
+        ct2.update("runner1", { value: true });
+        trx.commit();
+      };
+      let shells = [];
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, { cn1, cn2 });
 
-      db[cn2].insert({ _key: "runner2", value: false });
-      while (!db[cn2].exists("runner1")) {
+      c2.insert({ _key: "runner2", value: false });
+      while (!c2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
 
-      const trx = db._createTransaction({
-        collections: { exclusive: [ cn1, cn2 ] }
-      });
-      try {
-        for (let i = 0; i < 10; ++i) {
-          trx.collection(cn1).update("XXX", { name: "runner2" });
+      let trx = db._createTransaction({
+        collections: {
+          exclusive: [cn1, cn2],
         }
-        trx.collection(cn2).update("runner2", { value: true });
-        trx.commit();
-      } catch (e) {
-        trx.abort();
-        throw e;
+      });
+      let ct1 = trx.collection(cn1);
+      let ct2 = trx.collection(cn2);
+      for (let i = 0; i < 10000; ++i) {
+        ct1.update("XXX", { name: "runner2" });
       }
+      ct2.update("runner2", { value: true });
+      trx.commit();
 
-      joinBGShells(IM.options, clients, waitFor, cn1);
-      clients = [];
-
+      joinShells(shells);
       // both transactions should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) { return l._key < r._key; });
       assertTrue(docs[0].value);
       assertTrue(docs[1].value);
     },
 
-    testExclusiveExpectConflictAQL : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      clients.push(launchPlainSnippetInBG(`
+    testExclusiveExpectConflictAQL: function () {
+      c1.insert({ "_key": "XXX", "name": "initial" });
+      let fn1 = function () {
+        var arangodb = require("@arangodb");
+        var ERRORS = arangodb.errors;
         let db = require("internal").db;
-        db["${cn2}"].insert({ _key: "runner1", value: false });
-        while (!db["${cn2}"].exists("runner2")) {
+        let c2 = db[args.cn2];
+        c2.insert({ _key: "runner1", value: false });
+        while (!c2.exists("runner2")) {
           require("internal").sleep(0.02);
         }
         try {
-          for (let i = 0; i < 10000; ++i) {
-            db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN ${cn1}");
+          for (let i = 0; i < 1000; ++i) {
+            db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@cn", { '@cn': args.cn1 });
           }
-          db["${cn2}"].update("runner1", { value: true });
-        } catch (e) {
-          // CONFLICT is expected
+          c2.update("runner1", { value: true });
+        } catch (err) {
+          print('error with spawned queries');
+          if (ERRORS.ERROR_ARANGO_CONFLICT.code !== err.errorNum) {
+            throw (err);
+          }
         }
-      `, 'testExclusiveExpectConflictAQL'));
+      };
+
+      let shells = [];
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, { cn1, cn2 });
 
       try {
-        db[cn2].insert({ _key: "runner2", value: false });
-        while (!db[cn2].exists("runner1")) {
+        c2.insert({ _key: "runner2", value: false });
+        while (!c2.exists("runner1")) {
           require("internal").sleep(0.02);
         }
         for (let i = 0; i < 10000; i++) {
-          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN " + cn1);
+          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN @@cn", { '@cn': cn1 });
         }
-        db[cn2].update("runner2", { value: true });
+        c2.update("runner2", { value: true });
       } catch (err) {
+        print('error with local queries');
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
-      joinBGShells(IM.options, clients, waitFor, cn1);
-      clients = [];
+      joinShells(shells);
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) { return l._key < r._key; });
       assertNotEqual(docs[0].value, docs[1].value);
     },
 
-    testExclusiveExpectNoConflictAQL : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      clients.push(launchPlainSnippetInBG(`
+    testExclusiveExpectNoConflictAQL: function () {
+      c1.insert({ "_key": "XXX", "name": "initial" });
+      let fn1 = function () {
         let db = require("internal").db;
-        db["${cn2}"].insert({ _key: "runner1", value: false });
-        while (!db["${cn2}"].exists("runner2")) {
+        let c2 = db[args.cn2];
+        c2.insert({ _key: "runner1", value: false });
+        while (!c2.exists("runner2")) {
           require("internal").sleep(0.02);
         }
-        for (let i = 0; i < 10000; ++i) {
-          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN ${cn1} OPTIONS { exclusive: true }");
+        print('spawned start');
+        for (let i = 0; i < 1000; ++i) {
+          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN @@col OPTIONS { exclusive: true }", { "@col": args.cn1 });
         }
-        db["${cn2}"].update("runner1", { value: true });
-      `, 'testExclusiveExpectNoConflictAQL'));
+        print('spawned done');
+        c2.update("runner1", { value: true });
+      };
 
-      db[cn2].insert({ _key: "runner2", value: false });
-      while (!db[cn2].exists("runner1")) {
+      let shells = [];
+      ct.run.spawnStressArangoshInBG(shells, fn1, 'xx', 1, { cn1, cn2 });
+
+      c2.insert({ _key: "runner2", value: false });
+      while (!c2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
+      print('local start');
       for (let i = 0; i < 10000; i++) {
-        db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN " + cn1 + " OPTIONS { exclusive: true }");
+        db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN @@col OPTIONS { exclusive: true }", { "@col": cn1 });
       }
-      db[cn2].update("runner2", { value: true });
+      print('local done');
+      c2.update("runner2", { value: true });
 
-      joinBGShells(IM.options, clients, waitFor, cn1);
-      clients = [];
+      joinShells(shells);
 
-      // both transactions should have succeeded
+      // both set of queries should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) { return l._key < r._key; });
       assertTrue(docs[0].value);
       assertTrue(docs[1].value);
     }
-
   };
 }
 

@@ -33,9 +33,7 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndEnsureIndex,
-    waitForAllVectorIndexesState,
-    VectorIndexTrainingState,
+    insertDocsAndAssertIndex,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -85,10 +83,11 @@ function VectorIndexCreateAndRemoveTestSuite() {
                 });
             }
             insertedDocs = [];
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                readyTimeoutSec: 120,
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -97,14 +96,9 @@ function VectorIndexCreateAndRemoveTestSuite() {
                         dimension,
                         nLists: 10
                     },
-                }),
+                },
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
-                "Expected index to become ready with " + insertedDocsCount + " docs"
-            );
         },
 
         tearDown: function() {
@@ -413,6 +407,43 @@ function VectorIndexTestCreationWithVectors() {
             }
         },
 
+        testCreatingSameVectorIndexWithAndWithoutStoredValues: function() {
+            try {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+
+                collection.ensureIndex({
+                    name: "vector_l2_stored",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    storedValues: ["name", "value"],
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+            } catch(e) {}
+
+            const vectorIndexes = collection.getIndexes().filter(
+                idx => idx.type === "vector"
+            );
+            assertEqual(1, vectorIndexes.length,
+                "Should have only one vector index, not two");
+        },
+
         testCreatingVectorIndexNoFields: function() {
             let gen = randomNumberGeneratorFloat(seed);
 
@@ -505,10 +536,11 @@ function VectorIndexStoredValuesTestSuite() {
                 });
             }
             insertedDocs = [];
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2_stored",
+                readyTimeoutSec: 120,
+                indexName: "vector_l2_stored",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -518,14 +550,9 @@ function VectorIndexStoredValuesTestSuite() {
                         dimension,
                         nLists: 1
                     },
-                }),
+                },
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
-                "Expected index to become ready with " + insertedDocsCount + " docs"
-            );
         },
 
         tearDown: function() {

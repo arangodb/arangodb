@@ -53,19 +53,6 @@ void activateCallstackSplit(ExecutionPlan& plan);
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
 
-/// @brief remove redundant sorts
-/// this rule modifies the plan in place:
-/// - sorts that are covered by earlier sorts will be removed
-void removeRedundantSortsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
-
-/// @brief remove all unnecessary filters
-/// this rule modifies the plan in place:
-/// - filters that are always true are removed completely
-/// - filters that are always false will be replaced by a NoResults node
-void removeUnnecessaryFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
-
 /// @brief remove unused INTO variable from COLLECT, or unused aggregates
 void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                 OptimizerRule const&);
@@ -73,20 +60,6 @@ void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief propagate constant attributes in FILTERs
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
-
-/// @brief move calculations up in the plan
-/// this rule modifies the plan in place
-/// it aims to move up calculations as far up in the plan as possible, to
-/// avoid redundant calculations in inner loops
-void moveCalculationsUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
-/// @brief move calculations down in the plan
-/// this rule modifies the plan in place
-/// it aims to move down calculations as far down in the plan as possible,
-/// beyond FILTER and LIMIT statements
-void moveCalculationsDownRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
 
 /// @brief determine the "right" type of CollectNode and
 /// add a sort node for each COLLECT (may be removed later)
@@ -97,43 +70,6 @@ void specializeCollectRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief split and-combined filters and break them into smaller parts
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
-
-/// @brief move filters up in the plan
-/// this rule modifies the plan in place
-/// filters are moved as far up in the plan as possible to make result sets
-/// as small as possible as early as possible
-/// filters are not pushed beyond limits
-void moveFiltersUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                       OptimizerRule const&);
-
-/// @brief simplify some conditions in CalculationNodes
-void simplifyConditionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
-/// @brief fuse filter conditions that follow each other
-void fuseFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                     OptimizerRule const&);
-
-/// @brief remove redundant CalculationNodes
-void removeRedundantCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
-
-/// @brief remove CalculationNodes and SubqueryNodes that are never needed
-void removeUnnecessaryCalculationsRule(Optimizer*,
-                                       std::unique_ptr<ExecutionPlan>,
-                                       OptimizerRule const&);
-
-/// @brief useIndex, try to use an index for filtering
-void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                    OptimizerRule const&);
-
-/// @brief try to use the index for sorting
-void useIndexForSortRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
-
-/// @brief try to remove filters which are covered by indexes
-void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
 
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 void interchangeAdjacentEnumerationsRule(Optimizer*,
@@ -261,18 +197,6 @@ void undistributeRemoveAfterEnumCollRule(Optimizer*,
                                          std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const&);
 
-/// @brief this rule replaces expressions of the type:
-///   x.val == 1 || x.val == 2 || x.val == 3
-//  with
-//    x.val IN [1,2,3]
-//  when the OR conditions are present in the same FILTER node, and refer to the
-//  same (single) attribute.
-void replaceOrWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
-
-void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
-
 /// @brief remove $OLD and $NEW variables from data-modification statements
 /// if not required
 void removeDataModificationOutVariablesRule(Optimizer*,
@@ -285,26 +209,9 @@ void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const& rule);
 #endif
 
-/// @brief optimizes away unused traversal output variables and
-/// merges filter nodes into graph traversal nodes
-void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                            OptimizerRule const&);
-
 /// @brief optimizes away unused K_PATHS things
 void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                        OptimizerRule const&);
-
-/// @brief removes filter nodes already covered by the traversal and removes
-/// unused variables
-void removeFiltersCoveredByTraversal(Optimizer* opt,
-                                     std::unique_ptr<ExecutionPlan> plan,
-                                     OptimizerRule const&);
-
-/// @brief removes redundant path variables, after applying
-/// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
-void removeTraversalPathVariable(Optimizer* opt,
-                                 std::unique_ptr<ExecutionPlan> plan,
-                                 OptimizerRule const&);
 
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -313,10 +220,6 @@ void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief replace FILTER and SORT containing DISTANCE function
 void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
                   OptimizerRule const&);
-
-/// @brief make sort node aware of limit to enable internal optimizations
-void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
-                   OptimizerRule const&);
 
 /// @brief push LIMIT into subqueries, and simplify them
 void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -331,18 +234,10 @@ void replaceEntriesWithObjectIteration(Optimizer*,
                                        std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
 
-/// @brief move filters into EnumerateCollection nodes
-void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
-
 /// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized
 /// count operation
 void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                        OptimizerRule const&);
-
-/// @brief parallelize Gather nodes (cluster-only)
-void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
 
 /// @brief allows execution nodes to asynchronously prefetch the next batch from
 /// their upstream node.
@@ -352,11 +247,6 @@ void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                           OptimizerRule const&);
-
-//// @brief reduces a sorted gather to an unsorted gather if only one shard is
-/// involved
-void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
 
 void createScatterGatherSnippet(
     ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,

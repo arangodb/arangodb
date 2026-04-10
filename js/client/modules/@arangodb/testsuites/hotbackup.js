@@ -30,12 +30,12 @@ const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const hb = require("@arangodb/hotbackup");
 
-const { DumpRestoreHelper, getClusterStrings } = require('@arangodb/testutils/dump');
+const { persistenceToolkit, getClusterStrings } = require('@arangodb/testutils/persistence-common');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
+const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 const errors = require('internal').errors;
@@ -49,7 +49,7 @@ const testPaths = {
   'hot_backup': [tu.pathForTesting('client/dump')]
 };
 
-function hotBackup (options) {
+function hotBackup(options) {
   const encryptionKey = '01234567890123456789012345678901';
   let c = getClusterStrings(options);
   console.warn(options);
@@ -87,63 +87,63 @@ function hotBackup (options) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
-  if (!helper.startFirstInstance()) {
-      helper.destructor(false);
-    return helper.extractResults();
+  const PTK = new persistenceToolkit(options, options, addArgs, {}, options, options, which, function () { }, [], false);
+  if (!PTK.startFirstInstance()) {
+    PTK.destructor(false);
+    return PTK.extractResults();
   }
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const dumpCheck = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheck));
   const dumpModify = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpModify));
   const dumpMoveShard = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpMoveShard));
-  const dumpRecheck  = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpRecheck));
+  const dumpRecheck = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpRecheck));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
   try {
-    if (!helper.runSetupSuite(setupFile) ||
-        !helper.runRtaMakedata() ||
-        !helper.dumpFrom('UnitTestsDumpSrc') ||
-        !helper.restartInstance() ||
-        !helper.restoreTo('UnitTestsDumpDst') ||
-        !helper.isAlive() ||
-        !helper.createHotBackup() ||
-        !helper.isAlive() ||
-        !helper.runTests(dumpModify,'UnitTestsDumpDst') ||
-        !helper.isAlive() ||
-        !helper.runTests(dumpMoveShard,'UnitTestsDumpDst') ||
-        !helper.isAlive() ||
-        !helper.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
-        !helper.isAlive() ||
-        !helper.restoreHotBackup() ||
-        !helper.runTests(dumpCheck, 'UnitTestsDumpDst')||
-        !helper.runRtaCheckData() ||
-        !helper.tearDown(tearDownFile)) {
-      helper.destructor(true);
-      return helper.extractResults();
+    if (!PTK.runSetupSuite(setupFile) ||
+      !PTK.runRtaMakedata() ||
+      !PTK.dumpFrom('UnitTestsDumpSrc') ||
+      !PTK.restartInstance() ||
+      !PTK.restoreTo('UnitTestsDumpDst') ||
+      !PTK.isAlive() ||
+      !PTK.createHotBackup() ||
+      !PTK.isAlive() ||
+      !PTK.runTests(dumpModify, 'UnitTestsDumpDst') ||
+      !PTK.isAlive() ||
+      !PTK.runTests(dumpMoveShard, 'UnitTestsDumpDst') ||
+      !PTK.isAlive() ||
+      !PTK.runReTests(dumpRecheck, 'UnitTestsDumpDst') ||
+      !PTK.isAlive() ||
+      !PTK.restoreHotBackup() ||
+      !PTK.runTests(dumpCheck, 'UnitTestsDumpDst') ||
+      !PTK.runRtaCheckData() ||
+      !PTK.tearDown(tearDownFile)) {
+      PTK.destructor(true);
+      return PTK.extractResults();
     }
 
     if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
       const notCluster = getClusterStrings(options).notCluster;
       const restoreDir = tu.makePathUnix(tu.pathForTesting('client/dump/dump' + notCluster));
       const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
-      if (!helper.restoreOld(restoreDir) ||
-          !helper.testRestoreOld(oldTestFile)) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.restoreOld(restoreDir) ||
+        !PTK.testRestoreOld(oldTestFile)) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     }
   }
   catch (ex) {
     print("Caught exception during testrun: " + ex);
   }
-  helper.destructor(true);
-  if (helper.doCleanup) {
+  PTK.destructor(true);
+  if (PTK.doCleanup) {
     fs.removeDirectoryRecursive(keyDir, true);
   }
-  return helper.extractResults();
+  return PTK.extractResults();
 }
 
-function hotBackup_load_backend (options, which, args) {
+function hotBackup_load_backend(options, which, args) {
   const encryptionKey = '01234567890123456789012345678901';
   options.extraArgs['vector-index'] = true;
   if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
@@ -168,15 +168,15 @@ function hotBackup_load_backend (options, which, args) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
-  if (!helper.startFirstInstance()) {
-    helper.destructor(false);
-    return helper.extractResults();
+  const PTK = new persistenceToolkit(options, options, addArgs, {}, options, options, which, function () { }, [], false);
+  if (!PTK.startFirstInstance()) {
+    PTK.destructor(false);
+    return PTK.extractResults();
   }
   function retryWaitRestore(testFn, args) {
-    while(true) {
+    while (true) {
       try {
-        return helper.runTestFn(testFn, args, 'postRestore');
+        return PTK.runTestFn(testFn, args, 'postRestore');
       } catch (ex) {
         if (ex.errorNum === errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE.code) {
           sleep(2);
@@ -189,50 +189,53 @@ function hotBackup_load_backend (options, which, args) {
 
   try {
     if (
-        //!helper.runRtaMakedata() ||
-        !helper.isAlive() ||
-        !helper.runTestFn(args.preRestoreFn, args.args, 'preRestore') ||
-        !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume, args.args) ||
-        (function() { sleep(args.noiseDuration); return false; }()) ||
-        !helper.createHotBackup() ||
-        !helper.stopStressArangosh() ||
-        !helper.restoreHotBackup() ||
-        !helper.IM.waitForAllShardsInSync() ||
-        !retryWaitRestore(args.postRestoreFn, args.args)
-        //!helper.runRtaCheckData()
+      //!PTK.runRtaMakedata() ||
+      !PTK.isAlive() ||
+      !PTK.runTestFn(args.preRestoreFn, args.args, 'preRestore') ||
+      !PTK.spawnStressArangosh(args.noiseScript, which, args.noiseVolume, args.args) ||
+      (function () { sleep(args.noiseDuration); return false; }()) ||
+      !PTK.createHotBackup() ||
+      !PTK.stopStressArangosh() ||
+      !PTK.restoreHotBackup() ||
+      !PTK.instanceManager.waitForAllShardsInSync() ||
+      !retryWaitRestore(args.postRestoreFn, args.args)
+      //!PTK.runRtaCheckData()
     ) {
-      helper.destructor(true);
-      return helper.extractResults();
+      PTK.destructor(true);
+      return PTK.extractResults();
     }
-
+  } catch (ex) {
+    print(`${RED}${Date()}Caught exception during testrun: ${ex}\n${ex.stack}${RESET}`);
+    PTK.results.failed += 1;
+    PTK.results['all'] = {
+      failed: true,
+      message: `caught exception during testrun: ${ex}\n${ex.stack}`
+    };
   }
-  catch (ex) {
-    print("Caught exception during testrun: " + ex);
-  }
-  helper.destructor(true);
-  if (helper.doCleanup) {
+  PTK.destructor(true);
+  if (PTK.doCleanup) {
     fs.removeDirectoryRecursive(keyDir, true);
   }
-  return helper.extractResults();
+  return PTK.extractResults();
 }
 
-function hotBackup_load_demo (options) {
+function hotBackup_load_demo(options) {
 
   let which = "hot_backup_load_demo";
   return hotBackup_load_backend(options, which, {
-    noiseScript: "",
+    noiseScript: function () { print("hello world! Put your code to work with the system below"); },
     noiseVolume: 1,
     noiseDuration: 60,
-    preRestoreFn: function() {
-      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
+    preRestoreFn: function () {
+      return { status: true, failed: 0, testresult: { status: true, create: { status: true, message: "" } } };
     },
-    postRestoreFn:function() {
-      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
+    postRestoreFn: function () {
+      return { status: true, failed: 0, testresult: { status: true, restored: { status: true, message: "" } } };
     }
   });
 }
 
-function hotBackup_views (options) {
+function hotBackup_views(options) {
   let testCol1;
   let testCol2;
   let txn;
@@ -241,13 +244,13 @@ function hotBackup_views (options) {
   return hotBackup_load_backend(options, which, {
     // Insert documents into test_collection:
     noiseScript: function () {
-      let i=0;
-      while(true) {
+      let i = 0;
+      while (true) {
         console.log('Noise starts');
         try {
           db._useDatabase('test_view');
           for (; i < 10000; i++) {
-            db.test_collection.insert({"number": i, "field1": "stone"});
+            db.test_collection.insert({ "number": i, "field1": "stone" });
           }
           print('done');
           break;
@@ -263,30 +266,41 @@ function hotBackup_views (options) {
     // :/ making sure that something has happened from the
     // inserter thread
     noiseDuration: 5,
-    preRestoreFn: function() {
+    preRestoreFn: function () {
       // create a database to run the test on
       db._createDatabase('test_view');
       db._useDatabase('test_view');
       // collection into which documents will be inserted and indexed
-      testCol1 = db._create('test_collection', {numberOfShards:20} );
-      testCol1.ensureIndex({type: 'inverted', name: 'inverted', fields: ["field1"]});
+      testCol1 = db._create('test_collection', { numberOfShards: 20 });
+      testCol1.ensureIndex({ type: 'inverted', name: 'inverted', fields: ["field1"] });
       db._createView("test_view", "arangosearch",
-                     {"links": {
-                       "test_collection": {
-                         "includeAllFields": true}}});
-      testCol2 = db._create('test_collection2', {numberOfShards:20} );
+        {
+          "links": {
+            "test_collection": {
+              "includeAllFields": true
+            }
+          }
+        });
+      testCol2 = db._create('test_collection2', { numberOfShards: 20 });
       db._createView("test_view_squared", "arangosearch",
-                     {"links": {
-                       "test_collection2": {
-                         "includeAllFields": true}}});
+        {
+          "links": {
+            "test_collection2": {
+              "includeAllFields": true
+            }
+          }
+        });
       // Start a transaction
-      txn = db._createTransaction({collections: {
-        read: ["test_collection2"], write: ["test_collection2"]}});
+      txn = db._createTransaction({
+        collections: {
+          read: ["test_collection2"], write: ["test_collection2"]
+        }
+      });
       txn_col = txn.collection("test_collection2");
-      txn_col.insert({"foo": "bar"});
-      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
+      txn_col.insert({ "foo": "bar" });
+      return { status: true, failed: 0, testresult: { status: true, create: { status: true, message: "" } } };
     },
-    postRestoreFn:function() {
+    postRestoreFn: function () {
       // TODO: what about test_view_squared ?
       // Check that all documents that are in the test_view
       // are also in the test_collection (and vice-versa)
@@ -345,18 +359,18 @@ function hotBackup_views (options) {
         print('probably gone.');
         if (ex.errorNum !== errors.ERROR_TRANSACTION_NOT_FOUND.code) {
           print(ex);
-          throw(ex);
+          throw (ex);
         }
       }
       db._useDatabase('_system');
       db._dropDatabase('test_view');
       // require('internal').sleep(30)
-      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
+      return { status: true, failed: 0, testresult: { status: true, restored: { status: true, message: "" } } };
     }
   });
 }
 
-function hotBackup_aql (options) {
+function hotBackup_aql(options) {
   let testCol1;
   let testCol2;
   let txn;
@@ -370,10 +384,10 @@ function hotBackup_aql (options) {
       while (true) {
         try {
           db._query("FOR i IN 1..1000 INSERT {thrd: @idx, i} INTO test_collection",
-                    {"idx": `${idx}`}).toArray();
+            { "idx": `${idx}` }).toArray();
         } catch (ex) {
           if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
-              ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+            ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
             break;
           }
           else {
@@ -386,34 +400,34 @@ function hotBackup_aql (options) {
     },
     noiseVolume: 20,
     noiseDuration: 15,
-    preRestoreFn: function() {
+    preRestoreFn: function () {
       db._createDatabase('test');
       db._useDatabase('test');
-      testCol1 = db._create('test_collection', {numberOfShards:20} );
-      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
+      testCol1 = db._create('test_collection', { numberOfShards: 20 });
+      return { status: true, failed: 0, testresult: { status: true, create: { status: true, message: "" } } };
     },
-    postRestoreFn:function() {
-      for (let i=0; i < 10; i++) {
+    postRestoreFn: function () {
+      for (let i = 0; i < 10; i++) {
         db._useDatabase('test');
-        db.test_collection.ensureIndex({type: "persistent", fields: ["thrd"]});
+        db.test_collection.ensureIndex({ type: "persistent", fields: ["thrd"] });
         let result = db._query(`
                 FOR doc IN test_collection
                     FILTER doc.thrd == @idx
                     COLLECT WITH COUNT INTO length
                     RETURN length
-            `, {"idx": `${i}`}).toArray()[0];
+            `, { "idx": `${i}` }).toArray()[0];
         // each thread writes batches of 1000 documents
         // thus is each query is transactional, we should only see multiples
         if (result % 1000 !== 0) {
           throw new Error(`found ${result} documents for thread ${i}`);
         }
       }
-      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
+      return { status: true, failed: 0, testresult: { status: true, restored: { status: true, message: "" } } };
     }
   });
 }
 
-function hotBackup_smart_graphs (options) {
+function hotBackup_smart_graphs(options) {
   let gsm = require('@arangodb/smart-graph');
   let testCol1;
   let testCol2;
@@ -423,7 +437,7 @@ function hotBackup_smart_graphs (options) {
 
   let which = "hot_backup_load";
   return hotBackup_load_backend(options, which, {
-    noiseScript: function() {
+    noiseScript: function () {
       db._useDatabase('test');
       const errors = require('internal').errors;
       function shuffleArray(array) {
@@ -434,7 +448,7 @@ function hotBackup_smart_graphs (options) {
       }
       let ids1 = [...Array(20).keys()];
       let ids2 = [...Array(20).keys()];
-      while(true) {
+      while (true) {
         shuffleArray(ids1);
         shuffleArray(ids2);
         let edge_docs = [];
@@ -451,7 +465,7 @@ function hotBackup_smart_graphs (options) {
           db.is_foo.save(edge_docs);
         } catch (ex) {
           if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
-              ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+            ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
             break;
           }
           throw ex;
@@ -461,36 +475,36 @@ function hotBackup_smart_graphs (options) {
     },
     noiseVolume: 10,
     noiseDuration: 5,
-    preRestoreFn: function() {
+    preRestoreFn: function () {
       db._createDatabase('test');
       db._useDatabase('test');
       gsm._create('graph',
-                  [
-                    gsm._relation('is_foo',
-                                  ['foo'],
-                                  ['foo'])],
-                  [],
-                  {
-                    numberOfShards: 20,
-                    replicationFactor: 2,
-                    smartGraphAttribute: "foo"
-                  });
-                    
+        [
+          gsm._relation('is_foo',
+            ['foo'],
+            ['foo'])],
+        [],
+        {
+          numberOfShards: 20,
+          replicationFactor: 2,
+          smartGraphAttribute: "foo"
+        });
+
       //# create 20 vertices with different attributes
       let vertices = [];
-      for (let i=0; i < 20; i++) {
-        vertices.push([{"_key": `${i}:v${i}`, "foo": `${i}`}]);
+      for (let i = 0; i < 20; i++) {
+        vertices.push([{ "_key": `${i}:v${i}`, "foo": `${i}` }]);
       }
       db.foo.save(vertices);
-      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
+      return { status: true, failed: 0, testresult: { status: true, create: { status: true, message: "" } } };
     },
-    postRestoreFn:function() {
+    postRestoreFn: function () {
       db._useDatabase('test');
       let result = {};
       let selfEdges = {};
       for (let i = 0; i < 20; i++) {
         let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
-                              {"start": `foo/${i}:v${i}`}).toArray();
+          { "start": `foo/${i}:v${i}` }).toArray();
         edges.forEach(oneEdge => {
           let key = `${oneEdge["f"]} -> ${oneEdge["t"]} :  ${oneEdge["_rev"]}`;
           let value = (oneEdge["t"] === i) ? -1 : +1;
@@ -523,12 +537,12 @@ function hotBackup_smart_graphs (options) {
       if (msg !== "") {
         throw new Error(msg);
       }
-      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
+      return { status: true, failed: 0, testresult: { status: true, restored: { status: true, message: "" } } };
     }
   });
 }
 
-function hotBackup_el_cheapo (options) {
+function hotBackup_el_cheapo(options) {
   let testCol1;
   let testCol2;
   let txn;
@@ -537,7 +551,7 @@ function hotBackup_el_cheapo (options) {
   let args = {
     collections: collections
   };
-  for (let i = 0; i < 4; i ++) {
+  for (let i = 0; i < 4; i++) {
     args.collections.push(`col-${i}`);
   }
 
@@ -549,16 +563,16 @@ function hotBackup_el_cheapo (options) {
       let i = 0;
       while (true) {
         try {
-          let txn = db._createTransaction({collections: { write: collections}});
+          let txn = db._createTransaction({ collections: { write: collections } });
           collections.forEach(col => {
             let trx_col = txn.collection(col);
-            trx_col.insert({"trd": idx, "i": i});
+            trx_col.insert({ "trd": idx, "i": i });
           });
           txn.commit();
           i += 1;
         } catch (ex) {
           if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
-              ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+            ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
             // todo: write i
             break;
           }
@@ -569,15 +583,15 @@ function hotBackup_el_cheapo (options) {
     noiseVolume: 10,
     noiseDuration: 1,
     args: args,
-    preRestoreFn: function(args) {
+    preRestoreFn: function (args) {
       db._createDatabase('test');
       db._useDatabase('test');
       args.collections.forEach(colName => {
-        db._create(colName , {numberOfShards:20} );
+        db._create(colName, { numberOfShards: 20 });
       });
-      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
+      return { status: true, failed: 0, testresult: { status: true, create: { status: true, message: "" } } };
     },
-    postRestoreFn:function(args) {
+    postRestoreFn: function (args) {
       db._useDatabase('test');
       let result = {};
       let len = args.collections.length;
@@ -597,7 +611,7 @@ function hotBackup_el_cheapo (options) {
         }
       });
 
-      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
+      return { status: true, failed: 0, testresult: { status: true, restored: { status: true, message: "" } } };
     }
   });
 }

@@ -783,8 +783,15 @@ DumpFeature::DumpFeature(application_features::ApplicationServer& server,
 #endif
 
   using arangodb::basics::FileUtils::buildFilename;
-  using arangodb::basics::FileUtils::currentDirectory;
-  _options.outputPath = buildFilename(currentDirectory().result(), "dump");
+  std::error_code ec;
+  std::filesystem::path const cwd = std::filesystem::current_path(ec);
+  if (ec) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_set_errno(TRI_ERROR_SYS_ERROR),
+        basics::StringUtils::concatT("cannot get current working directory: ",
+                                     ec.message()));
+  }
+  _options.outputPath = buildFilename(cwd.string(), "dump");
   _options.threadCount =
       std::max(uint32_t(_options.threadCount),
                static_cast<uint32_t>(NumberOfCores::getValue()));
@@ -1573,7 +1580,9 @@ void DumpFeature::start() {
         auto f = absl::StrCat(
             basics::FileUtils::buildFilename(_options.outputPath, it));
         if (basics::FileUtils::isRegularFile(f)) {
-          totalSize += basics::FileUtils::size(f);
+          auto fileSize = std::filesystem::file_size(std::filesystem::path(f));
+
+          totalSize += fileSize;
         }
       }
     } catch (...) {

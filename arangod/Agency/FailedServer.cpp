@@ -34,8 +34,9 @@
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
 
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+
+namespace arangodb::consensus {
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
@@ -437,3 +438,5 @@ arangodb::Result FailedServer::abort(std::string const& reason) {
   // FIXME: No abort procedure, simply throw error or so
   // ??????????????
 }
+
+}  // namespace arangodb::consensus

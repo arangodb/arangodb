@@ -1133,10 +1133,9 @@ foreach(LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
 
-################################################################################
-## PATHS, installation, packages
-################################################################################
-
+# ###############################################################################
+# # PATHS, installation, packages
+# ###############################################################################
 add_subdirectory(Documentation)
 include(ArangoDBInstall)
 
@@ -1144,9 +1143,9 @@ if(NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()
 
-################################################################################
-## ERRORS FILES
-################################################################################
+# ###############################################################################
+# # ERRORS FILES
+# ###############################################################################
 
 # If "make clean" removes these files, afterwards neither "make" nor "cmake" work any more.
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")

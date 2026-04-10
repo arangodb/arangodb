@@ -161,7 +161,7 @@ speed.)")
               arangodb::options::Flags::OnSingle))
       .setLongDescription(
           R"(This value controls the cache's effective memory usage limit.
-The user-defined memory limit (i.e. `--cache.size`) is multipled with this
+The user-defined memory limit (i.e. `--cache.size`) is multiplied with this
 value to create the effective memory limit, from which on the cache will
 try to free up memory by evicting the oldest entries.)")
       .setIntroducedIn(31200);

@@ -34,9 +34,7 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndEnsureIndex,
-    waitForAllVectorIndexesState,
-    VectorIndexTrainingState,
+    insertDocsAndAssertIndex,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -80,10 +78,10 @@ function VectorIndexFullCountTestSuite() {
                     vector,
                 });
             }
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -94,13 +92,8 @@ function VectorIndexFullCountTestSuite() {
                         trainingIterations: 10,
                         defaultNProbe: nLists,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -269,10 +262,10 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                 });
             }
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -282,13 +275,8 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                         nLists: 10,
                         trainingIterations: 10,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -359,10 +347,10 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                 });
             }
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -372,13 +360,8 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                         nLists: 1,
                         trainingIterations: 10,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -449,13 +432,14 @@ function VectorIndexLargeLimitTestSuite() {
                 });
             }
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection,
                 docs,
                 seed,
                 batchSize: 1000,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                readyTimeoutSec: 120,
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -464,13 +448,8 @@ function VectorIndexLargeLimitTestSuite() {
                         dimension: largeLimitDimension,
                         nLists: nLists,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
-                "Expected index to become ready with " + largeLimitNumberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {

@@ -25,16 +25,29 @@
 
 #include <chrono>
 #include <cstdint>
+#include <mutex>
 #include <stop_token>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
+#include "Basics/Result.h"
+#include "Futures/Future.h"
+#include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
+#include "VocBase/Identifiers/IndexId.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
-
 class DatabaseFeature;
+class LogicalCollection;
 class MaintenanceFeature;
+class RocksDBVectorIndex;
+class Scheduler;
+}  // namespace arangodb
+
+namespace arangodb::vector {
 
 /// Single background thread that periodically scans for untrained vector
 /// indexes and builds them one at a time. The same thread scans and builds.
@@ -45,38 +58,62 @@ class VectorIndexBuildManager {
 
   explicit VectorIndexBuildManager(DatabaseFeature& dbFeature,
                                    MaintenanceFeature& maintenance,
-                                   metrics::MetricsFeature& metrics);
+                                   metrics::MetricsFeature& metrics,
+                                   Scheduler& scheduler);
 
   void start();
   void beginShutdown();
   void stop();
+
+  // Register a waiter for a specific index. The scan loop wakes up
+  // immediately when waiters are pending. The returned future is fulfilled
+  // when the index reaches the ready state or the build fails.
+  futures::Future<Result> waitForIndexReady(IndexId indexId);
 
  private:
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
   struct FailedBuildInfo {
     std::chrono::steady_clock::time_point failedAt;
-    std::int64_t documentCount;
+    std::uint64_t documentCount;
   };
 
   using FailedBuildsMap = std::unordered_map<std::uint64_t, FailedBuildInfo>;
 
   static bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
                               std::uint64_t objectId,
-                              std::int64_t currentDocCount);
+                              std::uint64_t currentDocCount);
 
   void run(std::stop_token stopToken);
+
   void scanAndBuild(std::stop_token const& stopToken,
                     FailedBuildsMap& failedBuilds);
 
+  void fulfillWaiters(IndexId indexId, Result const& result);
+
+  void fulfillAllWaiters(Result const& result);
+
+  void reportIndexError(TRI_vocbase_t const& vocbase,
+                        LogicalCollection const& coll,
+                        RocksDBVectorIndex const& vecIdx, Result const& error);
+
+  void clearIndexError(TRI_vocbase_t const& vocbase,
+                       LogicalCollection const& coll,
+                       RocksDBVectorIndex const& vecIdx);
+
   DatabaseFeature& _dbFeature;
   MaintenanceFeature& _maintenance;
+  Scheduler& _scheduler;
   std::jthread _thread;
 
   metrics::Gauge<uint64_t>& _untrainedCount;
   metrics::Gauge<uint64_t>& _trainingOngoingCount;
   metrics::Histogram<metrics::LogScale<double>>& _trainingDuration;
   metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
+
+  std::mutex _waitersMutex;
+  std::unordered_map<IndexId::BaseType, std::vector<futures::Promise<Result>>>
+      _waiters;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::vector

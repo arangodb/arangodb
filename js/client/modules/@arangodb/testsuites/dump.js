@@ -30,7 +30,7 @@
 const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const _ = require('lodash');
-const { DumpRestoreHelper, getClusterStrings } = require('@arangodb/testutils/dump');
+const { persistenceToolkit, getClusterStrings } = require('@arangodb/testutils/persistence-common');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -73,16 +73,16 @@ const testPaths = {
   'dump_non_parallel': [tu.pathForTesting('client/dump')],
 };
 
-function dump_backend_two_instances (firstRunOptions, secondRunOptions,
-                                     serverAuthInfo, clientAuth,
-                                     dumpOptions, restoreOptions,
-                                     which, tstFiles, afterServerStart,
-                                     rtaArgs, restartServer) {
+function dump_backend_two_instances(firstRunOptions, secondRunOptions,
+  serverAuthInfo, clientAuth,
+  dumpOptions, restoreOptions,
+  which, tstFiles, afterServerStart,
+  rtaArgs, restartServer) {
   print(CYAN + which + ' tests...' + RESET);
-  const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer);
-  if (!helper.startFirstInstance()) {
-    helper.destructor(false);
-    return helper.extractResults();
+  const PTK = new persistenceToolkit(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer);
+  if (!PTK.startFirstInstance()) {
+    PTK.destructor(false);
+    return PTK.extractResults();
   }
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
@@ -93,42 +93,42 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
 
   try {
     if (firstRunOptions.hasOwnProperty("multipleDumps") && firstRunOptions.multipleDumps) {
-      if (!helper.runSetupSuite(setupFile) ||
-          !helper.runRtaMakedata() ||
-          !helper.dumpFrom('_system', true) ||
-          !helper.dumpFrom('UnitTestsDumpSrc', true) ||
-          !helper.dumpFromRta() ||
-          (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
-          !helper.runCleanupSuite(cleanupFile) ||
-          !helper.flipBinarySet() ||
-          !helper.restartInstance() ||
-          !helper.restoreSrc() ||
-          !helper.restoreTo('_system', { separate: true }) ||
-          !helper.restoreRta() ||
-          !helper.runTests(testFile,'UnitTestsDumpDst') ||
-          !helper.runRtaCheckData() ||
-          !helper.tearDown(tearDownFile)) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.runSetupSuite(setupFile) ||
+        !PTK.runRtaMakedata() ||
+        !PTK.dumpFrom('_system', true) ||
+        !PTK.dumpFrom('UnitTestsDumpSrc', true) ||
+        !PTK.dumpFromRta() ||
+        (checkDumpFiles && !PTK.runCheckDumpFilesSuite(checkDumpFiles)) ||
+        !PTK.runCleanupSuite(cleanupFile) ||
+        !PTK.flipBinarySet() ||
+        !PTK.restartInstance() ||
+        !PTK.restoreSrc() ||
+        !PTK.restoreTo('_system', { separate: true }) ||
+        !PTK.restoreRta() ||
+        !PTK.runTests(testFile, 'UnitTestsDumpDst') ||
+        !PTK.runRtaCheckData() ||
+        !PTK.tearDown(tearDownFile)) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     } else {
-      if (!helper.runSetupSuite(setupFile) ||
-          !helper.runRtaMakedata() ||
-          !helper.dumpSrc() ||
-          !helper.dumpFromRta() ||
-          !helper.dumpFrom('_system', false) ||
-          (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
-          !helper.runCleanupSuite(cleanupFile) ||
-          !helper.flipBinarySet() ||
-          !helper.restartInstance() ||
-          !helper.restoreSrc() ||
-          !helper.restoreTo('_system', { separate: true, fromDir: 'dump' }) ||
-          !helper.restoreRta() ||
-          !helper.runRtaCheckData() ||
-          !helper.runTests(testFile,'UnitTestsDumpDst') ||
-          !helper.tearDown(tearDownFile)) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.runSetupSuite(setupFile) ||
+        !PTK.runRtaMakedata() ||
+        !PTK.dumpSrc() ||
+        !PTK.dumpFromRta() ||
+        !PTK.dumpFrom('_system', false) ||
+        (checkDumpFiles && !PTK.runCheckDumpFilesSuite(checkDumpFiles)) ||
+        !PTK.runCleanupSuite(cleanupFile) ||
+        !PTK.flipBinarySet() ||
+        !PTK.restartInstance() ||
+        !PTK.restoreSrc() ||
+        !PTK.restoreTo('_system', { separate: true, fromDir: 'dump' }) ||
+        !PTK.restoreRta() ||
+        !PTK.runRtaCheckData() ||
+        !PTK.runTests(testFile, 'UnitTestsDumpDst') ||
+        !PTK.tearDown(tearDownFile)) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     }
 
@@ -136,25 +136,25 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
       const notCluster = getClusterStrings(secondRunOptions).notCluster;
       const restoreDir = tu.makePathUnix(tu.pathForTesting('client/dump/dump' + notCluster));
       const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
-      if (!helper.restoreOld(restoreDir) ||
-          !helper.testRestoreOld(oldTestFile)) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.restoreOld(restoreDir) ||
+        !PTK.testRestoreOld(oldTestFile)) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     }
   } catch (ex) {
     print("Caught exception during testrun: " + ex + ex.stack);
-    helper.destructor(false);
+    PTK.destructor(false);
   }
-  helper.destructor(true);
-  return helper.extractResults();
+  PTK.destructor(true);
+  return PTK.extractResults();
 }
 
-function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs) {
+function dump_backend(options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs) {
   return dump_backend_two_instances(options, options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs, false);
 }
 
-function dump (options) {
+function dump(options) {
   let opts = _.clone(options);
   if (opts.cluster) {
     opts.dbServers = 3;
@@ -171,10 +171,10 @@ function dump (options) {
     dumpCheckGraph: 'check-graph.js'
   };
 
-  return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){}, []);
+  return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function () { }, []);
 }
 
-function dumpMixedClusterSingle (options) {
+function dumpMixedClusterSingle(options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
   clusterOptions.dbServers = 3;
@@ -194,13 +194,13 @@ function dumpMixedClusterSingle (options) {
   };
 
   return dump_backend_two_instances(clusterOptions, singleOptions, {}, {},
-                                    options, options, 'dump_mixed_cluster_single',
-                                    tstFiles, function(){}, [
-                                      // BTS-1617: disable 404 for now
-                                      '--skip', '404'], true);
+    options, options, 'dump_mixed_cluster_single',
+    tstFiles, function () { }, [
+    // BTS-1617: disable 404 for now
+    '--skip', '404'], true);
 }
 
-function dumpMixedSingleCluster (options) {
+function dumpMixedSingleCluster(options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
   clusterOptions.dbServers = 3;
@@ -220,12 +220,12 @@ function dumpMixedSingleCluster (options) {
   };
 
   return dump_backend_two_instances(singleOptions, clusterOptions, {}, {},
-                                    options, options, 'dump_mixed_single_cluster',
-                                    tstFiles, function(){}, [
-                                      '--skip', '550,900,960'], true);
+    options, options, 'dump_mixed_single_cluster',
+    tstFiles, function () { }, [
+    '--skip', '550,900,960'], true);
 }
 
-function dumpMultipleTwo (options) {
+function dumpMultipleTwo(options) {
   let dumpOptions = {
     dumpVPack: options.dumpVPack,
     dbServers: 3,
@@ -247,9 +247,9 @@ function dumpMultipleTwo (options) {
   };
 
   return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {}, dumpOptions, dumpOptions,
-                                    'dump_multiple_two', tstFiles, function(){}, [], true);
+    'dump_multiple_two', tstFiles, function () { }, [], true);
 }
-function dumpMultipleSame (options) {
+function dumpMultipleSame(options) {
   let dumpOptions = {
     dumpVPack: options.dumpVPack,
     dbServers: 3,
@@ -262,7 +262,7 @@ function dumpMultipleSame (options) {
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
   let tstFiles = {
-    dumpSetup: 'dump-setup' + c.cluster +'.js',
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
     dumpCleanup: 'cleanup-multiple.js',
     dumpAgain: 'dump' + c.cluster + '.js',
@@ -271,11 +271,11 @@ function dumpMultipleSame (options) {
   };
 
   return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {},
-                                    dumpOptions, dumpOptions,
-                                    'dump_multiple_same', tstFiles, function(){}, [], false);
+    dumpOptions, dumpOptions,
+    'dump_multiple_same', tstFiles, function () { }, [], false);
 }
 
-function dumpWithCrashes (options) {
+function dumpWithCrashes(options) {
   let dumpOptions = {
     dumpVPack: options.dumpVPack,
     dbServers: 3,
@@ -298,10 +298,10 @@ function dumpWithCrashes (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function () { }, []);
 }
 
-function dumpWithCrashesNonParallel (options) {
+function dumpWithCrashesNonParallel(options) {
   let dumpOptions = {
     dumpVPack: options.dumpVPack,
     dbServers: 3,
@@ -324,10 +324,10 @@ function dumpWithCrashesNonParallel (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_non_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_non_parallel', tstFiles, function () { }, []);
 }
 
-function dumpAuthentication (options) {
+function dumpAuthentication(options) {
   const clientAuth = {
     'server.authentication': 'true'
   };
@@ -361,12 +361,12 @@ function dumpAuthentication (options) {
     dbServers: 3
   });
 
-  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){}, []);
+  let ret = dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function () { }, []);
   options.cleanup = opts.cleanup;
   return ret;
 }
 
-function dumpJwt (options) {
+function dumpJwt(options) {
   const clientAuth = {
     'server.authentication': 'true'
   };
@@ -389,16 +389,16 @@ function dumpJwt (options) {
     dbServers: 3
   });
 
-  let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_jwt', tstFiles, function(){}, []);
+  let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_jwt', tstFiles, function () { }, []);
   options.cleanup = opts.cleanup;
   return ret;
 }
 
-function dumpEncrypted (options) {
+function dumpEncrypted(options) {
   // test is only meaningful in the Enterprise Edition
   let c = getClusterStrings(options);
 
-  let afterServerStart = function(instanceManager) {
+  let afterServerStart = function (instanceManager) {
     let keyFile = fs.join(instanceManager.rootDir, 'secret-key');
     fs.write(keyFile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
     return keyFile;
@@ -422,7 +422,7 @@ function dumpEncrypted (options) {
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, []);
 }
 
-function dumpNonParallel (options) {
+function dumpNonParallel(options) {
   let c = getClusterStrings(options);
 
   let dumpOptions = _.clone(options);
@@ -440,10 +440,10 @@ function dumpNonParallel (options) {
     dumpCheckGraph: 'check-graph.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_non_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_non_parallel', tstFiles, function () { }, []);
 }
 
-function dumpMaskings (options) {
+function dumpMaskings(options) {
   let tstFiles = {
     dumpSetup: 'dump-maskings-setup.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
@@ -460,14 +460,14 @@ function dumpMaskings (options) {
 
   _.defaults(dumpMaskingsOpts, options);
 
-  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){}, []);
+  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function () { }, []);
 }
 
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   opts['dumpVPack'] = false;
-  
+
   testFns['dump'] = dump;
   testFns['dump_mixed_cluster_single'] = dumpMixedClusterSingle;
   testFns['dump_mixed_single_cluster'] = dumpMixedSingleCluster;

@@ -26,16 +26,18 @@
 #include <memory>
 #include <type_traits>
 
+#include "RocksDBIndex.h"
+#include "VectorIndex/VectorIndexDefinition.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
+#include "Transaction/Methods.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Aql/RegisterId.h"
 #include "Aql/Variable.h"
-#include "Indexes/VectorIndexDefinition.h"
-#include "RocksDBEngine/RocksDBIndex.h"
-#include "Transaction/Methods.h"
-#include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
 
 #include <faiss/IndexIVF.h>
 #include <rocksdb/iterator.h>
@@ -80,12 +82,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
-  UserVectorIndexDefinition const& getDefinition() const noexcept {
+  vector::UserVectorIndexDefinition const& getDefinition() const noexcept {
     return _definition;
   }
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
-      std::vector<float>& inputs, SearchParameters const& searchParameters,
+      std::vector<float>& inputs,
+      vector::SearchParameters const& searchParameters,
       RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
       std::shared_ptr<LogicalCollection> collection, std::size_t topK,
       aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
@@ -94,7 +97,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
           filterVarsToRegs,
       aql::Variable const* documentVariable, bool isCovered);
 
-  UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+  vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
   bool isVectorIndexReady() const noexcept override;
 
@@ -105,10 +108,19 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _faissIndex;
   }
 
-  std::int64_t trainingThreshold() const noexcept { return _trainingThreshold; }
+  std::optional<std::size_t> resolvedNLists() const noexcept {
+    if (_faissIndex != nullptr) {
+      return _faissIndex->nlist;
+    }
+    return std::nullopt;
+  }
+
+  // Absolute minimum number of vectors required for training, might give false
+  // positives with sparse indexes
+  std::size_t trainingThreshold() const noexcept { return _trainingThreshold; }
 
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
-                           TrainedData trainedData);
+                           vector::TrainedData trainedData);
 
   bool hasStoredValues() const noexcept;
 
@@ -141,14 +153,14 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  TrainedData loadTrainedData(velocypack::Slice info) const;
+  vector::TrainedData loadTrainedData(velocypack::Slice info) const;
 
-  UserVectorIndexDefinition _definition;
+  vector::UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
-  TrainedData _trainedData;
+  vector::TrainedData _trainedData;
   StoredValues const _storedValues;
 
-  std::int64_t _trainingThreshold{0};
+  std::size_t _trainingThreshold{0};
   std::atomic<VectorIndexTrainingState> _trainingState{
       VectorIndexTrainingState::kUnusable};
 };
