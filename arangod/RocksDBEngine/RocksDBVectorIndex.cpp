@@ -355,11 +355,15 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
-  if (_faissIndex == nullptr) {
+  if (auto const state = _trainingState.load(std::memory_order_acquire);
+      state == VectorIndexTrainingState::kUnusable ||
+      state == VectorIndexTrainingState::kTraining) {
     LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
         << "vector index " << _iid.id() << " not yet trained, skipping insert";
     return {};
   }
+  TRI_ASSERT(_faissIndex != nullptr);
+
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -370,15 +374,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     }
     return res;
   }
-  // During initial fill or deferred training, only count; do not write.
-  // During kIngesting we're in fillIndexBackground and must perform the
-  // actual insert.
-  if (const auto state = _trainingState.load();
-      state == VectorIndexTrainingState::kUnusable ||
-      state == VectorIndexTrainingState::kTraining) {
-    return {};
-  }
-  TRI_ASSERT(_faissIndex != nullptr);
 
   if (_definition.metric == vector::SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
@@ -425,11 +420,17 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  if (_faissIndex == nullptr) {
+  // Check training state first — acquire fence guarantees visibility of
+  // _faissIndex written in applyTrainingResult().
+  auto const state = _trainingState.load(std::memory_order_acquire);
+  if (state == VectorIndexTrainingState::kUnusable ||
+      state == VectorIndexTrainingState::kTraining) {
     LOG_TOPIC("d1e0b", DEBUG, Logger::ENGINES)
         << "vector index " << _iid.id() << " not yet trained, skipping remove";
     return {};
   }
+  TRI_ASSERT(_faissIndex != nullptr);
+
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -437,12 +438,6 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
       return {};
     }
     return res;
-  }
-
-  if (auto const state = _trainingState.load();
-      state == VectorIndexTrainingState::kUnusable ||
-      state == VectorIndexTrainingState::kTraining) {
-    return {};
   }
 
   if (_definition.metric == vector::SimilarityMetric::kCosine) {
