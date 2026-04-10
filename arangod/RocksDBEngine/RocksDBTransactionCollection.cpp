@@ -38,7 +38,7 @@
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "Statistics/ServerStatistics.h"
+#include "Statistics/TransactionStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"

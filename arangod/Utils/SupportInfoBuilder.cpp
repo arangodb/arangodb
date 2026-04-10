@@ -48,7 +48,7 @@
 #include "RestServer/EnvironmentFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "Statistics/ServerStatistics.h"
+#include "Metrics/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
@@ -510,9 +510,8 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   result.close();  // number of cores
 
   result.add(keys["processStats"], VPackValue(VPackValueType::Object));
-  ServerStatistics const& serverInfo =
-      server.getFeature<metrics::MetricsFeature>().serverStatistics();
-  result.add(keys["processUptime"], VPackValue(serverInfo.uptime()));
+  result.add(keys["processUptime"],
+             VPackValue(server.getFeature<metrics::MetricsFeature>().uptime()));
 
   FileDescriptorsFeature& fd = server.getFeature<FileDescriptorsFeature>();
   ProcessInfo info = TRI_ProcessInfoSelf();

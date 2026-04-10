@@ -44,7 +44,7 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "Statistics/ServerStatistics.h"
+#include "Statistics/TransactionStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
