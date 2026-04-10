@@ -388,7 +388,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
-  // Trained: normal FAISS path
   faiss::idx_t listId{0};
   TRI_ASSERT(_faissIndex->quantizer != nullptr);
   _faissIndex->quantizer->assign(1, input.data(), &listId);
