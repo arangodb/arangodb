@@ -356,7 +356,8 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
   if (auto const state = _trainingState.load(std::memory_order_acquire);
-      state != VectorIndexTrainingState::kReady) {
+      state == VectorIndexTrainingState::kIngesting ||
+      state == VectorIndexTrainingState::kReady) {
     LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
         << "vector index " << _iid.id() << " not yet trained, skipping insert";
     return {};
@@ -420,7 +421,8 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
   if (auto const state = _trainingState.load(std::memory_order_acquire);
-      state != VectorIndexTrainingState::kReady) {
+      state == VectorIndexTrainingState::kIngesting ||
+      state == VectorIndexTrainingState::kReady) {
     LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
         << "vector index " << _iid.id() << " not yet trained, skipping remove";
     return {};
