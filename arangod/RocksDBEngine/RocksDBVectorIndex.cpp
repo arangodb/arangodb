@@ -355,8 +355,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
-  TRI_ASSERT(_faissIndex != nullptr);
-
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -367,14 +365,12 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     }
     return res;
   }
-  // During initial fill or deferred training, only count; do not write.
-  // During kIngesting we're in fillIndexBackground and must perform the
-  // actual insert.
-  if (const auto state = _trainingState.load();
-      state == VectorIndexTrainingState::kUnusable ||
-      state == VectorIndexTrainingState::kTraining) {
+
+  if (auto const state = _trainingState.load();
+      state != VectorIndexTrainingState::kReady) {
     return {};
   }
+
   TRI_ASSERT(_faissIndex != nullptr);
 
   if (_definition.metric == vector::SimilarityMetric::kCosine) {
@@ -422,7 +418,10 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  TRI_ASSERT(_faissIndex != nullptr);
+  if (auto const state = _trainingState.load();
+      state != VectorIndexTrainingState::kReady) {
+    return {};
+  }
 
   std::vector<float> input;
   input.reserve(_definition.dimension);
@@ -431,12 +430,6 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
       return {};
     }
     return res;
-  }
-
-  if (auto const state = _trainingState.load();
-      state == VectorIndexTrainingState::kUnusable ||
-      state == VectorIndexTrainingState::kTraining) {
-    return {};
   }
 
   if (_definition.metric == vector::SimilarityMetric::kCosine) {
