@@ -423,7 +423,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   if (auto const state = _trainingState.load(std::memory_order_acquire);
       state == VectorIndexTrainingState::kIngesting ||
       state == VectorIndexTrainingState::kReady) {
-    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
+    LOG_TOPIC("ba9ba", DEBUG, Logger::ENGINES)
         << "vector index " << _iid.id() << " not yet trained, skipping remove";
     return {};
   }
