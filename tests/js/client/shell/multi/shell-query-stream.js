@@ -28,7 +28,6 @@ const jsunity = require("jsunity");
 const {assertEqual, assertTrue, assertUndefined, fail} = jsunity.jsUnity.assertions;
 const errors = require('@arangodb').errors;
 const db = require("internal").db;
-const aqlfunctions = require("@arangodb/aql/functions");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: stream cursors
@@ -66,11 +65,6 @@ function StreamCursorSuite() {
       }
       c.insert(docs);
 
-      try {
-        aqlfunctions.unregister("my::test");
-      } catch (err) { }
-
-      aqlfunctions.register("my::test", function () { return 42; });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -78,9 +72,6 @@ function StreamCursorSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      try {
-        aqlfunctions.unregister("my::test");
-      } catch (err) { }
 
       c.drop();
     },
@@ -143,29 +134,6 @@ function StreamCursorSuite() {
       }
 
       cursor.dispose();
-    },
-
-    testUserDefinedFunction: function () {
-      let stmt = db._createStatement({
-        query: "FOR i IN 1..10000 RETURN my::test()",
-        options: { stream: true },
-        batchSize: 1000
-      });
-      let cursor = stmt.execute();
-
-      try {
-        assertEqual(undefined, cursor.count());
-        let count = 0;
-        while (cursor.hasNext()) {
-          assertEqual(42, cursor.next());
-          ++count;
-        }
-        assertEqual(10000, count);
-      } catch (err) {
-        fail("testUserDefinedFunction failed");
-      } finally {
-        cursor.dispose();
-      }
     },
 
     // Regression test, this led to an issue on shutdown

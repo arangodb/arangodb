@@ -55,7 +55,6 @@
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/TransactionStatistics.h"
 #include "Transaction/OperationOrigin.h"
@@ -122,8 +121,6 @@ DECLARE_GAUGE(arangodb_process_statistics_resident_set_size_percent, double,
 DECLARE_GAUGE(
     arangodb_process_statistics_virtual_memory_size, double,
     "This figure contains The size of the virtual memory the process is using");
-DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
-              "The number of client connections that are currently open");
 DECLARE_COUNTER(arangodb_server_statistics_server_uptime_total,
                 "Number of seconds elapsed since server start");
 DECLARE_GAUGE(arangodb_server_statistics_physical_memory, double,
@@ -147,8 +144,6 @@ DECLARE_GAUGE(arangodb_server_statistics_idle_percent, double,
 DECLARE_GAUGE(
     arangodb_server_statistics_iowait_percent, double,
     "Percentage of time that the system CPUs have been waiting for I/O");
-DECLARE_GAUGE(arangodb_connection_statistics_memory_usage, uint64_t,
-              "Memory used by the internal connection statistics");
 
 namespace {
 // local_name: {"prometheus_name", "type", "help"}
@@ -202,18 +197,6 @@ auto const statStrings = std::map<std::string_view,
      {"arangodb_process_statistics_virtual_memory_size", "gauge",
       "This figure contains The size of the virtual memory the process is "
       "using"}},
-    {"clientHttpConnections",
-     {"arangodb_client_connection_statistics_client_connections", "gauge",
-      "The number of client connections that are currently open"}},
-    {"connectionTime",
-     {"arangodb_client_connection_statistics_connection_time", "histogram",
-      "Total connection time of a client"}},
-    {"connectionTimeCount",
-     {"arangodb_client_connection_statistics_connection_time_count", "gauge",
-      "Total connection time of a client"}},
-    {"connectionTimeSum",
-     {"arangodb_client_connection_statistics_connection_time_sum", "gauge",
-      "Total connection time of a client"}},
     {"totalTime",
      {"arangodb_client_connection_statistics_total_time", "histogram",
       "Total time needed to answer a request"}},
@@ -352,12 +335,6 @@ auto const statBuilder = makeStatBuilder({
     {"residentSizePercent",
      new arangodb_process_statistics_resident_set_size_percent()},
     {"virtualSize", new arangodb_process_statistics_virtual_memory_size()},
-    {"clientHttpConnections",
-     new arangodb_client_connection_statistics_client_connections()},
-    {"connectionTime",
-     new arangodb_client_connection_statistics_connection_time()},
-    {"connectionTimeCount", nullptr},
-    {"connectionTimeSum", nullptr},
     {"totalTime", new arangodb_client_connection_statistics_total_time()},
     {"totalTimeCount", nullptr},
     {"totalTimeSum", nullptr},
@@ -411,12 +388,11 @@ auto const statBuilder = makeStatBuilder({
 }  // namespace
 
 Counter AsyncRequests;
-Counter HttpConnections;
 Counter TotalRequests;
 Counter TotalRequestsSuperuser;
 Counter TotalRequestsUser;
 MethodRequestCounters MethodRequests;
-Distribution ConnectionTimeDistribution(ConnectionTimeDistributionCuts);
+
 }  // namespace statistics
 }  // namespace arangodb
 
@@ -427,10 +403,7 @@ Distribution ConnectionTimeDistribution(ConnectionTimeDistributionCuts);
 StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this},
-      _descriptions(server),
-      _connectionStatisticsMemoryUsage{
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_connection_statistics_memory_usage{})} {
+      _descriptions(server) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
@@ -498,10 +471,7 @@ void StatisticsFeature::collectOptions(
 }
 
 void StatisticsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  // initialize counters for all HTTP request types
-  ConnectionStatistics::initialize();
-}
+    std::shared_ptr<ProgramOptions> options) {}
 
 void StatisticsFeature::start() {
   TRI_ASSERT(isEnabled());
@@ -566,14 +536,6 @@ void StatisticsFeature::appendMetricWithMachineId(std::string& result,
 void StatisticsFeature::toPrometheus(std::string& result, double now,
                                      std::string_view globals,
                                      bool ensureWhitespace) {
-  // these metrics should always be 0 if statistics are disabled
-  TRI_ASSERT(isEnabled() || (ConnectionStatistics::memoryUsage() == 0));
-  if (isEnabled()) {
-    // update arangodb_connection_statistics_memory_usage metrics
-    _connectionStatisticsMemoryUsage.store(ConnectionStatistics::memoryUsage(),
-                                           std::memory_order_relaxed);
-  }
-
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
@@ -648,14 +610,5 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                  globals, ensureWhitespace);
     appendMetric(result, std::to_string(snapshot.iowaitPercent()),
                  "iowaitPercent", globals, ensureWhitespace);
-  }
-
-  if (isEnabled()) {
-    ConnectionStatistics::Snapshot connectionStats;
-    ConnectionStatistics::getSnapshot(connectionStats);
-
-    // _clientStatistics()
-    appendMetric(result, std::to_string(connectionStats.httpConnections.get()),
-                 "clientHttpConnections", globals, ensureWhitespace);
   }
 }

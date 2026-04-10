@@ -30,7 +30,8 @@
 #include "Containers/NodeHashMap.h"
 #include "GeneralServer/RequestTimingData.h"
 #include "Endpoint/ConnectionInfo.h"
-#include "Statistics/ConnectionStatistics.h"
+#include "Metrics/GaugeCounterGuard.h"
+#include "Statistics/ConnectionTimeRecorder.h"
 
 #include <velocypack/Buffer.h>
 
@@ -42,7 +43,6 @@
 namespace arangodb {
 class ApiRecordingFeature;
 class AuthenticationFeature;
-class ConnectionStatistics;
 class GeneralRequest;
 class GeneralResponse;
 class GeneralServerFeature;
@@ -91,7 +91,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
  public:
   CommTask(GeneralServer& server, ConnectionInfo info);
 
-  virtual ~CommTask();
+  virtual ~CommTask() = default;
 
   // callable from any thread
   virtual void start() = 0;
@@ -123,13 +123,9 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                       std::unique_ptr<GeneralResponse> response,
                       ServerState::Mode mode);
 
-  [[nodiscard]] ConnectionStatistics::Item acquireConnectionStatistics();
   [[nodiscard]] RequestTimingData& acquireTimingData(uint64_t id);
   [[nodiscard]] RequestTimingData& timingData(uint64_t id);
   [[nodiscard]] RequestTimingData stealTimingData(uint64_t id);
-
-  // @brief finalize timing data, and call
-  // GeneralServerFeature::recordHttpRequestStatistics to update the statistics.
   void finalizeTimingData(RequestTimingData& data);
 
   /// @brief send response including error response body
@@ -175,7 +171,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   ApiRecordingFeature& _apiRecordingFeature;
   ConnectionInfo _connectionInfo;
 
-  ConnectionStatistics::Item _connectionStatistics;
+  ConnectionTimeRecorder _connectionStatistics;
+  metrics::GaugeCounterGuard<double> _connectionHttp;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
 
