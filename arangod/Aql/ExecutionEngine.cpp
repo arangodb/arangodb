@@ -786,7 +786,13 @@ void localizeSmartEdgeCollectionAccess(
     // plan.unlinkNode(node);
     auto names = virtualCollection->realNames();
 
-    auto selectedCollections = std::array<std::string_view, 2>{names[0], names[1]};
+    auto isFromAccess = node->getAnnotatedNumber<int>("smart-edge-smart-join/is-from-access");
+    if (not isFromAccess.has_value()) {
+      continue;
+    }
+
+    auto selectedCollections = std::array<std::string_view, 2>{names[0], *isFromAccess ? names[1] : names[2]};
+
     for (size_t idx = 0; idx < selectedCollections.size(); ++idx) {
       auto collection = query.collections().get(selectedCollections[idx]);
 
