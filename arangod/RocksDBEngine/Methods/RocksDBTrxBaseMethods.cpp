@@ -30,7 +30,6 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/TransactionStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include <absl/cleanup/cleanup.h>
