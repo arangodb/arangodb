@@ -348,6 +348,19 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
   RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 
+bool checkForModification(auto const& trainingState, auto const& id,
+                          std::string_view operation) {
+  if (auto const state = trainingState.load(std::memory_order_acquire);
+      state == VectorIndexTrainingState::kUnusable ||
+      state == VectorIndexTrainingState::kTraining) {
+    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES) << std::format(
+        "vector index {} not yet trained, skipping {}", id, operation);
+    return false;
+  }
+
+  return true;
+}
+
 /// @brief inserts a document into the index
 Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   RocksDBMethods* methods,
@@ -355,11 +368,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
-  if (auto const state = _trainingState.load(std::memory_order_acquire);
-      state == VectorIndexTrainingState::kUnusable ||
-      state == VectorIndexTrainingState::kTraining) {
-    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
-        << "vector index " << _iid.id() << " not yet trained, skipping insert";
+  if (!checkForModification(_trainingState, _iid.id(), "insert")) {
     return {};
   }
   TRI_ASSERT(_faissIndex != nullptr);
@@ -420,11 +429,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  if (auto const state = _trainingState.load(std::memory_order_acquire);
-      state == VectorIndexTrainingState::kIngesting ||
-      state == VectorIndexTrainingState::kTraining) {
-    LOG_TOPIC("ba9ba", DEBUG, Logger::ENGINES)
-        << "vector index " << _iid.id() << " not yet trained, skipping remove";
+  if (!checkForModification(_trainingState, _iid.id(), "remove")) {
     return {};
   }
   TRI_ASSERT(_faissIndex != nullptr);
