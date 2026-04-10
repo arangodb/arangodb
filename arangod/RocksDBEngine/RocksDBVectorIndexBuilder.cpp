@@ -698,7 +698,8 @@ Result VectorIndexBuilder::build(
     return Result{TRI_ERROR_INTERNAL, "vector index is not in unusable state"};
   }
 
-  auto numDocsHint = _rcoll->meta().numberDocuments();
+  // TRAINING PHASE
+  auto const numDocsHint = _rcoll->meta().numberDocuments();
   VectorIndexTrainer trainer(_index, _rootDB, _bounds);
 
   auto const trainStart = std::chrono::steady_clock::now();
@@ -743,24 +744,19 @@ Result VectorIndexBuilder::build(
     return Result{TRI_ERROR_DEBUG};
   }
 
+  // INGESTION PHASE
   auto const ingestStart = std::chrono::steady_clock::now();
 
-  // Create RocksDBBuilderIndex wrapper so that concurrent DML operations
-  // are intercepted and logged to WAL (via PutLogData) instead of going
-  // directly to the real vector index.
+  // Create RocksDBBuilderIndex wrapper
   auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
       indexPtr, numDocsHint, IndexFactory::kMaxParallelism);
 
-  // Swap the wrapper into _indexes so DML hits it from now on.
   _rcoll->swapIndex(indexPtr, buildIdx);
-  auto swapGuard = scopeGuard([&]() noexcept {
+  auto swapGuard = ScopeGuard([&]() noexcept {
     // On any exit, ensure the real index is back in _indexes.
     _rcoll->swapIndex(buildIdx, indexPtr);
   });
 
-  // fillIndexBackground: snapshot, WAL retention, fillIndex, non-exclusive
-  // catchup loop, exclusive lock + final catchup. Expects Locker locked on
-  // entry, returns with it locked (exclusive).
   RocksDBBuilderIndex::Locker locker(_rcoll);
   if (!locker.lock().waitAndGet()) {
     _index.resetTrainingState();
@@ -768,8 +764,8 @@ Result VectorIndexBuilder::build(
                   "failed to acquire lock for vector index build"};
   }
 
+  // This solves all our problems with catching up with WAL entreis
   auto res = buildIdx->fillIndexBackground(locker).waitAndGet();
-
   auto const ingestEnd = std::chrono::steady_clock::now();
 
   if (res.fail()) {
