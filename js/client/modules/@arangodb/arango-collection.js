@@ -41,17 +41,14 @@ function ArangoCollection (database, data) {
   if (typeof data === 'string') {
     this._id = null;
     this._name = data;
-    this._status = null;
     this._type = null;
   } else if (data !== undefined) {
     this._id = data.id;
     this._name = data.name;
-    this._status = data.status;
     this._type = data.type;
   } else {
     this._id = null;
     this._name = null;
-    this._status = null;
     this._type = null;
   }
 }
@@ -231,7 +228,6 @@ let helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '                                                                          ' + '\n' +
   'Administration Functions:                                                 ' + '\n' +
   '  name()                                collection name                   ' + '\n' +
-  '  status()                              status of the collection          ' + '\n' +
   '  type()                                type of the collection            ' + '\n' +
   '  truncate()                            remove all documents              ' + '\n' +
   '  properties()                          show collection properties        ' + '\n' +
@@ -273,22 +269,6 @@ ArangoCollection.prototype.name = function () {
   }
 
   return this._name;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief gets the status of a collection
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.status = function () {
-  if (this._status === null) {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_ARANGO_ILLEGAL_STATE.code,
-      errorMessage: "Collection status is not set"
-    });
-  }
-
-  // save original status
-  return this._status;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -454,8 +434,6 @@ ArangoCollection.prototype.drop = function (options) {
     // check error in case we got anything else but "collection not found"
     arangosh.checkRequestResult(requestResult);
   }
-
-  this._status = ArangoCollection.STATUS_DELETED;
 
   let database = this._database;
 

@@ -379,7 +379,7 @@ Result upgradeArangoSearchLinkCollectionName(
             if (selector.engineName() == RocksDBEngine::kEngineName) {
               auto& engine = selector.engine<RocksDBEngine>();
               auto builder = collection->toVelocyPackIgnore(
-                  {"path", "statusString"},
+                  {"path"},
                   LogicalDataSource::Serialization::PersistenceWithInProgress);
               auto res = engine.writeCreateCollectionMarker(
                   vocbase.id(), collection->id(), builder.slice(),

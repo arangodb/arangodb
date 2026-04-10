@@ -17,6 +17,9 @@
 
 * Updated ArangoDB Starter to v0.20.0-preview-6.
 
+* COR-377: Removed deprecated `status` and `statusString` attributes from collection
+  HTTP responses, and the `status()` collection function from the JavaScript API.
+
 * Removed leftover unit test and handling of `@arangodb/locals` module that was
   only used for Foxx.
 
