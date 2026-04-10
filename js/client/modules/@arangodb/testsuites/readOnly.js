@@ -202,10 +202,10 @@ function readOnly (options) {
     };
   }
   let bodies = run(requests.splice(0, 4));
-  let indices = bodies.pop().indexes
+  let indices = bodies.pop().indexes;
   let oneIndex = indices.filter(idx => {
     return idx.type === 'persistent';
-  })
+  });
   if (oneIndex.length > 0) {
     requests[0][2] += oneIndex[0].id;
     run(requests);
