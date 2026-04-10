@@ -2367,6 +2367,230 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
+ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
+                                            AstNode const* matchNode) {
+  auto const createPropertyAccess = [&](Variable const* variable,
+                                        std::string_view property) {
+    return _ast->createNodeAttributeAccess(_ast->createNodeReference(variable),
+                                           property);
+  };
+
+  auto const createPropertiesFilter = [&](Variable const* variable,
+                                          AstNode* properties,
+                                          AstNode* additionalExpression) {
+    AstNode* root = additionalExpression->type == NODE_TYPE_NOP
+                        ? nullptr
+                        : additionalExpression;
+    ADB_PROD_ASSERT(properties->type == NODE_TYPE_OBJECT ||
+                    properties->type == NODE_TYPE_NOP);
+
+    for (auto member : properties->getMemberList()) {
+      ADB_PROD_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+
+      auto key = member->getStringView();
+      auto value = member->getMember(0);
+
+      auto access = createPropertyAccess(variable, key);
+      auto operatorEq = _ast->createNodeBinaryOperator(
+          NODE_TYPE_OPERATOR_BINARY_EQ, access, value);
+      if (root) {
+        root = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
+                                              root, operatorEq);
+      } else {
+        root = operatorEq;
+      }
+    }
+
+    if (root == nullptr) {
+      root = _ast->createNodeValueBool(true);
+    }
+
+    Variable const* filterVar = _ast->variables()->createTemporaryVariable();
+    CalculationNode* calc = createNode<CalculationNode>(
+        this, nextId(), std::make_unique<Expression>(_ast, root), filterVar);
+    FilterNode* filter = createNode<FilterNode>(this, nextId(), filterVar);
+    filter->addDependency(calc);
+    return std::make_tuple(calc, filter);
+  };
+
+  auto const createCollectionAccess = [&](AstNode const* member) {
+    auto variable =
+        static_cast<Variable const*>(member->getMember(0)->getData());
+    auto collectionName = member->getMember(1)->getString();
+    auto& collections = _ast->query().collections();
+    auto collection = collections.get(collectionName);
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "no collection for EnumerateCollection");
+    }
+    IndexHint hint(_ast->query(), _ast->createNodeNop(),
+                   IndexHint::FromCollectionOperation{});
+    auto enumCollection = createNode<EnumerateCollectionNode>(
+        this, nextId(), collection, variable, false, std::move(hint));
+    auto [firstNode, lastNode] = createPropertiesFilter(
+        variable, member->getMember(2), member->getMember(3));
+    firstNode->addDependency(enumCollection);
+    return std::make_tuple(enumCollection, lastNode, variable);
+  };
+
+  auto const createVertexEdgeFilter = [&](Variable const* leftVertex,
+                                          Variable const* edge,
+                                          Variable const* rightVertex,
+                                          int direction) {
+    AstNode* root =
+        nullptr;  //_ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_OR);
+
+    if (direction & 2) {
+      auto leftVertexId = createPropertyAccess(leftVertex, "_id");
+      auto rightVertexId = createPropertyAccess(rightVertex, "_id");
+      auto edgeFrom = createPropertyAccess(edge, "_from");
+      auto edgeTo = createPropertyAccess(edge, "_to");
+      auto first = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                  leftVertexId, edgeFrom);
+      auto second = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                   edgeTo, rightVertexId);
+      root = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
+                                            first, second);
+    }
+    if (direction & 1) {
+      auto leftVertexId = createPropertyAccess(leftVertex, "_id");
+      auto rightVertexId = createPropertyAccess(rightVertex, "_id");
+      auto edgeFrom = createPropertyAccess(edge, "_from");
+      auto edgeTo = createPropertyAccess(edge, "_to");
+      auto first = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                  leftVertexId, edgeTo);
+      auto second = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                   edgeFrom, rightVertexId);
+      auto andNode = _ast->createNodeBinaryOperator(
+          NODE_TYPE_OPERATOR_BINARY_AND, first, second);
+      if (root) {
+        auto orNode = _ast->createNodeBinaryOperator(
+            NODE_TYPE_OPERATOR_BINARY_OR, root, andNode);
+        root = orNode;
+      } else {
+        root = andNode;
+      }
+    }
+
+    Variable const* filterVar = _ast->variables()->createTemporaryVariable();
+    CalculationNode* calc = createNode<CalculationNode>(
+        this, nextId(), std::make_unique<Expression>(_ast, root), filterVar);
+    FilterNode* filter = createNode<FilterNode>(this, nextId(), filterVar);
+    filter->addDependency(calc);
+    return std::make_tuple(calc, filter);
+  };
+
+  auto const constructVariableArray =
+      [&](std::vector<Variable const*> const& vars) {
+        auto root = _ast->createNodeArray();
+        for (auto v : vars) {
+          root->addMember(_ast->createNodeReference(v));
+        }
+        return root;
+      };
+
+  auto const constructPathObject =
+      [&](Variable const* outVariable,
+          std::vector<Variable const*> const& vertexVariables,
+          std::vector<Variable const*> const& edgeVariables) {
+        auto root = _ast->createNodeObject();
+
+        root->addMember(_ast->createNodeObjectElement(
+            "edges", constructVariableArray(edgeVariables)));
+        root->addMember(_ast->createNodeObjectElement(
+            "vertices", constructVariableArray(vertexVariables)));
+
+        CalculationNode* calc = createNode<CalculationNode>(
+            this, nextId(), std::make_unique<Expression>(_ast, root),
+            outVariable);
+
+        return calc;
+      };
+
+  auto en = previous;
+  auto nMembers = matchNode->numMembers();
+
+  for (size_t i = 0; i < nMembers; ++i) {
+    auto matchExpr = matchNode->getMemberUnchecked(i);
+
+    Variable const* prevVar = nullptr;
+    Variable const* pathVariable = nullptr;
+    std::vector<Variable const*> pathVertexVariables;
+    std::vector<Variable const*> pathEdgeVariables;
+
+    ADB_PROD_ASSERT(matchExpr->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION);
+
+    for (size_t j = 0; j < matchExpr->numMembers(); ++j) {
+      auto member = matchExpr->getMemberUnchecked(j);
+
+      if (member->type == NODE_TYPE_PATTERN_NODE_PATTERN) {
+        // generate code like
+        // FOR <outvariable> IN <collection>
+        //  FILTER <outvariable>.property1 == xxx && ....
+        ExecutionNode* lastNode;
+        std::tie(en, lastNode, prevVar) = createCollectionAccess(member);
+        en->addDependency(previous);
+        previous = en = lastNode;
+        pathVertexVariables.push_back(prevVar);
+      } else if (member->type == NODE_TYPE_PATTERN_PATH_VARIABLE) {
+        pathVariable = static_cast<Variable const*>(member->getData());
+      } else if (member->type == NODE_TYPE_REFERENCE) {
+        prevVar = static_cast<Variable*>(member->getData());
+        pathVertexVariables.push_back(prevVar);
+      } else if (member->type == NODE_TYPE_PATTERN_SEGMENT) {
+        // generate code like
+        //  FOR <outvar> IN <edge>
+        //    FILTER <outvar>._from == <prevVar>._id
+        auto edge = member->getMember(0);
+        auto node = member->getMember(1);
+        ADB_PROD_ASSERT(prevVar != nullptr);
+
+        ExecutionNode* lastNodeFilter;
+        Variable const* edgeVar;
+        std::tie(en, lastNodeFilter, edgeVar) = createCollectionAccess(edge);
+        en->addDependency(previous);
+        previous = en = lastNodeFilter;
+
+        Variable const* rightVertexVar;
+
+        if (node->type == NODE_TYPE_REFERENCE) {
+          rightVertexVar = static_cast<Variable*>(node->getData());
+        } else {
+          ADB_PROD_ASSERT(node->type == NODE_TYPE_PATTERN_NODE_PATTERN)
+              << member->type;
+          std::tie(en, lastNodeFilter, rightVertexVar) =
+              createCollectionAccess(node);
+          en->addDependency(previous);
+          previous = en = lastNodeFilter;
+        }
+
+        auto [firstNode, lastNode] =
+            createVertexEdgeFilter(prevVar, edgeVar, rightVertexVar,
+                                   edge->getMember(4)->getIntValue());
+        firstNode->addDependency(previous);
+        previous = en = lastNode;
+        prevVar = rightVertexVar;
+
+        pathEdgeVariables.push_back(edgeVar);
+        pathVertexVariables.push_back(prevVar);
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unexpected match expression member");
+      }
+    }
+
+    // produce path variable if requested
+    if (pathVariable != nullptr) {
+      auto calcNode = constructPathObject(pathVariable, pathVertexVariables,
+                                          pathEdgeVariables);
+      calcNode->addDependency(previous);
+      previous = en = calcNode;
+    }
+  }
+
+  return en;
+}
+
 /// @brief create an execution plan from an abstract syntax tree node
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
@@ -2470,6 +2694,11 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 
       case NODE_TYPE_WINDOW: {
         en = fromNodeWindow(en, member);
+        break;
+      }
+
+      case NODE_TYPE_MATCH: {
+        en = fromNodeMatch(en, member);
         break;
       }
 

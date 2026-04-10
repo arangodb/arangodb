@@ -34,6 +34,8 @@
 #include "Metrics/LogScale.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/GaugeCounterGuard.h"
+#include "Statistics/ConnectionTimeRecorder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/CommonDefines.h"
@@ -107,6 +109,16 @@ class GeneralServerFeature final
     return _options.startedListening;
   }
 
+  [[nodiscard]] ConnectionTimeRecorder startConnection() noexcept {
+    return ConnectionTimeRecorder{_connectionDuration};
+  }
+
+  [[nodiscard]] auto addHttpConnection() {
+    return metrics::GaugeCounterGuard{_connectionHttp, static_cast<double>(1)};
+  }
+
+  double httpConnections() const noexcept { return _connectionHttp.load(); }
+
  private:
   // build HTTP server(s)
   void buildServers();
@@ -127,7 +139,6 @@ class GeneralServerFeature final
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
-  metrics::Histogram<metrics::FixScale<double>>& _histConnectionTime;
   metrics::Histogram<metrics::FixScale<double>>& _histTotalTime;
   metrics::Histogram<metrics::FixScale<double>>& _histRequestTime;
   metrics::Histogram<metrics::FixScale<double>>& _histQueueTime;
@@ -150,6 +161,9 @@ class GeneralServerFeature final
   metrics::Counter& _httpReqsPost;
   metrics::Counter& _httpReqsPut;
   metrics::Counter& _httpReqsOther;
+
+  metrics::Histogram<metrics::FixScale<double>>& _connectionDuration;
+  metrics::Gauge<double>& _connectionHttp;
 };
 
 }  // namespace arangodb

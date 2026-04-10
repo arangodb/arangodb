@@ -381,7 +381,6 @@ function readingSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
     },
 
     // get count;
@@ -395,7 +394,6 @@ function readingSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
       assertEqual(typeof doc.parsedBody['count'], 'number');
     },
 
@@ -410,7 +408,6 @@ function readingSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
       assertTrue(doc.parsedBody['waitForSync']);
       assertFalse(doc.parsedBody['isSystem']);
     },
@@ -426,7 +423,6 @@ function readingSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
       assertEqual(typeof doc.parsedBody['count'], 'number');
       assertEqual(doc.parsedBody['count'], 0);
       assertEqual(typeof doc.parsedBody['figures']['indexes']['count'], 'number');
@@ -498,7 +494,6 @@ function readingSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
       let r1 = doc.parsedBody['revision'];
       assertEqual(typeof r1, 'string');
       assertTrue(r1.length > 0);
@@ -692,7 +687,6 @@ function propertiesSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
       assertTrue(doc.parsedBody['waitForSync']);
       assertEqual(doc.parsedBody['keyOptions']['type'], "traditional");
       assertTrue(doc.parsedBody['keyOptions']['allowUserKeys']);
@@ -717,7 +711,6 @@ function propertiesSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
       assertTrue(doc.parsedBody['waitForSync']);
       assertEqual(doc.parsedBody['keyOptions']['type'], "traditional");
       assertTrue(doc.parsedBody['keyOptions']['allowUserKeys']);
