@@ -30,6 +30,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/StatisticsFeature.h"
 #include "Statistics/TransactionStatistics.h"
 
 #include <velocypack/Builder.h>
