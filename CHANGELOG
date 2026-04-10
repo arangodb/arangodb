@@ -1,6 +1,14 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* The vector index API now exposes a `resolvedNLists` field that shows the
+  actual nLists value used by the trained index. When using a fixed `nLists`
+  value, `resolvedNLists` will match it. When using the scalable nLists
+  specification, `resolvedNLists` shows the value that was computed from
+  the document count at training time. The value is available per shard in
+  the `shards` detail returned by `collection.getIndexes(true, true)`. On
+  single-server the collection name is used as the shard key.
+
 * COR-231: Vector index `nLists` now supports a tiered scaling specification
   alongside fixed integer values. The scaling spec uses
   `{ "multiplier": M, "minNLists": N, "tiers": [...] }` to compute nLists

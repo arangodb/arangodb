@@ -137,21 +137,6 @@ void processFiles(std::string const& directory,
 namespace arangodb::basics::FileUtils {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes trailing path separators from path
-///
-/// path will be modified in-place
-////////////////////////////////////////////////////////////////////////////////
-
-std::string removeTrailingSeparator(std::string const& name) {
-  size_t endpos = name.find_last_not_of(TRI_DIR_SEPARATOR_CHAR);
-  if (endpos != std::string::npos) {
-    return name.substr(0, endpos + 1);
-  }
-
-  return name;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes path
 ///
 /// path will be modified in-place
@@ -172,7 +157,8 @@ std::string buildFilename(char const* path, char const* name) {
   std::string result(path);
 
   if (!result.empty()) {
-    result = removeTrailingSeparator(result);
+    std::filesystem::path sourcepath{result};
+    result = sourcepath.lexically_normal().string();
     if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
       result += TRI_DIR_SEPARATOR_CHAR;
     }
@@ -194,7 +180,8 @@ std::string buildFilename(std::string const& path, std::string const& name) {
   std::string result(path);
 
   if (!result.empty()) {
-    result = removeTrailingSeparator(result);
+    std::filesystem::path sourcepath{result};
+    result = sourcepath.lexically_normal().string();
     if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
       result += TRI_DIR_SEPARATOR_CHAR;
     }
@@ -522,21 +509,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
   return result;
 }
 
-size_t countFiles(std::string const& directory) {
-  size_t result = 0;
-
-  ::processFiles(directory,
-                 [&result](std::string const& filename) { ++result; });
-
-  return result;
-}
-
 bool isDirectory(std::string const& path) {
   return ::statResultType(path) == ::StatResultType::Directory;
-}
-
-bool isSymbolicLink(std::string const& path) {
-  return ::statResultType(path) == ::StatResultType::SymLink;
 }
 
 bool isRegularFile(std::string const& path) {
@@ -545,16 +519,6 @@ bool isRegularFile(std::string const& path) {
 
 bool exists(std::string const& path) {
   return ::statResultType(path) != ::StatResultType::Error;
-}
-
-off_t size(std::string const& path) {
-  int64_t result = TRI_SizeFile(path.c_str());
-
-  if (result < 0) {
-    return (off_t)0;
-  }
-
-  return (off_t)result;
 }
 
 std::string stripExtension(std::string const& path,
@@ -583,8 +547,6 @@ std::string configDirectory(char const* binaryPath) {
 
   return dir;
 }
-
-std::string dirname(std::string const& name) { return TRI_Dirname(name); }
 
 void makePathAbsolute(std::string& path) {
   std::string const cwd = std::filesystem::current_path();

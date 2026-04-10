@@ -33,15 +33,57 @@ const {
     generateSeed
 } = require("@arangodb/testutils/seededRandom");
 
+const isCluster = internal.isCluster();
 const dbName = "vectorScalingDB";
 const collName = "coll";
 const idxName = "vector_scaling_test";
 const dimension = 128;
 const insertedDocsCount = 100;
+const numberOfShards = 3;
 
-function assertVectorIndexUsable(queryPoint, limit = 5) {
+function resolveNListsForScaling(docCount, multiplier, minNLists) {
+    return Math.max(minNLists, Math.trunc(multiplier * Math.sqrt(docCount)));
+}
+
+function assertScaledResolvedNLists(collection, nLists) {
+    const idx = collection.getIndexes(true, true).find(i => i.name === idxName);
+    assertTrue(idx !== undefined);
+    assertTrue(idx.hasOwnProperty("shards"), "shards object should be present");
+
+    const shardNames = Object.keys(idx.shards);
+    if (isCluster) {
+        assertEqual(numberOfShards, shardNames.length, "shards should not be empty");
+        const shardsCount = collection.count(true);
+        for (const shardName of shardNames) {
+            const vectorIndexShard = idx.shards[shardName];
+            const expectedResolvedNLists = resolveNListsForScaling(shardsCount[shardName], nLists.multiplier, nLists.minNLists);
+            assertEqual(expectedResolvedNLists, vectorIndexShard.resolvedNLists,
+                `On ${shardName} the resolvedNLists ${vectorIndexShard.resolvedNLists} do not match expected ${expectedResolvedNLists}`);
+        }
+    } else {
+        assertEqual(1, shardNames.length, "expected single shard on single-server");
+        const expectedResolvedNLists = resolveNListsForScaling(collection.count(), nLists.multiplier, nLists.minNLists);
+        const shard = idx.shards[shardNames[0]];
+        assertEqual(expectedResolvedNLists, shard.resolvedNLists,
+            `resolvedNLists ${shard.resolvedNLists} does not match expected ${expectedResolvedNLists}`);
+    }
+}
+
+function assertResolvedNLists(nLists, collection) {
+    const idx = collection.getIndexes(true, true).find(i => i.name === idxName);
+    assertTrue(idx !== undefined);
+    assertTrue(idx.hasOwnProperty("shards"), "shards object should be present");
+    const shardNames = Object.keys(idx.shards);
+    for (const shardName of shardNames) {
+        const shard = idx.shards[shardName];
+        assertEqual(nLists, shard.resolvedNLists,
+            `On ${shardName} the resolvedNLists ${shard.resolvedNLists} does not match expected ${nLists}`);
+    }
+}
+
+function assertVectorIndexUsable(queryPoint, limit = 5, nProbe) {
     const query = `FOR d IN ${collName}
-        SORT APPROX_NEAR_L2(d.vector, @qp)
+        SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: ${nProbe}})
         LIMIT @limit
         RETURN d`;
     const result = db._query(query, { qp: queryPoint, limit }).toArray();
@@ -59,7 +101,7 @@ function VectorIndexScalingTestSuite() {
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
-            collection = db._create(collName, { numberOfShards: 3 });
+            collection = db._create(collName, { numberOfShards: numberOfShards });
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
@@ -106,6 +148,8 @@ function VectorIndexScalingTestSuite() {
             assertEqual(65536, idx.params.nLists.tiers[1].fixedValue);
             assertEqual(300000000, idx.params.nLists.tiers[2].threshold);
             assertEqual(131072, idx.params.nLists.tiers[2].fixedValue);
+
+            assertScaledResolvedNLists(collection, idx.params.nLists);
         },
 
         testZeroMultiplierFails: function() {
@@ -124,6 +168,88 @@ function VectorIndexScalingTestSuite() {
             } catch (e) {
                 assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
             }
+        },
+
+        testMinNListsValue: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual(15, idx.params.nLists.minNLists);
+
+            assertVectorIndexUsable(randomPoint, 5, 15);
+            assertResolvedNLists(15, collection);
+        },
+
+        testInvalidMinNListsFails: function() {
+            try {
+                collection.ensureIndex({
+                    name: idxName,
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2", dimension,
+                        nLists: { multiplier: 4, minNLists: 0, tiers: [] },
+                    },
+                });
+                fail();
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+            }
+        },
+    };
+}
+
+function VectorIndexScalingTiersTestSuite() {
+    // Uses numberOfShards: 1 so that all documents land in a single shard,
+    // making tier threshold comparisons deterministic.
+    let collection;
+    let randomPoint;
+    const seed = generateSeed();
+
+    return {
+        setUpAll: function() {
+            db._useDatabase("_system");
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, { numberOfShards: 1 });
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < insertedDocsCount; ++i) {
+                const vector = Array.from({ length: dimension }, () => gen());
+                if (i === Math.floor(insertedDocsCount / 2)) {
+                    randomPoint = vector;
+                }
+                docs.push({ vector });
+            }
+            collection.insert(docs);
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        tearDown: function() {
+            try {
+                collection.dropIndex(idxName);
+            } catch(e) {}
         },
 
         testFirstTierTriggered: function() {
@@ -147,9 +273,8 @@ function VectorIndexScalingTestSuite() {
                     },
                 },
             });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertVectorIndexUsable(randomPoint);
+            assertResolvedNLists(2, collection);
+            assertVectorIndexUsable(randomPoint, 5, 2);
         },
 
         testSecondTierTriggered: function() {
@@ -173,9 +298,8 @@ function VectorIndexScalingTestSuite() {
                     },
                 },
             });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertVectorIndexUsable(randomPoint);
+            assertResolvedNLists(2, collection);
+            assertVectorIndexUsable(randomPoint, 5, 2);
         },
 
         testThirdTierTriggered: function() {
@@ -199,50 +323,8 @@ function VectorIndexScalingTestSuite() {
                     },
                 },
             });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertVectorIndexUsable(randomPoint);
-        },
-
-        testMinNListsValue: function() {
-            collection.ensureIndex({
-                name: idxName,
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2", dimension,
-                    nLists: {
-                        strategy: "autoSqrt",
-                        multiplier: 1,
-                        minNLists: 15,
-                        tiers: [],
-                    },
-                },
-            });
-            const idx = collection.getIndexes().find(i => i.name === idxName);
-            assertTrue(idx !== undefined);
-            assertEqual(15, idx.params.nLists.minNLists);
-
-            assertVectorIndexUsable(randomPoint);
-        },
-
-        testInvalidMinNListsFails: function() {
-            try {
-                collection.ensureIndex({
-                    name: idxName,
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2", dimension,
-                        nLists: { multiplier: 4, minNLists: 0, tiers: [] },
-                    },
-                });
-                fail();
-            } catch (e) {
-                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
-            }
+            assertResolvedNLists(2, collection);
+            assertVectorIndexUsable(randomPoint, 5, 2);
         },
     };
 }
@@ -255,7 +337,7 @@ function VectorIndexScalingEmptyCollectionTestSuite() {
             db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
-            collection = db._create(collName, { numberOfShards: 3 });
+            collection = db._create(collName, { numberOfShards: numberOfShards });
         },
 
         tearDownAll: function() {
@@ -289,6 +371,7 @@ function VectorIndexScalingEmptyCollectionTestSuite() {
 }
 
 jsunity.run(VectorIndexScalingTestSuite);
+jsunity.run(VectorIndexScalingTiersTestSuite);
 jsunity.run(VectorIndexScalingEmptyCollectionTestSuite);
 
 return jsunity.done();
