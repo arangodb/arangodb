@@ -1,6 +1,11 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-415: Fix vector index catch-up phase to use the proper
+  `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that
+  WAL entries written during training are correctly ingested, preventing
+  missed documents after index creation.
+
 * The vector index API now exposes a `resolvedNLists` field that shows the
   actual nLists value used by the trained index. When using a fixed `nLists`
   value, `resolvedNLists` will match it. When using the scalable nLists
