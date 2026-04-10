@@ -56,7 +56,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Statistics/Descriptions.h"
-#include "Statistics/ServerStatistics.h"
+#include "Statistics/TransactionStatistics.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -545,8 +545,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
            static_cast<double>(PhysicalMemory::getValue());
   }
 
-  ServerStatistics const& serverInfo =
-      server().getFeature<metrics::MetricsFeature>().serverStatistics();
+  auto const& metricsFeature = server().getFeature<metrics::MetricsFeature>();
 
   // processStatistics()
   appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults",
@@ -573,8 +572,8 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                globals, ensureWhitespace);
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
                "physicalSize", globals, ensureWhitespace);
-  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime", globals,
-               ensureWhitespace);
+  appendMetric(result, std::to_string(metricsFeature.uptime()), "uptime",
+               globals, ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
                globals, ensureWhitespace);
 

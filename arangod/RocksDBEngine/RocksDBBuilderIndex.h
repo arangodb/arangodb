@@ -28,6 +28,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "Statistics/TransactionStatistics.h"
 #include "Transaction/OperationOrigin.h"
 
 #include <atomic>
@@ -80,7 +81,8 @@ class RocksDBCollection;
 class RocksDBBuilderIndex final : public RocksDBIndex {
  public:
   explicit RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex>,
-                               uint64_t numDocsHint, size_t parallelism);
+                               uint64_t numDocsHint, size_t parallelism,
+                               TransactionStatistics& statistics);
 
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(
@@ -174,6 +176,7 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   static constexpr size_t kSingleThreadThreshold = 120000;
 
   std::shared_ptr<RocksDBIndex> _wrapped;
+  TransactionStatistics& _statistics;
   std::atomic<uint64_t> _docsProcessed;
   uint64_t const _numDocsHint;
   size_t const _numThreads;

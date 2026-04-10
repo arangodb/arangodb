@@ -324,8 +324,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
-                      .serverStatistics()
-                      ._transactionsStatistics),
+                      .transactionStatistics()),
       _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
                     !collection.isAStub() &&
                     !ServerState::instance()->isCoordinator() &&
@@ -552,7 +551,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // Step 3. add index to collection entry (for removal after a crash)
     auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
         std::static_pointer_cast<RocksDBIndex>(newIdx), _meta.numberDocuments(),
-        getParallelism(info));
+        getParallelism(info), _statistics);
     if (!engine.inRecovery()) {
       // manually modify collection entry, other methods need lock
       RocksDBKey key;  // read collection info from database
