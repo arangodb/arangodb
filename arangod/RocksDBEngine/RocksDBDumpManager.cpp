@@ -145,7 +145,7 @@ void RocksDBDumpManager::remove(std::string const& id,
     victim = (*it).second;
 
     TRI_ASSERT(victim != nullptr);
-    // give the victim a hind to stop all its threads.
+    // give the victim a hint to stop all its threads.
     victim->stop();
 
     // if we remove the context from the map, then the context will be

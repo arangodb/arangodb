@@ -91,6 +91,7 @@ RestStatus RestDumpHandler::execute() {
     // already validated by validateRequest()
     TRI_ASSERT(len == 1);
     // end a dump
+    // permission checked in DumpManager
     handleCommandDumpFinished();
   } else if (type == rest::RequestType::POST) {
     if (len == 1) {
@@ -100,6 +101,7 @@ RestStatus RestDumpHandler::execute() {
     } else if (len == 2) {
       TRI_ASSERT(suffixes[0] == "next");
       // fetch next data from a dump
+      // permission checked in DumpManager
       handleCommandDumpNext();
     } else {
       // unreachable. already validated by validateRequest()
