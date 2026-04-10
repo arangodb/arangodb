@@ -47,6 +47,10 @@ target_sources(arango_aql PRIVATE
   InlineSubqueries.cpp
   OptimizeSubqueries.cpp
   SpliceSubqueries.cpp
+  SortInValues.cpp
+  RemoveCollectVariables.cpp
+  SpecializeCollect.cpp
+  InterchangeAdjacentEnumerations.cpp
   UseIndexForSort.cpp
   UseIndexes.cpp
   DistributeInCluster.cpp
