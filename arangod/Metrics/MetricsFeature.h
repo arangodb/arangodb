@@ -36,7 +36,7 @@
 #include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Statistics/ServerStatistics.h"
+#include "Statistics/TransactionStatistics.h"
 
 #include <map>
 #include <shared_mutex>
@@ -119,7 +119,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
   void toVPack(velocypack::Builder& builder, MetricsParts metricsParts) const;
 
-  ServerStatistics& serverStatistics() noexcept;
+  TransactionStatistics& transactionStatistics() noexcept;
+  double uptime() const noexcept;
 
   template<typename MetricType>
   MetricType& batchAdd(std::string_view name, std::string_view labels) {
@@ -164,7 +165,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   containers::FlatHashMap<std::string_view, std::unique_ptr<IBatch>> _batch;
 
-  std::unique_ptr<ServerStatistics> _serverStatistics;
+  std::unique_ptr<TransactionStatistics> _transactionStatistics;
+  double _startTime = 0.0;
 
   mutable std::string _globals;
   mutable bool hasShortname = false;

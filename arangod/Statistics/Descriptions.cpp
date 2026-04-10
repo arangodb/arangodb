@@ -30,8 +30,8 @@
 #include "Metrics/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Statistics/TransactionStatistics.h"
 
 #include <velocypack/Builder.h>
 
@@ -412,24 +412,19 @@ stats::Descriptions::Descriptions(
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-  ServerStatistics const& info =
-      _server.getFeature<metrics::MetricsFeature>().serverStatistics();
-  b.add("uptime", VPackValue(info.uptime()));
+  metrics::MetricsFeature& metricsFeature =
+      _server.getFeature<metrics::MetricsFeature>();
+  TransactionStatistics const& info = metricsFeature.transactionStatistics();
+  b.add("uptime", VPackValue(metricsFeature.uptime()));
   b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 
   b.add("transactions", VPackValue(VPackValueType::Object));
-  b.add("started",
-        VPackValue(info._transactionsStatistics._transactionsStarted.load()));
-  b.add("aborted",
-        VPackValue(info._transactionsStatistics._transactionsAborted.load()));
-  b.add("committed",
-        VPackValue(info._transactionsStatistics._transactionsCommitted.load()));
-  b.add("intermediateCommits",
-        VPackValue(info._transactionsStatistics._intermediateCommits.load()));
-  b.add("readOnly",
-        VPackValue(info._transactionsStatistics._readTransactions.load()));
-  b.add("dirtyReadOnly",
-        VPackValue(info._transactionsStatistics._dirtyReadTransactions.load()));
+  b.add("started", VPackValue(info._transactionsStarted.load()));
+  b.add("aborted", VPackValue(info._transactionsAborted.load()));
+  b.add("committed", VPackValue(info._transactionsCommitted.load()));
+  b.add("intermediateCommits", VPackValue(info._intermediateCommits.load()));
+  b.add("readOnly", VPackValue(info._readTransactions.load()));
+  b.add("dirtyReadOnly", VPackValue(info._dirtyReadTransactions.load()));
   b.close();
 
   b.add("threads", VPackValue(VPackValueType::Object, true));

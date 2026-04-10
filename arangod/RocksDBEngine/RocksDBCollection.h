@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Statistics/ServerStatistics.h"
+#include "Statistics/TransactionStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
