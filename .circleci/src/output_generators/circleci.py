@@ -234,7 +234,7 @@ class CircleCIGenerator(OutputGenerator):
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.XXLARGE, build_config.architecture
                 ),
-                "name": "build-non-maintainer-x64",
+                "name": f"build-non-maintainer-{build_config.architecture.value}",
                 "preset": "enterprise-pr-non-maintainer",
                 "enterprise": True,
                 "arch": "x64",
