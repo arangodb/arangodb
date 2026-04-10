@@ -1236,6 +1236,12 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
   std::string const collName = coll.name();
   Result res;
 
+  if (auto r = ExecContext::current().canDropCollection(dbname, collName);
+      r.fail()) {
+    events::DropCollection(dbname, collName, r.errorNumber());
+    return r;
+  }
+
   if (!options.allowDropGraphCollection &&
       ServerState::instance()->isSingleServerOrCoordinator()) {
     graph::GraphManager gm(coll.vocbase(),
