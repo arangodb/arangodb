@@ -78,8 +78,6 @@ class Descriptions final {
   std::vector<stats::Figure> const& figures() const { return _figures; }
 
   void serverStatistics(velocypack::Builder&) const;
-  void clientStatistics(velocypack::Builder&,
-                        RequestStatisticsSource source) const;
   void httpStatistics(velocypack::Builder&) const;
   void processStatistics(velocypack::Builder&) const;
 
@@ -87,7 +85,6 @@ class Descriptions final {
   application_features::ApplicationServer& _server;
 
   std::vector<double> _requestTimeCuts;
-  std::vector<double> _connectionTimeCuts;
   std::vector<double> _bytesSendCuts;
   std::vector<double> _bytesReceivedCuts;
 

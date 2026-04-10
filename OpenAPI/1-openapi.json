@@ -546,7 +546,7 @@
   },
   "/_arango/v1/_admin/cluster/health": {
    "get": {
-    "description": "Queries the health of the cluster as assessed by the supervision (Agency) for\nmonitoring purposes. The response is a JSON object, containing the standard\n`code`, `error`, `errorNum`, and `errorMessage` fields as appropriate.\nThe endpoint-specific fields are as follows:\n\n- `ClusterId`: A UUID string identifying the cluster\n- `Health`: An object containing a descriptive sub-object for each node in the cluster.\n  - `\u003cnodeID\u003e`: Each entry in `Health` will be keyed by the node ID and contain the following attributes:\n    - `Endpoint`: A string representing the network endpoint of the server.\n    - `Role`: The role the server plays. Possible values are `\"AGENT\"`, `\"COORDINATOR\"`, and `\"DBSERVER\"`.\n    - `CanBeDeleted`: Boolean representing whether the node can safely be removed from the cluster.\n    - `Version`: Version String of ArangoDB used by that node.\n    - `Engine`: Storage Engine used by that node.\n    - `Status`: A string indicating the health of the node as assessed by the supervision (Agency). This should be considered primary source of truth for Coordinator and DB-Servers node health. If the node is responding normally to requests, it is `\"GOOD\"`. If it has missed one heartbeat, it is `\"BAD\"`. If it has been declared failed by the supervision, which occurs after missing heartbeats for about 15 seconds, it will be marked `\"FAILED\"`.\n\n    Additionally it will also have the following attributes for:\n\n    **Coordinators** and **DB-Servers**\n    - `SyncStatus`: The last sync status reported by the node. This value is primarily used to determine the value of `Status`. Possible values include `\"UNKNOWN\"`, `\"UNDEFINED\"`, `\"STARTUP\"`, `\"STOPPING\"`, `\"STOPPED\"`, `\"SERVING\"`, `\"SHUTDOWN\"`.\n    - `LastAckedTime`: ISO 8601 timestamp specifying the last heartbeat received.\n    - `ShortName`: A string representing the shortname of the server, e.g. `\"Coordinator0001\"`.\n    - `Timestamp`: ISO 8601 timestamp specifying the last heartbeat received. (deprecated)\n    - `Host`: An optional string, specifying the host machine if known.\n    - `SyncTime`: ISO 8601 timestamp of the last sync time reported by the node.\n\n    **Coordinators** only\n    - `AdvertisedEndpoint`: A string representing the advertised endpoint, if set. (e.g. external IP address or load balancer, optional)\n\n    **Agents**\n    - `Leader`: ID of the Agent this node regards as leader.\n    - `Leading`: Whether this Agent is the leader (true) or not (false).\n    - `LastAckedTime`: Time since last `acked` in seconds.\n",
+    "description": "Queries the health of the cluster as assessed by the supervision (Agency) for\nmonitoring purposes. The response is a JSON object, containing the standard\n`code`, `error`, `errorNum`, and `errorMessage` fields as appropriate.\nThe endpoint-specific fields are as follows:\n\n- `ClusterId`: A UUID string identifying the cluster\n- `Health`: An object containing a descriptive sub-object for each node in the cluster.\n  - `\u003cnodeID\u003e`: Each entry in `Health` will be keyed by the node ID and contain the following attributes:\n    - `Endpoint`: A string representing the network endpoint of the server.\n    - `Role`: The role the server plays. Possible values are `\"AGENT\"`, `\"COORDINATOR\"`, and `\"DBSERVER\"`.\n    - `CanBeDeleted`: Boolean representing whether the node can safely be removed from the cluster.\n    - `Version`: Version String of ArangoDB used by that node.\n    - `Engine`: Storage Engine used by that node.\n    - `Status`: A string indicating the health of the node as assessed by the supervision (Agency). This should be considered primary source of truth for Coordinator and DB-Servers node health. If the node is responding normally to requests, it is `\"GOOD\"`. If it has missed one heartbeat, it is `\"BAD\"`. If it has been declared failed by the supervision, which occurs after missing heartbeats for about 15 seconds, it will be marked `\"FAILED\"`.\n\n    Additionally it will also have the following attributes for:\n\n    **Coordinators** and **DB-Servers**\n    - `SyncStatus`: The last sync status reported by the node. This value is primarily used to determine the value of `Status`. Possible values include `\"UNKNOWN\"`, `\"UNDEFINED\"`, `\"STARTUP\"`, `\"STOPPING\"`, `\"STOPPED\"`, `\"SERVING\"`, `\"SHUTDOWN\"`.\n    - `LastAckedTime`: ISO 8601 timestamp specifying the last heartbeat received.\n    - `ShortName`: A string representing the shortname of the server, e.g. `\"Coordinator0001\"`.\n    - `Host`: An optional string, specifying the host machine if known.\n    - `SyncTime`: ISO 8601 timestamp of the last sync time reported by the node.\n\n    **Coordinators** only\n    - `AdvertisedEndpoint`: A string representing the advertised endpoint, if set. (e.g. external IP address or load balancer, optional)\n\n    **Agents**\n    - `Leader`: ID of the Agent this node regards as leader.\n    - `Leading`: Whether this Agent is the leader (true) or not (false).\n    - `LastAckedTime`: Time since last `acked` in seconds.\n",
     "operationId": "getClusterHealth",
     "responses": {
      "200": {
@@ -1920,144 +1920,17 @@
   },
   "/_arango/v1/_admin/log": {
    "get": {
-    "description": "\u003e **WARNING:**\nThis endpoint should no longer be used. It is deprecated from version 3.8.0 on.\nUse `/_admin/log/entries` instead, which provides the same data in a more\nintuitive and easier to process format.\n\n\nReturns fatal, error, warning or info log messages from the server's global log.\nThe result is a JSON object with the attributes described below.\n\nThis API can be turned off via the startup option `--log.api-enabled`. In case\nthe API is disabled, all requests will be responded to with HTTP 403. If the\nAPI is enabled, accessing it requires admin privileges, or even superuser\nprivileges, depending on the value of the `--log.api-enabled` startup option.\n",
+    "description": "\u003e **WARNING:**\nThis endpoint has been removed. A `GET` request to `/_admin/log` without a path suffix no longer returns log data.\nThe server responds with HTTP **410 Gone** and an error body that directs you to use `GET /_admin/log/entries` instead. That endpoint returns log data with `total` and a `messages` array.\n\nThis API can be turned off via the startup option `--log.api-enabled`. In case\nthe API is disabled, all requests will be responded to with HTTP 403. If the\nAPI is enabled, accessing the log endpoints requires admin privileges, or even superuser\nprivileges, depending on the value of the `--log.api-enabled` startup option.\nThese checks are applied before the 410 response for the removed route.\n",
     "operationId": "getLog",
-    "parameters": [
-     {
-      "description": "Returns all log entries up to log level `upto`. Note that `upto` must be:\n- `fatal` or `0`\n- `error` or `1`\n- `warning` or `2`\n- `info` or `3`\n- `debug` or `4`\n- `trace` or `5`\n",
-      "in": "query",
-      "name": "upto",
-      "required": false,
-      "schema": {
-       "default": "info"
-      }
-     },
-     {
-      "description": "Returns all log entries of log level `level`. Note that the query parameters\n`upto` and `level` are mutually exclusive.\n",
-      "in": "query",
-      "name": "level",
-      "required": false,
-      "schema": {
-       "type": "string"
-      }
-     },
-     {
-      "description": "Returns all log entries such that their log entry identifier (`lid` value)\nis greater or equal to `start`.\n",
-      "in": "query",
-      "name": "start",
-      "required": false,
-      "schema": {
-       "default": 0,
-       "type": "number"
-      }
-     },
-     {
-      "description": "Restricts the result to at most `size` log entries.\n",
-      "in": "query",
-      "name": "size",
-      "required": false,
-      "schema": {
-       "type": "number"
-      }
-     },
-     {
-      "description": "Starts to return log entries skipping the first `offset` log entries. `offset`\nand `size` can be used for pagination.\n",
-      "in": "query",
-      "name": "offset",
-      "required": false,
-      "schema": {
-       "default": 0,
-       "type": "number"
-      }
-     },
-     {
-      "description": "Only return the log entries containing the text specified in `search`.\n",
-      "in": "query",
-      "name": "search",
-      "required": false,
-      "schema": {
-       "type": "string"
-      }
-     },
-     {
-      "description": "Sort the log entries either ascending (if `sort` is `asc`) or descending\n(if `sort` is `desc`) according to their `lid` values. Note that the `lid`\nimposes a chronological order.\n",
-      "in": "query",
-      "name": "sort",
-      "required": false,
-      "schema": {
-       "default": "asc",
-       "type": "string"
-      }
-     },
-     {
-      "description": "Returns all log entries of the specified server. All other query parameters\nremain valid. If no serverId is given, the asked server\nwill reply. This parameter is only meaningful on Coordinators.\n",
-      "in": "query",
-      "name": "serverId",
-      "required": false,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
     "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "properties": {
-          "level": {
-           "description": "A list of the log levels for all log entries.\n",
-           "type": "string"
-          },
-          "lid": {
-           "description": "a list of log entry identifiers. Each log message is uniquely\nidentified by its @LIT{lid} and the identifiers are in ascending\norder.\n",
-           "items": {
-            "type": "string"
-           },
-           "type": "array"
-          },
-          "text": {
-           "description": "a list of the texts of all log entries\n",
-           "type": "string"
-          },
-          "timestamp": {
-           "description": "a list of the timestamps as seconds since 1970-01-01 for all log\nentries.\n",
-           "items": {
-            "type": "string"
-           },
-           "type": "array"
-          },
-          "topic": {
-           "description": "a list of the topics of all log entries\n",
-           "type": "string"
-          },
-          "totalAmount": {
-           "description": "the total amount of log entries before pagination.\n",
-           "type": "integer"
-          }
-         },
-         "required": [
-          "lid",
-          "level",
-          "timestamp",
-          "text",
-          "topic",
-          "totalAmount"
-         ],
-         "type": "object"
-        }
-       }
-      },
-      "description": ""
-     },
-     "400": {
-      "description": "is returned if invalid values are specified for `upto` or `level`.\n"
-     },
      "403": {
-      "description": "is returned if there are insufficient privileges to access the logs.\n"
+      "description": "is returned if there are insufficient privileges to access the logs, or if the log API is disabled.\n"
+     },
+     "410": {
+      "description": "is returned when the log API is enabled for the caller and `GET /_admin/log` is invoked without a suffix. Use `GET /_admin/log/entries` to retrieve log entries.\n"
      }
     },
-    "summary": "Get the global server logs (deprecated)",
+    "summary": "Get the global server logs (removed)",
     "tags": [
      "Monitoring"
     ]
@@ -25062,42 +24935,6 @@
     ]
    }
   },
-  "/_arango/v1/_db/{database-name}/_api/replication/logger-first-tick": {
-   "get": {
-    "description": "Returns the first available tick value that can be served from the server's\nreplication log. This method can be called by replication clients after to\ndetermine if certain data (identified by a tick value) is still available\nfor replication.\n\nThe result is a JSON object containing the attribute `firstTick`. This\nattribute contains the minimum tick value available in the server's\nreplication\nlog.\n\n\u003e **INFO:**\nThis method is not supported on a Coordinator in a cluster deployment.\n",
-    "operationId": "getReplicationLoggerFirstTick",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the request was executed successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if an error occurred while assembling the response.\n"
-     },
-     "501": {
-      "description": "is returned when this operation is called on a Coordinator in a cluster deployment.\n"
-     }
-    },
-    "summary": "Get the first available replication tick value",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
   "/_arango/v1/_db/{database-name}/_api/replication/logger-state": {
    "get": {
     "description": "Returns the current state of the server's replication logger. The state will\ninclude information about whether the logger is running and about the last\nlogged tick value. This tick value is important for incremental fetching of\ndata.\n\nThe body of the response contains a JSON object with the following\nattributes:\n\n- `state`: the current logger state as a JSON object with the following\n  sub-attributes:\n\n  - `running`: whether or not the logger is running\n\n  - `lastLogTick`: the tick value of the latest tick the logger has logged.\n    This value can be used for incremental fetching of log data.\n\n  - `totalEvents`: total number of events logged since the server was started.\n    The value is not reset between multiple stops and re-starts of the logger.\n\n  - `time`: the current date and time on the logger server\n\n- `server`: a JSON object with the following sub-attributes:\n\n  - `version`: the logger server's version\n\n  - `serverId`: the logger server's id\n\n- `clients`: returns the last fetch status by replication clients connected to\n  the logger. Each client is returned as a JSON object with the following attributes:\n\n  - `syncerId`: id of the client syncer\n\n  - `serverId`: server id of client\n\n  - `lastServedTick`: last tick value served to this client via the WAL tailing API\n\n  - `time`: date and time when this client last called the WAL tailing API\n",
@@ -25126,42 +24963,6 @@
      }
     },
     "summary": "Get the replication logger state",
-    "tags": [
-     "Replication"
-    ]
-   }
-  },
-  "/_arango/v1/_db/{database-name}/_api/replication/logger-tick-ranges": {
-   "get": {
-    "description": "Returns the currently available ranges of tick values for all currently\navailable WAL logfiles. The tick values can be used to determine if certain\ndata (identified by tick value) are still available for replication.\n\nThe body of the response contains a JSON array. Each array member is an\nobject\nthat describes a single logfile. Each object has the following attributes:\n\n- `datafile`: name of the logfile\n\n- `status`: status of the datafile, in textual form (e.g. \"sealed\", \"open\")\n\n- `tickMin`: minimum tick value contained in logfile\n\n- `tickMax`: maximum tick value contained in logfile\n",
-    "operationId": "getReplicationLoggerTickRanges",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "is returned if the tick ranges could be determined successfully.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     },
-     "500": {
-      "description": "is returned if the logger state could not be determined.\n"
-     },
-     "501": {
-      "description": "is returned when this operation is called on a Coordinator in a cluster deployment.\n"
-     }
-    },
-    "summary": "Get the tick ranges available in the WAL logfiles",
     "tags": [
      "Replication"
     ]

@@ -26,6 +26,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
@@ -37,6 +38,7 @@
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/Range.h"
 #include "Aql/TypedAstNodes.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
@@ -661,12 +663,32 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    bool localMustDestroy = false;
-    AqlValue result =
-        executeSimpleExpression(ctx, member, localMustDestroy, false);
-    AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx.vpackOptions(), *builder.get(),
-                        /*allowUnindexed*/ false);
+
+    if (member->type == NODE_TYPE_ARRAY_SPLICE) {
+      auto member2 = member->getMember(0);
+
+      bool localMustDestroy = false;
+      AqlValue result =
+          executeSimpleExpression(ctx, member2, localMustDestroy, false);
+      AqlValueGuard guard(result, localMustDestroy);
+
+      if (result.isArray()) {
+        for (auto e : VPackArrayIterator(result.slice())) {
+          builder->add(e);
+        }
+      } else {
+        // TODO: What to do? maybe throw?
+        result.toVelocyPack(&trx.vpackOptions(), *builder.get(), false);
+      }
+    } else {
+      bool localMustDestroy = false;
+      AqlValue result =
+          executeSimpleExpression(ctx, member, localMustDestroy, false);
+      AqlValueGuard guard(result, localMustDestroy);
+
+      result.toVelocyPack(&trx.vpackOptions(), *builder.get(),
+                          /*allowUnindexed*/ false);
+    }
   }
 
   builder->close();
@@ -709,12 +731,13 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
   arangodb::velocypack::StringSink adapter(buffer.get());
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMemberUnchecked(i);
+    AstNode const* member = node->getMemberUnchecked(i);
 
     // process attribute key, taking into account duplicates
     if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
       bool localMustDestroy;
-      AqlValue result = executeSimpleExpression(ctx, member->getMember(0),
+      ast::CalculatedObjectElementNode calObjNode(member);
+      AqlValue result = executeSimpleExpression(ctx, calObjNode.getKey(),
                                                 localMustDestroy, false);
       AqlValueGuard guard(result, localMustDestroy);
 
@@ -745,7 +768,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       }
 
       // value
-      member = member->getMember(1);
+      member = calObjNode.getValue();
     } else {
       TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
 
@@ -771,7 +794,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       }
 
       // value
-      member = member->getMember(0);
+      member = ast::ObjectElementNode(member).getValue();
     }
 
     // add the attribute value
@@ -818,8 +841,9 @@ AqlValue Expression::executeSimpleExpressionReference(ExpressionContext& ctx,
 AqlValue Expression::executeSimpleExpressionRange(ExpressionContext& ctx,
                                                   AstNode const* node,
                                                   bool& mustDestroy) {
-  auto low = node->getMember(0);
-  auto high = node->getMember(1);
+  ast::RangeNode rangeNode(node);
+  auto low = rangeNode.getStart();
+  auto high = rangeNode.getEnd();
   mustDestroy = false;
 
   AqlValue resultLow = executeSimpleExpression(ctx, low, mustDestroy, false);
@@ -1418,13 +1442,12 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     if (quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER) {
       // 3.10 format: we get an ARRAY_FILTER node, which contains
       // both a quantifier and the filter condition
-      TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
-      TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
 
-      quantifierNode = quantifierAndFilterNode->getMember(0);
+      ast::ArrayFilterNode arrFilterNode(quantifierAndFilterNode);
+      quantifierNode = arrFilterNode.getQuantifier();
       TRI_ASSERT(quantifierNode != nullptr);
 
-      filterNode = quantifierAndFilterNode->getMember(1);
+      filterNode = arrFilterNode.getFilter();
 
       if (!isBoolean && filterNode->isConstant()) {
         if (filterNode->isTrue()) {
@@ -1602,10 +1625,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
                                       static_cast<size_t>(atLeast));
     } else if (quantifierNode->type == NODE_TYPE_RANGE) {
       // range
-      TRI_ASSERT(quantifierNode->numMembers() == 2);
-
-      minRequiredItems = getRangeBound(quantifierNode->getMember(0));
-      maxRequiredItems = getRangeBound(quantifierNode->getMember(1));
+      ast::RangeNode rangeNode(quantifierNode);
+      minRequiredItems = getRangeBound(rangeNode.getStart());
+      maxRequiredItems = getRangeBound(rangeNode.getEnd());
     } else {
       // exact value
       minRequiredItems = maxRequiredItems = getRangeBound(quantifierNode);

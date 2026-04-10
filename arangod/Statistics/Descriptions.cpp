@@ -30,9 +30,8 @@
 #include "Metrics/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/ConnectionStatistics.h"
-#include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
+#include "Statistics/StatisticsFeature.h"
 
 #include <velocypack/Builder.h>
 
@@ -110,7 +109,6 @@ stats::Descriptions::Descriptions(
     application_features::ApplicationServer& server)
     : _server(server),
       _requestTimeCuts(statistics::RequestTimeDistributionCuts),
-      _connectionTimeCuts(statistics::ConnectionTimeDistributionCuts),
       _bytesSendCuts(statistics::BytesSentDistributionCuts),
       _bytesReceivedCuts(statistics::BytesReceivedDistributionCuts) {
   _groups.emplace_back(Group{stats::GroupType::System, "Process Statistics",
@@ -247,12 +245,6 @@ stats::Descriptions::Descriptions(
              // cuts: internal.bytesReceivedDistribution,
              stats::Unit::Bytes, _bytesReceivedCuts});
 
-  _figures.emplace_back(Figure{
-      stats::GroupType::Client, "connectionTime", "Connection Time",
-      "Total connection time of a client.", stats::FigureType::Distribution,
-      // cuts: internal.connectionTimeDistribution,
-      stats::Unit::Seconds, _connectionTimeCuts});
-
   // Only user traffic:
 
   _figures.emplace_back(Figure{
@@ -298,13 +290,6 @@ stats::Descriptions::Descriptions(
              stats::FigureType::Distribution,
              // cuts: internal.bytesReceivedDistribution,
              stats::Unit::Bytes, _bytesReceivedCuts});
-
-  _figures.emplace_back(
-      Figure{stats::GroupType::ClientUser, "connectionTime", "Connection Time",
-             "Total connection time of a client (only user traffic).",
-             stats::FigureType::Distribution,
-             // cuts: internal.connectionTimeDistribution,
-             stats::Unit::Seconds, _connectionTimeCuts});
 
   _figures.emplace_back(Figure{stats::GroupType::Http,
                                "requestsTotal",
@@ -452,71 +437,38 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the distribution
-////////////////////////////////////////////////////////////////////////////////
-
-static void FillDistribution(VPackBuilder& b, std::string const& name,
-                             statistics::Distribution const& dist) {
-  b.add(name, VPackValue(VPackValueType::Object, true));
-  b.add("sum", VPackValue(dist._total));
-  b.add("count", VPackValue(dist._count));
-  b.add("counts", VPackValue(VPackValueType::Array, true));
-  for (auto const& it : dist._counts) {
-    b.add(VPackValue(it));
-  }
-  b.close();
-  b.close();
-}
-
-void stats::Descriptions::clientStatistics(
-    velocypack::Builder& b, RequestStatisticsSource source) const {
-  // FIXME why are httpConnections in here ?
-  ConnectionStatistics::Snapshot connectionStats;
-  ConnectionStatistics::getSnapshot(connectionStats);
-
-  b.add("httpConnections", VPackValue(connectionStats.httpConnections.get()));
-  FillDistribution(b, "connectionTime", connectionStats.connectionTime);
-
-  RequestStatistics::Snapshot requestStats;
-  RequestStatistics::getSnapshot(requestStats, source);
-
-  FillDistribution(b, "totalTime", requestStats.totalTime);
-  FillDistribution(b, "requestTime", requestStats.requestTime);
-  FillDistribution(b, "queueTime", requestStats.queueTime);
-  FillDistribution(b, "ioTime", requestStats.ioTime);
-  FillDistribution(b, "bytesSent", requestStats.bytesSent);
-  FillDistribution(b, "bytesReceived", requestStats.bytesReceived);
-}
-
 void stats::Descriptions::httpStatistics(velocypack::Builder& b) const {
-  ConnectionStatistics::Snapshot stats;
-  ConnectionStatistics::getSnapshot(stats);
-
   // request counters
-  b.add("requestsTotal", VPackValue(stats.totalRequests.get()));
-  b.add("requestsSuperuser", VPackValue(stats.totalRequestsSuperuser.get()));
-  b.add("requestsUser", VPackValue(stats.totalRequestsUser.get()));
-  b.add("requestsAsync", VPackValue(stats.asyncRequests.get()));
+  b.add("requestsTotal", VPackValue(statistics::TotalRequests.get()));
+  b.add("requestsSuperuser",
+        VPackValue(statistics::TotalRequestsSuperuser.get()));
+  b.add("requestsUser", VPackValue(statistics::TotalRequestsUser.get()));
+  b.add("requestsAsync", VPackValue(statistics::AsyncRequests.get()));
   b.add("requestsGet",
-        VPackValue(stats.methodRequests[(int)rest::RequestType::GET].get()));
-  b.add("requestsHead",
-        VPackValue(stats.methodRequests[(int)rest::RequestType::HEAD].get()));
-  b.add("requestsPost",
-        VPackValue(stats.methodRequests[(int)rest::RequestType::POST].get()));
-  b.add("requestsPut",
-        VPackValue(stats.methodRequests[(int)rest::RequestType::PUT].get()));
-  b.add("requestsPatch",
-        VPackValue(stats.methodRequests[(int)rest::RequestType::PATCH].get()));
-  b.add("requestsDelete",
         VPackValue(
-            stats.methodRequests[(int)rest::RequestType::DELETE_REQ].get()));
+            statistics::MethodRequests[(int)rest::RequestType::GET].get()));
+  b.add("requestsHead",
+        VPackValue(
+            statistics::MethodRequests[(int)rest::RequestType::HEAD].get()));
+  b.add("requestsPost",
+        VPackValue(
+            statistics::MethodRequests[(int)rest::RequestType::POST].get()));
+  b.add("requestsPut",
+        VPackValue(
+            statistics::MethodRequests[(int)rest::RequestType::PUT].get()));
+  b.add("requestsPatch",
+        VPackValue(
+            statistics::MethodRequests[(int)rest::RequestType::PATCH].get()));
   b.add(
-      "requestsOptions",
-      VPackValue(stats.methodRequests[(int)rest::RequestType::OPTIONS].get()));
-  b.add(
-      "requestsOther",
-      VPackValue(stats.methodRequests[(int)rest::RequestType::ILLEGAL].get()));
+      "requestsDelete",
+      VPackValue(statistics::MethodRequests[(int)rest::RequestType::DELETE_REQ]
+                     .get()));
+  b.add("requestsOptions",
+        VPackValue(
+            statistics::MethodRequests[(int)rest::RequestType::OPTIONS].get()));
+  b.add("requestsOther",
+        VPackValue(
+            statistics::MethodRequests[(int)rest::RequestType::ILLEGAL].get()));
 }
 
 void stats::Descriptions::processStatistics(VPackBuilder& b) const {

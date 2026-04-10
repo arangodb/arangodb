@@ -1099,6 +1099,8 @@ function processQuery(query, explain, planIndex) {
         return '- ' + buildExpression(node.subNodes[0]);
       case 'array limit':
         return buildExpression(node.subNodes[0]) + ', ' + buildExpression(node.subNodes[1]);
+      case 'array splice':
+        return buildExpression(node.subNodes[0]) + '...';
       case 'attribute access':
         return buildExpression(node.subNodes[0]) + '.' + attribute(node.name);
       case 'indexed access':
@@ -2760,7 +2762,6 @@ function inspectDump(filename, outfile) {
           delete details.properties.numberOfShards;
         }
         delete details.properties.objectId;
-        delete details.properties.statusString;
         print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
       } else {
         print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");

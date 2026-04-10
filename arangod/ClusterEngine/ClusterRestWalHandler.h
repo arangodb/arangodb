@@ -41,6 +41,5 @@ class ClusterRestWalHandler : public RestBaseHandler {
 
  private:
   void flush();
-  void transactions();
 };
 }  // namespace arangodb

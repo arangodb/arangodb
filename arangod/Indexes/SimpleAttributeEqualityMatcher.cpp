@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Aql/TypedAstNodes.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -33,6 +34,7 @@
 #include <cmath>
 
 using namespace arangodb;
+using namespace arangodb::aql;
 
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes)
@@ -117,6 +119,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
 
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
+
       // EQ is symmetric
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, nonNullAttributes, false) ||

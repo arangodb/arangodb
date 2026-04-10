@@ -667,10 +667,9 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
         }
       });
   result.add("parameters", VPackValue(VPackValueType::Object));
-  toVelocyPackIgnore(
-      result,
-      {StaticStrings::ObjectId, "path", "statusString", StaticStrings::Indexes},
-      LogicalDataSource::Serialization::Inventory);
+  toVelocyPackIgnore(result,
+                     {StaticStrings::ObjectId, "path", StaticStrings::Indexes},
+                     LogicalDataSource::Serialization::Inventory);
   result.close();  // parameters
   result.close();  // collection
 }
@@ -691,7 +690,6 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       StaticStrings::AllowUserKeys,
       StaticStrings::DataSourceCid,
       "count",
-      "statusString",
       StaticStrings::Version,
       StaticStrings::DistributeShardsLike,
       StaticStrings::ObjectId,
@@ -750,16 +748,6 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::DataSourceCid,
             VPackValue(std::to_string(id().id())));
   build.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
-
-  // there are no collection statuses anymore, but we need to keep
-  // API-compatibility. so the following attributes' values are hard-coded.
-  if (deleted()) {
-    build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
-    build.add("statusString", VPackValue("deleted"));
-  } else {
-    build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
-    build.add("statusString", VPackValue("loaded"));
-  }
 
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));

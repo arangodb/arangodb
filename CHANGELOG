@@ -1,5 +1,34 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
+
+* Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
+  They are still accepted for backward compatibility but are ignored and no longer
+  appear in `--help`. Coordinator runs with `--database.auto-upgrade` now disable
+  the HTTP listener stack without requiring `--server.rest-server false`. Packaging
+  and init scripts no longer pass these flags.
+
+* Remove `RequestStatistics` and `--server.statistics` option; HTTP request metrics
+  are now recorded synchronously via Prometheus metrics.
+
+* COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
+  `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
+  `/_admin/wal/transactions`.
+
+* Updated ArangoDB Starter to v0.20.0-preview-6.
+
+* COR-377: Removed deprecated `status` and `statusString` attributes from collection
+  HTTP responses, and the `status()` collection function from the JavaScript API.
+
+* Removed leftover unit test and handling of `@arangodb/locals` module that was
+  only used for Foxx.
+
+* Remove `GET | DELETE /_admin/log` (superseded by `GET | DELETE /_admin/log/entries`).
+
+* Remove deprecated `Timestamp` attribute from `GET /_admin/cluster/health`.
+
+* COR-353: Removed deprecated JS index creation functions `ensureUniqueConstraint()`,
+  `ensureGeoIndex()`, and `ensureGeoConstraint()` from collection objects.
 * COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
 
 * Removed leftover range() method from collection objects in JavaScript API
@@ -29,8 +58,6 @@
 
 * Legacy geo index types `geo1` and `geo2` are no longer supported. Existing
   indexes of these types are automatically dropped during database upgrade.
-
-* Updated ArangoDB Starter to v0.20.0-preview-4.
 
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
@@ -284,6 +311,9 @@
   then the default is now "deny".
 
 * Fix an issue when removing documents while using sparse vector index.
+
+* Fix an issue when removing documents while using sparse vector index.
+
 
 * Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 
