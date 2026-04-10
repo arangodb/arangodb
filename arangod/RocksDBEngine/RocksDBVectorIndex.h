@@ -109,7 +109,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   }
 
   std::optional<std::size_t> resolvedNLists() const noexcept {
-    if (_faissIndex != nullptr) {
+    // The acquire fence synchronises with the acq_rel CAS in
+    // setTrainingState(), which is called *after* _faissIndex has been
+    // written in applyTrainingResult().  Reading _faissIndex is therefore
+    // safe once we observe kIngesting or kReady.
+    if (auto const state = _trainingState.load();
+        state == VectorIndexTrainingState::kIngesting ||
+        state == VectorIndexTrainingState::kReady) {
       return _faissIndex->nlist;
     }
     return std::nullopt;
