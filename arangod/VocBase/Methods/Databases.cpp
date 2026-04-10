@@ -503,11 +503,6 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
                        std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  if (auto r = exec.canDropDatabase(dbName); r.fail()) {
-    events::DropDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
-    return r;
-  }
-
   Result res;
   auto& server = systemVocbase->server();
 #ifdef USE_V8

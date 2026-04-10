@@ -149,6 +149,12 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
+  if (auto r = ExecContext::current().canCreateDatabase(dbName); r.fail()) {
+    generateError(r);
+    events::CreateDatabase(dbName, r, _context);
+    return RestStatus::DONE;
+  }
+
   Result res =
       methods::Databases::create(server(), _context, dbName, users, options);
   if (res.ok()) {
@@ -182,6 +188,13 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   }
 
   std::string const& dbName = suffixes[0];
+
+  if (auto r = ExecContext::current().canDropDatabase(dbName); r.fail()) {
+    generateError(r);
+    events::DropDatabase(dbName, r, _context);
+    return RestStatus::DONE;
+  }
+
   Result res = methods::Databases::drop(_context, &_vocbase, dbName);
 
   if (res.ok()) {

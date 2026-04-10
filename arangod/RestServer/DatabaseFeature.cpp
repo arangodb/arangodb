@@ -1003,7 +1003,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
     std::string const& username) {
   std::vector<std::string> names;
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auto& exec = ExecContext::current();
   {
     auto databases = _databases.load();
 
@@ -1014,12 +1014,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      if (af->isActive() && af->userManager() != nullptr) {
-        auto level = af->userManager()->databaseAuthLevel(
-            username, vocbase->name(), false);
-        if (level == auth::Level::NONE) {  // hide dbs without access
-          continue;
-        }
+      if (exec.canSeeDatabase(vocbase->name()).fail()) {
+        continue;
       }
 
       names.emplace_back(vocbase->name());
