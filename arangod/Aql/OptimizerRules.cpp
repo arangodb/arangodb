@@ -179,7 +179,6 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
 }  // namespace aql
 }  // namespace arangodb
 
-
 auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   auto collectionAccessingNode =
       dynamic_cast<CollectionAccessingNode const*>(at);
