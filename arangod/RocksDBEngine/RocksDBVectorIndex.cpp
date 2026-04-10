@@ -355,11 +355,8 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
-  if (_faissIndex == nullptr) {
-    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
-        << "vector index " << _iid.id() << " not yet trained, skipping insert";
-    return {};
-  }
+  TRI_ASSERT(_faissIndex != nullptr);
+
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -425,11 +422,8 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  if (_faissIndex == nullptr) {
-    LOG_TOPIC("d1e0b", DEBUG, Logger::ENGINES)
-        << "vector index " << _iid.id() << " not yet trained, skipping remove";
-    return {};
-  }
+  TRI_ASSERT(_faissIndex != nullptr);
+
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {

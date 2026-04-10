@@ -25,12 +25,8 @@
 
 #include "Indexes/Index.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/files.h"
-#include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
@@ -354,7 +350,7 @@ static Result fillIndex(
   if (ridx.type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
     auto& vecIdx = static_cast<RocksDBVectorIndex&>(ridx);
     it->Seek(bounds.start());
-    auto res = vector::ingestVectors(vecIdx, rootDB, std::move(it));
+    res = vector::ingestVectors(vecIdx, rootDB, std::move(it));
     if (res.ok()) {
       res = trx.commit();
     }
@@ -493,7 +489,6 @@ class LowerBoundTracker final : public FlushSubscription {
   explicit LowerBoundTracker(TRI_voc_tick_t tick, std::string const& name)
       : _tick{tick}, _name{name} {}
 
-  /// @brief earliest tick that can be released
   [[nodiscard]] TRI_voc_tick_t tick() const noexcept final {
     return _tick.load(std::memory_order_acquire);
   }
@@ -528,12 +523,9 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       tmpRes.reset(TRI_ERROR_SHUTTING_DOWN);
     }
     if (++_iterations % 128 == 0) {
-      // check every now and then if we can abort replaying
       if (_index.collection().vocbase().isDropped()) {
-        // database dropped
         tmpRes.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
       } else if (_index.collection().deleted()) {
-        // collection dropped
         tmpRes.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     }
@@ -542,8 +534,6 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);
-
-    // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
     _startOfBatch = true;
@@ -555,7 +545,6 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     return _currentSequence;
   }
 
-  // The default implementation of LogData does nothing.
   void LogData(const rocksdb::Slice& blob) override {
     switch (RocksDBLogValue::type(blob)) {
       case RocksDBLogType::TrackedDocumentInsert:
@@ -576,7 +565,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
         }
         break;
 
-      default:  // ignore
+      default:
         _lastObjectID = 0;
         break;
     }
@@ -595,7 +584,6 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
                    ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
-
     return rocksdb::Status();
   }
 
@@ -634,13 +622,13 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
                                 const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
-    incTick();  // drop and truncate may use this
+    incTick();
     if (column_family_id == _index.columnFamily()->GetID() &&
         RocksDBKey::objectId(begin_key) == _objectId &&
         RocksDBKey::objectId(end_key) == _objectId) {
       _index.truncateCommit({}, _currentSequence, &_trx);
     }
-    return rocksdb::Status();  // make WAL iterator happy
+    return rocksdb::Status();
   }
 
   rocksdb::Status MarkBeginPrepare(bool = false) override {
@@ -672,13 +660,10 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   }
 
  private:
-  // tick function that is called before each new WAL entry
   void incTick() {
     if (_startOfBatch) {
-      // we are at the start of a batch. do NOT increase sequence number
       _startOfBatch = false;
     } else {
-      // we are inside a batch already. now increase sequence number
       ++_currentSequence;
     }
   }
@@ -689,10 +674,10 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   Result tmpRes;
 
  private:
-  uint64_t const _objectId;  /// collection objectID
-  RocksDBIndex& _index;      /// the index to use
+  uint64_t const _objectId;
+  RocksDBIndex& _index;
   transaction::Methods& _trx;
-  RocksDBMethods* _methods;  /// methods to fill
+  RocksDBMethods* _methods;
   OperationOptions const _options;
 
   rocksdb::SequenceNumber _startSequence = 0;
@@ -708,7 +693,6 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
                rocksdb::SequenceNumber& lastScannedTick, uint64_t& numScanned,
                std::function<void(uint64_t)> const& reportProgress,
                LowerBoundTracker& lowerBoundTracker) {
-  // push forward WAL lower bound tick
   lowerBoundTracker.tick(startingFrom);
 
   LogicalCollection& coll = ridx.collection();
@@ -719,11 +703,6 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
-  // When we begin the trx on Replication2 we try to load the leader state.
-  // This behavior is not desired for index creation on the follower, as it
-  // will result in an error. Using this hint we prevent loading the
-  // leaderState.
-  // The same is for foreground indexes.
   trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
   Result res = trx.begin();
   if (res.fail()) {
@@ -739,7 +718,6 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   ReplayHandler replay(rcoll->objectId(), ridx, trx, &batched);
 
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
-  // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
 
   rocksdb::Status s = rootDB->GetUpdatesSince(startingFrom, &iterator, ro);
@@ -783,10 +761,10 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   for (; iterator->Valid(); iterator->Next()) {
     rocksdb::BatchResult batch = iterator->GetBatch();
     if (batch.sequence < startingFrom) {
-      continue;  // skip
+      continue;
     }
 
-    lastScannedTick = batch.sequence;  // start of the batch
+    lastScannedTick = batch.sequence;
 
     replay.startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(&replay);
@@ -809,9 +787,6 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   }
 
   s = iterator->status();
-  // we can ignore it if we get a try again return value, because that either
-  // indicates a write to another collection, or a write to this collection if
-  // we are not in exclusive mode, in which case we will call catchup again
   if (!s.ok() && res.ok() && !s.IsTryAgain()) {
     LOG_TOPIC("8e3a4", WARN, Logger::ENGINES)
         << "iterator error '" << s.ToString() << "'";
@@ -820,7 +795,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
 
   if (res.ok()) {
     numScanned = replay.numInserted + replay.numRemoved;
-    res = trx.commit();  // important for iresearch
+    res = trx.commit();
   }
 
   LOG_TOPIC("5796c", DEBUG, Logger::ENGINES)
@@ -830,6 +805,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
 
   return res;
 }
+
 }  // namespace
 
 futures::Future<bool> RocksDBBuilderIndex::Locker::lock() {
