@@ -81,9 +81,9 @@ function assertResolvedNLists(nLists, collection) {
     }
 }
 
-function assertVectorIndexUsable(queryPoint, limit = 5, nProbes) {
+function assertVectorIndexUsable(queryPoint, limit = 5, nProbe) {
     const query = `FOR d IN ${collName}
-        SORT APPROX_NEAR_L2(d.vector, @qp, {nProbes: ${nProbes}})
+        SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: ${nProbe}})
         LIMIT @limit
         RETURN d`;
     const result = db._query(query, { qp: queryPoint, limit }).toArray();
