@@ -50,8 +50,6 @@
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
 #include "Aql/SortElement.h"
-#include "Aql/Variable.h"
-#include "Aql/types.h"
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
 #include "VocBase/Methods/Collections.h"
