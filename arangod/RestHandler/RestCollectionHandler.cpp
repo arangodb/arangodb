@@ -141,6 +141,11 @@ async<void> RestCollectionHandler::handleCommandGet() {
     co_return;
   }
 
+  // All further collection access checks are done in the
+  // methods::Collection::lookup method which is called further
+  // down (and in some helper functions).
+  // This checks canUseCollection(Read)
+
   std::string const& name = suffixes[0];
   // /_api/collection/<name>
   if (suffixes.size() == 1) {
@@ -164,6 +169,8 @@ async<void> RestCollectionHandler::handleCommandGet() {
 
   _builder.clear();
 
+  // During the following lookup we will check if the collection can be used
+  // for reading for the current user/identity:
   std::shared_ptr<LogicalCollection> coll;
   auto res = methods::Collections::lookup(_vocbase, name, coll);
   if (res.fail()) {
@@ -341,6 +348,9 @@ async<void> RestCollectionHandler::handleCommandPost() {
     co_return;
   }
 
+  // All permission checks are done in methods::Collections::create below
+  // which does canCreateCollection().
+
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -432,6 +442,12 @@ async<void> RestCollectionHandler::handleCommandPut() {
     body = VPackSlice::emptyObjectSlice();
   }
 
+  // All permission checks for reading the collection are done
+  // in the methods::Collections::lookup method called below and
+  // inside some helper methods.
+  // The checks for writing the collection or its metadata are
+  // typically done here in the RestHandler.
+
   _builder.clear();
 
   std::shared_ptr<LogicalCollection> coll;
@@ -467,6 +483,12 @@ async<void> RestCollectionHandler::handleCommandPut() {
     co_return standardResponse();
   }
   if (sub == "compact") {
+    if (auto r = ExecContext::current().canUseCollection(
+            _vocbase.name(), name, AccessLevel::WriteMeta);
+        r.fail()) {
+      generateError(r);
+      co_return;
+    }
     if (ServerState::instance()->isCoordinator()) {
       auto& feature = server().getFeature<ClusterFeature>();
       // while this call is technically blocking, the requests to the
@@ -523,6 +545,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     co_return;
   }
   if (sub == "truncate") {
+    // Collection permission check in transaction!
     OperationOptions opts(_context);
 
     opts.waitForSync =
@@ -618,6 +641,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     VPackBuilder props = VPackCollection::keep(body, keep);
 
     OperationOptions options(_context);
+    // Permission check inside this call:
     res = co_await methods::Collections::updateProperties(*coll, props.slice(),
                                                           options);
     if (res.fail()) {

@@ -83,11 +83,9 @@ RestStatus RestDatabaseHandler::getDatabases() {
         names = methods::Databases::list(server(), std::string());
       }
     } else if (suffixes[0] == "user") {
-      if (!_request->authenticated() && ExecContext::isAuthEnabled()) {
-        res.reset(TRI_ERROR_FORBIDDEN);
-      } else {
-        names = methods::Databases::list(server(), _request->user());
-      }
+      // When we get here, we are either authenticated or authentication
+      // is disabled, so no need to check further.
+      names = methods::Databases::list(server(), _request->user());
     }
 
     // return database names in sorted order
@@ -149,12 +147,6 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
-  if (auto r = ExecContext::current().canCreateDatabase(dbName); r.fail()) {
-    generateError(r);
-    events::CreateDatabase(dbName, r, _context);
-    return RestStatus::DONE;
-  }
-
   Result res =
       methods::Databases::create(server(), _context, dbName, users, options);
   if (res.ok()) {
@@ -188,12 +180,6 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   }
 
   std::string const& dbName = suffixes[0];
-
-  if (auto r = ExecContext::current().canDropDatabase(dbName); r.fail()) {
-    generateError(r);
-    events::DropDatabase(dbName, r, _context);
-    return RestStatus::DONE;
-  }
 
   Result res = methods::Databases::drop(_context, &_vocbase, dbName);
 

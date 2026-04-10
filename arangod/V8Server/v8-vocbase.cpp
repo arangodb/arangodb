@@ -1802,11 +1802,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::string const dbName = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canCreateDatabase(dbName); r.fail()) {
-    events::CreateDatabase(dbName, r, ExecContext::current());
-    TRI_V8_THROW_EXCEPTION(r);
-  }
+  // The check for authorization to create the database is done in the
+  // following method.
 
   Result res =
       methods::Databases::create(vocbase.server(), ExecContext::current(),
@@ -1839,12 +1836,6 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const name = TRI_ObjectToString(isolate, args[0]);
-
-  auto& exec = ExecContext::current();
-  if (auto r = exec.canDropDatabase(name); r.fail()) {
-    events::DropDatabase(name, r, exec);
-    TRI_V8_THROW_EXCEPTION(r);
-  }
 
   auto res = methods::Databases::drop(ExecContext::current(), &vocbase, name);
 

@@ -361,6 +361,7 @@ Result Databases::create(application_features::ApplicationServer& server,
   Result res = basics::catchToResult([&]() {
     // Only admin users are permitted to create databases
     if (auto r = exec.canCreateDatabase(std::string(dbName)); r.fail()) {
+      events::CreateDatabase(dbName, r, exec);
       return r;
     }
     if (ServerState::readOnly() && !exec.isSuperuser()) {
@@ -503,6 +504,12 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
                        std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
+
+  if (auto r = exec.canDropDatabase(dbName); r.fail()) {
+    events::DropDatabase(dbName, r, exec);
+    return r;
+  }
+
   Result res;
   auto& server = systemVocbase->server();
 #ifdef USE_V8

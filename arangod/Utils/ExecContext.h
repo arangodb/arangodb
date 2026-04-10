@@ -107,14 +107,6 @@ class ExecContext : public RequestContext {
   /// @brief current user, may be empty for internal users
   std::string_view user() const { return _authMode.getIAuth().username(); }
 
-  /// @brief returns auth level for user
-  [[deprecated]] auth::Level collectionAuthLevel(
-      std::string_view dbname, std::string_view collection) const;
-
-  /// @brief returns AccessLevel for user
-  [[deprecated]] CollectionAccessLevel collectionAccessLevel(
-      std::string_view dbname, std::string_view collection) const;
-
   // New Result-returning permission check methods:
 
   Result canUseAdminAction(

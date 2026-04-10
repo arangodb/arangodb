@@ -68,55 +68,6 @@ bool ExecContext::isAuthEnabled() {
   return af->isActive();
 }
 
-/// @brief returns auth level for user
-auth::Level ExecContext::collectionAuthLevel(std::string_view dbname,
-                                             std::string_view coll) const {
-  std::abort();  // TODO remove this method
-  //  if (isInternal()) {
-  //    // should be RW for superuser, RO for read-only
-  //    return _databaseAuthLevel;
-  //  }
-  //
-  //  AuthenticationFeature* af = AuthenticationFeature::instance();
-  //  TRI_ASSERT(af != nullptr);
-  //  if (!af->isActive()) {
-  //    return auth::Level::RW;
-  //  }
-  //
-  //  if (coll.starts_with('_')) {
-  //    // handle fixed permissions here outside auth module.
-  //    // TODO: move this block above, such that it takes effect
-  //    //       when authentication is disabled
-  //    if (dbname == StaticStrings::SystemDatabase &&
-  //        coll == StaticStrings::UsersCollection) {
-  //      // _users (only present in _system database)
-  //      return auth::Level::NONE;
-  //    }
-  //    if (coll == StaticStrings::QueuesCollection) {
-  //      // _queues
-  //      return auth::Level::RO;
-  //    }
-  //    if (coll == StaticStrings::FrontendCollection) {
-  //      // _frontend
-  //      return auth::Level::RW;
-  //    }  // intentional fall through
-  //  }
-  //
-  //  auth::UserManager* um = af->userManager();
-  //  TRI_ASSERT(um != nullptr);
-  //  if (um == nullptr) {
-  //    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-  //                                   "unable to find userManager instance");
-  //  }
-  //  return um->collectionAuthLevel(_user, dbname, coll, false);
-}
-
-/// @brief returns AccessLevel for user
-CollectionAccessLevel ExecContext::collectionAccessLevel(
-    std::string_view dbname, std::string_view collection) const {
-  std::abort();
-}
-
 Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {
   return _authMode.getIAuth().canUse({Permission::Admin{.action = action}});
 }

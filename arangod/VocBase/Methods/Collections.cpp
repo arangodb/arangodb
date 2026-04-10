@@ -1038,11 +1038,6 @@ futures::Future<Result> Collections::updateProperties(
       r.fail()) {
     co_return r;
   }
-  if (auto r = exec.canUseDatabase(collection.vocbase().name(),
-                                   DatabaseAccessLevel::Write);
-      r.fail()) {
-    co_return r;
-  }
 
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo& ci = collection.vocbase()
@@ -1161,11 +1156,6 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (auto r = exec.canUseDatabase(collection.vocbase().name(),
-                                   DatabaseAccessLevel::Write);
-      r.fail()) {
-    return r;
-  }
   if (auto r = exec.canUseCollection(collection.vocbase().name(),
                                      collection.name(), AccessLevel::WriteMeta);
       r.fail()) {
