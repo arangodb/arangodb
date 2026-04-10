@@ -187,8 +187,8 @@ class CircleCIGenerator(OutputGenerator):
 
         # Add non-maintainer build for x64 (non-instrumented builds only)
         if (
-            build_config.architecture == Architecture.X64
-            and not build_config.build_variant.is_instrumented
+            not build_config.build_variant.is_instrumented
+            and not self.config.circleci.create_docker_images
         ):
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
@@ -244,7 +244,7 @@ class CircleCIGenerator(OutputGenerator):
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.XXLARGE, build_config.architecture
                 ),
-                "name": "build-non-maintainer-x64",
+                "name": f"build-non-maintainer-{build_config.architecture.value}",
                 "preset": "enterprise-pr-non-maintainer",
                 "enterprise": True,
                 "arch": "x64",
@@ -290,7 +290,7 @@ class CircleCIGenerator(OutputGenerator):
                 "create-docker-image": {
                     "name": f"create-{build_config.architecture.value}-docker-image",
                     "resource-class": self.sizer.get_resource_class(
-                        ResourceSize.LARGE, build_config.architecture
+                        ResourceSize.CIRCLECI_LARGE, build_config.architecture
                     ),
                     "arch": arch,
                     "tag": f"{image}:{tag}",
