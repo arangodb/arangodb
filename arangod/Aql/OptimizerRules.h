@@ -53,13 +53,6 @@ void activateCallstackSplit(ExecutionPlan& plan);
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
 
-/// @brief remove all unnecessary filters
-/// this rule modifies the plan in place:
-/// - filters that are always true are removed completely
-/// - filters that are always false will be replaced by a NoResults node
-void removeUnnecessaryFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
-
 /// @brief remove unused INTO variable from COLLECT, or unused aggregates
 void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                 OptimizerRule const&);
@@ -77,34 +70,6 @@ void specializeCollectRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief split and-combined filters and break them into smaller parts
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
-
-/// @brief move filters up in the plan
-/// this rule modifies the plan in place
-/// filters are moved as far up in the plan as possible to make result sets
-/// as small as possible as early as possible
-/// filters are not pushed beyond limits
-void moveFiltersUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                       OptimizerRule const&);
-
-/// @brief simplify some conditions in CalculationNodes
-void simplifyConditionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
-/// @brief fuse filter conditions that follow each other
-void fuseFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                     OptimizerRule const&);
-
-/// @brief useIndex, try to use an index for filtering
-void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                    OptimizerRule const&);
-
-/// @brief try to use the index for sorting
-void useIndexForSortRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
-
-/// @brief try to remove filters which are covered by indexes
-void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
 
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 void interchangeAdjacentEnumerationsRule(Optimizer*,
@@ -232,18 +197,6 @@ void undistributeRemoveAfterEnumCollRule(Optimizer*,
                                          std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const&);
 
-/// @brief this rule replaces expressions of the type:
-///   x.val == 1 || x.val == 2 || x.val == 3
-//  with
-//    x.val IN [1,2,3]
-//  when the OR conditions are present in the same FILTER node, and refer to the
-//  same (single) attribute.
-void replaceOrWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
-
-void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
-
 /// @brief remove $OLD and $NEW variables from data-modification statements
 /// if not required
 void removeDataModificationOutVariablesRule(Optimizer*,
@@ -301,10 +254,6 @@ void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void replaceEntriesWithObjectIteration(Optimizer*,
                                        std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
-
-/// @brief move filters into EnumerateCollection nodes
-void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
 
 /// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized
 /// count operation

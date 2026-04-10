@@ -15,6 +15,13 @@ target_sources(arango_aql PRIVATE
   RemoveRedundantCalculations.cpp
   RemoveUnnecessaryCalculations.cpp
   OptimizerRulesCluster.cpp
+  FuseFilters.cpp
+  MoveFiltersIntoEnumerate.cpp
+  MoveFiltersUp.cpp
+  RemoveUnnecessaryFilters.cpp
+  RemoveRedundantOr.cpp
+  ReplaceOrWithIn.cpp
+  SimplifyConditions.cpp
   OptimizerRulesGraph.cpp
   OptimizerRulesIResearchView.cpp
   OptimizerRulesIndexNode.cpp
@@ -25,4 +32,7 @@ target_sources(arango_aql PRIVATE
   ParallelizeGather.cpp
   RemoveRedundantSorts.cpp
   SortLimit.cpp
+  RemoveFiltersCoveredByIndex.cpp
+  UseIndexForSort.cpp
+  UseIndexes.cpp
 )
