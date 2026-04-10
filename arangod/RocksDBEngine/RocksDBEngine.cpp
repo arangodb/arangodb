@@ -2120,8 +2120,7 @@ void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
   TRI_ASSERT(cid.isSet());
 
   auto builder = collection.toVelocyPackIgnore(
-      {"path", "statusString"},
-      LogicalDataSource::Serialization::PersistenceWithInProgress);
+      {"path"}, LogicalDataSource::Serialization::PersistenceWithInProgress);
   TRI_UpdateTickServer(cid.id());
 
   Result res = writeCreateCollectionMarker(
@@ -2270,8 +2269,7 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection) {
   auto builder = collection.toVelocyPackIgnore(
-      {"path", "statusString"},
-      LogicalDataSource::Serialization::PersistenceWithInProgress);
+      {"path"}, LogicalDataSource::Serialization::PersistenceWithInProgress);
   Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
       RocksDBLogValue::CollectionChange(vocbase.id(), collection.id()));
@@ -2285,8 +2283,7 @@ Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
                                        LogicalCollection const& collection,
                                        std::string const& oldName) {
   auto builder = collection.toVelocyPackIgnore(
-      {"path", "statusString"},
-      LogicalDataSource::Serialization::PersistenceWithInProgress);
+      {"path"}, LogicalDataSource::Serialization::PersistenceWithInProgress);
   Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),

@@ -2762,7 +2762,6 @@ function inspectDump(filename, outfile) {
           delete details.properties.numberOfShards;
         }
         delete details.properties.objectId;
-        delete details.properties.statusString;
         print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
       } else {
         print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");

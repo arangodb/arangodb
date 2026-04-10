@@ -38,6 +38,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RequestTimingData.h"
+#include "Statistics/StatisticsFeature.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"
@@ -46,7 +47,6 @@
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -145,14 +145,11 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _apiRecordingFeature(server.server().getFeature<ApiRecordingFeature>()),
       _connectionInfo(std::move(info)),
-      _connectionStatistics(acquireConnectionStatistics()),
+      _connectionStatistics(_generalServerFeature.startConnection()),
       _auth(AuthenticationFeature::instance()),
       _isUserRequest(true) {
   TRI_ASSERT(_auth != nullptr);
-  _connectionStatistics.SET_START();
 }
-
-CommTask::~CommTask() { _connectionStatistics.SET_END(); }
 
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
@@ -524,15 +521,6 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 void CommTask::setTimingData(uint64_t id, RequestTimingData&& data) {
   std::lock_guard guard{_statisticsMutex};
   _statisticsMap.insert_or_assign(id, std::move(data));
-}
-
-ConnectionStatistics::Item CommTask::acquireConnectionStatistics() {
-  ConnectionStatistics::Item stat;
-  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
-    // only acquire a new item if the statistics are enabled.
-    stat = ConnectionStatistics::acquire();
-  }
-  return stat;
 }
 
 RequestTimingData& CommTask::acquireTimingData(uint64_t id) {

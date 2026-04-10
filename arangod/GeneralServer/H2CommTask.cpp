@@ -38,7 +38,6 @@
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Statistics/ConnectionStatistics.h"
 
 #include <absl/strings/escaping.h>
 
@@ -282,7 +281,7 @@ template<SocketType T>
 H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
                           std::shared_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
-  this->_connectionStatistics.SET_HTTP();
+  this->_connectionHttp = this->_generalServerFeature.addHttpConnection();
   this->_generalServerFeature.countHttp2Connection();
   initNgHttp2Session();
 }

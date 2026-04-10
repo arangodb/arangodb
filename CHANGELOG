@@ -1,5 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
+
 * Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
   They are still accepted for backward compatibility but are ignored and no longer
   appear in `--help`. Coordinator runs with `--database.auto-upgrade` now disable
@@ -14,6 +16,9 @@
   `/_admin/wal/transactions`.
 
 * Updated ArangoDB Starter to v0.20.0-preview-6.
+
+* COR-377: Removed deprecated `status` and `statusString` attributes from collection
+  HTTP responses, and the `status()` collection function from the JavaScript API.
 
 * Removed leftover unit test and handling of `@arangodb/locals` module that was
   only used for Foxx.
@@ -284,6 +289,9 @@
 
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
+
+* Fix an issue when removing documents while using sparse vector index.
+
 
 * Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 

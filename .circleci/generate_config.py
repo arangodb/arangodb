@@ -155,6 +155,7 @@ def create_generator_config(
     replication_two: bool,
     create_docker_images: bool,
     validate_only: bool,
+    test_suite: str,
 ) -> GeneratorConfig:
     """
     Create GeneratorConfig from command line arguments.
@@ -185,6 +186,7 @@ def create_generator_config(
         gtest=gtest,
         full=full,
         v8=not arangod_without_v8,
+        test_suite=test_suite,
     )
 
     # Create test execution config
@@ -295,6 +297,10 @@ def create_generator_config(
     is_flag=True,
     help="Validate test definitions without generating config",
 )
+@click.option(
+    "--test-suite",
+    help="filter for testsuite",
+)
 def main(
     base_config: str,
     definitions: tuple,
@@ -313,6 +319,7 @@ def main(
     replication_two: bool,
     create_docker_images: bool,
     validate_only: bool,
+    test_suite: str,
 ):
     """
     Generate CircleCI configuration from test definitions.
@@ -346,6 +353,7 @@ def main(
             replication_two=replication_two,
             create_docker_images=create_docker_images,
             validate_only=validate_only,
+            test_suite=test_suite,
         )
 
         # If validate-only, we're done

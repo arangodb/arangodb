@@ -311,27 +311,6 @@ TEST_F(PlanCollectionToAgencyWriterTest,
   EXPECT_FALSE(entry.hasKey(StaticStrings::SmartJoinAttribute));
 }
 
-TEST_F(PlanCollectionToAgencyWriterTest,
-       default_agency_operation_has_status_and_statusString) {
-  PlanCollection col{};
-  col.mutableProperties.name = "test";
-  auto writer = createWriterWithTestSharding(col);
-  AgencyOperation operation = writer.prepareOperation(dbName());
-
-  VPackBuilder b;
-  {
-    VPackObjectBuilder bodyBuilder{&b};
-    operation.toVelocyPack(b);
-  }
-  auto entry = extractCollectionEntry(b.slice(), collectionPlanPath(col));
-  // Default of Inspect would be to set it to `null`
-  EXPECT_EQ(basics::VelocyPackHelper::getStringValue(entry, "statusString",
-                                                     "notFound"),
-            "loaded");
-  EXPECT_EQ(basics::VelocyPackHelper::getNumericValue<TRI_vocbase_col_status_e>(
-                entry, "status", TRI_VOC_COL_STATUS_CORRUPTED),
-            TRI_VOC_COL_STATUS_LOADED);
-}
 
 TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_callback) {}
 

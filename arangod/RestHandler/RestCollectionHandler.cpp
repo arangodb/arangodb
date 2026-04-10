@@ -766,12 +766,6 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentation(
   _builder.add(StaticStrings::DataSourceId,
                VPackValue(std::to_string(coll->id().id())));
   _builder.add(StaticStrings::DataSourceName, VPackValue(coll->name()));
-  // only here for API-compatibility...
-  if (coll->deleted()) {
-    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
-  } else {
-    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
-  }
   _builder.add(StaticStrings::DataSourceType, VPackValue(coll->type()));
 
   if (!showProperties) {

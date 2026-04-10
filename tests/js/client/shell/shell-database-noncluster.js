@@ -122,7 +122,6 @@ function DatabaseSuite () {
         "icu-version",
         "rocksdb-version",
         "server-version",
-        "v8-version",
         "vpack-version",
         "zlib-version"
       ];

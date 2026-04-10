@@ -30,17 +30,22 @@
 
 namespace arangodb::metrics {
 
-/**
- * @brief Histogram functionality
- */
+template<typename ValueType>
+class HistogramBase : public Metric {
+ public:
+  using Metric::Metric;
+  void count(ValueType t) noexcept { count(t, 1); }
+  virtual void count(ValueType t, uint64_t n) noexcept = 0;
+};
+
 template<typename Scale>
-class Histogram : public Metric {
+class Histogram final : public HistogramBase<typename Scale::Value> {
  public:
   using ValueType = typename Scale::Value;
 
   Histogram(Scale&& scale, std::string_view name, std::string_view help,
             std::string_view labels)
-      : Metric(name, help, labels),
+      : HistogramBase<ValueType>(name, help, labels),
         _c(HistType(scale.n())),
         _scale(std::move(scale)),
         _n(_scale.n() - 1),
@@ -48,7 +53,7 @@ class Histogram : public Metric {
 
   Histogram(Scale const& scale, std::string_view name, std::string_view help,
             std::string_view labels)
-      : Metric(name, help, labels),
+      : HistogramBase<ValueType>(name, help, labels),
         _c(HistType(scale.n())),
         _scale(scale),
         _n(_scale.n() - 1),
@@ -81,9 +86,8 @@ class Histogram : public Metric {
 
   size_t pos(ValueType t) const { return _scale.pos(t); }
 
-  void count(ValueType t) noexcept { count(t, 1); }
-
-  void count(ValueType t, uint64_t n) noexcept {
+  using HistogramBase<ValueType>::count;
+  void count(ValueType t, uint64_t n) noexcept override {
     if (t < _scale.delims().front()) {
       _c[0] += n;
     } else if (t >= _scale.delims().back()) {
@@ -126,17 +130,17 @@ class Histogram : public Metric {
                     bool ensureWhitespace) const final {
     std::string ls;
     auto const globals_size = globals.size();
-    auto const labels_size = labels().size();
+    auto const labels_size = this->labels().size();
     ls.reserve(globals_size + labels_size + 1);
     ls += globals;
     if (globals_size != 0 && labels_size != 0) {
       ls += ',';
     }
-    ls += labels();
+    ls += this->labels();
     uint64_t sum = 0;
     for (size_t i = 0, end = size(); i != end; ++i) {
       sum += load(i);
-      result.append(name()).append("_bucket{");
+      result.append(this->name()).append("_bucket{");
       if (!ls.empty()) {
         result.append(ls) += ',';
       }
@@ -146,12 +150,12 @@ class Histogram : public Metric {
       }
       result.append(std::to_string(sum)) += '\n';
     }
-    (result.append(name()).append("_count") += '{').append(ls) += '}';
+    (result.append(this->name()).append("_count") += '{').append(ls) += '}';
     if (ensureWhitespace) {
       result.push_back(' ');
     }
     result.append(std::to_string(sum)) += '\n';
-    (result.append(name()).append("_sum") += '{').append(ls) += '}';
+    (result.append(this->name()).append("_sum") += '{').append(ls) += '}';
     if (ensureWhitespace) {
       result.push_back(' ');
     }
@@ -161,7 +165,7 @@ class Histogram : public Metric {
   void toVPack(velocypack::Builder& builder) const override {}
 
   std::ostream& print(std::ostream& o) const {
-    o << name() << " scale: " << _scale;
+    o << this->name() << " scale: " << _scale;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     o << " extremes: [" << _lowr << ", " << _highr << "]";
 #endif
