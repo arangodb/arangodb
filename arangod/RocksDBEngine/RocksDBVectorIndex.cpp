@@ -355,6 +355,14 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
+  if (auto const state = _trainingState.load(std::memory_order_acquire);
+      state != VectorIndexTrainingState::kReady) {
+    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
+        << "vector index " << _iid.id() << " not yet trained, skipping insert";
+    return {};
+  }
+  TRI_ASSERT(_faissIndex != nullptr);
+
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -365,13 +373,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     }
     return res;
   }
-
-  if (auto const state = _trainingState.load();
-      state != VectorIndexTrainingState::kReady) {
-    return {};
-  }
-
-  TRI_ASSERT(_faissIndex != nullptr);
 
   if (_definition.metric == vector::SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
@@ -418,10 +419,13 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  if (auto const state = _trainingState.load();
+  if (auto const state = _trainingState.load(std::memory_order_acquire);
       state != VectorIndexTrainingState::kReady) {
+    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES)
+        << "vector index " << _iid.id() << " not yet trained, skipping remove";
     return {};
   }
+  TRI_ASSERT(_faissIndex != nullptr);
 
   std::vector<float> input;
   input.reserve(_definition.dimension);

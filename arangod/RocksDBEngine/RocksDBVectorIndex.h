@@ -109,7 +109,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   }
 
   std::optional<std::size_t> resolvedNLists() const noexcept {
-    if (_faissIndex != nullptr) {
+    if (auto const state = _trainingState.load();
+        state == VectorIndexTrainingState::kIngesting ||
+        state == VectorIndexTrainingState::kReady) {
       return _faissIndex->nlist;
     }
     return std::nullopt;
