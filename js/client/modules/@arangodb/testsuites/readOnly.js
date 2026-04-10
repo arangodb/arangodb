@@ -206,9 +206,13 @@ function readOnly (options) {
   let oneIndex = indices.filter(idx => {
     return idx.type === 'persistent';
   })
-  requests[0][2] += oneIndex[0].id;
-  run(requests);
-
+  if (oneIndex.length > 0) {
+    requests[0][2] += oneIndex[0].id;
+    run(requests);
+  } else {
+    results.status = false;
+    results.message = `no matching index was found in: ${JSON.stringify(bodies)}`;
+  }
   results['shutdown'] = instanceManager.shutdownInstance();
   instanceManager.destructor(results.failed === 0);
 
