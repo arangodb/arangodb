@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <filesystem>
+#include <signal.h>
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -71,6 +72,7 @@ extern "C" {
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
+v8::Isolate* global_isolate;
 
 namespace {
 // this variable's value can be changed by the exit or quit commands.
@@ -79,8 +81,28 @@ bool exitRepl = false;
 
 std::string const DEFAULT_CLIENT_MODULE = "client.js";
 }  // namespace
+#include <stdio.h>
 
 namespace arangodb {
+
+void signalHandler(int signal) {
+  v8::Local<v8::StackTrace> stacktraceV8 = v8::StackTrace::CurrentStackTrace(
+    global_isolate,
+    10,
+    v8::StackTrace::kDetailed
+    );
+  int frameCount = stacktraceV8->GetFrameCount();
+  if (frameCount > 0) {
+    for (int i = 0; i < frameCount; i ++) {
+      auto stack_frame = stacktraceV8->GetFrame(global_isolate, i);
+      TRI_Utf8ValueNFC stackframeFile(global_isolate, stack_frame->GetScriptName());
+      TRI_Utf8ValueNFC stackframeFN(global_isolate, stack_frame->GetFunctionName());
+      LOG_TOPIC("cac44", ERR, Logger::V8) << *stackframeFile <<
+        " - " << *stackframeFN<<
+        "():" << stack_frame->GetLineNumber();
+    }
+  }
+}
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
                                std::string const& name)
@@ -176,8 +198,9 @@ void V8ShellFeature::start() {
   LOG_TOPIC("9c2f7", DEBUG, Logger::V8)
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
-  _isolate = platform.createIsolate();
-
+  ::global_isolate = _isolate = platform.createIsolate();
+  printf("registering\n");
+  signal(SIGBUS, signalHandler);
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
