@@ -591,6 +591,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
                    ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
+
     return rocksdb::Status();
   }
 
