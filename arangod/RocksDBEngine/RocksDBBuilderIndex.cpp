@@ -489,11 +489,11 @@ class LowerBoundTracker final : public FlushSubscription {
   explicit LowerBoundTracker(TRI_voc_tick_t tick, std::string const& name)
       : _tick{tick}, _name{name} {}
 
+  /// @brief earliest tick that can be released
   [[nodiscard]] TRI_voc_tick_t tick() const noexcept final {
     return _tick.load(std::memory_order_acquire);
   }
 
-  /// @brief earliest tick that can be released
   void tick(TRI_voc_tick_t tick) noexcept {
     auto value = _tick.load(std::memory_order_acquire);
     TRI_ASSERT(value <= tick);
@@ -538,6 +538,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);
+
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
@@ -579,7 +580,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         rocksdb::Slice const& /*value*/) override {
-    incTick();  // drop and truncate may use this
+    incTick();
     if (column_family_id == RocksDBColumnFamilyManager::get(
                                 RocksDBColumnFamilyManager::Family::Definitions)
                                 ->GetID()) {
@@ -590,7 +591,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
                    ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
-    return rocksdb::Status();  // make WAL iterator happy
+    return rocksdb::Status();
   }
 
   rocksdb::Status DeleteCF(uint32_t column_family_id,
@@ -628,13 +629,13 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
                                 const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
-    incTick();
+    incTick();  // drop and truncate may use this
     if (column_family_id == _index.columnFamily()->GetID() &&
         RocksDBKey::objectId(begin_key) == _objectId &&
         RocksDBKey::objectId(end_key) == _objectId) {
       _index.truncateCommit({}, _currentSequence, &_trx);
     }
-    return rocksdb::Status();
+    return rocksdb::Status();  // make WAL iterator happy
   }
 
   rocksdb::Status MarkBeginPrepare(bool = false) override {
@@ -824,7 +825,6 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
 
   return res;
 }
-
 }  // namespace
 
 futures::Future<bool> RocksDBBuilderIndex::Locker::lock() {
