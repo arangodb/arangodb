@@ -24,30 +24,16 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionNode/GatherNode.h"
-#include "Aql/ExecutionNode/RemoteNode.h"
-#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Containers/SmallUnorderedMap.h"
-#include "VocBase/vocbase.h"
 
 namespace arangodb::aql {
 class Optimizer;
-class ExecutionNode;
 class SubqueryNode;
 
 class QueryContext;
 struct Collection;
-/// Helper
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
-                                 char const* context);
-
-void insertDistributeInputCalculation(ExecutionPlan& plan);
-
-void activateCallstackSplit(ExecutionPlan& plan);
 
 /// @brief propagate constant attributes in FILTERs
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -131,18 +117,6 @@ void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void replaceEntriesWithObjectIteration(Optimizer*,
                                        std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
-
-//// @brief create a DistributeNode for the given ExecutionNode
-DistributeNode* createDistributeNodeFor(ExecutionPlan& plan,
-                                        ExecutionNode* node);
-
-//// @brief create a gather node matching the given DistributeNode
-GatherNode* createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node);
-
-//// @brief enclose a node in DISTRIBUTE/GATHER
-DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
-                                              ExecutionNode* at,
-                                              SubqueryNode* snode);
 
 void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);

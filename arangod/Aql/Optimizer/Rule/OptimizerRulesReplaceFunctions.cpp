@@ -37,6 +37,7 @@
 #include "Aql/ExecutionNode/SingletonNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
@@ -51,6 +52,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/SupervisedBuffer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
@@ -59,6 +61,35 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
+
+namespace arangodb::aql {
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
+                                 char const* context) {
+  aql::Collection* coll = nullptr;
+
+  if (!cname.empty()) {
+    coll = query.collections().add(cname, AccessMode::Type::READ,
+                                   aql::Collection::Hint::Collection);
+    // simon: code below is used for FULLTEXT(), WITHIN(), NEAR(), ..
+    // could become unnecessary if the AST takes care of adding the collections
+    if (!ServerState::instance()->isCoordinator()) {
+      TRI_ASSERT(coll != nullptr);
+      query.trxForOptimization()
+          .addCollectionAtRuntime(cname, AccessMode::Type::READ)
+          .waitAndGet();
+    }
+  }
+
+  if (coll == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+        std::string("collection '") + cname + "' used in " + context +
+            " not found");
+  }
+
+  return coll;
+}
+}  // namespace arangodb::aql
 
 namespace {
 
