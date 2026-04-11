@@ -84,11 +84,6 @@ void clusterPushSubqueryToDBServer(Optimizer* opt,
                                    OptimizerRule const& rule);
 #endif
 
-/// @brief scatter operations in cluster - send all incoming rows to all remote
-/// clients
-void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                          OptimizerRule const&);
-
 #ifdef USE_ENTERPRISE
 void distributeOffsetInfoToClusterRule(aql::Optimizer* opt,
                                        std::unique_ptr<aql::ExecutionPlan> plan,
@@ -137,31 +132,6 @@ void replaceEntriesWithObjectIteration(Optimizer*,
                                        std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
 
-/// @brief allows execution nodes to asynchronously prefetch the next batch from
-/// their upstream node.
-void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                       OptimizerRule const&);
-
-void createScatterGatherSnippet(
-    ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
-    bool isRootNode, std::vector<ExecutionNode*> const& nodeDependencies,
-    std::vector<ExecutionNode*> const& nodeParents,
-    SortElementVector const& elements, size_t numberOfShards,
-    std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
-    Collection const* collection);
-
-//// @brief enclose a node in SCATTER/GATHER
-void insertScatterGatherSnippet(
-    ExecutionPlan& plan, ExecutionNode* at,
-    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
-        subqueries);
-
-//// @brief find all subqueries in a plan and store a map from subqueries to
-/// nodes
-void findSubqueriesInPlan(
-    ExecutionPlan& plan,
-    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
-
 //// @brief create a DistributeNode for the given ExecutionNode
 DistributeNode* createDistributeNodeFor(ExecutionPlan& plan,
                                         ExecutionNode* node);
@@ -176,9 +146,6 @@ DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
 
 void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
-
-void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
 
 void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
