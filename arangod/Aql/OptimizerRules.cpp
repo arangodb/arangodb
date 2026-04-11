@@ -660,4 +660,3 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     plan.findVarUsage();
   }
 }
-
