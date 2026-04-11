@@ -60,10 +60,6 @@ static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::UPSERT};
-}  // namespace
-
-namespace arangodb::aql {
-namespace {
 
 auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   auto collectionAccessingNode =
@@ -248,6 +244,8 @@ auto insertGatherNode(
 
 }  // namespace
 
+namespace arangodb::aql {
+
 void insertScatterGatherSnippet(
     ExecutionPlan& plan, ExecutionNode* at,
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
@@ -365,6 +363,8 @@ void findSubqueriesInPlan(
   }
 }
 
+}  // namespace arangodb::aql
+
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on
 /// sharded collections actually work
@@ -431,5 +431,4 @@ void scatterInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
   opt->addPlan(std::move(plan), rule, wasModified);
 }
-
 }  // namespace arangodb::aql
