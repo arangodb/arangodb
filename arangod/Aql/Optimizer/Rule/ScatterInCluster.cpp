@@ -47,9 +47,6 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-
 namespace {
 static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     scatterInClusterNodeTypes{
@@ -63,6 +60,10 @@ static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::UPSERT};
+}  // namespace
+
+namespace arangodb::aql {
+namespace {
 
 auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   auto collectionAccessingNode =
@@ -247,8 +248,6 @@ auto insertGatherNode(
 
 }  // namespace
 
-namespace arangodb::aql {
-
 void insertScatterGatherSnippet(
     ExecutionPlan& plan, ExecutionNode* at,
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
@@ -366,15 +365,12 @@ void findSubqueriesInPlan(
   }
 }
 
-}  // namespace arangodb::aql
-
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on
 /// sharded collections actually work
 /// it will change plans in place
-void arangodb::aql::scatterInClusterRule(Optimizer* opt,
-                                         std::unique_ptr<ExecutionPlan> plan,
-                                         OptimizerRule const& rule) {
+void scatterInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                          OptimizerRule const& rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
 
@@ -435,3 +431,5 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, wasModified);
 }
+
+}  // namespace arangodb::aql
