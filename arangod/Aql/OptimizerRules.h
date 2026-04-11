@@ -30,6 +30,7 @@
 
 namespace arangodb::aql {
 class Optimizer;
+class SubqueryNode;
 
 class QueryContext;
 struct Collection;
