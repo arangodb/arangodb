@@ -55,6 +55,9 @@ target_sources(arango_aql PRIVATE
   OptimizePaths.cpp
   GeoIndex.cpp
   OptimizeCount.cpp
+  AsyncPrefetch.cpp
+  OptimizeProjections.cpp
+  ScatterInCluster.cpp
   UseIndexForSort.cpp
   UseIndexes.cpp
   DistributeInCluster.cpp

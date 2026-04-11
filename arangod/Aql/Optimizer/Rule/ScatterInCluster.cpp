@@ -47,6 +47,12 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
+<<<<<<< HEAD
+=======
+using namespace arangodb;
+using namespace arangodb::aql;
+
+>>>>>>> f8bbd828816 (Refactor three optimizer rules into separate files)
 namespace {
 static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     scatterInClusterNodeTypes{
@@ -60,10 +66,13 @@ static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::UPSERT};
+<<<<<<< HEAD
 }  // namespace
 
 namespace arangodb::aql {
 namespace {
+=======
+>>>>>>> f8bbd828816 (Refactor three optimizer rules into separate files)
 
 auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   auto collectionAccessingNode =
@@ -248,6 +257,11 @@ auto insertGatherNode(
 
 }  // namespace
 
+<<<<<<< HEAD
+=======
+namespace arangodb::aql {
+
+>>>>>>> f8bbd828816 (Refactor three optimizer rules into separate files)
 void insertScatterGatherSnippet(
     ExecutionPlan& plan, ExecutionNode* at,
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
@@ -365,12 +379,23 @@ void findSubqueriesInPlan(
   }
 }
 
+<<<<<<< HEAD
+=======
+}  // namespace arangodb::aql
+
+>>>>>>> f8bbd828816 (Refactor three optimizer rules into separate files)
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on
 /// sharded collections actually work
 /// it will change plans in place
+<<<<<<< HEAD
 void scatterInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                           OptimizerRule const& rule) {
+=======
+void arangodb::aql::scatterInClusterRule(Optimizer* opt,
+                                         std::unique_ptr<ExecutionPlan> plan,
+                                         OptimizerRule const& rule) {
+>>>>>>> f8bbd828816 (Refactor three optimizer rules into separate files)
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
 
@@ -430,6 +455,10 @@ void scatterInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   }
 
   opt->addPlan(std::move(plan), rule, wasModified);
+<<<<<<< HEAD
 }
 
 }  // namespace arangodb::aql
+=======
+}
+>>>>>>> f8bbd828816 (Refactor three optimizer rules into separate files)
