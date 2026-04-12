@@ -79,8 +79,8 @@
 #include "Enterprise/Aql/Optimizer/Rule/ScatterSatelliteGraph.h"
 #include "Enterprise/Aql/Optimizer/Rule/SmartJoins.h"
 #include "Enterprise/Aql/Optimizer/Rule/SubqueryToDBServer.h"
-#include "Enterprise/IResearch/DistributeOffsetInfoToCluster.h"
-#include "Enterprise/IResearch/LateMaterializationOffsetInfo.h"
+#include "Enterprise/Aql/Optimizer/Rule/DistributeOffsetInfoToCluster.h"
+#include "Enterprise/Aql/Optimizer/Rule/LateMaterializationOffsetInfo.h"
 #endif
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
