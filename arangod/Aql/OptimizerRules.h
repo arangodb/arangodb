@@ -51,7 +51,6 @@ void substituteClusterSingleDocumentOperationsRule(
 void substituteClusterMultipleDocumentOperationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
 
-
 /// @brief replace legacy JS functions in the plan.
 void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
