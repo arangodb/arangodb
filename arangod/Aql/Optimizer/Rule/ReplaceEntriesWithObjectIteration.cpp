@@ -32,7 +32,6 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/TypedAstNodes.h"
 #include "Logger/LogMacros.h"

@@ -36,7 +36,6 @@
 #include "Aql/IndexDistrinctScan.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/Query.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"

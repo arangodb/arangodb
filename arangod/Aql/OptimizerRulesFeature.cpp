@@ -84,7 +84,6 @@
 #include "Aql/Optimizer/Rule/JoinIndexNodes.h"
 #include "Aql/Optimizer/Rule/UseVectorIndex.h"
 #include "Aql/Optimizer/Rule/PushFilterIntoEnumerateNear.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/Optimizer/Rule/ClusterLiftConstantsForDisjointGraphNodes.h"
