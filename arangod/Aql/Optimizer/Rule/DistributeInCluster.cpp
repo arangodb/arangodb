@@ -26,15 +26,30 @@
 
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
+#include "Aql/ExecutionNode/DistributeNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionNode/GraphNode.h"
+#include "Aql/ExecutionNode/InsertNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/RemoveNode.h"
+#include "Aql/ExecutionNode/ReplaceNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
+#include "Aql/ExecutionNode/ShortestPathNode.h"
 #include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/UpsertNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/Optimizer/Rule/DistributeInClusterSmart.h"
+#endif
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
+#include "Graph/ShortestPathOptions.h"
 
+#include <absl/strings/str_cat.h>
 #include <tuple>
 
 namespace {
@@ -206,6 +221,201 @@ void distributeInClusterRule(Optimizer* opt,
     }  // for node in subquery
   }    // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
+}
+
+// Create a new DistributeNode for the ExecutionNode passed in node, and
+// register it with the plan
+DistributeNode* createDistributeNodeFor(ExecutionPlan& plan,
+                                        ExecutionNode* node) {
+  auto collection = static_cast<Collection const*>(nullptr);
+  auto inputVariable = static_cast<Variable const*>(nullptr);
+
+  bool isTraversalNode = false;
+  // TODO: this seems a bit verbose, but is at least local & simple
+  //       the modification nodes are all collectionaccessing, the graph nodes
+  //       are currently assumed to be disjoint, and hence smart, so all
+  //       collections are sharded the same way!
+  switch (node->getType()) {
+    case ExecutionNode::INSERT: {
+      auto const* insertNode = ExecutionNode::castTo<InsertNode const*>(node);
+      collection = insertNode->collection();
+      inputVariable = insertNode->inVariable();
+    } break;
+    case ExecutionNode::REMOVE: {
+      auto const* removeNode = ExecutionNode::castTo<RemoveNode const*>(node);
+      collection = removeNode->collection();
+      inputVariable = removeNode->inVariable();
+    } break;
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::REPLACE: {
+      auto const* updateReplaceNode =
+          ExecutionNode::castTo<UpdateReplaceNode const*>(node);
+      collection = updateReplaceNode->collection();
+      if (updateReplaceNode->inKeyVariable() != nullptr) {
+        inputVariable = updateReplaceNode->inKeyVariable();
+      } else {
+        inputVariable = updateReplaceNode->inDocVariable();
+      }
+    } break;
+    case ExecutionNode::UPSERT: {
+      auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
+      collection = upsertNode->collection();
+      inputVariable = upsertNode->inDocVariable();
+    } break;
+    case ExecutionNode::TRAVERSAL: {
+      auto traversalNode = ExecutionNode::castTo<TraversalNode const*>(node);
+      TRI_ASSERT(traversalNode->isDisjoint());
+      collection = traversalNode->collection();
+      inputVariable = traversalNode->inVariable();
+      isTraversalNode = true;
+    } break;
+    case ExecutionNode::ENUMERATE_PATHS: {
+      auto pathsNode = ExecutionNode::castTo<EnumeratePathsNode const*>(node);
+      TRI_ASSERT(pathsNode->isDisjoint());
+      collection = pathsNode->collection();
+      // Subtle: EnumeratePathsNode uses a reference when returning
+      // startInVariable
+      inputVariable = &pathsNode->startInVariable();
+    } break;
+    case ExecutionNode::SHORTEST_PATH: {
+      auto shortestPathNode =
+          ExecutionNode::castTo<ShortestPathNode const*>(node);
+      TRI_ASSERT(shortestPathNode->isDisjoint());
+      collection = shortestPathNode->collection();
+      inputVariable = shortestPathNode->startInVariable();
+    } break;
+    default: {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("Cannot distribute ", node->getTypeString(), "."));
+    }
+  }
+
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(inputVariable != nullptr);
+
+  // The DistributeNode needs specially prepared input, but we do not want to
+  // insert the calculation for that just yet, because it would interfere with
+  // some optimizations, in particular those that might completely remove the
+  // DistributeNode (which would) also render the calculation pointless. So
+  // instead we insert this calculation in a post-processing step when
+  // finalizing the plan in the Optimizer.
+  auto distNode = plan.createNode<DistributeNode>(
+      &plan, plan.nextId(), ScatterNode::ScatterType::SHARD, collection,
+      inputVariable, node->id());
+
+  if (isTraversalNode) {
+#ifdef USE_ENTERPRISE
+    // Only relevant for Disjoint Smart Graphs that can only be part of the
+    // Enterprise version
+    // ShortestPath, and K_SHORTEST_PATH will handle satellites differently.
+    auto graphNode = ExecutionNode::castTo<GraphNode const*>(node);
+    auto vertices = graphNode->vertexColls();
+    for (auto const& it : vertices) {
+      if (it->isSatellite()) {
+        distNode->addSatellite(it);
+      }
+    }
+#endif
+  }
+  TRI_ASSERT(distNode != nullptr);
+  return distNode;
+}
+
+// Create a new GatherNode for the DistributeNode passed in node, and
+// register it with the plan
+//
+// TODO: Really Scatter/Gather and Distribute/Gather should be created in pairs.
+GatherNode* createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) {
+  auto const collection = node->collection();
+
+  auto const sortMode =
+      GatherNode::evaluateSortMode(collection->numberOfShards());
+  auto const parallelism = GatherNode::Parallelism::Undefined;
+  return plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode,
+                                     parallelism);
+}
+
+//
+// for a node `at` of type
+//  - INSERT, REMOVE, UPDATE, REPLACE, UPSERT
+//  - TRAVERSAL, SHORTEST_PATH, K_SHORTEST_PATHS,
+// we transform
+//
+// parents[0] -> `node` -> deps[0]
+//
+// into
+//
+// parents[0] -> GATHER -> REMOTE -> `node` -> REMOTE -> DISTRIBUTE -> deps[0]
+//
+// We can only handle the above mentioned node types, because the setup of
+// distribute and gather requires knowledge from these nodes.
+//
+// Note that parents[0] might be `nullptr` if `node` is the root of the plan,
+// and we handle this case in here as well by resetting the root to the
+// inserted GATHER node.
+//
+DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
+                                              ExecutionNode* at,
+                                              SubqueryNode* snode) {
+  auto const parents = at->getParents();
+  auto const deps = at->getDependencies();
+
+  // This transforms `parents[0] -> node -> deps[0]` into `parents[0] ->
+  // deps[0]`
+  plan.unlinkNode(at, true);
+
+  // create, and register a distribute node
+  DistributeNode* distNode = createDistributeNodeFor(plan, at);
+  TRI_ASSERT(distNode != nullptr);
+  TRI_ASSERT(deps.size() == 1);
+  distNode->addDependency(deps[0]);
+
+  // TODO: This dance is only needed to extract vocbase for
+  //       creating the remote node. The vocbase parameter for
+  //       the remote node does not seem to be really needed, since
+  //       the vocbase is stored in plan (and this variable is actually used in)
+  //       some code, so maybe this parameter could be removed?
+  auto const* collection = distNode->collection();
+  TRI_vocbase_t* vocbase = collection->vocbase();
+
+  // insert a remote node
+  ExecutionNode* remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+  remoteNode->addDependency(distNode);
+
+  // re-link with the remote node
+  at->addDependency(remoteNode);
+
+  // insert another remote node
+  remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+  remoteNode->addDependency(at);
+
+  // insert a gather node matching the distribute node
+  auto* gatherNode = createGatherNodeFor(plan, distNode);
+  gatherNode->addDependency(remoteNode);
+
+  TRI_ASSERT(parents.size() < 2);
+  // Song and dance to deal with at being the root of a plan or a subquery
+  if (parents.empty()) {
+    if (snode) {
+      if (snode->getSubquery() == at) {
+        snode->setSubquery(gatherNode, true);
+      }
+    } else {
+      plan.root(gatherNode, true);
+    }
+  } else {
+    // This is correct: Since we transformed `parents[0] -> node -> deps[0]`
+    // into `parents[0] -> deps[0]` above, created
+    //
+    // gather -> remote -> node -> remote -> distribute -> deps[0]
+    // and now make the plan consistent again by splicing in our snippet.
+    parents[0]->replaceDependency(deps[0], gatherNode);
+  }
+  return ExecutionNode::castTo<DistributeNode*>(distNode);
 }
 
 }  // namespace arangodb::aql

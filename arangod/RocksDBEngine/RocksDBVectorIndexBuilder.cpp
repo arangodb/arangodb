@@ -31,6 +31,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -412,10 +413,10 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   };
 
   struct BlockCounters {
-    uint64_t readProduceBlocked{0};
-    uint64_t encodeProduceBlocked{0};
-    uint64_t encodeConsumeBlocked{0};
-    uint64_t writeConsumeBlocked{0};
+    std::atomic<uint64_t> readProduceBlocked{0};
+    std::atomic<uint64_t> encodeProduceBlocked{0};
+    std::atomic<uint64_t> encodeConsumeBlocked{0};
+    std::atomic<uint64_t> writeConsumeBlocked{0};
   } counters;
 
   BoundedChannel<DocumentVectors> documentChannel{5};
@@ -514,7 +515,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
                                   batch->vectors.data());
           }
           auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
-          counters.readProduceBlocked += blocked;
+          counters.readProduceBlocked.fetch_add(blocked,
+                                                std::memory_order_relaxed);
 
           if (shouldStop) {
             return;
@@ -543,7 +545,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
       bool shouldStop = false;
       errorExceptionHandler([&] {
-        counters.encodeConsumeBlocked += blocked;
+        counters.encodeConsumeBlocked.fetch_add(blocked,
+                                                std::memory_order_relaxed);
         auto n = item->docIds.size();
         countBatches += 1;
         countDocuments += n;
@@ -571,7 +574,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         bool pushBlocked = false;
         std::tie(shouldStop, pushBlocked) =
             encodedChannel.push(std::move(encoded));
-        counters.encodeProduceBlocked += pushBlocked;
+        counters.encodeProduceBlocked.fetch_add(pushBlocked,
+                                                std::memory_order_relaxed);
       });
       if (shouldStop) {
         break;
@@ -588,7 +592,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
       }
 
       errorExceptionHandler([&] {
-        counters.writeConsumeBlocked += blocked;
+        counters.writeConsumeBlocked.fetch_add(blocked,
+                                               std::memory_order_relaxed);
         batch.Clear();
 
         RocksDBKey key;
