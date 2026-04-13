@@ -31,5 +31,4 @@ class Optimizer;
 
 void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
-
 }  // namespace arangodb::aql

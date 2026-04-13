@@ -1,4 +1,5 @@
 /* clang-format off */
+/* clang-format off */
 /* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison implementation for Yacc-like parsers in C
