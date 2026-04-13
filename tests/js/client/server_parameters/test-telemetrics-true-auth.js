@@ -91,7 +91,6 @@ function getTelemetricsSentToEndpoint() {
   let res;
   let numSecs = 0.5;
   while (true) {
-    print('x')
     res = arango.sendTelemetricsToEndpoint("/test-redirect/redirect");
     if (res !== undefined || numSecs >= 16) {
       break;
