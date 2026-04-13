@@ -174,7 +174,11 @@ Mac=SHA1
       .setLongDescription(R"(Use this option to specify the default encryption
 protocol to be used. The default value is 9 (generic TLS), which allows the
 negotiation of the TLS version between the client and the server, dynamically
-choosing the highest mutually supported version of TLS.)");
+choosing the highest mutually supported version of TLS.
+
+Note that SSLv2 is unsupported as of version 3.4, because of the inherent
+security vulnerabilities in this protocol. Selecting SSLv2 as protocol aborts
+the startup.)");
 
   options
       ->addOption("--ssl.options",
@@ -216,7 +220,15 @@ http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html))");
 }
 
 void SslServerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {}
+    std::shared_ptr<ProgramOptions> options) {
+  // check for SSLv2
+  if (_options.sslProtocol == SslProtocol::SSL_V2) {
+    LOG_TOPIC("b7890", FATAL, arangodb::Logger::SSL)
+        << "SSLv2 is not supported any longer because of security "
+           "vulnerabilities in this protocol";
+    FATAL_ERROR_EXIT();
+  }
+}
 
 void SslServerFeature::prepare() {
   LOG_TOPIC("afcd3", INFO, arangodb::Logger::SSL)
