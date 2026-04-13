@@ -41,12 +41,6 @@ target_sources(arango_aql PRIVATE
   RemoveFiltersCoveredByTraversal.cpp
   RemoveTraversalPathVariable.cpp
   RemoveFiltersCoveredByIndex.cpp
-  UseIndexForSort.cpp
-  UseIndexes.cpp
-  OptimizeTraversals.cpp
-  RemoveFiltersCoveredByIndex.cpp
-  RemoveFiltersCoveredByTraversal.cpp
-  RemoveTraversalPathVariable.cpp
   InlineSubqueries.cpp
   OptimizeSubqueries.cpp
   SpliceSubqueries.cpp
@@ -61,8 +55,6 @@ target_sources(arango_aql PRIVATE
   AsyncPrefetch.cpp
   OptimizeProjections.cpp
   ScatterInCluster.cpp
-  UseIndexForSort.cpp
-  UseIndexes.cpp
   DistributeInCluster.cpp
   CollectInCluster.cpp
   DistributeFilterCalcToCluster.cpp
