@@ -42,7 +42,9 @@
 #include "Aql/ExecutionNode/UpsertNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/Optimizer/Rule/DistributeInClusterSmart.h"
+#endif
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"

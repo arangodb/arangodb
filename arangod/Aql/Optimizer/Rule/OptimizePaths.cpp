@@ -87,8 +87,8 @@ void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
             if (!Ast::getReferencedAttributesRecursive(
                     node, variable, /*expectedAttributes*/ "", attributes,
                     resMonitor)) {
-              // full path variable is used, or accessed in a way that we don't
-              // understand, e.g. "p" or "p[0]" or "p[*]..."
+              // full path variable is used, or accessed in a way that we
+              // don't understand, e.g. "p" or "p[0]" or "p[*]..."
               canOptimize = false;
             }
           }

@@ -71,6 +71,17 @@
 #include "Aql/Optimizer/Rule/UndistributeRemoveAfterEnumColl.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/Optimizer/Rule/ClusterLiftConstantsForDisjointGraphNodes.h"
+#include "Enterprise/Aql/Optimizer/Rule/ClusterOneShard.h"
+#include "Enterprise/Aql/Optimizer/Rule/RemoveDistributeNodes.h"
+#include "Enterprise/Aql/Optimizer/Rule/RemoveSatelliteJoins.h"
+#include "Enterprise/Aql/Optimizer/Rule/ScatterSatelliteGraph.h"
+#include "Enterprise/Aql/Optimizer/Rule/SmartJoins.h"
+#include "Enterprise/Aql/Optimizer/Rule/SubqueryToDBServer.h"
+#include "Enterprise/Aql/Optimizer/Rule/DistributeOffsetInfoToCluster.h"
+#include "Enterprise/Aql/Optimizer/Rule/LateMaterializationOffsetInfo.h"
+#endif
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"

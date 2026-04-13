@@ -366,8 +366,8 @@ void V8ShellFeature::copyInstallationFiles() {
       return true;
     }
 
-    std::string normalized = filename;
-    FileUtils::normalizePath(normalized);
+    std::string const normalized =
+        std::filesystem::path(filename).make_preferred().string();
     if (filterPath(normalized, nodeModulesPath) ||
         filterPath(normalized, nodeModulesPathVersioned) ||
         filterPath(normalized, jsAppsPath) ||

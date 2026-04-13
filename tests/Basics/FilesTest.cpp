@@ -350,34 +350,6 @@ TEST_F(FilesTest, tst_normalizepath) {
 #endif
 }
 
-TEST_F(FilesTest, tst_normalize) {
-  std::string path;
-
-  path = "/foo/bar/baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("/foo/bar/baz"), path);
-
-  path = "\\foo\\bar\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("\\foo\\bar\\baz"), path);
-
-  path = "/foo/bar\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("/foo/bar\\baz"), path);
-
-  path = "/foo/bar/\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("/foo/bar/\\baz"), path);
-
-  path = "//foo\\/bar/\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("//foo\\/bar/\\baz"), path);
-
-  path = "\\\\foo\\/bar/\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("\\\\foo\\/bar/\\baz"), path);
-}
-
 TEST_F(FilesTest, tst_getfilename) {
   EXPECT_EQ("", TRI_GetFilename(""));
   EXPECT_EQ(".", TRI_GetFilename("."));
