@@ -206,7 +206,7 @@ void V8ShellFeature::start() {
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
   ::global_isolate = _isolate = platform.createIsolate();
-  signal(SIGQUIT, signalHandler);
+  signal(SIGBUS, signalHandler);
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
