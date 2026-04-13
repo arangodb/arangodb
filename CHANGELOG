@@ -6,6 +6,8 @@
   WAL entries written during training are correctly ingested, preventing
   missed documents after index creation.
 
+* Updated ArangoDB Starter to v0.19.21.
+
 * Upgraded OpenSSL to 3.5.6.
 
 
