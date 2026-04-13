@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
-#include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -46,6 +45,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+#include <filesystem>
 #include <iostream>
 #include <regex>
 
@@ -371,11 +371,12 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
-    if (!FileUtils::exists(_filename)) {
+  std::error_code fsEc;
+  if (_filename != "-" && !std::filesystem::is_regular_file(_filename, fsEc)) {
+    if (!std::filesystem::exists(_filename, fsEc)) {
       LOG_TOPIC("6f83e", FATAL, arangodb::Logger::FIXME)
           << "Cannot open file '" << _filename << "'. File not found.";
-    } else if (FileUtils::isDirectory(_filename)) {
+    } else if (std::filesystem::is_directory(_filename, fsEc)) {
       LOG_TOPIC("70dac", FATAL, arangodb::Logger::FIXME)
           << "Specified file '" << _filename
           << "' is a directory. Please use a regular file.";
