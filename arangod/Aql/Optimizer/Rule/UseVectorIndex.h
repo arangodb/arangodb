@@ -18,25 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Jure Bajic
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
 
 namespace arangodb::aql {
 class Optimizer;
-class SubqueryNode;
 
-class QueryContext;
-struct Collection;
-
-/// @brief split and-combined filters and break them into smaller parts
-void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                      OptimizerRule const&);
+void useVectorIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                        OptimizerRule const&);
 
 }  // namespace arangodb::aql

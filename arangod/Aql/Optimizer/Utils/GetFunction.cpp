@@ -18,25 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "GetFunction.h"
 
-#include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/AstNode.h"
+#include "Aql/TypedAstNodes.h"
+#include "Aql/Function.h"
 
 namespace arangodb::aql {
-class Optimizer;
-class SubqueryNode;
 
-class QueryContext;
-struct Collection;
-
-/// @brief split and-combined filters and break them into smaller parts
-void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                      OptimizerRule const&);
+Function* getFunction(AstNode const* ast) noexcept {
+  if (ast->type == AstNodeType::NODE_TYPE_FCALL) {
+    ast::FunctionCallNode fcall(ast);
+    return fcall.getFunction();
+  }
+  return nullptr;
+}
 
 }  // namespace arangodb::aql

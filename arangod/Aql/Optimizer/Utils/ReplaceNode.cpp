@@ -18,25 +18,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Wilfried Goesgens
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ReplaceNode.h"
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Basics/debugging.h"
 
 namespace arangodb::aql {
-class Optimizer;
-class SubqueryNode;
 
-class QueryContext;
-struct Collection;
+void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode,
+                 ExecutionNode* newNode) {
+  if (oldNode == plan->root()) {
+    // intentional copy, the dependencies are changed in the loop
+    std::vector<ExecutionNode*> deps = oldNode->getDependencies();
+    for (auto* x : deps) {
+      TRI_ASSERT(x != nullptr);
+      newNode->addDependency(x);
+      oldNode->removeDependency(x);
+    }
+    plan->root(newNode, true);
+  } else {
+    // replaceNode does not seem to work well with subqueries
+    // if the subqueries root is replaced.
+    // It looks like Subquery node will still point to
+    // the old node.
 
-/// @brief split and-combined filters and break them into smaller parts
-void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                      OptimizerRule const&);
+    TRI_ASSERT(oldNode != plan->root());
+    plan->replaceNode(oldNode, newNode);
+    TRI_ASSERT(!oldNode->hasDependency());
+    TRI_ASSERT(!oldNode->hasParent());
+  }
+}
 
 }  // namespace arangodb::aql

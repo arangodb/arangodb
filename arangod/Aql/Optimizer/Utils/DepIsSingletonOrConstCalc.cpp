@@ -18,25 +18,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Wilfried Goesgens
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "DepIsSingletonOrConstCalc.h"
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Variable.h"
 
 namespace arangodb::aql {
-class Optimizer;
-class SubqueryNode;
 
-class QueryContext;
-struct Collection;
+bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
+  while (node) {
+    node = node->getFirstDependency();
+    if (node == nullptr) {
+      return false;
+    }
 
-/// @brief split and-combined filters and break them into smaller parts
-void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                      OptimizerRule const&);
+    if (node->getType() == ExecutionNode::SINGLETON) {
+      return true;
+    }
+
+    if (node->getType() != ExecutionNode::CALCULATION) {
+      return false;
+    }
+
+    VarSet used;
+    // cppcheck-suppress nullPointerRedundantCheck
+    node->getVariablesUsedHere(used);
+    if (!used.empty()) {
+      return false;
+    }
+  }
+  return false;
+}
 
 }  // namespace arangodb::aql

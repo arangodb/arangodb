@@ -9,13 +9,14 @@ target_sources(arango_aql PRIVATE
   PushLimitIntoIndex.cpp
   ReplaceEntriesWithObjectIteration.cpp
   ReplaceEqualAttributeAccess.cpp
-  OptimizerRuleVectorIndex.cpp
-  OptimizerRuleVectorIndexPushFilter.cpp
+  SubstituteClusterSingleDocumentOperations.cpp
+  SubstituteClusterMultipleDocumentOperations.cpp
+  UseVectorIndex.cpp
+  PushFilterIntoEnumerateNear.cpp
   MoveCalculationsDown.cpp
   MoveCalculationsUp.cpp
   RemoveRedundantCalculations.cpp
   RemoveUnnecessaryCalculations.cpp
-  OptimizerRulesCluster.cpp
   FuseFilters.cpp
   MoveFiltersIntoEnumerate.cpp
   MoveFiltersUp.cpp
@@ -26,9 +27,10 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesGraph.cpp
   OptimizerRulesIResearchView.cpp
   OptimizerRulesIndexNode.cpp
-  OptimizerRulesJoin.cpp
+  JoinIndexNodes.cpp
   OptimizerRulesLateMaterializedCommon.cpp
-  OptimizerRulesReplaceFunctions.cpp
+  ReplaceNearWithinFulltext.cpp
+  ReplaceLikeWithRange.cpp
   DecayUnnecessarySortedGather.cpp
   ParallelizeGather.cpp
   RemoveRedundantSorts.cpp

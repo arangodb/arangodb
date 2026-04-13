@@ -21,6 +21,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "JoinIndexNodes.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstHelper.h"
@@ -64,10 +66,9 @@
 #include <span>
 #include <tuple>
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using namespace arangodb::containers;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+
+using EN = ExecutionNode;
 
 #define LOG_JOIN_OPTIMIZER_RULE LOG_DEVEL_IF(false)
 #define LOG_JOIN_OPTIMIZER_RULE_CONSTANTS LOG_DEVEL_IF(false)
@@ -1009,9 +1010,9 @@ void findCandidates(IndexNode* indexNode,
 }
 
 }  // namespace
-void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
-                                       std::unique_ptr<ExecutionPlan> plan,
-                                       OptimizerRule const& rule) {
+
+void joinIndexNodesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                        OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::INDEX, true);
 
@@ -1147,3 +1148,5 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+
+}  // namespace arangodb::aql
