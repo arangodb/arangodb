@@ -87,19 +87,18 @@ namespace arangodb {
 
 void signalHandler(int signal) {
   v8::Local<v8::StackTrace> stacktraceV8 = v8::StackTrace::CurrentStackTrace(
-    global_isolate,
-    10,
-    v8::StackTrace::kDetailed
-    );
+      global_isolate, 10, v8::StackTrace::kDetailed);
   int frameCount = stacktraceV8->GetFrameCount();
   if (frameCount > 0) {
-    for (int i = 0; i < frameCount; i ++) {
+    for (int i = 0; i < frameCount; i++) {
       auto stack_frame = stacktraceV8->GetFrame(global_isolate, i);
-      TRI_Utf8ValueNFC stackframeFile(global_isolate, stack_frame->GetScriptName());
-      TRI_Utf8ValueNFC stackframeFN(global_isolate, stack_frame->GetFunctionName());
-      LOG_TOPIC("cac44", ERR, Logger::V8) << *stackframeFile <<
-        " - " << *stackframeFN<<
-        "():" << stack_frame->GetLineNumber();
+      TRI_Utf8ValueNFC stackframeFile(global_isolate,
+                                      stack_frame->GetScriptName());
+      TRI_Utf8ValueNFC stackframeFN(global_isolate,
+                                    stack_frame->GetFunctionName());
+      LOG_TOPIC("cac44", ERR, Logger::V8)
+          << *stackframeFile << " - " << *stackframeFN
+          << "():" << stack_frame->GetLineNumber();
     }
   }
   triggerV8DeadlineNow(signal, ExternalId());
