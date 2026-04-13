@@ -350,16 +350,6 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
 
 ResultT<std::vector<float>> RocksDBVectorIndex::preModificationCheck(
     std::string_view operation, velocypack::Slice doc) const {
-  if (auto const state = _trainingState.load(std::memory_order_acquire);
-      state == VectorIndexTrainingState::kUnusable ||
-      state == VectorIndexTrainingState::kTraining) {
-    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES) << std::format(
-        "vector index {} not yet trained, skipping {}", _iid.id(), operation);
-
-    // Not an error but the result is ignored
-    return {};
-  }
-
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -369,6 +359,16 @@ ResultT<std::vector<float>> RocksDBVectorIndex::preModificationCheck(
       return {};
     }
     return res;
+  }
+
+  if (auto const state = _trainingState.load(std::memory_order_acquire);
+      state == VectorIndexTrainingState::kUnusable ||
+      state == VectorIndexTrainingState::kTraining) {
+    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES) << std::format(
+        "vector index {} not yet trained, skipping {}", _iid.id(), operation);
+
+    // Not an error but the result is ignored
+    return {};
   }
 
   if (_definition.metric == vector::SimilarityMetric::kCosine) {
