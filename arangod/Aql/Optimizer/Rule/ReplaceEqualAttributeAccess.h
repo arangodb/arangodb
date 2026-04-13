@@ -30,6 +30,6 @@ namespace arangodb::aql {
 class Optimizer;
 
 void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
-    OptimizerRule const&);
+                                   OptimizerRule const&);
 
 }  // namespace arangodb::aql

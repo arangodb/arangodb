@@ -348,9 +348,9 @@ bool processQuery(ExecutionPlan& plan, ExecutionNode* root,
 
 }  // namespace
 
-void replaceEqualAttributeAccesses(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void replaceEqualAttributeAccesses(Optimizer* opt,
+                                   std::unique_ptr<ExecutionPlan> plan,
+                                   OptimizerRule const& rule) {
   bool modified = processQuery(*plan, plan->root(), {}, 0);
   opt->addPlan(std::move(plan), rule, modified);
 }
