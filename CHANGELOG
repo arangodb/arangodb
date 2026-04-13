@@ -1,6 +1,8 @@
 v3.11.14.4 (XXXX-XX-XX)
 -----------------------
 
+* Upgraded OpenSSL to 3.5.6 and OpenLDAP to 2.6.13.
+
 * Updated ArangoDB Starter to v0.18.23 and arangosync to v2.19.25.
 
 * Rebuilt included rclone v1.62.2 with go1.25.8 and non-vulnerable dependencies.
