@@ -756,7 +756,7 @@ function VectorIndexInsertDuringTrainingSuite() {
             try { db._dropDatabase(dbName); } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
-            collection = db._create(collName, {numberOfShards});
+            collection = db._create(collName, {numberOfShards: 1});
 
             const gen = randomNumberGeneratorFloat(seed);
             const numDocs = isCluster ? nLists * 3 + 500 : nLists + 500;
