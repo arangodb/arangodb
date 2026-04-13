@@ -30,7 +30,6 @@
 
 namespace arangodb::aql {
 class Optimizer;
-class SubqueryNode;
 
 class QueryContext;
 struct Collection;
@@ -52,19 +51,6 @@ void substituteClusterMultipleDocumentOperationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
-/// @brief optimize queries in the cluster so that the entire query gets pushed
-/// to a single server
-void clusterOneShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
-#endif
-
-#ifdef USE_ENTERPRISE
-void clusterLiftConstantsForDisjointGraphNodes(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule);
-#endif
-
-#ifdef USE_ENTERPRISE
 void clusterPushSubqueryToDBServer(Optimizer* opt,
                                    std::unique_ptr<ExecutionPlan> plan,
                                    OptimizerRule const& rule);
@@ -78,14 +64,6 @@ void distributeOffsetInfoToClusterRule(aql::Optimizer* opt,
 void lateMaterialiationOffsetInfoRule(aql::Optimizer* opt,
                                       std::unique_ptr<aql::ExecutionPlan> plan,
                                       aql::OptimizerRule const& rule);
-
-ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
-                                            ExecutionNode* node,
-                                            bool& wasModified);
-
-/// @brief remove scatter/gather and remote nodes for SatelliteCollections
-void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                               OptimizerRule const&);
 
 /// @brief remove scatter/gather and remote nodes for SatelliteCollections
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
