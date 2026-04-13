@@ -269,10 +269,9 @@ function vectorIndexesMatchState(indexes, state, indexName) {
 // If indexName is provided, only that single index is checked.
 function waitForState(collection, state, timeoutSec, indexName) {
     const internal = require("internal");
-    const isCluster = internal.isCluster();
     const iterations = Math.floor(timeoutSec / sleepIntervalSec);
     for (let i = 0; i < iterations; i++) {
-        const indexes = isCluster ? collection.indexes(true, true) : collection.indexes();
+        const indexes = collection.indexes(false, true);
         if (vectorIndexesMatchState(indexes, state, indexName)) {
             return true;
         }
