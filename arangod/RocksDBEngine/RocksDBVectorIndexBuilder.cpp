@@ -788,7 +788,7 @@ Result VectorIndexBuilder::build(
                   "failed to acquire lock for vector index build"};
   }
 
-  // This solves all our problems with catching up with WAL entreis
+  // This solves all our problems with catching up with WAL entries
   auto res = buildIdx->fillIndexBackground(locker).waitAndGet();
   auto const ingestEnd = std::chrono::steady_clock::now();
 

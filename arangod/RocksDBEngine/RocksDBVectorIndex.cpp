@@ -356,7 +356,7 @@ ResultT<std::vector<float>> RocksDBVectorIndex::preModificationCheck(
     LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES) << std::format(
         "vector index {} not yet trained, skipping {}", _iid.id(), operation);
 
-    // Not an error but the results is ignored
+    // Not an error but the result is ignored
     return {};
   }
 
