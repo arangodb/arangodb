@@ -45,7 +45,7 @@ struct SimpleHttpClientParams;
 }  // namespace arangodb
 
 namespace arangodb::import {
-class AqlDocumentTransformer;
+class IDocumentTransformer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,8 +295,10 @@ class ImportHelper {
 
   size_t getTransformErrors() const { return _stats._transformErrors; }
 
-  /// @brief set the AQL document transformer for --custom-query
-  void setTransformer(std::unique_ptr<AqlDocumentTransformer> transformer);
+  /// @brief set the document transformer for --custom-query.
+  /// Uses shared_ptr because the concrete type (AqlDocumentTransformer) must
+  /// not be complete in arangoimport_utils (shared with arangosh).
+  void setTransformer(std::shared_ptr<IDocumentTransformer> transformer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increase the row counter
@@ -429,7 +431,7 @@ class ImportHelper {
   std::vector<std::string> _errorMessages;
 
   // AQL document transformer for --custom-query (nullptr if unused)
-  std::unique_ptr<AqlDocumentTransformer> _transformer;
+  std::shared_ptr<IDocumentTransformer> _transformer;
 
   static constexpr double kProgressStep = 3.0;
 };

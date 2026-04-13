@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ImportHelper.h"
-#include "Import/AqlDocumentTransformer.h"
+#include "Import/DocumentTransformer.h"
 #include "Basics/application-exit.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -252,7 +252,7 @@ ImportHelper::~ImportHelper() {
 }
 
 void ImportHelper::setTransformer(
-    std::unique_ptr<AqlDocumentTransformer> transformer) {
+    std::shared_ptr<IDocumentTransformer> transformer) {
   _transformer = std::move(transformer);
 }
 

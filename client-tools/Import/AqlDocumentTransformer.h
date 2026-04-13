@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Import/DocumentTransformer.h"
 #include "Basics/Result.h"
 
 #include <memory>
@@ -51,15 +52,6 @@ namespace import {
 
 class ImportExpressionContext;
 
-enum class TransformAction { kEmit, kEmitMultiple, kSkip, kError };
-
-struct TransformResult {
-  TransformAction action;
-  velocypack::Builder
-      result;         // populated when action == kEmit or kEmitMultiple
-  std::string error;  // populated when action == kError
-};
-
 /// @brief Client-side AQL document transformer for arangoimport.
 ///
 /// Phase 1: expression-only path (no subqueries).
@@ -68,7 +60,7 @@ struct TransformResult {
 ///
 /// Follows the ComputedValues pattern from arangod/VocBase/ComputedValues.cpp
 /// and StandaloneCalculation from arangod/Aql/StandaloneCalculation.cpp.
-class AqlDocumentTransformer {
+class AqlDocumentTransformer final : public IDocumentTransformer {
  public:
   /// @brief Construct the transformer. Parses, validates, and compiles the
   /// AQL query string. Throws on parse or validation errors.
@@ -79,12 +71,12 @@ class AqlDocumentTransformer {
                          velocypack::Slice userBindVars,
                          TRI_vocbase_t& vocbase);
 
-  ~AqlDocumentTransformer();
+  ~AqlDocumentTransformer() override;
 
   /// @brief Transform a single document.
   /// @param doc The input document as a VPack object
   /// @return TransformResult with action (emit/skip/error) and result data
-  TransformResult transform(velocypack::Slice doc);
+  TransformResult transform(velocypack::Slice doc) override;
 
  private:
   /// @brief Validate the AST: only LET/FILTER/RETURN at top level,

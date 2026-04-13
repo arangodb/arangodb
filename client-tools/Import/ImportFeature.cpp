@@ -700,8 +700,9 @@ void ImportFeature::start() {
         bindVarsBuilder = velocypack::Parser::fromJson(_customQueryBindVars);
         bindVarsSlice = bindVarsBuilder->slice();
       }
-      auto transformer = std::make_unique<import::AqlDocumentTransformer>(
-          _customQuery, bindVarsSlice, *_calculationVocbase);
+      std::shared_ptr<import::IDocumentTransformer> transformer =
+          std::make_shared<import::AqlDocumentTransformer>(
+              _customQuery, bindVarsSlice, *_calculationVocbase);
       ih.setTransformer(std::move(transformer));
     } catch (std::exception const& ex) {
       LOG_TOPIC("e1f5a", FATAL, arangodb::Logger::FIXME)
