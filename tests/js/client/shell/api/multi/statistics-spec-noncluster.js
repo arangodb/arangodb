@@ -100,20 +100,6 @@ function checkCommonStatisticsChanges(initialMetrics, finalMetrics) {
   }
 }
 
-function waitForMetricIncrease(getValue, expectedMin, maxWaitMs) {
-  maxWaitMs = maxWaitMs || 10000;
-  const stepMs = 250;
-  const deadline = Date.now() + maxWaitMs;
-  let value;
-  while (Date.now() < deadline) {
-    value = getValue();
-    if (typeof value === 'number' && value >= expectedMin) {
-      return value;
-    }
-    internal.sleep(stepMs / 1000);
-  }
-  return value;
-}
 
 function performGETRequest() {
   arango.GET('/_api/version');
@@ -124,7 +110,7 @@ function performPOSTRequest() {
 }
 
 function performDELETERequest() {
-  arango.DELETE("/_dummy");
+  arango.DELETE("/_api/collection/dummy");
 }
 
 describe('request statistics', function () {
@@ -139,10 +125,7 @@ describe('request statistics', function () {
   it('should be updated by GET requests', function () {
     const initialStats = getMetrics();
     performGETRequest();
-    const finalStats = waitForMetricIncrease(
-      () => getMetrics().httpGet,
-      initialStats.httpGet + 2
-    );
+
     const final = getMetrics();
     expect(final.httpGet, 'httpGet').to.be.at.least(initialStats.httpGet + 2);
 
@@ -169,10 +152,7 @@ describe('request statistics', function () {
   it('should be updated by POST requests', function () {
     const initialStats = getMetrics();
     performPOSTRequest();
-    waitForMetricIncrease(
-      () => getMetrics().httpPost,
-      initialStats.httpPost + 1
-    );
+
     const final = getMetrics();
 
     checkCommonStatisticsChanges(initialStats, final);
@@ -198,10 +178,7 @@ describe('request statistics', function () {
   it('should be updated by DELETE requests', function () {
     const initialStats = getMetrics();
     performDELETERequest();
-    waitForMetricIncrease(
-      () => getMetrics().httpDelete,
-      initialStats.httpDelete + 1
-    );
+
     const final = getMetrics();
 
     checkCommonStatisticsChanges(initialStats, final);

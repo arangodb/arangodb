@@ -28,7 +28,6 @@
 namespace arangodb {
 
 struct ServerFeatureOptions {
-  bool restServer = true;
   bool validateUtf8Strings = true;
 };
 

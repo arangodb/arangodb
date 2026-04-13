@@ -226,4 +226,56 @@ TEST_F(ExecutionNodeTest, end_node_not_equal_outvariable_differ) {
   ASSERT_FALSE(node2->isEqualTo(*node1));
 }
 
+TEST_F(ExecutionNodeTest, annotations) {
+  std::unique_ptr<SubqueryEndNode> node1;
+
+  Variable outvar("name", 1, false, resourceMonitor);
+  node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr,
+                                            &outvar);
+
+  node1->setAnnotatedString("my-annotation-1", "some-annotated-value");
+  EXPECT_EQ(node1->getAnnotatedString("my-annotation-1"),
+            "some-annotated-value");
+  EXPECT_EQ(node1->getAnnotatedString("does-not-exist"), std::nullopt);
+
+  // check is the cloned node has the same annotations (plan is owner)
+  auto node2 = node1->clone(&plan, false);
+  EXPECT_EQ(node2->getAnnotatedString("my-annotation-1"),
+            "some-annotated-value");
+  EXPECT_EQ(node2->getAnnotatedString("does-not-exist"), std::nullopt);
+
+  // check if modifying the cloned nodes annotations does not alter the original
+  // node
+  node2->setAnnotatedString("my-annotation-1", "some-other-annotated-value");
+  EXPECT_EQ(node2->getAnnotatedString("my-annotation-1"),
+            "some-other-annotated-value");
+  EXPECT_EQ(node1->getAnnotatedString("my-annotation-1"),
+            "some-annotated-value");
+  EXPECT_EQ(node2->getAnnotatedString("does-not-exist"), std::nullopt);
+
+  node1->setAnnotatedNumber("some-number", 12);
+
+  // check that annotations are serialized to velocypack
+  VPackBuilder builder;
+  node1->setVarsUsedLater({{}});
+  node1->setVarsValid({{}});
+  node1->setRegsToKeep({{}});
+  node1->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
+  auto annotations = builder.slice().get("annotations");
+  EXPECT_TRUE(annotations.isObject());
+  EXPECT_EQ(annotations.get("my-annotation-1").stringView(),
+            "some-annotated-value");
+  EXPECT_EQ(annotations.get("some-number").getInt(), 12);
+  EXPECT_TRUE(annotations.get("does-not-exist").isNone());
+
+  // check if restoring from velocypack restores the annotations
+  auto node3 = std::unique_ptr<ExecutionNode>{
+      ExecutionNode::fromVPackFactory(&plan, builder.slice())};
+
+  EXPECT_EQ(node3->getAnnotatedString("my-annotation-1"),
+            "some-annotated-value");
+  EXPECT_EQ(node3->getAnnotatedNumber<int>("some-number"), 12);
+  EXPECT_EQ(node3->getAnnotatedString("does-not-exist"), std::nullopt);
+}
+
 }  // namespace arangodb::tests::aql

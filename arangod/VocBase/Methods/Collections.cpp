@@ -988,7 +988,6 @@ futures::Future<Result> Collections::properties(Context& ctxt,
                                              "path",
                                              StaticStrings::DataSourcePlanId,
                                              "shards",
-                                             "status",
                                              StaticStrings::DataSourceType,
                                              StaticStrings::Version};
 

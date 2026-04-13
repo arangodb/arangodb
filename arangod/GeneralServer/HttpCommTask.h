@@ -51,7 +51,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void setIOTimeout() override;
 
   void sendResponse(std::unique_ptr<GeneralResponse> response,
-                    RequestStatistics::Item stat) override;
+                    RequestTimingData data) override;
 
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
                                                   uint64_t messageId) override;
@@ -77,7 +77,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void doProcessRequest();
 
   // called on IO context thread
-  void writeResponse(RequestStatistics::Item stat);
+  void writeResponse(RequestTimingData data);
 
   std::string url() const;
 
