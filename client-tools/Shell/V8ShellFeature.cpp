@@ -86,6 +86,7 @@ std::string const DEFAULT_CLIENT_MODULE = "client.js";
 namespace arangodb {
 
 void signalHandler(int signal) {
+  // Ok, try to get and lock the state of the V8 execution:
   v8::Local<v8::StackTrace> stacktraceV8 = v8::StackTrace::CurrentStackTrace(
       global_isolate, 10, v8::StackTrace::kDetailed);
   int frameCount = stacktraceV8->GetFrameCount();
@@ -100,9 +101,14 @@ void signalHandler(int signal) {
           << *stackframeFile << " - " << *stackframeFN
           << "():" << stack_frame->GetLineNumber();
     }
+  } else {
+    LOG_TOPIC("cac45", ERR, Logger::V8) << "no js stacktrace could be acquired";
   }
+  // try to unblock the .js execution, and trigger abort/cleanup
   triggerV8DeadlineNow(signal, ExternalId());
-  alarm(20);
+  // however, make sure this doesn't make us block eternaly, so come back in
+  // 30s:
+  alarm(30);
 }
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
