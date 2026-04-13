@@ -44,6 +44,10 @@ struct SimpleHttpClientParams;
 }  // namespace httpclient
 }  // namespace arangodb
 
+namespace arangodb::import {
+class AqlDocumentTransformer;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for http requests
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +64,10 @@ struct ImportStatistics {
   size_t _numberErrors = 0;
   size_t _numberUpdated = 0;
   size_t _numberIgnored = 0;
+
+  // Custom query transform statistics
+  size_t _docsSkippedByTransform = 0;
+  size_t _transformErrors = 0;
 
   std::mutex _mutex;
   QuickHistogram _histogram;
@@ -283,6 +291,13 @@ class ImportHelper {
 
   size_t getNumberIgnored() const { return _stats._numberIgnored; }
 
+  size_t getDocsSkipped() const { return _stats._docsSkippedByTransform; }
+
+  size_t getTransformErrors() const { return _stats._transformErrors; }
+
+  /// @brief set the AQL document transformer for --custom-query
+  void setTransformer(std::unique_ptr<AqlDocumentTransformer> transformer);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increase the row counter
   //////////////////////////////////////////////////////////////////////////////
@@ -412,6 +427,9 @@ class ImportHelper {
   bool _headersSeen;
   bool _emittedField;
   std::vector<std::string> _errorMessages;
+
+  // AQL document transformer for --custom-query (nullptr if unused)
+  std::unique_ptr<AqlDocumentTransformer> _transformer;
 
   static constexpr double kProgressStep = 3.0;
 };

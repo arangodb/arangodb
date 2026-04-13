@@ -28,6 +28,8 @@
 
 #include <memory>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 
 namespace httpclient {
@@ -82,6 +84,14 @@ class ImportFeature final : public application_features::ApplicationFeature {
   bool _skipValidation;
   bool _latencyStats;
   std::vector<std::string> _mergeAttributes;
+
+  // --custom-query options
+  std::string _customQuery;
+  std::string _customQueryFile;
+  std::string _customQueryBindVars;
+
+  // Vocbase for standalone AQL expression evaluation (created on demand)
+  std::unique_ptr<TRI_vocbase_t> _calculationVocbase;
 };
 
 }  // namespace arangodb

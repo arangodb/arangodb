@@ -33,7 +33,11 @@
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "Import/AqlDocumentTransformer.h"
 #include "Import/ImportHelper.h"
+#include "Utils/ExecContext.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/VocbaseInfo.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -42,6 +46,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/ClientManager.h"
+
+#include <velocypack/Parser.h>
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
@@ -268,6 +274,27 @@ data once the server reported at least this many errors back.)");
   options->addOption("--skip-validation",
                      "Skip document schema validation during import.",
                      new BooleanParameter(&_skipValidation));
+
+  options->addOption(
+      "--custom-query",
+      "An AQL expression to transform documents before importing. "
+      "Use @doc to refer to the current document. "
+      "Supports LET, FILTER, and RETURN statements. "
+      "Example: \"LET n = CONCAT(@doc.first, ' ', @doc.last) "
+      "FILTER @doc.age >= 18 RETURN MERGE(@doc, {name: n})\"",
+      new StringParameter(&_customQuery));
+
+  options->addOption(
+      "--custom-query-file",
+      "Path to a file containing an AQL expression to transform documents. "
+      "Mutually exclusive with --custom-query.",
+      new StringParameter(&_customQueryFile));
+
+  options->addOption(
+      "--custom-query-bindvars",
+      "A JSON object with additional bind variables for --custom-query. "
+      "The key 'doc' is reserved and must not be used.",
+      new StringParameter(&_customQueryBindVars));
 }
 
 void ImportFeature::validateOptions(
@@ -352,6 +379,36 @@ void ImportFeature::validateOptions(
           << "cannot remove an empty attribute";
       FATAL_ERROR_EXIT();
     }
+  }
+
+  // --custom-query / --custom-query-file validation
+  if (!_customQuery.empty() && !_customQueryFile.empty()) {
+    LOG_TOPIC("a7b1c", FATAL, arangodb::Logger::FIXME)
+        << "--custom-query and --custom-query-file are mutually exclusive";
+    FATAL_ERROR_EXIT();
+  }
+  if (!_customQueryFile.empty()) {
+    // Read the query from the file
+    try {
+      _customQuery = basics::FileUtils::slurp(_customQueryFile);
+      StringUtils::trimInPlace(_customQuery);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("b8c2d", FATAL, arangodb::Logger::FIXME)
+          << "cannot read --custom-query-file '" << _customQueryFile
+          << "': " << ex.what();
+      FATAL_ERROR_EXIT();
+    }
+    if (_customQuery.empty()) {
+      LOG_TOPIC("c9d3e", FATAL, arangodb::Logger::FIXME)
+          << "--custom-query-file '" << _customQueryFile << "' is empty";
+      FATAL_ERROR_EXIT();
+    }
+  }
+  if (!_customQueryBindVars.empty() && _customQuery.empty()) {
+    LOG_TOPIC("d0e4f", FATAL, arangodb::Logger::FIXME)
+        << "--custom-query-bindvars requires --custom-query or "
+           "--custom-query-file";
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -624,6 +681,38 @@ void ImportFeature::start() {
 
   ih.setOnDuplicateAction(_onDuplicateAction);
 
+  // Set up the AQL document transformer if --custom-query is specified
+  if (!_customQuery.empty()) {
+    try {
+      // Create a minimal vocbase for standalone AQL expression evaluation.
+      // The vocbase provides access to the ApplicationServer (and thereby
+      // to AqlFunctionFeature for function name resolution).
+      CreateDatabaseInfo info{server(), ExecContext::current()};
+      auto r = info.load("_aqlcalc", std::numeric_limits<uint64_t>::max());
+      if (r.fail()) {
+        THROW_ARANGO_EXCEPTION(r);
+      }
+      _calculationVocbase =
+          std::make_unique<TRI_vocbase_t>(std::move(info));
+
+      velocypack::Slice bindVarsSlice = velocypack::Slice::noneSlice();
+      std::shared_ptr<velocypack::Builder> bindVarsBuilder;
+      if (!_customQueryBindVars.empty()) {
+        bindVarsBuilder =
+            velocypack::Parser::fromJson(_customQueryBindVars);
+        bindVarsSlice = bindVarsBuilder->slice();
+      }
+      auto transformer =
+          std::make_unique<import::AqlDocumentTransformer>(
+              _customQuery, bindVarsSlice, *_calculationVocbase);
+      ih.setTransformer(std::move(transformer));
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("e1f5a", FATAL, arangodb::Logger::FIXME)
+          << "error in --custom-query: " << ex.what();
+      FATAL_ERROR_EXIT();
+    }
+  }
+
   try {
     bool ok = false;
     // set prefixes
@@ -644,12 +733,13 @@ void ImportFeature::start() {
                               arangodb::import::ImportHelper::TSV);
     } else if (_typeImport == "json" || _typeImport == "jsonl") {
       std::cout << "Starting JSON import..." << std::endl;
-      if (_removeAttributes.empty()) {
+      if (_removeAttributes.empty() && _customQuery.empty()) {
         ok =
             ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
       } else {
         // This variant does more parsing, on the client side
         // and in general is considered slower, so only use it if necessary.
+        // Also required when --custom-query is set (needs per-doc processing).
         ok = ih.importJsonWithRewrite(_collectionName, _filename,
                                       (_typeImport == "jsonl"));
       }
@@ -663,9 +753,25 @@ void ImportFeature::start() {
 
     // give information about import (even if errors occur)
     std::cout << "created:          " << ih.getNumberCreated() << std::endl;
-    std::cout << "warnings/errors:  " << ih.getNumberErrors() << std::endl;
+    if (!_customQuery.empty()) {
+      auto serverErrors = ih.getNumberErrors();
+      auto transformErrors = ih.getTransformErrors();
+      std::cout << "warnings/errors:  " << (serverErrors + transformErrors);
+      if (transformErrors > 0) {
+        std::cout << "  (" << serverErrors << " server-side, "
+                  << transformErrors << " in custom query transformation)";
+      }
+      std::cout << std::endl;
+    } else {
+      std::cout << "warnings/errors:  " << ih.getNumberErrors() << std::endl;
+    }
     std::cout << "updated/replaced: " << ih.getNumberUpdated() << std::endl;
     std::cout << "ignored:          " << ih.getNumberIgnored() << std::endl;
+
+    if (!_customQuery.empty() && ih.getDocsSkipped() > 0) {
+      std::cout << "skipped:          " << ih.getDocsSkipped()
+                << "  (custom query filters)" << std::endl;
+    }
 
     if (_typeImport == "csv" || _typeImport == "tsv") {
       std::cout << "lines read:       " << ih.getReadLines() << std::endl;

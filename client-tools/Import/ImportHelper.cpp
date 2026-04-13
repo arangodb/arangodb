@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ImportHelper.h"
+#include "Import/AqlDocumentTransformer.h"
 #include "Basics/application-exit.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -41,6 +42,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -247,6 +249,11 @@ ImportHelper::~ImportHelper() {
   for (auto const& t : _senderThreads) {
     t->beginShutdown();
   }
+}
+
+void ImportHelper::setTransformer(
+    std::unique_ptr<AqlDocumentTransformer> transformer) {
+  _transformer = std::move(transformer);
 }
 
 // read headers from separate file
@@ -701,8 +708,69 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
 
   uint64_t maxUploadSize = getMaxUploadSize();
   auto doTransformAndOutputOneDoc = [&](VPackSlice document) {
-    auto removed = VPackCollection::remove(document, _removeAttributes);
-    auto serializedObject = removed.toJson();
+    VPackSlice docToSerialize = document;
+    velocypack::Builder removedHolder;
+
+    // Step 1: Apply --remove-attributes if configured
+    if (!_removeAttributes.empty()) {
+      removedHolder = VPackCollection::remove(document, _removeAttributes);
+      docToSerialize = removedHolder.slice();
+    }
+
+    // Step 2: Apply --custom-query transformation if configured
+    if (_transformer) {
+      auto result = _transformer->transform(docToSerialize);
+      switch (result.action) {
+        case TransformAction::kSkip: {
+          std::lock_guard guard{_stats._mutex};
+          ++_stats._docsSkippedByTransform;
+          return;
+        }
+        case TransformAction::kError: {
+          {
+            std::lock_guard guard{_stats._mutex};
+            ++_stats._transformErrors;
+          }
+          _stats.logError(
+              std::string("custom query transform error: ") + result.error);
+          return;
+        }
+        case TransformAction::kEmit: {
+          auto serializedObject = result.result.toJson();
+          _outputBuffer.appendText(serializedObject.c_str(),
+                                   serializedObject.size());
+          _outputBuffer.appendChar('\n');
+          if (_outputBuffer.length() > maxUploadSize) {
+            sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(),
+                           false);
+            waitForSenders();
+            _outputBuffer.clear();
+          }
+          return;
+        }
+        case TransformAction::kEmitMultiple: {
+          for (auto elem : velocypack::ArrayIterator(result.result.slice())) {
+            if (elem.isNull()) {
+              continue;  // null elements are skipped
+            }
+            auto serializedObject = elem.toJson();
+            _outputBuffer.appendText(serializedObject.c_str(),
+                                     serializedObject.size());
+            _outputBuffer.appendChar('\n');
+            if (_outputBuffer.length() > maxUploadSize) {
+              sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(),
+                             false);
+              waitForSenders();
+              _outputBuffer.clear();
+            }
+          }
+          return;
+        }
+      }
+    }
+
+    // No transformer — just serialize the (possibly attribute-removed) doc
+    auto serializedObject = docToSerialize.toJson();
     _outputBuffer.appendText(serializedObject.c_str(), serializedObject.size());
     // add a line-break
     _outputBuffer.appendChar('\n');
@@ -1303,12 +1371,82 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
   // read a complete line
 
   if (_lineBuffer.length() > 0) {
-    if (!_outputBuffer.length()) {
-      _outputBuffer.appendText(_firstLine);
-      _outputBuffer.appendChar('\n');
+    if (_transformer) {
+      // When --custom-query is active for CSV/TSV:
+      // 1. Parse the JSON array in _lineBuffer together with _columnNames
+      //    to build a VPack object
+      // 2. Apply the AQL transform
+      // 3. Serialize result as JSONL (object-per-line, no header row)
+      try {
+        auto arrayBuilder = velocypack::Parser::fromJson(
+            _lineBuffer.c_str(), _lineBuffer.length());
+        auto arraySlice = arrayBuilder->slice();
+        if (arraySlice.isArray()) {
+          // Build a VPack object: { colName0: val0, colName1: val1, ... }
+          velocypack::Builder objBuilder;
+          objBuilder.openObject();
+          size_t idx = 0;
+          for (auto const& val : velocypack::ArrayIterator(arraySlice)) {
+            if (idx < _columnNames.size()) {
+              objBuilder.add(_columnNames[idx], val);
+            }
+            ++idx;
+          }
+          objBuilder.close();
+
+          auto result = _transformer->transform(objBuilder.slice());
+          switch (result.action) {
+            case TransformAction::kSkip: {
+              std::lock_guard guard{_stats._mutex};
+              ++_stats._docsSkippedByTransform;
+              break;
+            }
+            case TransformAction::kError: {
+              {
+                std::lock_guard guard{_stats._mutex};
+                ++_stats._transformErrors;
+              }
+              _stats.logError(
+                  std::string("custom query transform error: ") + result.error);
+              break;
+            }
+            case TransformAction::kEmit: {
+              auto serialized = result.result.toJson();
+              _outputBuffer.appendText(serialized.c_str(), serialized.size());
+              _outputBuffer.appendChar('\n');
+              break;
+            }
+            case TransformAction::kEmitMultiple: {
+              for (auto elem :
+                   velocypack::ArrayIterator(result.result.slice())) {
+                if (elem.isNull()) {
+                  continue;
+                }
+                auto serialized = elem.toJson();
+                _outputBuffer.appendText(serialized.c_str(),
+                                         serialized.size());
+                _outputBuffer.appendChar('\n');
+              }
+              break;
+            }
+          }
+        }
+      } catch (std::exception const& ex) {
+        std::lock_guard guard{_stats._mutex};
+        ++_stats._transformErrors;
+        _stats.logError(
+            std::string("custom query transform parse error: ") + ex.what());
+      }
+      _lineBuffer.reset();
+    } else {
+      // Standard CSV path: array-per-line format with header row
+      if (!_outputBuffer.length()) {
+        _outputBuffer.appendText(_firstLine);
+        _outputBuffer.appendChar('\n');
+      }
+      _outputBuffer.appendText(_lineBuffer);
+      _lineBuffer.reset();
     }
-    _outputBuffer.appendText(_lineBuffer);
-    _lineBuffer.reset();
   } else {
     std::lock_guard guard{_stats._mutex};
     ++_stats._numberErrors;
@@ -1432,6 +1570,18 @@ bool ImportHelper::truncateCollection() {
 
 void ImportHelper::handleCsvBuffer(uint64_t bufferSizeThreshold) {
   if (_hasError || _outputBuffer.length() <= bufferSizeThreshold) {
+    return;
+  }
+
+  // When --custom-query is active, the output buffer contains JSONL objects
+  // (not the CSV array-per-line format), so use sendJsonBuffer which sends
+  // with type=documents.
+  if (_transformer) {
+    sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(),
+                   false /* not a single JSON object */);
+    waitForSenders();
+    _outputBuffer.clear();
+    _rowOffset = _rowsRead;
     return;
   }
 
