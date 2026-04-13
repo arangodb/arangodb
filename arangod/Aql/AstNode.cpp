@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
+#include "Assertions/Assert.h"
 #include "Basics/FloatingPoint.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -229,11 +230,41 @@ VPackValueType getNodeCompareType(AstNode const* node) noexcept {
     return VPackValueType::Object;
   }
 
-  // we should never get here
-  TRI_ASSERT(false);
-
-  // return null in case assertions are turned off
-  return VPackValueType::Null;
+  // Non-constant types for structural comparison
+  switch (node->type) {
+    case NODE_TYPE_OPERATOR_NARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_REFERENCE:
+    case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_INDEXED_ACCESS:
+    case NODE_TYPE_FCALL:
+      return VPackValueType::Custom;
+    case NODE_TYPE_SUBQUERY:
+      // Subqueries should not be compared structurally. We assert here to
+      // catch any caller that forgets to guard against subqueries, and return
+      // Custom so that in release builds they are routed to
+      // compareAstNodesComplexVPack, which compares them by pointer identity.
+      TRI_ASSERT(false);
+      return VPackValueType::Custom;
+    default:
+      return VPackValueType::Custom;
+  }
 }
 
 int compareDoubleValues(double lhs, double rhs) {
@@ -260,52 +291,11 @@ static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
 static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
-/// @brief compare two nodes
-/// @return range from -1 to +1 depending:
-///  - -1 LHS being  less then   RHS,
-///  -  0 LHS being     equal    RHS
-///  -  1 LHS being greater then RHS
+/// @brief compare nodes with direct VPack representation
+/// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 template<bool resolveAttributeAccess>
-int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
-  TRI_ASSERT(lhs != nullptr);
-  TRI_ASSERT(rhs != nullptr);
-
-  bool lhsIsValid = true;
-  bool rhsIsValid = true;
-
-  if constexpr (resolveAttributeAccess) {
-    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      lhs = Ast::resolveConstAttributeAccess(lhs, lhsIsValid);
-    }
-    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      rhs = Ast::resolveConstAttributeAccess(rhs, rhsIsValid);
-    }
-  }
-  VPackValueType const lType =
-      lhsIsValid ? getNodeCompareType(lhs) : VPackValueType::Null;
-
-  VPackValueType const rType =
-      rhsIsValid ? getNodeCompareType(rhs) : VPackValueType::Null;
-
-  if (lType != rType) {
-    if (lType == VPackValueType::Int && rType == VPackValueType::Double) {
-      // upcast int to double
-      return compareDoubleValues(static_cast<double>(lhs->getIntValue()),
-                                 rhs->getDoubleValue());
-    } else if (lType == VPackValueType::Double &&
-               rType == VPackValueType::Int) {
-      // upcast int to double
-      return compareDoubleValues(lhs->getDoubleValue(),
-                                 static_cast<double>(rhs->getIntValue()));
-    }
-
-    int diff = valueTypeOrder(lType) - valueTypeOrder(rType);
-
-    TRI_ASSERT(diff != 0);
-
-    return (diff < 0) ? -1 : 1;
-  }
-
+int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
+                               bool compareUtf8, VPackValueType lType) {
   switch (lType) {
     case VPackValueType::Null: {
       return 0;
@@ -313,7 +303,6 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
 
     case VPackValueType::Bool: {
       int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
-
       if (diff != 0) {
         return (diff < 0) ? -1 : 1;
       }
@@ -323,7 +312,6 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
     case VPackValueType::Int: {
       int64_t l = lhs->getIntValue();
       int64_t r = rhs->getIntValue();
-
       if (l != r) {
         return (l < r) ? -1 : 1;
       }
@@ -348,19 +336,14 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
         }
         return 0;
       }
-
       size_t const minLength =
           (std::min)(lhs->getStringLength(), rhs->getStringLength());
-
       int res = memcmp(lhs->getStringValue(), rhs->getStringValue(), minLength);
-
       if (res != 0) {
         return res;
       }
-
       int diff = static_cast<int>(lhs->getStringLength()) -
                  static_cast<int>(rhs->getStringLength());
-
       if (diff != 0) {
         return diff < 0 ? -1 : 1;
       }
@@ -371,11 +354,9 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
       size_t const numLhs = lhs->numMembers();
       size_t const numRhs = rhs->numMembers();
       size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
-
       for (size_t i = 0; i < n; ++i) {
         int res = compareAstNodes<resolveAttributeAccess>(
             lhs->getMember(i), rhs->getMember(i), compareUtf8);
-
         if (res != 0) {
           return res;
         }
@@ -389,29 +370,217 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
     }
 
     case VPackValueType::Object: {
-      // this is a rather exceptional case, so we can
-      // afford the inefficiency to convert the node to VPack
-      // for comparison (this saves us from writing our own compare function
-      // for array AstNodes)
       VPackBuilder builder;
-      // add the first Slice to the Builder
       lhs->toVelocyPackValue(builder);
-
-      // note the length of the first Slice
       VPackValueLength split = builder.size();
-
-      // add the second Slice to the same Builder
       rhs->toVelocyPackValue(builder);
-
       return basics::VelocyPackHelper::compare(
-          builder.slice() /*lhs*/, VPackSlice(builder.start() + split) /*rhs*/,
-          compareUtf8);
+          builder.slice(), VPackSlice(builder.start() + split), compareUtf8);
     }
 
-    default: {
-      // all things equal
+    default:
+      return 0;
+  }
+}
+
+/// @brief compare nodes requiring structural analysis
+template<bool resolveAttributeAccess>
+int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
+                                bool compareUtf8) {
+  if (lhs->type != rhs->type) {
+    return (lhs->type < rhs->type ? -1 : 1);
+  }
+
+  // Subqueries are compared by pointer identity only - we cannot safely
+  // traverse into them for structural equality.
+  if (lhs->type == NODE_TYPE_SUBQUERY) {
+    return (lhs == rhs ? 0 : (lhs < rhs ? -1 : 1));
+  }
+
+  size_t const lhsMembers = lhs->numMembers();
+  size_t const rhsMembers = rhs->numMembers();
+
+  // For commutative binary operators, normalize by sorting children so that
+  // (a == b) and (b == a) compare equal.
+  if ((lhs->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+       lhs->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+       lhs->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
+       lhs->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE) &&
+      lhsMembers == 2 && rhsMembers == 2) {
+    AstNode const* l0 = lhs->getMemberUnchecked(0);
+    AstNode const* l1 = lhs->getMemberUnchecked(1);
+    AstNode const* r0 = rhs->getMemberUnchecked(0);
+    AstNode const* r1 = rhs->getMemberUnchecked(1);
+
+    // Try direct match first
+    int c0 = compareAstNodes<resolveAttributeAccess>(l0, r0, compareUtf8);
+    int c1 = compareAstNodes<resolveAttributeAccess>(l1, r1, compareUtf8);
+    if (c0 == 0 && c1 == 0) {
       return 0;
     }
+
+    // Try swapped match (commutativity)
+    int cs0 = compareAstNodes<resolveAttributeAccess>(l0, r1, compareUtf8);
+    int cs1 = compareAstNodes<resolveAttributeAccess>(l1, r0, compareUtf8);
+    if (cs0 == 0 && cs1 == 0) {
+      return 0;
+    }
+
+    return (c0 != 0 ? c0 : c1);
+  }
+
+  if (lhsMembers != rhsMembers) {
+    return (lhsMembers < rhsMembers ? -1 : 1);
+  }
+
+  // For IN/NIN, compare LHS then sort and compare the array RHS
+  if ((lhs->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+       lhs->type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
+      lhsMembers == 2) {
+    int cmp = compareAstNodes<resolveAttributeAccess>(
+        lhs->getMemberUnchecked(0), rhs->getMemberUnchecked(0), compareUtf8);
+    if (cmp != 0) {
+      return cmp;
+    }
+
+    AstNode const* lhsArray = lhs->getMemberUnchecked(1);
+    AstNode const* rhsArray = rhs->getMemberUnchecked(1);
+
+    if (lhsArray->type != NODE_TYPE_ARRAY ||
+        rhsArray->type != NODE_TYPE_ARRAY) {
+      return compareAstNodes<resolveAttributeAccess>(lhsArray, rhsArray,
+                                                     compareUtf8);
+    }
+
+    size_t const numLhs = lhsArray->numMembers();
+    size_t const numRhs = rhsArray->numMembers();
+    if (numLhs != numRhs) {
+      return (numLhs < numRhs ? -1 : 1);
+    }
+
+    std::vector<AstNode const*> lhsElements;
+    std::vector<AstNode const*> rhsElements;
+
+    for (size_t i = 0; i < numLhs; ++i) {
+      lhsElements.push_back(lhsArray->getMemberUnchecked(i));
+    }
+    for (size_t i = 0; i < numRhs; ++i) {
+      rhsElements.push_back(rhsArray->getMemberUnchecked(i));
+    }
+
+    auto comparator = [compareUtf8](AstNode const* a, AstNode const* b) {
+      return compareAstNodes<resolveAttributeAccess>(a, b, compareUtf8) < 0;
+    };
+    std::sort(lhsElements.begin(), lhsElements.end(), comparator);
+    std::sort(rhsElements.begin(), rhsElements.end(), comparator);
+
+    for (size_t i = 0; i < lhsElements.size(); ++i) {
+      int cmp = compareAstNodes<resolveAttributeAccess>(
+          lhsElements[i], rhsElements[i], compareUtf8);
+      if (cmp != 0) {
+        return cmp;
+      }
+    }
+    return 0;
+  }
+
+  // compare variable IDs for references
+  if (lhs->type == NODE_TYPE_REFERENCE) {
+    auto lhsVar = static_cast<Variable const*>(lhs->getData());
+    auto rhsVar = static_cast<Variable const*>(rhs->getData());
+    if (lhsVar->id != rhsVar->id) {
+      return (lhsVar->id < rhsVar->id ? -1 : 1);
+    }
+    return 0;
+  }
+
+  // compare attribute names, then children
+  if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    std::string_view lhsName = lhs->getStringView();
+    std::string_view rhsName = rhs->getStringView();
+    int cmp = lhsName.compare(rhsName);
+    if (cmp != 0) {
+      return (cmp < 0 ? -1 : 1);
+    }
+  }
+
+  // compare function names, then arguments
+  if (lhs->type == NODE_TYPE_FCALL) {
+    auto lhsFunc = static_cast<Function const*>(lhs->getData());
+    auto rhsFunc = static_cast<Function const*>(rhs->getData());
+    if (lhsFunc != rhsFunc) {
+      int cmp = lhsFunc->name.compare(rhsFunc->name);
+      if (cmp != 0) {
+        return (cmp < 0 ? -1 : 1);
+      }
+    }
+  }
+
+  // recursive comparison of all children
+  for (size_t i = 0; i < lhsMembers; ++i) {
+    int cmp = compareAstNodes<resolveAttributeAccess>(
+        lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i), compareUtf8);
+    if (cmp != 0) {
+      return cmp;
+    }
+  }
+
+  return 0;
+}
+
+/// @brief compare two nodes
+/// @return range from -1 to +1 depending:
+///  - -1 LHS being  less then   RHS,
+///  -  0 LHS being     equal    RHS
+///  -  1 LHS being greater then RHS
+template<bool resolveAttributeAccess>
+int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  TRI_ASSERT(lhs != nullptr);
+  TRI_ASSERT(rhs != nullptr);
+
+  bool lhsIsValid = true;
+  bool rhsIsValid = true;
+
+  if constexpr (resolveAttributeAccess) {
+    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      lhs = Ast::resolveConstAttributeAccess(lhs, lhsIsValid);
+    }
+    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      rhs = Ast::resolveConstAttributeAccess(rhs, rhsIsValid);
+    }
+  }
+
+  VPackValueType const lType =
+      lhsIsValid ? getNodeCompareType(lhs) : VPackValueType::Null;
+  VPackValueType const rType =
+      rhsIsValid ? getNodeCompareType(rhs) : VPackValueType::Null;
+
+  if (lType != rType) {
+    if (lType == VPackValueType::Int && rType == VPackValueType::Double) {
+      return compareDoubleValues(static_cast<double>(lhs->getIntValue()),
+                                 rhs->getDoubleValue());
+    } else if (lType == VPackValueType::Double &&
+               rType == VPackValueType::Int) {
+      return compareDoubleValues(lhs->getDoubleValue(),
+                                 static_cast<double>(rhs->getIntValue()));
+    } else if ((lType == VPackValueType::String &&
+                rType == VPackValueType::Custom) ||
+               (lType == VPackValueType::Custom &&
+                rType == VPackValueType::String)) {
+      return (lType == VPackValueType::String) ? -1 : 1;
+    }
+
+    int diff = valueTypeOrder(lType) - valueTypeOrder(rType);
+    TRI_ASSERT(diff != 0);
+    return (diff < 0) ? -1 : 1;
+  }
+
+  if (lType == VPackValueType::Custom) {
+    return compareAstNodesComplexVPack<resolveAttributeAccess>(lhs, rhs,
+                                                               compareUtf8);
+  } else {
+    return compareAstNodesDirectVPack<resolveAttributeAccess>(
+        lhs, rhs, compareUtf8, lType);
   }
 }
 
