@@ -128,16 +128,11 @@ void ArangoGlobalContext::normalizePath(std::string& path,
           << directory << "'";
       FATAL_ERROR_EXIT();
     }
-    directory =
-        std::filesystem::path(directory).make_preferred().string();
+    directory = std::filesystem::path(directory).make_preferred().string();
     path = directory;
   } else {
     if (!std::filesystem::path(path).is_absolute()) {
-      std::string const cwd = std::filesystem::current_path();
-      path = path.empty()
-                 ? cwd
-                 : std::filesystem::absolute(std::filesystem::path(cwd) / path)
-                       .string();
+      path = basics::FileUtils::absolutePath(path).string();
     }
   }
 }

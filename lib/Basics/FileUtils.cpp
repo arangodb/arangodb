@@ -576,6 +576,13 @@ std::string slurpProgramInternal(std::string const& program,
 
 }  // namespace
 
+auto absolutePath(std::filesystem::path path) -> std::filesystem::path {
+  if (path.empty()) {
+    return std::filesystem::current_path();
+  }
+  return std::filesystem::absolute(path);
+}
+
 std::string slurpProgram(std::string const& program) {
   std::vector<std::string> moreArgs{std::string("version")};
   return slurpProgramInternal(program, moreArgs);

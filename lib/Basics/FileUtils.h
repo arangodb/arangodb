@@ -28,6 +28,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include "Basics/FileResult.h"
 #include "Basics/FileResultString.h"
@@ -44,7 +45,8 @@
 
 namespace arangodb::basics::FileUtils {
 
-// normalizes path, path will be modified in-place
+// makes a path absolute
+std::filesystem::path absolutePath(std::filesystem::path path);
 
 // creates a filename
 std::string buildFilename(char const* path, char const* name);

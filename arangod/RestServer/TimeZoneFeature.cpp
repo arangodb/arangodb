@@ -63,13 +63,7 @@ void TimeZoneFeature::prepareTimeZoneData(
         FileUtils::buildFilename(binaryExecutionPath, "tzdata");
 
     if (FileUtils::isDirectory(test_exe)) {
-      std::string const cwd = std::filesystem::current_path();
-      test_exe =
-          test_exe.empty()
-              ? cwd
-              : std::filesystem::absolute(std::filesystem::path(cwd) / test_exe)
-                    .string();
-
+      test_exe = basics::FileUtils::absolutePath(test_exe).string();
       tz_path = std::filesystem::path(test_exe).make_preferred().string();
     } else {
       std::string argv0 =
@@ -78,12 +72,7 @@ void TimeZoneFeature::prepareTimeZoneData(
           TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
       path =
           FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, "tzdata");
-      std::string const cwd = std::filesystem::current_path();
-      path = path.empty()
-                 ? cwd
-                 : std::filesystem::absolute(std::filesystem::path(cwd) / path)
-                       .string();
-
+      path = basics::FileUtils::absolutePath(path).string();
       tz_path = std::filesystem::path(path).make_preferred().string();
     }
   }
