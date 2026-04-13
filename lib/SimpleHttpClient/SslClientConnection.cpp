@@ -231,20 +231,6 @@ void SslClientConnection::init(uint64_t sslProtocol) {
   SSL_METHOD SSL_CONST* meth = nullptr;
 
   switch (SslProtocol(sslProtocol)) {
-    case SSL_V2:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "support for SSLv2 has been dropped");
-
-#ifndef OPENSSL_NO_SSL3_METHOD
-    case SSL_V3:
-      meth = SSLv3_method();
-      break;
-#endif
-
-    case SSL_V23:
-      meth = SSLv23_method();
-      break;
-
     case TLS_V1:
       meth = TLS_client_method();
       break;
@@ -263,11 +249,6 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 
     case SSL_UNKNOWN:
     default:
-      // The actual protocol version used will be negotiated to the highest
-      // version mutually supported by the client and the server. The supported
-      // protocols are SSLv3, TLSv1, TLSv1.1 and TLSv1.2. Applications should
-      // use these methods, and avoid the version-specific methods described
-      // below.
       meth = TLS_method();
       break;
   }
