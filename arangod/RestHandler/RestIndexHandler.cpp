@@ -318,15 +318,19 @@ async<void> RestIndexHandler::getIndexes() {
                         dynamic_cast<RocksDBBuilderIndex const*>(raw)) {
                   raw = &builder->wrapped();
                 }
-                auto const& vecIdx =
-                    static_cast<RocksDBVectorIndex const&>(*raw);
-                auto const ts = vecIdx.trainingState();
+                auto const* vecIdx =
+                    dynamic_cast<RocksDBVectorIndex const*>(raw);
+                TRI_ASSERT(vecIdx != nullptr);
+                if (vecIdx == nullptr) [[unlikely]] {
+                  return states;
+                }
+                auto const ts = vecIdx->trainingState();
                 VectorIndexShardState state;
                 state.trainingState = std::string(trainingStateToString(ts));
                 if (ts == VectorIndexTrainingState::kUnusable) {
                   state.error = "not enough training data for vector index";
                 }
-                state.resolvedNLists = vecIdx.resolvedNLists().value_or(0);
+                state.resolvedNLists = vecIdx->resolvedNLists().value_or(0);
                 states.emplace(std::string(coll->name()), std::move(state));
               }
               return states;
