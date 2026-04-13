@@ -151,10 +151,12 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::restoreFromTrainedData(
 }
 
 BoundedDocumentIterator::BoundedDocumentIterator(RocksDBKeyBounds bounds,
-                                                 rocksdb::DB* db)
+                                                 rocksdb::DB* db,
+                                                 rocksdb::Snapshot const* snap)
     : bounds(std::move(bounds)), upper(this->bounds.end()), ro(false, false) {
   ro.prefix_same_as_start = true;
   ro.iterate_upper_bound = &upper;
+  ro.snapshot = snap;
   auto* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
   it.reset(db->NewIterator(ro, docCF));
@@ -379,6 +381,12 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
 Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
                      std::unique_ptr<rocksdb::Iterator> documentIterator,
                      std::stop_token stopToken) {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  while (TRI_ShouldFailDebugging("RocksDBVectorIndex::pauseDuringIngestion")) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+#endif
+
   auto const& definition = index.getDefinition();
   auto const dim = definition.dimension;
   auto const& fields = index.fields();
@@ -667,6 +675,26 @@ VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index)
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
+Result VectorIndexBuilder::persistTrainedData(TrainedData const& trainedData) {
+  velocypack::Builder builder;
+  velocypack::serialize(builder, trainedData);
+
+  RocksDBKey key;
+  key.constructVectorIndexTrainedData(_index.objectId());
+  auto value = RocksDBValue::VectorIndexValue(builder.slice());
+
+  auto* vectorCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::VectorIndex);
+  rocksdb::WriteOptions wo;
+  auto status = _rootDB->Put(wo, vectorCF, key.string(), value.string());
+  if (!status.ok()) {
+    return Result{
+        TRI_ERROR_INTERNAL,
+        std::string{"Failed to persist trained data: "} + status.ToString()};
+  }
+  return {};
+}
+
 Result VectorIndexBuilder::build(
     std::shared_ptr<RocksDBIndex> indexPtr,
     metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
@@ -681,7 +709,17 @@ Result VectorIndexBuilder::build(
     return Result{TRI_ERROR_INTERNAL, "vector index is not in unusable state"};
   }
 
-  auto numDocsHint = _rcoll->meta().numberDocuments();
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  while (TRI_ShouldFailDebugging("RocksDBVectorIndex::pauseBeforeTraining")) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    if (shouldAbort()) {
+      break;
+    }
+  }
+#endif
+
+  // TRAINING PHASE
+  auto const numDocsHint = _rcoll->meta().numberDocuments();
   VectorIndexTrainer trainer(_index, _rootDB, _bounds);
 
   auto const trainStart = std::chrono::steady_clock::now();
@@ -712,60 +750,75 @@ Result VectorIndexBuilder::build(
 
   auto trainedData = serializeIndex(*faissIndex);
 
-  // Persist trained data to the vector CF so it survives restarts.
-  {
-    velocypack::Builder builder;
-    velocypack::serialize(builder, trainedData);
-
-    RocksDBKey key;
-    key.constructVectorIndexTrainedData(_index.objectId());
-    auto value = RocksDBValue::VectorIndexValue(builder.slice());
-
-    auto* vectorCF = RocksDBColumnFamilyManager::get(
-        RocksDBColumnFamilyManager::Family::VectorIndex);
-    rocksdb::WriteOptions wo;
-    auto status = _rootDB->Put(wo, vectorCF, key.string(), value.string());
-    if (!status.ok()) {
-      _index.resetTrainingState();
-      return Result{
-          TRI_ERROR_INTERNAL,
-          std::string{"Failed to persist trained data: "} + status.ToString()};
-    }
+  if (auto res = persistTrainedData(trainedData); res.fail()) {
+    _index.resetTrainingState();
+    return res;
   }
 
   _index.applyTrainingResult(std::move(faissIndex), std::move(trainedData));
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
                           VectorIndexTrainingState::kIngesting);
 
-  auto const ingestStart = std::chrono::steady_clock::now();
-
-  BoundedDocumentIterator ingestDocIt(_bounds, _rootDB);
-
   TRI_IF_FAILURE("RocksDBVectorIndex::buildWrongDimension") {
     _index.resetTrainingState();
     return Result{TRI_ERROR_DEBUG};
   }
 
-  Result res =
-      ingestVectors(_index, _rootDB, std::move(ingestDocIt.it), stopToken);
+  // INGESTION PHASE
+  auto const ingestStart = std::chrono::steady_clock::now();
+
+  // Create RocksDBBuilderIndex wrapper
+  auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
+      indexPtr, numDocsHint, IndexFactory::kMaxParallelism);
+
+  _rcoll->swapIndex(indexPtr, buildIdx);
+  auto swapGuard = ScopeGuard([&]() noexcept {
+    // On any exit, ensure the real index is back in _indexes.
+    _rcoll->swapIndex(buildIdx, indexPtr);
+  });
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  while (TRI_ShouldFailDebugging("RocksDBVectorIndex::pauseBeforeIngestion")) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    if (shouldAbort()) {
+      break;
+    }
+  }
+#endif
+
+  RocksDBBuilderIndex::Locker locker(_rcoll);
+  if (!locker.lock().waitAndGet()) {
+    _index.resetTrainingState();
+    return Result{TRI_ERROR_LOCK_TIMEOUT,
+                  "failed to acquire lock for vector index build"};
+  }
+
+  // This solves all our problems with catching up with WAL entries
+  auto res = buildIdx->fillIndexBackground(locker).waitAndGet();
   auto const ingestEnd = std::chrono::steady_clock::now();
 
   if (res.fail()) {
     LOG_TOPIC("e166b", ERR, Logger::ENGINES)
         << "[shard=" << _index.collection().name()
         << ", index=" << _index.id().id() << "] "
-        << "Vector ingestion failed: " << res.errorMessage();
+        << "Vector index fill + WAL catch-up failed: " << res.errorMessage();
     _index.resetTrainingState();
-  } else {
-    ingestionDuration.count(
-        std::chrono::duration<double>(ingestEnd - ingestStart).count());
-    LOG_TOPIC("e165b", INFO, Logger::ENGINES)
-        << "[shard=" << _index.collection().name()
-        << ", index=" << _index.id().id() << "] "
-        << "Ingestion completed.";
-    _index.setTrainingState(VectorIndexTrainingState::kIngesting,
-                            VectorIndexTrainingState::kReady);
+    return res;
   }
+
+  ingestionDuration.count(
+      std::chrono::duration<double>(ingestEnd - ingestStart).count());
+
+  // fillIndexBackground returns with the exclusive lock still held.
+  // Swap the real index back and transition to kReady before releasing.
+  swapGuard.fire();
+  _index.setTrainingState(VectorIndexTrainingState::kIngesting,
+                          VectorIndexTrainingState::kReady);
+
+  LOG_TOPIC("e169c", INFO, Logger::ENGINES)
+      << "[shard=" << _index.collection().name()
+      << ", index=" << _index.id().id() << "] "
+      << "Vector index build completed (fill + WAL catch-up).";
 
   return res;
 }
