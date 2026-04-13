@@ -46,6 +46,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/InsertNode.h"
@@ -1524,6 +1525,14 @@ void arangodb::aql::removeUnnecessaryFiltersRule(
       // filter is always true
       // remove filter node and merge with following node
       toUnlink.emplace(n);
+      modified = true;
+    } else if (root->isFalse() &&
+               rule.level == OptimizerRule::removeUnnecessaryFiltersRule2) {
+      // filter is always false - replace with NoResultsNode
+      // Only do this in the second pass (level 210) after all transformations
+      // This allows isFalse() to catch IN [] expressions created by rules
+      auto noRes = plan->createNode<NoResultsNode>(plan.get(), plan->nextId());
+      plan->replaceNode(n, noRes);
       modified = true;
     }
     // before 3.6, if the filter is always false (i.e. root->isFalse()), at this

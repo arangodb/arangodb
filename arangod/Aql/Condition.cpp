@@ -1475,15 +1475,72 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
       if (op->type == NODE_TYPE_OPERATOR_BINARY_IN) {
         ++inComparisons;
         auto deduplicated = deduplicateInOperation(op);
+
+        // x IN [a] → x == a
+        if (deduplicated->numMembers() == 2) {
+          auto rhs = deduplicated->getMemberUnchecked(1);
+          if (rhs->type == NODE_TYPE_ARRAY && rhs->isConstant() &&
+              rhs->numMembers() == 1) {
+            auto lhs = deduplicated->getMemberUnchecked(0);
+            auto optimized = plan->getAst()->createNodeBinaryOperator(
+                NODE_TYPE_OPERATOR_BINARY_EQ, lhs, rhs->getMemberUnchecked(0));
+            andNode->changeMember(j, optimized);
+            --inComparisons;
+            continue;
+          }
+        }
+
         andNode->changeMember(j, deduplicated);
       }
     }
     andNumMembers = andNode->numMembers();
 
-    if (andNumMembers <= 1) {
-      // simple AND item with 0 or 1 members. nothing to do
-      ++r;
+    // Remove AND branch if any condition is false
+    bool andIsFalse = false;
+    for (size_t j = 0; j < andNumMembers; ++j) {
+      auto op = andNode->getMemberUnchecked(j);
+      if (op->isFalse()) {
+        andIsFalse = true;
+        break;
+      }
+    }
+
+    if (andIsFalse) {
+      _root->removeMemberUncheckedUnordered(r);
+      retry = true;
       n = _root->numMembers();
+      continue;
+    }
+
+    // Remove redundant true conditions, but keep at least one member.
+    // If all conditions are true (e.g. x NOT IN [] AND y NOT IN []),
+    // removing all would make andNumMembers==0 and incorrectly drop
+    // the entire AND branch from the OR, turning always-true into false.
+    if (andNumMembers > 1) {
+      for (size_t j = andNumMembers; j > 0; --j) {
+        if (andNumMembers == 1) {
+          break;
+        }
+        auto op = andNode->getMemberUnchecked(j - 1);
+
+        if (op->isTrue()) {
+          andNode->removeMemberUncheckedUnordered(j - 1);
+          --andNumMembers;
+        }
+      }
+    }
+
+    if (andNumMembers == 0) {
+      _root->removeMemberUncheckedUnordered(r);
+      retry = true;
+      n = _root->numMembers();
+      continue;
+    }
+
+    // Keep DNF structure: OR(AND(x)) stays as-is
+    // Unwrapping would break the invariant that all OR children are AND nodes
+    if (andNumMembers == 1) {
+      ++r;
       continue;
     }
 
@@ -1636,10 +1693,21 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 // merge IN with IN on same attribute
                 TRI_ASSERT(rightNode->numMembers() == 2);
 
+                auto mergedArray = mergeInOperations(leftNode, rightNode);
                 auto merged = _ast->createNodeBinaryOperator(
                     NODE_TYPE_OPERATOR_BINARY_IN,
-                    leftNode->getMemberUnchecked(0),
-                    mergeInOperations(leftNode, rightNode));
+                    leftNode->getMemberUnchecked(0), mergedArray);
+
+                // Optimize IN with single value to equality: x IN [5] → x == 5
+                if (mergedArray->type == NODE_TYPE_ARRAY &&
+                    mergedArray->isConstant() &&
+                    mergedArray->numMembers() == 1) {
+                  auto lhs = leftNode->getMemberUnchecked(0);
+                  merged = plan->getAst()->createNodeBinaryOperator(
+                      NODE_TYPE_OPERATOR_BINARY_EQ, lhs,
+                      mergedArray->getMemberUnchecked(0));
+                }
+
                 andNode->removeMemberUncheckedUnordered(rightPos);
                 andNode->changeMember(leftPos, merged);
                 goto restartThisOrItem;
@@ -1677,6 +1745,15 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
                 // use the new array of values
                 leftNode->changeMember(1, inNode);
+
+                // Optimize IN with single value to equality: x IN [5] → x == 5
+                if (inNode->numMembers() == 1) {
+                  auto lhs = leftNode->getMemberUnchecked(0);
+                  auto optimized = plan->getAst()->createNodeBinaryOperator(
+                      NODE_TYPE_OPERATOR_BINARY_EQ, lhs,
+                      inNode->getMemberUnchecked(0));
+                  andNode->changeMember(leftPos, optimized);
+                }
 
                 // remove the other operator
                 andNode->removeMemberUncheckedUnordered(rightPos);

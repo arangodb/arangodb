@@ -1402,6 +1402,17 @@ bool AstNode::isTrue() const {
       // ! false => true
       return true;
     }
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+    // Handle empty IN arrays: x.name NOT IN [] → true
+    // IN/NIN nodes always have exactly 2 members (lhs and rhs)
+    if (numMembers() == 2) {
+      AstNode const* rhs = getMember(1);
+      if (rhs != nullptr && rhs->type == NODE_TYPE_ARRAY &&
+          rhs->numMembers() == 0) {
+        return (type == NODE_TYPE_OPERATOR_BINARY_NIN);
+      }
+    }
   }
 
   return false;
@@ -1445,6 +1456,17 @@ bool AstNode::isFalse() const {
     if (getMember(0)->isTrue()) {
       // ! true => false
       return true;
+    }
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+    // Handle empty IN arrays: x.name IN [] → false
+    // IN/NIN nodes always have exactly 2 members (lhs and rhs)
+    if (numMembers() == 2) {
+      AstNode const* rhs = getMember(1);
+      if (rhs != nullptr && rhs->type == NODE_TYPE_ARRAY &&
+          rhs->numMembers() == 0) {
+        return (type == NODE_TYPE_OPERATOR_BINARY_IN);
+      }
     }
   }
 
@@ -2377,6 +2399,13 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     getMember(0)->stringify(buffer, failIfLong);
     buffer.append("..");
     getMember(1)->stringify(buffer, failIfLong);
+    return;
+  }
+
+  if (type == NODE_TYPE_QUANTIFIER) {
+    // not used by V8
+    buffer.append(Quantifier::stringify(
+        static_cast<Quantifier::Type>(getIntValue(true))));
     return;
   }
 
