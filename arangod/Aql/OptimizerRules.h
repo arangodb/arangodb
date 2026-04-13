@@ -118,25 +118,11 @@ void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                     OptimizerRule const&);
 #endif
 
-/// @brief remove $OLD and $NEW variables from data-modification statements
-/// if not required
-void removeDataModificationOutVariablesRule(Optimizer*,
-                                            std::unique_ptr<ExecutionPlan>,
-                                            OptimizerRule const&);
-
 // replace inaccessible EnumerateCollectionNode with NoResult nodes
 #ifdef USE_ENTERPRISE
 void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const& rule);
 #endif
-
-/// @brief optimizes away unused K_PATHS things
-void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                       OptimizerRule const&);
-
-/// @brief replace FILTER and SORT containing DISTANCE function
-void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
-                  OptimizerRule const&);
 
 /// @brief replace legacy JS functions in the plan.
 void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -150,11 +136,6 @@ void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void replaceEntriesWithObjectIteration(Optimizer*,
                                        std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
-
-/// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized
-/// count operation
-void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                       OptimizerRule const&);
 
 /// @brief allows execution nodes to asynchronously prefetch the next batch from
 /// their upstream node.

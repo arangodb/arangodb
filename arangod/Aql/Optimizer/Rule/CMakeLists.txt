@@ -51,6 +51,10 @@ target_sources(arango_aql PRIVATE
   RemoveCollectVariables.cpp
   SpecializeCollect.cpp
   InterchangeAdjacentEnumerations.cpp
+  RemoveDataModificationOutVariables.cpp
+  OptimizePaths.cpp
+  GeoIndex.cpp
+  OptimizeCount.cpp
   UseIndexForSort.cpp
   UseIndexes.cpp
   DistributeInCluster.cpp
