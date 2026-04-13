@@ -43,7 +43,7 @@
 
 namespace arangodb::aql {
 
-using EN = arangodb::aql::ExecutionNode;
+using EN = ExecutionNode;
 
 namespace {
 

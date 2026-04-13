@@ -75,6 +75,7 @@
 #include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
 #include "Aql/Optimizer/Rule/MaterializeIntoSeparateVariable.h"
 #include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
+#include "Aql/Optimizer/Rule/ReplaceEntriesWithObjectIteration.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
 #ifdef USE_ENTERPRISE

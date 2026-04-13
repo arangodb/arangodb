@@ -38,7 +38,7 @@
 #include "Logger/LogMacros.h"
 
 namespace arangodb::aql {
-using EN = arangodb::aql::ExecutionNode;
+using EN = ExecutionNode;
 
 #define LOG_RULE LOG_DEVEL_IF(false)
 
