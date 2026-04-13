@@ -498,8 +498,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
   for (auto& idx : coll->indexes()) {
     if (idx->type() ==
         arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      if (basics::AttributeName::isIdentical(
-              idx->fields()[0], field, false)) {
+      if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
         index = idx;
         break;
       }
@@ -522,8 +521,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
       plan, plan->nextId(), aqlCollection, indexOutVariable,
       std::vector<transaction::Methods::IndexHandle>{
           transaction::Methods::IndexHandle{index}},
-      false,
-      std::move(condition), IndexIteratorOptions());
+      false, std::move(condition), IndexIteratorOptions());
 
   return createSubqueryWithLimit(plan, calcNode, eIndex, eIndex,
                                  indexOutVariable, params.limit);
