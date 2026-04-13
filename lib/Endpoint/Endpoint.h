@@ -98,4 +98,25 @@ std::ostream& operator<<(std::ostream&, Endpoint::EndpointType);
 std::ostream& operator<<(std::ostream&, Endpoint::EncryptionType);
 std::ostream& operator<<(std::ostream&, Endpoint::DomainType);
 
+template<class Inspector>
+auto inspect(Inspector& f, Endpoint::EndpointType& x) {
+  return f.enumeration(x).values(Endpoint::EndpointType::CLIENT, "CLIENT",  //
+                                 Endpoint::EndpointType::SERVER, "SERVER");
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Endpoint::EncryptionType& x) {
+  return f.enumeration(x).values(Endpoint::EncryptionType::SSL, "SSL",  //
+                                 Endpoint::EncryptionType::NONE, "NONE");
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Endpoint::DomainType& x) {
+  return f.enumeration(x).values(Endpoint::DomainType::SRV, "SRV",    //
+                                 Endpoint::DomainType::IPV4, "IPV4",  //
+                                 Endpoint::DomainType::IPV6, "IPV6",  //
+                                 Endpoint::DomainType::UNIX, "UNIX",  //
+                                 Endpoint::DomainType::UNKNOWN, "UNKNOWN");
+}
+
 }  // namespace arangodb

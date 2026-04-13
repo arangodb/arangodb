@@ -44,9 +44,6 @@
 
 namespace arangodb::basics::FileUtils {
 
-// removes trailing path separators from path, path will be modified in-place
-std::string removeTrailingSeparator(std::string const& name);
-
 // normalizes path, path will be modified in-place
 void normalizePath(std::string& name);
 
@@ -85,11 +82,6 @@ void appendToFile(std::string const& filename, std::string_view s,
 // otherwise, returns TRI_ERROR_SYS_ERROR and sets LastError.
 [[nodiscard]] ErrorCode remove(std::string const& fileName);
 
-// creates a new directory
-bool createDirectory(std::string const& name, ErrorCode* errorNumber = nullptr);
-bool createDirectory(std::string const& name, int mask,
-                     ErrorCode* errorNumber = nullptr);
-
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
 /// returns true (now wrapper for version below with TRI_copy_recursive_e
@@ -120,16 +112,8 @@ bool copyDirectoryRecursive(
 // case the directory cannot be opened for iteration.
 std::vector<std::string> listFiles(std::string const& directory);
 
-// returns the number of files / subdirectories / links in a directory.
-// does not recurse into subdirectories. will throw an exception in
-// case the directory cannot be opened for iteration.
-size_t countFiles(std::string const& directory);
-
 // checks if path is a directory
 bool isDirectory(std::string const& path);
-
-// checks if path is a symbolic link
-bool isSymbolicLink(std::string const& path);
 
 // checks if path is a regular file
 bool isRegularFile(std::string const& path);
@@ -137,28 +121,15 @@ bool isRegularFile(std::string const& path);
 // checks if path exists
 bool exists(std::string const& path);
 
-// returns the size of a file. will return 0 for non-existing files
-/// the caller should check first if the file exists via the exists() method
-off_t size(std::string const& path);
-
 // strip extension
 std::string stripExtension(std::string const& path,
                            std::string const& extension);
-
-// changes into directory
-FileResult changeDirectory(std::string const& path);
-
-// returns the current directory
-FileResultString currentDirectory();
 
 // returns the home directory
 std::string homeDirectory();
 
 // returns the config directory
 std::string configDirectory(char const* binaryPath);
-
-// returns the dir name of a path
-std::string dirname(std::string const&);
 
 // returns the output of a program
 std::string slurpProgram(std::string const& program);

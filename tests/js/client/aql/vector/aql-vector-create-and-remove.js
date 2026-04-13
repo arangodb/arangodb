@@ -33,9 +33,7 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndEnsureIndex,
-    waitForAllVectorIndexesState,
-    VectorIndexTrainingState,
+    insertDocsAndAssertIndex,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -85,10 +83,11 @@ function VectorIndexCreateAndRemoveTestSuite() {
                 });
             }
             insertedDocs = [];
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                readyTimeoutSec: 120,
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -97,14 +96,9 @@ function VectorIndexCreateAndRemoveTestSuite() {
                         dimension,
                         nLists: 10
                     },
-                }),
+                },
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
-                "Expected index to become ready with " + insertedDocsCount + " docs"
-            );
         },
 
         tearDown: function() {
@@ -540,10 +534,11 @@ function VectorIndexStoredValuesTestSuite() {
                 });
             }
             insertedDocs = [];
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2_stored",
+                readyTimeoutSec: 120,
+                indexName: "vector_l2_stored",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -553,14 +548,9 @@ function VectorIndexStoredValuesTestSuite() {
                         dimension,
                         nLists: 1
                     },
-                }),
+                },
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
-                "Expected index to become ready with " + insertedDocsCount + " docs"
-            );
         },
 
         tearDown: function() {

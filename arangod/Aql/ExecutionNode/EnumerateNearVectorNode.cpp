@@ -60,7 +60,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     Variable const* inVariable, Variable const* oldDocumentVariable,
     Variable const* documentOutVariable, Variable const* distanceOutVariable,
     std::size_t limit, bool ascending, std::size_t offset,
-    SearchParameters searchParameters, aql::Collection const* collection,
+    vector::SearchParameters searchParameters,
+    aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle,
     std::unique_ptr<Expression> filterExpression, bool isCoveredByStoredValues)
     : ExecutionNode(plan, id),
