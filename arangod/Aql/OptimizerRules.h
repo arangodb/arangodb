@@ -30,6 +30,7 @@
 
 namespace arangodb::aql {
 class Optimizer;
+class SubqueryNode;
 
 class QueryContext;
 struct Collection;
@@ -49,39 +50,6 @@ void substituteClusterSingleDocumentOperationsRule(
 /// @brief replace multiple document operations in cluster by special handling
 void substituteClusterMultipleDocumentOperationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
-
-#ifdef USE_ENTERPRISE
-void clusterPushSubqueryToDBServer(Optimizer* opt,
-                                   std::unique_ptr<ExecutionPlan> plan,
-                                   OptimizerRule const& rule);
-#endif
-
-#ifdef USE_ENTERPRISE
-void distributeOffsetInfoToClusterRule(aql::Optimizer* opt,
-                                       std::unique_ptr<aql::ExecutionPlan> plan,
-                                       aql::OptimizerRule const& rule);
-
-void lateMaterialiationOffsetInfoRule(aql::Optimizer* opt,
-                                      std::unique_ptr<aql::ExecutionPlan> plan,
-                                      aql::OptimizerRule const& rule);
-
-/// @brief remove scatter/gather and remote nodes for SatelliteCollections
-void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
-
-/// @brief remove distribute/gather and remote nodes if possible
-void removeDistributeNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                               OptimizerRule const&);
-
-void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                    OptimizerRule const&);
-#endif
-
-// replace inaccessible EnumerateCollectionNode with NoResult nodes
-#ifdef USE_ENTERPRISE
-void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const& rule);
-#endif
 
 /// @brief replace legacy JS functions in the plan.
 void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,

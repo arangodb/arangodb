@@ -61,6 +61,9 @@
 #include "IResearch/Search.h"
 #include "VocBase/LogicalCollection.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/Optimizer/Utils/ReplaceOffsetInfo.h"
+#endif
 #include <utils/misc.hpp>
 #include <absl/strings/str_cat.h>
 
@@ -69,10 +72,9 @@ using namespace arangodb::basics;
 
 namespace arangodb::iresearch {
 
+#ifndef USE_ENTERPRISE
 Variable const* replaceOffsetInfo(CalculationNode& calcNode,
                                   Variable const& ref, AstNode const& node);
-
-#ifndef USE_ENTERPRISE
 Variable const* replaceOffsetInfo(CalculationNode& calcNode,
                                   Variable const& ref, AstNode const& node) {
   functions::NotImplementedEE(nullptr, node, {});  // will throw
