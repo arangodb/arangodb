@@ -30,6 +30,6 @@ namespace arangodb::aql {
 class Optimizer;
 
 void useIndexForCollect(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule);
+                        OptimizerRule const& rule);
 
 }  // namespace arangodb::aql

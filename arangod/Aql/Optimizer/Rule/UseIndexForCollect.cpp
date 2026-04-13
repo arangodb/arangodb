@@ -425,9 +425,8 @@ std::optional<IndexNode*> getDependentIndexNode(
    existing index node (and does not look for other indexes that could be
    applicable).
  */
-void useIndexForCollect(Optimizer* opt,
-                                       std::unique_ptr<ExecutionPlan> plan,
-                                       OptimizerRule const& rule) {
+void useIndexForCollect(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                        OptimizerRule const& rule) {
   bool modified = false;
 
   containers::SmallVector<ExecutionNode*, 8> collectNodes;
@@ -507,7 +506,7 @@ void useIndexForCollect(Optimizer* opt,
 }  // namespace aql
 
 std::ostream& operator<<(std::ostream& os,
-                                   IndexDistinctScanOptions const& opts) {
+                         IndexDistinctScanOptions const& opts) {
   return os << opts.distinctFields << (opts.sorted ? "sorted" : "unsorted");
 }
 

@@ -30,6 +30,6 @@ namespace arangodb::aql {
 class Optimizer;
 
 void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
-    OptimizerRule const&);
+                                     OptimizerRule const&);
 
 }  // namespace arangodb::aql

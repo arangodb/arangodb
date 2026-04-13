@@ -150,9 +150,8 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
 /// - order of attributes in SortNode must match the order of attributes of
 /// index
 /// - first parent of SortNode must be a LimitNode
-void pushLimitIntoIndexRule(Optimizer* opt,
-                                           std::unique_ptr<ExecutionPlan> plan,
-                                           OptimizerRule const& rule) {
+void pushLimitIntoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                            OptimizerRule const& rule) {
   bool modified = false;
 
   containers::SmallVector<ExecutionNode*, 8> indexes;

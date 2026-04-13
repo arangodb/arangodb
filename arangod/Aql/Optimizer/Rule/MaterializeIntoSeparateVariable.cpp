@@ -63,9 +63,9 @@ void replaceVariableDownwards(
 
 }  // namespace
 
-void materializeIntoSeparateVariable(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void materializeIntoSeparateVariable(Optimizer* opt,
+                                     std::unique_ptr<ExecutionPlan> plan,
+                                     OptimizerRule const& rule) {
   bool modified = false;
 
   // this rule depends crucially on the optimize-projections rule

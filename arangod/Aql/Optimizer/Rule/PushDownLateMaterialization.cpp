@@ -224,9 +224,9 @@ bool canMovePastNode(ExecutionPlan* plan,
 
 }  // namespace
 
-void pushDownLateMaterializationRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void pushDownLateMaterializationRule(Optimizer* opt,
+                                     std::unique_ptr<ExecutionPlan> plan,
+                                     OptimizerRule const& rule) {
   bool modified = false;
 
   // this rule depends crucially on the optimize-projections rule
