@@ -49,32 +49,13 @@ void insertDistributeInputCalculation(ExecutionPlan& plan);
 
 void activateCallstackSplit(ExecutionPlan& plan);
 
-/// @brief adds a SORT operation for IN right-hand side operands
-void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                      OptimizerRule const&);
-
-/// @brief remove unused INTO variable from COLLECT, or unused aggregates
-void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                OptimizerRule const&);
-
 /// @brief propagate constant attributes in FILTERs
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
 
-/// @brief determine the "right" type of CollectNode and
-/// add a sort node for each COLLECT (may be removed later)
-/// this rule cannot be turned off (otherwise, the query result might be wrong!)
-void specializeCollectRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
-
 /// @brief split and-combined filters and break them into smaller parts
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
-
-/// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
-void interchangeAdjacentEnumerationsRule(Optimizer*,
-                                         std::unique_ptr<ExecutionPlan>,
-                                         OptimizerRule const&);
 
 /// @brief replace single document operations in cluster by special handling
 void substituteClusterSingleDocumentOperationsRule(
