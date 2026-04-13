@@ -6,6 +6,8 @@
   WAL entries written during training are correctly ingested, preventing
   missed documents after index creation.
 
+* Upgraded OpenSSL to 3.5.6.
+
 * The vector index API now exposes a `resolvedNLists` field that shows the
   actual nLists value used by the trained index. When using a fixed `nLists`
   value, `resolvedNLists` will match it. When using the scalable nLists
@@ -21,6 +23,7 @@
   values for large collections, while smaller collections use
   `max(minNLists, multiplier * sqrt(docCount))`.
   Factory string are not supported in scaling mode.
+
 
 3.12.9 (2026-04-03)
 -------------------
