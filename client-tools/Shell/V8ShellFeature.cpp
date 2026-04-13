@@ -102,6 +102,8 @@ void signalHandler(int signal) {
         "():" << stack_frame->GetLineNumber();
     }
   }
+  triggerV8DeadlineNow(signal, ExternalId());
+  alarm(20);
 }
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
