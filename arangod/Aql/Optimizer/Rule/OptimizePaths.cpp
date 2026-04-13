@@ -37,6 +37,7 @@
 #include "Basics/StaticStrings.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
+#include "Graph/ShortestPathOptions.h"
 
 namespace arangodb::aql {
 using EN = ExecutionNode;
