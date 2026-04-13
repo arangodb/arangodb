@@ -35,8 +35,6 @@ class SubqueryNode;
 class QueryContext;
 struct Collection;
 
-
-
 /// @brief split and-combined filters and break them into smaller parts
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
