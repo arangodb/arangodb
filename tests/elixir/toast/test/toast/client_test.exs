@@ -422,4 +422,68 @@ defmodule Toast.ClientTest do
       assert_received {:auth, []}
     end
   end
+
+  describe "trx_id" do
+    test "defaults to nil" do
+      client = Client.new("http://localhost:8529")
+      assert client.trx_id == nil
+    end
+
+    test "injects x-arango-trx-id header when trx_id is set" do
+      plug = fn conn ->
+        trx = Plug.Conn.get_req_header(conn, "x-arango-trx-id")
+        send(self(), {:trx, trx})
+        json_plug().(conn)
+      end
+
+      client = client_with_plug(plug)
+      client = %{client | trx_id: "12345"}
+      Client.get(client, "/_api/document/col")
+      assert_received {:trx, ["12345"]}
+    end
+
+    test "does not inject header when trx_id is nil" do
+      plug = fn conn ->
+        trx = Plug.Conn.get_req_header(conn, "x-arango-trx-id")
+        send(self(), {:trx, trx})
+        json_plug().(conn)
+      end
+
+      client = client_with_plug(plug)
+      Client.get(client, "/_api/document/col")
+      assert_received {:trx, []}
+    end
+  end
+
+  describe "delete with body" do
+    test "sends body when :body opt is provided" do
+      plug = fn conn ->
+        assert conn.method == "DELETE"
+        {decoded, conn} = decode_request_body(conn)
+        send(self(), {:body, decoded})
+
+        send_encoded_response(conn, 200, %{})
+      end
+
+      client = client_with_plug(plug)
+      Client.delete(client, "/_api/document/col", body: ["key1", "key2"])
+      assert_received {:body, ["key1", "key2"]}
+    end
+
+    test "delete without :body opt sends no body" do
+      plug = fn conn ->
+        assert conn.method == "DELETE"
+        {:ok, raw, conn} = Plug.Conn.read_body(conn)
+        send(self(), {:body, raw})
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, "{}")
+      end
+
+      client = client_with_plug(plug)
+      Client.delete(client, "/_api/collection/test")
+      assert_received {:body, ""}
+    end
+  end
 end

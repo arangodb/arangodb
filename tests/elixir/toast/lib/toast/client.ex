@@ -14,6 +14,7 @@ defmodule Toast.Client do
           auth: auth_t() | nil,
           content_type: content_type_t(),
           protocol: protocol_t(),
+          trx_id: String.t() | nil,
           req: Req.Request.t()
         }
 
@@ -23,6 +24,7 @@ defmodule Toast.Client do
     :database,
     :api_version,
     :auth,
+    :trx_id,
     :req,
     content_type: :vpack,
     protocol: :http1
@@ -81,7 +83,7 @@ defmodule Toast.Client do
           {:ok, Req.Response.t()} | {:error, term()}
   def request(%__MODULE__{} = client, method, url, body \\ nil, opts \\ []) do
     opts = encode_body(client.content_type, body, opts)
-    opts = [{:url, url} | apply_auth(client, opts)]
+    opts = [{:url, url} | apply_auth(client, apply_trx(client, opts))]
     Req.request(client.req, [{:method, method} | opts])
   end
 
@@ -100,9 +102,15 @@ defmodule Toast.Client do
     request(client, :put, build_url(client, path), body, opts)
   end
 
+  @spec patch(t(), String.t(), term(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
+  def patch(%__MODULE__{} = client, path, body \\ nil, opts \\ []) do
+    request(client, :patch, build_url(client, path), body, opts)
+  end
+
   @spec delete(t(), String.t(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
   def delete(%__MODULE__{} = client, path, opts \\ []) do
-    request(client, :delete, build_url(client, path), nil, opts)
+    {body, opts} = Keyword.pop(opts, :body)
+    request(client, :delete, build_url(client, path), body, opts)
   end
 
   defp build_url(%__MODULE__{} = client, path) do
@@ -146,6 +154,32 @@ defmodule Toast.Client do
       {:error, _} = err -> err
     end
   end
+
+  @spec idempotent_delete(t(), String.t(), keyword()) :: :ok | {:error, term()}
+  def idempotent_delete(%__MODULE__{} = client, path, opts \\ []) do
+    case delete(client, path, opts) do
+      {:ok, %{status: 404}} -> :ok
+      other -> unwrap_ok(other)
+    end
+  end
+
+  @doc false
+  defmacro bang!(expr) do
+    {fun_name, _arity} = __CALLER__.function
+    mod = __CALLER__.module |> Module.split() |> List.last()
+    label = "#{mod}.#{fun_name}" |> String.trim_trailing("!")
+
+    quote generated: true do
+      case unquote(expr) do
+        {:ok, value} -> value
+        :ok -> :ok
+        {:error, reason} -> raise "#{unquote(label)} failed: #{inspect(reason)}"
+      end
+    end
+  end
+
+  defp apply_trx(%__MODULE__{trx_id: nil}, opts), do: opts
+  defp apply_trx(%__MODULE__{trx_id: id}, opts), do: prepend_header(opts, {"x-arango-trx-id", id})
 
   defp apply_auth(%__MODULE__{auth: nil}, opts), do: opts
   defp apply_auth(%__MODULE__{auth: auth}, opts), do: prepend_header(opts, auth_header(auth))

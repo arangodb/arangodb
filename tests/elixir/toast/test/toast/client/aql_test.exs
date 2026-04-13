@@ -61,6 +61,40 @@ defmodule Toast.Client.AQLTest do
       client = client_with_plug(plug)
       assert {:ok, [1, 2, 3, 4]} = Client.AQL.execute(client, "FOR i IN 1..4 RETURN i")
     end
+
+    test "cursor pagination preserves order across three pages" do
+      call_count = :counters.new(1, [:atomics])
+
+      plug = fn conn ->
+        count = :counters.get(call_count, 1)
+        :counters.add(call_count, 1, 1)
+
+        case {conn.method, count} do
+          {"POST", 0} ->
+            send_encoded_response(conn, 201, %{
+              "result" => [1, 2],
+              "hasMore" => true,
+              "id" => "cursor-1"
+            })
+
+          {"PUT", 1} ->
+            send_encoded_response(conn, 200, %{
+              "result" => [3, 4],
+              "hasMore" => true,
+              "id" => "cursor-1"
+            })
+
+          {"PUT", 2} ->
+            send_encoded_response(conn, 200, %{"result" => [5, 6], "hasMore" => false})
+
+          _ ->
+            conn |> Plug.Conn.send_resp(500, "unexpected")
+        end
+      end
+
+      client = client_with_plug(plug)
+      assert {:ok, [1, 2, 3, 4, 5, 6]} = Client.AQL.execute(client, "FOR i IN 1..6 RETURN i")
+    end
   end
 
   describe "execute!/2" do
@@ -80,7 +114,7 @@ defmodule Toast.Client.AQLTest do
 
       client = client_with_plug(plug)
 
-      assert_raise RuntimeError, ~r/AQL query failed/, fn ->
+      assert_raise RuntimeError, ~r/AQL\.execute failed/, fn ->
         Client.AQL.execute!(client, "INVALID")
       end
     end

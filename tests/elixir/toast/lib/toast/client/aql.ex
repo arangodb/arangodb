@@ -1,7 +1,16 @@
 defmodule Toast.Client.AQL do
-  @moduledoc "AQL query execution via the ArangoDB cursor API."
+  @moduledoc """
+  AQL query execution via the ArangoDB cursor API.
+
+  Automatically follows cursor pagination to collect all result pages.
+
+      {:ok, docs} = AQL.execute(client, "FOR d IN users RETURN d")
+      {:ok, docs} = AQL.execute(client, "FOR d IN @@coll FILTER d.age > @age RETURN d",
+        %{"@coll" => "users", "age" => 21})
+  """
 
   alias Toast.Client
+  require Client
 
   @spec execute(Client.t(), String.t(), map()) :: {:ok, [term()]} | {:error, term()}
   def execute(%Client{} = client, query, bind_vars \\ %{}) do
@@ -15,10 +24,7 @@ defmodule Toast.Client.AQL do
 
   @spec execute!(Client.t(), String.t(), map()) :: [term()]
   def execute!(%Client{} = client, query, bind_vars \\ %{}) do
-    case execute(client, query, bind_vars) do
-      {:ok, results} -> results
-      {:error, reason} -> raise "AQL query failed: #{inspect(reason)}"
-    end
+    Client.bang!(execute(client, query, bind_vars))
   end
 
   defp collect_cursor_pages(client, %{"hasMore" => true, "id" => cursor_id}, acc) do
