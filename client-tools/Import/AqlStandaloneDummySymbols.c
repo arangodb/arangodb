@@ -11,17 +11,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /* typeinfo for arangodb::ClusterFeature  (__si_class_type_info: 3 pointers) */
-__attribute__((used))
-void* _ZTIN8arangodb14ClusterFeatureE[3] = {0, 0, 0};
+__attribute__((used)) void* _ZTIN8arangodb14ClusterFeatureE[3] = {0, 0, 0};
 
 /* typeinfo for arangodb::DatabaseFeature */
-__attribute__((used))
-void* _ZTIN8arangodb15DatabaseFeatureE[3] = {0, 0, 0};
+__attribute__((used)) void* _ZTIN8arangodb15DatabaseFeatureE[3] = {0, 0, 0};
 
 /* typeinfo for arangodb::ReplicationApplier (__class_type_info: 2 pointers) */
-__attribute__((used))
-void* _ZTIN8arangodb18ReplicationApplierE[2] = {0, 0};
+__attribute__((used)) void* _ZTIN8arangodb18ReplicationApplierE[2] = {0, 0};
 
 /* vtable for arangodb::ReplicationApplier (offset-to-top + typeinfo + slots) */
-__attribute__((used))
-void* _ZTVN8arangodb18ReplicationApplierE[32] = {0};
+__attribute__((used)) void* _ZTVN8arangodb18ReplicationApplierE[32] = {0};

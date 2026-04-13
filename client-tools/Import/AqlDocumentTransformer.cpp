@@ -64,10 +64,9 @@ constexpr std::string_view docParameterName = "doc";
 class ImportTransactionState final : public TransactionState {
  public:
   explicit ImportTransactionState(TRI_vocbase_t& vocbase)
-      : TransactionState(vocbase, TransactionId(0),
-                         transaction::Options(),
-                         transaction::OperationOriginInternal{
-                             "arangoimport custom query"}) {
+      : TransactionState(
+            vocbase, TransactionId(0), transaction::Options(),
+            transaction::OperationOriginInternal{"arangoimport custom query"}) {
     updateStatus(transaction::Status::RUNNING);
   }
 
@@ -125,14 +124,13 @@ class ImportTransactionState final : public TransactionState {
 /// @brief Dummy transaction context for client-tool standalone AQL.
 struct ImportTransactionContext final : public transaction::SmartContext {
   explicit ImportTransactionContext(TRI_vocbase_t& vocbase)
-      : SmartContext(vocbase, transaction::Context::makeTransactionId(),
-                     nullptr,
-                     transaction::OperationOriginInternal{
-                         "arangoimport custom query"}),
+      : SmartContext(
+            vocbase, transaction::Context::makeTransactionId(), nullptr,
+            transaction::OperationOriginInternal{"arangoimport custom query"}),
         _state(vocbase) {}
 
-  std::shared_ptr<TransactionState> acquireState(
-      transaction::Options const&, bool&) override {
+  std::shared_ptr<TransactionState> acquireState(transaction::Options const&,
+                                                 bool&) override {
     return {std::shared_ptr<TransactionState>(), &_state};
   }
   void unregisterTransaction() noexcept override {}
@@ -150,9 +148,9 @@ struct ImportTransactionContext final : public transaction::SmartContext {
 class ImportQueryContext final : public QueryContext {
  public:
   explicit ImportQueryContext(TRI_vocbase_t& vocbase)
-      : QueryContext(vocbase,
-                     transaction::OperationOriginInternal{
-                         "arangoimport custom query"}),
+      : QueryContext(
+            vocbase,
+            transaction::OperationOriginInternal{"arangoimport custom query"}),
         _resolver(vocbase),
         _trxContext(vocbase) {
     _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
@@ -175,9 +173,7 @@ class ImportQueryContext final : public QueryContext {
   void setLockTimeout(double timeout) noexcept override {
     _queryOptions.transactionOptions.lockTimeout = timeout;
   }
-  CollectionNameResolver const& resolver() const override {
-    return _resolver;
-  }
+  CollectionNameResolver const& resolver() const override { return _resolver; }
   velocypack::Options const& vpackOptions() const override {
     return velocypack::Options::Defaults;
   }
@@ -200,9 +196,9 @@ class ImportQueryContext final : public QueryContext {
 
 }  // namespace
 
-AqlDocumentTransformer::AqlDocumentTransformer(
-    std::string const& queryString, velocypack::Slice userBindVars,
-    TRI_vocbase_t& vocbase)
+AqlDocumentTransformer::AqlDocumentTransformer(std::string const& queryString,
+                                               velocypack::Slice userBindVars,
+                                               TRI_vocbase_t& vocbase)
     : _queryContext(nullptr), _expressionContext(nullptr) {
   // 1. Create a lightweight QueryContext with our own no-op transaction.
   //    This follows the StandaloneCalculation / ComputedValues pattern
@@ -465,8 +461,7 @@ void AqlDocumentTransformer::compileExpressions() {
   }
 
   TRI_ASSERT(_returnExpressionNode != nullptr);
-  _returnExpression =
-      std::make_unique<Expression>(ast, _returnExpressionNode);
+  _returnExpression = std::make_unique<Expression>(ast, _returnExpressionNode);
   _returnExpression->prepareForExecution();
 }
 

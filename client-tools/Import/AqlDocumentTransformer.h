@@ -55,8 +55,9 @@ enum class TransformAction { kEmit, kEmitMultiple, kSkip, kError };
 
 struct TransformResult {
   TransformAction action;
-  velocypack::Builder result;  // populated when action == kEmit or kEmitMultiple
-  std::string error;           // populated when action == kError
+  velocypack::Builder
+      result;         // populated when action == kEmit or kEmitMultiple
+  std::string error;  // populated when action == kError
 };
 
 /// @brief Client-side AQL document transformer for arangoimport.

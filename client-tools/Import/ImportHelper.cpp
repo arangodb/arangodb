@@ -731,8 +731,8 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
             std::lock_guard guard{_stats._mutex};
             ++_stats._transformErrors;
           }
-          _stats.logError(
-              std::string("custom query transform error: ") + result.error);
+          _stats.logError(std::string("custom query transform error: ") +
+                          result.error);
           return;
         }
         case TransformAction::kEmit: {
@@ -1378,8 +1378,8 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
       // 2. Apply the AQL transform
       // 3. Serialize result as JSONL (object-per-line, no header row)
       try {
-        auto arrayBuilder = velocypack::Parser::fromJson(
-            _lineBuffer.c_str(), _lineBuffer.length());
+        auto arrayBuilder = velocypack::Parser::fromJson(_lineBuffer.c_str(),
+                                                         _lineBuffer.length());
         auto arraySlice = arrayBuilder->slice();
         if (arraySlice.isArray()) {
           // Build a VPack object: { colName0: val0, colName1: val1, ... }
@@ -1406,8 +1406,8 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
                 std::lock_guard guard{_stats._mutex};
                 ++_stats._transformErrors;
               }
-              _stats.logError(
-                  std::string("custom query transform error: ") + result.error);
+              _stats.logError(std::string("custom query transform error: ") +
+                              result.error);
               break;
             }
             case TransformAction::kEmit: {
@@ -1423,8 +1423,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
                   continue;
                 }
                 auto serialized = elem.toJson();
-                _outputBuffer.appendText(serialized.c_str(),
-                                         serialized.size());
+                _outputBuffer.appendText(serialized.c_str(), serialized.size());
                 _outputBuffer.appendChar('\n');
               }
               break;
@@ -1434,8 +1433,8 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
       } catch (std::exception const& ex) {
         std::lock_guard guard{_stats._mutex};
         ++_stats._transformErrors;
-        _stats.logError(
-            std::string("custom query transform parse error: ") + ex.what());
+        _stats.logError(std::string("custom query transform parse error: ") +
+                        ex.what());
       }
       _lineBuffer.reset();
     } else {

@@ -39,7 +39,7 @@ namespace arangodb::aql::functions {
 
 #define STUB_FUNC(name)                                       \
   AqlValue name(ExpressionContext*, AstNode const&,           \
-                VPackFunctionParametersView) {                 \
+                VPackFunctionParametersView) {                \
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, \
                                    #name " not available");   \
   }
@@ -148,9 +148,10 @@ bool Methods::isLocked(LogicalCollection*, AccessMode::Type) const {
 std::string Methods::extractIdString(velocypack::Slice) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
-futures::Future<Result> Methods::documentFastPath(
-    std::string const&, velocypack::Slice, OperationOptions const&,
-    velocypack::Builder&) {
+futures::Future<Result> Methods::documentFastPath(std::string const&,
+                                                  velocypack::Slice,
+                                                  OperationOptions const&,
+                                                  velocypack::Builder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 futures::Future<Result> Methods::documentFastPathLocal(
@@ -205,8 +206,8 @@ velocypack::Options const* Context::getVPackOptions() const noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId,
-                          std::shared_ptr<TransactionState>,
-                          OperationOrigin origin)
+                           std::shared_ptr<TransactionState>,
+                           OperationOrigin origin)
     : Context(vocbase, origin) {}
 SmartContext::~SmartContext() = default;
 TransactionId SmartContext::generateId() const { return TransactionId(1); }
@@ -268,10 +269,8 @@ void TransactionState::updateStatus(transaction::Status status) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionNameResolver::CollectionNameResolver(TRI_vocbase_t& vocbase)
-    : _vocbase(vocbase),
-      _serverRole(ServerState::instance()->getRole()) {}
-DataSourceId CollectionNameResolver::getCollectionId(
-    std::string_view) const {
+    : _vocbase(vocbase), _serverRole(ServerState::instance()->getRole()) {}
+DataSourceId CollectionNameResolver::getCollectionId(std::string_view) const {
   return DataSourceId::none();
 }
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
@@ -299,7 +298,8 @@ std::shared_ptr<ExecContext const> const ExecContext::Superuser =
 ExecContext::ExecContext(ConstructorToken, ExecContext::Type type,
                          std::string const& user, std::string const& database,
                          auth::Level systemLevel, auth::Level dbLevel,
-                         bool isAdminUser, std::vector<std::string> const& roles,
+                         bool isAdminUser,
+                         std::vector<std::string> const& roles,
                          std::string const& jwtToken)
     : _user(user),
       _database(database),
@@ -323,7 +323,7 @@ bool ExecContext::isAuthEnabled() { return false; }
 /// ServerState
 ////////////////////////////////////////////////////////////////////////////////
 
-}  // namespace arangodb (temporarily close for ServerState storage)
+}  // namespace arangodb
 
 static char serverStateStorage[sizeof(arangodb::ServerState)]
     __attribute__((aligned(alignof(arangodb::ServerState)))) = {};
@@ -342,7 +342,7 @@ ServerState* ServerState::instance() noexcept {
 }
 uint32_t ServerState::getShortId() const { return 0; }
 
-}  // namespace arangodb (temporarily close to define initializer)
+}  // namespace arangodb
 
 // Initialize ServerState role to ROLE_SINGLE so isCoordinator() etc.
 // don't assert on ROLE_UNDEFINED.
@@ -368,7 +368,7 @@ Result CreateDatabaseInfo::load(std::string_view, uint64_t id) {
   return {};
 }
 
-}  // namespace arangodb (close it to define TRI_vocbase_t members)
+}  // namespace arangodb
 
 TRI_voc_tick_t TRI_NewServerSpecificTick() {
   static std::atomic<TRI_voc_tick_t> tick{1};
@@ -412,8 +412,8 @@ TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
 
 TRI_vocbase_t::~TRI_vocbase_t() = default;
 
-std::shared_ptr<arangodb::LogicalCollection>
-TRI_vocbase_t::lookupCollection(std::string_view) const noexcept {
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
+    std::string_view) const noexcept {
   return nullptr;
 }
 
@@ -429,11 +429,14 @@ void AqlFeature::unlease() noexcept {}
 void AqlFeature::start() {}
 void AqlFeature::stop() {}
 
-// DatabaseFeature: destructor intentionally omitted — unique_ptr<IOHeartbeatThread>
-// cascade.  The linker workaround handles the unresolved destructor entries in
-// the vtable.  These features are never constructed in client tools.
-void DatabaseFeature::collectOptions(std::shared_ptr<options::ProgramOptions>) {}
-void DatabaseFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
+// DatabaseFeature: destructor intentionally omitted —
+// unique_ptr<IOHeartbeatThread> cascade.  The linker workaround handles the
+// unresolved destructor entries in the vtable.  These features are never
+// constructed in client tools.
+void DatabaseFeature::collectOptions(std::shared_ptr<options::ProgramOptions>) {
+}
+void DatabaseFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions>) {}
 void DatabaseFeature::start() {}
 void DatabaseFeature::stop() {}
 void DatabaseFeature::prepare() {}
@@ -448,14 +451,15 @@ VectorIndexFeature::VectorIndexFeature(
 bool VectorIndexFeature::isVectorIndexEnabled() const { return false; }
 void VectorIndexFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions>) {}
-// For ClusterFeature, DatabaseFeature, QueryRegistryFeature, ReplicationApplier:
-// their destructors trigger unique_ptr chains that pull in many types.
-// Instead, use the "weak vtable" trick: define a non-virtual member function
-// out-of-line. This is enough to anchor the typeinfo without needing the dtor.
-// We use __attribute__((used)) to force emission.
-// ClusterFeature: destructor intentionally omitted — unique_ptr cascade.
+// For ClusterFeature, DatabaseFeature, QueryRegistryFeature,
+// ReplicationApplier: their destructors trigger unique_ptr chains that pull in
+// many types. Instead, use the "weak vtable" trick: define a non-virtual member
+// function out-of-line. This is enough to anchor the typeinfo without needing
+// the dtor. We use __attribute__((used)) to force emission. ClusterFeature:
+// destructor intentionally omitted — unique_ptr cascade.
 void ClusterFeature::collectOptions(std::shared_ptr<options::ProgramOptions>) {}
-void ClusterFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
+void ClusterFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+}
 void ClusterFeature::prepare() {}
 void ClusterFeature::start() {}
 void ClusterFeature::stop() {}
@@ -518,16 +522,17 @@ transaction::Methods& QueryExpressionContext::trx() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 bool QueryExpressionContext::killed() const { return false; }
-void QueryExpressionContext::setVariable(Variable const*,
-                                         velocypack::Slice) {}
+void QueryExpressionContext::setVariable(Variable const*, velocypack::Slice) {}
 void QueryExpressionContext::clearVariable(Variable const*) noexcept {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// ExecutionPlan stubs
 ////////////////////////////////////////////////////////////////////////////////
 
-ModificationOptions ExecutionPlan::parseModificationOptions(
-    QueryContext&, std::string_view, AstNode const*, bool) {
+ModificationOptions ExecutionPlan::parseModificationOptions(QueryContext&,
+                                                            std::string_view,
+                                                            AstNode const*,
+                                                            bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 bool ExecutionPlan::hasExclusiveAccessOption(AstNode const*) { return false; }
@@ -585,8 +590,7 @@ ValidatorBase::ValidatorBase() = default;
 /// methods::Collections
 ////////////////////////////////////////////////////////////////////////////////
 
-Result methods::Collections::lookup(TRI_vocbase_t const&,
-                                    std::string const&,
+Result methods::Collections::lookup(TRI_vocbase_t const&, std::string const&,
                                     std::shared_ptr<LogicalCollection>&) {
   return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
@@ -626,7 +630,7 @@ Result parsePolygon(velocypack::Slice, S2Polygon&) {
 Result parseRegion(velocypack::Slice, ShapeContainer&, bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
-template <>
+template<>
 Result parseCoordinates<true>(velocypack::Slice, ShapeContainer&, bool,
                               coding::Options, Encoder*) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -730,12 +734,12 @@ void DatabaseReplicationApplier::forget() {}
 void DatabaseReplicationApplier::reconfigure(
     ReplicationApplierConfiguration const&) {}
 void DatabaseReplicationApplier::storeConfiguration(bool) {}
-std::shared_ptr<InitialSyncer>
-DatabaseReplicationApplier::buildInitialSyncer() const {
+std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer()
+    const {
   return nullptr;
 }
-std::shared_ptr<TailingSyncer>
-DatabaseReplicationApplier::buildTailingSyncer(uint64_t, bool) const {
+std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
+    uint64_t, bool) const {
   return nullptr;
 }
 std::string DatabaseReplicationApplier::getStateFilename() const { return {}; }
@@ -747,9 +751,7 @@ VocbaseMetrics::~VocbaseMetrics() {}
 /// ShardID conversion operator
 ////////////////////////////////////////////////////////////////////////////////
 
-ShardID::operator std::string() const {
-  return {};
-}
+ShardID::operator std::string() const { return {}; }
 
 // ValidatorBase virtual destructor (vtable anchor)
 // The header says `= default`, so we need a different virtual method.
@@ -863,7 +865,9 @@ void Collections::toVelocyPack(
     const {
   builder.openArray();
   for (auto const& c : _collections) {
-    if (!filter(c.first, *c.second)) { continue; }
+    if (!filter(c.first, *c.second)) {
+      continue;
+    }
     builder.openObject();
     builder.add("name", VPackValue(c.first));
     builder.add("type",
@@ -876,7 +880,9 @@ void Collections::toVelocyPack(
 void Collections::visit(
     std::function<bool(std::string const&, Collection&)> const& visitor) const {
   for (auto const& it : _collections) {
-    if (!visitor(it.first, *it.second.get())) { return; }
+    if (!visitor(it.first, *it.second.get())) {
+      return;
+    }
   }
 }
 
@@ -922,9 +928,7 @@ transaction::OperationOrigin QueryContext::operationOrigin() const noexcept {
   return _operationOrigin;
 }
 
-Collections& QueryContext::collections() {
-  return _collections;
-}
+Collections& QueryContext::collections() { return _collections; }
 
 Collections const& QueryContext::collections() const { return _collections; }
 
@@ -991,17 +995,20 @@ futures::Future<Result> IgnoreNoAccessAqlTransaction::documentFastPathLocal(
     IndexIterator::DocumentCallback const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
-auto IgnoreNoAccessAqlTransaction::documentInternal(
-    std::string const&, velocypack::Slice, OperationOptions const&,
-    MethodsApi) -> futures::Future<OperationResult> {
+auto IgnoreNoAccessAqlTransaction::documentInternal(std::string const&,
+                                                    velocypack::Slice,
+                                                    OperationOptions const&,
+                                                    MethodsApi)
+    -> futures::Future<OperationResult> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 futures::Future<OperationResult> IgnoreNoAccessAqlTransaction::all(
     std::string const&, uint64_t, uint64_t, OperationOptions const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
-auto IgnoreNoAccessAqlTransaction::countInternal(
-    std::string const&, CountType, OperationOptions const&, MethodsApi)
+auto IgnoreNoAccessAqlTransaction::countInternal(std::string const&, CountType,
+                                                 OperationOptions const&,
+                                                 MethodsApi)
     -> futures::Future<OperationResult> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -1019,9 +1026,7 @@ bool IgnoreNoAccessAqlTransaction::isLocked(LogicalCollection*,
 #include <date/tz.h>
 
 namespace date {
-tzdb const& get_tzdb() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
+tzdb const& get_tzdb() { THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED); }
 tzdb_list& get_tzdb_list() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

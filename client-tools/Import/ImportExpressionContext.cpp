@@ -38,7 +38,7 @@ ImportExpressionContext::ImportExpressionContext(transaction::Methods& trx,
     : _trx(trx), _query(query) {}
 
 void ImportExpressionContext::registerWarning(ErrorCode errorCode,
-                                               std::string_view msg) {
+                                              std::string_view msg) {
   // Log warnings but don't abort — consistent with the design doc's
   // requirement that AQL warnings are logged but don't count as errors.
   LOG_TOPIC("d4c1a", WARN, Logger::FIXME)
@@ -46,7 +46,7 @@ void ImportExpressionContext::registerWarning(ErrorCode errorCode,
 }
 
 void ImportExpressionContext::registerError(ErrorCode errorCode,
-                                             std::string_view msg) {
+                                            std::string_view msg) {
   LOG_TOPIC("e5b2c", WARN, Logger::FIXME)
       << "custom query transformation error: " << msg;
   THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, msg);
@@ -66,7 +66,7 @@ icu_64_64::RegexMatcher* ImportExpressionContext::buildSplitMatcher(
     aql::AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
-                                                       isEmptyExpression);
+                                                      isEmptyExpression);
 }
 
 ValidatorBase* ImportExpressionContext::buildValidator(
@@ -96,7 +96,7 @@ aql::AqlValue ImportExpressionContext::getVariableValue(
 }
 
 void ImportExpressionContext::setVariable(aql::Variable const* variable,
-                                           velocypack::Slice value) {
+                                          velocypack::Slice value) {
   TRI_ASSERT(variable != nullptr);
   _variables[variable] = value;
 }

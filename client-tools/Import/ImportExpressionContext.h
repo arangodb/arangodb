@@ -44,7 +44,7 @@ namespace import {
 class ImportExpressionContext final : public aql::ExpressionContext {
  public:
   explicit ImportExpressionContext(transaction::Methods& trx,
-                                  aql::QueryContext& query);
+                                   aql::QueryContext& query);
 
   void registerWarning(ErrorCode errorCode, std::string_view msg) override;
   void registerError(ErrorCode errorCode, std::string_view msg) override;
@@ -53,9 +53,9 @@ class ImportExpressionContext final : public aql::ExpressionContext {
                                              bool caseInsensitive) override;
   icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                             bool caseInsensitive) override;
-  icu_64_64::RegexMatcher* buildSplitMatcher(
-      aql::AqlValue splitExpression, velocypack::Options const* opts,
-      bool& isEmptyExpression) override;
+  icu_64_64::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
+                                             velocypack::Options const* opts,
+                                             bool& isEmptyExpression) override;
   ValidatorBase* buildValidator(velocypack::Slice params) override;
 
   TRI_vocbase_t& vocbase() const override;

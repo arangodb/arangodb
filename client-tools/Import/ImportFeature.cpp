@@ -692,19 +692,16 @@ void ImportFeature::start() {
       if (r.fail()) {
         THROW_ARANGO_EXCEPTION(r);
       }
-      _calculationVocbase =
-          std::make_unique<TRI_vocbase_t>(std::move(info));
+      _calculationVocbase = std::make_unique<TRI_vocbase_t>(std::move(info));
 
       velocypack::Slice bindVarsSlice = velocypack::Slice::noneSlice();
       std::shared_ptr<velocypack::Builder> bindVarsBuilder;
       if (!_customQueryBindVars.empty()) {
-        bindVarsBuilder =
-            velocypack::Parser::fromJson(_customQueryBindVars);
+        bindVarsBuilder = velocypack::Parser::fromJson(_customQueryBindVars);
         bindVarsSlice = bindVarsBuilder->slice();
       }
-      auto transformer =
-          std::make_unique<import::AqlDocumentTransformer>(
-              _customQuery, bindVarsSlice, *_calculationVocbase);
+      auto transformer = std::make_unique<import::AqlDocumentTransformer>(
+          _customQuery, bindVarsSlice, *_calculationVocbase);
       ih.setTransformer(std::move(transformer));
     } catch (std::exception const& ex) {
       LOG_TOPIC("e1f5a", FATAL, arangodb::Logger::FIXME)
