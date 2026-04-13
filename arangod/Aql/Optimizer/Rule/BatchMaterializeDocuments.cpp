@@ -21,6 +21,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "BatchMaterializeDocuments.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -35,9 +37,8 @@
 #include "Aql/OptimizerRules.h"
 #include "Logger/LogMacros.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using namespace arangodb::containers;
+namespace arangodb::aql {
+  
 using EN = arangodb::aql::ExecutionNode;
 
 #define LOG_RULE LOG_DEVEL_IF(false)
@@ -63,7 +64,7 @@ bool canUseIndex(std::shared_ptr<Index> const& indexHandle) {
 
 }  // namespace
 
-void arangodb::aql::batchMaterializeDocumentsRule(
+void batchMaterializeDocumentsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   bool modified = false;
@@ -151,3 +152,5 @@ void arangodb::aql::batchMaterializeDocumentsRule(
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+
+}  // namespace arangodb::aql
