@@ -391,7 +391,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   }
   auto input = std::move(res.get());
   if (input.empty()) {
-    // sparse or index or indes in unusable/training state
+    // sparse or index or indexes in unusable/training state
     return {};
   }
 
@@ -441,7 +441,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   }
   auto input = std::move(res.get());
   if (input.empty()) {
-    // sparse or index or indes in unusable/training state
+    // sparse or index or indexes in unusable/training state
     return {};
   }
 
