@@ -22,6 +22,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ReplaceEqualAttributeAccess.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstHelper.h"
 #include "Aql/TypedAstNodes.h"
@@ -49,10 +51,9 @@
 
 #include <boost/container_hash/hash.hpp>
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using namespace arangodb::containers;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+
+using EN = ExecutionNode;
 
 #define LOG_RULE LOG_DEVEL_IF(false)
 
@@ -348,9 +349,11 @@ bool processQuery(ExecutionPlan& plan, ExecutionNode* root,
 
 }  // namespace
 
-void arangodb::aql::replaceEqualAttributeAccesses(
+void replaceEqualAttributeAccesses(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   bool modified = processQuery(*plan, plan->root(), {}, 0);
   opt->addPlan(std::move(plan), rule, modified);
 }
+
+}  // namespace arangodb::aql

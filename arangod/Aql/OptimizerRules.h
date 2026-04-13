@@ -58,9 +58,6 @@ void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
 
-void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                   OptimizerRule const&);
-
 void useVectorIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
 
