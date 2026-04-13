@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* Upgraded OpenSSL to 3.5.6.
+
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
 
 * Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
@@ -403,8 +406,6 @@
 
 * OASIS-26699: Fixed a bug in arangosearch that returned incorrect
   results when condition optimization is turned off.
-
-* Upgraded OpenSSL to 3.5.5.
 
 * FE-954: make view validation on UI less strict.
 
