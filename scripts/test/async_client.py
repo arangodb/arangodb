@@ -218,7 +218,7 @@ def kill_children(identifier, params, children):
         except psutil.AccessDenied:
             pass
         try:
-            one_child.send_signal(signal.SIGBUS)
+            one_child.send_signal(signal.SIGQUIT)
         except psutil.NoSuchProcess:  # pragma: no cover
             pass
     print_log(

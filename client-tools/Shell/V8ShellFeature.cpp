@@ -201,7 +201,7 @@ void V8ShellFeature::start() {
 
   ::global_isolate = _isolate = platform.createIsolate();
   printf("registering\n");
-  signal(SIGBUS, signalHandler);
+  signal(SIGQUIT, signalHandler);
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
