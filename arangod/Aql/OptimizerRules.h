@@ -24,57 +24,24 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionNode/GatherNode.h"
-#include "Aql/ExecutionNode/RemoteNode.h"
-#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Containers/SmallUnorderedMap.h"
-#include "VocBase/vocbase.h"
 
 namespace arangodb::aql {
 class Optimizer;
-class ExecutionNode;
 class SubqueryNode;
 
 class QueryContext;
 struct Collection;
-/// Helper
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
-                                 char const* context);
-
-void insertDistributeInputCalculation(ExecutionPlan& plan);
-
-void activateCallstackSplit(ExecutionPlan& plan);
-
-/// @brief adds a SORT operation for IN right-hand side operands
-void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                      OptimizerRule const&);
-
-/// @brief remove unused INTO variable from COLLECT, or unused aggregates
-void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                OptimizerRule const&);
 
 /// @brief propagate constant attributes in FILTERs
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
 
-/// @brief determine the "right" type of CollectNode and
-/// add a sort node for each COLLECT (may be removed later)
-/// this rule cannot be turned off (otherwise, the query result might be wrong!)
-void specializeCollectRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
-
 /// @brief split and-combined filters and break them into smaller parts
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
-
-/// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
-void interchangeAdjacentEnumerationsRule(Optimizer*,
-                                         std::unique_ptr<ExecutionPlan>,
-                                         OptimizerRule const&);
 
 /// @brief replace single document operations in cluster by special handling
 void substituteClusterSingleDocumentOperationsRule(
@@ -102,11 +69,6 @@ void clusterPushSubqueryToDBServer(Optimizer* opt,
                                    std::unique_ptr<ExecutionPlan> plan,
                                    OptimizerRule const& rule);
 #endif
-
-/// @brief scatter operations in cluster - send all incoming rows to all remote
-/// clients
-void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                          OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
 void distributeOffsetInfoToClusterRule(aql::Optimizer* opt,
@@ -137,25 +99,11 @@ void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                     OptimizerRule const&);
 #endif
 
-/// @brief remove $OLD and $NEW variables from data-modification statements
-/// if not required
-void removeDataModificationOutVariablesRule(Optimizer*,
-                                            std::unique_ptr<ExecutionPlan>,
-                                            OptimizerRule const&);
-
 // replace inaccessible EnumerateCollectionNode with NoResult nodes
 #ifdef USE_ENTERPRISE
 void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const& rule);
 #endif
-
-/// @brief optimizes away unused K_PATHS things
-void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                       OptimizerRule const&);
-
-/// @brief replace FILTER and SORT containing DISTANCE function
-void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
-                  OptimizerRule const&);
 
 /// @brief replace legacy JS functions in the plan.
 void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -170,53 +118,8 @@ void replaceEntriesWithObjectIteration(Optimizer*,
                                        std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
 
-/// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized
-/// count operation
-void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                       OptimizerRule const&);
-
-/// @brief allows execution nodes to asynchronously prefetch the next batch from
-/// their upstream node.
-void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                       OptimizerRule const&);
-
-void createScatterGatherSnippet(
-    ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
-    bool isRootNode, std::vector<ExecutionNode*> const& nodeDependencies,
-    std::vector<ExecutionNode*> const& nodeParents,
-    SortElementVector const& elements, size_t numberOfShards,
-    std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
-    Collection const* collection);
-
-//// @brief enclose a node in SCATTER/GATHER
-void insertScatterGatherSnippet(
-    ExecutionPlan& plan, ExecutionNode* at,
-    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
-        subqueries);
-
-//// @brief find all subqueries in a plan and store a map from subqueries to
-/// nodes
-void findSubqueriesInPlan(
-    ExecutionPlan& plan,
-    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
-
-//// @brief create a DistributeNode for the given ExecutionNode
-DistributeNode* createDistributeNodeFor(ExecutionPlan& plan,
-                                        ExecutionNode* node);
-
-//// @brief create a gather node matching the given DistributeNode
-GatherNode* createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node);
-
-//// @brief enclose a node in DISTRIBUTE/GATHER
-DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
-                                              ExecutionNode* at,
-                                              SubqueryNode* snode);
-
 void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
-
-void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
 
 void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);

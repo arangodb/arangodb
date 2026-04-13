@@ -24,28 +24,15 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode/DistributeNode.h"
-#include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionPlan.h"
 
 namespace arangodb::aql {
 class Optimizer;
-class SubqueryNode;
 
-//// @brief create a DistributeNode for the given ExecutionNode
-DistributeNode* createDistributeNodeFor(ExecutionPlan& plan,
-                                        ExecutionNode* node);
-
-//// @brief create a gather node matching the given DistributeNode
-GatherNode* createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node);
-
-//// @brief enclose a node in DISTRIBUTE/GATHER
-DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
-                                              ExecutionNode* at,
-                                              SubqueryNode* snode);
-
-/// @brief distribute operations in cluster
-void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                             OptimizerRule const&);
+/// @brief determine the "right" type of CollectNode and
+/// add a sort node for each COLLECT (may be removed later)
+/// this rule cannot be turned off (otherwise, the query result might be wrong!)
+void specializeCollectRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                           OptimizerRule const&);
 
 }  // namespace arangodb::aql
