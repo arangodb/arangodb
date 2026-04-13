@@ -271,7 +271,7 @@ function waitForState(collection, state, timeoutSec, indexName) {
     const internal = require("internal");
     const iterations = Math.floor(timeoutSec / sleepIntervalSec);
     for (let i = 0; i < iterations; i++) {
-        const indexes = collection.indexes(true, true);
+        const indexes = collection.indexes(false, true);
         if (vectorIndexesMatchState(indexes, state, indexName)) {
             return true;
         }
