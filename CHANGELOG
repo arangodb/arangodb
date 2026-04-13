@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Upgraded included rclone to v1.73.4 with go1.25.9 and non-vulnerable
+  dependencies.
+
 * Updated ArangoDB Starter to v0.20.0-preview-9.
 
 * Upgraded OpenSSL to 3.5.6.
@@ -46,9 +49,6 @@
 * COR-283: Removed remainded active failover references.
 
 * Remove 30xx FOXX error codes
-
-* Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
-  dependencies.
 
 * Changed the remaining two uses of the log topics BENCH and SECURITY and
   removed these log topics.
