@@ -23,6 +23,8 @@
 
 #include "V8PlatformFeature.h"
 
+#include <filesystem>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -344,8 +346,13 @@ std::string V8PlatformFeature::determineICUDataPath() {
 
     if (TRI_IsRegularFile(path.c_str())) {
       std::string icu_path = path.substr(0, path.length() - fn.length());
-      FileUtils::makePathAbsolute(icu_path);
-      FileUtils::normalizePath(icu_path);
+      std::string const cwd = std::filesystem::current_path();
+      icu_path =
+          icu_path.empty()
+              ? cwd
+              : std::filesystem::absolute(std::filesystem::path(cwd) / icu_path)
+                    .string();
+      icu_path = std::filesystem::path(icu_path).make_preferred().string();
       setenv("ICU_DATA", icu_path.c_str(), 1);
     }
   }

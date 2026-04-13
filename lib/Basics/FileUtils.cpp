@@ -31,7 +31,6 @@
 #include <functional>
 #include <memory>
 #include <utility>
-#include <filesystem>
 
 #include "FileUtils.h"
 
@@ -100,51 +99,36 @@ StatResultType statResultType(std::string const& path) {
 
 void processFiles(std::string const& directory,
                   std::function<void(std::string const&)> const& cb) {
-  DIR* d = opendir(directory.c_str());
-
-  if (d == nullptr) {
+  std::filesystem::path const dir{directory};
+  std::error_code ec;
+  std::filesystem::directory_iterator iter(dir, ec);
+  if (ec) {
     auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
     auto message = arangodb::basics::StringUtils::concatT(
         "failed to enumerate files in directory '", directory,
-        "': ", TRI_last_error());
+        "': ", ec.message());
     THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
   }
-
-  auto guard = arangodb::scopeGuard([&]() noexcept { closedir(d); });
-
-  std::string rcs;
-  dirent* de = readdir(d);
-
-  while (de != nullptr) {
-    // stringify filename (convert to std::string). we take this performance
-    // hit because we will need to strlen anyway and need to pass it to a
-    // function that will likely use its stringified value anyway
-    rcs.assign(de->d_name);
-
-    if (rcs != "." && rcs != "..") {
-      // run callback function
-      cb(rcs);
+  std::filesystem::directory_iterator const end;
+  while (iter != end) {
+    std::string const name = iter->path().filename().string();
+    if (name != "." && name != "..") {
+      cb(name);
     }
-
-    // advance to next entry
-    de = readdir(d);
+    iter.increment(ec);
+    if (ec) {
+      auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      auto message = arangodb::basics::StringUtils::concatT(
+          "failed to enumerate files in directory '", directory,
+          "': ", ec.message());
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
+    }
   }
 }
 
 }  // namespace
 
 namespace arangodb::basics::FileUtils {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalizes path
-///
-/// path will be modified in-place
-////////////////////////////////////////////////////////////////////////////////
-
-void normalizePath(std::string& name) {
-  std::replace(name.begin(), name.end(), '/', TRI_DIR_SEPARATOR_CHAR);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a filename
@@ -171,9 +155,8 @@ std::string buildFilename(char const* path, char const* name) {
   } else {
     result.append(name);
   }
-  normalizePath(result);  // in place
 
-  return result;
+  return std::filesystem::path(result).make_preferred().string();
 }
 
 std::string buildFilename(std::string const& path, std::string const& name) {
@@ -194,9 +177,8 @@ std::string buildFilename(std::string const& path, std::string const& name) {
   } else {
     result.append(name);
   }
-  normalizePath(result);  // in place
 
-  return result;
+  return std::filesystem::path(result).make_preferred().string();
 }
 
 static void throwFileReadError(std::string const& filename) {
@@ -513,10 +495,6 @@ bool isDirectory(std::string const& path) {
   return ::statResultType(path) == ::StatResultType::Directory;
 }
 
-bool isRegularFile(std::string const& path) {
-  return ::statResultType(path) == ::StatResultType::File;
-}
-
 bool exists(std::string const& path) {
   return ::statResultType(path) != ::StatResultType::Error;
 }
@@ -546,16 +524,6 @@ std::string configDirectory(char const* binaryPath) {
   }
 
   return dir;
-}
-
-void makePathAbsolute(std::string& path) {
-  std::string const cwd = std::filesystem::current_path();
-  if (path.empty()) {
-    path = cwd;
-  } else {
-    path =
-        std::filesystem::absolute(std::filesystem::path(cwd) / path).string();
-  }
 }
 
 namespace {

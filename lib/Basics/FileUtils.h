@@ -45,10 +45,6 @@
 namespace arangodb::basics::FileUtils {
 
 // normalizes path, path will be modified in-place
-void normalizePath(std::string& name);
-
-// makes a path absolute, path will be modified in-place
-void makePathAbsolute(std::string& path);
 
 // creates a filename
 std::string buildFilename(char const* path, char const* name);
@@ -114,9 +110,6 @@ std::vector<std::string> listFiles(std::string const& directory);
 
 // checks if path is a directory
 bool isDirectory(std::string const& path);
-
-// checks if path is a regular file
-bool isRegularFile(std::string const& path);
 
 // checks if path exists
 bool exists(std::string const& path);

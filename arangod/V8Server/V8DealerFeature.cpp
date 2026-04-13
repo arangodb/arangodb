@@ -704,8 +704,8 @@ void V8DealerFeature::copyInstallationFiles() {
         return true;
       }
 
-      std::string normalized = filename;
-      FileUtils::normalizePath(normalized);
+      std::string const normalized =
+          std::filesystem::path(filename).make_preferred().string();
       if (normalized.ends_with(uiNodeModulesPath)) {
         // filter it out!
         return true;
