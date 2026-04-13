@@ -380,6 +380,12 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
 Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
                      std::unique_ptr<rocksdb::Iterator> documentIterator,
                      std::stop_token stopToken) {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  while (TRI_ShouldFailDebugging("RocksDBVectorIndex::pauseDuringIngestion")) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+#endif
+
   auto const& definition = index.getDefinition();
   auto const dim = definition.dimension;
   auto const& fields = index.fields();
@@ -698,6 +704,15 @@ Result VectorIndexBuilder::build(
     return Result{TRI_ERROR_INTERNAL, "vector index is not in unusable state"};
   }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  while (TRI_ShouldFailDebugging("RocksDBVectorIndex::pauseBeforeTraining")) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    if (shouldAbort()) {
+      break;
+    }
+  }
+#endif
+
   // TRAINING PHASE
   auto const numDocsHint = _rcoll->meta().numberDocuments();
   VectorIndexTrainer trainer(_index, _rootDB, _bounds);
@@ -756,6 +771,15 @@ Result VectorIndexBuilder::build(
     // On any exit, ensure the real index is back in _indexes.
     _rcoll->swapIndex(buildIdx, indexPtr);
   });
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  while (TRI_ShouldFailDebugging("RocksDBVectorIndex::pauseBeforeIngestion")) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    if (shouldAbort()) {
+      break;
+    }
+  }
+#endif
 
   RocksDBBuilderIndex::Locker locker(_rcoll);
   if (!locker.lock().waitAndGet()) {
