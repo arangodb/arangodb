@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-9.
+
 * Upgraded OpenSSL to 3.5.6.
 
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
@@ -17,8 +19,6 @@
 * COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
   `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
   `/_admin/wal/transactions`.
-
-* Updated ArangoDB Starter to v0.20.0-preview-6.
 
 * COR-377: Removed deprecated `status` and `statusString` attributes from collection
   HTTP responses, and the `status()` collection function from the JavaScript API.
