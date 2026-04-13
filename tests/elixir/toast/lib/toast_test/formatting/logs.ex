@@ -167,8 +167,19 @@ defmodule ToastTest.Formatting.Logs do
   def format_event(%{event: :server_identified, server_id: sid, arango_id: aid}),
     do: ">>> server_identified #{sid} => #{aid}"
 
+  def format_event(%{event: :custom, kind: kind, payload: payload}) when payload == %{},
+    do: ">>> custom:#{kind}"
+
+  def format_event(%{event: :custom, kind: kind, payload: payload}),
+    do: ">>> custom:#{kind} #{format_payload(payload)}"
+
   def format_event(%{event: name}),
     do: ">>> #{name}"
+
+  defp format_payload(payload) do
+    payload
+    |> Enum.map_join(" ", fn {k, v} -> "#{k}: #{inspect(v)}" end)
+  end
 
   @doc "Format a single log entry as a human-readable line."
   def format_entry(entry, color_enabled) do

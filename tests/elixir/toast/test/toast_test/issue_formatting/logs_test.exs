@@ -694,6 +694,25 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
       event = %{event: :something_new, timestamp: 0}
       assert LogFormatting.format_event(event) == ">>> something_new"
     end
+
+    test "custom event with payload" do
+      event = %{
+        event: :custom,
+        kind: :cache_invalidated,
+        payload: %{key: "foo", reason: :ttl},
+        timestamp: 0
+      }
+
+      formatted = LogFormatting.format_event(event)
+      assert String.starts_with?(formatted, ">>> custom:cache_invalidated ")
+      assert formatted =~ "key: \"foo\""
+      assert formatted =~ "reason: :ttl"
+    end
+
+    test "custom event with empty payload" do
+      event = %{event: :custom, kind: :checkpoint, payload: %{}, timestamp: 0}
+      assert LogFormatting.format_event(event) == ">>> custom:checkpoint"
+    end
   end
 
   # --- format_merged/2 with events ---
