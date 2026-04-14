@@ -50,6 +50,7 @@ defmodule Toast.Deployment.Health do
     req_opts =
       [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false]
       |> put_auth_header(opts)
+      |> put_ssl_opts(endpoint)
 
     case Req.get(url, req_opts) do
       {:ok, %{status: status}} when status in 200..299 ->
@@ -102,6 +103,7 @@ defmodule Toast.Deployment.Health do
     req_opts =
       [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false]
       |> put_auth_header(opts)
+      |> put_ssl_opts(endpoint)
 
     case Req.get(url, req_opts) do
       {:ok, %{status: status, body: body}} when status in 200..299 and is_map(body) ->
@@ -123,6 +125,13 @@ defmodule Toast.Deployment.Health do
       {:jwt, token} -> Keyword.put(req_opts, :headers, [{"authorization", "Bearer #{token}"}])
     end
   end
+
+  # Self-signed test certs require disabling certificate verification.
+  defp put_ssl_opts(req_opts, "https://" <> _) do
+    Keyword.put(req_opts, :connect_options, transport_opts: [verify: :verify_none])
+  end
+
+  defp put_ssl_opts(req_opts, _endpoint), do: req_opts
 
   defp analyze_agency_status(results) do
     configs = for {:ok, body} <- results, do: body

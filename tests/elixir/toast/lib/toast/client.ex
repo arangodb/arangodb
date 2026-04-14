@@ -41,7 +41,10 @@ defmodule Toast.Client do
     {content_type, opts} = Keyword.pop(opts, :content_type, :vpack)
     {protocol, req_opts} = Keyword.pop(opts, :protocol, :http1)
 
-    req_opts = apply_protocol(protocol, req_opts)
+    req_opts =
+      req_opts
+      |> apply_protocol(protocol)
+      |> apply_ssl(base_url)
 
     req =
       Req.new([base_url: base_url, retry: false] ++ req_opts)
@@ -222,8 +225,21 @@ defmodule Toast.Client do
   def protocol_connect_options(:http1), do: []
   def protocol_connect_options(:http2), do: [connect_options: [protocols: [:http2]]]
 
-  defp apply_protocol(protocol, req_opts) do
-    Keyword.merge(req_opts, protocol_connect_options(protocol), fn
+  defp apply_protocol(req_opts, protocol) do
+    merge_connect_options(req_opts, protocol_connect_options(protocol))
+  end
+
+  # Self-signed test certs require disabling certificate verification.
+  defp apply_ssl(req_opts, "https://" <> _) do
+    merge_connect_options(req_opts, connect_options: [transport_opts: [verify: :verify_none]])
+  end
+
+  defp apply_ssl(req_opts, _base_url), do: req_opts
+
+  defp merge_connect_options(req_opts, []), do: req_opts
+
+  defp merge_connect_options(req_opts, new_opts) do
+    Keyword.merge(req_opts, new_opts, fn
       :connect_options, existing, new -> Keyword.merge(existing, new)
       _key, _existing, new -> new
     end)

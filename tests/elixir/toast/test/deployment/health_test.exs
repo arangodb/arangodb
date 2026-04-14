@@ -111,6 +111,15 @@ defmodule Toast.Deployment.HealthTest do
     end
   end
 
+  describe "check_once/2 with https endpoint" do
+    test "returns connection error without crashing" do
+      # Verifies that SSL connect options are applied for https endpoints —
+      # without them, Req/Mint would raise on the TLS handshake attempt.
+      assert {:error, _reason} =
+               Health.check_once("https://127.0.0.1:1", http_timeout: 200)
+    end
+  end
+
   describe "wait_until_ready/2" do
     test "returns :ok when server is immediately ready" do
       {endpoint, _} =

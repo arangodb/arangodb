@@ -133,6 +133,52 @@ defmodule Toast.Deployment.FactoryTest do
       assert has_flag_value?(spec.args, "--server.jwt-secret-keyfile", expected_keyfile)
     end
 
+    test "ssl: true injects ssl.keyfile and uses ssl:// endpoint", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir, ssl: true)
+      deployment_dir = Path.join(base_dir, "srv-ssl")
+
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-ssl", deployment_dir)
+
+      assert has_flag_value?(spec.args, "--ssl.keyfile", "etc/testing/server.pem")
+      assert has_flag_value?(spec.args, "--server.endpoint", "ssl://0.0.0.0:#{spec.port}")
+    end
+
+    test "ssl: false omits ssl args and uses tcp:// endpoint", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir)
+      deployment_dir = Path.join(base_dir, "srv-nossl")
+
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-nossl", deployment_dir)
+
+      refute "--ssl.keyfile" in spec.args
+      assert has_flag_value?(spec.args, "--server.endpoint", "tcp://0.0.0.0:#{spec.port}")
+    end
+
+    test "ssl: true sets ssl flag on launch spec", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir, ssl: true)
+      deployment_dir = Path.join(base_dir, "srv-ssl-flag")
+
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-ssl-flag", deployment_dir)
+
+      assert spec.ssl == true
+    end
+
+    test "ssl: false sets ssl flag to false on launch spec", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir)
+      deployment_dir = Path.join(base_dir, "srv-nossl-flag")
+
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-nossl-flag", deployment_dir)
+
+      assert spec.ssl == false
+    end
+
     test "authentication: false omits auth-related args", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
       base_dir = Path.join(tmp_dir, "work")
@@ -341,6 +387,53 @@ defmodule Toast.Deployment.FactoryTest do
 
       for spec <- specs do
         assert spec.role in [:agent, :dbserver, :coordinator]
+      end
+    end
+
+    test "ssl: true uses ssl:// for all cluster addresses", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      base_dir = Path.join(tmp_dir, "work")
+
+      config =
+        make_config(build_dir,
+          ssl: true,
+          cluster: [agents: 1, dbservers: 1, coordinators: 1]
+        )
+
+      deployment_dir = Path.join(base_dir, "test-cluster-ssl")
+      assert {:ok, specs} = Factory.build_cluster(config, "cssl", deployment_dir)
+
+      for spec <- specs do
+        assert spec.ssl == true
+        assert has_flag_value?(spec.args, "--ssl.keyfile", "etc/testing/server.pem")
+        assert has_flag_value?(spec.args, "--server.endpoint", "ssl://0.0.0.0:#{spec.port}")
+
+        # Internal addresses (my-address, agency endpoints) should also use ssl://
+        my_address_args =
+          spec.args
+          |> Enum.chunk_every(2, 1, :discard)
+          |> Enum.filter(fn [flag, _] ->
+            flag in ["--agency.my-address", "--cluster.my-address"]
+          end)
+          |> Enum.map(fn [_, val] -> val end)
+
+        for addr <- my_address_args do
+          assert String.starts_with?(addr, "ssl://"),
+                 "expected ssl:// in #{addr} for #{spec.role}"
+        end
+
+        agency_endpoints =
+          spec.args
+          |> Enum.chunk_every(2, 1, :discard)
+          |> Enum.filter(fn [flag, _] ->
+            flag in ["--agency.endpoint", "--cluster.agency-endpoint"]
+          end)
+          |> Enum.map(fn [_, val] -> val end)
+
+        for ep <- agency_endpoints do
+          assert String.starts_with?(ep, "ssl://"),
+                 "expected ssl:// in agency endpoint #{ep} for #{spec.role}"
+        end
       end
     end
 

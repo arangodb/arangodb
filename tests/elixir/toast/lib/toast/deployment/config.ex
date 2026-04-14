@@ -40,7 +40,8 @@ defmodule Toast.Deployment.Config do
           rr: MapSet.t(atom()) | nil,
           rr_path: Path.t() | nil,
           authentication: boolean(),
-          jwt_algorithm: jwt_algorithm()
+          jwt_algorithm: jwt_algorithm(),
+          ssl: boolean()
         }
 
   defstruct build_dir: nil,
@@ -57,7 +58,8 @@ defmodule Toast.Deployment.Config do
             rr: nil,
             rr_path: nil,
             authentication: false,
-            jwt_algorithm: :hmac
+            jwt_algorithm: :hmac,
+            ssl: false
 
   @doc """
   Build a deployment config from application env with optional overrides.

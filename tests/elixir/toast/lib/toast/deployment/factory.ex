@@ -25,7 +25,8 @@ defmodule Toast.Deployment.Factory do
             working_dir: Path.t(),
             server_dir: Path.t(),
             port: pos_integer(),
-            log_file: Path.t()
+            log_file: Path.t(),
+            ssl: boolean()
           }
 
     @enforce_keys [
@@ -39,7 +40,18 @@ defmodule Toast.Deployment.Factory do
       :port,
       :log_file
     ]
-    defstruct [:id, :role, :executable, :args, :env, :working_dir, :server_dir, :port, :log_file]
+    defstruct [
+      :id,
+      :role,
+      :executable,
+      :args,
+      :env,
+      :working_dir,
+      :server_dir,
+      :port,
+      :log_file,
+      ssl: false
+    ]
   end
 
   @type launch_spec :: LaunchSpec.t()
@@ -56,7 +68,8 @@ defmodule Toast.Deployment.Factory do
         |> build_server_args(deployment_dir)
         |> Map.merge(role_config_args(config, :single))
 
-      server_spec = %{role: :single, port: port, args: merged_args}
+      scheme = endpoint_scheme(config)
+      server_spec = %{role: :single, port: port, args: merged_args, endpoint_scheme: scheme}
       args = CommandBuilder.build_args(server_spec, paths, repo_root)
 
       spec = %LaunchSpec{
@@ -64,6 +77,7 @@ defmodule Toast.Deployment.Factory do
         role: :single,
         executable: executable,
         args: args,
+        ssl: config.ssl,
         env:
           Sanitizer.build_env(
             config.active_sanitizers,
@@ -104,28 +118,40 @@ defmodule Toast.Deployment.Factory do
       {agent_ports, rest} = Enum.split(ports, cluster.agents)
       {dbserver_ports, coordinator_ports} = Enum.split(rest, cluster.dbservers)
 
-      agency_endpoints = Enum.map(agent_ports, &"tcp://127.0.0.1:#{&1}")
+      scheme = endpoint_scheme(config)
+      agency_endpoints = Enum.map(agent_ports, &"#{scheme}://127.0.0.1:#{&1}")
 
       ctx = %{
         config: config,
         deployment_id: deployment_id,
         deployment_dir: deployment_dir,
         executable: executable,
-        repo_root: repo_root
+        repo_root: repo_root,
+        endpoint_scheme: scheme
       }
 
       agents =
-        build_role_specs(ctx, :agent, agent_ports, &agent_args(config, &1, agency_endpoints))
+        build_role_specs(
+          ctx,
+          :agent,
+          agent_ports,
+          &agent_args(config, scheme, &1, agency_endpoints)
+        )
 
       dbservers =
-        build_role_specs(ctx, :dbserver, dbserver_ports, &dbserver_args(&1, agency_endpoints))
+        build_role_specs(
+          ctx,
+          :dbserver,
+          dbserver_ports,
+          &cluster_role_args(scheme, "PRIMARY", &1, agency_endpoints)
+        )
 
       coordinators =
         build_role_specs(
           ctx,
           :coordinator,
           coordinator_ports,
-          &coordinator_args(config, &1, agency_endpoints)
+          &coordinator_args(config, scheme, &1, agency_endpoints)
         )
 
       with {:ok, agents} <- agents,
@@ -176,7 +202,13 @@ defmodule Toast.Deployment.Factory do
         |> Map.merge(role_config_args(config, role))
         |> Map.merge(custom_args)
 
-      server_spec = %{role: role, port: port, args: merged_args}
+      server_spec = %{
+        role: role,
+        port: port,
+        args: merged_args,
+        endpoint_scheme: ctx.endpoint_scheme
+      }
+
       args = CommandBuilder.build_args(server_spec, paths, repo_root)
 
       spec = %LaunchSpec{
@@ -184,6 +216,7 @@ defmodule Toast.Deployment.Factory do
         role: role,
         executable: executable,
         args: args,
+        ssl: config.ssl,
         env:
           Sanitizer.build_env(
             config.active_sanitizers,
@@ -201,30 +234,30 @@ defmodule Toast.Deployment.Factory do
     end
   end
 
-  defp agent_args(config, port, agency_endpoints) do
+  defp agent_args(config, scheme, port, agency_endpoints) do
     %{
       "agency.size" => to_string(config.cluster.agents),
-      "agency.my-address" => "tcp://127.0.0.1:#{port}",
+      "agency.my-address" => "#{scheme}://127.0.0.1:#{port}",
       "agency.endpoint" => agency_endpoints
     }
   end
 
-  defp dbserver_args(port, agency_endpoints) do
+  defp cluster_role_args(scheme, role, port, agency_endpoints) do
     %{
-      "cluster.my-role" => "PRIMARY",
-      "cluster.my-address" => "tcp://127.0.0.1:#{port}",
+      "cluster.my-role" => role,
+      "cluster.my-address" => "#{scheme}://127.0.0.1:#{port}",
       "cluster.agency-endpoint" => agency_endpoints
     }
   end
 
-  defp coordinator_args(config, port, agency_endpoints) do
-    %{
-      "cluster.my-role" => "COORDINATOR",
-      "cluster.my-address" => "tcp://127.0.0.1:#{port}",
-      "cluster.agency-endpoint" => agency_endpoints,
-      "cluster.default-replication-factor" => to_string(config.cluster.replication_factor),
-      "foxx.force-update-on-startup" => "true"
-    }
+  defp coordinator_args(config, scheme, port, agency_endpoints) do
+    Map.merge(
+      cluster_role_args(scheme, "COORDINATOR", port, agency_endpoints),
+      %{
+        "cluster.default-replication-factor" => to_string(config.cluster.replication_factor),
+        "foxx.force-update-on-startup" => "true"
+      }
+    )
   end
 
   defp role_config_args(config, :coordinator), do: config.cluster.coordinator_args
@@ -236,6 +269,7 @@ defmodule Toast.Deployment.Factory do
     config.server_args
     |> maybe_add_log_output(config)
     |> maybe_add_auth_args(config, deployment_dir)
+    |> maybe_add_ssl_args(config)
   end
 
   defp maybe_add_log_output(args, %{show_server_logs: true}),
@@ -253,6 +287,15 @@ defmodule Toast.Deployment.Factory do
   end
 
   defp maybe_add_auth_args(args, _config, _deployment_dir), do: args
+
+  defp maybe_add_ssl_args(args, %{ssl: true}) do
+    Map.put(args, "ssl.keyfile", "etc/testing/server.pem")
+  end
+
+  defp maybe_add_ssl_args(args, _config), do: args
+
+  defp endpoint_scheme(%{ssl: true}), do: "ssl"
+  defp endpoint_scheme(_config), do: "tcp"
 
   # --- memory budget ---
   # Distribution ratios match the JS test framework (instance-manager.js).

@@ -8,7 +8,8 @@ defmodule Toast.Deployment.CommandBuilder do
   @type server_spec :: %{
           role: role(),
           port: pos_integer(),
-          args: %{String.t() => term()}
+          args: %{String.t() => term()},
+          endpoint_scheme: String.t()
         }
 
   @type server_paths :: %{
@@ -19,8 +20,10 @@ defmodule Toast.Deployment.CommandBuilder do
         }
 
   @spec build_args(server_spec(), server_paths(), Path.t()) :: [String.t()]
-  def build_args(%{role: role, port: port, args: args}, server_paths, repo_root) do
-    (base_args(role, port, server_paths, repo_root) ++ role_args(role))
+  def build_args(%{role: role, port: port, args: args} = spec, server_paths, repo_root) do
+    endpoint_scheme = Map.get(spec, :endpoint_scheme, "tcp")
+
+    (base_args(role, port, server_paths, repo_root, endpoint_scheme) ++ role_args(role))
     |> Enum.flat_map(&flatten_pair/1)
     |> Kernel.++(flatten_custom_args(args))
   end
@@ -56,11 +59,11 @@ defmodule Toast.Deployment.CommandBuilder do
     |> Enum.flat_map(&expand_arg/1)
   end
 
-  defp base_args(role, port, paths, repo_root) do
+  defp base_args(role, port, paths, repo_root, endpoint_scheme) do
     [
       {"--configuration", config_file(role)},
       {"--define", "TOP_DIR=#{repo_root}"},
-      {"--server.endpoint", "tcp://0.0.0.0:#{port}"},
+      {"--server.endpoint", "#{endpoint_scheme}://0.0.0.0:#{port}"},
       {"--database.directory", paths.data_dir},
       {"--javascript.app-path", paths.app_dir},
       {"--log.file", paths.log_file},

@@ -67,6 +67,25 @@ defmodule Toast.ClientTest do
     end
   end
 
+  describe "SSL connect options" do
+    test "https base_url disables cert verification" do
+      client = Client.new("https://localhost:8529")
+      assert client.req.options.connect_options[:transport_opts] == [verify: :verify_none]
+    end
+
+    test "http base_url does not set transport_opts" do
+      client = Client.new("http://localhost:8529")
+      refute Map.has_key?(client.req.options, :connect_options)
+    end
+
+    test "https with http2 merges both connect_options" do
+      client = Client.new("https://localhost:8529", protocol: :http2)
+      connect_opts = client.req.options.connect_options
+      assert connect_opts[:protocols] == [:http2]
+      assert connect_opts[:transport_opts] == [verify: :verify_none]
+    end
+  end
+
   describe "scoping functions" do
     test "with_database returns new client with database set" do
       client = Client.new("http://localhost:8529")

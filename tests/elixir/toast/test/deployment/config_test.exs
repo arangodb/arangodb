@@ -18,7 +18,8 @@ defmodule Toast.Deployment.ConfigTest do
     :rr,
     :rr_path,
     :authentication,
-    :jwt_algorithm
+    :jwt_algorithm,
+    :ssl
   ]
 
   @cluster_env_keys [
@@ -73,6 +74,7 @@ defmodule Toast.Deployment.ConfigTest do
       assert config.rr_path == nil
       assert config.authentication == false
       assert config.jwt_algorithm == :hmac
+      assert config.ssl == false
     end
 
     test "reads defaults from application env" do
@@ -174,6 +176,22 @@ defmodule Toast.Deployment.ConfigTest do
       assert_raise ArgumentError, ~r/jwt_algorithm.*requires authentication/, fn ->
         Config.new()
       end
+    end
+
+    test "ssl: true is accepted" do
+      config = Config.new(ssl: true)
+      assert config.ssl == true
+    end
+
+    test "ssl defaults to false" do
+      config = Config.new()
+      assert config.ssl == false
+    end
+
+    test "ssl reads from application env" do
+      Application.put_env(:toast, :ssl, true)
+      config = Config.new()
+      assert config.ssl == true
     end
   end
 

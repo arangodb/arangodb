@@ -42,6 +42,25 @@ defmodule Toast.EnvTest do
       assert config.debugger == :auto
       assert config.dump_agency_on_error == true
       assert config.result_dir == "toast-results"
+      assert config.ssl == false
+    end
+  end
+
+  describe "ssl option" do
+    test "TOAST_SSL=true enables ssl" do
+      System.put_env("TOAST_SSL", "true")
+      on_exit(fn -> System.delete_env("TOAST_SSL") end)
+
+      config = load()
+      assert config.ssl == true
+    end
+
+    test "opts override TOAST_SSL env var" do
+      System.put_env("TOAST_SSL", "true")
+      on_exit(fn -> System.delete_env("TOAST_SSL") end)
+
+      config = load(ssl: false)
+      assert config.ssl == false
     end
   end
 

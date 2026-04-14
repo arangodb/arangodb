@@ -136,6 +136,26 @@ defmodule Toast.Deployment.CommandBuilderTest do
     end
   end
 
+  describe "build_args/3 endpoint scheme" do
+    test "defaults to tcp when endpoint_scheme is not set" do
+      result =
+        CommandBuilder.build_args(%{role: :single, port: 8529, args: %{}}, @paths, @repo_root)
+
+      assert has_flag_value?(result, "--server.endpoint", "tcp://0.0.0.0:8529")
+    end
+
+    test "uses ssl scheme when endpoint_scheme is ssl" do
+      result =
+        CommandBuilder.build_args(
+          %{role: :single, port: 8529, args: %{}, endpoint_scheme: "ssl"},
+          @paths,
+          @repo_root
+        )
+
+      assert has_flag_value?(result, "--server.endpoint", "ssl://0.0.0.0:8529")
+    end
+  end
+
   describe "build_args/3 custom args" do
     test "empty custom args add nothing beyond base and role args" do
       result =

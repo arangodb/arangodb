@@ -51,12 +51,14 @@ defmodule Toast.Deployment.DeployPipeline do
   defp init_servers_from_specs(state, specs) do
     servers =
       Map.new(specs, fn spec ->
+        http_scheme = if spec.ssl, do: "https", else: "http"
+
         {spec.id,
          %ServerInstance{
            id: spec.id,
            role: spec.role,
            port: spec.port,
-           endpoint: "http://127.0.0.1:#{spec.port}",
+           endpoint: "#{http_scheme}://127.0.0.1:#{spec.port}",
            log_file: spec.log_file,
            server_dir: spec.server_dir
          }}
@@ -239,7 +241,7 @@ defmodule Toast.Deployment.DeployPipeline do
 
   defp fetch_arango_ids(state, endpoint) do
     url = "#{endpoint}/_admin/cluster/health"
-    req_opts = auth_req_opts(state)
+    req_opts = req_opts_for(state, endpoint)
 
     case Req.get(url, req_opts) do
       {:ok, %{status: 200, body: body}} ->
@@ -331,8 +333,14 @@ defmodule Toast.Deployment.DeployPipeline do
 
   # Minting a token per call is safe: deploy phases are bounded by
   # `startup_timeout` (default 60s), well below the default 3600s lifetime.
-  defp auth_req_opts(%State{jwt_provider: nil}), do: []
+  defp req_opts_for(%State{jwt_provider: nil}, endpoint), do: ssl_req_opts(endpoint)
 
-  defp auth_req_opts(%State{jwt_provider: p}),
-    do: [headers: [Toast.JWT.Provider.auth_header(p)]]
+  defp req_opts_for(%State{jwt_provider: p}, endpoint),
+    do: [headers: [Toast.JWT.Provider.auth_header(p)]] ++ ssl_req_opts(endpoint)
+
+  # Self-signed test certs require disabling certificate verification.
+  defp ssl_req_opts("https://" <> _),
+    do: [connect_options: [transport_opts: [verify: :verify_none]]]
+
+  defp ssl_req_opts(_endpoint), do: []
 end

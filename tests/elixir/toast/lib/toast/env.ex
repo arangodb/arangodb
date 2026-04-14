@@ -158,7 +158,8 @@ defmodule Toast.Env do
       sanitizer_override:
         resolve(opts, local, :sanitizer_override, &read_sanitizer/1, "TOAST_SANITIZER"),
       active_sanitizers: nil,
-      protocol: resolve(opts, local, :protocol, &read_protocol/1, "TOAST_PROTOCOL") || :http1
+      protocol: resolve(opts, local, :protocol, &read_protocol/1, "TOAST_PROTOCOL") || :http1,
+      ssl: resolve(opts, local, :ssl, &read_bool/1, "TOAST_SSL") || false
     }
   end
 
@@ -446,7 +447,8 @@ defmodule Toast.Env do
         active_sanitizers: inspect(MapSet.to_list(values.active_sanitizers)),
         rr: inspect(values.rr),
         memory_budget: inspect(values.memory_budget),
-        protocol: values.protocol
+        protocol: values.protocol,
+        ssl: values.ssl
       ]
 
       "Toast.Env: " <> Enum.map_join(fields, " ", fn {k, v} -> "#{k}=#{v}" end)
