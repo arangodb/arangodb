@@ -87,7 +87,8 @@ void replaceLikeWithRangeRule(Optimizer* opt,
         auto args = likeFcall.getArguments().getElements();
         TRI_ASSERT(args.size() >= 2);
         if (args.size() >= 3) {
-          caseInsensitive = true;  // we have 3 arguments, set case-sensitive to false now
+          caseInsensitive =
+              true;  // we have 3 arguments, set case-sensitive to false now
           auto caseArg = args[2];
           if (caseArg->isConstant()) {
             // ok, we can figure out at compile time if the parameter is true or
@@ -114,7 +115,7 @@ void replaceLikeWithRangeRule(Optimizer* opt,
               setter->getType() != EN::ENUMERATE_COLLECTION) {
             // setter could be a view. for views we do not want to change the
             // LIKE function invocation because it might result in a
-            // pessimization    
+            // pessimization
             return node;
           }
           auto cn =
@@ -134,7 +135,7 @@ void replaceLikeWithRangeRule(Optimizer* opt,
               auto idx = c->getCollection()->lookupIndex(name);
               if (idx != nullptr &&
                   idx->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-                // usage of an inverted index -> prevent optimization    
+                // usage of an inverted index -> prevent optimization
                 return node;
               }
             }
@@ -177,7 +178,7 @@ void replaceLikeWithRangeRule(Optimizer* opt,
                 NODE_TYPE_OPERATOR_BINARY_GE, args[0], pattern);
 
             // add a new end character \uFFFF that is expected to sort "higher"
-            // than anything else (note: \xef\xbf\xbf is equivalent to \uFFFF).    
+            // than anything else (note: \xef\xbf\xbf is equivalent to \uFFFF).
             constexpr std::string_view upper = "\xef\xbf\xbf";
             unescapedPattern.append(upper);
             p = ast->resources().registerString(unescapedPattern.data(),
@@ -188,7 +189,7 @@ void replaceLikeWithRangeRule(Optimizer* opt,
 
             AstNode* op = ast->createNodeBinaryOperator(
                 NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);
-            // add >= && <=, but keep LIKE in place to properly handle case    
+            // add >= && <=, but keep LIKE in place to properly handle case
             return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
                                                  op, node);
           }
