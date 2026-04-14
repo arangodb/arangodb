@@ -31,7 +31,7 @@
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 // empty string singleton
@@ -160,7 +160,7 @@ char* AstResources::registerString(char const* p, size_t length) {
 
   if (length == 0) {
     // optimization for the empty string
-    return const_cast<char*>(::emptyString);
+    return const_cast<char*>(emptyString);
   }
 
   if (length < ShortStringStorage::maxStringLength) {
@@ -182,7 +182,7 @@ char* AstResources::registerEscapedString(char const* p, size_t length,
   if (length == 0) {
     // optimization for the empty string
     outLength = 0;
-    return const_cast<char*>(::emptyString);
+    return const_cast<char*>(emptyString);
   }
 
   if (length < ShortStringStorage::maxStringLength) {
@@ -234,3 +234,5 @@ char* AstResources::registerLongString(char* copy, size_t length) {
 
   return copy;
 }
+
+}  // namespace arangodb::aql

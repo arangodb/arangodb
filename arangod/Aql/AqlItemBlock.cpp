@@ -42,13 +42,9 @@
 
 #include <algorithm>
 #include <limits>
-
-using namespace arangodb;
-using namespace arangodb::aql;
-
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
-
 namespace {
+
+using namespace arangodb::aql;
 inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
                           AqlValue const& a, size_t rowNumber,
                           RegisterId::value_t col, SharedAqlItemBlockPtr& res) {
@@ -72,6 +68,10 @@ inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
   }
 }
 }  // namespace
+
+namespace arangodb::aql {
+
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t numRows,
@@ -1344,3 +1344,5 @@ void AqlItemBlock::ShadowRows::clearFrom(size_t lower) {
   _indexes.erase(std::lower_bound(_indexes.begin(), _indexes.end(), lower),
                  _indexes.end());
 }
+
+}  // namespace arangodb::aql

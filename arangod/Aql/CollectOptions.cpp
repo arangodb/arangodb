@@ -28,7 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 CollectOptions::CollectOptions() noexcept
     : method(CollectMethod::kUndefined), fixed(false) {}
@@ -132,3 +132,5 @@ std::string_view CollectOptions::methodToString(
 bool CollectOptions::requiresSortedInput() const noexcept {
   return method != arangodb::aql::CollectOptions::CollectMethod::kHash;
 }
+
+}  // namespace arangodb::aql

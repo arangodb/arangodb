@@ -33,8 +33,7 @@
 
 using namespace arangodb::application_features;
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 using FF = Function::Flags;
 
@@ -631,5 +630,4 @@ void AqlFunctionFeature::addMiscFunctions() {
        &functions::NotImplemented});
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

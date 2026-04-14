@@ -30,9 +30,7 @@
 #include "Utils/CollectionNameResolver.h"
 
 using namespace arangodb;
-using namespace arangodb::aql;
-
-namespace {
+namespace arangodb::aql {
 
 class AttributeAccessorKey final : public AttributeAccessor {
  public:
@@ -122,8 +120,6 @@ class AttributeAccessorMulti final : public AttributeAccessor {
   arangodb::aql::AttributeNamePath const _path;
 };
 
-}  // namespace
-
 /// @brief create the accessor
 AttributeAccessor::AttributeAccessor(Variable const* variable)
     : _variable(variable) {}
@@ -171,3 +167,5 @@ AttributeAccessor* AttributeAccessor::create(
 
   ADB_UNREACHABLE;
 }
+
+}  // namespace arangodb::aql

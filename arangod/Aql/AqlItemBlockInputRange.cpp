@@ -27,8 +27,7 @@
 #include <algorithm>
 #include <numeric>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(MainQueryState state,
                                                std::size_t skipped)
@@ -282,3 +281,5 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
     -> MainQueryState {
   return _finalState;
 }
+
+}  // namespace arangodb::aql

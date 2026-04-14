@@ -32,7 +32,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 AqlFunctionsInternalCache::~AqlFunctionsInternalCache() { clear(); }
 
@@ -260,3 +260,5 @@ std::pair<bool, bool> AqlFunctionsInternalCache::inspectLikePattern(
 
   return std::make_pair(false, false);
 }
+
+}  // namespace arangodb::aql

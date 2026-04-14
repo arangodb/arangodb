@@ -37,7 +37,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/tryEmplaceHelper.h"
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 using EN = arangodb::aql::ExecutionNode;
 
 bool ConditionFinder::before(ExecutionNode* en) {
@@ -301,3 +301,5 @@ ConditionFinder::ConditionFinder(
       _variableDefinitions(),
       _changes(changes),
       _producesEmptyResult(false) {}
+
+}  // namespace arangodb::aql

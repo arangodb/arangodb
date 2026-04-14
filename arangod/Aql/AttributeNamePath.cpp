@@ -29,8 +29,7 @@
 #include <algorithm>
 #include <iostream>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 AttributeNamePath::AttributeNamePath(arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor) {
@@ -250,5 +249,4 @@ std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path) {
   return stream;
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
