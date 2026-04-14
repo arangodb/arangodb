@@ -102,6 +102,8 @@ void v8InterruptCallback(v8::Isolate* isolate, void* data) {
     LOG_TOPIC("cac45", ERR, arangodb::Logger::V8)
         << "no js stacktrace could be acquired";
   }
+  // Flush log output so the stack trace is visible before we die.
+  arangodb::Logger::flush();
   // SA_RESETHAND already restored the default handler, so re-raising
   // the original signal will produce the correct exit status and core dump.
   raise(sig);
@@ -117,8 +119,12 @@ void signalHandler(int signal, siginfo_t* /*info*/, void* /*ucontext*/) {
   global_isolate->RequestInterrupt(
       v8InterruptCallback,
       reinterpret_cast<void*>(static_cast<intptr_t>(signal)));
-  // Expire the V8 execution deadline to unblock JS execution.
-  triggerV8DeadlineNow(signal, ExternalId());
+  // Do NOT call triggerV8DeadlineNow here: it would expire the execution
+  // deadline, causing the many isExecutionDeadlineReached() checks to fire
+  // before the interrupt callback runs. Those checks throw V8 errors that
+  // unwind the JS stack, leaving no frames for the interrupt callback to
+  // capture. It also acquires a std::mutex, which is UB in a signal handler.
+  //
   // Fallback: if V8 is idle and the interrupt never fires, SIGALRM
   // terminates the process after 30s.
   alarm(30);
