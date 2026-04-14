@@ -60,18 +60,6 @@ namespace arangodb::aql {
 
 namespace {
 
-AstNode* getAstNode(CalculationNode* c) noexcept {
-  return c->expression()->nodeForModification();
-}
-
-Function* getFunction(AstNode const* ast) noexcept {
-  if (ast->type == AstNodeType::NODE_TYPE_FCALL) {
-    ast::FunctionCallNode fcall(ast);
-    return fcall.getFunction();
-  }
-  return nullptr;
-}
-
 Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
                                  char const* context) {
   aql::Collection* coll = nullptr;
@@ -160,9 +148,40 @@ struct FulltextParams {
   }
 };
 
+AstNode* getAstNode(CalculationNode* c) noexcept {
+  return c->expression()->nodeForModification();
+}
+
+Function* getFunction(AstNode const* ast) noexcept {
+  if (ast->type == AstNodeType::NODE_TYPE_FCALL) {
+    ast::FunctionCallNode fcall(ast);
+    return fcall.getFunction();
+  }
+  return nullptr;
+}
+
 AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
                                  ExecutionNode* first, ExecutionNode* last,
                                  Variable* lastOutVariable, AstNode* limit) {
+  // Creates a subquery of the following form:
+  //
+  //    singleton
+  //        |
+  //      first
+  //        |
+  //       ...
+  //        |
+  //       last
+  //        |
+  //     [limit]
+  //        |
+  //      return
+  //
+  // The subquery is then injected into the plan before the given `node`
+  // This function returns an `AstNode*` of type reference to the subquery's
+  // `outVariable` that can be used to replace the expression (or only a
+  // part) of a `CalculationNode`.
+  //
   if (limit && !(limit->isIntValue() || limit->isNullValue())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -171,27 +190,34 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
 
   auto* ast = plan->getAst();
 
+  /// singleton
   ExecutionNode* eSingleton = plan->createNode<SingletonNode>(
       plan, plan->nextId(), ast->bindParameterVariables());
 
+  /// return
+  /// link output of index with the return node
   ExecutionNode* eReturn =
       plan->createNode<ReturnNode>(plan, plan->nextId(), lastOutVariable);
 
+  /// link nodes together
   first->addDependency(eSingleton);
   eReturn->addDependency(last);
 
+  /// add optional limit node
   if (limit && !limit->isNullValue()) {
     ExecutionNode* eLimit = plan->createNode<LimitNode>(
         plan, plan->nextId(), 0 /*offset*/, limit->getIntValue());
-    plan->insertAfter(last, eLimit);
+    plan->insertAfter(last, eLimit);  // inject into plan
   }
 
+  /// create subquery
   Variable* subqueryOutVariable = ast->variables()->createTemporaryVariable();
   ExecutionNode* eSubquery = plan->registerSubquery(
       new SubqueryNode(plan, plan->nextId(), eReturn, subqueryOutVariable));
 
   plan->insertBefore(node, eSubquery);
 
+  // return reference to outVariable
   return ast->createNodeReference(subqueryOutVariable);
 }
 
@@ -215,12 +241,13 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
 
   for (auto& idx : coll->indexes()) {
     if (isGeoIndex(idx->type())) {
+      // we take the first index that is found
       bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
       bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
       bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
 
       auto fieldNum = idx->fields().size();
-      if ((isGeo2 || isGeo) && fieldNum == 2) {
+      if ((isGeo2 || isGeo) && fieldNum == 2) {  // individual fields
         auto accessLatitude = idx->fields()[0];
         auto accessLongitude = idx->fields()[1];
 
@@ -249,7 +276,7 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
       }
       break;
     }
-  }
+  }  // for index in collection
 
   if (!indexFound) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
@@ -269,14 +296,26 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
     params.limit = ast->createNodeValueInt(100);
   }
 
+  // RETURN (
+  //  FOR d IN col
+  //    SORT DISTANCE(d.lat, d.long, param.lat, param.lon) // NEAR
+  //    // FILTER DISTANCE(d.lat, d.long, param.lat, param.lon) < param.radius
+  //    //WHITHIN MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat,
+  //    param.lon)}) LIMIT param.limit // NEAR RETURN d MERGE {param.distname :
+  //    calculated_distance}
+  // )
+
+  //// enumerate collection
   auto* aqlCollection =
       aql::addCollectionToQuery(query, params.collection, "NEAR OR WITHIN");
 
   Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
+  // link output of index with the return node
   ExecutionNode* eEnumerate = plan->createNode<EnumerateCollectionNode>(
       plan, plan->nextId(), aqlCollection, enumerateOutVariable, false,
       IndexHint());
 
+  //// build sort condition - DISTANCE(d.lat, d.long, param.lat, param.lon)
   auto* docRef = ast->createNodeReference(enumerateOutVariable);
 
   AstNode *accessNodeLat, *accessNodeLon;
@@ -292,7 +331,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
 
   AstNode* expressionAst = funDist;
 
-  if (!isNear) {
+  //// build filter condition for
+  if (!isNear) {  // WITHIN(coll, lat, lon, radius, distName)
     if (!params.radius || !params.radius->isNumericValue()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -303,15 +343,20 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
         AstNodeType::NODE_TYPE_OPERATOR_BINARY_LE, funDist, params.radius);
   }
 
+  //// create calculation node used in SORT or FILTER
+  // Calculation Node will acquire ownership
   auto calcExpr = std::make_unique<Expression>(ast, expressionAst);
 
+  // put condition into calculation node
   Variable* calcOutVariable = ast->variables()->createTemporaryVariable();
   ExecutionNode* eCalc = plan->createNode<CalculationNode>(
       plan, plan->nextId(), std::move(calcExpr), calcOutVariable);
   eCalc->addDependency(eEnumerate);
 
+  //// create SORT or FILTER
   ExecutionNode* eSortOrFilter = nullptr;
   if (isNear) {
+    // use calculation node in sort node
     SortElementVector sortElements;
     sortElements.push_back(SortElement::create(calcOutVariable, /*asc*/ true));
     eSortOrFilter =
@@ -322,6 +367,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   }
   eSortOrFilter->addDependency(eCalc);
 
+  //// create MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat,
+  /// param.lon)})
   if (params.distanceName) {
     if (!params.distanceName->isStringValue()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -333,6 +380,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
     if (isNear) {
       funDistMerge = ast->createNodeReference(calcOutVariable);
     } else {
+      // NOTE - recycling the Ast seems to work - tested with ASAN
       funDistMerge = funDist;
     }
     if (params.distanceName->isConstant()) {
@@ -358,15 +406,18 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
         plan, plan->nextId(), std::move(calcMergeExpr), calcMergeOutVariable);
     plan->insertAfter(eSortOrFilter, eCalcMerge);
 
+    //// wrap plan part into subquery
     return createSubqueryWithLimit(plan, calcNode, eEnumerate, eCalcMerge,
                                    calcMergeOutVariable, params.limit);
-  }
+  }  // merge
 
+  //// wrap plan part into subquery
   return createSubqueryWithLimit(plan, calcNode, eEnumerate /* first */,
                                  eSortOrFilter /* last */, enumerateOutVariable,
                                  params.limit);
 }
 
+/// @brief replace WITHIN_RECTANGLE
 AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
                                 ExecutionPlan* plan) {
   aql::Ast* ast = plan->getAst();
@@ -391,6 +442,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
+  // check for suitable indexes
   std::string cname = coll->getString();
 
   aql::Collection* collection =
@@ -414,9 +466,11 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
                                   cname.c_str());
   }
 
+  // FOR part
   Variable* collVar = ast->variables()->createTemporaryVariable();
   AstNode* forNode = ast->createNodeFor(collVar, coll, nullptr);
 
+  // Create GEO_CONTAINS function
   AstNode* loop = ast->createNodeArray(5);
   auto fn = [&](AstNode const* lat, AstNode const* lon) {
     AstNode* arr = ast->createNodeArray(2);
@@ -439,6 +493,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   AstNode* fargs = ast->createNodeArray(2);
   fargs->addMember(polygon);
 
+  // GEO_CONTAINS, needs GeoJson [Lon, Lat] ordering
   if (index->fields().size() == 2) {
     AstNode* arr = ast->createNodeArray(2);
     arr->addMember(ast->createNodeAccess(collVar, index->fields()[1]));
@@ -452,7 +507,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
                                                              "geoJson", false);
     if (geoJson) {
       fargs->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
-    } else {
+    } else {  // combined [lat, lon] field
       AstNode* arr = ast->createNodeArray(2);
       AstNode* access = ast->createNodeAccess(collVar, index->fields()[0]);
       arr->addMember(
@@ -465,22 +520,28 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   AstNode* geoContainsCall =
       ast->createNodeFunctionCall("GEO_CONTAINS", fargs, true);
 
+  // FILTER part
   AstNode* filterNode = ast->createNodeFilter(geoContainsCall);
 
+  // RETURN part
   AstNode* returnNode =
       ast->createNodeReturn(ast->createNodeReference(collVar));
 
+  // create an on-the-fly subquery for a full collection access
   AstNode* rootNode = ast->createNodeSubquery();
 
+  // add nodes to subquery
   rootNode->addMember(forNode);
   rootNode->addMember(filterNode);
   rootNode->addMember(returnNode);
 
+  // produce the proper ExecutionNodes from the subquery AST
   ExecutionNode* subquery = plan->fromNode(rootNode);
   if (subquery == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
+  // and register a reference to the subquery result in the expression
   Variable* v = ast->variables()->createTemporaryVariable();
   SubqueryNode* sqn = plan->registerSubquery(
       new SubqueryNode(plan, plan->nextId(), subquery, v));
@@ -496,6 +557,11 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
   TRI_ASSERT(funAstNode->type == NODE_TYPE_FCALL);
   FulltextParams params(funAstNode);
 
+  /// index
+  //  we create this first as creation of this node is more
+  //  likely to fail than the creation of other nodes
+
+  //  index - part 1 - figure out index to use
   std::shared_ptr<arangodb::Index> index;
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(params.attribute, field, false);
@@ -508,37 +574,44 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
   for (auto& idx : coll->indexes()) {
     if (idx->type() ==
         arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
+      if (basics::AttributeName::isIdentical(
+              idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
         index = idx;
         break;
       }
     }
   }
 
-  if (!index) {
+  if (!index) {  // not found or error
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
                                   params.collection.c_str());
   }
 
+  // index part 2 - get remaining vars required for index creation
   auto* aqlCollection =
       aql::addCollectionToQuery(query, params.collection, "FULLTEXT");
   auto condition = std::make_unique<Condition>(ast);
   condition->andCombine(funAstNode);
   condition->normalize(plan);
+  // create a fresh out variable
   Variable* indexOutVariable = ast->variables()->createTemporaryVariable();
 
   ExecutionNode* eIndex = plan->createNode<IndexNode>(
       plan, plan->nextId(), aqlCollection, indexOutVariable,
       std::vector<transaction::Methods::IndexHandle>{
           transaction::Methods::IndexHandle{index}},
-      false, std::move(condition), IndexIteratorOptions());
+      false,  // here we are not using inverted index so for sure
+              // no "whole" coverage
+      std::move(condition), IndexIteratorOptions());
 
+  //// wrap plan part into subquery
   return createSubqueryWithLimit(plan, calcNode, eIndex, eIndex,
                                  indexOutVariable, params.limit);
 }
 
 }  // namespace
 
+//! @brief replace legacy JS Functions with pure AQL
 void replaceNearWithinFulltextRule(Optimizer* opt,
                                    std::unique_ptr<ExecutionPlan> plan,
                                    OptimizerRule const& rule) {
@@ -549,7 +622,8 @@ void replaceNearWithinFulltextRule(Optimizer* opt,
 
   for (auto const& node : nodes) {
     auto visitor = [&modified, &node, &plan](AstNode* astnode) {
-      auto* fun = getFunction(astnode);
+      auto* fun = getFunction(
+          astnode);  // if fun != nullptr -> astnode->type NODE_TYPE_FCALL
       if (fun) {
         AstNode* replacement = nullptr;
         if (fun->name == "NEAR") {
@@ -581,6 +655,8 @@ void replaceNearWithinFulltextRule(Optimizer* opt,
     auto* original = getAstNode(calc);
     auto* replacement = Ast::traverseAndModify(original, visitor);
 
+    // replace root node if it was modified
+    // TraverseAndModify has no access to roots parent
     if (replacement != original) {
       calc->expression()->replaceNode(replacement);
     }
