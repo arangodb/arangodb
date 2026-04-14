@@ -81,28 +81,34 @@ bool exitRepl = false;
 
 std::string const DEFAULT_CLIENT_MODULE = "client.js";
 }  // namespace
-#include <stdio.h>
 
 namespace arangodb {
 
 void signalHandler(int signal) {
   // Ok, try to get and lock the state of the V8 execution:
-  v8::Local<v8::StackTrace> stacktraceV8 = v8::StackTrace::CurrentStackTrace(
-      global_isolate, 10, v8::StackTrace::kDetailed);
-  int frameCount = stacktraceV8->GetFrameCount();
-  if (frameCount > 0) {
-    for (int i = 0; i < frameCount; i++) {
-      auto stack_frame = stacktraceV8->GetFrame(global_isolate, i);
-      TRI_Utf8ValueNFC stackframeFile(global_isolate,
-                                      stack_frame->GetScriptName());
-      TRI_Utf8ValueNFC stackframeFN(global_isolate,
-                                    stack_frame->GetFunctionName());
-      LOG_TOPIC("cac44", ERR, Logger::V8)
-          << *stackframeFile << " - " << *stackframeFN
-          << "():" << stack_frame->GetLineNumber();
+  v8::Locker locker{global_isolate};
+  if (global_isolate != nullptr) {
+    v8::Local<v8::StackTrace> stacktraceV8 = v8::StackTrace::CurrentStackTrace(
+        global_isolate, 10, v8::StackTrace::kDetailed);
+    int frameCount = stacktraceV8->GetFrameCount();
+    if (frameCount > 0) {
+      for (int i = 0; i < frameCount; i++) {
+        auto stack_frame = stacktraceV8->GetFrame(global_isolate, i);
+        TRI_Utf8ValueNFC stackframeFile(global_isolate,
+                                        stack_frame->GetScriptName());
+        TRI_Utf8ValueNFC stackframeFN(global_isolate,
+                                      stack_frame->GetFunctionName());
+        LOG_TOPIC("cac44", ERR, Logger::V8)
+            << *stackframeFile << " - " << *stackframeFN
+            << "():" << stack_frame->GetLineNumber();
+      }
+    } else {
+      LOG_TOPIC("cac45", ERR, Logger::V8)
+          << "no js stacktrace could be acquired";
     }
   } else {
-    LOG_TOPIC("cac45", ERR, Logger::V8) << "no js stacktrace could be acquired";
+    LOG_TOPIC("cac46", ERR, Logger::V8)
+        << "no js stacktrace could be acquired anymore";
   }
   // try to unblock the .js execution, and trigger abort/cleanup
   triggerV8DeadlineNow(signal, ExternalId());
@@ -249,6 +255,7 @@ void V8ShellFeature::start() {
 void V8ShellFeature::unprepare() {
   {
     v8::Locker locker{_isolate};
+    global_isolate = nullptr;
 
     v8::Isolate::Scope isolate_scope(_isolate);
     v8::HandleScope handle_scope(_isolate);
