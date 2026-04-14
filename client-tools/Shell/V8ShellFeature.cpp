@@ -106,7 +106,7 @@ void signalHandler(int signal) {
   }
   // try to unblock the .js execution, and trigger abort/cleanup
   triggerV8DeadlineNow(signal, ExternalId());
-  // however, make sure this doesn't make us block eternaly, so come back in
+  // however, make sure this doesn't make us block eternally, so come back in
   // 30s:
   alarm(30);
 }
