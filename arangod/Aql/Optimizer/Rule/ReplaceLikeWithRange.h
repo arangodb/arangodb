@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,8 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,6 +28,7 @@
 namespace arangodb::aql {
 class Optimizer;
 
-void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
+void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                              OptimizerRule const&);
+
 }  // namespace arangodb::aql
