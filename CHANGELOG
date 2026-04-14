@@ -1,6 +1,11 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-415: Fix vector index catch-up phase to use the proper
+  `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that
+  WAL entries written during training are correctly ingested, preventing
+  missed documents after index creation.
+
 * Rebuilt included rclone v1.65.2 with go1.25.9 and non-vulnerable dependencies.
 
 * Updated ArangoDB Starter to v0.19.21.

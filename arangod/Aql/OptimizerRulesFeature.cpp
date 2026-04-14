@@ -69,6 +69,13 @@
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryRemoteScatter.h"
 #include "Aql/Optimizer/Rule/RestrictToSingleShard.h"
 #include "Aql/Optimizer/Rule/UndistributeRemoveAfterEnumColl.h"
+#include "Aql/Optimizer/Rule/BatchMaterializeDocuments.h"
+#include "Aql/Optimizer/Rule/UseIndexForCollect.h"
+#include "Aql/Optimizer/Rule/PropagateConstantAttributes.h"
+#include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
+#include "Aql/Optimizer/Rule/MaterializeIntoSeparateVariable.h"
+#include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
+#include "Aql/Optimizer/Rule/ReplaceEntriesWithObjectIteration.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
 #ifdef USE_ENTERPRISE

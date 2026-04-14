@@ -22,6 +22,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "PropagateConstantAttributes.h"
+
 #include "Aql/AstNode.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Collection.h"
@@ -39,10 +41,8 @@
 
 #include <boost/container_hash/hash.hpp>
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using namespace arangodb::containers;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 
 #define LOG_RULE LOG_DEVEL_IF(false)
 
@@ -350,9 +350,10 @@ bool processQuery(ExecutionPlan& plan, ExecutionNode* root,
 }  // namespace
 
 /// @brief propagate constant attributes in FILTERs
-void arangodb::aql::propagateConstantAttributesRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void propagateConstantAttributesRule(Optimizer* opt,
+                                     std::unique_ptr<ExecutionPlan> plan,
+                                     OptimizerRule const& rule) {
   bool modified = processQuery(*plan, plan->root(), {}, 0);
   opt->addPlan(std::move(plan), rule, modified);
 }
+}  // namespace arangodb::aql

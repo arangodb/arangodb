@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "PushDownLateMaterialization.h"
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -38,10 +40,8 @@
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using namespace arangodb::containers;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 
 #define LOG_RULE LOG_DEVEL_IF(false)
 
@@ -50,20 +50,6 @@ namespace {
 bool usesOutVariable(materialize::MaterializeNode const* matNode,
                      ExecutionNode const* other) {
   return other->getVariableIdsUsedHere().contains(matNode->outVariable().id);
-}
-
-void replaceVariableDownwards(
-    ExecutionNode* first,
-    std::unordered_map<VariableId, Variable const*> const& replacement) {
-  for (auto* n = first; n != nullptr; n = n->getFirstParent()) {
-    if (n->getType() == ExecutionNode::SUBQUERY) {
-      auto* subquery = ExecutionNode::castTo<SubqueryNode*>(n);
-      replaceVariableDownwards(subquery->getSubquery()->getSingleton(),
-                               replacement);
-    } else {
-      n->replaceVariables(replacement);
-    }
-  }
 }
 
 bool extractRelevantAttributes(
@@ -238,9 +224,9 @@ bool canMovePastNode(ExecutionPlan* plan,
 
 }  // namespace
 
-void arangodb::aql::pushDownLateMaterializationRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void pushDownLateMaterializationRule(Optimizer* opt,
+                                     std::unique_ptr<ExecutionPlan> plan,
+                                     OptimizerRule const& rule) {
   bool modified = false;
 
   // this rule depends crucially on the optimize-projections rule
@@ -282,40 +268,4 @@ void arangodb::aql::pushDownLateMaterializationRule(
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-void arangodb::aql::materializeIntoSeparateVariable(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
-  bool modified = false;
-
-  // this rule depends crucially on the optimize-projections rule
-  if (!plan->isDisabledRule(
-          static_cast<int>(OptimizerRule::optimizeProjectionsRule))) {
-    containers::SmallVector<ExecutionNode*, 8> indexes;
-    plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
-
-    for (auto node : indexes) {
-      TRI_ASSERT(node->getType() == EN::MATERIALIZE);
-      auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
-      if (matNode == nullptr) {
-        continue;  // search materialize requires more work
-      }
-
-      // create a new output variable for the materialized document.
-      // this happens after the join rule. Otherwise, joins are not detected.
-      // A separate variable comes in handy when optimizing projections, because
-      // it allows to distinguish where the projections belongs to (Index or
-      // Mat).
-      auto newOutVariable =
-          plan->getAst()->variables()->createTemporaryVariable();
-      matNode->setDocOutVariable(*newOutVariable);
-
-      // replace every occurrence with this new variable
-      replaceVariableDownwards(
-          matNode->getFirstParent(),
-          {{matNode->oldDocVariable().id, newOutVariable}});
-      modified = true;
-    }
-  }
-
-  opt->addPlan(std::move(plan), rule, modified);
-}
+}  // namespace arangodb::aql

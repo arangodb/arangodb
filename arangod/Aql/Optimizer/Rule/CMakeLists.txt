@@ -1,12 +1,13 @@
 add_subdirectory(EnumeratePathsFilter)
 
 target_sources(arango_aql PRIVATE
-  OptimizerRuleBatchMaterializeDocuments.cpp
-  OptimizerRuleCollectWithIndex.cpp
-  OptimizerRulePropagateConstantAttributes.cpp
-  OptimizerRulePushDownLateMaterialization.cpp
-  OptimizerRulePushLimitIntoIndex.cpp
-  OptimizerRuleReplaceEntriesWithObjectIteration.cpp
+  BatchMaterializeDocuments.cpp
+  UseIndexForCollect.cpp
+  PropagateConstantAttributes.cpp
+  PushDownLateMaterialization.cpp
+  MaterializeIntoSeparateVariable.cpp
+  PushLimitIntoIndex.cpp
+  ReplaceEntriesWithObjectIteration.cpp
   OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRuleVectorIndex.cpp
   OptimizerRuleVectorIndexPushFilter.cpp

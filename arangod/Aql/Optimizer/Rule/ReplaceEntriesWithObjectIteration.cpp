@@ -19,6 +19,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ReplaceEntriesWithObjectIteration.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
@@ -35,21 +37,19 @@
 #include "Aql/TypedAstNodes.h"
 #include "Logger/LogMacros.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using namespace arangodb::containers;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 
 #define LOG_RULE LOG_DEVEL_IF(false)
 
 /// @brief replace enumeration of ENTRIES with object iteration
-void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
-                                            std::unique_ptr<ExecutionPlan> plan,
-                                            OptimizerRule const& rule) {
+void replaceEntriesWithObjectIteration(Optimizer* opt,
+                                       std::unique_ptr<ExecutionPlan> plan,
+                                       OptimizerRule const& rule) {
   bool modified = false;
 
-  SmallVector<ExecutionNode*, 8> enumerationListNodes;
-  SmallVector<ExecutionNode*, 8> calculationNodes;
+  containers::SmallVector<ExecutionNode*, 8> enumerationListNodes;
+  containers::SmallVector<ExecutionNode*, 8> calculationNodes;
 
   plan->findNodesOfType(enumerationListNodes, EN::ENUMERATE_LIST,
                         /* enterSubqueries */ true);
@@ -58,7 +58,8 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
 
   // We store here EnumerateListNode which takes as input CalculationNode. This
   // Calculation node is "ENTRIES" function.
-  SmallVector<std::tuple<EnumerateListNode*, CalculationNode*, Expression*>, 8>
+  containers::SmallVector<
+      std::tuple<EnumerateListNode*, CalculationNode*, Expression*>, 8>
       enumAndCalc;
 
   for (auto elNodeRaw : enumerationListNodes) {
@@ -84,9 +85,9 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
   }
 
   auto getCalcNodesWithVar = [&calculationNodes](const Variable* reqVar)
-      -> std::tuple<bool, SmallVector<CalculationNode*, 2>> {
+      -> std::tuple<bool, containers::SmallVector<CalculationNode*, 2>> {
     std::array<int, 2> indexes{0, 0};
-    SmallVector<CalculationNode*, 2> keyValueNodes;
+    containers::SmallVector<CalculationNode*, 2> keyValueNodes;
     keyValueNodes.resize(2);
 
     for (auto n : calculationNodes) {
@@ -124,7 +125,7 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
     TRI_ASSERT(eln->getMode() == EnumerateListNode::kEnumerateArray);
     auto outVar = eln->outVariable()[0];
     bool optRequired;
-    SmallVector<CalculationNode*, 2> keyValueNodes;
+    containers::SmallVector<CalculationNode*, 2> keyValueNodes;
 
     std::tie(optRequired, keyValueNodes) = getCalcNodesWithVar(outVar);
     if (optRequired) {
@@ -155,3 +156,5 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+
+}  // namespace arangodb::aql

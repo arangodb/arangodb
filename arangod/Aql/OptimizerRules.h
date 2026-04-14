@@ -35,10 +35,6 @@ class SubqueryNode;
 class QueryContext;
 struct Collection;
 
-/// @brief propagate constant attributes in FILTERs
-void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
-
 /// @brief split and-combined filters and break them into smaller parts
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
@@ -59,36 +55,16 @@ void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
-/// @brief replace enumeration of ENTRIES with object iteration
-void replaceEntriesWithObjectIteration(Optimizer*,
-                                       std::unique_ptr<ExecutionPlan>,
-                                       OptimizerRule const&);
-
 void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
 
 void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
 
-void batchMaterializeDocumentsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                   OptimizerRule const&);
-
-void pushDownLateMaterializationRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
-
-void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
-
-void pushLimitIntoIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
 void useVectorIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
 
 void pushFilterIntoEnumerateNear(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                  OptimizerRule const&);
-
-void useIndexForCollect(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                        OptimizerRule const& rule);
 
 }  // namespace arangodb::aql
