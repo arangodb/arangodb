@@ -410,6 +410,30 @@ defmodule Toast.ClientTest do
       assert_received {:auth, ["Bearer my.jwt.token"]}
     end
 
+    test "jwt_provider auth sets Bearer header with a freshly minted token per request" do
+      plug = fn conn ->
+        auth = Plug.Conn.get_req_header(conn, "authorization")
+        send(self(), {:auth, auth})
+        json_plug().(conn)
+      end
+
+      secret = Base.encode16(:crypto.strong_rand_bytes(32))
+      provider = Toast.JWT.Provider.new({:hmac, secret})
+      client = client_with_plug(plug) |> Client.with_auth({:jwt_provider, provider})
+
+      Client.get(client, "/_api/version")
+      assert_received {:auth, ["Bearer " <> token1]}
+
+      # Second request re-mints — tokens include `iat` seconds so two rapid
+      # requests may produce identical tokens, but the token must verify.
+      Client.get(client, "/_api/version")
+      assert_received {:auth, ["Bearer " <> token2]}
+
+      signer = Joken.Signer.create("HS256", secret)
+      assert {:ok, _} = Joken.verify_and_validate(%{}, token1, signer)
+      assert {:ok, _} = Joken.verify_and_validate(%{}, token2, signer)
+    end
+
     test "no auth sends no Authorization header" do
       plug = fn conn ->
         auth = Plug.Conn.get_req_header(conn, "authorization")

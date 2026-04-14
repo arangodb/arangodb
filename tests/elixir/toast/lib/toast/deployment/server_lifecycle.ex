@@ -111,12 +111,11 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- Health monitor helpers ---
 
-  @spec start_health_monitor(String.t(), String.t()) :: {:ok, pid()} | {:error, term()}
-  def start_health_monitor(server_id, endpoint) do
+  @spec start_health_monitor(String.t(), String.t(), keyword()) ::
+          {:ok, pid()} | {:error, term()}
+  def start_health_monitor(server_id, endpoint, opts \\ []) do
     case ProcessSupervisor.start_health_monitor(
-           server_id: server_id,
-           endpoint: endpoint,
-           listener: self()
+           [server_id: server_id, endpoint: endpoint, listener: self()] ++ opts
          ) do
       {:ok, pid} ->
         Process.monitor(pid)

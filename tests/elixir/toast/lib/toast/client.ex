@@ -1,7 +1,10 @@
 defmodule Toast.Client do
   @moduledoc "Thin REST client for ArangoDB, designed for test use."
 
-  @type auth_t :: {:basic, String.t(), String.t()} | {:jwt, String.t()}
+  @type auth_t ::
+          {:basic, String.t(), String.t()}
+          | {:jwt, String.t()}
+          | {:jwt_provider, Toast.JWT.Provider.t()}
 
   @type content_type_t :: :json | :vpack
 
@@ -189,6 +192,10 @@ defmodule Toast.Client do
 
   defp auth_header({:jwt, token}),
     do: {"authorization", "Bearer #{token}"}
+
+  # Resolve the token per-request so a client reused for hours still carries
+  # a valid token on every call — the key property for long-running tests.
+  defp auth_header({:jwt_provider, provider}), do: Toast.JWT.Provider.auth_header(provider)
 
   defp prepend_header(opts, header) do
     existing = Keyword.get(opts, :headers, [])

@@ -114,7 +114,10 @@ defmodule Toast.Deployment.DeployPipeline do
     Logger.info("#{state.id}: waiting for agency consensus")
 
     endpoints_for_role(state, :agent)
-    |> Health.wait_for_agency_ready(timeout: State.remaining_ms(deadline))
+    |> Health.wait_for_agency_ready(
+      timeout: State.remaining_ms(deadline),
+      auth: Toast.JWT.Provider.maybe_auth(state.jwt_provider)
+    )
     |> case do
       :ok -> {:ok, state}
       error -> error
@@ -131,6 +134,7 @@ defmodule Toast.Deployment.DeployPipeline do
 
     role_label = state.servers[hd(server_ids)].role
     listener = state.event_listener
+    provider = state.jwt_provider
 
     Logger.info("#{state.id}: launching #{role_label}s")
 
@@ -143,7 +147,8 @@ defmodule Toast.Deployment.DeployPipeline do
           health_check?,
           timeout,
           deployment_id,
-          listener
+          listener,
+          provider
         ),
         ordered: false,
         max_concurrency: count,
@@ -154,23 +159,32 @@ defmodule Toast.Deployment.DeployPipeline do
     collect_launch_results(results, state)
   end
 
-  defp launch_server_process(server, server_id, health_check?, timeout, deployment_id, listener) do
+  defp launch_server_process(
+         server,
+         server_id,
+         health_check?,
+         timeout,
+         deployment_id,
+         listener,
+         provider
+       ) do
     with :ok <- ServerProcess.launch(server.server_pid),
          os_pid = ServerProcess.os_pid(server.server_pid),
          :ok <- Events.server_started(listener, server_id, server, os_pid, deployment_id),
-         :ok <- maybe_health_check(server, health_check?, timeout) do
+         :ok <- maybe_health_check(server, health_check?, timeout, provider) do
       {:ok, {server_id, os_pid}}
     end
   end
 
-  defp maybe_health_check(_server, false, _timeout), do: :ok
+  defp maybe_health_check(_server, false, _timeout, _provider), do: :ok
 
-  defp maybe_health_check(server, true, timeout) do
+  defp maybe_health_check(server, true, timeout, provider) do
     process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
 
     Health.wait_until_ready(server.endpoint,
       timeout: timeout,
-      process_check_fn: process_check_fn
+      process_check_fn: process_check_fn,
+      auth: Toast.JWT.Provider.maybe_auth(provider)
     )
   end
 
@@ -199,7 +213,11 @@ defmodule Toast.Deployment.DeployPipeline do
     Enum.reduce_while(all_ids, {:ok, state}, fn server_id, {:ok, acc} ->
       server = acc.servers[server_id]
 
-      case ServerLifecycle.start_health_monitor(server_id, server.endpoint) do
+      case ServerLifecycle.start_health_monitor(
+             server_id,
+             server.endpoint,
+             jwt_provider: acc.jwt_provider
+           ) do
         {:ok, pid} ->
           updated = %{server | health_monitor: pid}
           {:cont, {:ok, %{acc | servers: Map.put(acc.servers, server_id, updated)}}}
@@ -221,8 +239,9 @@ defmodule Toast.Deployment.DeployPipeline do
 
   defp fetch_arango_ids(state, endpoint) do
     url = "#{endpoint}/_admin/cluster/health"
+    req_opts = auth_req_opts(state)
 
-    case Req.get(url) do
+    case Req.get(url, req_opts) do
       {:ok, %{status: 200, body: body}} ->
         apply_arango_id_mapping(state, Map.get(body, "Health", %{}))
 
@@ -309,4 +328,11 @@ defmodule Toast.Deployment.DeployPipeline do
   defp update_server(state, server_id, updates) do
     State.update_server(state, server_id, updates)
   end
+
+  # Minting a token per call is safe: deploy phases are bounded by
+  # `startup_timeout` (default 60s), well below the default 3600s lifetime.
+  defp auth_req_opts(%State{jwt_provider: nil}), do: []
+
+  defp auth_req_opts(%State{jwt_provider: p}),
+    do: [headers: [Toast.JWT.Provider.auth_header(p)]]
 end

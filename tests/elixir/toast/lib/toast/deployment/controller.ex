@@ -37,6 +37,7 @@ defmodule Toast.Deployment.Controller do
       :config,
       :id,
       :error,
+      :jwt_provider,
       status: :stopped,
       servers: %{},
       expected_crashes: %{},
@@ -52,7 +53,8 @@ defmodule Toast.Deployment.Controller do
             servers: %{optional(String.t()) => Toast.Deployment.ServerInstance.t()},
             expected_crashes: map(),
             agency_dump: term(),
-            event_listener: module()
+            event_listener: module(),
+            jwt_provider: Toast.JWT.Provider.t() | nil
           }
 
     @doc false
@@ -183,6 +185,7 @@ defmodule Toast.Deployment.Controller do
     listener = Keyword.get(opts, :event_listener, DefaultEventListener)
     servers = Keyword.get(opts, :servers, %{})
     status = Keyword.get(opts, :status, :stopped)
+    jwt_provider = Keyword.get(opts, :jwt_provider)
 
     # Monitor any pre-existing health monitors (e.g., when servers are passed in
     # for testing) so we receive :DOWN messages if they crash.
@@ -195,7 +198,8 @@ defmodule Toast.Deployment.Controller do
       config: config,
       event_listener: listener,
       servers: servers,
-      status: status
+      status: status,
+      jwt_provider: jwt_provider
     }
 
     {:ok, state}

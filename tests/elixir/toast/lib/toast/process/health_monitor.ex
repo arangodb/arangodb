@@ -33,6 +33,7 @@ defmodule Toast.Process.HealthMonitor do
       :interval,
       :max_failures,
       :timer_ref,
+      :jwt_provider,
       consecutive_failures: 0,
       status: :healthy
     ]
@@ -72,7 +73,8 @@ defmodule Toast.Process.HealthMonitor do
       endpoint: Keyword.fetch!(opts, :endpoint),
       listener: Keyword.fetch!(opts, :listener),
       interval: interval,
-      max_failures: Keyword.get(opts, :max_failures, @default_max_failures)
+      max_failures: Keyword.get(opts, :max_failures, @default_max_failures),
+      jwt_provider: Keyword.get(opts, :jwt_provider)
     }
 
     {:ok, schedule_check(state)}
@@ -89,7 +91,11 @@ defmodule Toast.Process.HealthMonitor do
   end
 
   def handle_info(:check, state) do
-    case Health.check_once(state.endpoint, http_timeout: @http_timeout) do
+    # Mint per check — minting cost is negligible next to the HTTP round-trip
+    # and guarantees we never hold a stale token across long-running tests.
+    auth = Toast.JWT.Provider.maybe_auth(state.jwt_provider)
+
+    case Health.check_once(state.endpoint, http_timeout: @http_timeout, auth: auth) do
       :ok ->
         {:noreply, schedule_check(%{state | consecutive_failures: 0})}
 

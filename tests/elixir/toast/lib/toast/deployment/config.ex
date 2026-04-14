@@ -23,6 +23,8 @@ defmodule Toast.Deployment.Config do
 
   @type server_args_map :: %{String.t() => String.t() | [String.t()]}
 
+  @type jwt_algorithm :: :hmac | :ecdsa
+
   @type t :: %__MODULE__{
           build_dir: Path.t() | nil,
           show_server_logs: boolean(),
@@ -36,7 +38,9 @@ defmodule Toast.Deployment.Config do
           cluster: ClusterOpts.t() | nil,
           memory_budget: pos_integer() | nil,
           rr: MapSet.t(atom()) | nil,
-          rr_path: Path.t() | nil
+          rr_path: Path.t() | nil,
+          authentication: boolean(),
+          jwt_algorithm: jwt_algorithm()
         }
 
   defstruct build_dir: nil,
@@ -51,7 +55,9 @@ defmodule Toast.Deployment.Config do
             cluster: nil,
             memory_budget: nil,
             rr: nil,
-            rr_path: nil
+            rr_path: nil,
+            authentication: false,
+            jwt_algorithm: :hmac
 
   @doc """
   Build a deployment config from application env with optional overrides.
@@ -81,8 +87,19 @@ defmodule Toast.Deployment.Config do
     {cluster_opt, overrides} = Keyword.pop(overrides, :cluster)
 
     base = Toast.Env.struct_from_env(%__MODULE__{})
-    struct!(%{base | cluster: build_cluster_opts(cluster_opt)}, overrides)
+    config = struct!(%{base | cluster: build_cluster_opts(cluster_opt)}, overrides)
+    validate_auth!(config)
+    config
   end
+
+  # `jwt_algorithm` is only meaningful when `authentication: true`. An algorithm
+  # set without auth enabled would silently go unused — unlike other bad values
+  # on this struct, which crash loudly at the point of use. Reject here.
+  defp validate_auth!(%__MODULE__{authentication: false, jwt_algorithm: alg}) when alg != :hmac do
+    raise ArgumentError, "jwt_algorithm: #{inspect(alg)} requires authentication: true"
+  end
+
+  defp validate_auth!(%__MODULE__{}), do: :ok
 
   @doc "Returns true if this is a cluster configuration."
   @spec cluster?(t()) :: boolean()

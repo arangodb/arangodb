@@ -86,7 +86,9 @@ defmodule ToastTest.Runner do
                              :coordinator_args,
                              :dbserver_args,
                              :agent_args,
-                             :between_tests
+                             :between_tests,
+                             :authentication,
+                             :jwt_algorithm
                            ] ++ @topology_keys
 
   ## Public API
@@ -239,8 +241,21 @@ defmodule ToastTest.Runner do
       end
 
     cluster_override = cluster_override_opts(mode, suite_config)
+    auth_override = auth_override_opts(suite_config)
 
-    Toast.Deployment.Config.new(server_args_override ++ cluster_override)
+    Toast.Deployment.Config.new(server_args_override ++ cluster_override ++ auth_override)
+  end
+
+  # Only forward authentication/jwt_algorithm when authentication is explicitly
+  # enabled — otherwise Config validation rejects a stray jwt_algorithm.
+  defp auth_override_opts(suite_config) do
+    case Keyword.get(suite_config, :authentication, false) do
+      true ->
+        [authentication: true, jwt_algorithm: Keyword.get(suite_config, :jwt_algorithm, :hmac)]
+
+      _ ->
+        []
+    end
   end
 
   defp cluster_override_opts(:single_server, _suite_config), do: []

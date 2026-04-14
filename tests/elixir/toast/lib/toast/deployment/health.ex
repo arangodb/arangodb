@@ -10,11 +10,14 @@ defmodule Toast.Deployment.Health do
 
   require Logger
 
+  @type auth_opt :: {:jwt, String.t()} | nil
+
   @type wait_opts :: [
           timeout: pos_integer(),
           poll_interval: pos_integer(),
           http_timeout: pos_integer(),
-          process_check_fn: (-> boolean())
+          process_check_fn: (-> boolean()),
+          auth: auth_opt()
         ]
 
   @spec wait_for_agency_ready([String.t()], keyword()) :: :ok | {:error, term()}
@@ -44,7 +47,9 @@ defmodule Toast.Deployment.Health do
     http_timeout = Keyword.get(opts, :http_timeout, 2_000)
     url = endpoint <> "/_api/version"
 
-    req_opts = [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false]
+    req_opts =
+      [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false]
+      |> put_auth_header(opts)
 
     case Req.get(url, req_opts) do
       {:ok, %{status: status}} when status in 200..299 ->
@@ -94,7 +99,9 @@ defmodule Toast.Deployment.Health do
     http_timeout = Keyword.get(opts, :http_timeout, 2_000)
     url = endpoint <> "/_api/agency/config"
 
-    req_opts = [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false]
+    req_opts =
+      [receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false]
+      |> put_auth_header(opts)
 
     case Req.get(url, req_opts) do
       {:ok, %{status: status, body: body}} when status in 200..299 and is_map(body) ->
@@ -105,6 +112,15 @@ defmodule Toast.Deployment.Health do
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  # Agents reject Basic auth, so a superuser JWT is the only option for
+  # framework-internal polling under `authentication: true`.
+  defp put_auth_header(req_opts, opts) do
+    case Keyword.get(opts, :auth) do
+      nil -> req_opts
+      {:jwt, token} -> Keyword.put(req_opts, :headers, [{"authorization", "Bearer #{token}"}])
     end
   end
 

@@ -16,7 +16,9 @@ defmodule Toast.Deployment.ConfigTest do
     :api_version,
     :memory_budget,
     :rr,
-    :rr_path
+    :rr_path,
+    :authentication,
+    :jwt_algorithm
   ]
 
   @cluster_env_keys [
@@ -69,6 +71,8 @@ defmodule Toast.Deployment.ConfigTest do
       assert config.cluster == nil
       assert config.rr == nil
       assert config.rr_path == nil
+      assert config.authentication == false
+      assert config.jwt_algorithm == :hmac
     end
 
     test "reads defaults from application env" do
@@ -137,6 +141,38 @@ defmodule Toast.Deployment.ConfigTest do
     test "raises on unknown override keys" do
       assert_raise KeyError, fn ->
         Config.new(nonexistent_field: "boom")
+      end
+    end
+
+    test "authentication: true is accepted" do
+      config = Config.new(authentication: true)
+      assert config.authentication == true
+      assert config.jwt_algorithm == :hmac
+    end
+
+    test "authentication: true with :ecdsa algorithm" do
+      config = Config.new(authentication: true, jwt_algorithm: :ecdsa)
+      assert config.authentication == true
+      assert config.jwt_algorithm == :ecdsa
+    end
+
+    test "raises when jwt_algorithm is set without authentication" do
+      assert_raise ArgumentError, ~r/jwt_algorithm.*requires authentication/, fn ->
+        Config.new(jwt_algorithm: :ecdsa)
+      end
+    end
+
+    test "raises when jwt_algorithm is set with authentication: false" do
+      assert_raise ArgumentError, ~r/jwt_algorithm.*requires authentication/, fn ->
+        Config.new(authentication: false, jwt_algorithm: :ecdsa)
+      end
+    end
+
+    test "raises when jwt_algorithm comes from app env without authentication" do
+      Application.put_env(:toast, :jwt_algorithm, :ecdsa)
+
+      assert_raise ArgumentError, ~r/jwt_algorithm.*requires authentication/, fn ->
+        Config.new()
       end
     end
   end

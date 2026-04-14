@@ -53,7 +53,7 @@ defmodule Toast.Deployment.Factory do
          {:ok, paths} <- Filesystem.create_server_dirs(deployment_dir) do
       merged_args =
         config
-        |> build_server_args()
+        |> build_server_args(deployment_dir)
         |> Map.merge(role_config_args(config, :single))
 
       server_spec = %{role: :single, port: port, args: merged_args}
@@ -172,7 +172,7 @@ defmodule Toast.Deployment.Factory do
     with {:ok, paths} <- Filesystem.create_server_dirs(deployment_dir, dir_name) do
       merged_args =
         config
-        |> build_server_args()
+        |> build_server_args(deployment_dir)
         |> Map.merge(role_config_args(config, role))
         |> Map.merge(custom_args)
 
@@ -232,16 +232,27 @@ defmodule Toast.Deployment.Factory do
   defp role_config_args(config, :agent), do: config.cluster.agent_args
   defp role_config_args(_config, :single), do: %{}
 
-  defp build_server_args(config) do
-    base = config.server_args
-
-    if config.show_server_logs do
-      # Add stderr log appender — ServerProcess captures stderr and prints it
-      Map.put_new(base, "log.output", "+")
-    else
-      base
-    end
+  defp build_server_args(config, deployment_dir) do
+    config.server_args
+    |> maybe_add_log_output(config)
+    |> maybe_add_auth_args(config, deployment_dir)
   end
+
+  defp maybe_add_log_output(args, %{show_server_logs: true}),
+    # Add stderr log appender — ServerProcess captures stderr and prints it
+    do: Map.put_new(args, "log.output", "+")
+
+  defp maybe_add_log_output(args, _config), do: args
+
+  defp maybe_add_auth_args(args, %{authentication: true}, deployment_dir) do
+    # Keyfile content drives algorithm selection in arangod:
+    # PEM → ES256, plain text → HS256. No extra server flag is needed.
+    args
+    |> Map.put("server.authentication", "true")
+    |> Map.put("server.jwt-secret-keyfile", Toast.JWT.KeyGen.keyfile_path(deployment_dir))
+  end
+
+  defp maybe_add_auth_args(args, _config, _deployment_dir), do: args
 
   # --- memory budget ---
   # Distribution ratios match the JS test framework (instance-manager.js).

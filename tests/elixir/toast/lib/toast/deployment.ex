@@ -41,11 +41,12 @@ defmodule Toast.Deployment do
           id: String.t(),
           controller: pid() | nil,
           api_version: non_neg_integer() | String.t() | nil,
-          servers: %{String.t() => ServerInfo.t()}
+          servers: %{String.t() => ServerInfo.t()},
+          jwt_provider: Toast.JWT.Provider.t() | nil
         }
 
   @enforce_keys [:id]
-  defstruct [:id, :controller, :api_version, servers: %{}]
+  defstruct [:id, :controller, :api_version, :jwt_provider, servers: %{}]
 
   @doc "Returns true if this is a cluster deployment."
   @spec cluster?(t()) :: boolean()
@@ -126,12 +127,15 @@ defmodule Toast.Deployment do
 
     listener = Keyword.get(opts, :event_listener, DefaultEventListener)
 
+    jwt_provider = maybe_generate_jwt(config, deployment_dir)
+
     with {:ok, specs} <- build_specs(mode, config, id, deployment_dir),
          {:ok, pid} <-
            Toast.Deployment.Supervisor.start_controller(
              config: config,
              id: id,
-             event_listener: listener
+             event_listener: listener,
+             jwt_provider: jwt_provider
            ),
          :ok <- Controller.deploy(pid, specs, config.startup_timeout, stacktrace: stacktrace) do
       info = Controller.get_info(pid)
@@ -141,9 +145,18 @@ defmodule Toast.Deployment do
          id: info.id,
          controller: pid,
          api_version: config.api_version,
-         servers: build_server_infos(info)
+         servers: build_server_infos(info),
+         jwt_provider: jwt_provider
        }}
     end
+  end
+
+  defp maybe_generate_jwt(%Config{authentication: false}, _dir), do: nil
+
+  defp maybe_generate_jwt(%Config{authentication: true, jwt_algorithm: alg}, deployment_dir) do
+    File.mkdir_p!(deployment_dir)
+    {signer, _path} = Toast.JWT.KeyGen.generate(alg, deployment_dir)
+    Toast.JWT.Provider.new(signer)
   end
 
   defp build_specs(:single_server, config, id, deployment_dir),
@@ -471,8 +484,14 @@ defmodule Toast.Deployment do
     }
   end
 
-  defp build_client(%__MODULE__{} = deployment, srv) do
+  defp build_client(%__MODULE__{jwt_provider: nil} = deployment, srv) do
     Client.new(srv.endpoint, api_version: deployment.api_version)
+  end
+
+  defp build_client(%__MODULE__{jwt_provider: provider} = deployment, srv) do
+    srv.endpoint
+    |> Client.new(api_version: deployment.api_version)
+    |> Client.with_auth({:jwt_provider, provider})
   end
 
   defp controller_call(%__MODULE__{controller: nil}, _function, default), do: default

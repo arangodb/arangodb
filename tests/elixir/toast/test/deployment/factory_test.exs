@@ -116,6 +116,34 @@ defmodule Toast.Deployment.FactoryTest do
       assert has_flag_value?(spec.args, "--log.output", "custom")
       assert has_flag_value?(spec.args, "--extra", "val")
     end
+
+    test "authentication: true injects server.authentication and jwt-secret-keyfile", %{
+      tmp_dir: tmp_dir
+    } do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir, authentication: true)
+      deployment_dir = Path.join(base_dir, "srv-auth")
+
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-auth", deployment_dir)
+
+      assert has_flag_value?(spec.args, "--server.authentication", "true")
+
+      expected_keyfile = Toast.JWT.KeyGen.keyfile_path(deployment_dir)
+      assert has_flag_value?(spec.args, "--server.jwt-secret-keyfile", expected_keyfile)
+    end
+
+    test "authentication: false omits auth-related args", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      base_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir)
+      deployment_dir = Path.join(base_dir, "srv-noauth")
+
+      assert {:ok, [spec]} = Factory.build_single_server(config, "srv-noauth", deployment_dir)
+
+      refute "--server.authentication" in spec.args
+      refute "--server.jwt-secret-keyfile" in spec.args
+    end
   end
 
   describe "build_cluster/3" do

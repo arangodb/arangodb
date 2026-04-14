@@ -14,7 +14,9 @@ defmodule ToastTest.Suite do
     coordinator_args: %{},
     dbserver_args: %{},
     agent_args: %{},
-    between_tests: :default
+    between_tests: :default,
+    authentication: false,
+    jwt_algorithm: :hmac
   ]
 
   defmacro __using__(opts \\ []) do
