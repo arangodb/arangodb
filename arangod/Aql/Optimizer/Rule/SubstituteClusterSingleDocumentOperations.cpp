@@ -165,7 +165,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
 
   bool modified = false;
   for (auto* node : nodes) {
-    if (!aql::depIsSingletonOrConstCalc(node)) {
+    if (!depIsSingletonOrConstCalc(node)) {
       continue;
     }
 
@@ -272,7 +272,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
   for (auto* node : nodes) {
     auto mod = ExecutionNode::castTo<ModificationNode*>(node);
 
-    if (!aql::depIsSingletonOrConstCalc(node)) {
+    if (!depIsSingletonOrConstCalc(node)) {
       continue;
     }
 
@@ -380,7 +380,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
       }
     }
 
-    if (!aql::depIsSingletonOrConstCalc(cursor)) {
+    if (!depIsSingletonOrConstCalc(cursor)) {
       continue;
     }
 
