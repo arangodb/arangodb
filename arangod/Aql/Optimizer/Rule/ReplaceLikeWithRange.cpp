@@ -36,8 +36,6 @@
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Optimizer/Utils/GetAstNode.h"
-#include "Aql/Optimizer/Utils/GetFunction.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
@@ -45,6 +43,22 @@
 namespace arangodb::aql {
 
 using EN = ExecutionNode;
+
+namespace {
+
+AstNode* getAstNode(CalculationNode* c) noexcept {
+  return c->expression()->nodeForModification();
+}
+
+Function* getFunction(AstNode const* ast) noexcept {
+  if (ast->type == AstNodeType::NODE_TYPE_FCALL) {
+    ast::FunctionCallNode fcall(ast);
+    return fcall.getFunction();
+  }
+  return nullptr;
+}
+
+}  // namespace
 
 void replaceLikeWithRangeRule(Optimizer* opt,
                               std::unique_ptr<ExecutionPlan> plan,

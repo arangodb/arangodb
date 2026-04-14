@@ -43,8 +43,6 @@
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Optimizer/Utils/GetAstNode.h"
-#include "Aql/Optimizer/Utils/GetFunction.h"
 #include "Aql/Query.h"
 #include "Aql/SortElement.h"
 #include "Aql/Variable.h"
@@ -61,6 +59,18 @@
 namespace arangodb::aql {
 
 namespace {
+
+AstNode* getAstNode(CalculationNode* c) noexcept {
+  return c->expression()->nodeForModification();
+}
+
+Function* getFunction(AstNode const* ast) noexcept {
+  if (ast->type == AstNodeType::NODE_TYPE_FCALL) {
+    ast::FunctionCallNode fcall(ast);
+    return fcall.getFunction();
+  }
+  return nullptr;
+}
 
 Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
                                  char const* context) {
