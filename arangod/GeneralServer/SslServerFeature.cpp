@@ -215,9 +215,6 @@ http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html))");
                      new BooleanParameter(&_options.preferHttp11InAlpn));
 }
 
-void SslServerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {}
-
 void SslServerFeature::prepare() {
   LOG_TOPIC("afcd3", INFO, arangodb::Logger::SSL)
       << "using SSL options: " << stringifySslOptions(_options.sslOptions);
