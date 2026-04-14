@@ -72,9 +72,9 @@ extern "C" {
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
-v8::Isolate* global_isolate;
 
 namespace {
+v8::Isolate* global_isolate = nullptr;
 // this variable's value can be changed by the exit or quit commands.
 // if it's set, the main REPL loop will be aborted
 bool exitRepl = false;
