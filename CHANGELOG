@@ -3,6 +3,9 @@
 
 * Upgraded OpenSSL to 3.5.6.
 
+* COR-295: Removed `StatisticsFeature`. The `--server.statistics-all-databases` and
+  `--server.statistics-history` startup options are now obsolete and ignored.
+
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
 
 * Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
