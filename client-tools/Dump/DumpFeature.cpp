@@ -57,6 +57,7 @@
 #include "Utils/ManagedDirectory.h"
 
 #include <chrono>
+#include <filesystem>
 #include <thread>
 #include <unordered_map>
 
@@ -1593,7 +1594,7 @@ void DumpFeature::start() {
       for (auto const& it : list) {
         auto f = absl::StrCat(
             basics::FileUtils::buildFilename(_options.outputPath, it));
-        if (basics::FileUtils::isRegularFile(f)) {
+        if (std::filesystem::is_regular_file(f)) {
           auto fileSize = std::filesystem::file_size(std::filesystem::path(f));
 
           totalSize += fileSize;

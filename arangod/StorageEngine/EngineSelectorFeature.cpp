@@ -23,6 +23,8 @@
 
 #include "EngineSelectorFeature.h"
 
+#include <filesystem>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -110,7 +112,7 @@ void EngineSelectorFeature::prepare() {
 
   // fail if engine value in file does not match command-line option
   if (!ServerState::instance()->isCoordinator() &&
-      basics::FileUtils::isRegularFile(_engineFilePath)) {
+      std::filesystem::is_regular_file(_engineFilePath)) {
     LOG_TOPIC("98b5c", DEBUG, Logger::STARTUP)
         << "looking for previously selected engine in file '" << _engineFilePath
         << "'";
@@ -171,7 +173,7 @@ void EngineSelectorFeature::prepare() {
              "engine.";
 
       if (!ServerState::instance()->isCoordinator() &&
-          !basics::FileUtils::isRegularFile(_engineFilePath) &&
+          !std::filesystem::is_regular_file(_engineFilePath) &&
           !_allowDeprecatedDeployments) {
         LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
             << "The " << _options.engineName
@@ -245,7 +247,7 @@ void EngineSelectorFeature::start() {
 
   // write engine File
   if (!ServerState::instance()->isCoordinator() &&
-      !basics::FileUtils::isRegularFile(_engineFilePath)) {
+      !std::filesystem::is_regular_file(_engineFilePath)) {
     try {
       basics::FileUtils::spit(_engineFilePath, _options.engineName, true);
     } catch (std::exception const& ex) {

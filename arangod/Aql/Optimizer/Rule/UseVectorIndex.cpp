@@ -22,6 +22,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "UseVectorIndex.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -35,8 +37,8 @@
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Optimizer/Rule/OptimizerRuleVectorIndexHelpers.h"
-#include "Aql/OptimizerRules.h"
+#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Utils/VectorIndexHelpers.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Query.h"
@@ -57,7 +59,7 @@
 
 namespace arangodb::aql {
 
-using EN = arangodb::aql::ExecutionNode;
+using EN = ExecutionNode;
 
 bool checkApproxNearVariableInput(auto const& vectorIndex,
                                   auto const* approxFunctionParam,
