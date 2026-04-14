@@ -21,7 +21,7 @@
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRuleReplaceAnyEqWithIn.h"
+#include "ReplaceAnyEqWithIn.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CalculationNode.h"

@@ -37,7 +37,7 @@
 #include "Aql/Optimizer/Rule/InterchangeAdjacentEnumerations.h"
 #include "Aql/Optimizer/Rule/JoinIndexNodes.h"
 #include "Aql/Optimizer/Rule/MaterializeIntoSeparateVariable.h"
-#include "Aql/Optimizer/Rule/OptimizerRuleReplaceAnyEqWithIn.h"
+#include "Aql/Optimizer/Rule/ReplaceAnyEqWithIn.h"
 #include "Aql/Optimizer/Rule/MoveCalculationsDown.h"
 #include "Aql/Optimizer/Rule/MoveCalculationsUp.h"
 #include "Aql/Optimizer/Rule/MoveFiltersIntoEnumerate.h"

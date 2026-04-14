@@ -14,7 +14,7 @@ target_sources(arango_aql PRIVATE
   InterchangeAdjacentEnumerations.cpp
   JoinIndexNodes.cpp
   MaterializeIntoSeparateVariable.cpp
-  OptimizerRuleReplaceAnyEqWithIn.cpp
+  ReplaceAnyEqWithIn.cpp
   MoveCalculationsDown.cpp
   MoveCalculationsUp.cpp
   MoveFiltersIntoEnumerate.cpp
