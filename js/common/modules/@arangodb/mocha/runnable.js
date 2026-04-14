@@ -185,7 +185,7 @@ class Runnable extends EventEmitter {
       self.duration = new Date() - start;
       finished = true;
       if (!err && self.duration > ms && self._enableTimeouts) {
-        err = self._timeoutError(ms);
+        err = self._timeoutError(ms, self.duration);
       }
       fn(err);
     }
@@ -246,11 +246,11 @@ class Runnable extends EventEmitter {
     }
   }
 
-  _timeoutError(ms) {
+  _timeoutError(ms, timeTaken) {
     var msg =
       'Timeout of ' +
       ms +
-      'ms exceeded.';
+      'ms exceeded. Took ' + timeTaken + ' ms.';
     if (this.file) {
       msg += ' (' + this.file + ')';
     }
