@@ -68,7 +68,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -2669,8 +2668,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-            nullptr),
         arangodb::LazyApplicationFeatureReference<
             arangodb::EngineSelectorFeature>(newServer),
         arangodb::LazyApplicationFeatureReference<
@@ -2767,8 +2764,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-            nullptr),
         arangodb::LazyApplicationFeatureReference<
             arangodb::EngineSelectorFeature>(newServer),
         arangodb::LazyApplicationFeatureReference<
@@ -3298,8 +3293,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
-      arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-          nullptr),
       arangodb::LazyApplicationFeatureReference<
           arangodb::EngineSelectorFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<
@@ -4376,8 +4369,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
-      arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-          nullptr),
       selector,
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
@@ -4716,8 +4707,6 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
-      arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-          nullptr),
       arangodb::LazyApplicationFeatureReference<
           arangodb::EngineSelectorFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<
@@ -4861,8 +4850,6 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
-      arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-          nullptr),
       arangodb::LazyApplicationFeatureReference<
           arangodb::EngineSelectorFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<

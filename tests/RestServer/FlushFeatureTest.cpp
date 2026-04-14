@@ -46,7 +46,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
@@ -74,8 +73,6 @@ class FlushFeatureTest
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::EngineSelectorFeature>(server),
             arangodb::LazyApplicationFeatureReference<
