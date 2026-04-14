@@ -8,18 +8,25 @@ See [architecture.md](./architecture.md) for the system overview.
 
 ### Toast.Deployment.t()
 
-The public handle returned by `Toast.Deployment.start/2`. Passed to test
+The public handle returned by `Toast.Deployment.start/3`. Passed to test
 context and all deployment operations. Contains enough to address the
 Controller GenServer but not the full internal state.
 
 ```elixir
 %Toast.Deployment{
-  id: "toast-42",                     # unique deployment identifier
-  mode: :single_server,               # :single_server | :cluster
-  config: %Toast.Config{...},         # frozen config snapshot
+  id: "single-00",                    # unique deployment identifier
   controller: #PID<0.123.0>,          # Controller GenServer pid
-  endpoint: "http://127.0.0.1:8529",  # primary endpoint (coordinator for cluster)
-  work_dir: "/tmp/toast/run_42"       # server data directory
+  api_version: 1,                     # API version prefix (nil, integer, or string)
+  servers: %{                         # Map of server_id => ServerInfo
+    "single-00" => %ServerInfo{
+      id: "single-00",
+      role: :single,
+      port: 8529,
+      endpoint: "http://127.0.0.1:8529",
+      arango_id: nil
+    }
+  },
+  jwt_provider: nil                   # Toast.JWT.Provider (nil when auth disabled)
 }
 ```
 
@@ -28,12 +35,32 @@ is internal to the GenServer and contains mutable runtime state (server pids,
 health monitors, crash tracking). The Deployment struct is a stable reference
 that test code can hold without coupling to GenServer internals.
 
+The `servers` map contains `ServerInfo` structs -- lightweight, immutable
+snapshots taken at deploy time. These are distinct from `ServerInstance` which
+carries mutable runtime state.
+
 
 ### Toast.Deployment.Controller.State
 
 Internal state of the Controller GenServer. Not exposed outside the GenServer
 process. See [architecture.md](./architecture.md#controllerstate) for the full
 breakdown.
+
+```elixir
+%Controller.State{
+  config: %Toast.Deployment.Config{},  # Deployment configuration
+  id: "single-00",                     # Deployment ID
+  status: :ready,                      # :stopped | :starting | :ready | :degraded | :stopping | :failed
+  servers: %{                          # Map of server_id => ServerInstance
+    "single-00" => %ServerInstance{...}
+  },
+  expected_crashes: %{},               # Map of server_id => CrashExpectation
+  error: nil,                          # Error details if status is :failed
+  agency_dump: nil,                    # Captured agency state (cluster only)
+  event_listener: ToastTest.DeploymentListener,  # EventListener behaviour impl
+  jwt_provider: nil                    # Toast.JWT.Provider (nil when auth disabled)
+}
+```
 
 
 ### Toast.Deployment.ServerInstance.t()
@@ -42,17 +69,19 @@ Runtime state of a single server process within a deployment:
 
 ```elixir
 %Toast.Deployment.ServerInstance{
-  id: "toast-42",                # server identifier (same as deployment ID for single)
+  id: "single-00",               # server identifier
   role: :single,                 # :single | :agent | :dbserver | :coordinator
-  port: 8529,                   # TCP port for HTTP API
+  port: 8529,                    # TCP port for HTTP API
   endpoint: "http://127.0.0.1:8529",
-  pid: 12345,                   # OS process ID (from erlexec)
+  pid: 12345,                    # OS process ID (from erlexec)
   log_file: "/tmp/toast/.../arangod.log",
   server_dir: "/tmp/toast/.../",
   server_pid: #PID<0.456.0>,    # ServerProcess GenServer pid
   health_monitor: #PID<0.789.0>,# HealthMonitor GenServer pid
   operational_state: :running,   # :running | :paused | :stopped | :killed | :crashed
   intentional: false,            # true when state change was requested by test code
+  expecting_exit: false,         # true during stop/kill (before process exit arrives)
+  arango_id: nil,                # ArangoDB-assigned internal ID (cluster only)
   launch_spec: %{...}           # executable, args, env, dirs -- reused for relaunch
 }
 ```
@@ -78,58 +107,86 @@ operational_state  intentional  Meaning
 ```
 
 
-### Toast.Config.t()
+### Toast.Deployment.Config.t()
 
-Framework configuration. Immutable after `Config.load/1`. All timeouts are
-pre-multiplied by `timeout_factor` (3x for sanitizer builds).
+Deployment infrastructure configuration. Immutable after `Config.new/1`. All
+timeouts are pre-multiplied by `timeout_factor` (via `Toast.Env`).
 
 ```elixir
-%Toast.Config{
+%Toast.Deployment.Config{
   # Paths
   build_dir: "/path/to/build",       # where arangod binary lives
-  work_dir: "/tmp/toast/run_42",     # per-run server data
-  result_dir: "toast-results",       # where results.json etc. are written
 
-  # Deployment
-  deployment_mode: :single_server,   # default mode
-  cluster_agents: 3,
-  cluster_dbservers: 3,
-  cluster_coordinators: 1,
-  cluster_replication_factor: 2,
-
-  # Timeouts (all in milliseconds, pre-multiplied by timeout_factor)
-  global_timeout: 3_600_000,         # entire test run
-  test_timeout: 300_000,             # single test
-  startup_timeout: 60_000,           # deployment startup
-  shutdown_timeout: 60_000,          # deployment shutdown
-  coredump_timeout: 120_000,         # coredump analysis budget
-  timeout_factor: 1,                 # multiplier (3 for sanitizer)
+  # Server args
+  server_args: %{},                   # map of option => value for all/single servers
+  show_server_logs: false,            # print arangod stderr
 
   # Sanitizer
-  explicit_sanitizer: "alubsan",     # forced sanitizer type, or nil
-  sanitizer: #MapSet<["ASAN_OPTIONS", ...]>,  # active env var names
+  sanitizer_override: :alubsan,       # forced sanitizer type, or nil
+  active_sanitizers: #MapSet<["ASAN_OPTIONS", ...]>,  # active env var names
 
-  # Other
-  show_server_logs: false,           # print arangod stderr
-  keep_work_dir: false,              # preserve server data after run
-  api_version: nil,                  # API version prefix for URLs
-  debugger: :auto,                   # :gdb | :lldb | :auto | :none
-  dump_agency_on_error: true,        # capture agency state on failure
-  ci: false                          # enable CI packaging
+  # Cluster
+  cluster: nil,                       # nil for single server, ClusterOpts for cluster
+
+  # Timeouts (milliseconds, pre-multiplied by timeout_factor)
+  startup_timeout: 60_000,
+  shutdown_timeout: 60_000,
+  timeout_factor: 1,                  # multiplier (3 for sanitizer, 10 for rr)
+
+  # Protocol
+  api_version: nil,                   # API version prefix for URLs
+  protocol: :http1,                   # :http1 | :http2
+  ssl: false,                         # enable SSL/TLS
+
+  # Authentication
+  authentication: false,              # enable JWT authentication
+  jwt_algorithm: :hmac,               # :hmac | :ecdsa
+
+  # Recording
+  rr: nil,                            # MapSet of roles to record with rr
+  rr_path: nil,                       # path to rr executable
+
+  # Resources
+  memory_budget: nil                  # memory budget in bytes (auto-detected)
+}
+```
+
+
+### ToastTest.Config.t()
+
+Test execution configuration. Separate from Deployment.Config because it
+covers test runner concerns, not deployment infrastructure.
+
+```elixir
+%ToastTest.Config{
+  base_dir: "/tmp/toast/...",         # per-run server data
+  result_dir: "toast-results",        # where results are written
+  deployment_mode: :single_server,    # default mode
+  timeout_factor: 1,                  # multiplier
+  global_timeout: 3_600_000,          # entire test run
+  test_timeout: 300_000,              # single test
+  keep_data: false,                   # preserve server data after run
+  ci: false,                          # enable CI packaging
+  debugger: :auto,                    # :gdb | :lldb | :auto | :none
+  attach_debugger: false,             # pause for debugger attachment
+  coredump_timeout: 180_000,          # coredump analysis budget
+  coredump_dir: nil,                  # explicit coredump search directory
+  dump_agency_on_error: true          # capture agency state on failure
 }
 ```
 
 
 ### Toast.Client.t()
 
-REST client wrapping `Req`. Supports database scoping and API versioning:
+REST client wrapping `Req`. Supports database scoping, API versioning, and
+multiple authentication modes:
 
 ```elixir
 %Toast.Client{
   base_url: "http://127.0.0.1:8529",
   database: "mydb",                  # nil for system-level requests
   api_version: 1,                    # integer, string, or nil
-  auth: {:basic, "root", ""},        # {:basic, u, p} | {:jwt, token} | nil
+  auth: {:basic, "root", ""},        # {:basic, u, p} | {:jwt, token} | {:jwt_provider, provider} | nil
   req: %Req.Request{...}             # underlying HTTP client
 }
 ```
@@ -189,6 +246,7 @@ Toast uses ETS for cross-process shared state:
 |-------|------|--------|---------|
 | `:toast_suite_abort` | `:set` | `:public` | Abort signaling. Single `{:aborted, reason}` entry. |
 | `:toast_deployment_registry` | `:set` | `:public` | Maps suite module to active deployment and extra context. |
+| `ToastTest.EventStore` | `:ordered_set` | `:public` | Chronological lifecycle events keyed by `{timestamp, sequence}`. |
 
 
 ## Module Dependency Map
@@ -199,77 +257,88 @@ Dependencies flow top-to-bottom. Each arrow means "calls/uses".
 Mix.Tasks.Toast
 Mix.Tasks.Toast.Gen.Suite
   |   uses: Mix.Tasks.Toast.Helpers (pure arg parsing)
+  |         Toast.Env (configuration resolution)
   |
   v
 ToastTest.Runner
   |   uses: ToastTest.ExUnitCompat (ExUnit internal shim)
   |         ToastTest.TestLifecycle (shared test lifecycle primitives)
+  |         ToastTest.Runner.TestExecution (core test execution loop)
+  |         ToastTest.Runner.TestProcess (test process spawn/management)
+  |         ToastTest.Runner.TestFilter (test filtering)
+  |         ToastTest.Runner.BetweenTests (health checks between tests)
+  |         ToastTest.Runner.PostExecution (post-suite diagnostics)
+  |         ToastTest.Runner.ResultBuilder (SuiteResult assembly)
+  |         ToastTest.Runner.FailureFormatter (failure display)
+  |         ToastTest.Runner.Timeout (deadline management)
   |         ToastTest.SuiteRun (data struct)
   |         ToastTest.Abort (ETS-backed abort state)
   |         ToastTest.DeploymentRegistry (ETS)
-  |         ToastTest.ProcessHistory (GenServer)
-  |         ToastTest.StateCleanup
+  |         ToastTest.DeploymentListener (EventListener impl)
   |         ToastTest.CrashMonitor (abort on crash)
   |         ToastTest.ResultCollector (ExUnit formatter)
   |         ToastTest.ArtifactCollector (filesystem artifact discovery)
   |         ToastTest.Attribution (issue production)
   |         ToastTest.SuiteResult (build + write results)
-  |         ToastTest.PostExecSummary (CLI output)
+  |         ToastTest.Formatting.PostExecSummary (CLI output)
+  |         ToastTest.Formatting.RunSummary (overall run summary)
+  |         ToastTest.Formatting.RrSummary (rr recording summary)
   |
   v
 Toast.Deployment (public API facade)
-  |   uses: Toast.Config (configuration)
+  |   uses: Toast.Deployment.Config (configuration)
   |         Toast.Client (REST client)
   |         Toast.Deployment.Controller
   |         Toast.Deployment.ServerInstance
+  |         Toast.Deployment.Factory
+  |         Toast.JWT.KeyGen (JWT material generation)
+  |         Toast.JWT.Provider (JWT signer handle)
   |
   v
-Toast.Deployment.Controller (GenServer + behaviour)
-  |   uses: Toast.Deployment.Controller.State (defstruct)
-  |         Toast.Deployment.Controller.Helpers (server lookup, update, health, relaunch)
+Toast.Deployment.Controller (GenServer)
+  |   uses: Toast.Deployment.Controller.State (nested defstruct)
+  |         Toast.Deployment.DeployPipeline (multi-phase deploy)
+  |         Toast.Deployment.ShutdownPipeline (ordered shutdown/rollback/abort)
   |         Toast.Deployment.ServerLifecycle (pure functions)
   |         Toast.Deployment.ServerInstance (data struct)
-  |         Toast.Process.Supervisor (start children)
+  |         Toast.Deployment.CrashExpectation (data struct)
+  |         Toast.Deployment.Events (event emission)
+  |         Toast.Deployment.EventListener (behaviour)
   |         Toast.Process.CrashInfo (data struct)
-  |         Toast.Process.CrashEvent (data struct)
-  |
-  +---> Toast.Deployment.Controller.SingleServer (behaviour impl)
-  |       uses: Toast.Deployment.Controller.Helpers
-  |             Toast.Deployment.Factory
-  |             Toast.Deployment.Health
-  |             Toast.Deployment.ServerLifecycle
-  |             Toast.Process.ServerProcess
-  |             Toast.PortAllocator
-  |
-  +---> Toast.Deployment.Controller.Cluster (behaviour impl)
-          uses: Toast.Deployment.Controller.Helpers
-                Toast.Deployment.Factory
-                Toast.Deployment.Health
-                Toast.Deployment.ServerLifecycle
-                Toast.Diagnostics.AgencyDump
-                Toast.Process.ServerProcess
-                Toast.PortAllocator
+  |         Toast.Diagnostics.AgencyDump (cluster agency dump)
 
-Toast.Deployment.Controller.Helpers
-  |   uses: Toast.Deployment.ServerInstance (struct access)
-  |         Toast.Deployment.ServerLifecycle (stop health monitor)
+Toast.Deployment.DeployPipeline
+  |   uses: Toast.Deployment.Events (event emission)
+  |         Toast.Deployment.Health (HTTP health checks)
+  |         Toast.Deployment.ServerLifecycle (server ops)
+  |         Toast.Process.ServerProcess (launch OS processes)
+  |         Toast.Process.Supervisor (start children)
+
+Toast.Deployment.ShutdownPipeline
+  |   uses: Toast.Deployment.ServerLifecycle (stop servers)
   |         Toast.Process.ServerProcess (stop, signal)
-  |         Toast.Process.Supervisor (start health monitor)
+  |         Toast.Process.Supervisor (stop health monitors)
 
 Toast.Deployment.Factory
   |   uses: Toast.Deployment.CommandBuilder (arangod CLI args)
+  |         Toast.Deployment.ClusterOpts (cluster topology)
   |         Toast.Utils.Filesystem (dir creation, binary discovery)
   |         Toast.Diagnostics.Sanitizer (build env vars)
-  |         Toast.Config
+  |         Toast.Deployment.Config
 
 Toast.Process.ServerProcess (GenServer, wraps erlexec)
   |   no Toast dependencies -- communicates via messages
 
 Toast.Process.CrashInfo (data struct, no dependencies)
-Toast.Process.CrashEvent (data struct, no dependencies)
 
 Toast.Process.HealthMonitor (GenServer, HTTP polling)
   |   uses: Req (HTTP client, direct -- not via Toast.Client)
+
+Toast.JWT.KeyGen (JWT key generation)
+  |   uses: :crypto, :public_key (Erlang stdlib)
+
+Toast.JWT.Provider (data struct, holds signer)
+  |   uses: Toast.JWT (which uses Joken for signing)
 
 Toast.Utils (utility functions, no Toast dependencies)
 
@@ -279,15 +348,19 @@ Toast.Diagnostics.Coredump
   |         Toast.Diagnostics.Coredump.LLDB (behaviour impl)
   |         Toast.Diagnostics.Coredump.Report (data struct)
 
-Toast.Diagnostics.Summary
-  |   uses: ToastTest.SuiteResult (struct access)
-
 ToastTest.Abort (ETS-backed abort state, no Toast deps)
 
 ToastTest.TestLifecycle (shared test lifecycle primitives, no Toast deps)
 
-ToastTest.CLIFormatter (GenServer, no Toast deps)
+ToastTest.Formatting.CLI (GenServer, no Toast deps)
 ToastTest.ResultCollector (ExUnit formatter, stores test data)
+
+ToastTest.EventStore (ETS-backed event store)
+  |   uses: ToastTest.EventStore.Projections (derived views)
+
+ToastTest.DeploymentListener (EventListener implementation)
+  |   uses: ToastTest.EventStore (event recording)
+  |         ToastTest.CrashMonitor (crash notification)
 
 ToastTest.ArtifactCollector (pure filesystem discovery)
   |   uses: Toast.Diagnostics.Coredump (discover core dumps)
@@ -295,10 +368,11 @@ ToastTest.ArtifactCollector (pure filesystem discovery)
 
 ToastTest.Attribution (orchestrates issue production)
   |   uses: ToastTest.Attribution.TimeWindows (time window calculations)
+  |         ToastTest.Attribution.ServerLogs (server log data)
   |         ToastTest.Enrichment.Coredump (coredump analysis)
   |         ToastTest.Enrichment.Logs (log parsing)
   |         ToastTest.Enrichment.Sanitizer (sanitizer file reading)
-  |         Toast.Process.CrashEvent (struct access)
+  |         ToastTest.CrashEvent (struct access)
 
 ToastTest.Attribution.TimeWindows (pure, no dependencies)
 
@@ -312,15 +386,23 @@ ToastTest.SuiteResult (central data struct)
   |         ToastTest.SuiteResult.JUnitXML (JUnit XML serialization)
   |         ToastTest.ResultCollector (test_data type)
 
-ToastTest.PostExecSummary (CLI output formatting)
+ToastTest.Formatting.PostExecSummary (CLI output formatting)
   |   uses: ToastTest.SuiteResult (struct access)
-  |         Toast.Utils (compact/1)
+  |         ToastTest.Formatting (shared utilities)
 
-Toast.ResultPackaging (CI artifact packaging, no other Toast deps)
+ToastTest.Formatting.RunSummary (overall run summary)
+  |   uses: ToastTest.SuiteResult (struct access)
+
+ToastTest.DiagnosticsSummary (aggregate diagnostics)
+  |   uses: ToastTest.SuiteResult (struct access)
+
+ToastTest.ResultPackaging (CI artifact packaging)
+  |   uses: Toast.Utils.Compression (compression tools)
 
 ToastTest.Case (ExUnit.CaseTemplate)
   |   uses: Toast.Client (create client for test context)
   |         ToastTest.DeploymentRegistry
+  |         ToastTest.Expect (imported into test modules)
 
 ToastTest.Suite (macro module)
   |   uses: ToastTest.Case (via __using__ expansion)
@@ -329,6 +411,14 @@ ToastTest.Interactive
   |   uses: ToastTest.ExUnitCompat (ExUnit internal shim)
   |         ToastTest.TestLifecycle (shared test lifecycle primitives)
   |         ToastTest.DeploymentRegistry
+
+Mix.Tasks.Toast.Analyze
+  |   uses: Mix.Tasks.Toast.Analyze.Data (data loading)
+  |         Mix.Tasks.Toast.Analyze.Issues (issue listing)
+  |         Mix.Tasks.Toast.Analyze.Detail (detailed diagnostics)
+  |         Mix.Tasks.Toast.Analyze.Info (file overview)
+  |         Mix.Tasks.Toast.Analyze.Perf (performance analysis)
+  |         ToastTest.LogAnalysis (log data transformation)
 ```
 
 ### Dependency Principles
@@ -336,10 +426,10 @@ ToastTest.Interactive
 - **Toast.Deployment** is the only module that touches the Controller
   GenServer. All other code goes through the `Toast.Deployment` public API.
 
-- **Mode callback modules** (SingleServer, Cluster) share a common set of
-  helpers via `Controller.Helpers` and depend on the same subsystem modules
-  (Factory, Health, ServerProcess, ServerLifecycle) but never depend on
-  each other.
+- **DeployPipeline and ShutdownPipeline** handle the complex multi-phase
+  startup and shutdown sequences as pure pipeline functions that operate on
+  Controller.State. The Controller delegates to them and focuses on message
+  routing and state management.
 
 - **Attribution replaces the old Matcher/CrashMatcher/SanitizerMatcher
   hierarchy.** `Attribution` orchestrates issue production using
@@ -348,20 +438,29 @@ ToastTest.Interactive
 
 - **Enrichment modules** (`Enrichment.Logs`, `Enrichment.Sanitizer`,
   `Enrichment.Coredump`) are pure file I/O with minimal Toast dependencies.
-  They replaced the old `CrashLogParser` and `ServerLog` modules.
 
 - **ToastTest.Runner** is the most connected module because it orchestrates
-  the full test lifecycle: deployment, test execution, artifact collection,
-  attribution, result building, and summary output. `ToastTest.Case` is now
-  a thin ExUnit.CaseTemplate that only provides test context via the
-  DeploymentRegistry.
+  the full test lifecycle. Its complexity is managed by delegation to
+  focused submodules: `TestExecution`, `TestProcess`, `BetweenTests`,
+  `PostExecution`, `ResultBuilder`, `TestFilter`, and `Timeout`.
 
 - **Process modules** (ServerProcess, HealthMonitor) have zero Toast
   dependencies. They communicate purely via messages (`:server_crashed`,
   `:server_unhealthy`). This makes them independently testable and reusable.
+
+- **Event system** provides loose coupling between deployment lifecycle and
+  test execution. The `EventListener` behaviour allows different consumers
+  (test runner vs interactive mode) without the deployment layer knowing
+  about test execution concerns.
+
+- **Configuration is split into three layers**: `Toast.Env` resolves from
+  all sources, `Toast.Deployment.Config` holds deployment concerns,
+  `ToastTest.Config` holds test execution concerns. This reflects the
+  architectural boundary between infrastructure and test runner.
 
 - **External dependencies** are wrapped at boundaries:
   - `erlexec` is wrapped by `ServerProcess`
   - `Req` is wrapped by `Toast.Client` (except HealthMonitor which uses it
     directly for simplicity -- it only needs a single GET)
   - ExUnit internals are wrapped by `ExUnitCompat`
+  - `Joken` is wrapped by `Toast.JWT.*`

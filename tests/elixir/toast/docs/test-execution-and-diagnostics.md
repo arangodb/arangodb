@@ -22,13 +22,11 @@ mix toast suite_a suite_b
       ])
 ```
 
-**Standalone** (`mix test`): a single deployment for all tests. Uses
-`ToastTest.Case.setup_suite!/0` in `test_helper.exs`, then standard ExUnit
-execution. Diagnostics are collected via `ExUnit.after_suite/1` callback.
+**Interactive** (`ToastTest.Interactive`): run individual tests against a
+manually-started deployment. Useful for debugging and development.
 
 The suite-based model exists because different test suites need different
-deployment configurations (cluster topology, server args, etc.). A standalone
-run can only use one configuration.
+deployment configurations (cluster topology, server args, etc.).
 
 
 ### Suite Structure
@@ -80,25 +78,29 @@ For each suite:
      --> e.g., create test databases, insert seed data
      --> returns extra_context merged into test context
 
-  4. run_suite_tests(suite_run, test_modules, global_opts, suite_opts)
+  4. Runner.TestExecution runs tests sequentially:
      --> start EventManager, RunnerStats, formatters
      --> for each test_module:
          a. module_started event
          b. run_setup_all (if present)
          c. for each test:
-            - check_suite_deadline!
-            - check_between_tests (health check or custom)
-            - if aborted? -> skip remaining
-            - spawn_test -> exec_test_setup -> exec_test
-            - receive result (with timeout handling)
+            - Runner.Timeout checks suite deadline
+            - Runner.BetweenTests runs health check (or custom callback)
+            - if Abort.aborted? -> skip remaining
+            - Runner.TestProcess spawns test with timeout handling
             - test_finished event
          d. module_finished event
      --> suite_finished event
 
   5. suite_module.teardown_deployment(deployment)  [optional]
 
-  6. Toast.Deployment.stop_and_collect(deployment)
-     --> agency dump (cluster) -> shutdown -> collect diagnostics -> coredumps
+  6. Runner.PostExecution collects diagnostics:
+     --> agency dump (cluster, pre-shutdown)
+     --> Toast.Deployment.stop(deployment)
+     --> ArtifactCollector discovers coredumps, sanitizer logs
+     --> Attribution produces typed issues using TimeWindows
+     --> Enrichment modules add content (logs, sanitizer reports, coredumps)
+     --> Runner.ResultBuilder assembles SuiteResult
 
   7. StateCleanup.reset()
      --> clear ETS tables, reset formatters for next suite
@@ -127,8 +129,8 @@ check_between_tests(config, prev_test)
   |     --> call suite_module.between_tests(deployment, prev_test)
   |         return :ok or {:error, reason}
   |
-  +-- default: Toast.Deployment.check_health(deployment, prev_test)
-        --> checks controller status
+  +-- default: ToastTest.Runner.BetweenTests.check(deployment, prev_test)
+        --> checks controller status via Deployment.status()
         --> :ready => :ok
         --> :degraded => {:error, "servers still down..."}
         --> :failed => {:error, "Server crashed..."}
@@ -155,8 +157,8 @@ module.__ex_unit__()  -- test metadata access
 ```
 
 These are private ExUnit APIs that may change between Elixir versions. The
-compat layer is version-checked against `~> 1.19` and warns on untested
-versions. Centralizing these calls makes version upgrades a single-file change.
+compat layer is version-checked and warns on untested versions. Centralizing
+these calls makes version upgrades a single-file change.
 
 
 ### Abort Protocol
@@ -414,49 +416,54 @@ data structure consumed by both CLI output (`PostExecSummary`) and export
 ```
 Test execution
   |
-  +--> CLIFormatter (GenServer)
+  +--> Formatting.CLI (GenServer)
   |      Receives ExUnit events
   |      Prints Google Test-style output with timestamps
   |
   +--> ResultCollector (GenServer)
   |      Receives ExUnit events
-  |      Collects structured test results into Application env
-  |      Stores as %{tests: [...], suite_started_at, suite_finished_at, times_us}
+  |      Collects structured test results
   |
-  +--> After suite completes:
-         stop_and_collect(deployment)
+  +--> EventStore
+  |      Records deployment lifecycle events (server start/stop/crash)
+  |
+  +--> After suite completes (Runner.PostExecution):
+         agency dump (cluster, pre-shutdown)
+         Toast.Deployment.stop(deployment)
          ArtifactCollector -- discover coredumps, sanitizer logs per server
          Attribution -- produce typed issues using TimeWindows
          Enrichment.Logs -- extract crash lines, log excerpts
          Enrichment.Sanitizer -- read and classify sanitizer reports
          Enrichment.Coredump -- run debugger analysis on core files
-         PostExecSummary.format(...) --> CLI output
+         Runner.ResultBuilder -- assemble SuiteResult
+         Formatting.PostExecSummary -- CLI output
          SuiteResult.JSON.render(suite_result) --> results.json
          SuiteResult.JUnitXML.render(suite_result) --> results.xml
+         .diagnostics.etf --> serialized diagnostics for offline analysis
          --> writes to result_dir
 ```
 
 ### CI Result Tiers
 
-`Toast.ResultPackaging` organizes artifacts by importance:
+`ToastTest.ResultPackaging` organizes artifacts by importance:
 
 | Tier | Contents | Behavior |
 |------|----------|----------|
 | 1 | results.json, results.xml, toast.log | Always published |
-| 2 | Server logs, sanitizer reports, crash reports, agency dumps | Compressed into toast-logs.tar.gz |
-| 3 | Core dump files | Individually compressed (zstd preferred, gzip fallback) |
+| 2 | Server logs, sanitizer reports | Compressed into toast-logs.tar.gz |
+| 3 | Core dump files, work directory archive | Individually compressed (zstd preferred, gzip fallback) |
 
 ### Exit Codes
 
-`ResultPackaging.exit_code/1` returns a severity-ordered exit code:
+`ResultPackaging.exit_code/1` returns a monotonic severity-ordered exit code:
 
 | Code | Meaning | Severity |
 |------|---------|----------|
 | 0 | All tests passed | -- |
 | 1 | Test failures | Lowest |
-| 2 | Infrastructure failure (deploy failed, etc.) | High |
-| 3 | Server crash | Highest |
-| 4 | Sanitizer errors detected | Medium |
+| 2 | Sanitizer errors detected | Medium |
+| 3 | Infrastructure failure (deploy failed, etc.) | High |
+| 4 | Server crash | Highest |
 
-The ordering prioritizes crashes (3) over infrastructure (2) over sanitizer (4)
-over test failures (1). A run with both a crash and sanitizer errors returns 3.
+The ordering prioritizes crashes (4) over infrastructure (3) over sanitizer (2)
+over test failures (1). A run with both a crash and sanitizer errors returns 4.

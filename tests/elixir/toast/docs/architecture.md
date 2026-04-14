@@ -24,7 +24,7 @@ Toast has eight major subsystems:
          |                    |                       |
          v                    v                       v
   +-------------+    +------------------+    +------------------+
-  | Config      |    | ToastTest.Runner |    | ResultPackaging  |
+  | Toast.Env   |    | ToastTest.Runner |    | ResultPackaging  |
   +-------------+    +------------------+    +------------------+
                               |
               +---------------+---------------+
@@ -33,11 +33,11 @@ Toast has eight major subsystems:
   +-----------------+  +--------------+  +------------------------+
   | Deployment      |  | Attribution  |  | Diagnostics            |
   | (Controller,    |  | & Enrichment |  | (Coredump, Sanitizer,  |
-  |  Lifecycle,     |  | (Attribution,|  |  AgencyDump)           |
-  |  Factory,       |  |  Logs,       |  +------------------------+
-  |  Health)        |  |  Sanitizer,  |           ^
-  +-----------------+  |  Coredump,   |           |
-              |        |  PostExec    |     (uses low-level
+  |  DeployPipeline,|  | (Attribution,|  |  AgencyDump)           |
+  |  ShutdownPipe,  |  |  Logs,       |  +------------------------+
+  |  Factory,       |  |  Sanitizer,  |           ^
+  |  Health)        |  |  Coredump,   |           |
+  +-----------------+  |  PostExec    |     (uses low-level
               |        |  Summary)    |      analysis tools)
               |        +--------------+
               v
@@ -55,9 +55,9 @@ Toast has eight major subsystems:
 
 Data flows top-to-bottom during setup and test execution:
 
-1. CLI parses args, loads config, discovers suites
-2. Runner starts a deployment per suite via `Toast.Deployment.start/2`
-3. Controller (GenServer) orchestrates server launch via Factory + ServerProcess
+1. CLI parses args, loads config via `Toast.Env`, discovers suites
+2. Runner starts a deployment per suite via `Toast.Deployment.start/3`
+3. Controller (GenServer) orchestrates server launch via DeployPipeline + Factory + ServerProcess
 4. Tests run against the deployment via Client REST wrappers
 5. On completion, artifacts are collected and attributed to tests via Attribution + Enrichment
 6. Results are structured as SuiteResult, exported to JSON/XML, and optionally packaged for CI
@@ -71,6 +71,10 @@ Toast.Supervisor (one_for_one)
 +-- Toast.PortAllocator (GenServer)
 |     Allocates available TCP ports via socket probing.
 |     Stateful counter starting from a random base port.
+|
++-- ToastTest.EventStore (GenServer)
+|     ETS-backed event store for deployment lifecycle events.
+|     Chronologically ordered by {timestamp, sequence}.
 |
 +-- Toast.Process.Supervisor (DynamicSupervisor, max_restarts: 0)
 |     |
@@ -86,7 +90,7 @@ Toast.Supervisor (one_for_one)
       |
       +-- Toast.Deployment.Controller (GenServer)  -- one per deployment
             Orchestrates deploy/shutdown for one deployment.
-            Delegates to mode callback modules (SingleServer or Cluster).
+            Uses DeployPipeline for startup, ShutdownPipeline for teardown.
 ```
 
 Design decisions:
@@ -109,21 +113,35 @@ Design decisions:
 
 ## Module Map
 
+### Configuration
+
+| Module | Role |
+|--------|------|
+| `Toast.Env` | Resolve configuration from env vars, `.toast.local.exs`, and CLI opts into Application env. Single source of truth for configuration resolution and precedence. |
+| `Toast.Deployment.Config` | Deployment infrastructure config: build dir, server args, sanitizers, timeouts, cluster topology, JWT, SSL. Constructed from Application env via `new/1`. |
+| `ToastTest.Config` | Test execution config: result dirs, diagnostics, CI settings, debugger. Intentionally separate from Deployment.Config. |
+
 ### Deployment (`Toast.Deployment.*`)
 
 | Module | Role |
 |--------|------|
-| `Toast.Deployment` | Public API facade. Start/stop deployments, query status, server control ops. |
-| `Toast.Deployment.Controller` | GenServer + behaviour. Shared state machine. Delegates to mode callbacks. |
-| `Controller.SingleServer` | Mode callback for single arangod instance. |
-| `Controller.Cluster` | Mode callback for agent/dbserver/coordinator cluster. |
-| `Controller.Helpers` | Helper functions for Controller (server lookup, update, health monitor management, relaunch logic). |
-| `Toast.Deployment.ServerLifecycle` | Pure functions for server ops (stop, kill, pause, resume, relaunch, crash handling). Used by Controller. |
+| `Toast.Deployment` | Public API facade. Start/stop deployments, query status, server control ops, client creation. |
+| `Toast.Deployment.ServerInfo` | Immutable snapshot of server info (id, role, port, endpoint, arango_id). Safe to pass around in test context. |
+| `Toast.Deployment.Controller` | GenServer. Shared state machine for deployment lifecycle, server control, crash handling. |
+| `Toast.Deployment.Controller.State` | Internal state struct for Controller (nested module). |
+| `Toast.Deployment.DeployPipeline` | Multi-phase deploy sequence: start processes, launch by role group, health check, post-deploy. |
+| `Toast.Deployment.ShutdownPipeline` | Ordered shutdown, rollback, and abort sequences. |
 | `Toast.Deployment.Factory` | Builds launch specs (executable path, args, env, dirs) from Config. |
 | `Toast.Deployment.CommandBuilder` | Generates arangod CLI arguments per role. |
 | `Toast.Deployment.Health` | HTTP health check polling (`/_api/version`, `/_api/agency/config`). |
+| `Toast.Deployment.ServerLifecycle` | Pure functions for server ops (stop, kill, pause, resume, relaunch, crash handling). Used by Controller. |
 | `Toast.Deployment.FailurePoint` | Failure injection via `/_admin/debug/failat` REST endpoints. |
-| `Toast.Deployment.ServerInstance` | Data struct: runtime state of one server (ports, pids, endpoints, state). |
+| `Toast.Deployment.CrashExpectation` | Data struct for tracking expected crashes (timer, crash_info, waiter). |
+| `Toast.Deployment.ServerInstance` | Data struct: runtime state of one server (ports, pids, endpoints, operational state). |
+| `Toast.Deployment.ClusterOpts` | Data struct: cluster topology and per-role arguments. |
+| `Toast.Deployment.Events` | Event emission for deployment lifecycle. Single source of truth for event format. |
+| `Toast.Deployment.EventListener` | Behaviour for receiving lifecycle events (on_event, on_crash). |
+| `Toast.Deployment.DefaultEventListener` | No-op implementation of EventListener. |
 | `Toast.Deployment.Supervisor` | DynamicSupervisor for Controller processes. |
 
 ### Process Management (`Toast.Process.*`)
@@ -133,25 +151,47 @@ Design decisions:
 | `Toast.Process.ServerProcess` | GenServer wrapping erlexec for one OS process. Lifecycle + crash detection. |
 | `Toast.Process.HealthMonitor` | GenServer polling HTTP health. Notifies listener after N consecutive failures. |
 | `Toast.Process.CrashInfo` | Data struct for crash information (exit status, signal, timestamp, PID). |
-| `Toast.Process.CrashEvent` | Data struct for crash event metadata. |
 | `Toast.Process.Supervisor` | DynamicSupervisor for ServerProcess and HealthMonitor children. |
+
+### JWT (`Toast.JWT.*`)
+
+| Module | Role |
+|--------|------|
+| `Toast.JWT` | JWT token generation and signing. |
+| `Toast.JWT.KeyGen` | Generate JWT signing material and keyfiles (HMAC and ECDSA). |
+| `Toast.JWT.Provider` | Data struct holding a JWT signer. Used by Deployment to authenticate clients. |
 
 ### Test Execution (`ToastTest.*`)
 
 | Module | Role |
 |--------|------|
 | `ToastTest.Runner` | Suite-based test runner (derived from ExUnit.Runner). Orchestrates deploy -> run -> collect. |
+| `ToastTest.Runner.TestExecution` | Core test execution loop (setup_all, per-test spawn, result handling). |
+| `ToastTest.Runner.TestProcess` | Spawn and manage individual test processes with timeout handling. |
+| `ToastTest.Runner.TestFilter` | Filter test modules by line number, test name, and ExUnit tags. |
+| `ToastTest.Runner.BetweenTests` | Between-test health checks and suite deadline enforcement. |
+| `ToastTest.Runner.PostExecution` | Post-suite diagnostics collection (agency dump, artifact collection, attribution). |
+| `ToastTest.Runner.ResultBuilder` | Build SuiteResult from test data, diagnostics, and enrichment. |
+| `ToastTest.Runner.FailureFormatter` | Format test failures for display. |
+| `ToastTest.Runner.Timeout` | Timeout calculation and enforcement for suite/test deadlines. |
 | `ToastTest.Suite` | Behaviour + `__using__` macro for suite definition. Defines `deployment_config/0`. |
 | `ToastTest.Case` | ExUnit.CaseTemplate providing `deployment`, `endpoint`, `client` context. |
+| `ToastTest.Expect` | Non-fatal expectation macro (like Google Test's EXPECT_*). |
 | `ToastTest.ExUnitCompat` | Shim over ExUnit internal APIs (EventManager, RunnerStats). |
 | `ToastTest.SuiteRun` | Data struct: per-suite execution context (module, deployment, deadline). |
 | `ToastTest.DeploymentRegistry` | ETS-based mapping of suite modules to active deployments. |
-| `ToastTest.CrashMonitor` | Default `on_crash` callback; calls `Runner.abort!`. |
+| `ToastTest.DeploymentListener` | EventListener implementation delegating to EventStore and CrashMonitor. |
+| `ToastTest.CrashMonitor` | Default crash callback; calls `Runner.abort!`. |
+| `ToastTest.CrashEvent` | Data struct for crash event metadata (constructed and consumed by test execution layers). |
+| `ToastTest.EventStore` | ETS-backed event store for lifecycle events. Chronologically ordered. |
+| `ToastTest.EventStore.Projections` | Pure-functional projections over the event stream (e.g., pids_by_server). |
+| `ToastTest.Events` | Public API for emitting custom events into the test event store. |
 | `ToastTest.Abort` | ETS-backed suite-level abort state with human-readable messages. |
-| `ToastTest.ProcessHistory` | GenServer recording server lifecycle events (start/stop/crash). |
 | `ToastTest.StateCleanup` | Resets shared state between suite runs (ETS tables, formatters, callbacks). |
 | `ToastTest.TestLifecycle` | Shared test lifecycle primitives (spawn_setup_all, spawn_test, etc.) used by both Interactive and Runner. |
 | `ToastTest.Interactive` | Run individual tests against an existing deployment (debugging). |
+| `ToastTest.DebuggerAttach` | Print debugger attach commands and wait for user input (--attach-debugger). |
+| `ToastTest.TimeoutError` | Custom exception for test/suite timeout conditions. |
 
 ### Diagnostics (`Toast.Diagnostics.*`)
 
@@ -180,43 +220,69 @@ reading/parsing specific artifact types.
 |--------|------|
 | `ToastTest.Attribution` | Orchestrates issue production by combining test failures, crash analysis, and sanitizer reports into SuiteResult issues. |
 | `ToastTest.Attribution.TimeWindows` | Time window calculations for attributing diagnostics to tests. |
+| `ToastTest.Attribution.ServerLogs` | Extract server log data for attribution context. |
 | `ToastTest.ArtifactCollector` | Inventories filesystem artifacts (coredumps, sanitizer logs) for server instances. Pure discovery only. |
 | `ToastTest.Enrichment.Logs` | Extract excerpts from ArangoDB log files. Supports time-windowed and crash-line extraction. |
 | `ToastTest.Enrichment.Sanitizer` | Read and classify sanitizer report files. |
 | `ToastTest.Enrichment.Coredump` | Enrichment wrapper around Toast.Diagnostics.Coredump.analyze, transforms Report to SuiteResult issue format. |
-| `ToastTest.PostExecSummary` | Post-execution summary formatting for CLI output (crash attribution, sanitizer errors, coredump traces). |
+
+### Formatting (`ToastTest.Formatting.*`)
+
+| Module | Role |
+|--------|------|
+| `ToastTest.Formatting` | Base module with shared formatting utilities (colorize, etc.). |
+| `ToastTest.Formatting.CLI` | Google Test-style console output with timestamps. Replaces ExUnit.CLIFormatter. |
+| `ToastTest.Formatting.Issues` | Format diagnostic issues for display. |
+| `ToastTest.Formatting.Logs` | Format server log excerpts for display. |
+| `ToastTest.Formatting.PostExecSummary` | Post-execution summary (crash attribution, sanitizer errors, coredump traces). |
+| `ToastTest.Formatting.RunSummary` | Overall run summary across all suites. |
+| `ToastTest.Formatting.RrSummary` | Summary of rr recording locations. |
 
 ### Client (`Toast.Client.*`)
 
 | Module | Role |
 |--------|------|
-| `Toast.Client` | Thin REST client (wraps Req). Supports database scoping, auth, API versioning. |
-| `Toast.Client.Admin` | `/_admin/*` endpoints (version, server status, shutdown). |
+| `Toast.Client` | Thin REST client (wraps Req). Supports database scoping, auth (basic, JWT), API versioning, HTTP/2. |
+| `Toast.Client.Admin` | `/_admin/*` endpoints (version, server status, shutdown, statistics). |
 | `Toast.Client.AQL` | AQL query execution (`/_api/cursor`). |
 | `Toast.Client.Collection` | Collection CRUD (`/_api/collection`). |
 | `Toast.Client.Document` | Document CRUD (`/_api/document`). |
 | `Toast.Client.Index` | Index management (`/_api/index`). |
+| `Toast.Client.Database` | Database CRUD (`/_api/database`). |
+| `Toast.Client.Graph` | Named graph lifecycle via Gharial API (`/_api/gharial`). |
+| `Toast.Client.Vertex` | Vertex operations via Gharial API. |
+| `Toast.Client.Edge` | Edge operations via Gharial API. |
+| `Toast.Client.View` | ArangoSearch view management (`/_api/view`). |
+| `Toast.Client.Analyzer` | Analyzer management (`/_api/analyzer`). |
+| `Toast.Client.User` | User management (`/_api/user`). |
+| `Toast.Client.Transaction` | Stream transaction lifecycle (`/_api/transaction`). |
+| `Toast.Client.Utils` | Client utility functions. |
 
 ### Results (`ToastTest.*`)
 
 | Module | Role |
 |--------|------|
-| `ToastTest.CLIFormatter` | Google Test-style console output with timestamps. Replaces ExUnit.CLIFormatter. |
 | `ToastTest.ResultCollector` | ExUnit formatter that collects test results with module-level timestamp tracking. |
+| `ToastTest.ResultCollector.State` | Internal state struct for ResultCollector. |
 | `ToastTest.SuiteResult` | Data struct for structured suite results with typed issues, module results, and test results. |
 | `ToastTest.SuiteResult.JSON` | JSON serialization of SuiteResult. |
 | `ToastTest.SuiteResult.JUnitXML` | JUnit XML serialization of SuiteResult for CI. |
-| `Toast.ResultPackaging` | Tiered CI artifact packaging (Tier 1: always, Tier 2: logs archive, Tier 3: coredumps). |
+| `ToastTest.DiagnosticsSummary` | Aggregate diagnostics across suites for exit code determination and CI packaging. |
+| `ToastTest.ResultPackaging` | Tiered CI artifact packaging (Tier 1: always, Tier 2: logs archive, Tier 3: coredumps). |
 
 ### Utilities
 
 | Module | Role |
 |--------|------|
-| `Toast.Config` | Load configuration from env vars, CLI opts, `.toast.local.exs`. |
+| `Toast.Application` | OTP application callback. Starts supervision tree, configures logging. |
+| `Toast.System` | System resource detection (memory via cgroup v2 or `/proc/meminfo`). |
 | `Toast.PortAllocator` | GenServer for sequential port allocation with socket probing. |
 | `Toast.Utils` | Utility functions (conditional_put, compact, compact_join). |
 | `Toast.Utils.Filesystem` | Server directory creation, arangod binary discovery, repo root detection. |
+| `Toast.Utils.Compression` | Compression tool detection and wrappers (zstd, gzip). |
 | `Toast.LogFormatter` | Custom log format for both Elixir Logger and Erlang `:logger` handler. |
+| `ToastTest.LogAnalysis` | Data transformation for server log analysis (parsing, filtering, k-way merge). Used by `mix toast.analyze`. |
+| `ToastTest.Supervisor` | Supervisor for ToastTest-specific processes. |
 
 ### CLI (`Mix.Tasks.*`)
 
@@ -225,73 +291,60 @@ reading/parsing specific artifact types.
 | `Mix.Tasks.Toast` | Main entry point: suite discovery, compilation, runner invocation. |
 | `Mix.Tasks.Toast.Helpers` | Pure helper functions for CLI arg parsing and option mapping. |
 | `Mix.Tasks.Toast.Gen.Suite` | Code generator for new test suites. |
+| `Mix.Tasks.Toast.Analyze` | Main entry point for offline result analysis. Dispatches to subcommands. |
+| `Mix.Tasks.Toast.Analyze.Issues` | List all issues across suites (default subcommand). |
+| `Mix.Tasks.Toast.Analyze.Detail` | Show full diagnostic detail with logs, backtraces, and disassembly. |
+| `Mix.Tasks.Toast.Analyze.Info` | Overview of diagnostics file contents. |
+| `Mix.Tasks.Toast.Analyze.Perf` | Performance analysis (module/test timing breakdown). |
+| `Mix.Tasks.Toast.Analyze.Data` | Data loading and processing for analysis subcommands. |
 
 
 ## Deployment Subsystem
 
-### Controller + Mode Callback Architecture
+### Controller Architecture
 
-The Controller is a GenServer that provides a shared state machine and
-delegates mode-specific logic to callback modules. This is a behaviour-based
-strategy pattern rather than inheritance:
+The Controller is a GenServer that manages the complete lifecycle of a
+deployment. It delegates startup to `DeployPipeline` and shutdown to
+`ShutdownPipeline`, while directly handling server control operations and
+crash classification.
 
 ```
+Toast.Deployment (public API facade)
+  |
+  v
 Toast.Deployment.Controller (GenServer)
   |
-  |  defines behaviour callbacks:
-  |    init_mode_state/0
-  |    init_servers/1
-  |    deploy/2
-  |    shutdown/2
-  |    derive_status/1
-  |    resolve_target/2
-  |    build_info/1
-  |    handle_call_extra/3  (optional)
+  |  delegates to:
   |
-  +-- Controller.SingleServer (implements behaviour)
-  |     Single arangod instance.
-  |
-  +-- Controller.Cluster (implements behaviour)
-        Full cluster: agents + dbservers + coordinators.
+  +-- DeployPipeline   -- multi-phase startup (start processes, launch by role, health check)
+  +-- ShutdownPipeline -- ordered shutdown, rollback, abort
+  +-- ServerLifecycle  -- pure functions for stop/kill/pause/resume/relaunch
+  +-- Factory          -- builds launch specs from Config
+  +-- Health           -- HTTP health check polling
 ```
 
 The Controller owns all shared logic:
 - GenServer lifecycle and message routing
 - Server control operations (stop/kill/pause/resume/restart/start)
 - Crash handling protocol (expected vs unexpected crashes)
+- Target resolution (string, role, arango_id)
 - Health monitor management
-- Target resolution dispatch
-
-Mode modules own deployment-specific logic:
-- Which servers to create and in what order
-- Deploy sequence (cluster requires phased startup)
-- Shutdown order (cluster stops coordinators first, then dbservers, then agents)
-- Status derivation from server states
-- Target resolution (cluster supports role-based and cluster-id targeting)
-
-**Why this design**: A single GenServer with mode callbacks avoids the
-complexity of two separate GenServer implementations that would duplicate the
-entire control operation and crash handling protocol. The mode-specific logic
-is genuinely different (phased vs single startup), but the framework around it
-(state management, message routing, health monitoring) is identical.
 
 ### Controller.State
 
 ```elixir
 %Controller.State{
-  config: %Config{},          # Framework configuration
-  id: "toast-42",             # Deployment ID
-  mode: Controller.SingleServer,  # Mode callback module
-  mode_state: %{},            # Mode-specific state (cluster keeps agent/dbserver/coordinator lists)
-  status: :ready,             # Current deployment status
-  servers: %{                 # Map of server_id => ServerInstance
-    "toast-42" => %ServerInstance{...}
+  config: %Toast.Deployment.Config{},  # Deployment configuration
+  id: "single-00",                     # Deployment ID
+  status: :ready,                      # Current deployment status
+  servers: %{                          # Map of server_id => ServerInstance
+    "single-00" => %ServerInstance{...}
   },
-  expected_crashes: %{},      # Map of server_id => %{timer, crash_info}
-  error: nil,                 # Error details if status is :failed
-  diagnostics: nil,           # Collected after shutdown
-  on_crash: &fun/2,           # Crash notification callback
-  on_event: &fun/1            # Lifecycle event callback
+  expected_crashes: %{},               # Map of server_id => CrashExpectation
+  error: nil,                          # Error details if status is :failed
+  agency_dump: nil,                    # Captured agency state (cluster only)
+  event_listener: ToastTest.DeploymentListener,  # EventListener behaviour impl
+  jwt_provider: %Toast.JWT.Provider{}  # JWT signer (nil when auth disabled)
 }
 ```
 
@@ -345,73 +398,50 @@ paused by test code). Tests that stop servers for chaos testing must restore
 them before finishing. The Runner checks deployment health between tests and
 aborts if the deployment is still degraded.
 
-### Deploy Sequence: Single Server
+### Deploy Sequence
+
+`DeployPipeline.run/4` handles both single-server and cluster deployments
+through a unified role-group-based sequence:
 
 ```
-1. PortAllocator.allocate()
-2. Factory.build_single_server(config, id, port)
+1. Factory.build_single_server() or Factory.build_cluster()
    --> creates server dirs, builds arangod CLI args
-3. Process.Supervisor.start_server(launch_spec)
-   --> starts ServerProcess GenServer
-4. ServerProcess.launch()
-   --> erlexec starts the OS process
-5. Health.wait_until_ready(endpoint, timeout)
-   --> polls /_api/version until 200
-6. Controller.start_single_health_monitor()
-   --> starts HealthMonitor for continuous checking
-7. status -> :ready
-```
-
-On failure at any step, `rollback` stops all processes and health monitors,
-sets status to `:failed`.
-
-### Deploy Sequence: Cluster
-
-```
-1. Factory.build_cluster(config, id)
-   --> allocates ports for all nodes, creates dirs, builds args
-   --> returns topology: %{agents: [...], dbservers: [...], coordinators: [...]}
+   --> returns list of launch specs with role annotations
 
 2. Start all ServerProcess GenServers (but don't launch OS processes yet)
 
-3. Launch agents (parallel via Task.async_stream)
-   --> ServerProcess.launch() for each agent
-   --> No health check yet (agency needs consensus first)
+3. Launch servers by role group in dependency order:
+   [single] or [agent -> dbserver -> coordinator]
 
-4. Wait for agency consensus
-   --> Health.wait_for_agency_ready(agent_endpoints)
-   --> Polls /_api/agency/config on all agents
-   --> Checks: all responding, all have same leaderId, lastAcked exists
+   For each role group:
+     a. Launch OS processes in parallel (ServerProcess.launch)
+     b. Wait for health (role-specific):
+        - agents: wait for agency consensus (/_api/agency/config)
+        - others: poll /_api/version until 200
 
-5. Launch dbservers (parallel, with health check)
-   --> ServerProcess.launch() + Health.wait_until_ready()
+4. Start health monitors for all servers
 
-6. Launch coordinators (parallel, with health check)
-   --> ServerProcess.launch() + Health.wait_until_ready()
-
-7. Start health monitors for all servers
-
-8. Fetch cluster ID mapping
-   --> GET coordinator/_admin/cluster/health
-   --> Maps toast server IDs to cluster-internal IDs
-
-9. status -> :ready
+5. Post-deploy:
+   - Cluster: fetch cluster ID mapping via /_admin/cluster/health
+     (maps toast server IDs to ArangoDB-internal IDs)
 ```
 
 The phased startup is required because ArangoDB cluster nodes depend on the
 agency being available before they can start. DBservers and coordinators are
 launched only after agency consensus is confirmed.
 
+On failure at any step, `ShutdownPipeline.rollback/2` stops all processes
+and health monitors, sets status to `:failed`.
+
 ### Shutdown Sequence
 
-**Single server**: stop health monitor, stop ServerProcess, collect diagnostics.
+`ShutdownPipeline.shutdown/2` stops servers in reverse dependency order:
 
-**Cluster**: stop in reverse dependency order:
 1. Stop all health monitors
-2. Stop coordinators (parallel)
-3. Stop dbservers (parallel)
-4. Stop agents (parallel)
-5. Collect per-server diagnostics
+2. Stop servers by role in reverse order:
+   - Cluster: coordinators -> dbservers -> agents (parallel within each group)
+   - Single: stop the single server
+3. Collect per-server diagnostics
 
 ### Crash Handling Protocol
 
@@ -428,7 +458,7 @@ The Controller classifies the crash:
   Is server_id in expected_crashes?
   +-- YES --> :expected (test called expect_crash beforehand)
   |           Update expected_crashes with crash_info.
-  |           Set status based on derive_status().
+  |           Wake any waiter (verify_crash).
   |
   +-- NO --> Is server.expecting_exit == true?
              +-- YES --> Was signal in [nil, 15]?
@@ -439,12 +469,13 @@ The Controller classifies the crash:
              |
              +-- NO --> :unexpected_crash
                         Set status -> :failed
-                        Notify on_crash callback
+                        Notify event_listener.on_crash
 ```
 
-The `on_crash` callback (typically `CrashMonitor.handle_crash/2`) calls
-`Runner.abort!` to stop further test execution. The `on_event` callback
-records the event in ProcessHistory for post-run analysis.
+The `on_crash` callback (via `ToastTest.DeploymentListener`) triggers
+`ToastTest.CrashMonitor.handle_crash/2` which calls `Runner.abort!` to stop
+further test execution. Events are recorded in `ToastTest.EventStore` for
+post-run analysis.
 
 ### Server Control Operations
 
@@ -468,13 +499,12 @@ Controller from treating the subsequent process exit as a crash.
 Server control operations accept flexible targets:
 
 - **String**: direct server ID lookup
-- **`[role: :coordinator]`**: all servers with that role (cluster)
+- **`[role: :coordinator]`**: all servers with that role
 - **`[role: :dbserver, index: 0]`**: specific server by role + index
-- **`[cluster_id: "PRMR-abc123"]`**: by ArangoDB cluster-internal ID
+- **`[arango_id: "PRMR-abc123"]`**: by ArangoDB-assigned internal ID
 
-The Controller dispatches to `mode.resolve_target(state, target)` which returns
-`{:ok, [server_id_list]}` or `{:error, reason}`. Operations are then applied
-to each resolved server via `apply_to_each`.
+The Controller resolves targets to concrete server IDs, then applies the
+operation to each resolved server.
 
 
 ## Process Management
@@ -538,7 +568,7 @@ or pauses a server.
 
 ## Configuration
 
-`Toast.Config` loads from three sources with clear precedence:
+Configuration is resolved by `Toast.Env` from three sources with clear precedence:
 
 ```
 keyword opts (code)  >  env vars (TOAST_*)  >  .toast.local.exs  >  defaults
@@ -547,20 +577,35 @@ keyword opts (code)  >  env vars (TOAST_*)  >  .toast.local.exs  >  defaults
 The `.toast.local.exs` file is skipped when `TOAST_CI=true` (CI environments
 should use env vars exclusively).
 
+`Toast.Env.load/1` resolves all configuration into a map and writes it to
+Application env. Two config structs then read from Application env:
+
+- **`Toast.Deployment.Config`** -- deployment infrastructure concerns (build dir,
+  server args, sanitizers, cluster topology, JWT, SSL, startup/shutdown timeouts)
+- **`ToastTest.Config`** -- test execution concerns (result dir, diagnostics,
+  CI settings, debugger, test/global timeouts)
+
+This split reflects the layering: `Toast` is reusable infrastructure;
+`ToastTest` is the test runner built on top. In an interactive session, only
+`Toast.Deployment.Config` is needed.
+
 Key configuration groups:
 
 | Group | Fields |
 |-------|--------|
-| Paths | `build_dir`, `work_dir`, `result_dir` |
-| Deployment | `deployment_mode`, `cluster_agents`, `cluster_dbservers`, `cluster_coordinators`, `cluster_replication_factor` |
+| Paths | `build_dir`, `base_dir`, `result_dir`, `coredump_dir` |
+| Deployment | `deployment_mode`, cluster topology, `server_args` (per-role maps), `authentication`, `jwt_algorithm`, `ssl`, `protocol` |
 | Timeouts | `global_timeout`, `test_timeout`, `startup_timeout`, `shutdown_timeout`, `coredump_timeout`, `timeout_factor` |
-| Sanitizer | `explicit_sanitizer`, `sanitizer` (MapSet of active env var names) |
+| Sanitizer | `sanitizer_override`, `active_sanitizers` (MapSet of env var names) |
 | Display | `show_server_logs` |
-| Debug | `debugger` (:gdb, :lldb, :auto, :none), `dump_agency_on_error` |
-| CI | `ci`, `keep_work_dir` |
+| Debug | `debugger` (:gdb, :lldb, :auto, :none), `dump_agency_on_error`, `attach_debugger` |
+| Recording | `rr` (MapSet of roles to record), `rr_path` |
+| Resources | `memory_budget` |
+| CI | `ci`, `keep_data` |
 
 `timeout_factor` multiplies all timeout values. It defaults to 3 when any
-sanitizer is detected, since sanitized builds run significantly slower.
+sanitizer is detected and 10 when rr recording is enabled, since both run
+significantly slower.
 
 
 ## Client Subsystem
@@ -571,7 +616,8 @@ sanitizer is detected, since sanitized builds run significantly slower.
 client = Toast.Client.new("http://127.0.0.1:8529",
   database: "mydb",
   api_version: 1,
-  auth: {:basic, "root", ""}
+  auth: {:basic, "root", ""},
+  protocol: :http2
 )
 ```
 
@@ -585,6 +631,33 @@ Convenience wrappers:
 
 Domain-specific modules (`Client.Collection`, `Client.Document`, etc.) build
 on the base client with typed parameters and response handling.
+
+Authentication modes:
+- `{:basic, user, pass}` -- HTTP Basic auth
+- `{:jwt, token}` -- Static JWT bearer token
+- `{:jwt_provider, provider}` -- Dynamic JWT from a `Toast.JWT.Provider`
+
+
+## Event System
+
+Toast uses an event-driven architecture for deployment lifecycle tracking:
+
+```
+Toast.Deployment.Events      -- emits events (server_started, server_stopped, etc.)
+       |
+       v
+Toast.Deployment.EventListener  -- behaviour (on_event/1, on_crash/2)
+       |
+       +-- DefaultEventListener  -- no-op (used in interactive mode)
+       +-- ToastTest.DeploymentListener  -- records to EventStore + triggers CrashMonitor
+              |
+              +-- ToastTest.EventStore  -- ETS-backed chronological event store
+              +-- ToastTest.CrashMonitor  -- calls Runner.abort! on unexpected crash
+```
+
+Events are maps with `:event`, `:deployment_id`, `:timestamp` keys plus
+event-specific data. `EventStore.Projections` provides derived views
+(e.g., `pids_by_server/0` for mapping server IDs to OS process IDs).
 
 
 ## CLI (Mix Tasks)
@@ -605,7 +678,7 @@ Suite discovery:
 5. Compile helpers, require test files
 6. Filter test modules to those using the suite (`__toast_suite__/0`)
 
-The Runner then receives `[{suite_module, test_modules, suite_opts}]`.
+The Runner then receives `[{suite_module, test_modules, suite_opts, suite_name}]`.
 
 ### `mix toast.gen.suite`
 
@@ -616,3 +689,21 @@ suites/my_suite/
   test_example.exs -- example test using the suite
 ```
 
+### `mix toast.analyze`
+
+Offline analysis of test results from `.diagnostics.etf` files:
+
+```
+mix toast.analyze [subcommand] [RESULT_DIR] [options]
+```
+
+Subcommands:
+- `issues` (default) -- list all issues across suites
+- `detail` -- show full diagnostic detail (logs, backtraces, disassembly)
+- `info` -- overview of diagnostics file contents
+- `perf` -- performance analysis (module/test timing breakdown)
+
+The detail subcommand accepts issue specs (`3`, `2-4`, `all`, `crashes`,
+`sanitizer`) and supports log filtering (`--logs`, `--log-window`,
+`--log-min-level`) and backtrace options (`--threads`, `--backtrace-frames`,
+`--disassembly`).

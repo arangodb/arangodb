@@ -43,7 +43,7 @@ defmodule Smoke.VersionTest do
   use Smoke.Suite
 
   test "returns arango server info", %{client: client} do
-    assert {:ok, body} = Client.Admin.version(client)
+    body = Client.Admin.version!(client)
     assert body["server"] == "arango"
   end
 end
@@ -101,18 +101,23 @@ mix toast --include edge_case
 | Option | Description |
 |---|---|
 | `--build-dir PATH` / `-b` | Path to ArangoDB build directory |
-| `--work-dir PATH` | Temporary directory for server data and logs |
+| `--base-dir PATH` | Base directory for server data and logs |
 | `--result-dir PATH` | Output directory for test results (default: `toast-results`) |
 | `--cluster` | Use cluster deployment |
 | `--single` | Use single-server deployment (default) |
+| `--test NAME` | Filter tests by name substring (case-insensitive) |
 | `--show-server-logs` | Print arangod output to stdout |
 | `--global-timeout MS` | Global timeout in milliseconds (default: 3600000) |
 | `--test-timeout MS` | Per-test timeout in milliseconds (default: 300000) |
 | `--startup-timeout MS` | Server startup timeout in milliseconds (default: 60000) |
 | `--shutdown-timeout MS` | Server shutdown timeout in milliseconds (default: 60000) |
-| `--timeout-factor N` | Timeout multiplier (default: 1, auto-set to 3 for sanitizer builds) |
-| `--keep-work-dir` | Keep server data and logs even on success |
+| `--timeout-factor N` | Timeout multiplier (default: 1, auto-set to 3 for sanitizer builds, 10 for rr) |
+| `--keep-data` | Keep server data and logs even on success |
 | `--sanitizer TYPE` | Sanitizer type: `tsan` or `alubsan` (auto-detected from build dir) |
+| `--attach-debugger` | Pause after deployment for live debugger attachment |
+| `--rr ROLES` | Record with rr: `default`, `all`, or comma-separated roles (single, agent, dbserver, coordinator). `default` records single server or dbserver+coordinator in cluster mode |
+| `--http2` | Use HTTP/2 (h2c) for client requests (default: HTTP/1.1) |
+| `--memory-budget BYTES` | Memory budget for server processes (auto-detected from system) |
 | `--cluster-agents N` | Number of agency nodes (default: 3) |
 | `--cluster-dbservers N` | Number of DB servers (default: 3) |
 | `--cluster-coordinators N` | Number of coordinators (default: 1) |
@@ -154,11 +159,26 @@ The `use ToastTest.Suite` macro accepts configuration options:
 |---|---|---|
 | `mode` | `:auto` | Deployment mode: `:single_server`, `:cluster`, or `:auto` (follows CLI) |
 | `timeout` | `3_600_000` | Suite-level timeout in milliseconds |
-| `server_args` | `[]` | Extra arangod CLI arguments for single-server mode |
-| `coordinator_args` | `[]` | Extra arguments for coordinators (cluster mode) |
-| `dbserver_args` | `[]` | Extra arguments for DB servers (cluster mode) |
-| `agent_args` | `[]` | Extra arguments for agents (cluster mode) |
+| `server_args` | `%{}` | Extra arangod CLI arguments as a map (e.g., `%{"log.level" => "debug"}`) |
+| `coordinator_args` | `%{}` | Extra arguments for coordinators (cluster mode) |
+| `dbserver_args` | `%{}` | Extra arguments for DB servers (cluster mode) |
+| `agent_args` | `%{}` | Extra arguments for agents (cluster mode) |
 | `between_tests` | `:default` | Health check behavior between tests (`:default` or `false`) |
+| `authentication` | `false` | Enable JWT authentication for the deployment |
+| `jwt_algorithm` | `:hmac` | JWT signing algorithm: `:hmac` or `:ecdsa` |
+
+Server arguments are specified as maps where keys are arangod option names and
+values are strings or lists of strings:
+
+```elixir
+defmodule MyApp.Suite do
+  use ToastTest.Suite,
+    server_args: %{
+      "log.level" => "debug",
+      "query.memory-limit" => "1073741824"
+    }
+end
+```
 
 Example with explicit cluster configuration:
 
@@ -166,8 +186,8 @@ Example with explicit cluster configuration:
 defmodule Resilience.Suite do
   use ToastTest.Suite,
     mode: :cluster,
-    cluster_dbservers: 3,
-    cluster_coordinators: 2
+    authentication: true,
+    jwt_algorithm: :ecdsa
 end
 ```
 
@@ -183,8 +203,8 @@ defmodule MyApp.Suite do
   def setup_deployment(deployment) do
     # Called once after the deployment starts, before any tests run.
     # Use this to create databases, collections, or seed data.
-    client = Toast.Client.new(deployment.endpoint)
-    {:ok, _} = Toast.Client.Collection.create(client, "shared_data")
+    client = Toast.Client.new(Toast.Deployment.default_endpoint(deployment))
+    Toast.Client.Collection.create!(client, "shared_data")
     {:ok, %{shared_collection: "shared_data"}}
   end
 
@@ -195,10 +215,13 @@ defmodule MyApp.Suite do
   end
 
   @impl ToastTest.Suite
-  def between_tests(deployment, prev_test) do
+  def between_tests(deployment, _prev_test) do
     # Called between each test. Return :ok or {:error, reason}.
-    # The default behavior checks deployment health.
-    Toast.Deployment.check_health(deployment, prev_test)
+    # The default behavior checks deployment status (:ready, :degraded, :failed).
+    case Toast.Deployment.status(deployment) do
+      :ready -> :ok
+      other -> {:error, "Deployment not ready (status: #{other})"}
+    end
   end
 end
 ```
@@ -223,8 +246,8 @@ defmodule Smoke.CollectionTest do
   end
 
   test "create and list collection", %{client: client, collection: name} do
-    assert {:ok, _} = Client.Collection.create(client, name)
-    assert {:ok, collections} = Client.Collection.list(client, exclude_system: true)
+    Client.Collection.create!(client, name)
+    collections = Client.Collection.list!(client, exclude_system: true)
     assert Enum.any?(collections, &(&1["name"] == name))
   end
 end
@@ -238,8 +261,9 @@ Every test receives the following in its context:
 | `endpoint` | `String.t()` | The primary HTTP endpoint URL |
 | `client` | `Toast.Client.t()` | Pre-configured REST client |
 
-The `use Smoke.Suite` line automatically aliases `Toast.Client` as `Client`, so
-you can write `Client.Admin.version(client)` instead of the fully qualified form.
+The `use Smoke.Suite` line automatically aliases `Toast.Client` as `Client` and
+imports `ToastTest.Expect`, so you can write `Client.Admin.version(client)` and
+use the `expect` macro directly.
 
 ### Deployment Mode Tags
 
@@ -258,6 +282,25 @@ end
 ```
 
 These also work as `@moduletag` to apply to all tests in a module.
+
+### Non-Fatal Expectations
+
+The `expect` macro works like `assert` but does not stop test execution on
+failure -- similar to Google Test's `EXPECT_*` macros. This allows a single test
+to report multiple independent failures:
+
+```elixir
+test "multiple independent checks", %{client: client} do
+  expect {:ok, _} = Client.Admin.version(client)
+  expect {:ok, _} = Client.Admin.engine(client)
+  expect {:ok, _} = Client.Admin.statistics(client)
+end
+```
+
+If any expectations fail, the test is marked as failed with all recorded
+failures. Variable bindings from pattern matches inside `expect` are unreliable
+when the expectation fails -- use `assert` when you need matched values for
+subsequent code.
 
 ## Deployments
 
@@ -289,110 +332,36 @@ For each suite:
 4. `teardown_deployment/1` is called (if defined)
 5. The deployment is stopped and diagnostics are collected
 6. On failure, the work directory (logs, data) is preserved; on success, it is
-   cleaned up (unless `--keep-work-dir` is set)
+   cleaned up (unless `--keep-data` is set)
 
 ## Client API
 
 `Toast.Client` is a thin REST client for ArangoDB. Tests receive a
-pre-configured client in their context.
+pre-configured client in their context. All client modules have bang variants
+that raise on error -- use those in tests. See the `@moduledoc` on each
+`Toast.Client.*` module for the full API.
 
-### Creating Clients
+Available modules: `Collection`, `Document`, `AQL`, `Database`, `Index`,
+`Graph`, `Vertex`, `Edge`, `View`, `Analyzer`, `User`, `Transaction`, `Admin`.
 
 ```elixir
-# Client from test context (most common)
-test "example", %{client: client} do
-  # ...
-end
+# Collections and documents
+Client.Collection.create!(client, "users")
+meta = Client.Document.insert!(client, "users", %{"name" => "Alice"})
+doc = Client.Document.get!(client, "users", meta["_key"])
 
-# Client for a specific database
+# AQL queries (cursor pagination is handled automatically)
+results = Client.AQL.execute!(client, "FOR u IN users RETURN u")
+
+# Database scoping
 db_client = Client.with_database(client, "mydb")
 
-# Client for a specific server in a cluster
-{:ok, dbserver_client} = Toast.Deployment.client(deployment, role: :dbserver, index: 0)
-{:ok, server_client} = Toast.Deployment.client(deployment, "dbserver-0")
-```
+# Cluster: get a client for a specific server
+dbserver_client = Toast.Deployment.client!(deployment, "dbserver-0")
 
-### Collections
-
-```elixir
-# Create a document collection
-{:ok, _} = Client.Collection.create(client, "users")
-
-# Create an edge collection
-{:ok, _} = Client.Collection.create(client, "edges", edge: true)
-
-# List collections (excluding system collections)
-{:ok, collections} = Client.Collection.list(client, exclude_system: true)
-
-# Drop a collection (no error if it doesn't exist)
-:ok = Client.Collection.drop(client, "users")
-```
-
-### Documents
-
-```elixir
-# Insert a document
-{:ok, meta} = Client.Document.insert(client, "users", %{"name" => "Alice"})
-key = meta["_key"]
-
-# Read a document
-{:ok, doc} = Client.Document.get(client, "users", key)
-
-# Remove a document
-:ok = Client.Document.remove(client, "users", key)
-```
-
-### AQL Queries
-
-```elixir
-# Simple query
-{:ok, [1]} = Client.AQL.execute(client, "RETURN 1")
-
-# With bind variables
-{:ok, results} = Client.AQL.execute(client, "FOR u IN users FILTER u.age > @min RETURN u", %{"min" => 18})
-
-# Bang variant (raises on error)
-results = Client.AQL.execute!(client, "FOR i IN 1..10 RETURN i")
-
-# Handles cursor pagination automatically
-{:ok, all_rows} = Client.AQL.execute(client, "FOR doc IN large_collection RETURN doc")
-```
-
-### Indexes
-
-```elixir
-# Create an index
-{:ok, _} = Client.Index.create(client, "users", %{
-  "type" => "persistent",
-  "fields" => ["name"]
-})
-
-# List indexes on a collection
-{:ok, indexes} = Client.Index.list(client, "users")
-
-# Drop an index by handle
-:ok = Client.Index.drop(client, "users/12345")
-```
-
-### Admin
-
-```elixir
-# Server version
-{:ok, %{"server" => "arango", "version" => version}} = Client.Admin.version(client)
-
-# Server status
-{:ok, status} = Client.Admin.status(client)
-```
-
-### Raw HTTP
-
-For endpoints not covered by the client modules, use the base client directly:
-
-```elixir
+# Raw HTTP for endpoints not covered by client modules
 {:ok, response} = Client.get(client, "/_api/engine")
 {:ok, body} = Client.unwrap({:ok, response})
-
-{:ok, response} = Client.post(client, "/_api/explain", %{"query" => "RETURN 1"})
 ```
 
 ## Server Control
@@ -431,8 +400,8 @@ Deployment.stop_server(deployment, role: :dbserver)
 # Target a specific server by role and index
 Deployment.stop_server(deployment, role: :dbserver, index: 0)
 
-# Target by cluster-internal ID
-Deployment.stop_server(deployment, cluster_id: "PRMR-abc123")
+# Target by ArangoDB-assigned internal ID
+Deployment.stop_server(deployment, arango_id: "PRMR-abc123")
 ```
 
 ### Querying Deployment State
@@ -449,9 +418,6 @@ dbservers = Deployment.servers(deployment, role: :dbserver)
 
 # Get a specific server
 {:ok, server} = Deployment.server(deployment, "dbserver-0")
-
-# Health check
-:ok = Deployment.check_health(deployment)
 ```
 
 After modifying the deployment (stopping/killing servers), tests must restore
@@ -460,20 +426,22 @@ detect degraded deployments and abort the suite.
 
 ### Failure Points
 
-Failure points trigger debug-mode behaviors in ArangoDB (debug builds only).
+Failure points trigger debug-mode behaviors in ArangoDB (only available in builds with USE_FAILURE_TESTS).
 
 ```elixir
+alias Toast.Deployment.FailurePoint
+
 # Set a failure point on a specific server
-:ok = Deployment.set_failure_point(deployment, "dbserver-0", "crash-after-commit")
+:ok = FailurePoint.set(deployment, "dbserver-0", "crash-after-commit")
 
 # Set a failure point on all servers of a role
-:ok = Deployment.set_failure_point(deployment, [role: :dbserver], "crash-after-commit")
+:ok = FailurePoint.set(deployment, [role: :dbserver], "crash-after-commit")
 
 # Clear a specific failure point
-:ok = Deployment.clear_failure_point(deployment, "dbserver-0", "crash-after-commit")
+:ok = FailurePoint.clear(deployment, "dbserver-0", "crash-after-commit")
 
 # Clear all failure points on all servers
-:ok = Deployment.clear_all_failure_points(deployment)
+:ok = FailurePoint.clear_all(deployment)
 ```
 
 ## Crash Testing
@@ -483,10 +451,12 @@ prevent the crash monitor from aborting the suite.
 
 ```elixir
 test "handles server crash gracefully", %{deployment: d, client: client} do
+  alias Toast.Deployment.FailurePoint
+
   [dbserver | _] = Deployment.servers(d, role: :dbserver)
 
   # 1. Set up the failure point that will cause the crash
-  :ok = Deployment.set_failure_point(d, dbserver.id, "crash-after-commit")
+  :ok = FailurePoint.set(d, dbserver.id, "crash-after-commit")
 
   # 2. Tell Toast to expect a crash (suppresses abort)
   :ok = Deployment.expect_crash(d, dbserver.id)
@@ -498,7 +468,7 @@ test "handles server crash gracefully", %{deployment: d, client: client} do
   {:ok, crash_info} = Deployment.verify_crash(d, dbserver.id, timeout: 10_000)
 
   # 5. Clean up: clear failure points and restart
-  Deployment.clear_all_failure_points(d)
+  FailurePoint.clear_all(d)
   :ok = Deployment.start_server(d, dbserver.id)
 end
 ```
@@ -514,6 +484,7 @@ directory specified by `--result-dir`):
 
 - `results.json` -- Structured test results with diagnostics
 - `results.xml` -- JUnit XML format for CI integration
+- `.diagnostics.etf` -- Serialized diagnostics for offline analysis
 
 ### Exit Codes
 
@@ -530,10 +501,54 @@ directory specified by `--result-dir`):
 With `--ci`, Toast packages results into tiers for upload:
 
 - **Tier 1** (always published): `results.json`, `results.xml`, `toast.log`
-- **Tier 2** (compressed archive): server logs, sanitizer reports, crash
-  reports, agency dumps -- bundled into `toast-logs.tar.gz`
+- **Tier 2** (compressed archive): server logs, sanitizer reports --
+  bundled into `toast-logs.tar.gz`
 - **Tier 3** (individually compressed): core dump files, compressed with zstd
-  (falling back to gzip)
+  (falling back to gzip); work directory archive
+
+### Analyzing Results Offline
+
+Use `mix toast.analyze` to inspect results from a previous run:
+
+```bash
+# List all issues (default)
+mix toast.analyze
+
+# List issues from a specific result directory
+mix toast.analyze /path/to/toast-results
+
+# Show detailed diagnostics for all issues
+mix toast.analyze detail all
+
+# Show detail for a specific issue by index
+mix toast.analyze detail 3
+
+# Show detail for a range of issues
+mix toast.analyze detail 2-4
+
+# Show only crash or sanitizer issues
+mix toast.analyze detail crashes
+mix toast.analyze detail sanitizer
+
+# Overview of diagnostics file contents
+mix toast.analyze info
+
+# Performance analysis (module/test timing breakdown)
+mix toast.analyze perf
+```
+
+Detail view options:
+
+```bash
+# Include server log excerpts around issues
+mix toast.analyze detail all --logs
+
+# Filter log servers and time window
+mix toast.analyze detail all --logs --log-servers dbserver-0 --log-window -20000,5000
+
+# Control coredump backtrace output
+mix toast.analyze detail all --threads all --backtrace-frames 30
+```
 
 ## Interactive Mode
 
@@ -542,7 +557,7 @@ manually-started deployment, useful for debugging.
 
 ```elixir
 # In an IEx session:
-{:ok, deployment} = Toast.Deployment.start(:single_server, build_dir: "/path/to/build")
+{:ok, deployment} = Toast.Deployment.start_single_server("/path/to/work-dir")
 
 # Run a test file
 ToastTest.Interactive.run("suites/smoke/test_version.exs", deployment: deployment)
@@ -591,7 +606,7 @@ for CI pipelines or shell aliases:
 | Variable | CLI Equivalent | Description |
 |---|---|---|
 | `TOAST_BUILD_DIR` | `--build-dir` | Path to ArangoDB build directory |
-| `TOAST_WORK_DIR` | `--work-dir` | Temp directory for server data/logs |
+| `TOAST_BASE_DIR` | `--base-dir` | Base directory for server data/logs |
 | `TOAST_RESULT_DIR` | `--result-dir` | Output directory for test results |
 | `TOAST_DEPLOYMENT_MODE` | `--cluster` / `--single` | `single_server` or `cluster` |
 | `TOAST_SHOW_SERVER_LOGS` | `--show-server-logs` | Print arangod output to stdout |
@@ -600,8 +615,13 @@ for CI pipelines or shell aliases:
 | `TOAST_STARTUP_TIMEOUT` | `--startup-timeout` | Server startup timeout in ms |
 | `TOAST_SHUTDOWN_TIMEOUT` | `--shutdown-timeout` | Server shutdown timeout in ms |
 | `TOAST_TIMEOUT_FACTOR` | `--timeout-factor` | Multiplier applied to all timeouts |
-| `TOAST_KEEP_WORK_DIR` | `--keep-work-dir` | Keep work dir on success |
+| `TOAST_KEEP_DATA` | `--keep-data` | Keep work dir on success |
 | `TOAST_SANITIZER` | `--sanitizer` | Sanitizer type (`tsan` or `alubsan`) |
+| `TOAST_MEMORY_BUDGET` | `--memory-budget` | Memory budget in bytes |
+| `TOAST_PROTOCOL` | `--http2` | `http1` or `http2` |
+| `TOAST_SSL` | -- | Enable SSL (`true` or `false`) |
+| `TOAST_RR` | `--rr` | rr recording: `default`, `all`, or comma-separated roles |
+| `TOAST_ATTACH_DEBUGGER` | `--attach-debugger` | Pause for debugger attachment |
 | `TOAST_CLUSTER_AGENTS` | `--cluster-agents` | Number of agency nodes |
 | `TOAST_CLUSTER_DBSERVERS` | `--cluster-dbservers` | Number of DB servers |
 | `TOAST_CLUSTER_COORDINATORS` | `--cluster-coordinators` | Number of coordinators |
@@ -611,6 +631,7 @@ for CI pipelines or shell aliases:
 | `TOAST_DEBUGGER` | -- | Core dump debugger: `gdb`, `lldb`, `auto`, `none` |
 | `TOAST_DUMP_AGENCY` | `--no-agency-dump` | Dump agency state on error (cluster mode) |
 | `TOAST_COREDUMP_TIMEOUT` | -- | Timeout for coredump analysis in ms |
+| `TOAST_COREDUMP_DIR` | -- | Directory to search for core dumps |
 
 ### Local Config File
 
@@ -620,7 +641,7 @@ toast project root. It is evaluated as Elixir code and must return a map:
 ```elixir
 %{
   build_dir: "/home/user/dev/arangodb/build-clang",
-  work_dir: "/tmp/toast-dev",
+  base_dir: "/tmp/toast-dev",
   deployment_mode: :single_server
 }
 ```
