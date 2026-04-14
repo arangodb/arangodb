@@ -73,7 +73,8 @@ struct BoundedDocumentIterator {
   rocksdb::ReadOptions ro;
   std::unique_ptr<rocksdb::Iterator> it;
 
-  explicit BoundedDocumentIterator(RocksDBKeyBounds bounds, rocksdb::DB* db);
+  explicit BoundedDocumentIterator(RocksDBKeyBounds bounds, rocksdb::DB* db,
+                                   rocksdb::Snapshot const* snap = nullptr);
 };
 
 class VectorIndexTrainer {
@@ -131,6 +132,8 @@ class VectorIndexBuilder {
                std::stop_token stopToken = {});
 
  private:
+  Result persistTrainedData(TrainedData const& trainedData);
+
   RocksDBVectorIndex& _index;
   RocksDBEngine& _engine;
   rocksdb::DB* _rootDB;

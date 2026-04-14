@@ -124,15 +124,16 @@ void DatabasePathFeature::validateOptions(
 void DatabasePathFeature::prepare() {
   // check if temporary directory and database directory are identical
   {
-    std::string directoryCopy = _options.directory;
-    basics::FileUtils::makePathAbsolute(directoryCopy);
+    std::string directoryCopy =
+        basics::FileUtils::absolutePath(_options.directory).string();
 
     if (server().hasFeature<TempFeature>()) {
       auto& tf = server().getFeature<TempFeature>();
       // the feature is not present in unit tests, so make the execution depend
       // on whether the feature is available
-      std::string tempPathCopy = tf.path();
-      basics::FileUtils::makePathAbsolute(tempPathCopy);
+
+      std::string tempPathCopy =
+          basics::FileUtils::absolutePath(tf.path()).string();
       tempPathCopy =
           basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
 

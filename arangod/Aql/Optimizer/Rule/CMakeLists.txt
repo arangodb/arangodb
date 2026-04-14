@@ -1,63 +1,65 @@
 add_subdirectory(EnumeratePathsFilter)
 
 target_sources(arango_aql PRIVATE
-  OptimizerRuleBatchMaterializeDocuments.cpp
-  OptimizerRuleCollectWithIndex.cpp
-  OptimizerRulePropagateConstantAttributes.cpp
-  OptimizerRulePushDownLateMaterialization.cpp
-  OptimizerRulePushLimitIntoIndex.cpp
-  OptimizerRuleReplaceEntriesWithObjectIteration.cpp
-  OptimizerRuleReplaceEqualAttributeAccess.cpp
-  OptimizerRuleVectorIndex.cpp
-  OptimizerRuleVectorIndexPushFilter.cpp
+  AsyncPrefetch.cpp
+  BatchMaterializeDocuments.cpp
+  CollectInCluster.cpp
+  DecayUnnecessarySortedGather.cpp
+  DistributeFilterCalcToCluster.cpp
+  DistributeInCluster.cpp
+  DistributeSortToCluster.cpp
+  FuseFilters.cpp
+  GeoIndex.cpp
+  InlineSubqueries.cpp
+  InterchangeAdjacentEnumerations.cpp
+  JoinIndexNodes.cpp
+  MaterializeIntoSeparateVariable.cpp
   MoveCalculationsDown.cpp
   MoveCalculationsUp.cpp
-  RemoveRedundantCalculations.cpp
-  RemoveUnnecessaryCalculations.cpp
-  OptimizerRulesCluster.cpp
-  FuseFilters.cpp
   MoveFiltersIntoEnumerate.cpp
   MoveFiltersUp.cpp
-  RemoveUnnecessaryFilters.cpp
-  RemoveRedundantOr.cpp
-  ReplaceOrWithIn.cpp
-  SimplifyConditions.cpp
+  OptimizeCount.cpp
+  OptimizePaths.cpp
+  OptimizeProjections.cpp
+  OptimizeSubqueries.cpp
+  OptimizeTraversals.cpp
   OptimizerRulesGraph.cpp
   OptimizerRulesIResearchView.cpp
   OptimizerRulesIndexNode.cpp
-  OptimizerRulesJoin.cpp
   OptimizerRulesLateMaterializedCommon.cpp
-  OptimizerRulesReplaceFunctions.cpp
-  DecayUnnecessarySortedGather.cpp
   ParallelizeGather.cpp
-  RemoveRedundantSorts.cpp
-  SortLimit.cpp
-  UseIndexForSort.cpp
-  UseIndexes.cpp
-  OptimizeTraversals.cpp
-  RemoveFiltersCoveredByTraversal.cpp
-  RemoveTraversalPathVariable.cpp
-  RemoveFiltersCoveredByIndex.cpp
-  UseIndexForSort.cpp
-  UseIndexes.cpp
-  OptimizeTraversals.cpp
-  RemoveFiltersCoveredByIndex.cpp
-  RemoveFiltersCoveredByTraversal.cpp
-  RemoveTraversalPathVariable.cpp
-  InlineSubqueries.cpp
-  OptimizeSubqueries.cpp
-  SpliceSubqueries.cpp
-  SortInValues.cpp
+  PropagateConstantAttributes.cpp
+  PushDownLateMaterialization.cpp
+  PushFilterIntoEnumerateNear.cpp
+  PushLimitIntoIndex.cpp
   RemoveCollectVariables.cpp
+  RemoveDataModificationOutVariables.cpp
+  RemoveFiltersCoveredByIndex.cpp
+  RemoveFiltersCoveredByTraversal.cpp
+  RemoveRedundantCalculations.cpp
+  RemoveRedundantOr.cpp
+  RemoveRedundantSorts.cpp
+  RemoveTraversalPathVariable.cpp
+  RemoveUnnecessaryCalculations.cpp
+  RemoveUnnecessaryFilters.cpp
+  RemoveUnnecessaryRemoteScatter.cpp
+  ReplaceEntriesWithObjectIteration.cpp
+  ReplaceEqualAttributeAccess.cpp
+  ReplaceLikeWithRange.cpp
+  ReplaceNearWithinFulltext.cpp
+  ReplaceOrWithIn.cpp
+  RestrictToSingleShard.cpp
+  ScatterInCluster.cpp
+  SimplifyConditions.cpp
+  SortInValues.cpp
+  SortLimit.cpp
   SpecializeCollect.cpp
-  InterchangeAdjacentEnumerations.cpp
+  SpliceSubqueries.cpp
+  SubstituteClusterMultipleDocumentOperations.cpp
+  SubstituteClusterSingleDocumentOperations.cpp
+  UndistributeRemoveAfterEnumColl.cpp
+  UseIndexForCollect.cpp
   UseIndexForSort.cpp
   UseIndexes.cpp
-  DistributeInCluster.cpp
-  CollectInCluster.cpp
-  DistributeFilterCalcToCluster.cpp
-  DistributeSortToCluster.cpp
-  RemoveUnnecessaryRemoteScatter.cpp
-  RestrictToSingleShard.cpp
-  UndistributeRemoveAfterEnumColl.cpp
+  UseVectorIndex.cpp
 )
