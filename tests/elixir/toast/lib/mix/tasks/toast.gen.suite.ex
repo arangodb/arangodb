@@ -16,7 +16,10 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
   use Mix.Task
 
   @impl Mix.Task
-  def run(args) do
+  def run(args), do: generate(args)
+
+  @doc "Generate a suite, optionally under `base_dir` (defaults to CWD)."
+  def generate(args, base_dir \\ File.cwd!()) do
     {opts, argv, _} = OptionParser.parse(args, strict: [mode: :string])
 
     name =
@@ -31,7 +34,7 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
 
     mode = parse_mode(Keyword.get(opts, :mode))
     module_name = Macro.camelize(name)
-    suite_dir = Path.join("suites", name)
+    suite_dir = Path.join([base_dir, "suites", name])
 
     if File.exists?(suite_dir) do
       Mix.raise("Directory #{suite_dir} already exists")
