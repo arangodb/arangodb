@@ -85,6 +85,9 @@ std::string const DEFAULT_CLIENT_MODULE = "client.js";
 namespace arangodb {
 
 void signalHandler(int signal) {
+  // make sure this doesn't make us block eternally, so come back in
+  // 30s:
+  alarm(30);
   // Ok, try to get and lock the state of the V8 execution:
   v8::Locker locker{global_isolate};
   if (global_isolate != nullptr) {
@@ -112,9 +115,6 @@ void signalHandler(int signal) {
   }
   // try to unblock the .js execution, and trigger abort/cleanup
   triggerV8DeadlineNow(signal, ExternalId());
-  // however, make sure this doesn't make us block eternally, so come back in
-  // 30s:
-  alarm(30);
 }
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
