@@ -23,6 +23,8 @@
 
 #include <filesystem>
 #include <signal.h>
+#include <unistd.h>
+
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -80,42 +82,42 @@ v8::Isolate* global_isolate = nullptr;
 bool exitRepl = false;
 
 std::string const DEFAULT_CLIENT_MODULE = "client.js";
+
+// V8 interrupt callback — invoked at a V8 safe point where all V8 APIs
+// are usable. Captures and logs the current JS stack trace.
+void v8InterruptCallback(v8::Isolate* isolate, void* /*data*/) {
+  v8::Local<v8::StackTrace> stacktrace =
+      v8::StackTrace::CurrentStackTrace(isolate, 10, v8::StackTrace::kDetailed);
+  int frameCount = stacktrace->GetFrameCount();
+  if (frameCount > 0) {
+    for (int i = 0; i < frameCount; i++) {
+      auto frame = stacktrace->GetFrame(isolate, i);
+      TRI_Utf8ValueNFC file(isolate, frame->GetScriptName());
+      TRI_Utf8ValueNFC fn(isolate, frame->GetFunctionName());
+      LOG_TOPIC("cac44", ERR, arangodb::Logger::V8)
+          << *file << " - " << *fn << "():" << frame->GetLineNumber();
+    }
+  } else {
+    LOG_TOPIC("cac45", ERR, arangodb::Logger::V8)
+        << "no js stacktrace could be acquired";
+  }
+  abort();
+}
+
+// Signal handler — only calls async-signal-safe functions.
+// Defers V8 stack trace capture to the interrupt callback above.
+void signalHandler(int signal, siginfo_t* /*info*/, void* /*ucontext*/) {
+  // RequestInterrupt is documented as safe to call from a signal handler.
+  // If V8 is executing JS, the callback fires at the next safe point.
+  // If V8 is idle (e.g. REPL prompt), it fires when JS resumes.
+  global_isolate->RequestInterrupt(v8InterruptCallback, nullptr);
+  // Expire the V8 execution deadline to unblock JS execution.
+  triggerV8DeadlineNow(signal, ExternalId());
+}
+
 }  // namespace
 
 namespace arangodb {
-
-void signalHandler(int signal) {
-  // make sure this doesn't make us block eternally, so come back in
-  // 30s:
-  alarm(30);
-  // Ok, try to get and lock the state of the V8 execution:
-  v8::Locker locker{global_isolate};
-  if (global_isolate != nullptr) {
-    v8::Local<v8::StackTrace> stacktraceV8 = v8::StackTrace::CurrentStackTrace(
-        global_isolate, 10, v8::StackTrace::kDetailed);
-    int frameCount = stacktraceV8->GetFrameCount();
-    if (frameCount > 0) {
-      for (int i = 0; i < frameCount; i++) {
-        auto stack_frame = stacktraceV8->GetFrame(global_isolate, i);
-        TRI_Utf8ValueNFC stackframeFile(global_isolate,
-                                        stack_frame->GetScriptName());
-        TRI_Utf8ValueNFC stackframeFN(global_isolate,
-                                      stack_frame->GetFunctionName());
-        LOG_TOPIC("cac44", ERR, Logger::V8)
-            << *stackframeFile << " - " << *stackframeFN
-            << "():" << stack_frame->GetLineNumber();
-      }
-    } else {
-      LOG_TOPIC("cac45", ERR, Logger::V8)
-          << "no js stacktrace could be acquired";
-    }
-  } else {
-    LOG_TOPIC("cac46", ERR, Logger::V8)
-        << "no js stacktrace could be acquired anymore";
-  }
-  // try to unblock the .js execution, and trigger abort/cleanup
-  triggerV8DeadlineNow(signal, ExternalId());
-}
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
                                std::string const& name)
@@ -212,7 +214,13 @@ void V8ShellFeature::start() {
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
   ::global_isolate = _isolate = platform.createIsolate();
-  signal(SIGBUS, signalHandler);
+  {
+    struct sigaction act;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_RESETHAND | SA_SIGINFO;
+    act.sa_sigaction = ::signalHandler;
+    sigaction(SIGBUS, &act, nullptr);
+  }
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
