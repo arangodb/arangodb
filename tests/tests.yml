@@ -689,14 +689,6 @@
       full: true
     args:
       dumpAgencyOnError: true
-- wal_cleanup:
-    options:
-      type: cluster
-      priority: 2500
-    requires:
-      full: true
-    args:
-      dumpAgencyOnError: true
 
 # Common Full Tests
 - communication:

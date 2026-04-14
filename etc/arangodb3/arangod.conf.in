@@ -35,9 +35,6 @@ authentication = true
 # number of threads automatically, based on available CPUs
 # maximal-threads = 0
 
-# gather server statistics
-statistics = true
-
 # the user and group are normally set in the start script
 # uid = arangodb
 # gid = arangodb
