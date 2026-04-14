@@ -18,6 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "UseIndexForCollect.h"
+
 #include "Cluster/ServerState.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -33,7 +36,6 @@
 #include "Aql/IndexDistrinctScan.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/Query.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
@@ -43,10 +45,9 @@
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using namespace arangodb::containers;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb {
+namespace aql {
+using EN = ExecutionNode;
 
 #define LOG_RULE LOG_DEVEL_IF(false)
 
@@ -423,9 +424,8 @@ std::optional<IndexNode*> getDependentIndexNode(
    existing index node (and does not look for other indexes that could be
    applicable).
  */
-void arangodb::aql::useIndexForCollect(Optimizer* opt,
-                                       std::unique_ptr<ExecutionPlan> plan,
-                                       OptimizerRule const& rule) {
+void useIndexForCollect(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                        OptimizerRule const& rule) {
   bool modified = false;
 
   containers::SmallVector<ExecutionNode*, 8> collectNodes;
@@ -502,7 +502,11 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-std::ostream& arangodb::operator<<(std::ostream& os,
-                                   IndexDistinctScanOptions const& opts) {
+}  // namespace aql
+
+std::ostream& operator<<(std::ostream& os,
+                         IndexDistinctScanOptions const& opts) {
   return os << opts.distinctFields << (opts.sorted ? "sorted" : "unsorted");
 }
+
+}  // namespace arangodb
