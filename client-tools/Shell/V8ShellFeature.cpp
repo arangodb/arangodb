@@ -119,6 +119,9 @@ void signalHandler(int signal, siginfo_t* /*info*/, void* /*ucontext*/) {
       reinterpret_cast<void*>(static_cast<intptr_t>(signal)));
   // Expire the V8 execution deadline to unblock JS execution.
   triggerV8DeadlineNow(signal, ExternalId());
+  // Fallback: if V8 is idle and the interrupt never fires, SIGALRM
+  // terminates the process after 30s.
+  alarm(30);
 }
 
 }  // namespace
