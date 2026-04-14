@@ -32,24 +32,6 @@ var ArangoError = arangodb.ArangoError;
 var sprintf = arangodb.sprintf;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief collection is corrupted
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.STATUS_CORRUPTED = 0;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief collection is loaded
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.STATUS_LOADED = 3;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief collection is deleted
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.STATUS_DELETED = 5;
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief document collection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -68,21 +50,8 @@ ArangoCollection.prototype.isArangoCollection = true;
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._PRINT = function (context) {
-  var status = 'unknown';
   var type = 'unknown';
   var name = this.name();
-
-  switch (this.status()) {
-    case ArangoCollection.STATUS_LOADED:
-      status = 'loaded';
-      break;
-    case ArangoCollection.STATUS_CORRUPTED:
-      status = 'corrupted';
-      break;
-    case ArangoCollection.STATUS_DELETED:
-      status = 'deleted';
-      break;
-  }
 
   switch (this.type()) {
     case ArangoCollection.TYPE_DOCUMENT:
@@ -104,7 +73,7 @@ ArangoCollection.prototype._PRINT = function (context) {
   if (useColor) { context.output += colors.COLOR_STRING; }
   context.output += name || 'unknown';
   if (useColor) { context.output += colors.COLOR_RESET; }
-  context.output += '" (type ' + type + ', status ' + status + ')]';
+  context.output += '" (type ' + type + ')]';
 };
 
 // //////////////////////////////////////////////////////////////////////////////

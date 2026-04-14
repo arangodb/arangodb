@@ -536,6 +536,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_COLON ":"
 %token T_SCOPE "::"
 %token T_RANGE ".."
+%token T_ELLIPSIS "..."
 
 %token T_COMMA ","
 %token T_OPEN "("
@@ -544,6 +545,11 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_OBJECT_CLOSE "}"
 %token T_ARRAY_OPEN "["
 %token T_ARRAY_CLOSE "]"
+
+%token T_RELATION_OPEN "-["
+%token T_RELATION_IN_OPEN "<-["
+%token T_RELATION_CLOSE "]-"
+%token T_RELATION_OUT_CLOSE "]->"
 
 %token T_END 0 "end of query string"
 
@@ -788,6 +794,8 @@ statement_block_statement:
   | replace_statement {
     }
   | upsert_statement {
+    }
+  | match_statement {
     }
   ;
 
@@ -1114,6 +1122,128 @@ for_statement:
       parser->ast()->addOperation(node);
     }
   ;
+
+%type <node> pattern_label;
+pattern_label:
+    T_COLON T_STRING {
+        auto const& resolver = parser->query().resolver();
+        $$ = parser->ast()->createNodeDataSource(resolver, {$2.value, $2.length}, arangodb::AccessMode::Type::READ, true, false);
+    }
+
+%type <node> pattern_maybe_where_expression;
+pattern_maybe_where_expression:
+    T_STRING expression {
+        auto keyword = std::string_view($1.value, $1.length);
+        if (::caseInsensitiveEqual(keyword, "WHERE")) {
+            $$ = $2;
+        } else {
+            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'WHERE'", keyword, yylloc.first_line, yylloc.first_column);
+            $$ = nullptr;
+        }
+     }
+  | /* empty */ { $$ = nullptr; }
+  ;
+
+%type <node> pattern_property_key_value_pair;
+pattern_property_key_value_pair:
+    object_element_name T_COLON expression { parser->pushObjectElement($1.value, $1.length, $3); }
+
+%type <node> pattern_property_key_value_pair_list;
+pattern_property_key_value_pair_list:
+    pattern_property_key_value_pair
+  | pattern_property_key_value_pair_list T_COMMA pattern_property_key_value_pair {}
+  | /* empty */ { $$ = nullptr;}
+
+%type <node> pattern_maybe_property_key_value_expression;
+pattern_maybe_property_key_value_expression:
+  T_OBJECT_OPEN {
+    auto node = parser->ast()->createNodeObject();
+    parser->pushStack(node);
+  } pattern_property_key_value_pair_list T_OBJECT_CLOSE {
+    $$ = static_cast<AstNode*>(parser->popStack());
+  }
+  | /* empty */ { $$ = nullptr;}
+
+/* not supported for now, will be used later
+%type<node> pattern_variable_length_relationship;
+pattern_variable_length_relationship:
+    T_TIMES expression { $$ = $2; }
+*/
+
+%type <node> pattern_node_pattern;
+pattern_node_pattern:
+    T_OPEN pattern_out_variable pattern_label pattern_maybe_property_key_value_expression pattern_maybe_where_expression T_CLOSE {
+        $$ = parser->ast()->createPatternNodePattern($2, $3, $4, $5);
+    }
+    | T_OPEN variable_name T_CLOSE { $$ = parser->ast()->createNodeReference({$2.value, $2.length}); }
+
+%type <node> pattern_out_variable;
+pattern_out_variable:
+    variable_name {
+      $$ = parser->ast()->createNodeVariable({$1.value, $1.length}, true);
+    }
+  | /* empty */ { $$ = parser->ast()->createNodeReference(parser->ast()->variables()->createTemporaryVariable()); };
+
+%type <boolval> pattern_open_relation;
+pattern_open_relation:
+    T_MINUS T_ARRAY_OPEN { $$ = false; }
+  | T_LT T_MINUS T_ARRAY_OPEN { $$ = true; }
+%type <boolval> pattern_close_relation;
+pattern_close_relation:
+    T_ARRAY_CLOSE T_MINUS { $$ = false; }
+  | T_ARRAY_CLOSE T_MINUS T_GT { $$ = true; }
+
+%type <node> pattern_edge;
+pattern_edge: pattern_open_relation pattern_out_variable pattern_label pattern_maybe_property_key_value_expression
+    pattern_maybe_where_expression pattern_close_relation {
+        $$ = parser->ast()->createPatternEdge($2, $3, $4, $5, $1, $6);
+    }
+/*  | pattern_open_relation pattern_out_variable pattern_label pattern_variable_length_relationship pattern_close_relation {
+        $$ = parser->ast()->createPatternEdge($2, $3, nullptr, nullptr, $1, $5);
+    } not supported for now */
+
+pattern_segment: pattern_edge pattern_node_pattern {
+    auto node = parser->ast()->createPatternSegment($1, $2);
+    parser->pushPatternNode(node);
+}
+
+pattern_segment_list:
+    pattern_segment {}
+  | pattern_segment_list pattern_segment {}
+
+pattern_maybe_segment_list:
+    pattern_segment_list {}
+  | /* empty */ {}
+
+pattern_maybe_path_assignment:
+    variable_name T_ASSIGN {
+        auto pathVar = parser->ast()->createPatternPathVariable({$1.value, $1.length});
+        parser->pushPatternNode(pathVar);
+    }
+  | /* empty */ {}
+
+pattern_expression: {
+    auto node = parser->ast()->createNodeMatchExpr();
+    parser->pushStack(node);
+} pattern_maybe_path_assignment pattern_node_pattern {
+    parser->pushPatternNode($3);
+} pattern_maybe_segment_list {
+    auto node = static_cast<AstNode*>(parser->popStack());
+    parser->pushMatchExprNode(node);
+};
+
+pattern_expression_list:
+    pattern_expression {}
+  | pattern_expression_list T_COMMA pattern_expression {}
+
+match_statement:
+    T_MATCH {
+        auto node = parser->ast()->createNodeMatch();
+        parser->pushStack(node);
+    } pattern_expression_list {
+        auto node = static_cast<AstNode*>(parser->popStack());
+        parser->ast()->addOperation(node);
+    }
 
 filter_statement:
     T_FILTER expression {
@@ -2213,6 +2343,10 @@ array_elements_list:
 array_element:
     expression {
       parser->pushArrayElement($1);
+    }
+  |   expression T_ELLIPSIS {
+      auto x = parser->ast()->createNodeArraySplice($1);
+      parser->pushArrayElement(x);
     }
   ;
 

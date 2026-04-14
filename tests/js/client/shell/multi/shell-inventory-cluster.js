@@ -134,7 +134,6 @@ function clusterInventorySuite () {
     assertEqual("number", typeof parameters.writeConcern);
     assertEqual("string", typeof parameters.name);
     assertTrue(typeof parameters.replicationFactor === 'number' || parameters.replicationFactor === 'satellite');
-    assertEqual("number", typeof parameters.status);
     assertEqual("number", typeof parameters.type);
     assertEqual("boolean", typeof parameters.waitForSync);
 

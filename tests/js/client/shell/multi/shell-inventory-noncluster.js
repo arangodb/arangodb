@@ -125,7 +125,6 @@ function inventorySuite () {
     assertEqual("number", typeof parameters.writeConcern);
     assertEqual("string", typeof parameters.name);
     assertEqual("number", typeof parameters.replicationFactor);
-    assertEqual("number", typeof parameters.status);
     assertEqual("number", typeof parameters.type);
     assertEqual("number", typeof parameters.version);
     assertEqual("boolean", typeof parameters.waitForSync);

@@ -441,10 +441,6 @@ Mode:
 
 ## Debugging
 
-### Runtime
-
-- Cheapen startup for valgrind: `--server.rest-server false`
-
 ### Debugging AQL execution blocks
 
 To debug AQL execution blocks, two steps are required:

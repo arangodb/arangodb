@@ -66,6 +66,7 @@
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -75,6 +76,7 @@
 #include <velocypack/Iterator.h>
 
 #include <algorithm>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -158,8 +160,9 @@ size_t estimateListLength(ExecutionPlan const* plan, Variable const* var) {
           length = node->numMembers();
         }
         if (node->type == NODE_TYPE_RANGE) {
-          auto low = node->getMember(0);
-          auto high = node->getMember(1);
+          ast::RangeNode rangeNode(node);
+          auto low = rangeNode.getStart();
+          auto high = rangeNode.getEnd();
 
           if (low->isConstant() && high->isConstant() &&
               (low->isValueType(VALUE_TYPE_INT) ||
@@ -603,6 +606,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
   if (isAsyncPrefetchEnabled()) {
     plan->getAst()->setContainsAsyncPrefetch();
   }
+
+  if (auto annotations = slice.get("annotations"); annotations.isObject()) {
+    for (auto [key, value] : VPackObjectIterator(annotations)) {
+      _annotations.emplace(key.copyString(), VPackString{value});
+    }
+  }
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
@@ -665,6 +674,8 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(
   other._varsUsedLaterStack = _varsUsedLaterStack;
   other._varsValidStack = _varsValidStack;
   other._registerPlan = _registerPlan;
+
+  other._annotations = _annotations;
 }
 
 /// @brief helper for cloning, use virtual clone methods for dependencies
@@ -1119,6 +1130,13 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
     builder.add("isCallstackSplitEnabled", VPackValue(true));
   }
 
+  if (!_annotations.empty()) {
+    VPackObjectBuilder guard(&builder, "annotations");
+    for (auto const& [name, value] : _annotations) {
+      builder.add(name, value.slice());
+    }
+  }
+
   TRI_ASSERT(builder.isOpenObject());
   doToVelocyPack(builder, flags);
 }
@@ -1333,6 +1351,25 @@ auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
         _varsUsedLaterStack, _varsValidStack, getVariablesSetHere());
   }
   return _regsToKeepStack;
+}
+
+auto ExecutionNode::getAnnotation(std::string_view name) const noexcept
+    -> VPackSlice {
+  if (auto it = _annotations.find(name); it != _annotations.end()) {
+    return it->second;
+  }
+  return VPackSlice::nullSlice();
+}
+
+auto ExecutionNode::getAnnotatedString(std::string_view name) const noexcept
+    -> std::optional<std::string_view> {
+  if (auto it = _annotations.find(name); it != _annotations.end()) {
+    ADB_PROD_ASSERT(it->second.isString())
+        << "annotation `" << name << "` expected to be a string, found "
+        << it->second.typeName();
+    return it->second.stringView();
+  }
+  return std::nullopt;
 }
 
 RegisterCount ExecutionNode::getNrOutputRegisters() const {
@@ -1555,6 +1592,26 @@ bool ExecutionNode::isVarUsedLater(Variable const* variable) const noexcept {
 }
 
 bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }
+
+void ExecutionNode::setAnnotation(std::string name, VPackString value) {
+  _annotations.insert_or_assign(std::move(name), std::move(value));
+}
+
+void ExecutionNode::setAnnotation(std::string name, VPackSlice value) {
+  VPackString str{value};
+  setAnnotation(std::move(name), std::move(str));
+}
+
+void ExecutionNode::setAnnotation(std::string name, VPackValue value) {
+  VPackBuilder builder;
+  builder.add(value);
+  setAnnotation(std::move(name), builder.slice());
+}
+
+void ExecutionNode::setAnnotatedString(std::string name,
+                                       std::string_view value) {
+  setAnnotation(std::move(name), VPackValue(value));
+}
 
 void ExecutionNode::setId(ExecutionNodeId id) { _id = id; }
 
