@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-429: Removed support for the `--ssl.protocol` startup option values 1, 2 and 3,
+  which stand for SSL v2, SSL v2/3, and SSL v3.
+
 * Upgraded OpenSSL to 3.5.6.
 
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
