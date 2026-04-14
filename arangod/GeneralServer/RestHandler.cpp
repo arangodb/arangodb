@@ -34,6 +34,7 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/RestHandlerActivity.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
@@ -211,12 +212,14 @@ void RestHandler::trackTaskEnd() noexcept {
 }
 
 void RestHandler::startActivity() {
-  _activity = activities::make<activities::GenericActivity>(
-      "RestHandler", std::unordered_map<std::string, std::string>{
-                         {"handler", name()},
-                         {"url", _request->fullUrl()},
-                         {"method", std::string{GeneralRequest::translateMethod(
-                                        _request->requestType())}}});
+  _activity = activities::make<arangodb::rest::RestHandlerActivity>(
+      RestHandlerActivityData{
+          .handler = name(),           //
+          .url = _request->fullUrl(),  //
+          .method = std::string{GeneralRequest::translateMethod(
+              _request->requestType())},  //
+          .headers = request()->headers(),
+          .connectionInfo = request()->connectionInfo()});
 }
 
 RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
@@ -321,7 +324,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   nf.trackForwardedRequest();
 
   // Should the coordinator be gone by now, we'll respond with 404.
-  // There is no point forwarding requests. This affects transactions, cursors,
+  // There is no point forwarding requests. This affects transactions,
+  // cursors,
   // ...
   if (server()
           .getFeature<ClusterFeature>()
@@ -359,8 +363,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     auto const& resultHeaders = response.response().messageHeader().meta();
     for (auto const& it : resultHeaders) {
       if (it.first == "http/1.1") {
-        // never forward this header, as the HTTP response code was already set
-        // via "resetResponse" above
+        // never forward this header, as the HTTP response code was already
+        // set via "resetResponse" above
         continue;
       }
       _response->setHeader(it.first, it.second);
@@ -712,9 +716,9 @@ void RestHandler::runHandler(
   _sendResponseCallback = std::move(responseCallback);
 
   runHandlerStateMachine().
-      // Swallow all exceptions. It would be desirable to guarantee no unhandled
-      // exceptions reach this point; so let's at least die in maintainer mode
-      // for now.
+      // Swallow all exceptions. It would be desirable to guarantee no
+      // unhandled exceptions reach this point; so let's at least die in
+      // maintainer mode for now.
       thenFinal([self = shared_from_this()](auto&& tryResult) noexcept {
         try {
           std::move(tryResult).throwIfFailed();

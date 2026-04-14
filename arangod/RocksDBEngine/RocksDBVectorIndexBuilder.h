@@ -26,7 +26,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -39,6 +39,7 @@
 
 #include <faiss/IndexIVF.h>
 #include <rocksdb/iterator.h>
+#include <rocksdb/options.h>
 #include <rocksdb/slice.h>
 #include <velocypack/Slice.h>
 
@@ -55,77 +56,75 @@ class RocksDBEngine;
 
 namespace arangodb::vector {
 
-/// Serialize a trained FAISS index into a TrainedData blob.
+// Taken from:
+// ClusteringParameters.max_points_per_centroid
+static constexpr std::size_t kMaxTrainingSizePerNLists{256};
+
 TrainedData serializeIndex(faiss::IndexIVF const& index);
 
-/// Read vector data from a document given the field path and expected
-/// dimension. Shared utility used by both training and index operations.
 Result readDocumentVectorData(
     velocypack::Slice doc,
     std::vector<std::vector<basics::AttributeName>> const& fields,
     std::size_t dimension, std::vector<float>& output);
 
-/// Encapsulates FAISS index creation and the training pipeline.
-/// Holds the immutable configuration that is shared across operations,
-/// keeping individual method signatures clean.
-class VectorIndexTrainer {
- public:
-  VectorIndexTrainer(
-      UserVectorIndexDefinition const& definition, bool isSparse,
-      std::vector<std::vector<basics::AttributeName>> const& fields,
-      std::string_view shardName, std::uint64_t indexId,
-      std::int64_t trainingThreshold);
+struct BoundedDocumentIterator {
+  RocksDBKeyBounds bounds;
+  rocksdb::Slice upper;
+  rocksdb::ReadOptions ro;
+  std::unique_ptr<rocksdb::Iterator> it;
 
-  /// Restore a FAISS IndexIVF from previously serialized trained data.
+  explicit BoundedDocumentIterator(RocksDBKeyBounds bounds, rocksdb::DB* db,
+                                   rocksdb::Snapshot const* snap = nullptr);
+};
+
+class VectorIndexTrainer {
+  struct TrainingDataset {
+    std::vector<float> data;
+    // Total number of documents in the shard that contained a valid vector
+    // field. Used to resolve nLists for sparse indexes where numDocsHint
+    // (total doc count) overestimates the actual vector-bearing doc count.
+    std::size_t totalValidVectorCount;
+  };
+
+ public:
+  VectorIndexTrainer(RocksDBVectorIndex const& index, rocksdb::DB* db,
+                     RocksDBKeyBounds bounds);
+
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
       TrainedData const& data);
 
-  /// Create a fresh (untrained) FAISS IndexIVF from the definition.
-  /// If the definition has a factory string, uses faiss::index_factory.
-  /// The factory string's {nLists} placeholder is resolved if present.
-  /// Otherwise creates an IndexIVFFlat with the appropriate quantizer.
-  std::shared_ptr<faiss::IndexIVF> createFaissIndex() const;
+  std::shared_ptr<faiss::IndexIVF> createFaissIndex(
+      std::size_t resolvedNLists) const;
 
   /// Run the full training pipeline:
-  ///  1. Resolve nLists and defaultNProbe from the definition
+  ///  1. Resolve nLists from the definition
   ///  2. Create the FAISS index
   ///  3. Load training vectors from the iterator
   ///  4. Train the FAISS index
   ///  5. Serialize the trained index data
   ResultT<std::shared_ptr<faiss::IndexIVF>> train(
-      rocksdb::Iterator& it, rocksdb::Slice upper,
-      std::stop_token stopToken = {}) const;
+      std::size_t numDocsHint, std::stop_token stopToken = {});
 
  private:
-  /// Collect training vectors from the iterator.
-  /// Reads up to maxVectors documents, extracts vector data, applies cosine
-  /// normalization if needed, and returns the flat training buffer.
-  ResultT<std::vector<float>> collectTrainingDataset(
-      rocksdb::Iterator& it, rocksdb::Slice upper, std::int64_t maxVectors,
+  ResultT<TrainingDataset> collectTrainingDataset(
+      rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t numDocsHint,
       std::stop_token stopToken) const;
 
-  UserVectorIndexDefinition const& _definition;
-  bool _isSparse;
-  std::vector<std::vector<basics::AttributeName>> const& _fields;
-  std::string _shardName;
-  std::uint64_t _indexId;
-  std::int64_t _trainingThreshold;
+  /// Resolve the nLists value from the definition, using numDocsHint for
+  /// scaling mode.
+  ResultT<std::size_t> resolveNLists(std::uint64_t numDocsHint) const;
+
+  RocksDBVectorIndex const& _index;
+  BoundedDocumentIterator _docIt;
 };
 
-/// Bulk-ingest all vectors from a document iterator into a trained vector
-/// index. Uses a multi-threaded pipeline (read → encode → write) for
-/// throughput. Moved here from RocksDBVectorIndex to decouple the index from
-/// its build lifecycle.
 Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
                      std::unique_ptr<rocksdb::Iterator> documentIterator,
                      std::stop_token stopToken = {});
 
-/// Orchestrates the full build pipeline for a vector index: train the FAISS
-/// index from collection documents, apply the result, then bulk-ingest all
-/// vectors via the ingestVectors() pipeline.
-class VectorIndexBuildManager {
+class VectorIndexBuilder {
  public:
-  explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
+  explicit VectorIndexBuilder(RocksDBVectorIndex& index);
 
   Result build(std::shared_ptr<RocksDBIndex> indexPtr,
                metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
@@ -133,6 +132,8 @@ class VectorIndexBuildManager {
                std::stop_token stopToken = {});
 
  private:
+  Result persistTrainedData(TrainedData const& trainedData);
+
   RocksDBVectorIndex& _index;
   RocksDBEngine& _engine;
   rocksdb::DB* _rootDB;

@@ -474,22 +474,20 @@ void V8DealerFeature::start() {
   // add all paths to allowlists
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
   TRI_ASSERT(!_options.startupDirectory.empty());
-  v8security.addToInternalAllowList(_options.startupDirectory,
-                                    FSAccessType::READ);
+  v8security.addToInternalReadAllowList(_options.startupDirectory);
 
   if (!_nodeModulesDirectory.empty()) {
-    v8security.addToInternalAllowList(_nodeModulesDirectory,
-                                      FSAccessType::READ);
+    v8security.addToInternalReadAllowList(_nodeModulesDirectory);
   }
   for (auto const& it : _options.moduleDirectories) {
     if (!it.empty()) {
-      v8security.addToInternalAllowList(it, FSAccessType::READ);
+      v8security.addToInternalReadAllowList(it);
     }
   }
 
   TRI_ASSERT(!_options.appPath.empty());
-  v8security.addToInternalAllowList(_options.appPath, FSAccessType::READ);
-  v8security.addToInternalAllowList(_options.appPath, FSAccessType::WRITE);
+  v8security.addToInternalReadAllowList(_options.appPath);
+  v8security.addToInternalWriteAllowList(_options.appPath);
   v8security.dumpAccessLists();
 
   _startupLoader.setDirectory(_options.startupDirectory);
@@ -706,8 +704,8 @@ void V8DealerFeature::copyInstallationFiles() {
         return true;
       }
 
-      std::string normalized = filename;
-      FileUtils::normalizePath(normalized);
+      std::string const normalized =
+          std::filesystem::path(filename).make_preferred().string();
       if (normalized.ends_with(uiNodeModulesPath)) {
         // filter it out!
         return true;

@@ -337,8 +337,8 @@ void V8ShellFeature::copyInstallationFiles() {
       return true;
     }
 
-    std::string normalized = filename;
-    FileUtils::normalizePath(normalized);
+    std::string const normalized =
+        std::filesystem::path(filename).make_preferred().string();
     if (filterPath(normalized, nodeModulesPath) ||
         filterPath(normalized, nodeModulesPathVersioned) ||
         filterPath(normalized, jsAppsPath) ||
@@ -679,7 +679,10 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
           current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"))
               .FromMaybe(v8::Handle<v8::Value>());
 
-      auto dirname = FileUtils::dirname(TRI_ObjectToString(isolate, filename));
+      std::string const dirname =
+          std::filesystem::path(TRI_ObjectToString(isolate, filename))
+              .parent_path()
+              .string();
 
       current
           ->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"),
@@ -1067,7 +1070,7 @@ void V8ShellFeature::initGlobals() {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
-  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalReadAllowList(_startupDirectory);
 
   for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
@@ -1079,7 +1082,7 @@ void V8ShellFeature::initGlobals() {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security.addToInternalAllowList(it, FSAccessType::READ);  // expand
+    v8security.addToInternalReadAllowList(it);
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
@@ -1110,7 +1113,7 @@ void V8ShellFeature::initGlobals() {
   if (_currentModuleDirectory) {
     auto const cwd = std::filesystem::current_path();
     modules += sep + cwd.string();
-    v8security.addToInternalAllowList(cwd, FSAccessType::READ);
+    v8security.addToInternalReadAllowList(cwd);
   }
 
   v8security.dumpAccessLists();

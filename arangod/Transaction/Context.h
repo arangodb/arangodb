@@ -25,6 +25,7 @@
 
 #include <memory>
 
+#include "Activities/GenericActivity.h"
 #include "Basics/Exceptions.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -134,6 +135,8 @@ class Context {
   /// @brief generates correct ID based on server type
   static TransactionId makeTransactionId();
 
+  activities::GenericActivity::HandleType activity() const noexcept;
+
  protected:
   std::shared_ptr<TransactionState> createState(
       transaction::Options const& options);
@@ -159,6 +162,8 @@ class Context {
     bool isStreamingTransaction = false;
     bool isJStransaction = false;
   } _meta;
+
+  activities::GenericActivity::HandleType _activity;
 };
 
 }  // namespace transaction

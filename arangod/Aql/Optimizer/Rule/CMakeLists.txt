@@ -1,20 +1,71 @@
 add_subdirectory(EnumeratePathsFilter)
 
 target_sources(arango_aql PRIVATE
-  OptimizerRuleBatchMaterializeDocuments.cpp
-  OptimizerRuleCollectWithIndex.cpp
-  OptimizerRulePropagateConstantAttributes.cpp
-  OptimizerRulePushDownLateMaterialization.cpp
-  OptimizerRulePushLimitIntoIndex.cpp
-  OptimizerRuleReplaceEntriesWithObjectIteration.cpp
+  BatchMaterializeDocuments.cpp
+  UseIndexForCollect.cpp
+  PropagateConstantAttributes.cpp
+  PushDownLateMaterialization.cpp
+  MaterializeIntoSeparateVariable.cpp
+  PushLimitIntoIndex.cpp
+  ReplaceEntriesWithObjectIteration.cpp
   OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRuleVectorIndex.cpp
   OptimizerRuleVectorIndexPushFilter.cpp
+  MoveCalculationsDown.cpp
+  MoveCalculationsUp.cpp
+  RemoveRedundantCalculations.cpp
+  RemoveUnnecessaryCalculations.cpp
   OptimizerRulesCluster.cpp
+  FuseFilters.cpp
+  MoveFiltersIntoEnumerate.cpp
+  MoveFiltersUp.cpp
+  RemoveUnnecessaryFilters.cpp
+  RemoveRedundantOr.cpp
+  ReplaceOrWithIn.cpp
+  SimplifyConditions.cpp
   OptimizerRulesGraph.cpp
   OptimizerRulesIResearchView.cpp
   OptimizerRulesIndexNode.cpp
   OptimizerRulesJoin.cpp
   OptimizerRulesLateMaterializedCommon.cpp
   OptimizerRulesReplaceFunctions.cpp
+  DecayUnnecessarySortedGather.cpp
+  ParallelizeGather.cpp
+  RemoveRedundantSorts.cpp
+  SortLimit.cpp
+  UseIndexForSort.cpp
+  UseIndexes.cpp
+  OptimizeTraversals.cpp
+  RemoveFiltersCoveredByTraversal.cpp
+  RemoveTraversalPathVariable.cpp
+  RemoveFiltersCoveredByIndex.cpp
+  UseIndexForSort.cpp
+  UseIndexes.cpp
+  OptimizeTraversals.cpp
+  RemoveFiltersCoveredByIndex.cpp
+  RemoveFiltersCoveredByTraversal.cpp
+  RemoveTraversalPathVariable.cpp
+  InlineSubqueries.cpp
+  OptimizeSubqueries.cpp
+  SpliceSubqueries.cpp
+  SortInValues.cpp
+  RemoveCollectVariables.cpp
+  SpecializeCollect.cpp
+  InterchangeAdjacentEnumerations.cpp
+  RemoveDataModificationOutVariables.cpp
+  OptimizePaths.cpp
+  GeoIndex.cpp
+  OptimizeCount.cpp
+  AsyncPrefetch.cpp
+  OptimizeProjections.cpp
+  ScatterInCluster.cpp
+  UseIndexForSort.cpp
+  UseIndexes.cpp
+  DistributeInCluster.cpp
+  CollectInCluster.cpp
+  DistributeFilterCalcToCluster.cpp
+  DistributeSortToCluster.cpp
+  RemoveUnnecessaryRemoteScatter.cpp
+  RestrictToSingleShard.cpp
+  UndistributeRemoveAfterEnumColl.cpp
 )

@@ -37,7 +37,7 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndEnsureIndex,
+    insertDocsAndAssertIndex,
     waitForAllVectorIndexesState,
     VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
@@ -155,10 +155,10 @@ function VectorIndexL2FilterTestSuite() {
                 });
             }
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -169,13 +169,8 @@ function VectorIndexL2FilterTestSuite() {
                         trainingIterations: 10,
                         defaultNProbe: nProbeAndNlists,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -797,10 +792,10 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
                     floatField: i + 0.5
                 });
             }
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2_stored_values",
+                indexName: "vector_l2_stored_values",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -812,13 +807,8 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
                         defaultNProbe: nProbeAndNlists,
                     },
                     storedValues: ["val", "stringField", "boolField", "floatField"]
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {

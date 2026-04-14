@@ -39,7 +39,7 @@ const {
 const {
     createVectorGenerator,
     DistanceFunctions,
-    insertDocsAndEnsureIndex,
+    insertDocsAndAssertIndex,
     waitForAllVectorIndexesState,
     VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
@@ -86,10 +86,10 @@ function VectorIndexL2TestSuite() {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs: vectorData.docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -99,13 +99,8 @@ function VectorIndexL2TestSuite() {
                         nLists: 10,
                         trainingIterations: 10,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -563,10 +558,10 @@ function VectorIndexCosineTestSuite() {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs: vectorData.docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_cosine",
+                indexName: "vector_cosine",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     params: {
@@ -574,13 +569,8 @@ function VectorIndexCosineTestSuite() {
                         dimension: dimension,
                         nLists: 10
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -748,10 +738,10 @@ function VectorIndexInnerProductTestSuite() {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs: vectorData.docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_inner_product",
+                indexName: "vector_inner_product",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     params: {
@@ -759,13 +749,8 @@ function VectorIndexInnerProductTestSuite() {
                         dimension: dimension,
                         nLists: 10
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
