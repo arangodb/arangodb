@@ -1,10 +1,14 @@
-3.12.9 (2026-04-03)
--------------------
+3.12.9.1 (XXXX-XX-XX)
+---------------------
+
 * COR-415: Fix vector index catch-up phase to use the proper
   `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that
   WAL entries written during training are correctly ingested, preventing
   missed documents after index creation.
 
+
+3.12.9 (2026-04-03)
+-------------------
 * Bump lodash from 4.17.21 to 4.18.1.
 
 * Bump @xmldom/xmldom from 0.8.10 to 0.8.12.
