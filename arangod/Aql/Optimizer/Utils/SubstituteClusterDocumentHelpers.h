@@ -22,16 +22,41 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplaceNode.h"
+#pragma once
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Basics/debugging.h"
+#include "Aql/Variable.h"
 
 namespace arangodb::aql {
 
-void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode,
-                 ExecutionNode* newNode) {
+inline bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
+  while (node) {
+    node = node->getFirstDependency();
+    if (node == nullptr) {
+      return false;
+    }
+
+    if (node->getType() == ExecutionNode::SINGLETON) {
+      return true;
+    }
+
+    if (node->getType() != ExecutionNode::CALCULATION) {
+      return false;
+    }
+
+    VarSet used;
+    // cppcheck-suppress nullPointerRedundantCheck
+    node->getVariablesUsedHere(used);
+    if (!used.empty()) {
+      return false;
+    }
+  }
+  return false;
+}
+
+inline void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode,
+                        ExecutionNode* newNode) {
   if (oldNode == plan->root()) {
     // intentional copy, the dependencies are changed in the loop
     std::vector<ExecutionNode*> deps = oldNode->getDependencies();
