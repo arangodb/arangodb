@@ -300,7 +300,12 @@ defmodule Toast.Deployment.Controller do
   end
 
   def handle_call(:dump_agency, _from, state) do
-    dump = AgencyDump.capture(endpoints: get_endpoints_for_role(state, :agent))
+    dump =
+      AgencyDump.capture(
+        endpoints: get_endpoints_for_role(state, :agent),
+        auth: Toast.JWT.Provider.maybe_auth(state.jwt_provider)
+      )
+
     {:reply, dump, %{state | agency_dump: dump}}
   end
 

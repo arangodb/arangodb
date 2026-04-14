@@ -90,6 +90,41 @@ defmodule Toast.Diagnostics.AgencyDumpTest do
       assert log =~ "no agent endpoints"
     end
 
+    test "sends auth header when auth option provided" do
+      test_pid = self()
+
+      auth_checking_plug = fn conn ->
+        auth = Plug.Conn.get_req_header(conn, "authorization")
+        send(test_pid, {:auth_header, auth})
+        agent_plug(conn)
+      end
+
+      AgencyDump.capture(
+        endpoints: ["http://agent:8531"],
+        auth: {:jwt, "test-token-123"},
+        client_opts: [plug: auth_checking_plug]
+      )
+
+      assert_received {:auth_header, ["Bearer test-token-123"]}
+    end
+
+    test "sends no auth header when auth option is nil" do
+      test_pid = self()
+
+      auth_checking_plug = fn conn ->
+        auth = Plug.Conn.get_req_header(conn, "authorization")
+        send(test_pid, {:auth_header, auth})
+        agent_plug(conn)
+      end
+
+      AgencyDump.capture(
+        endpoints: ["http://agent:8531"],
+        client_opts: [plug: auth_checking_plug]
+      )
+
+      assert_received {:auth_header, []}
+    end
+
     test "returns nil if all agents fail" do
       log =
         capture_log(fn ->

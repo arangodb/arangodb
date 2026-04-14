@@ -18,6 +18,7 @@ defmodule Toast.Diagnostics.AgencyDump do
 
     * `:endpoints` - list of agent endpoint URLs
     * `:timeout` - request timeout in ms (default: 30_000)
+    * `:auth` - authentication tuple, e.g. `{:jwt, token}` (default: nil)
     * `:client_opts` - extra options forwarded to `Toast.Client.new/2` (test use)
 
   """
@@ -25,6 +26,7 @@ defmodule Toast.Diagnostics.AgencyDump do
   def capture(opts) do
     endpoints = Keyword.get(opts, :endpoints, [])
     timeout = Keyword.get(opts, :timeout, 30_000)
+    auth = Keyword.get(opts, :auth)
     client_opts = Keyword.get(opts, :client_opts, [])
 
     case endpoints do
@@ -33,7 +35,7 @@ defmodule Toast.Diagnostics.AgencyDump do
         nil
 
       _ ->
-        try_endpoints(endpoints, timeout, client_opts)
+        try_endpoints(endpoints, timeout, auth, client_opts)
     end
   end
 
@@ -80,13 +82,15 @@ defmodule Toast.Diagnostics.AgencyDump do
 
   # --- Capture internals ---
 
-  defp try_endpoints([], _timeout, _client_opts) do
+  defp try_endpoints([], _timeout, _auth, _client_opts) do
     Logger.warning("AgencyDump: no agent responded")
     nil
   end
 
-  defp try_endpoints([endpoint | rest], timeout, client_opts) do
-    client = Toast.Client.new(endpoint, [{:receive_timeout, timeout} | client_opts])
+  defp try_endpoints([endpoint | rest], timeout, auth, client_opts) do
+    req_opts = [{:receive_timeout, timeout} | client_opts]
+    req_opts = if auth, do: [{:auth, auth} | req_opts], else: req_opts
+    client = Toast.Client.new(endpoint, req_opts)
 
     case Toast.Client.get(client, "/_api/agency/state", decode_body: false) do
       {:ok, %{status: 200, body: body}} when is_binary(body) ->
@@ -97,15 +101,15 @@ defmodule Toast.Diagnostics.AgencyDump do
 
       {:ok, %{status: status}} ->
         Logger.warning("AgencyDump: #{endpoint} returned status #{status}")
-        try_endpoints(rest, timeout, client_opts)
+        try_endpoints(rest, timeout, auth, client_opts)
 
       {:error, reason} ->
         Logger.warning("AgencyDump: #{endpoint} failed: #{inspect(reason)}")
-        try_endpoints(rest, timeout, client_opts)
+        try_endpoints(rest, timeout, auth, client_opts)
     end
   rescue
     e ->
       Logger.warning("AgencyDump: #{endpoint} error: #{Exception.message(e)}")
-      try_endpoints(rest, timeout, client_opts)
+      try_endpoints(rest, timeout, auth, client_opts)
   end
 end
