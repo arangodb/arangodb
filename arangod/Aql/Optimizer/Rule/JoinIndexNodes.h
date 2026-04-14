@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -29,6 +29,7 @@
 namespace arangodb::aql {
 class Optimizer;
 
-void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
+void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                        OptimizerRule const&);
+
 }  // namespace arangodb::aql
