@@ -19,6 +19,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "PushLimitIntoIndex.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
@@ -29,7 +31,6 @@
 #include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/SortElement.h"
@@ -39,9 +40,11 @@
 #include <algorithm>
 #include <optional>
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+
+using EN = ExecutionNode;
+
+namespace {
 
 /// index is eligible only if it is a type of persistent index
 /// and if it build on multiple attributes
@@ -133,6 +136,8 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
   return true;
 }
 
+}  // namespace
+
 /// if the following conditions are met this rule will apply:
 /// - there is an persistent index used
 /// - IndexNode must not have post filter
@@ -144,9 +149,8 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
 /// - order of attributes in SortNode must match the order of attributes of
 /// index
 /// - first parent of SortNode must be a LimitNode
-void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
-                                           std::unique_ptr<ExecutionPlan> plan,
-                                           OptimizerRule const& rule) {
+void pushLimitIntoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                            OptimizerRule const& rule) {
   bool modified = false;
 
   containers::SmallVector<ExecutionNode*, 8> indexes;
@@ -282,3 +286,5 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+
+}  // namespace arangodb::aql
