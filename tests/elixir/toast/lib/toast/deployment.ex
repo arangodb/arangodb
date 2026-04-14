@@ -1,5 +1,47 @@
 defmodule Toast.Deployment do
-  @moduledoc "Start and stop ArangoDB deployments for testing."
+  @moduledoc """
+  Manage ArangoDB deployments for integration testing.
+
+  This is the primary interface for starting, inspecting, controlling, and
+  stopping ArangoDB server instances (single-server or cluster) within a
+  test run. A deployment owns one or more OS-level `arangod` processes and
+  exposes them through immutable `ServerInfo` snapshots and pre-configured
+  `Toast.Client` handles.
+
+  ## Lifecycle
+
+      Config.new(cluster: true)              # 1. Build a config
+      |> Deployment.start_cluster(dir)       # 2. Start servers
+      # ... run tests against the deployment ...
+      Deployment.stop(deployment)            # 3. Tear down
+
+  Convenience functions `start_single_server/2` and `start_cluster/2` cover
+  the common case where default config is sufficient.
+
+  ## Server targeting
+
+  Several operations (`stop_server`, `kill_server`, `restart_server`, …)
+  accept a `t:server_target/0` to identify which server(s) to act on:
+
+  | Form                                  | Matches                            |
+  |---------------------------------------|------------------------------------|
+  | `"dbserver-0"`                        | exact server ID                    |
+  | `[role: :dbserver]`                   | all servers with that role         |
+  | `[role: :coordinator, index: 0]`      | one server by role + index         |
+  | `[arango_id: "PRMR-abc"]`            | server by ArangoDB internal ID     |
+
+  ## Obtaining clients
+
+  Use `client/2`, `client_for_role/3`, or `client_for_arango_id/2` to get a
+  `Toast.Client` pre-configured with the server's endpoint, API version, and
+  JWT authentication (when enabled).
+
+  ## Server control
+
+  The `stop_server/2`, `kill_server/2`, `pause_server/2`, `resume_server/2`,
+  `restart_server/3`, and `start_server/3` functions allow resilience tests
+  to manipulate individual servers while the deployment remains active.
+  """
 
   require Logger
 
@@ -7,7 +49,13 @@ defmodule Toast.Deployment do
   alias Toast.Deployment.{Config, Controller, DefaultEventListener, ServerInstance}
 
   defmodule ServerInfo do
-    @moduledoc "Static, immutable server info snapshot taken at deploy time."
+    @moduledoc """
+    Static, immutable server info snapshot taken at deploy time.
+
+    Unlike `Toast.Deployment.ServerInstance`, which carries mutable runtime
+    state (OS pid, health monitor, operational state), a `ServerInfo` is a
+    lightweight, read-only record safe to pass around and store in test context.
+    """
 
     @type t :: %__MODULE__{
             id: String.t(),
@@ -209,6 +257,17 @@ defmodule Toast.Deployment do
     end)
   end
 
+  @doc """
+  Gracefully stop a deployment and all its servers.
+
+  Returns `{:ok, info}` on clean shutdown or `{:error, reason, info}` when
+  one or more servers did not shut down cleanly. The `info` map always
+  contains `:servers` (server state at stop time) and `:error`.
+
+  ## Options
+
+    * `:timeout` — override the default shutdown timeout (from config)
+  """
   @spec stop(t(), keyword()) :: {:ok, map()} | {:error, term(), map()}
   def stop(deployment, opts \\ [])
 
@@ -240,6 +299,17 @@ defmodule Toast.Deployment do
     end
   end
 
+  @doc """
+  Dump the agency state of a cluster deployment.
+
+  Returns `{:ok, dump}` with the serialized agency state, or
+  `{:error, :not_cluster}` for single-server deployments and
+  `{:error, :controller_dead}` if the controller is no longer reachable.
+
+  ## Options
+
+    * `:timeout` — defaults to 60 000 ms
+  """
   @spec dump_agency(t(), keyword()) :: {:ok, iodata() | nil} | {:error, term()}
   def dump_agency(deployment, opts \\ [])
 
@@ -292,6 +362,11 @@ defmodule Toast.Deployment do
     controller_call(deployment, :get_servers, [])
   end
 
+  @doc """
+  Create a `Toast.Client` for the server with the given ID.
+
+  The client inherits the deployment's API version and JWT authentication.
+  """
   @spec client(t(), String.t()) :: {:ok, Client.t()} | {:error, :not_found}
   def client(%__MODULE__{} = deployment, server_id) when is_binary(server_id) do
     case Map.fetch(deployment.servers, server_id) do
@@ -389,6 +464,12 @@ defmodule Toast.Deployment do
     end
   end
 
+  @doc """
+  Resolve a `t:server_target/0` to a list of concrete server ID strings.
+
+  Useful for inspecting which servers a target pattern would match before
+  passing it to a control operation.
+  """
   @spec resolve_target(t(), server_target()) :: {:ok, [String.t()]} | {:error, term()}
   def resolve_target(%__MODULE__{} = deployment, target) do
     controller_call(deployment, {:resolve_target, target}, {:error, :stopped})
@@ -396,28 +477,53 @@ defmodule Toast.Deployment do
 
   # --- Server control operations ---
 
+  @doc "Gracefully stop a server (SIGTERM). The server can be restarted later with `start_server/3`."
   @spec stop_server(t(), server_target()) :: :ok | {:error, term()}
   def stop_server(%__MODULE__{} = d, target), do: controller_call_control(d, :stop_server, target)
 
+  @doc "Immediately kill a server (SIGKILL). The server can be restarted later with `start_server/3`."
   @spec kill_server(t(), server_target()) :: :ok | {:error, term()}
   def kill_server(%__MODULE__{} = d, target), do: controller_call_control(d, :kill_server, target)
 
+  @doc "Pause a server by sending SIGSTOP. The process stays alive but stops executing. Resume with `resume_server/2`."
   @spec pause_server(t(), server_target()) :: :ok | {:error, term()}
   def pause_server(%__MODULE__{} = d, target),
     do: controller_call_control(d, :pause_server, target)
 
+  @doc "Resume a previously paused server by sending SIGCONT."
   @spec resume_server(t(), server_target()) :: :ok | {:error, term()}
   def resume_server(%__MODULE__{} = d, target),
     do: controller_call_control(d, :resume_server, target)
 
+  @doc """
+  Restart a server — stops it gracefully, then starts it again.
+
+  Accepts the same options as `start_server/3`.
+  """
   @spec restart_server(t(), server_target(), keyword()) :: :ok | {:error, term()}
   def restart_server(%__MODULE__{} = d, target, opts \\ []),
     do: controller_call_control(d, :restart_server, target, opts)
 
+  @doc """
+  Start a server that was previously stopped, killed, or crashed.
+
+  Launches a new OS process using the original launch spec.
+  """
   @spec start_server(t(), server_target(), keyword()) :: :ok | {:error, term()}
   def start_server(%__MODULE__{} = d, target, opts \\ []),
     do: controller_call_control(d, :start_server, target, opts)
 
+  @doc """
+  Register that a server crash is expected (e.g., before a deliberate kill).
+
+  Marks the server so the controller does not treat the subsequent exit as an
+  unexpected failure. Must be called *before* the action that causes the crash.
+  Pair with `verify_crash/3` to assert the crash actually happened.
+
+  ## Options
+
+    * `:timeout` — defaults to 30 000 ms
+  """
   @spec expect_crash(t(), String.t(), keyword()) :: :ok | {:error, term()}
   def expect_crash(deployment, server_id, opts \\ [])
 
@@ -431,6 +537,17 @@ defmodule Toast.Deployment do
     :exit, _ -> {:error, :controller_not_available}
   end
 
+  @doc """
+  Verify that a previously expected crash has occurred.
+
+  Returns `{:ok, crash_info}` with details about the crash (exit code, signal,
+  etc.) or `{:error, reason}` if the crash hasn't happened yet or was never
+  expected.
+
+  ## Options
+
+    * `:timeout` — defaults to 5 000 ms
+  """
   @spec verify_crash(t(), String.t(), keyword()) :: {:ok, map()} | {:error, atom()}
   def verify_crash(deployment, server_id, opts \\ [])
 
@@ -514,7 +631,6 @@ defmodule Toast.Deployment do
     stacktrace
     |> Enum.drop_while(fn {mod, _fun, _arity, _loc} ->
       mod_str = Atom.to_string(mod)
-
       String.starts_with?(mod_str, "Elixir.Toast.Deployment")
     end)
     |> Enum.take(10)
