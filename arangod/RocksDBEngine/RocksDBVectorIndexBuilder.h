@@ -65,9 +65,16 @@ Result readDocumentVectorData(
     std::vector<std::vector<basics::AttributeName>> const& fields,
     std::size_t dimension, std::vector<float>& output);
 
-/// Encapsulates FAISS index creation and the training pipeline.
-/// Holds the immutable configuration that is shared across operations,
-/// keeping individual method signatures clean.
+struct BoundedDocumentIterator {
+  RocksDBKeyBounds bounds;
+  rocksdb::Slice upper;
+  rocksdb::ReadOptions ro;
+  std::unique_ptr<rocksdb::Iterator> it;
+
+  explicit BoundedDocumentIterator(RocksDBKeyBounds bounds, rocksdb::DB* db,
+                                   rocksdb::Snapshot const* snap = nullptr);
+};
+
 class VectorIndexTrainer {
  public:
   VectorIndexTrainer(
@@ -133,6 +140,8 @@ class VectorIndexBuildManager {
                std::stop_token stopToken = {});
 
  private:
+  Result persistTrainedData(TrainedData const& trainedData);
+
   RocksDBVectorIndex& _index;
   RocksDBEngine& _engine;
   rocksdb::DB* _rootDB;

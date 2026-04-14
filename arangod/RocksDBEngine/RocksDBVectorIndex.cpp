@@ -266,8 +266,8 @@ bool RocksDBVectorIndex::isVectorIndexReady() const noexcept {
          VectorIndexTrainingState::kReady;
 }
 
-Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
-                                                  std::vector<float>& output) {
+Result RocksDBVectorIndex::readDocumentVectorData(
+    velocypack::Slice const doc, std::vector<float>& output) const {
   return vector::readDocumentVectorData(doc, _fields, _definition.dimension,
                                         output);
 }
@@ -337,13 +337,8 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
   RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 
-/// @brief inserts a document into the index
-Result RocksDBVectorIndex::insert(transaction::Methods& trx,
-                                  RocksDBMethods* methods,
-                                  LocalDocumentId documentId,
-                                  velocypack::Slice doc,
-                                  OperationOptions const& /*options*/,
-                                  bool /*performChecks*/) {
+ResultT<std::vector<float>> RocksDBVectorIndex::preModificationCheck(
+    std::string_view operation, velocypack::Slice doc) const {
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -364,11 +359,40 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   }
   TRI_ASSERT(_faissIndex != nullptr);
 
+  if (auto const state = _trainingState.load(std::memory_order_acquire);
+      state == VectorIndexTrainingState::kUnusable ||
+      state == VectorIndexTrainingState::kTraining) {
+    LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES) << std::format(
+        "vector index {} not yet trained, skipping {}", _iid.id(), operation);
+
+    // Not an error but the result is ignored
+    return {};
+  }
+
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
-  // Trained: normal FAISS path
+  return {std::move(input)};
+}
+
+/// @brief inserts a document into the index
+Result RocksDBVectorIndex::insert(transaction::Methods& trx,
+                                  RocksDBMethods* methods,
+                                  LocalDocumentId documentId,
+                                  velocypack::Slice doc,
+                                  OperationOptions const& /*options*/,
+                                  bool /*performChecks*/) {
+  auto res = preModificationCheck("insert", doc);
+  if (res.fail()) {
+    return {res.errorNumber(), res.errorMessage()};
+  }
+  auto input = std::move(res.get());
+  if (input.empty()) {
+    // sparse or index or indexes in unusable/training state
+    return {};
+  }
+
   faiss::idx_t listId{0};
   TRI_ASSERT(_faissIndex->quantizer != nullptr);
   _faissIndex->quantizer->assign(1, input.data(), &listId);
@@ -409,23 +433,14 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  std::vector<float> input;
-  input.reserve(_definition.dimension);
-  if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
-    if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
-      return {};
-    }
-    return res;
+  auto res = preModificationCheck("remove", doc);
+  if (res.fail()) {
+    return res.result();
   }
-
-  if (auto const state = _trainingState.load();
-      state == VectorIndexTrainingState::kUnusable ||
-      state == VectorIndexTrainingState::kTraining) {
+  auto input = std::move(res.get());
+  if (input.empty()) {
+    // sparse or index or indexes in unusable/training state
     return {};
-  }
-
-  if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
   faiss::idx_t listId{0};

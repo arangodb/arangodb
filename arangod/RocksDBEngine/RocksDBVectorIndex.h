@@ -99,7 +99,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   bool isVectorIndexReady() const noexcept override;
 
   Result readDocumentVectorData(velocypack::Slice doc,
-                                std::vector<float>& vector);
+                                std::vector<float>& vector) const;
 
   std::shared_ptr<faiss::IndexIVF> const& faissIndex() const noexcept {
     return _faissIndex;
@@ -132,6 +132,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void resetTrainingState() noexcept;
 
  protected:
+  ResultT<std::vector<float>> preModificationCheck(std::string_view operation,
+                                                   velocypack::Slice doc) const;
+
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& options, bool performChecks) override;
