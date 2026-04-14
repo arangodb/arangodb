@@ -12,6 +12,7 @@ jobs:
       - run:
           command: |
             set -o xtrace
+            ulimit -n
             echo "<< parameters.size >>"
             cat /proc/sys/vm/max_map_count
             cat /sys/fs/cgroup/cpu.max
