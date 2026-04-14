@@ -239,7 +239,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
                 mod->getOptions(), update, indexNode->outVariable(),
                 mod->getOutVariableOld(), mod->getOutVariableNew());
 
-        aql::replaceNode(plan, mod, singleOperationNode);
+        replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);
         modified = true;
       } else if (parentIsReturnOrConstCalc(node)) {
@@ -249,7 +249,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
                 indexNode->collection(), ModificationOptions{}, nullptr /*in*/,
                 indexNode->outVariable() /*out*/, nullptr /*old*/,
                 nullptr /*new*/);
-        aql::replaceNode(plan, indexNode, singleOperationNode);
+        replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
       }
     }
@@ -390,7 +390,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
             mod->getOptions(), update /*in*/, nullptr, mod->getOutVariableOld(),
             mod->getOutVariableNew());
 
-    aql::replaceNode(plan, mod, singleOperationNode);
+    replaceNode(plan, mod, singleOperationNode);
 
     if (calc) {
       plan->clearVarUsageComputed();

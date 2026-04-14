@@ -23,6 +23,7 @@
 
 #include "ReplaceNearWithinFulltext.h"
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/TypedAstNodes.h"
@@ -38,6 +39,7 @@
 #include "Aql/ExecutionNode/SingletonNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
@@ -48,6 +50,7 @@
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/SupervisedBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -276,6 +279,7 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
       }
       break;
     }
+
   }  // for index in collection
 
   if (!indexFound) {
@@ -369,7 +373,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
 
   //// create MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat,
   /// param.lon)})
-  if (params.distanceName) {
+  if (params.distanceName) {  // return without merging the distance into the
+                              // result
     if (!params.distanceName->isStringValue()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
