@@ -1,7 +1,7 @@
 jobProperties:
     container_suffix: '-js:'
     second_repo: git@github.com:arangodb/arangojs.git
-    branch: main
+    branch: bugfix/js-driver-flaky-test
     init_command: yarn
 tests:
 - js_driver:
