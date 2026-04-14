@@ -85,7 +85,8 @@ std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
 // V8 interrupt callback — invoked at a V8 safe point where all V8 APIs
 // are usable. Captures and logs the current JS stack trace.
-void v8InterruptCallback(v8::Isolate* isolate, void* /*data*/) {
+void v8InterruptCallback(v8::Isolate* isolate, void* data) {
+  int sig = static_cast<int>(reinterpret_cast<intptr_t>(data));
   v8::Local<v8::StackTrace> stacktrace =
       v8::StackTrace::CurrentStackTrace(isolate, 10, v8::StackTrace::kDetailed);
   int frameCount = stacktrace->GetFrameCount();
@@ -101,7 +102,9 @@ void v8InterruptCallback(v8::Isolate* isolate, void* /*data*/) {
     LOG_TOPIC("cac45", ERR, arangodb::Logger::V8)
         << "no js stacktrace could be acquired";
   }
-  abort();
+  // SA_RESETHAND already restored the default handler, so re-raising
+  // the original signal will produce the correct exit status and core dump.
+  raise(sig);
 }
 
 // Signal handler — only calls async-signal-safe functions.
@@ -110,7 +113,10 @@ void signalHandler(int signal, siginfo_t* /*info*/, void* /*ucontext*/) {
   // RequestInterrupt is documented as safe to call from a signal handler.
   // If V8 is executing JS, the callback fires at the next safe point.
   // If V8 is idle (e.g. REPL prompt), it fires when JS resumes.
-  global_isolate->RequestInterrupt(v8InterruptCallback, nullptr);
+  // Pass the signal number through the data pointer.
+  global_isolate->RequestInterrupt(
+      v8InterruptCallback,
+      reinterpret_cast<void*>(static_cast<intptr_t>(signal)));
   // Expire the V8 execution deadline to unblock JS execution.
   triggerV8DeadlineNow(signal, ExternalId());
 }
