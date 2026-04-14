@@ -1283,9 +1283,14 @@ Result ensureIndexCoordinatorInner(
           resultBuilder.add(VPackObjectIterator(finishedPlanIndex.slice()));
           resultBuilder.add("isNewlyCreated", VPackValue(true));
         }
+        // Re-read dbServerResult under the lock so the error code and
+        // error message are from the same callback invocation.  Without
+        // the lock, a concurrent callback could update *errMsg after we
+        // snapshot tmpRes, violating the Result(NO_ERROR, non-empty)
+        // invariant.
         std::lock_guard locker{agencyCallback->_cv.mutex};
-
-        return Result(*tmpRes, *errMsg);
+        auto lockedRes = dbServerResult->load(std::memory_order_acquire);
+        return Result(lockedRes.value_or(TRI_ERROR_NO_ERROR), *errMsg);
       }
 
       if ((tmpRes.has_value() && *tmpRes != TRI_ERROR_NO_ERROR) ||
