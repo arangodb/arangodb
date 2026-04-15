@@ -105,9 +105,8 @@ void scatterViewInClusterRule(aql::Optimizer* opt,
     scatterNode->addDependency(deps[0]);
 
     // insert a remote node
-    auto* remoteNode =
-        plan->registerNode(std::make_unique<aql::RemoteNode>(
-            plan.get(), plan->nextId(), &vocbase, "", "", ""));
+    auto* remoteNode = plan->registerNode(std::make_unique<aql::RemoteNode>(
+        plan.get(), plan->nextId(), &vocbase, "", "", ""));
     TRI_ASSERT(scatterNode);
     remoteNode->addDependency(scatterNode);
     node->addDependency(remoteNode);  // re-link with the remote node
@@ -138,8 +137,7 @@ void scatterViewInClusterRule(aql::Optimizer* opt,
     auto it = subqueries.find(node);
 
     if (it != subqueries.end()) {
-      auto* subQueryNode =
-          EN::castTo<aql::SubqueryNode*>((*it).second);
+      auto* subQueryNode = EN::castTo<aql::SubqueryNode*>((*it).second);
       subQueryNode->setSubquery(gatherNode, true);
     }
 

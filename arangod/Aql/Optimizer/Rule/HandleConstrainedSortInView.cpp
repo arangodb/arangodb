@@ -122,8 +122,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, aql::ExecutionPlan* plan) {
                                            .ascending = sort.ascending});
       } break;
       case EN::CALCULATION: {
-        auto* calc =
-            EN::castTo<aql::CalculationNode const*>(varSetBy);
+        auto* calc = EN::castTo<aql::CalculationNode const*>(varSetBy);
         TRI_ASSERT(calc->expression());
 
         auto const* astCalcNode = calc->expression()->node();
@@ -281,14 +280,12 @@ void handleConstrainedSortInView(aql::Optimizer* opt,
   }
 
   containers::SmallVector<aql::ExecutionNode*, 8> viewNodes;
-  plan->findNodesOfType(viewNodes,
-                        aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+  plan->findNodesOfType(viewNodes, aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                        true);
   for (auto* node : viewNodes) {
     TRI_ASSERT(node);
-    TRI_ASSERT(aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW ==
-               node->getType());
-    auto& viewNode =
-        *aql::ExecutionNode::castTo<IResearchViewNode*>(node);
+    TRI_ASSERT(aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    auto& viewNode = *aql::ExecutionNode::castTo<IResearchViewNode*>(node);
     if (viewNode.sort().first) {
       // this view already has PrimarySort - no sort for us.
       continue;

@@ -149,9 +149,9 @@ auto swapOutLastElementAccesses(
 
 }  // namespace
 
-void replaceLastAccessOnGraphPathRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void replaceLastAccessOnGraphPathRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const& rule) {
   // Only pick Traversal nodes, all others do not provide allowed output format
   containers::SmallVector<ExecutionNode*, 8> tNodes;
   plan->findNodesOfType(tNodes, ExecutionNode::TRAVERSAL, true);

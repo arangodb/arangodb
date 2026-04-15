@@ -137,8 +137,7 @@ void lateDocumentMaterializationArangoSearchRule(
                 break;
               }
               case EN::SUBQUERY: {
-                auto& subqueryNode =
-                    *EN::castTo<aql::SubqueryNode*>(current);
+                auto& subqueryNode = *EN::castTo<aql::SubqueryNode*>(current);
                 auto* subquery = subqueryNode.getSubquery();
                 TRI_ASSERT(subquery);
                 containers::SmallVector<EN*, 8> subqueryCalcNodes;
@@ -151,8 +150,7 @@ void lateDocumentMaterializationArangoSearchRule(
                     currentUsedVars.clear();
                     scn->getVariablesUsedHere(currentUsedVars);
                     if (currentUsedVars.find(&var) != currentUsedVars.end()) {
-                      auto* calcNode =
-                          EN::castTo<aql::CalculationNode*>(scn);
+                      auto* calcNode = EN::castTo<aql::CalculationNode*>(scn);
                       TRI_ASSERT(calcNode);
                       if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                         calcNodes.emplace_back(calcNode);

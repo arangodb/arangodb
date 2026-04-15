@@ -52,16 +52,14 @@ void immutableSearchCondition(aql::Optimizer* opt,
   }
 
   containers::SmallVector<aql::ExecutionNode*, 8> viewNodes;
-  plan->findNodesOfType(viewNodes,
-                        aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+  plan->findNodesOfType(viewNodes, aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                        true);
   aql::VarSet vars;
   aql::VarSet mutableVars;
   for (auto* node : viewNodes) {
     TRI_ASSERT(node);
-    TRI_ASSERT(aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW ==
-               node->getType());
-    auto& view =
-        *aql::ExecutionNode::castTo<IResearchViewNode*>(node);
+    TRI_ASSERT(aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    auto& view = *aql::ExecutionNode::castTo<IResearchViewNode*>(node);
     auto const* condition = &view.filterCondition();
     if (isFilterConditionEmpty(condition) || !view.scorers().empty() ||
         view.options().parallelism != 1 || view.hasOffsetInfo() ||

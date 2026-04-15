@@ -94,9 +94,9 @@ bool processCalculationNode(
 
 }  // namespace
 
-void lateDocumentMaterializationRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void lateDocumentMaterializationRule(Optimizer* opt,
+                                     std::unique_ptr<ExecutionPlan> plan,
+                                     OptimizerRule const& rule) {
   auto modified = false;
   auto const addPlan =
       arangodb::scopeGuard([opt, &plan, &rule, &modified]() noexcept {

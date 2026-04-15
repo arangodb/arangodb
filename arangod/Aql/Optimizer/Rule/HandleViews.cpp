@@ -81,8 +81,7 @@ using EN = aql::ExecutionNode;
 /// @brief Moves all FCALLs in every AND node to the bottom of the AND node
 /// @param condition SEARCH condition node
 /// @param starts_with Function to push
-void pushFuncToBack(aql::AstNode& condition,
-                    aql::Function const* starts_with) {
+void pushFuncToBack(aql::AstNode& condition, aql::Function const* starts_with) {
   auto numMembers = condition.numMembers();
   for (size_t memberIdx = 0; memberIdx < numMembers; ++memberIdx) {
     auto current = condition.getMemberUnchecked(memberIdx);
@@ -128,8 +127,7 @@ bool addView(LogicalView const& view, aql::QueryContext& query) {
 
   // linked collections
   auto visitor = [&collections](DataSourceId cid, LogicalView::Indexes*) {
-    collections.add(basics::StringUtils::itoa(cid.id()),
-                    AccessMode::Type::READ,
+    collections.add(basics::StringUtils::itoa(cid.id()), AccessMode::Type::READ,
                     aql::Collection::Hint::Collection);
     return true;
   };
@@ -230,8 +228,7 @@ bool optimizeSort(IResearchViewNode& viewNode, aql::ExecutionPlan* plan) {
     return false;
   }
 
-  std::unordered_map<aql::VariableId, aql::AstNode const*>
-      variableDefinitions;
+  std::unordered_map<aql::VariableId, aql::AstNode const*> variableDefinitions;
 
   EN* current = static_cast<EN*>(&viewNode);
 
@@ -248,8 +245,7 @@ bool optimizeSort(IResearchViewNode& viewNode, aql::ExecutionPlan* plan) {
         current->getType() == EN::TRAVERSAL ||
         current->getType() == EN::SHORTEST_PATH ||
         current->getType() == EN::ENUMERATE_PATHS ||
-        current->getType() == EN::INDEX ||
-        current->getType() == EN::JOIN ||
+        current->getType() == EN::INDEX || current->getType() == EN::JOIN ||
         current->getType() == EN::COLLECT) {
       // any of these node types will lead to more/less results in the output,
       // and may as well change the sort order, so let's better abort here
@@ -259,9 +255,7 @@ bool optimizeSort(IResearchViewNode& viewNode, aql::ExecutionPlan* plan) {
     if (current->getType() == EN::CALCULATION) {
       // pick up the meanings of variables as we walk the plan
       variableDefinitions.try_emplace(
-          EN::castTo<aql::CalculationNode const*>(current)
-              ->outVariable()
-              ->id,
+          EN::castTo<aql::CalculationNode const*>(current)->outVariable()->id,
           EN::castTo<aql::CalculationNode const*>(current)
               ->expression()
               ->node());
@@ -286,10 +280,8 @@ bool optimizeSort(IResearchViewNode& viewNode, aql::ExecutionPlan* plan) {
     }
 
     aql::SortCondition sortCondition(
-        plan, sorts,
-        std::vector<std::vector<basics::AttributeName>>(),
-        ::arangodb::containers::HashSet<
-            std::vector<basics::AttributeName>>(),
+        plan, sorts, std::vector<std::vector<basics::AttributeName>>(),
+        ::arangodb::containers::HashSet<std::vector<basics::AttributeName>>(),
         variableDefinitions);
 
     if (sortCondition.isEmpty() || !sortCondition.isOnlyAttributeAccess()) {
@@ -333,10 +325,8 @@ bool optimizeSort(IResearchViewNode& viewNode, aql::ExecutionPlan* plan) {
           current->getType() == EN::TRAVERSAL ||
           current->getType() == EN::SHORTEST_PATH ||
           current->getType() == EN::ENUMERATE_PATHS ||
-          current->getType() == EN::INDEX ||
-          current->getType() == EN::JOIN ||
-          current->getType() == EN::COLLECT ||
-          current->getType() == EN::SORT) {
+          current->getType() == EN::INDEX || current->getType() == EN::JOIN ||
+          current->getType() == EN::COLLECT || current->getType() == EN::SORT) {
         // any of these node types will lead to more/less results in the
         // output, and may as well change the sort order, so let's better
         // abort here
@@ -439,9 +429,8 @@ void keepReplacementViewVariables(std::span<EN* const> calcNodes,
   }
 }
 
-bool noDocumentMaterialization(
-    std::span<EN* const> viewNodes,
-    containers::HashSet<EN*>& toUnlink) {
+bool noDocumentMaterialization(std::span<EN* const> viewNodes,
+                               containers::HashSet<EN*>& toUnlink) {
   auto modified = false;
   aql::VarSet currentUsedVars;
   for (auto* node : viewNodes) {
@@ -469,8 +458,7 @@ bool noDocumentMaterialization(
             isCalcNodesFound = true;
             break;
           case EN::SUBQUERY: {
-            auto& subqueryNode =
-                *EN::castTo<aql::SubqueryNode*>(current);
+            auto& subqueryNode = *EN::castTo<aql::SubqueryNode*>(current);
             auto* subquery = subqueryNode.getSubquery();
             TRI_ASSERT(subquery);
             aql::CalculationNodeVarExistenceFinder finder(&var);
@@ -613,12 +601,12 @@ void replaceSearchFunc(aql::CalculationNode& calcNode,
     TRI_ASSERT(newNode != exprNode);
 
     calcNode.expression()->replaceNode(newNode);
-  } else if (bool const hasFunc = !visit<true>(
-                 *exprNode,
-                 [](aql::AstNode const& node) {
-                   auto const [var, _] = resolveSearchFunc(node);
-                   return !var;
-                 });
+  } else if (bool const hasFunc = !visit<true>(*exprNode,
+                                               [](aql::AstNode const& node) {
+                                                 auto const [var, _] =
+                                                     resolveSearchFunc(node);
+                                                 return !var;
+                                               });
              hasFunc) {
     auto replaceFunc = [&](aql::AstNode* node) -> aql::AstNode* {
       TRI_ASSERT(node);  // ensured by 'Ast::traverseAndModify(...)'
@@ -631,8 +619,7 @@ void replaceSearchFunc(aql::CalculationNode& calcNode,
   }
 }
 
-void extractScorers(IResearchViewNode const& viewNode,
-                    DedupSearchFuncs& dedup,
+void extractScorers(IResearchViewNode const& viewNode, DedupSearchFuncs& dedup,
                     std::vector<SearchFunc>& funcs) {
   auto* viewVar = &viewNode.outVariable();
   aql::VarSet usedVars;
@@ -690,8 +677,8 @@ void handleViewsRule(aql::Optimizer* opt,
 
   // register replaced scorers to be evaluated by corresponding view nodes
   containers::SmallVector<aql::ExecutionNode*, 8> viewNodes;
-  plan->findNodesOfType(viewNodes,
-                        aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+  plan->findNodesOfType(viewNodes, aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                        true);
 
   // replace scorers in all calculation nodes with references
   containers::SmallVector<aql::ExecutionNode*, 8> calcNodes;
@@ -700,10 +687,9 @@ void handleViewsRule(aql::Optimizer* opt,
   DedupSearchFuncs searchFuncs;
 
   for (auto* node : calcNodes) {
-    TRI_ASSERT(node &&
-               aql::ExecutionNode::CALCULATION == node->getType());
-    replaceSearchFunc(
-        *aql::ExecutionNode::castTo<aql::CalculationNode*>(node), searchFuncs);
+    TRI_ASSERT(node && aql::ExecutionNode::CALCULATION == node->getType());
+    replaceSearchFunc(*aql::ExecutionNode::castTo<aql::CalculationNode*>(node),
+                      searchFuncs);
   }
   modified = !searchFuncs.empty();
 
@@ -712,10 +698,8 @@ void handleViewsRule(aql::Optimizer* opt,
 
   for (auto* node : viewNodes) {
     TRI_ASSERT(node);
-    TRI_ASSERT(aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW ==
-               node->getType());
-    auto& viewNode =
-        *aql::ExecutionNode::castTo<IResearchViewNode*>(node);
+    TRI_ASSERT(aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    auto& viewNode = *aql::ExecutionNode::castTo<IResearchViewNode*>(node);
 
     if (viewNode.isBuilding()) {
       query.warnings().registerWarning(
