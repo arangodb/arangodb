@@ -83,8 +83,6 @@ bool exitRepl = false;
 
 std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
-void installSignalHandler();
-
 // V8 interrupt callback — invoked at a V8 safe point where all V8 APIs
 // are usable. Captures and logs the current JS stack trace.
 void v8InterruptCallback(v8::Isolate* isolate, void* data) {
@@ -103,16 +101,14 @@ void v8InterruptCallback(v8::Isolate* isolate, void* data) {
     LOG_TOPIC("cac45", ERR, arangodb::Logger::V8)
         << "no js stacktrace could be acquired";
   }
+  int sig = static_cast<int>(reinterpret_cast<intptr_t>(data));
   arangodb::Logger::flush();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // In maintainer mode, cancel the fallback alarm, re-install the signal
-  // handler, and continue execution so developers can inspect the state.
-  alarm(0);
-  installSignalHandler();
-#else
-  int sig = static_cast<int>(reinterpret_cast<intptr_t>(data));
-  _exit(128 + sig);
+  // In maintainer mode, give developers 30s to read the stack trace
+  // before terminating.
+  sleep(30);
 #endif
+  _exit(128 + sig);
 }
 
 // Signal handler — only calls async-signal-safe functions.
