@@ -83,18 +83,14 @@ bool exitRepl = false;
 
 std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
-// SIGALRM handler used as a delayed termination mechanism.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void alarmHandler(int /*sig*/) { _exit(142); }  // 128 + 14 (SIGALRM)
 
-void installAlarmHandler() {
-  struct sigaction act = {};
-  act.sa_handler = alarmHandler;
-  sigaction(SIGALRM, &act, nullptr);
-}
-
-// V8 interrupt callback — invoked at a V8 safe point where all V8 APIs
-// are usable. Captures and logs the current JS stack trace.
-void v8InterruptCallback(v8::Isolate* isolate, void* data) {
+// V8 interrupt callback — fires at the next V8 safe point (within
+// microseconds when JS is executing). Captures the JS stack trace,
+// then forcefully terminates JS execution via TerminateExecution().
+// A 30s SIGALRM is the safety net in case termination stalls.
+void v8InterruptCallback(v8::Isolate* isolate, void* /*data*/) {
   v8::Local<v8::StackTrace> stacktrace =
       v8::StackTrace::CurrentStackTrace(isolate, 10, v8::StackTrace::kDetailed);
   int frameCount = stacktrace->GetFrameCount();
@@ -111,59 +107,35 @@ void v8InterruptCallback(v8::Isolate* isolate, void* data) {
         << "no js stacktrace could be acquired";
   }
   arangodb::Logger::flush();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  installAlarmHandler();
-  // SIGALRM may be blocked by the V8 thread's signal mask; unblock it
-  // so the alarm can actually be delivered.
+
+  // Forcefully terminate JS execution — V8 will throw an uncatchable
+  // exception that unwinds the stack.
+  isolate->TerminateExecution();
+
+  // Also expire the execution deadline so cooperative checks see it.
+  triggerV8DeadlineNow(true, ExternalId());
+
+  // Safety net: force-kill after 30s if termination stalls.
+  // We set this here (not in the signal handler) because sigprocmask
+  // changes made inside a signal handler are reverted on return.
   {
+    struct sigaction act = {};
+    act.sa_handler = alarmHandler;
+    sigaction(SIGALRM, &act, nullptr);
     sigset_t unblock;
     sigemptyset(&unblock);
     sigaddset(&unblock, SIGALRM);
     pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
   }
   alarm(30);
-#else
-  int sig = static_cast<int>(reinterpret_cast<intptr_t>(data));
-  _exit(128 + sig);
-#endif
 }
 
-// Signal handler — only calls async-signal-safe functions.
-// Defers V8 stack trace capture to the interrupt callback above.
-void signalHandler(int signal, siginfo_t* /*info*/, void* /*ucontext*/) {
-  // RequestInterrupt is documented as safe to call from a signal handler.
-  // If V8 is executing JS, the callback fires at the next safe point.
-  // If V8 is idle (e.g. REPL prompt), it fires when JS resumes.
-  // Pass the signal number through the data pointer.
-  global_isolate->RequestInterrupt(
-      v8InterruptCallback,
-      reinterpret_cast<void*>(static_cast<intptr_t>(signal)));
-  // Do NOT call triggerV8DeadlineNow here: it would expire the execution
-  // deadline, causing the many isExecutionDeadlineReached() checks to fire
-  // before the interrupt callback runs. Those checks throw V8 errors that
-  // unwind the JS stack, leaving no frames for the interrupt callback to
-  // capture. It also acquires a std::mutex, which is UB in a signal handler.
-  //
-  // Fallback: if V8 is idle and the interrupt never fires, SIGALRM
-  // terminates the process after 30s.
-  installAlarmHandler();
-  // SIGALRM may be blocked by the thread's signal mask; unblock it.
-  // sigprocmask is async-signal-safe per POSIX.
-  {
-    sigset_t unblock;
-    sigemptyset(&unblock);
-    sigaddset(&unblock, SIGALRM);
-    sigprocmask(SIG_UNBLOCK, &unblock, nullptr);
-  }
-  alarm(30);
+// Signal handler — only calls async-signal-safe functions plus
+// RequestInterrupt (documented as signal-safe by V8).
+void signalHandler(int /*signal*/) {
+  global_isolate->RequestInterrupt(v8InterruptCallback, nullptr);
 }
-
-void installSignalHandler() {
-  struct sigaction act = {};
-  act.sa_flags = SA_RESETHAND | SA_SIGINFO;
-  act.sa_sigaction = ::signalHandler;
-  sigaction(SIGBUS, &act, nullptr);
-}
+#endif  // ARANGODB_ENABLE_MAINTAINER_MODE
 
 }  // namespace
 
@@ -264,7 +236,9 @@ void V8ShellFeature::start() {
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
   ::global_isolate = _isolate = platform.createIsolate();
-  ::installSignalHandler();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  signal(SIGBUS, signalHandler);
+#endif
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
