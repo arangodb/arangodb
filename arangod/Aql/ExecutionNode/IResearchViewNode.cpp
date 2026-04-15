@@ -38,6 +38,7 @@
 #include "Aql/Executor/IResearchViewMergeExecutor.h"
 #include "Aql/Executor/NoResultsExecutor.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/IResearchViewSortHelpers.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
@@ -714,40 +715,6 @@ IResearchOptimizeTopK const& optimizeTopK(
 
 #endif
 
-IResearchSortBase const& primarySort(
-    std::shared_ptr<SearchMeta const> const& meta,
-    std::shared_ptr<LogicalView const> const& view) {
-  if (meta) {
-    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
-    return meta->primarySort;
-  }
-  TRI_ASSERT(view);
-  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
-  if (ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
-    return viewImpl.primarySort();
-  }
-  auto const& viewImpl = basics::downCast<IResearchView>(*view);
-  return viewImpl.primarySort();
-}
-
-IResearchViewStoredValues const& storedValues(
-    std::shared_ptr<SearchMeta const> const& meta,
-    std::shared_ptr<LogicalView const> const& view) {
-  if (meta) {
-    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
-    return meta->storedValues;
-  }
-  TRI_ASSERT(view);
-  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
-  if (ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
-    return viewImpl.storedValues();
-  }
-  auto const& viewImpl = basics::downCast<IResearchView>(*view);
-  return viewImpl.storedValues();
-}
-
 char const* kNodeViewNameParam = "view";
 char const* kNodeViewIdParam = "viewId";
 char const* kNodeOutVariableParam = "outVariable";
@@ -1387,7 +1354,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   // parse sort buckets and set them and sort
   auto const sortBucketsSlice = base.get(kNodePrimarySortBucketsParam);
   if (!sortBucketsSlice.isNone()) {
-    auto const& sort = primarySort(_meta, _view);
+    auto const& sort = iresearch::getPrimarySort(_meta, _view);
     if (!sortBucketsSlice.isNumber<size_t>()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -1667,8 +1634,8 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
 
   // stored values
   {
-    auto const& values = storedValues(_meta, _view);
-    auto const& sort = primarySort(_meta, _view);
+    auto const& values = iresearch::getStoredValues(_meta, _view);
+    auto const& sort = iresearch::getPrimarySort(_meta, _view);
     VPackArrayBuilder arrayScope(&nodes, kNodeViewValuesVars);
     std::string fieldName;
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
@@ -2162,7 +2129,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 #endif
         scorers(),
         sort(),
-        storedValues(_meta, _view),
+        iresearch::getStoredValues(_meta, _view),
         *plan(),
         outVariable(),
         filterCondition(),

@@ -32,7 +32,7 @@
 
 namespace arangodb::iresearch {
 
-// TODO(IResearch): deduplicate these functions with IResearchViewNode
+// TODO(IResearch): deduplicate these functions with IResearchViewNode aaa
 
 inline IResearchSortBase const& getPrimarySort(
     std::shared_ptr<SearchMeta const> const& meta,
