@@ -143,7 +143,22 @@ function aqlMatchStatementVariableLengthTestSuite() {
           r2 = result.map(projectPath);
           assertEqual(r2, expected, JSON.stringify(result));
         },
- 
+        testMatchVariableLengthPathWithPComposes: function() {
+          const query = aql`FOR v IN [{_id: "vc1/v0"}]
+                                MATCH p = (v) -[ e1:ec1 ]-> (w:vc1)
+                                              -[ e2:ec1 * 1..2 ]-> (u:vc3)
+                                RETURN p`;
+          const expected = [
+            { "edges" : [ [ "vc1/v0", "vc1/v1" ], 
+                          [ "vc1/v1", "vc2/v1" ],
+                          [ "vc2/v1", "vc3/v1" ] ], 
+              "vertices" : [ "vc1/v0", "vc1/v1", "vc2/v1", "vc3/v1" ] }, 
+          ];
+
+          const result = db._query(query, {}, options).toArray();
+          r2 = result.map(projectPath);
+          assertEqual(r2, expected, JSON.stringify(result));
+        },
     };
 }
 
