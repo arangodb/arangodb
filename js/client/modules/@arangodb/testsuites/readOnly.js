@@ -64,11 +64,7 @@ function readOnly (options) {
     };
   }
 
-  const conf = Object.assign(
-    {},
-    tu.testServerAuthInfo, {
-      'server.authentication-system-only': false
-    });
+  const conf = Object.assign({}, tu.testServerAuthInfo);
 
   print(CYAN + 'readOnly tests...' + RESET);
   
