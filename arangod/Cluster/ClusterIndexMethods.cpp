@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Guarded.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -1035,15 +1036,14 @@ Result ensureIndexCoordinatorInner(
 
   // will contain the error number and message
   auto dbServerResult =
-      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
-  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
+      std::make_shared<Guarded<std::optional<Result>>>(std::nullopt);
 
   std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
   // We need explicit copies as this callback may run even after
   // this function returns. So let's keep all used variables
   // explicit here.
   std::function<bool(VPackSlice result)> dbServerChanged =  // for format
-      [dbServerResult, errMsg, numberOfShards,
+      [dbServerResult, numberOfShards,
        idString = std::string{idString}](VPackSlice result) {
         if (!result.isObject() || result.length() != numberOfShards) {
           return true;
@@ -1067,19 +1067,14 @@ Result ensureIndexCoordinatorInner(
 
               // check for errors
               if (hasError(v)) {
-                // Note that this closure runs with the mutex in the condition
-                // variable of the agency callback, which protects writing
-                // to *errMsg:
-                *errMsg = extractErrorMessage(shard.key.stringView(), v);
-                *errMsg = "Error during index creation: " + *errMsg;
-                // Returns the specific error number if set, or the general
-                // error otherwise
+                auto msg = extractErrorMessage(shard.key.stringView(), v);
                 auto errNum =
                     arangodb::basics::VelocyPackHelper::getNumericValue<
                         ErrorCode, ErrorCode::ValueType>(
                         v, StaticStrings::ErrorNum,
                         TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
-                dbServerResult->store(errNum, std::memory_order_release);
+                dbServerResult->assign(
+                    Result(errNum, "Error during index creation: " + msg));
                 return true;
               }
 
@@ -1090,8 +1085,7 @@ Result ensureIndexCoordinatorInner(
         }
 
         if (found == static_cast<size_t>(numberOfShards)) {
-          errMsg->clear();
-          dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
+          dbServerResult->assign(Result{TRI_ERROR_NO_ERROR});
         }
 
         return true;
@@ -1101,10 +1095,8 @@ Result ensureIndexCoordinatorInner(
       ::buildIndexEntry(slice, numberOfShards, idString, true);
 
   // ATTENTION: The following callback calls the above closure in a
-  // different thread. Nevertheless, the closure accesses some of our
-  // local variables. Therefore we have to protect all accesses to them
-  // by a mutex. We use the mutex of the condition variable in the
-  // AgencyCallback for this.
+  // different thread. The shared state (dbServerResult) is protected
+  // by the Guarded wrapper's internal mutex.
   std::string databaseName = collection.vocbase().name();
   std::string collectionID = std::to_string(collection.id().id());
 
@@ -1193,7 +1185,7 @@ Result ensureIndexCoordinatorInner(
 
   {
     while (!server.isStopping()) {
-      auto tmpRes = dbServerResult->load(std::memory_order_acquire);
+      auto tmpRes = dbServerResult->copy();
 
       if (!tmpRes.has_value()) {
         // index has not shown up in Current yet,  follow up check to
@@ -1220,7 +1212,7 @@ Result ensureIndexCoordinatorInner(
         }
       }
 
-      if (tmpRes.has_value() && tmpRes == TRI_ERROR_NO_ERROR) {
+      if (tmpRes.has_value() && tmpRes->ok()) {
         // Finally, in case all is good, remove the `isBuilding` flag
         // check that the index has appeared. Note that we have to have
         // a precondition since the collection could have been deleted
@@ -1283,18 +1275,10 @@ Result ensureIndexCoordinatorInner(
           resultBuilder.add(VPackObjectIterator(finishedPlanIndex.slice()));
           resultBuilder.add("isNewlyCreated", VPackValue(true));
         }
-        // Re-read dbServerResult under the lock so the error code and
-        // error message are from the same callback invocation.  Without
-        // the lock, a concurrent callback could update *errMsg after we
-        // snapshot tmpRes, violating the Result(NO_ERROR, non-empty)
-        // invariant.
-        std::lock_guard locker{agencyCallback->_cv.mutex};
-        auto lockedRes = dbServerResult->load(std::memory_order_acquire);
-        return Result(lockedRes.value_or(TRI_ERROR_NO_ERROR), *errMsg);
+        return std::move(*tmpRes);
       }
 
-      if ((tmpRes.has_value() && *tmpRes != TRI_ERROR_NO_ERROR) ||
-          TRI_microtime() > endTime) {
+      if ((tmpRes.has_value() && tmpRes->fail()) || TRI_microtime() > endTime) {
         // At this time the index creation has failed and we want to
         // roll back the plan entry, provided the collection still exists:
         AgencyWriteTransaction trx(
@@ -1331,10 +1315,7 @@ Result ensureIndexCoordinatorInner(
                   "rolling back index creation.");
             }
 
-            // The mutex in the condition variable protects the access to
-            // *errMsg:
-            std::lock_guard locker{agencyCallback->_cv.mutex};
-            return Result(*tmpRes, *errMsg);
+            return std::move(*tmpRes);
           }
 
           if (update._statusCode == rest::ResponseCode::PRECONDITION_FAILED) {
@@ -1354,10 +1335,7 @@ Result ensureIndexCoordinatorInner(
                   "Timed out while trying to roll back index creation failure");
             }
 
-            // The mutex in the condition variable protects the access to
-            // *errMsg:
-            std::lock_guard locker{agencyCallback->_cv.mutex};
-            return Result(*tmpRes, *errMsg);
+            return std::move(*tmpRes);
           }
 
           if (sleepFor <= 2500) {
