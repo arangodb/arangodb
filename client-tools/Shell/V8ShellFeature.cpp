@@ -83,6 +83,15 @@ bool exitRepl = false;
 
 std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
+// SIGALRM handler used as a delayed termination mechanism.
+void alarmHandler(int /*sig*/) { _exit(142); }  // 128 + 14 (SIGALRM)
+
+void installAlarmHandler() {
+  struct sigaction act = {};
+  act.sa_handler = alarmHandler;
+  sigaction(SIGALRM, &act, nullptr);
+}
+
 // V8 interrupt callback — invoked at a V8 safe point where all V8 APIs
 // are usable. Captures and logs the current JS stack trace.
 void v8InterruptCallback(v8::Isolate* isolate, void* data) {
@@ -101,14 +110,22 @@ void v8InterruptCallback(v8::Isolate* isolate, void* data) {
     LOG_TOPIC("cac45", ERR, arangodb::Logger::V8)
         << "no js stacktrace could be acquired";
   }
-  int sig = static_cast<int>(reinterpret_cast<intptr_t>(data));
   arangodb::Logger::flush();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // In maintainer mode, give developers 30s to read the stack trace
-  // before terminating.
-  sleep(30);
-#endif
+  installAlarmHandler();
+  // SIGALRM may be blocked by the V8 thread's signal mask; unblock it
+  // so the alarm can actually be delivered.
+  {
+    sigset_t unblock;
+    sigemptyset(&unblock);
+    sigaddset(&unblock, SIGALRM);
+    pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
+  }
+  alarm(30);
+#else
+  int sig = static_cast<int>(reinterpret_cast<intptr_t>(data));
   _exit(128 + sig);
+#endif
 }
 
 // Signal handler — only calls async-signal-safe functions.
@@ -129,6 +146,15 @@ void signalHandler(int signal, siginfo_t* /*info*/, void* /*ucontext*/) {
   //
   // Fallback: if V8 is idle and the interrupt never fires, SIGALRM
   // terminates the process after 30s.
+  installAlarmHandler();
+  // SIGALRM may be blocked by the thread's signal mask; unblock it.
+  // sigprocmask is async-signal-safe per POSIX.
+  {
+    sigset_t unblock;
+    sigemptyset(&unblock);
+    sigaddset(&unblock, SIGALRM);
+    sigprocmask(SIG_UNBLOCK, &unblock, nullptr);
+  }
   alarm(30);
 }
 
