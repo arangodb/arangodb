@@ -120,13 +120,16 @@ function MaxNumberOfConditionsSuite () {
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
 
       // with this few condition nodes, we won't exceed memory
-      [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096].forEach((maxDNFConditionMembers) => {
+      // (DNF_COMPLEXITY is thrown and caught, producing a simplified plan)
+      // All values <= 3^9 = 19683 will trigger early DNF complexity cutoff.
+      [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384].forEach((maxDNFConditionMembers) => {
         let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers }});
         let plan = stmt.explain();
       });
-      
+
       // with this many condition nodes, we will exceed memory
-      [8192, 16384, 32768].forEach((maxDNFConditionMembers) => {
+      // (threshold > 3^9 = 19683, so full expansion happens and OOMs)
+      [32768, 65536, 131072].forEach((maxDNFConditionMembers) => {
         try {
           let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers }});
           let plan = stmt.explain();

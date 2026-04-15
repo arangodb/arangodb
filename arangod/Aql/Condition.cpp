@@ -1843,7 +1843,12 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
   // Remove duplicate OR branches by comparing AST node structure.
   // This handles commutative operators, IN array ordering, and nested
   // expressions using structural comparison via compareAstNodes.
+  // Skip when there are too many branches: the O(n²) comparison would burn
+  // excessive CPU. Large expansions are caught by the memory limit instead.
   n = _root->numMembers();
+  if (n > 1024) {
+    return;
+  }
   for (size_t i = n; i > 1; --i) {
     auto branch1 = _root->getMemberUnchecked(i - 1);
     if (branch1->type != NODE_TYPE_OPERATOR_NARY_AND) {
