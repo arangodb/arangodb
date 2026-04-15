@@ -38,7 +38,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RequestTimingData.h"
-#include "Statistics/StatisticsFeature.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"
@@ -548,21 +547,8 @@ RequestTimingData CommTask::stealTimingData(uint64_t id) {
 namespace arangodb {
 void finalizeTimingData(application_features::ApplicationServer& server,
                         RequestTimingData& data) {
-  statistics::TotalRequests.incCounter();
-  if (data.async) {
-    statistics::AsyncRequests.incCounter();
-  }
-  statistics::MethodRequests[static_cast<size_t>(data.requestType)]
-      .incCounter();
-
   if (data.readStart != RequestTimingData::time_point{} &&
       (data.async || data.writeEnd != RequestTimingData::time_point{})) {
-    if (data.superuser) {
-      statistics::TotalRequestsSuperuser.incCounter();
-    } else {
-      statistics::TotalRequestsUser.incCounter();
-    }
-
     if (server.hasFeature<GeneralServerFeature>()) {
       server.getFeature<GeneralServerFeature>().recordHttpRequestStatistics(
           data);

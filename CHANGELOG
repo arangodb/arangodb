@@ -4,6 +4,9 @@
 * COR-429: Removed support for the `--ssl.protocol` startup option values 1, 2 and 3,
   which stand for SSL v2, SSL v2/3, and SSL v3.
 
+* COR-295: Removed `StatisticsFeature`. The `--server.statistics-all-databases` and
+  `--server.statistics-history` startup options are now obsolete and ignored.
+
 * Upgraded included rclone to v1.73.4 with go1.25.9 and non-vulnerable
   dependencies.
 

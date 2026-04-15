@@ -181,9 +181,11 @@ void LegacyOptionsFeature::collectOptions(
   options->addOldOption("server.authenticate-system-only",
                         "server.authentication-system-only");
 
-  // StatisticsFeature options
   options->addObsoleteOption("--server.statistics-history",
                              "Whether to store statistics in the database.",
+                             false);
+  options->addObsoleteOption("--server.statistics-all-databases",
+                             "Provide cluster statistics for all databases.",
                              false);
 
   // ScriptFeature options

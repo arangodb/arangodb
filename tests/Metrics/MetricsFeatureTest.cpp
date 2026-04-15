@@ -39,7 +39,6 @@ std::shared_ptr<arangodb::options::ProgramOptions> opts =
 ArangodServer server = ArangodServer(opts, nullptr);
 metrics::MetricsFeature feature = metrics::MetricsFeature(
     server, LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-    LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
     LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
     LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
     LazyApplicationFeatureReference<ClusterFeature>(nullptr));
