@@ -141,7 +141,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
           ];
 
           const result = db._query(query, {}, options).toArray();
-          r2 = result.map(projectPath);
+          const r2 = result.map(projectPath);
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthPathWithPWithCollectionEnd: function() {
@@ -160,7 +160,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
           ];
  
           const result = db._query(query, {}, options).toArray();
-          r2 = result.map(projectPath);
+          const r2 = result.map(projectPath);
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthPathWithPComposes: function() {
@@ -176,7 +176,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
           ];
 
           const result = db._query(query, {}, options).toArray();
-          r2 = result.map(projectPath);
+          const r2 = result.map(projectPath);
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthPathWithPComposesBack: function() {
@@ -192,7 +192,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
           ];
 
           const result = db._query(query, {}, options).toArray();
-          r2 = result.map(projectPath);
+          const r2 = result.map(projectPath);
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthInbound: function() {
@@ -210,7 +210,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
           ]; 
 
           const result = db._query(query, {}, options).toArray();
-          r2 = result.map(projectPath);
+          const r2 = result.map(projectPath);
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthAny: function() {
@@ -228,7 +228,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
           ]; 
 
           const result = db._query(query, {}, options).toArray();
-          r2 = result.map(projectPath);
+          const r2 = result.map(projectPath);
           assertEqual(r2, expected, JSON.stringify(result));
         },
 
