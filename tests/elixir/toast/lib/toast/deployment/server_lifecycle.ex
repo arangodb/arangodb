@@ -78,13 +78,15 @@ defmodule Toast.Deployment.ServerLifecycle do
   def relaunch_and_wait(%ServerInstance{} = server, opts) do
     Logger.info("Relaunching server #{server.id}")
     factor = Keyword.get(opts, :timeout_factor, 1)
+    auth = Toast.JWT.Provider.maybe_auth(Keyword.get(opts, :jwt_provider))
     process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
 
     with :ok <- ServerProcess.relaunch(server.server_pid, opts),
          :ok <-
            Health.wait_until_ready(server.endpoint,
              timeout: @base_relaunch_timeout * factor,
-             process_check_fn: process_check_fn
+             process_check_fn: process_check_fn,
+             auth: auth
            ) do
       resume_health_monitor(server)
       Logger.info("Server #{server.id} relaunched and ready")

@@ -348,7 +348,9 @@ defmodule Toast.Deployment.Controller do
           "HealthMonitor for #{server_id} died unexpectedly (#{inspect(reason)}), restarting"
         )
 
-        case ServerLifecycle.start_health_monitor(server_id, server.endpoint) do
+        case ServerLifecycle.start_health_monitor(server_id, server.endpoint,
+               jwt_provider: state.jwt_provider
+             ) do
           {:ok, new_pid} ->
             Logger.info("HealthMonitor for #{server_id} restarted successfully")
             updated = %{server | health_monitor: new_pid}
@@ -464,7 +466,10 @@ defmodule Toast.Deployment.Controller do
   end
 
   defp relaunch_server(server_id, acc, server, opts) do
-    opts = Keyword.put_new(opts, :timeout_factor, acc.config.timeout_factor)
+    opts =
+      opts
+      |> Keyword.put_new(:timeout_factor, acc.config.timeout_factor)
+      |> Keyword.put_new(:jwt_provider, acc.jwt_provider)
 
     with :ok <- ServerLifecycle.relaunch_and_wait(server, opts) do
       new_pid = ServerProcess.os_pid(server.server_pid)
