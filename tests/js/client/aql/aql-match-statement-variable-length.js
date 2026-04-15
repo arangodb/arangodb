@@ -75,25 +75,45 @@ function aqlMatchStatementVariableLengthTestSuite() {
         testMatchVariableLengthPathVariableEnd: function() {
           const query = aql`FOR v IN ["vc1/v0"]
                               FOR w IN vc3
-                              MATCH (v) -[ e:ec1 * 2..3 ]-> (w)
+                              MATCH (v) -[ e:ec1 * 1..2 ]-> (w)
                               RETURN [v, e, w]`;
-          const expected = [["vc1/v0"]
-                            ["vc1/v0"]];
+
+          const expected = [ 
+            [ "vc1/v0", 
+              { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
+                          [ "vc2/v0", "vc3/v0" ] ], 
+                "vertices" : [ "vc1/v0", "vc2/v0", "vc3/v0" ] }, 
+              "vc3/v0" ]
+          ]; 
 
           const result = db._query(query, {}, options).toArray();
-//          assertEqual(result, expected, JSON.stringify(result));
+          const r2 = result.map((x) => [x[0], projectPath(x[1]), x[2]._id]);
+
+          assertEqual(r2, expected);
         },
 
 
         testMatchVariableLengthPathCollectionEnd: function() {
           const query = aql`FOR v IN ["vc1/v0"]
-                              MATCH (v) -[ e:ec1 * 2..3 ]-> (w:vc1)
+                              MATCH (v) -[ e:ec1 * 1..2 ]-> (w:vc1)
                               RETURN [v, e, w]`;
-          const expected = [["vc1/v0"]
-                            ["vc1/v0"]];
+          const expected = [ 
+            [ "vc1/v0", 
+              { "edges" : [ [ "vc1/v0", "vc1/v1" ] ], 
+                "vertices" : [ "vc1/v0", "vc1/v1" ] }, 
+              "vc1/v1" 
+            ], 
+            [ "vc1/v0", 
+              { "edges" : [ [ "vc1/v0", "vc1/v1" ], 
+                            [ "vc1/v1", "vc1/v2" ] ], 
+                "vertices" : [ "vc1/v0", "vc1/v1", "vc1/v2" ] }, 
+              "vc1/v2" 
+            ] 
+          ];
 
           const result = db._query(query, {}, options).toArray();
-//          assertEqual(result, expected, JSON.stringify(result));
+          const r2 = result.map((x) => [x[0], projectPath(x[1]), x[2]._id]);
+          assertEqual(r2, expected);
         },
 
         testMatchVariableLengthPathWithPWithVariableEnd: function() {
@@ -159,6 +179,59 @@ function aqlMatchStatementVariableLengthTestSuite() {
           r2 = result.map(projectPath);
           assertEqual(r2, expected, JSON.stringify(result));
         },
+        testMatchVariableLengthPathWithPComposesBack: function() {
+          const query = aql`FOR v IN [{_id: "vc1/v0"}]
+                              MATCH p = (v) -[ e2:ec1 * 1..2 ]-> (u:vc3)
+                                            -[ e3:ec1 ]-> (w:vc3)
+                                RETURN p`;
+          const expected = [
+            { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
+                          [ "vc2/v0", "vc3/v0" ],
+                          [ "vc3/v0", "vc3/v1" ] ], 
+              "vertices" : [ "vc1/v0", "vc2/v0", "vc3/v0", "vc3/v1" ] }, 
+          ];
+
+          const result = db._query(query, {}, options).toArray();
+          r2 = result.map(projectPath);
+          assertEqual(r2, expected, JSON.stringify(result));
+        },
+        testMatchVariableLengthInbound: function() {
+          const query = aql`FOR v IN ["vc3/v3"]
+                              FOR w IN vc3
+                                MATCH p = (v) <-[ e:ec1 * 1..2 ]- (w)
+                                RETURN p`;
+
+          const expected = [
+            { "edges" : [ [ "vc3/v2", "vc3/v3" ], 
+                          [ "vc3/v1", "vc3/v2" ] ], 
+              "vertices" : [ "vc3/v3", "vc3/v2", "vc3/v1" ] }, 
+            { "edges" : [ [ "vc3/v2", "vc3/v3" ] ], 
+              "vertices" : [ "vc3/v3", "vc3/v2" ] }
+          ]; 
+
+          const result = db._query(query, {}, options).toArray();
+          r2 = result.map(projectPath);
+          assertEqual(r2, expected, JSON.stringify(result));
+        },
+        testMatchVariableLengthAny: function() {
+          const query = aql`FOR v IN ["vc3/v3"]
+                              FOR w IN vc3
+                                MATCH p = (v) -[ e:ec1 * 1..2 ]- (w)
+                                RETURN p`;
+
+          const expected = [
+            { "edges" : [ [ "vc3/v2", "vc3/v3" ], 
+                          [ "vc3/v1", "vc3/v2" ] ], 
+              "vertices" : [ "vc3/v3", "vc3/v2", "vc3/v1" ] }, 
+            { "edges" : [ [ "vc3/v2", "vc3/v3" ] ], 
+              "vertices" : [ "vc3/v3", "vc3/v2" ] }
+          ]; 
+
+          const result = db._query(query, {}, options).toArray();
+          r2 = result.map(projectPath);
+          assertEqual(r2, expected, JSON.stringify(result));
+        },
+
     };
 }
 
