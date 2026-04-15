@@ -123,6 +123,7 @@ mix toast --include edge_case
 | `--cluster-coordinators N` | Number of coordinators (default: 1) |
 | `--replication-factor N` | Default replication factor (default: 2) |
 | `--ci` | Enable CI mode (packages results for upload) |
+| `--force-all-tiers` | Package all tiers regardless of outcome (CI only) |
 | `--no-agency-dump` | Skip agency state dump on error |
 
 ### ExUnit Options
@@ -498,13 +499,22 @@ directory specified by `--result-dir`):
 
 ### CI Mode
 
-With `--ci`, Toast packages results into tiers for upload:
+With `--ci`, Toast packages results into tiers for upload. Tiers are gated on
+what issues occurred so successful runs don't pay the cost of uploading large
+artifacts:
 
-- **Tier 1** (always published): `results.json`, `results.xml`, `toast.log`
-- **Tier 2** (compressed archive): server logs, sanitizer reports --
-  bundled into `toast-logs.tar.gz`
-- **Tier 3** (individually compressed): core dump files, compressed with zstd
-  (falling back to gzip); work directory archive
+- **Tier 1** (always published): `results.json`, `results.xml`, `toast.log`,
+  agency dumps
+- **Tier 2** (any failure — test failures, sanitizer errors, infrastructure
+  failures, or crashes): server logs and sanitizer reports bundled into
+  `toast-logs.tar.gz`
+- **Tier 3** (server crash only): core dump files, compressed with zstd
+  (falling back to gzip), and the work directory archived as
+  `work-dir.tar.gz`
+
+Pass `--force-all-tiers` (or set `TOAST_FORCE_ALL_TIERS=1`) to bypass the
+gating and always package every tier — useful for debugging flaky tests or
+when you want full post-mortem artifacts regardless of outcome.
 
 ### Analyzing Results Offline
 
@@ -627,6 +637,7 @@ for CI pipelines or shell aliases:
 | `TOAST_CLUSTER_COORDINATORS` | `--cluster-coordinators` | Number of coordinators |
 | `TOAST_CLUSTER_REPLICATION_FACTOR` | `--replication-factor` | Default replication factor |
 | `TOAST_CI` | `--ci` | Enable CI result packaging |
+| `TOAST_FORCE_ALL_TIERS` | `--force-all-tiers` | Force packaging all tiers (CI only) |
 | `TOAST_API_VERSION` | -- | API version prefix (e.g., `1`) |
 | `TOAST_DEBUGGER` | -- | Core dump debugger: `gdb`, `lldb`, `auto`, `none` |
 | `TOAST_DUMP_AGENCY` | `--no-agency-dump` | Dump agency state on error (cluster mode) |

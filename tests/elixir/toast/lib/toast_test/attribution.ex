@@ -221,6 +221,7 @@ defmodule ToastTest.Attribution do
       detail =
         %{
           server: server_id,
+          file: san_file,
           report: result.content,
           timestamp: result.timestamp,
           kind: result.kind

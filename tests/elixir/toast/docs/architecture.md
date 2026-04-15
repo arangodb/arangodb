@@ -267,8 +267,8 @@ reading/parsing specific artifact types.
 | `ToastTest.SuiteResult` | Data struct for structured suite results with typed issues, module results, and test results. |
 | `ToastTest.SuiteResult.JSON` | JSON serialization of SuiteResult. |
 | `ToastTest.SuiteResult.JUnitXML` | JUnit XML serialization of SuiteResult for CI. |
-| `ToastTest.DiagnosticsSummary` | Aggregate diagnostics across suites for exit code determination and CI packaging. |
-| `ToastTest.ResultPackaging` | Tiered CI artifact packaging (Tier 1: always, Tier 2: logs archive, Tier 3: coredumps). |
+| `ToastTest.DiagnosticsSummary` | Aggregate diagnostics across suites: sanitizer detection, artifact inventory, exit code computation. |
+| `ToastTest.ResultPackaging` | Tiered CI artifact packaging gated on outcome (Tier 1: always, Tier 2: any failure, Tier 3: server crash). |
 
 ### Utilities
 

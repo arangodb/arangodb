@@ -445,17 +445,24 @@ Test execution
 
 ### CI Result Tiers
 
-`ToastTest.ResultPackaging` organizes artifacts by importance:
+`ToastTest.ResultPackaging` organizes artifacts by importance and gates each
+tier on what issues occurred so successful runs don't pay the cost of
+uploading large artifacts:
 
-| Tier | Contents | Behavior |
+| Tier | Contents | Gated on |
 |------|----------|----------|
-| 1 | results.json, results.xml, toast.log | Always published |
-| 2 | Server logs, sanitizer reports | Compressed into toast-logs.tar.gz |
-| 3 | Core dump files, work directory archive | Individually compressed (zstd preferred, gzip fallback) |
+| 1 | results.json, results.xml, toast.log, agency dumps | Always published |
+| 2 | Server logs, sanitizer reports (bundled into `toast-logs.tar.gz`) | Any failure (test failures, sanitizer errors, infrastructure failures, or crashes) |
+| 3 | Core dump files (zstd preferred, gzip fallback), work directory archive | Server crash only |
+
+Pass `force_all_tiers: true` (or set `TOAST_FORCE_ALL_TIERS=1` /
+`--force-all-tiers`) to bypass the gating and package every tier regardless
+of outcome — useful for debugging flaky tests or capturing full post-mortem
+artifacts unconditionally.
 
 ### Exit Codes
 
-`ResultPackaging.exit_code/1` returns a monotonic severity-ordered exit code:
+`DiagnosticsSummary.exit_code/1` returns a monotonic severity-ordered exit code:
 
 | Code | Meaning | Severity |
 |------|---------|----------|

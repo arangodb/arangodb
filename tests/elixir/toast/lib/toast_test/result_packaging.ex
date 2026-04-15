@@ -12,33 +12,41 @@ defmodule ToastTest.ResultPackaging do
 
   require Logger
 
-  @doc "Package results for CI upload. No-op when ci is false."
+  @doc """
+  Package results for CI upload. No-op when ci is false.
+
+  Tiers are gated on what issues occurred:
+  - Tier 1 (always): structured results, toast.log, agency dumps
+  - Tier 2 (any failure): server logs, sanitizer reports
+  - Tier 3 (server crash): core dumps, work dir archive
+
+  Pass `force_all_tiers: true` to bypass gating and package all tiers
+  regardless of outcome.
+  """
   @spec package(keyword()) :: :ok
   def package(opts) do
     if Keyword.get(opts, :ci, false) do
       result_dir = Keyword.fetch!(opts, :result_dir)
+      run_results = Keyword.fetch!(opts, :run_results)
+      force_all = Keyword.get(opts, :force_all_tiers, false)
       File.mkdir_p!(result_dir)
 
       package_tier1(opts, result_dir)
-      package_tier2(opts, result_dir)
-      package_tier3(opts, result_dir)
+
+      if force_all or any_failure?(run_results) do
+        package_tier2(opts, result_dir)
+      end
+
+      if force_all or run_results.server_crashed do
+        package_tier3(opts, result_dir)
+      end
     end
 
     :ok
   end
 
-  @doc "Compute exit code from aggregated run results."
-  @spec exit_code(map()) :: 0 | 1 | 2 | 3 | 4
-  def exit_code(results) do
-    # Monotonic severity: 4 (crash) > 3 (infra) > 2 (sanitizer) > 1 (test failures) > 0
-    cond do
-      results.server_crashed -> 4
-      results.infrastructure_failure -> 3
-      results.sanitizer_errors -> 2
-      results.test_failures > 0 -> 1
-      true -> 0
-    end
-  end
+  defp any_failure?(run_results),
+    do: ToastTest.DiagnosticsSummary.exit_code(run_results) > 0
 
   # --- Tier 1: Always published ---
 

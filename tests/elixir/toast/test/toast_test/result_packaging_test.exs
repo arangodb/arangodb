@@ -3,94 +3,68 @@ defmodule ToastTest.ResultPackagingTest do
 
   alias ToastTest.ResultPackaging
 
-  describe "exit_code/1" do
-    test "returns 0 for all passed" do
-      results = %{
-        test_failures: 0,
-        server_crashed: false,
-        infrastructure_failure: false,
-        sanitizer_errors: false
-      }
+  defp green_results do
+    %{
+      test_failures: 0,
+      server_crashed: false,
+      infrastructure_failure: false,
+      sanitizer_errors: false
+    }
+  end
 
-      assert ResultPackaging.exit_code(results) == 0
-    end
+  defp failure_results do
+    %{
+      test_failures: 1,
+      server_crashed: false,
+      infrastructure_failure: false,
+      sanitizer_errors: false
+    }
+  end
 
-    test "returns 1 for test failures" do
-      results = %{
-        test_failures: 3,
-        server_crashed: false,
-        infrastructure_failure: false,
-        sanitizer_errors: false
-      }
+  defp sanitizer_results do
+    %{
+      test_failures: 0,
+      server_crashed: false,
+      infrastructure_failure: false,
+      sanitizer_errors: true
+    }
+  end
 
-      assert ResultPackaging.exit_code(results) == 1
-    end
+  defp crash_results do
+    %{
+      test_failures: 0,
+      server_crashed: true,
+      infrastructure_failure: false,
+      sanitizer_errors: false
+    }
+  end
 
-    test "returns 2 for sanitizer errors" do
-      results = %{
-        test_failures: 0,
-        server_crashed: false,
-        infrastructure_failure: false,
-        sanitizer_errors: true
-      }
+  defp infra_results do
+    %{
+      test_failures: 0,
+      server_crashed: false,
+      infrastructure_failure: true,
+      sanitizer_errors: false
+    }
+  end
 
-      assert ResultPackaging.exit_code(results) == 2
-    end
+  # Sets up a single server log file and returns {result_dir, suite_diag}.
+  defp setup_tier2_fixture(tmp_dir) do
+    result_dir = Path.join(tmp_dir, "results")
+    File.mkdir_p!(result_dir)
 
-    test "returns 3 for infrastructure failure" do
-      results = %{
-        test_failures: 0,
-        server_crashed: false,
-        infrastructure_failure: true,
-        sanitizer_errors: false
-      }
+    log_path = Path.join(tmp_dir, "suite1/server1/arangod.log")
+    File.mkdir_p!(Path.dirname(log_path))
+    File.write!(log_path, "server log content")
 
-      assert ResultPackaging.exit_code(results) == 3
-    end
+    suite_diag = %{
+      name: "suite1",
+      log_files: [log_path],
+      sanitizer_files: [],
+      crash_reports: []
+    }
 
-    test "returns 4 for server crash" do
-      results = %{
-        test_failures: 0,
-        server_crashed: true,
-        infrastructure_failure: false,
-        sanitizer_errors: false
-      }
-
-      assert ResultPackaging.exit_code(results) == 4
-    end
-
-    test "mixed results: highest severity wins (crash > infrastructure)" do
-      results = %{
-        test_failures: 1,
-        server_crashed: true,
-        infrastructure_failure: true,
-        sanitizer_errors: true
-      }
-
-      assert ResultPackaging.exit_code(results) == 4
-    end
-
-    test "mixed results: infrastructure > sanitizer" do
-      results = %{
-        test_failures: 0,
-        server_crashed: false,
-        infrastructure_failure: true,
-        sanitizer_errors: true
-      }
-
-      assert ResultPackaging.exit_code(results) == 3
-    end
-
-    test "mixed results: sanitizer > test failures" do
-      results = %{
-        test_failures: 5,
-        server_crashed: false,
-        infrastructure_failure: false,
-        sanitizer_errors: true
-      }
-
-      assert ResultPackaging.exit_code(results) == 2
-    end
+    {result_dir, suite_diag}
   end
 
   describe "package/1" do
@@ -104,17 +78,15 @@ defmodule ToastTest.ResultPackagingTest do
     end
 
     @tag :tmp_dir
-    test "creates tier 1 files when ci is true", %{tmp_dir: tmp_dir} do
+    test "tier 1: always created even on green run", %{tmp_dir: tmp_dir} do
       base_dir = Path.join(tmp_dir, "work")
       result_dir = Path.join(tmp_dir, "results")
       File.mkdir_p!(base_dir)
       File.mkdir_p!(result_dir)
 
-      # Create the tier 1 source files in result_dir (they're already there from export step)
       File.write!(Path.join(result_dir, "results.json"), "{}")
       File.write!(Path.join(result_dir, "results.xml"), "<testsuites/>")
 
-      # Create a toast.log in base_dir
       log_dir = Path.join(base_dir, "logs")
       File.mkdir_p!(log_dir)
       File.write!(Path.join(log_dir, "toast.log"), "log content")
@@ -122,76 +94,96 @@ defmodule ToastTest.ResultPackagingTest do
       assert :ok =
                ResultPackaging.package(
                  ci: true,
+                 run_results: green_results(),
                  result_dir: result_dir,
                  base_dir: base_dir,
                  suite_diagnostics: [],
                  log_file: Path.join(log_dir, "toast.log")
                )
 
-      # Tier 1 files should exist in result_dir
       assert File.exists?(Path.join(result_dir, "results.json"))
       assert File.exists?(Path.join(result_dir, "results.xml"))
+      assert File.exists?(Path.join(result_dir, "toast.log"))
+    end
+
+    # --- Tier 2 gating ---
+
+    @tag :tmp_dir
+    test "tier 2: skipped on green run", %{tmp_dir: tmp_dir} do
+      {result_dir, suite_diag} = setup_tier2_fixture(tmp_dir)
+
+      ResultPackaging.package(
+        ci: true,
+        run_results: green_results(),
+        result_dir: result_dir,
+        suite_diagnostics: [suite_diag]
+      )
+
+      refute File.exists?(Path.join(result_dir, "toast-logs.tar.gz"))
     end
 
     @tag :tmp_dir
-    test "creates tier 2 archive when server logs exist", %{tmp_dir: tmp_dir} do
+    test "tier 2: created on any failure cause", %{tmp_dir: tmp_dir} do
+      for {label, run_results} <- [
+            {"test failure", failure_results()},
+            {"sanitizer errors", sanitizer_results()},
+            {"infrastructure failure", infra_results()},
+            {"server crash", crash_results()}
+          ] do
+        sub_dir = Path.join(tmp_dir, label)
+        File.mkdir_p!(sub_dir)
+        {result_dir, suite_diag} = setup_tier2_fixture(sub_dir)
+
+        ResultPackaging.package(
+          ci: true,
+          run_results: run_results,
+          result_dir: result_dir,
+          suite_diagnostics: [suite_diag]
+        )
+
+        assert File.exists?(Path.join(result_dir, "toast-logs.tar.gz")),
+               "tier 2 archive missing for #{label}"
+      end
+    end
+
+    # --- Tier 3 gating ---
+
+    @tag :tmp_dir
+    test "tier 3: skipped on any non-crash outcome", %{tmp_dir: tmp_dir} do
+      for {label, run_results} <- [
+            {"green", green_results()},
+            {"test failure", failure_results()},
+            {"sanitizer errors", sanitizer_results()},
+            {"infrastructure failure", infra_results()}
+          ] do
+        sub_dir = Path.join(tmp_dir, label)
+        base_dir = Path.join(sub_dir, "work")
+        result_dir = Path.join(sub_dir, "results")
+        server_dir = Path.join(base_dir, "suite1/dbserver-0")
+        File.mkdir_p!(server_dir)
+        File.mkdir_p!(result_dir)
+        File.write!(Path.join(server_dir, "data.db"), "db content")
+
+        ResultPackaging.package(
+          ci: true,
+          run_results: run_results,
+          result_dir: result_dir,
+          base_dir: base_dir,
+          suite_diagnostics: []
+        )
+
+        refute File.exists?(Path.join(result_dir, "work-dir.tar.gz")),
+               "tier 3 archive unexpectedly created for #{label}"
+      end
+    end
+
+    @tag :tmp_dir
+    test "tier 3: created on server crash", %{tmp_dir: tmp_dir} do
       base_dir = Path.join(tmp_dir, "work")
       result_dir = Path.join(tmp_dir, "results")
       File.mkdir_p!(base_dir)
       File.mkdir_p!(result_dir)
 
-      # Create some server log files
-      log_dir = Path.join(base_dir, "suite1/server1")
-      File.mkdir_p!(log_dir)
-      File.write!(Path.join(log_dir, "arangod.log"), "server log content")
-
-      suite_diag = %{
-        name: "suite1",
-        log_files: [Path.join(log_dir, "arangod.log")],
-        sanitizer_files: [],
-        crash_reports: []
-      }
-
-      assert :ok =
-               ResultPackaging.package(
-                 ci: true,
-                 result_dir: result_dir,
-                 base_dir: base_dir,
-                 suite_diagnostics: [suite_diag]
-               )
-
-      assert File.exists?(Path.join(result_dir, "toast-logs.tar.gz"))
-    end
-
-    @tag :tmp_dir
-    test "tier 3 only created when core dumps exist", %{tmp_dir: tmp_dir} do
-      base_dir = Path.join(tmp_dir, "work")
-      result_dir = Path.join(tmp_dir, "results")
-      File.mkdir_p!(base_dir)
-      File.mkdir_p!(result_dir)
-
-      # No core dumps
-      assert :ok =
-               ResultPackaging.package(
-                 ci: true,
-                 result_dir: result_dir,
-                 base_dir: base_dir,
-                 suite_diagnostics: []
-               )
-
-      # No .zst or .gz compressed core files should exist
-      compressed = Path.wildcard(Path.join(result_dir, "core.*"))
-      assert compressed == []
-    end
-
-    @tag :tmp_dir
-    test "tier 3 compresses core dumps individually", %{tmp_dir: tmp_dir} do
-      base_dir = Path.join(tmp_dir, "work")
-      result_dir = Path.join(tmp_dir, "results")
-      File.mkdir_p!(base_dir)
-      File.mkdir_p!(result_dir)
-
-      # Create a fake core dump
       core_path = Path.join(base_dir, "core.12345")
       File.write!(core_path, String.duplicate("x", 10_000))
 
@@ -203,38 +195,37 @@ defmodule ToastTest.ResultPackagingTest do
         core_dumps: [core_path]
       }
 
-      assert :ok =
-               ResultPackaging.package(
-                 ci: true,
-                 result_dir: result_dir,
-                 base_dir: base_dir,
-                 suite_diagnostics: [suite_diag]
-               )
+      ResultPackaging.package(
+        ci: true,
+        run_results: crash_results(),
+        result_dir: result_dir,
+        base_dir: base_dir,
+        suite_diagnostics: [suite_diag]
+      )
 
-      # Should have a compressed core file
       compressed = Path.wildcard(Path.join(result_dir, "core.12345.*"))
-      assert length(compressed) == 1
+      assert [compressed_path] = compressed
+      assert Path.extname(compressed_path) in [".zst", ".gz"]
+      assert File.stat!(compressed_path).size > 0
     end
 
     @tag :tmp_dir
-    test "tier 3 archives work dir", %{tmp_dir: tmp_dir} do
+    test "tier 3: archives work dir on crash", %{tmp_dir: tmp_dir} do
       base_dir = Path.join(tmp_dir, "work")
       result_dir = Path.join(tmp_dir, "results")
       File.mkdir_p!(result_dir)
 
-      # Create work dir with some content
       server_dir = Path.join(base_dir, "suite1/dbserver-0")
       File.mkdir_p!(server_dir)
       File.write!(Path.join(server_dir, "arangod.log"), "log content")
-      File.write!(Path.join(server_dir, "data.db"), "db content")
 
-      assert :ok =
-               ResultPackaging.package(
-                 ci: true,
-                 result_dir: result_dir,
-                 base_dir: base_dir,
-                 suite_diagnostics: []
-               )
+      ResultPackaging.package(
+        ci: true,
+        run_results: crash_results(),
+        result_dir: result_dir,
+        base_dir: base_dir,
+        suite_diagnostics: []
+      )
 
       archive = Path.join(result_dir, "work-dir.tar.gz")
       assert File.exists?(archive)
@@ -249,11 +240,44 @@ defmodule ToastTest.ResultPackagingTest do
       assert :ok =
                ResultPackaging.package(
                  ci: true,
+                 run_results: crash_results(),
                  result_dir: result_dir,
                  suite_diagnostics: []
                )
 
       refute File.exists?(Path.join(result_dir, "work-dir.tar.gz"))
+    end
+
+    # --- force_all_tiers override ---
+
+    @tag :tmp_dir
+    test "force_all_tiers: packages tier 2 and 3 on green run", %{tmp_dir: tmp_dir} do
+      base_dir = Path.join(tmp_dir, "work")
+      result_dir = Path.join(tmp_dir, "results")
+      File.mkdir_p!(result_dir)
+
+      log_path = Path.join(base_dir, "suite1/server1/arangod.log")
+      File.mkdir_p!(Path.dirname(log_path))
+      File.write!(log_path, "server log")
+
+      suite_diag = %{
+        name: "suite1",
+        log_files: [log_path],
+        sanitizer_files: [],
+        crash_reports: []
+      }
+
+      ResultPackaging.package(
+        ci: true,
+        run_results: green_results(),
+        force_all_tiers: true,
+        result_dir: result_dir,
+        base_dir: base_dir,
+        suite_diagnostics: [suite_diag]
+      )
+
+      assert File.exists?(Path.join(result_dir, "toast-logs.tar.gz"))
+      assert File.exists?(Path.join(result_dir, "work-dir.tar.gz"))
     end
   end
 end

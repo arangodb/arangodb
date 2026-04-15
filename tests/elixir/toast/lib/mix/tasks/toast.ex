@@ -40,6 +40,12 @@ defmodule Mix.Tasks.Toast do
       --cluster-coordinators N    - Number of coordinators (default: 1)
       --replication-factor N      - Default replication factor (default: 2)
 
+  ## CI Options
+
+      --ci                        - Enable CI mode (packages results into tiers for upload)
+      --force-all-tiers           - Package all tiers regardless of outcome (CI only)
+      --no-agency-dump            - Skip agency state dump on error
+
   ## ExUnit Options
 
       --include       - Include tests matching the filter
@@ -103,6 +109,7 @@ defmodule Mix.Tasks.Toast do
     test: :string,
     no_agency_dump: :boolean,
     ci: :boolean,
+    force_all_tiers: :boolean,
     help: :boolean
   ]
 
@@ -188,13 +195,15 @@ defmodule Mix.Tasks.Toast do
 
       ResultPackaging.package(
         ci: true,
+        run_results: run_results,
+        force_all_tiers: test_config.force_all_tiers,
         result_dir: test_config.result_dir,
         base_dir: test_config.base_dir,
         suite_diagnostics: suite_diagnostics
       )
     end
 
-    exit_code = ResultPackaging.exit_code(run_results)
+    exit_code = DiagnosticsSummary.exit_code(run_results)
 
     if exit_code > 0 do
       System.at_exit(fn _ -> exit({:shutdown, exit_code}) end)

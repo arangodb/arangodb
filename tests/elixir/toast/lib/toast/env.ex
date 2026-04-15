@@ -167,6 +167,8 @@ defmodule Toast.Env do
     %{
       keep_data: resolve(opts, local, :keep_data, &read_bool/1, "TOAST_KEEP_DATA") || false,
       ci: resolve(opts, local, :ci, &read_bool/1, "TOAST_CI") || false,
+      force_all_tiers:
+        resolve(opts, local, :force_all_tiers, &read_bool/1, "TOAST_FORCE_ALL_TIERS") || false,
       debugger: resolve(opts, local, :debugger, &read_debugger/1, "TOAST_DEBUGGER") || :auto,
       attach_debugger:
         resolve(opts, local, :attach_debugger, &read_bool/1, "TOAST_ATTACH_DEBUGGER") || false,
