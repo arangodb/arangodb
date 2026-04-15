@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -38,8 +38,8 @@
 #include <optional>
 #include <string>
 
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 #define LOG_ENUMERATE_PATHS_OPTIMIZER_RULE LOG_DEVEL_IF(false)
 
 namespace {
@@ -251,8 +251,6 @@ auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
 }
 
 }  // namespace
-
-namespace arangodb::aql {
 
 EnumeratePathsFilterMatcher::EnumeratePathsFilterMatcher(ExecutionPlan* plan)
     : _plan(plan) {}

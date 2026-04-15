@@ -18,25 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Yuriy Popov
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <memory>
 
-namespace arangodb {
+namespace arangodb::aql {
 
-namespace aql {
 class Optimizer;
 struct OptimizerRule;
 class ExecutionPlan;
 
-/// @brief moves document materialization from index nodes to materialize nodes
-void lateDocumentMaterializationRule(
-    arangodb::aql::Optimizer* opt,
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-    arangodb::aql::OptimizerRule const& rule);
+}  // namespace arangodb::aql
 
-}  // namespace aql
-}  // namespace arangodb
+namespace arangodb::iresearch {
+
+void scatterViewInClusterRule(aql::Optimizer* opt,
+                              std::unique_ptr<aql::ExecutionPlan> plan,
+                              aql::OptimizerRule const& rule);
+
+}  // namespace arangodb::iresearch
