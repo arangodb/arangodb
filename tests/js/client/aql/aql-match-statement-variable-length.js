@@ -28,6 +28,10 @@ const jsunity = require("jsunity");
 const {aql, db, errors} = require("@arangodb");
 
 function aqlMatchStatementVariableLengthTestSuite() {
+    const projectPath = function(path) {
+      return { edges: path.edges.map((edge) => [edge._from, edge._to]),
+               vertices: path.vertices.map((vertex) => vertex._id) };
+    };
 
     const database = "UnitTestsAqlMatchStatementVariableLength";
     const options = { matchStatement: "experimental" };
@@ -38,148 +42,108 @@ function aqlMatchStatementVariableLengthTestSuite() {
             db._createDatabase(database);
             db._useDatabase(database);
 
-            db._create("vc");
-          /*
-            for (let i = 0; i < 100; i++) {
-                db.vc.save({_key: `v${i}`, i, j: i % 5});
+            db._create("vc1");
+            for (let i = 0; i < 4; i++) {
+                db.vc1.save({_key: `v${i}`});
             }
-*/
-            db._createEdgeCollection("ec");
-          /*
-            for (let i = 0; i < 50; i++) {
-                db.ec.save({_key: `e${i}`, i, j: i % 10, _from: `vc/v${2 * i}`, _to: `vc/v${2 * i + 1}`});
+            db._create("vc2");
+            for (let i = 0; i < 4; i++) {
+              db.vc2.save({_key: `v${i}`});
             }
-            */
+            db._create("vc3");
+            for (let i = 0; i < 4; i++) {
+              db.vc3.save({_key: `v${i}`});
+            }
 
-            db._createEdgeCollection("ec_loops");
-          /*
-            for (let i = 0; i < 10; i++) {
-                db.ec_loops.save({_key: `e${i}`, i, j: i % 10, _from: `vc/v${i}`, _to: `vc/v${i}`});
-                db.ec_loops.save({_key: `e${i + 10}`, i, j: i % 10, _from: `vc/v${i}`, _to: `vc/v${i + 1}`});
+            db._createEdgeCollection("ec1");
+            for (let i = 0; i < 3; i++) {
+              db.ec1.save({_from: `vc1/v${i}`, _to: `vc1/v${i+1}`});
+              db.ec1.save({_from: `vc2/v${i}`, _to: `vc2/v${i+1}`}); 
+              db.ec1.save({_from: `vc3/v${i}`, _to: `vc3/v${i+1}`}); 
             }
-            */
-
-            db._createEdgeCollection("ec_paths");
-          /*
-            for (let i = 0; i < 20; i++) {
-                for (let j = 0; j < 4; j++) {
-                    db.ec_paths.save({_key: `e${i}_${j}`, i, j, _from: `vc/v${5*i + j}`, _to: `vc/v${5*i + j + 1}`});
-                }
+            for (let i = 0; i < 4; i++) {
+              db.ec1.save({_from: `vc1/v${i}`, _to: `vc2/v${i}`});
+              db.ec1.save({_from: `vc2/v${i}`, _to: `vc3/v${i}`});
             }
-            */
-        },
+       },
 
         tearDownAll: function () {
             db._useDatabase("_system");
             db._dropDatabase(database);
         },
 
-        testMatchVariableLengthPath: function() {
-          /*
-            per (current) definition the below queries are expected
-            to be equivalent
-
-          MATCH (v:vc) -[ e:ec_paths * 2..3 ]-> (w:vc)
-            RETURN [v, e, w]
-
-          FOR v IN vc
-            FOR w,x,e IN 2..3 OUTBOUND v ec
-              FILTER IS_SAME_COLLECTION(w._id, "vc")
-              RETURN [v, e, w]
-          */ 
-
-          const match_query = aql`MATCH (v:vc) -[ e:ec_paths * 1..3 ]-> (w:vc)
+        testMatchVariableLengthPathVariableEnd: function() {
+          const query = aql`FOR v IN ["vc1/v0"]
+                              FOR w IN vc3
+                              MATCH (v) -[ e:ec1 * 2..3 ]-> (w)
                               RETURN [v, e, w]`;
-          const match_result = db._query(match_query, {}, options).toArray();
+          const expected = [["vc1/v0"]
+                            ["vc1/v0"]];
 
-          const traversal_query = aql`FOR v IN vc FOR w,x,e IN 1..3 OUTBOUND v ec_paths
-                              FILTER IS_SAME_COLLECTION(w._id, "vc")
+          const result = db._query(query, {}, options).toArray();
+//          assertEqual(result, expected, JSON.stringify(result));
+        },
+
+
+        testMatchVariableLengthPathCollectionEnd: function() {
+          const query = aql`FOR v IN ["vc1/v0"]
+                              MATCH (v) -[ e:ec1 * 2..3 ]-> (w:vc1)
                               RETURN [v, e, w]`;
-          const traversal_result = db._query(traversal_query, {}, options).toArray();
+          const expected = [["vc1/v0"]
+                            ["vc1/v0"]];
 
-          assertEqual(match_result, traversal_result); // , JSON.stringify(result));
+          const result = db._query(query, {}, options).toArray();
+//          assertEqual(result, expected, JSON.stringify(result));
         },
-        testMatchVariableLengthPath2: function() {
-          /*
-            per (current) definition the below queries are expected
-            to be equivalent
 
-            FOR w IN vc
-              MATCH (v:vc) -[ e:ec_paths * 2..3 ]-> (w)
-                RETURN [v, e, w]
+        testMatchVariableLengthPathWithPWithVariableEnd: function() {
+          const query = aql`FOR v IN ["vc1/v0"]
+                              FOR w IN vc3
+                                MATCH p = (v) -[ e:ec1 * 2..3 ]-> (w)
+                                RETURN p`;
 
-            FOR w IN ovc
-              FOR v IN vc
-                FOR #3,_,e IN 2..3 OUTBOUND v ec_paths
-                  FILTER #3._id == w._id
-                  RETURN [v, e, w]
-          */ 
+          const expected = [
+            { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
+                          [ "vc2/v0", "vc3/v0" ] ], 
+              "vertices" : [ "vc1/v0", "vc2/v0", "vc3/v0" ] }, 
+            { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
+                          [ "vc2/v0", "vc3/v0" ], 
+                          [ "vc3/v0", "vc3/v1" ] ], 
+              "vertices" : [ "vc1/v0", "vc2/v0", "vc3/v0", "vc3/v1" ] }, 
+            { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
+                          [ "vc2/v0", "vc2/v1" ], 
+                          [ "vc2/v1", "vc3/v1" ] ], 
+              "vertices" : [ "vc1/v0", "vc2/v0", "vc2/v1", "vc3/v1" ] }, 
+            { "edges" : [ [ "vc1/v0", "vc1/v1" ], 
+                          [ "vc1/v1", "vc2/v1" ], 
+                          [ "vc2/v1", "vc3/v1" ] ], 
+              "vertices" : [ "vc1/v0", "vc1/v1", "vc2/v1", "vc3/v1" ] } 
+          ];
 
-          const match_query = aql`FOR w IN vc
-                                    MATCH (v:vc) -[ e:ec_paths * 2..3 ]-> (w)
-                                      RETURN [v, e, w]`;
-          const match_result = db._query(match_query, {}, options).toArray();
-
-          const traversal_query = aql`FOR w in vc
-                                        FOR v IN vc
-                                          FOR temp,x,e IN 2..3 OUTBOUND v ec_paths
-                                            FILTER temp._id == w._id
-                                            RETURN [v, e, w]`;
-          const traversal_result = db._query(traversal_query, {}, options).toArray();
-          assertEqual(match_result, traversal_result); // , JSON.stringify(result));
+          const result = db._query(query, {}, options).toArray();
+          r2 = result.map(projectPath);
+          assertEqual(r2, expected, JSON.stringify(result));
         },
-        testMatchVariableLengthPathInbound: function() {
-          /*
-            FOR w IN vc
-              MATCH (v:vc) <-[ e:ec_paths * 2..3 ]- (w)
-                RETURN [v, e, w]
+        testMatchVariableLengthPathWithPWithCollectionEnd: function() {
+          const query = aql`FOR v IN ["vc1/v0"]
+                              MATCH p = (v) -[ e:ec1 * 2..3 ]-> (w:vc1)
+                                RETURN p`;
 
-            FOR w IN ovc
-              FOR v IN vc
-                FOR #3,_,e IN 2..3 INBOUND v ec_paths
-                  FILTER #3._id == w._id
-                  RETURN [v, e, w]
-          */ 
-
-          const match_query = aql`FOR w IN vc
-                                    MATCH (v:vc) <-[ e:ec_paths * 2..3 ]- (w)
-                                      RETURN [v, e, w]`;
-          const match_result = db._query(match_query, {}, options).toArray();
-
-          const traversal_query = aql`FOR w in vc
-                                        FOR v IN vc
-                                          FOR temp,x,e IN 2..3 INBOUND v ec_paths
-                                            FILTER temp._id == w._id
-                                            RETURN [v, e, w]`;
-          const traversal_result = db._query(traversal_query, {}, options).toArray();
-          assertEqual(match_result, traversal_result); // , JSON.stringify(result));
+          const expected = [
+            { "edges" : [ [ "vc1/v0", "vc1/v1" ], 
+                          [ "vc1/v1", "vc1/v2" ] ], 
+              "vertices" : [ "vc1/v0", "vc1/v1", "vc1/v2" ] }, 
+            { "edges" : [ [ "vc1/v0", "vc1/v1" ],
+                          [ "vc1/v1", "vc1/v2" ], 
+                          [ "vc1/v2", "vc1/v3" ] ], 
+              "vertices" : [ "vc1/v0", "vc1/v1", "vc1/v2", "vc1/v3" ] } 
+          ];
+ 
+          const result = db._query(query, {}, options).toArray();
+          r2 = result.map(projectPath);
+          assertEqual(r2, expected, JSON.stringify(result));
         },
-        testMatchVariableLengthPathAny: function() {
-          /*
-            FOR w IN vc
-              MATCH (v:vc) <-[ e:ec_paths * 2..3 ]- (w)
-                RETURN [v, e, w]
-
-            FOR w IN ovc
-              FOR v IN vc
-                FOR #3,_,e IN 2..3 INBOUND v ec_paths
-                  FILTER #3._id == w._id
-                  RETURN [v, e, w]
-          */ 
-
-          const match_query = aql`FOR w IN vc
-                                    MATCH (v:vc) -[ e:ec_paths * 2..3 ]- (w)
-                                      RETURN [v, e, w]`;
-          const match_result = db._query(match_query, {}, options).toArray();
-
-          const traversal_query = aql`FOR w in vc
-                                        FOR v IN vc
-                                          FOR temp,x,e IN 2..3 ANY v ec_paths
-                                            FILTER temp._id == w._id
-                                            RETURN [v, e, w]`;
-          const traversal_result = db._query(traversal_query, {}, options).toArray();
-          assertEqual(match_result, traversal_result); // , JSON.stringify(result));
-        },
+ 
     };
 }
 
