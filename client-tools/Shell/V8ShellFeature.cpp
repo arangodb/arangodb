@@ -88,7 +88,6 @@ void alarmHandler(int /*sig*/) { _exit(142); }  // 128 + 14 (SIGALRM)
 
 // V8 interrupt callback — fires at the next V8 safe point (within
 // microseconds when JS is executing). Captures the JS stack trace,
-// then forcefully terminates JS execution via TerminateExecution().
 // A 30s SIGALRM is the safety net in case termination stalls.
 void v8InterruptCallback(v8::Isolate* isolate, void* /*data*/) {
   v8::Local<v8::StackTrace> stacktrace =
@@ -107,10 +106,6 @@ void v8InterruptCallback(v8::Isolate* isolate, void* /*data*/) {
         << "no js stacktrace could be acquired";
   }
   arangodb::Logger::flush();
-
-  // Forcefully terminate JS execution — V8 will throw an uncatchable
-  // exception that unwinds the stack.
-  isolate->TerminateExecution();
 
   // Also expire the execution deadline so cooperative checks see it.
   triggerV8DeadlineNow(true, ExternalId());
