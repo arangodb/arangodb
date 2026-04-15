@@ -54,7 +54,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -293,8 +292,6 @@ class IResearchOrderTest
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
             selector,
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),

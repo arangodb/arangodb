@@ -79,7 +79,6 @@
 #include "VocBase/LogicalView.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "Statistics/StatisticsFeature.h"
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -262,8 +261,6 @@ struct IResearchExpressionFilterTest
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
             selector,
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),

@@ -45,7 +45,6 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Replication/ReplicationFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
@@ -183,8 +182,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     std::array coordinatorHttpFeatures{
         std::type_index(typeid(GeneralServerFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
-        std::type_index(typeid(SslServerFeature)),
-        std::type_index(typeid(StatisticsFeature))};
+        std::type_index(typeid(SslServerFeature))};
     server().forceDisableFeatures(coordinatorHttpFeatures);
     disableDaemonAndSupervisor();
   } else {
