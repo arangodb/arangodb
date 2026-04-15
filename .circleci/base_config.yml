@@ -367,6 +367,13 @@ commands:
               export SAN_MODE=tsan
             fi
 
+            if [ "$SAN_MODE" != "" ]; then
+              # When running with sanitizer we have to LOWER the number of file descriptors!
+              # The sanitizer forks off a separate process to handle the symbolization of stack traces,
+              # and the fork operation iterates over all file descriptors, making this extremely expensive.
+              ulimit -n 65536
+            fi
+
             # check if promtool is available and if so set the environment variable to enable the according tests
             if command -v promtool &> /dev/null; then
               export PROMTOOL_PATH=`command -v promtool`

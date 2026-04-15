@@ -26,7 +26,6 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
-#include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -58,10 +57,7 @@
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
-#include <format>
-#include <optional>
-#include <rocksdb/db.h>
-#include <rocksdb/write_batch.h>
+#include <filesystem>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
@@ -433,8 +429,8 @@ Result UpgradeTasks::renameReplicationApplierStateFiles(
   std::string const source = arangodb::basics::FileUtils::buildFilename(
       path, "REPLICATION-APPLIER-STATE");
 
-  if (!basics::FileUtils::isRegularFile(source)) {
-    // source file does not exist
+  if (!std::filesystem::is_regular_file(source)) {
+    // source file does not exist (or not a regular file)
     return {};
   }
 

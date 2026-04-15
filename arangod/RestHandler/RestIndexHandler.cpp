@@ -32,6 +32,7 @@
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/Utils/VectorIndexShardStates.h"
 #include "Cluster/ServerState.h"
+#include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
@@ -310,16 +311,26 @@ async<void> RestIndexHandler::getIndexes() {
                   IndexId{basics::StringUtils::uint64(bareId)});
               if (idx != nullptr &&
                   idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
-                auto const& vecIdx =
-                    static_cast<RocksDBVectorIndex const&>(*idx);
+                // During ingestion the real index is swapped for a
+                // RocksDBBuilderIndex; unwrap to reach vector-specific state.
+                Index const* raw = idx.get();
+                if (auto const* builder =
+                        dynamic_cast<RocksDBBuilderIndex const*>(raw)) {
+                  raw = &builder->wrapped();
+                }
+                auto const* vecIdx =
+                    dynamic_cast<RocksDBVectorIndex const*>(raw);
+                TRI_ASSERT(vecIdx != nullptr);
+                if (vecIdx == nullptr) [[unlikely]] {
+                  return states;
+                }
+                auto const ts = vecIdx->trainingState();
                 VectorIndexShardState state;
-                state.trainingState =
-                    std::string(trainingStateToString(vecIdx.trainingState()));
-                if (vecIdx.trainingState() ==
-                    VectorIndexTrainingState::kUnusable) {
+                state.trainingState = std::string(trainingStateToString(ts));
+                if (ts == VectorIndexTrainingState::kUnusable) {
                   state.error = "not enough training data for vector index";
                 }
-                state.resolvedNLists = vecIdx.resolvedNLists().value_or(0);
+                state.resolvedNLists = vecIdx->resolvedNLists().value_or(0);
                 states.emplace(std::string(coll->name()), std::move(state));
               }
               return states;

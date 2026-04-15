@@ -74,6 +74,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
       Replication2Callback replicationCb = nullptr) override;
 
+  /// @brief Atomically replace one index with another in _indexes.
+  ///        Used by VectorIndexBuilder to swap the RocksDBBuilderIndex
+  ///        wrapper in/out during the fill+catchup phase.
+  void swapIndex(std::shared_ptr<Index> const& oldIdx,
+                 std::shared_ptr<Index> const& newIdx);
+
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
