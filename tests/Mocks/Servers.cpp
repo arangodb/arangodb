@@ -103,7 +103,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Servers.h"
 #include "Sharding/ShardingFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
@@ -148,7 +147,6 @@ static void SetupGreetingsPhase(MockServer& server) {
       false, std::false_type{});
   server.addFeature<metrics::MetricsFeature>(
       false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
       LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));

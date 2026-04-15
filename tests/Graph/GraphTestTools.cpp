@@ -38,7 +38,6 @@
 #include "VectorIndex/VectorIndexFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/ManagerFeature.h"
 #include "GraphTestTools.h"
@@ -62,7 +61,6 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   features.emplace_back(
       server.addFeature<arangodb::metrics::MetricsFeature>(
           LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-          LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
           LazyApplicationFeatureReference<EngineSelectorFeature>(server),
           LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
               nullptr),

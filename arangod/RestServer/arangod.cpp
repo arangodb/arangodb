@@ -50,8 +50,7 @@ static auto const kNonServerFeatures =
                std::type_index(typeid(HttpEndpointProvider)),
                std::type_index(typeid(LogBufferFeature)),
                std::type_index(typeid(ServerFeature)),
-               std::type_index(typeid(SslServerFeature)),
-               std::type_index(typeid(StatisticsFeature))};
+               std::type_index(typeid(SslServerFeature))};
 
 void ArangodServer::addFeatures(
     int* ret, std::string_view binaryName,
@@ -72,7 +71,6 @@ void ArangodServer::addFeatures(
   // metrics::MetricsFeature must go first
   auto& metrics = addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
-      LazyApplicationFeatureReference<StatisticsFeature>(*this),
       LazyApplicationFeatureReference<EngineSelectorFeature>(*this),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this));
@@ -146,7 +144,6 @@ void ArangodServer::addFeatures(
       std::array{std::type_index(typeid(AgencyFeaturePhase))});
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
-  addFeature<StatisticsFeature>();
   addFeature<StorageEngineFeature>();
   addFeature<TempFeature>(std::string{binaryName});
   addFeature<TemporaryStorageFeature>();
