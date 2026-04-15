@@ -4,6 +4,11 @@
 * COR-295: Removed `StatisticsFeature`. The `--server.statistics-all-databases` and
   `--server.statistics-history` startup options are now obsolete and ignored.
 
+* Upgraded included rclone to v1.73.4 with go1.25.9 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.20.0-preview-9.
+
 * Upgraded OpenSSL to 3.5.6.
 
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
@@ -20,8 +25,6 @@
 * COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
   `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
   `/_admin/wal/transactions`.
-
-* Updated ArangoDB Starter to v0.20.0-preview-6.
 
 * COR-377: Removed deprecated `status` and `statusString` attributes from collection
   HTTP responses, and the `status()` collection function from the JavaScript API.
@@ -49,9 +52,6 @@
 * COR-283: Removed remainded active failover references.
 
 * Remove 30xx FOXX error codes
-
-* Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
-  dependencies.
 
 * Changed the remaining two uses of the log topics BENCH and SECURITY and
   removed these log topics.
