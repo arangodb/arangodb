@@ -1,6 +1,10 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-411: Introduced the optimizer rule replace-any-eq-with-in that maps
+  selection clauses that produce a condition with predicate like
+  FILTER ... ANY == ... into FILTER ... IN [] to be able to use indexing.
+
 * COR-415: Fix vector index catch-up phase to use the proper
   `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that
   WAL entries written during training are correctly ingested, preventing
