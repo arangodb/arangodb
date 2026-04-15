@@ -9,10 +9,14 @@ target_sources(arango_aql PRIVATE
   EnumeratePathsFilter.cpp
   FuseFilters.cpp
   GeoIndex.cpp
+  HandleConstrainedSortInView.cpp
+  HandleViews.cpp
+  ImmutableSearchCondition.cpp
   InlineSubqueries.cpp
   InterchangeAdjacentEnumerations.cpp
   JoinIndexNodes.cpp
   LateDocumentMaterialization.cpp
+  LateDocumentMaterializationArangoSearch.cpp
   MaterializeIntoSeparateVariable.cpp
   MoveCalculationsDown.cpp
   MoveCalculationsUp.cpp
@@ -23,11 +27,6 @@ target_sources(arango_aql PRIVATE
   OptimizeProjections.cpp
   OptimizeSubqueries.cpp
   OptimizeTraversals.cpp
-  HandleConstrainedSortInView.cpp
-  HandleViews.cpp
-  ImmutableSearchCondition.cpp
-  LateDocumentMaterializationArangoSearch.cpp
-  ScatterViewInCluster.cpp
   ParallelizeGather.cpp
   PropagateConstantAttributes.cpp
   PushDownLateMaterialization.cpp
@@ -52,6 +51,7 @@ target_sources(arango_aql PRIVATE
   ReplaceOrWithIn.cpp
   RestrictToSingleShard.cpp
   ScatterInCluster.cpp
+  ScatterViewInCluster.cpp
   SimplifyConditions.cpp
   SortInValues.cpp
   SortLimit.cpp
