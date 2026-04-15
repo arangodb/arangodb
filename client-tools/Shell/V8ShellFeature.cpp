@@ -83,10 +83,11 @@ bool exitRepl = false;
 
 std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
+void installSignalHandler();
+
 // V8 interrupt callback — invoked at a V8 safe point where all V8 APIs
 // are usable. Captures and logs the current JS stack trace.
 void v8InterruptCallback(v8::Isolate* isolate, void* data) {
-  int sig = static_cast<int>(reinterpret_cast<intptr_t>(data));
   v8::Local<v8::StackTrace> stacktrace =
       v8::StackTrace::CurrentStackTrace(isolate, 10, v8::StackTrace::kDetailed);
   int frameCount = stacktrace->GetFrameCount();
@@ -102,11 +103,16 @@ void v8InterruptCallback(v8::Isolate* isolate, void* data) {
     LOG_TOPIC("cac45", ERR, arangodb::Logger::V8)
         << "no js stacktrace could be acquired";
   }
-  // Flush log output so the stack trace is visible before we die.
   arangodb::Logger::flush();
-  // SA_RESETHAND already restored the default handler, so re-raising
-  // the original signal will produce the correct exit status and core dump.
-  raise(sig);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // In maintainer mode, cancel the fallback alarm, re-install the signal
+  // handler, and continue execution so developers can inspect the state.
+  alarm(0);
+  installSignalHandler();
+#else
+  int sig = static_cast<int>(reinterpret_cast<intptr_t>(data));
+  _exit(128 + sig);
+#endif
 }
 
 // Signal handler — only calls async-signal-safe functions.
@@ -128,6 +134,13 @@ void signalHandler(int signal, siginfo_t* /*info*/, void* /*ucontext*/) {
   // Fallback: if V8 is idle and the interrupt never fires, SIGALRM
   // terminates the process after 30s.
   alarm(30);
+}
+
+void installSignalHandler() {
+  struct sigaction act = {};
+  act.sa_flags = SA_RESETHAND | SA_SIGINFO;
+  act.sa_sigaction = ::signalHandler;
+  sigaction(SIGBUS, &act, nullptr);
 }
 
 }  // namespace
@@ -229,13 +242,7 @@ void V8ShellFeature::start() {
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
   ::global_isolate = _isolate = platform.createIsolate();
-  {
-    struct sigaction act;
-    sigemptyset(&act.sa_mask);
-    act.sa_flags = SA_RESETHAND | SA_SIGINFO;
-    act.sa_sigaction = ::signalHandler;
-    sigaction(SIGBUS, &act, nullptr);
-  }
+  ::installSignalHandler();
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
