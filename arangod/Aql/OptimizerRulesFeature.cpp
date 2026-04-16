@@ -673,6 +673,12 @@ setup via their shard keys.)");
                R"(Appears if nodes of the types `ScatterNode`, `GatherNode`,
 and `RemoteNode` are inserted into a distributed query plan.)");
 
+  // distribute operations in cluster
+  registerRule("upgrade-scatter-to-distribute", upgradeScatterToDistributeRule,
+               OptimizerRule::upgradeScatterToDistributeRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly),
+               R"(TODO listunov)");
+
 #ifdef USE_ENTERPRISE
   registerRule("distribute-offset-info-to-cluster",
                distributeOffsetInfoToClusterRule,
