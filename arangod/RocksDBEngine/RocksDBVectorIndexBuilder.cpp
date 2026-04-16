@@ -459,8 +459,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
       if constexpr (returnsResult) {
         setResult(fn());
-      }
-      else {
+      } else {
         fn();
       }
     } catch (basics::Exception const& e) {
@@ -769,7 +768,8 @@ Result VectorIndexBuilder::build(
 
   // Create RocksDBBuilderIndex wrapper
   auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
-      indexPtr, numDocsHint, IndexFactory::kMaxParallelism);
+      indexPtr, numDocsHint, IndexFactory::kMaxParallelism,
+      _rcoll->statistics());
 
   _rcoll->swapIndex(indexPtr, buildIdx);
   auto swapGuard = ScopeGuard([&]() noexcept {
