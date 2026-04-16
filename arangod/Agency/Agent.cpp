@@ -705,6 +705,18 @@ void Agent::sendAppendEntriesRPC() {
                  "appendEntriesRPC!";
           continue;
         }
+        // If compaction advanced the snapshot past the entries we already
+        // fetched, re-fetch entries consistent with the snapshot.
+        if (needSnapshot && snapshotIndex > unconfirmed.back().index) {
+          lastConfirmed = snapshotIndex - 1;
+          unconfirmed = _state.get(lastConfirmed, lastConfirmed + 99);
+          if (unconfirmed.empty()) {
+            LOG_TOPIC("a3f21", WARN, Logger::AGENCY)
+                << "No log entries after snapshot at index " << snapshotIndex;
+            continue;
+          }
+          lowest = unconfirmed.front().index;
+        }
         if (snapshotTerm == 0) {
           // No shapshot yet
           needSnapshot = false;
