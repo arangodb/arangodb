@@ -228,10 +228,12 @@ function ClusterTransactionSuite() {
         }
         wait(1.0);
       }
-      if (!ct.run.getClientExitStatus(bgJob)) {
+      let status = { success: true };
+      if (!ct.run.getClientExitStatus(bgJob, status)) {
         ct.run.joinForceBGShells(IM.options, [bgJob]);
       }
-      assertTrue(!bgJob.failed, 'background transaction failed');
+      assertTrue(status.success, bgJob);
+      assertTrue(!bgJob.failed, `background transaction failed ${JSON.stringify(bgjob)}`);
 
       // transaction should have been successful
       assertTrue(waitForSynchronousReplication("_system"));

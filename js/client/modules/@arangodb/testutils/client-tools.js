@@ -604,7 +604,7 @@ function joinFinishedBGShells(options, clients) {
   return done;
 }
 
-function getClientExitStatus(client) {
+function getClientExitStatus(client, status) {
   if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
     let IM = global.instanceManager;
     client.done = true;
@@ -612,7 +612,7 @@ function getClientExitStatus(client) {
     if (client.status.exit === 0) {
       client.failed = false;
     } else {
-      success = false;
+      status.success = false;
       IM.options.cleanup = false;
       client.failed = true;
       client.message = readClientLogfile(client);
@@ -625,12 +625,12 @@ function joinForceBGShells(options, clients) {
   let IM = global.instanceManager;
   let tries = 0;
   let done = clients.length;
-  let success = true;
+  let status = { success: true };
   clients.forEach(client => {
     client.status = internal.statusExternal(client.pid, false, 0.1);
     if (client.status.status === 'RUNNING') {
       client.status = internal.killExternal(client.pid, 9 /*SIG_KILL*/, false);
-    } else getClientExitStatus(client);
+    } else getClientExitStatus(client, status);
   });
   internal.sleep(1);
   while (done > 0) {
@@ -654,14 +654,14 @@ function joinForceBGShells(options, clients) {
           } else {
             IM.options.cleanup = false;
             client.failed = true;
-            success = false;
+            status.success = false;
           }
         }
       }
     });
     internal.sleep(0.5);
   }
-  return done === 0 && success;
+  return done === 0 && status.success;
 }
 
 function cleanupBGShells (clients, cn) {
