@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -21,6 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ReplaceLastAccessOnGraphPath.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -29,12 +31,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
 #include "Aql/TypedAstNodes.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
 #include "Basics/StaticStrings.h"
 #include "Containers/SmallVector.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 
@@ -149,9 +149,9 @@ auto swapOutLastElementAccesses(
 
 }  // namespace
 
-void arangodb::aql::replaceLastAccessOnGraphPathRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void replaceLastAccessOnGraphPathRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const& rule) {
   // Only pick Traversal nodes, all others do not provide allowed output format
   containers::SmallVector<ExecutionNode*, 8> tNodes;
   plan->findNodesOfType(tNodes, ExecutionNode::TRAVERSAL, true);
@@ -218,3 +218,5 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
   }
   opt->addPlan(std::move(plan), rule, appliedAChange);
 }
+
+}  // namespace arangodb::aql

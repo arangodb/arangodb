@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -21,6 +21,8 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "LateDocumentMaterialization.h"
+
 #include "Aql/Ast.h"
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/Collection.h"
@@ -33,14 +35,13 @@
 #include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
+#include "Aql/Optimizer/Utils/LateMaterializedCommon.h"
 #include "Aql/QueryContext.h"
 #include "Basics/AttributeNameParser.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 
@@ -93,9 +94,9 @@ bool processCalculationNode(
 
 }  // namespace
 
-void arangodb::aql::lateDocumentMaterializationRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void lateDocumentMaterializationRule(Optimizer* opt,
+                                     std::unique_ptr<ExecutionPlan> plan,
+                                     OptimizerRule const& rule) {
   auto modified = false;
   auto const addPlan =
       arangodb::scopeGuard([opt, &plan, &rule, &modified]() noexcept {
@@ -372,3 +373,5 @@ void arangodb::aql::lateDocumentMaterializationRule(
     }
   }
 }
+
+}  // namespace arangodb::aql
