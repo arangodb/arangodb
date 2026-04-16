@@ -23,6 +23,7 @@
 
 #include "FileDescriptorsFeature.h"
 
+#include "RestServer/FileDescriptorsOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -33,7 +34,6 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/EnvironmentFeature.h"
 
@@ -76,15 +76,8 @@ FileDescriptorsFeature::FileDescriptorsFeature(ApplicationServer& server)
 
 void FileDescriptorsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption(
-          "--server.count-descriptors-interval",
-          "Controls the interval (in milliseconds) in which the number of open "
-          "file descriptors for the process is determined "
-          "(0 = disable counting).",
-          new UInt64Parameter(&_options.countDescriptorsInterval),
-          arangodb::options::makeFlags())
-      .setIntroducedIn(31100);
+  arangodb::file_descriptors::FileDescriptorsOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void FileDescriptorsFeature::validateOptions(

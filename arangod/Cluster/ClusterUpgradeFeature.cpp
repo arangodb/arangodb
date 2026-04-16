@@ -33,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Cluster/ClusterUpgradeOptionsProvider.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/Methods/Version.h"
@@ -54,22 +55,9 @@ ClusterUpgradeFeature::ClusterUpgradeFeature(
 }
 
 void ClusterUpgradeFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--cluster.upgrade",
-      "Perform a cluster upgrade if necessary (auto = perform an upgrade "
-      "and shut down only if `--database.auto-upgrade true` is set, "
-      "disable = ignore `--database.auto-upgrade` and never perform an "
-      "upgrade, force = ignore `--database.auto-upgrade` and always "
-      "perform an upgrade and shut down, online = always perform an "
-      "upgrade but don't shut down).",
-      new DiscreteValuesParameter<StringParameter>(
-          &_options.upgradeMode,
-          std::unordered_set<std::string>{"auto", "disable", "force",
-                                          "online"}),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator));
+  std::shared_ptr<options::ProgramOptions> options) {
+    arangodb::upgrade::ClusterUpgradeOptionsProvider provider;
+    provider.declareOptions(options, _options);
 }
 
 void ClusterUpgradeFeature::validateOptions(

@@ -23,6 +23,7 @@
 
 #include "NonceFeature.h"
 
+#include "RestServer/VectorIndexOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"

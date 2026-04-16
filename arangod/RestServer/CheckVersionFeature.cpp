@@ -23,6 +23,7 @@
 
 #include "CheckVersionFeature.h"
 
+#include "RestServer/CheckVersionOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -68,13 +69,8 @@ CheckVersionFeature::CheckVersionFeature(
 
 void CheckVersionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("check-version", "database.check-version");
-
-  options->addOption(
-      "--database.check-version", "Check the version of the database and exit.",
-      new BooleanParameter(&_options.checkVersion),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
+  arangodb::check_version::CheckVersionOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void CheckVersionFeature::validateOptions(
