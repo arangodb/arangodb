@@ -18,25 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Yuriy Popov
+/// @author Max Neunhoeffer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <memory>
+#include "Aql/ExecutionPlan.h"
 
-namespace arangodb {
-
-namespace aql {
+namespace arangodb::aql {
 class Optimizer;
-struct OptimizerRule;
-class ExecutionPlan;
 
-/// @brief moves document materialization from index nodes to materialize nodes
-void lateDocumentMaterializationRule(
-    arangodb::aql::Optimizer* opt,
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-    arangodb::aql::OptimizerRule const& rule);
+/// @brief replace multiple document operations in cluster by special handling
+void substituteClusterMultipleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

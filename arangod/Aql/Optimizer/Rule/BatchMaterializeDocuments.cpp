@@ -34,11 +34,9 @@
 #include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Logger/LogMacros.h"
 
 namespace arangodb::aql {
-
 using EN = ExecutionNode;
 
 #define LOG_RULE LOG_DEVEL_IF(false)

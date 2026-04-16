@@ -18,17 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Aql/ExecutionPlan.h"
+#include <memory>
 
 namespace arangodb::aql {
-class Optimizer;
 
-void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
+class Optimizer;
+struct OptimizerRule;
+class ExecutionPlan;
+
 }  // namespace arangodb::aql
+
+namespace arangodb::iresearch {
+
+void scatterViewInClusterRule(aql::Optimizer* opt,
+                              std::unique_ptr<aql::ExecutionPlan> plan,
+                              aql::OptimizerRule const& rule);
+
+}  // namespace arangodb::iresearch

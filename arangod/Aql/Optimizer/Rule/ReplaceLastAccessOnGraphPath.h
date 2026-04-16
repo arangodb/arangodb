@@ -18,17 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Aql/ExecutionPlan.h"
+#include <memory>
 
 namespace arangodb::aql {
-class Optimizer;
 
-void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
+class Optimizer;
+class ExecutionPlan;
+struct OptimizerRule;
+
+/// @brief replaces the last element on path access with the direct output of
+/// vertex/edge
+void replaceLastAccessOnGraphPathRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const&);
+
 }  // namespace arangodb::aql
