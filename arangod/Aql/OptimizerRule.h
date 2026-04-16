@@ -277,10 +277,10 @@ struct OptimizerRule {
 #endif
 
     // make operations on sharded collections use distribute
-    distributeInClusterRule,
+    distributeInClusterRule,  // DUMMY FOR DISTRIBUTE
 
 #ifdef USE_ENTERPRISE
-    smartJoinsRule,
+    smartJoinsRule,  // inspiration
 #endif
 
     // make operations on sharded collections use scatter / gather / remote
@@ -322,6 +322,8 @@ struct OptimizerRule {
     // moves filters on collection data into EnumerateCollection/Index to
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
+
+    upgradeScatterToDistributeRule,  // ??
 
     // remove calculations that are redundant
     // this is hidden and disabled by default version
@@ -441,6 +443,7 @@ struct OptimizerRule {
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif
 
+  static_assert(moveFiltersIntoEnumerateRule < upgradeScatterToDistributeRule);
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
   static_assert(moveCalculationsUpRule < applySortLimitRule,

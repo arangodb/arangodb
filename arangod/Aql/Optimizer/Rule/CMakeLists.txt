@@ -60,6 +60,7 @@ target_sources(arango_aql PRIVATE
   SubstituteClusterMultipleDocumentOperations.cpp
   SubstituteClusterSingleDocumentOperations.cpp
   UndistributeRemoveAfterEnumColl.cpp
+  UpgradeScatterToDistribute.cpp
   UseIndexForCollect.cpp
   UseIndexForSort.cpp
   UseIndexes.cpp
