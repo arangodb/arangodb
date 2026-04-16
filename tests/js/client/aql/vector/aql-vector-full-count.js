@@ -476,7 +476,7 @@ function VectorIndexLargeLimitTestSuite() {
                 assertEqual(limit, uniqueResults.size,
                     "All " + limit + " returned documents should be unique");
 
-                assertEqual(queryResults.count(), limit);
+                assertEqual(queryResults.count(), limit, `The count assertion failed on query: ${JSON.stringify(query)}`);
 
                 const stats = queryResults.getExtra().stats;
                 assertEqual(stats.fullCount, largeLimitNumberOfDocs, `The fullCount failed on query: ${JSON.stringify(query)}`);
