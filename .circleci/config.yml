@@ -46,6 +46,10 @@ parameters:
     type: string
     default: ""
     description: "Colon separated list of test-definition-prefix=branch. Intended to allow overriding branches for specific drivers or RTA (=ui)."
+  filter-testsuite:
+    type: string
+    default: ""
+    description: "filter to be executed testuite names for containing this string"
   create-docker-images:
     type: boolean
     default: false
@@ -68,7 +72,7 @@ parameters:
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:20"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:21"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:
@@ -163,6 +167,7 @@ jobs:
       config-definitions-branches:
         type: string
         default: ""
+      
     steps:
       - run:
           name: Print pipeline parameters
@@ -185,6 +190,7 @@ jobs:
             echo "c-compiler: << pipeline.parameters.c-compiler >>"
             echo "cxx-compiler: << pipeline.parameters.cxx-compiler >>"
             echo "use-minimal-debug-info: << pipeline.parameters.use-minimal-debug-info >>"
+            echo "filter-testsuite: << pipeline.parameters.filter-testsuite >>"
       - run:
           name: Checkout
           command: |
@@ -247,6 +253,7 @@ jobs:
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
                 --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
+                --test-suite "<<pipeline.parameters.filter-testsuite>>" \
                 -o continuation_config.yml \
                 ./.circleci/base_config.yml \
                 << parameters.definitions >>

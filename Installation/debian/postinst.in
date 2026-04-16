@@ -41,7 +41,6 @@ if test "$action" = "configure" -a \
     if [ -n "$RET" ]; then
         ARANGODB_DEFAULT_ROOT_PASSWORD="$(echo "$RET" | sed -e 's;\\\\;\\\\\\\\;g' -e 's;";\\\\";g')" \
             /usr/sbin/arango-init-database \
-	            --server.rest-server false \
                 --uid arangodb --gid arangodb || true
     fi
 
@@ -54,7 +53,7 @@ fi
 UPGRADE=false #requires upgrade
 set +e
 $ARANGODB --uid arangodb --gid arangodb \
-          --server.rest-server false --log.foreground-tty false \
+          --log.foreground-tty false \
           --database.check-version
 exit_status=$?
 set -e
@@ -79,7 +78,7 @@ if [ "$RET" = "true" ];  then
 
         echo "Upgrading database files."
         set +e
-        $ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.level error --database.auto-upgrade || ar_ferr $?
+        $ARANGODB --uid arangodb --gid arangodb --log.level error --database.auto-upgrade || ar_ferr $?
         set -e
     else
         echo "Database files are up-to-date."

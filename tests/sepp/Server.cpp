@@ -50,8 +50,7 @@ constexpr auto kNonServerFeatures =
                ArangodServer::id<HttpEndpointProvider>(),
                ArangodServer::id<LogBufferFeature>(),
                ArangodServer::id<ServerFeature>(),
-               ArangodServer::id<SslServerFeature>(),
-               ArangodServer::id<StatisticsFeature>()};
+               ArangodServer::id<SslServerFeature>()};
 
 }  // namespace
 
@@ -145,7 +144,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   // Features
   auto& metrics = _server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(_server),
-      LazyApplicationFeatureReference<StatisticsFeature>(_server),
       LazyApplicationFeatureReference<EngineSelectorFeature>(_server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
       LazyApplicationFeatureReference<ClusterFeature>(_server));
@@ -214,7 +212,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       std::array{std::type_index(typeid(AgencyFeaturePhase))});
   _server.addFeature<SoftShutdownFeature>();
   _server.addFeature<SslFeature>();
-  _server.addFeature<StatisticsFeature>();
   _server.addFeature<StorageEngineFeature>();
   _server.addFeature<SystemDatabaseFeature>();
   _server.addFeature<TempFeature>(name);

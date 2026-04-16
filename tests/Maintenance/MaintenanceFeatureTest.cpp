@@ -43,7 +43,6 @@
 #include "Mocks/Servers.h"
 #include "Network/NetworkFeature.h"
 #include "RestServer/UpgradeFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
@@ -204,7 +203,6 @@ struct MaintenanceFeatureTestThreaded : ::testing::Test {
         std::false_type{});
     as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
         LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),

@@ -194,6 +194,10 @@ class Parser;
   return T_K_PATHS;
 }
 
+(?i:MATCH) {
+  return T_MATCH;
+}
+
 (?i:OUTBOUND) {
   yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
@@ -360,6 +364,10 @@ class Parser;
 
 ".." {
   return T_RANGE;
+}
+
+"..." {
+  return T_ELLIPSIS;
 }
 
  /* ---------------------------------------------------------------------------

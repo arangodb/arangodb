@@ -155,10 +155,7 @@ add_library(arangoserver STATIC
   Sharding/ShardingInfo.cpp
   Sharding/ShardingStrategy.cpp
   Sharding/ShardingStrategyDefault.cpp
-  Statistics/ConnectionStatistics.cpp
-  Statistics/Descriptions.cpp
-  Statistics/ServerStatistics.cpp
-  Statistics/StatisticsFeature.cpp
+  Statistics/TransactionStatistics.cpp
   Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp

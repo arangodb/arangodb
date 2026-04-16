@@ -46,7 +46,6 @@
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -145,14 +144,11 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _apiRecordingFeature(server.server().getFeature<ApiRecordingFeature>()),
       _connectionInfo(std::move(info)),
-      _connectionStatistics(acquireConnectionStatistics()),
+      _connectionStatistics(_generalServerFeature.startConnection()),
       _auth(AuthenticationFeature::instance()),
       _isUserRequest(true) {
   TRI_ASSERT(_auth != nullptr);
-  _connectionStatistics.SET_START();
 }
-
-CommTask::~CommTask() { _connectionStatistics.SET_END(); }
 
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
@@ -526,15 +522,6 @@ void CommTask::setTimingData(uint64_t id, RequestTimingData&& data) {
   _statisticsMap.insert_or_assign(id, std::move(data));
 }
 
-ConnectionStatistics::Item CommTask::acquireConnectionStatistics() {
-  ConnectionStatistics::Item stat;
-  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
-    // only acquire a new item if the statistics are enabled.
-    stat = ConnectionStatistics::acquire();
-  }
-  return stat;
-}
-
 RequestTimingData& CommTask::acquireTimingData(uint64_t id) {
   std::lock_guard lock{_statisticsMutex};
   auto [it, _] = _statisticsMap.try_emplace(id, RequestTimingData{});
@@ -560,21 +547,8 @@ RequestTimingData CommTask::stealTimingData(uint64_t id) {
 namespace arangodb {
 void finalizeTimingData(application_features::ApplicationServer& server,
                         RequestTimingData& data) {
-  statistics::TotalRequests.incCounter();
-  if (data.async) {
-    statistics::AsyncRequests.incCounter();
-  }
-  statistics::MethodRequests[static_cast<size_t>(data.requestType)]
-      .incCounter();
-
   if (data.readStart != RequestTimingData::time_point{} &&
       (data.async || data.writeEnd != RequestTimingData::time_point{})) {
-    if (data.superuser) {
-      statistics::TotalRequestsSuperuser.incCounter();
-    } else {
-      statistics::TotalRequestsUser.incCounter();
-    }
-
     if (server.hasFeature<GeneralServerFeature>()) {
       server.getFeature<GeneralServerFeature>().recordHttpRequestStatistics(
           data);

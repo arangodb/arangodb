@@ -69,6 +69,7 @@
 #include "Aql/types.h"
 #include "Basics/TypeTraits.h"
 #include "Containers/HashSet.h"
+#include "velocypack/String.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -495,6 +496,49 @@ class ExecutionNode {
 
   auto getRegsToKeepStack() const -> RegIdSetStack;
 
+  /// @brief read an annotation. Returns a none-slice if the annotation is not
+  /// found. Probably you want to use some typed alternatives.
+  auto getAnnotation(std::string_view) const noexcept -> VPackSlice;
+
+  /// @brief returns the string stored for the given annotation. Returns nullopt
+  /// if no such annotation exists. It's a hard error if no string value
+  /// was found.
+  auto getAnnotatedString(std::string_view) const noexcept
+      -> std::optional<std::string_view>;
+
+  /// @brief returns the number stored for the given annotation. Returns nullopt
+  /// if no such annotation exists. It's a hard error if no numeric value
+  /// was found.
+  template<std::integral T>
+  auto getAnnotatedNumber(std::string_view name) const noexcept
+      -> std::optional<T> {
+    auto s = getAnnotation(name);
+    if (s.isNone()) {
+      return std::nullopt;
+    }
+    ADB_PROD_ASSERT(s.isNumber<T>())
+        << "annotation `" << name << "` expected to be a number, found "
+        << s.typeName();
+    return s.getNumericValue<T>();
+  }
+
+  /// @brief sets an annotation with the given name and value. An existing
+  /// annotation with the same name is overwritten.
+  void setAnnotation(std::string name, VPackString value);
+  void setAnnotation(std::string name, VPackSlice value);
+  void setAnnotation(std::string name, VPackValue value);
+
+  /// @brief sets an annotation with the given name and integral value.
+  /// An existing annotation with the same name is overwritten.
+  template<std::integral T>
+  void setAnnotatedNumber(std::string name, T value) {
+    setAnnotation(std::move(name), VPackValue(value));
+  }
+
+  /// @brief sets an annotation with the given name and string value.
+  /// An existing annotation with the same name is overwritten.
+  void setAnnotatedString(std::string name, std::string_view value);
+
  protected:
   /// @brief serialize this ExecutionNode to VelocyPack.
   /// This function is called as part of `toVelocyPack` and must be overriden in
@@ -580,6 +624,10 @@ class ExecutionNode {
   /// This is computed during the static analysis for each node using the
   /// variable usage in the plan.
   RegIdSetStack _regsToKeepStack;
+
+  /// @brief contains node metadata information that is produced and consumed
+  /// by different parts of the optimizer or query engine.
+  absl::flat_hash_map<std::string, VPackString> _annotations;
 
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes

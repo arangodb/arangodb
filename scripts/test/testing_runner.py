@@ -57,7 +57,7 @@ def zipp_this(filenames, target_dir):
     # pylint: disable=consider-using-with
     for corefile in filenames:
         try:
-            print(f"zipping {corefile}")
+            print(f"{str(datetime.now())} zipping {corefile}")
             zipfile.ZipFile(
                 str(target_dir / (corefile.name + ".xz")),
                 mode="w",

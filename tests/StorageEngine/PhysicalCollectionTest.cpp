@@ -50,7 +50,6 @@
 #include "Utils/OperationOptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
@@ -82,8 +81,7 @@ class PhysicalCollectionTest
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
-        LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        LazyApplicationFeatureReference<QueryRegistryFeature>(server), selector,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));

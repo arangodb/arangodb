@@ -155,7 +155,6 @@ function CollectionSuite () {
 
       assertTypeOf("string", c1._id);
       assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
       assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
       assertTypeOf("number", c1.type());
 
@@ -165,7 +164,6 @@ function CollectionSuite () {
 
       assertEqual(id, c1._id);
       assertEqual(nn, c1.name());
-      assertTypeOf("number", c1.status());
       assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
       assertTypeOf("number", c1.type());
 
