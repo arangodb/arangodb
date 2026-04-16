@@ -65,8 +65,7 @@ function queryCacheAuthorization (options) {
   }
 
   const conf = {
-    'server.authentication': true,
-    'server.authentication-system-only': false
+    'server.authentication': true
   };
 
   print(CYAN + 'queryCacheAuthorization tests...' + RESET);
