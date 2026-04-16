@@ -27,11 +27,28 @@
 const jsunity = require("jsunity");
 const {aql, db, errors} = require("@arangodb");
 
+
+
+
 function aqlMatchStatementVariableLengthTestSuite() {
-    const projectPath = function(path) {
-      return { edges: path.edges.map((edge) => [edge._from, edge._to]),
-               vertices: path.vertices.map((vertex) => vertex._id) };
-    };
+  const validatePath = function(path) {
+    for(let i = 0; i < path.edges.length; i++) {
+      assertEqual(path.vertices[i]._id, path.edges[i]._from);
+      assertEqual(path.vertices[i+1]._id, path.edges[i]._to);
+    }
+  };
+
+  const pathToString = function(path) {
+    return path.vertices.map((v) => `(${v._id})`).join(" -[]-> ");
+  };
+
+  const projectPath = function(path) {
+    return { edges: path.edges.map((edge) => [edge._from, edge._to]),
+             vertices: path.vertices.map((vertex) => vertex._id) };
+  };
+  const setEq = function(s1, s2) {
+    return s1.size == s2.size && [...s1].every((x) => s2.has(x));
+  } 
 
     const database = "UnitTestsAqlMatchStatementVariableLength";
     const options = { matchStatement: "experimental" };
@@ -80,17 +97,15 @@ function aqlMatchStatementVariableLengthTestSuite() {
                                   RETURN [v, e, w]`;
 
           const expected = [ 
-            [ "vc1/v0", 
-              { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
-                          [ "vc2/v0", "vc3/v0" ] ], 
-                "vertices" : [ "vc1/v0", "vc2/v0", "vc3/v0" ] }, 
-              "vc3/v0" ]
+              "(vc1/v0) -[]-> (vc2/v0) -[]-> (vc3/v0)" 
           ]; 
+          expected.sort();
 
-          const result = db._query(query, {}, options).toArray();
-          const r2 = result.map((x) => [x[0], projectPath(x[1]), x[2]._id]);
-
-          assertEqual(r2, expected);
+          const result = db._query(query, {}, options)
+            .toArray()
+            .map((x) => pathToString(x[1]));
+          result.sort();
+          assertEqual(result, expected);
         },
 
 
@@ -100,22 +115,16 @@ function aqlMatchStatementVariableLengthTestSuite() {
                                 MATCH (v) -[ e:ec1 * 1..2 ]-> (w:vc1)
                                 RETURN [v, e, w]`;
           const expected = [ 
-            [ "vc1/v0", 
-              { "edges" : [ [ "vc1/v0", "vc1/v1" ] ], 
-                "vertices" : [ "vc1/v0", "vc1/v1" ] }, 
-              "vc1/v1" 
-            ], 
-            [ "vc1/v0", 
-              { "edges" : [ [ "vc1/v0", "vc1/v1" ], 
-                            [ "vc1/v1", "vc1/v2" ] ], 
-                "vertices" : [ "vc1/v0", "vc1/v1", "vc1/v2" ] }, 
-              "vc1/v2" 
-            ] 
+            "(vc1/v0) -[]-> (vc1/v1)",
+            "(vc1/v0) -[]-> (vc1/v1) -[]-> (vc1/v2)"
           ];
+          expected.sort();
 
-          const result = db._query(query, {}, options).toArray();
-          const r2 = result.map((x) => [x[0], projectPath(x[1]), x[2]._id]);
-          assertEqual(r2, expected);
+          const result = db._query(query, {}, options)
+            .toArray()
+            .map((x) => pathToString(x[1]));
+          result.sort();
+          assertEqual(result, expected);
         },
 
         testMatchVariableLengthPathWithPWithVariableEnd: function() {
@@ -125,27 +134,20 @@ function aqlMatchStatementVariableLengthTestSuite() {
                                   MATCH p = (v) -[ e:ec1 * 2..3 ]-> (w)
                                   RETURN p`;
 
-          const expected = [
-            { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
-                          [ "vc2/v0", "vc3/v0" ] ], 
-              "vertices" : [ "vc1/v0", "vc2/v0", "vc3/v0" ] }, 
-            { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
-                          [ "vc2/v0", "vc3/v0" ], 
-                          [ "vc3/v0", "vc3/v1" ] ], 
-              "vertices" : [ "vc1/v0", "vc2/v0", "vc3/v0", "vc3/v1" ] }, 
-            { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
-                          [ "vc2/v0", "vc2/v1" ], 
-                          [ "vc2/v1", "vc3/v1" ] ], 
-              "vertices" : [ "vc1/v0", "vc2/v0", "vc2/v1", "vc3/v1" ] }, 
-            { "edges" : [ [ "vc1/v0", "vc1/v1" ], 
-                          [ "vc1/v1", "vc2/v1" ], 
-                          [ "vc2/v1", "vc3/v1" ] ], 
-              "vertices" : [ "vc1/v0", "vc1/v1", "vc2/v1", "vc3/v1" ] } 
-          ];
+          var expected =
+            [ "(vc1/v0) -[]-> (vc2/v0) -[]-> (vc3/v0)", 
+              "(vc1/v0) -[]-> (vc2/v0) -[]-> (vc3/v0) -[]-> (vc3/v1)", 
+              "(vc1/v0) -[]-> (vc2/v0) -[]-> (vc2/v1) -[]-> (vc3/v1)",  
+              "(vc1/v0) -[]-> (vc1/v1) -[]-> (vc2/v1) -[]-> (vc3/v1)" ];
+          expected.sort();
 
-          const result = db._query(query, {}, options).toArray();
-          const r2 = result.map(projectPath);
-          assertEqual(r2, expected, JSON.stringify(result));
+
+          const result = db._query(query, {}, options)
+                           .toArray()
+                           .map(pathToString);
+          result.sort();
+
+          assertEqual(result, expected);
         },
         testMatchVariableLengthPathWithPWithCollectionEnd: function() {
           const query = aql`WITH vc1, vc2, vc3
@@ -154,18 +156,16 @@ function aqlMatchStatementVariableLengthTestSuite() {
                                   RETURN p`;
 
           const expected = [
-            { "edges" : [ [ "vc1/v0", "vc1/v1" ], 
-                          [ "vc1/v1", "vc1/v2" ] ], 
-              "vertices" : [ "vc1/v0", "vc1/v1", "vc1/v2" ] }, 
-            { "edges" : [ [ "vc1/v0", "vc1/v1" ],
-                          [ "vc1/v1", "vc1/v2" ], 
-                          [ "vc1/v2", "vc1/v3" ] ], 
-              "vertices" : [ "vc1/v0", "vc1/v1", "vc1/v2", "vc1/v3" ] } 
+            "(vc1/v0) -[]-> (vc1/v1) -[]-> (vc1/v2)", 
+            "(vc1/v0) -[]-> (vc1/v1) -[]-> (vc1/v2) -[]-> (vc1/v3)"
           ];
+          expected.sort();
  
-          const result = db._query(query, {}, options).toArray();
-          const r2 = result.map(projectPath);
-          assertEqual(r2, expected, JSON.stringify(result));
+          const result = db._query(query, {}, options)
+            .toArray()
+            .map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
         },
         testMatchVariableLengthPathWithPComposes: function() {
           const query = aql`WITH vc1, vc2, vc3
@@ -174,15 +174,15 @@ function aqlMatchStatementVariableLengthTestSuite() {
                                               -[ e2:ec1 * 1..2 ]-> (u:vc3)
                                 RETURN p`;
           const expected = [
-            { "edges" : [ [ "vc1/v0", "vc1/v1" ], 
-                          [ "vc1/v1", "vc2/v1" ],
-                          [ "vc2/v1", "vc3/v1" ] ], 
-              "vertices" : [ "vc1/v0", "vc1/v1", "vc2/v1", "vc3/v1" ] }, 
+            "(vc1/v0) -[]-> (vc1/v1) -[]-> (vc2/v1) -[]-> (vc3/v1)"
           ];
+          expected.sort();
 
-          const result = db._query(query, {}, options).toArray();
-          const r2 = result.map(projectPath);
-          assertEqual(r2, expected, JSON.stringify(result));
+          const result = db._query(query, {}, options)
+            .toArray()
+            .map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
         },
         testMatchVariableLengthPathWithPComposesBack: function() {
           const query = aql`WITH vc1, vc2, vc3
@@ -191,15 +191,15 @@ function aqlMatchStatementVariableLengthTestSuite() {
                                               -[ e3:ec1 ]-> (w:vc3)
                                   RETURN p`;
           const expected = [
-            { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
-                          [ "vc2/v0", "vc3/v0" ],
-                          [ "vc3/v0", "vc3/v1" ] ], 
-              "vertices" : [ "vc1/v0", "vc2/v0", "vc3/v0", "vc3/v1" ] }, 
+            "(vc1/v0) -[]-> (vc2/v0) -[]-> (vc3/v0) -[]-> (vc3/v1)"  
           ];
+          expected.sort();
 
-          const result = db._query(query, {}, options).toArray();
-          const r2 = result.map(projectPath);
-          assertEqual(r2, expected, JSON.stringify(result));
+          const result = db._query(query, {}, options)
+            .toArray()
+            .map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
         },
         testMatchVariableLengthInbound: function() {
           const query = aql`WITH vc1, vc2, vc3
@@ -209,16 +209,17 @@ function aqlMatchStatementVariableLengthTestSuite() {
                                   RETURN p`;
 
           const expected = [
-            { "edges" : [ [ "vc3/v2", "vc3/v3" ], 
-                          [ "vc3/v1", "vc3/v2" ] ], 
-              "vertices" : [ "vc3/v3", "vc3/v2", "vc3/v1" ] }, 
-            { "edges" : [ [ "vc3/v2", "vc3/v3" ] ], 
-              "vertices" : [ "vc3/v3", "vc3/v2" ] }
+            "(vc3/v3) -[]-> (vc3/v2) -[]-> (vc3/v1)",  
+            "(vc3/v3) -[]-> (vc3/v2)"
           ]; 
+          expected.sort();
 
-          const result = db._query(query, {}, options).toArray();
-          const r2 = result.map(projectPath);
-          assertEqual(r2, expected, JSON.stringify(result));
+          const result = db._query(query, {}, options)
+            .toArray()
+            .map(pathToString);
+          result.sort();
+
+          assertEqual(result, expected);
         },
         testMatchVariableLengthAny: function() {
           const query = aql`WITH vc1, vc2, vc3
@@ -228,16 +229,16 @@ function aqlMatchStatementVariableLengthTestSuite() {
                                   RETURN p`;
 
           const expected = [
-            { "edges" : [ [ "vc3/v2", "vc3/v3" ], 
-                          [ "vc3/v1", "vc3/v2" ] ], 
-              "vertices" : [ "vc3/v3", "vc3/v2", "vc3/v1" ] }, 
-            { "edges" : [ [ "vc3/v2", "vc3/v3" ] ], 
-              "vertices" : [ "vc3/v3", "vc3/v2" ] }
+            "(vc3/v3) -[]-> (vc3/v2) -[]-> (vc3/v1)",
+            "(vc3/v3) -[]-> (vc3/v2)"
           ]; 
+          expected.sort();
 
-          const result = db._query(query, {}, options).toArray();
-          const r2 = result.map(projectPath);
-          assertEqual(r2, expected, JSON.stringify(result));
+          const result = db._query(query, {}, options)
+            .toArray()
+            .map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
         },
 
     };
