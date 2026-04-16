@@ -31,29 +31,18 @@ const {aql, db, errors} = require("@arangodb");
 
 
 function aqlMatchStatementVariableLengthTestSuite() {
-  const validatePath = function(path) {
-    for(let i = 0; i < path.edges.length; i++) {
-      assertEqual(path.vertices[i]._id, path.edges[i]._from);
-      assertEqual(path.vertices[i+1]._id, path.edges[i]._to);
-    }
-  };
-
   const pathToString = function(path) {
     return path.vertices.map((v) => `(${v._id})`).join(" -[]-> ");
   };
 
-  const projectPath = function(path) {
-    return { edges: path.edges.map((edge) => [edge._from, edge._to]),
-             vertices: path.vertices.map((vertex) => vertex._id) };
-  };
   const setEq = function(s1, s2) {
-    return s1.size == s2.size && [...s1].every((x) => s2.has(x));
-  } 
+    return s1.size === s2.size && [...s1].every((x) => s2.has(x));
+  };
 
-    const database = "UnitTestsAqlMatchStatementVariableLength";
-    const options = { matchStatement: "experimental" };
+  const database = "UnitTestsAqlMatchStatementVariableLength";
+  const options = { matchStatement: "experimental" };
 
-    return {
+  return {
 
         setUpAll: function () {
             db._createDatabase(database);
