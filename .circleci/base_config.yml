@@ -22,7 +22,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:20"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:21"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-809e7ff4f
@@ -364,6 +364,13 @@ commands:
               fi
               export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py:ignore_noninstrumented_modules=1"
               export SAN_MODE=tsan
+            fi
+
+            if [ "$SAN_MODE" != "" ]; then
+              # When running with sanitizer we have to LOWER the number of file descriptors!
+              # The sanitizer forks off a separate process to handle the symbolization of stack traces,
+              # and the fork operation iterates over all file descriptors, making this extremely expensive.
+              ulimit -n 65536
             fi
 
             # check if promtool is available and if so set the environment variable to enable the according tests

@@ -144,7 +144,7 @@ bool IniFileParser::parseContent(std::string const& filename,
 
       _seen.insert(include);
 
-      if (!basics::FileUtils::isRegularFile(include)) {
+      if (!std::filesystem::is_regular_file(include)) {
         include = basics::FileUtils::buildFilename(
             std::filesystem::path(filename).parent_path().string(), include);
       }
