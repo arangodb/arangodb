@@ -604,7 +604,7 @@ function joinFinishedBGShells(options, clients) {
   return done;
 }
 
-function getClientExitStatus(client, status) {
+function isClientDone(client, status) {
   if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
     let IM = global.instanceManager;
     client.done = true;
@@ -630,7 +630,7 @@ function joinForceBGShells(options, clients) {
     client.status = internal.statusExternal(client.pid, false, 0.1);
     if (client.status.status === 'RUNNING') {
       client.status = internal.killExternal(client.pid, 9 /*SIG_KILL*/, false);
-    } else getClientExitStatus(client, status);
+    } else isClientDone(client, status);
   });
   internal.sleep(1);
   while (done > 0) {
@@ -863,7 +863,7 @@ exports.run = {
   launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
   spawnStressArangoshInBG: spawnStressArangoshInBG,
-  getClientExitStatus: getClientExitStatus,
+  isClientDone: isClientDone,
   joinBGShells: joinBGShells,
   joinForceBGShells: joinForceBGShells,
   joinFinishedBGShells: joinFinishedBGShells,

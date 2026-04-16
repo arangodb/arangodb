@@ -229,7 +229,7 @@ function ClusterTransactionSuite() {
         wait(1.0);
       }
       let status = { success: true };
-      if (!ct.run.getClientExitStatus(bgJob, status)) {
+      if (!ct.run.isClientDone(bgJob, status)) {
         ct.run.joinForceBGShells(IM.options, [bgJob]);
       }
       assertTrue(status.success, bgJob);
