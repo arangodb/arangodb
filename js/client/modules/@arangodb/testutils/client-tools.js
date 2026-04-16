@@ -604,6 +604,23 @@ function joinFinishedBGShells(options, clients) {
   return done;
 }
 
+function getClientExitStatus(client) {
+  if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
+    let IM = global.instanceManager;
+    client.done = true;
+    IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
+    if (client.status.exit === 0) {
+      client.failed = false;
+    } else {
+      success = false;
+      IM.options.cleanup = false;
+      client.failed = true;
+      client.message = readClientLogfile(client);
+    }
+    return true;
+  }
+  return false;
+}
 function joinForceBGShells(options, clients) {
   let IM = global.instanceManager;
   let tries = 0;
@@ -613,18 +630,7 @@ function joinForceBGShells(options, clients) {
     client.status = internal.statusExternal(client.pid, false, 0.1);
     if (client.status.status === 'RUNNING') {
       client.status = internal.killExternal(client.pid, 9 /*SIG_KILL*/, false);
-    } else if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
-      client.done = true;
-      IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
-      if (client.status.exit === 0) {
-        client.failed = false;
-      } else {
-        success = false;
-        IM.options.cleanup = false;
-        client.failed = true;
-        client.message = readClientLogfile(client);
-      }
-    }
+    } else getClientExitStatus(client);
   });
   internal.sleep(1);
   while (done > 0) {
@@ -857,6 +863,7 @@ exports.run = {
   launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
   spawnStressArangoshInBG: spawnStressArangoshInBG,
+  getClientExitStatus: getClientExitStatus,
   joinBGShells: joinBGShells,
   joinForceBGShells: joinForceBGShells,
   joinFinishedBGShells: joinFinishedBGShells,
