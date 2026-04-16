@@ -655,8 +655,8 @@ void V8DealerFeature::copyInstallationFiles() {
     // check if for some reason we will be trying to remove the entire database
     // directory...
     std::error_code copyExistsEc;
-    if (std::filesystem::exists(
-            FileUtils::buildFilename(copyJSPath, "ENGINE"), copyExistsEc)) {
+    if (std::filesystem::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"),
+                                copyExistsEc)) {
       LOG_TOPIC("214d1", FATAL, Logger::V8)
           << "JS installation path '" << copyJSPath << "' seems to be invalid";
       FATAL_ERROR_EXIT();
