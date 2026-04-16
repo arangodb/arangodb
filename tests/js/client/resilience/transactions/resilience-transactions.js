@@ -222,7 +222,7 @@ function ClusterTransactionSuite() {
       // wait for the BG snippet to finish naturally (remaining sleep + commit)
       let deadline = require('internal').time() + 60;
       while (require('internal').time() < deadline) {
-        bgJob.status = require('internal').statusExternal(bgJob.pid)
+        bgJob.status = require('internal').statusExternal(bgJob.pid);
         if (bgJob.status.status !== 'RUNNING') {
           break;
         }
