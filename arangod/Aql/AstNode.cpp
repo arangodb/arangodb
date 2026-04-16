@@ -2759,8 +2759,7 @@ void AstNode::setComputedValue(uint8_t* data) {
 }
 
 /// @brief append the AstNode to an output stream
-std::ostream& operator<<(std::ostream& stream,
-                         AstNode const* node) {
+std::ostream& operator<<(std::ostream& stream, AstNode const* node) {
   if (node != nullptr) {
     stream << AstNode::toString(node);
   }
@@ -2768,8 +2767,7 @@ std::ostream& operator<<(std::ostream& stream,
 }
 
 /// @brief append the AstNode to an output stream
-std::ostream& operator<<(std::ostream& stream,
-                         AstNode const& node) {
+std::ostream& operator<<(std::ostream& stream, AstNode const& node) {
   stream << AstNode::toString(&node);
   return stream;
 }
