@@ -3,7 +3,8 @@ defmodule ToastTest.Formatting.PostExecSummary do
 
   import ToastTest.Formatting
 
-  alias ToastTest.{Formatting.Issues, SuiteResult}
+  alias ToastTest.Formatting.{Color, Issues, Utils}
+  alias ToastTest.SuiteResult
 
   @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :timeout]
 
@@ -58,52 +59,43 @@ defmodule ToastTest.Formatting.PostExecSummary do
 
   defp print_warnings(warnings) do
     colors = IO.ANSI.enabled?()
-    bar = String.duplicate("!", 80)
-
-    IO.puts("")
-    IO.puts(colorize(bar, :yellow, colors))
-    IO.puts(colorize(" WARNINGS", [:yellow, :bold], colors))
-    IO.puts(colorize(bar, :yellow, colors))
+    Utils.print_header("WARNINGS", colors, Color.warning())
 
     for warning <- warnings do
-      IO.puts("")
-      IO.puts("  " <> colorize(warning, :yellow, colors))
+      IO.puts("  " <> colorize(warning, :yellow, colors) <> "\n")
     end
   end
 
   defp print_section(type, issues, colors) do
     {label, color} = section_header(type, length(issues))
-    bar = String.duplicate("\u2550", 80)
-
-    IO.puts("\n#{colorize(bar, color, colors)}")
-    IO.puts(colorize(" #{label}", color, colors))
-    IO.puts(colorize(bar, color, colors))
+    Utils.print_header(label, colors, color)
 
     Enum.reduce(issues, 1, fn issue, counter ->
       print_issue(type, issue, counter, colors)
     end)
   end
 
-  defp section_header(:test_failure, count), do: {"TEST FAILURES (#{count})", :red}
-  defp section_header(:sanitizer_report, count), do: {"SANITIZER REPORTS (#{count})", :yellow}
-  defp section_header(:crash, count), do: {"CRASHES (#{count})", :red}
-  defp section_header(:timeout, count), do: {"TIMEOUTS (#{count})", :red}
+  defp section_header(:test_failure, count), do: {"TEST FAILURES (#{count})", Color.failure()}
+  defp section_header(:crash, count), do: {"CRASHES (#{count})", Color.crash()}
+  defp section_header(:timeout, count), do: {"TIMEOUTS (#{count})", Color.timeout()}
+
+  defp section_header(:sanitizer_report, count),
+    do: {"SANITIZER REPORTS (#{count})", Color.sanitizer()}
 
   # --- Test failures ---
 
   defp print_issue(:test_failure, issue, counter, _colors) do
     %{detail: %{test: %ExUnit.Test{state: {:failed, failures}} = test}} = issue
 
-    formatted =
-      ExUnit.Formatter.format_test_failure(
-        test,
-        failures,
-        counter,
-        :infinity,
-        &formatter_cb/2
-      )
+    ExUnit.Formatter.format_test_failure(
+      test,
+      failures,
+      counter,
+      :infinity,
+      &formatter_cb/2
+    )
+    |> IO.puts()
 
-    IO.puts("\n#{formatted}")
     counter + 1
   end
 
@@ -193,8 +185,8 @@ defmodule ToastTest.Formatting.PostExecSummary do
 
   defp print_attribution(scope, server, colors) do
     case Issues.format_scope(scope) do
-      nil -> IO.puts("\n  #{colorize(server, :cyan, colors)}")
-      label -> IO.puts("\n  #{colorize(server, :cyan, colors)} \u2014 #{label}")
+      nil -> IO.puts("  #{colorize(server, :cyan, colors)}")
+      label -> IO.puts("  #{colorize(server, :cyan, colors)} \u2014 #{label}")
     end
   end
 

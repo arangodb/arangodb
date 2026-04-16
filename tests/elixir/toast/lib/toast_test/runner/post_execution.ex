@@ -2,6 +2,7 @@ defmodule ToastTest.Runner.PostExecution do
   @moduledoc false
 
   alias ToastTest.{EventStore, SuiteResult}
+  alias ToastTest.Formatting.{Color, Utils}
   alias ToastTest.Runner.ResultBuilder
 
   require Logger
@@ -41,6 +42,10 @@ defmodule ToastTest.Runner.PostExecution do
   end
 
   defp build_suite_result(servers, test_data, test_config) do
+    Utils.print_header("TEST EXECUTION FINISHED", IO.ANSI.enabled?(), Color.info())
+
+    Logger.info("Running post-execution analysis...")
+
     snapshot = EventStore.snapshot()
 
     Logger.debug("Collecting artifacts")

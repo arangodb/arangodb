@@ -27,19 +27,10 @@ defmodule ToastTest.Abort do
       end)
 
     if first? do
-      bar = String.duplicate("\u2550", 80)
-
-      IO.puts(
-        IO.ANSI.format([
-          :red,
-          bar,
-          "\n ",
-          display_reason(reason),
-          "\n ABORTING FURTHER TESTS\n",
-          bar,
-          "\n",
-          :reset
-        ])
+      ToastTest.Formatting.Utils.print_header(
+        "#{display_reason(reason)}\n  ABORTING FURTHER TESTS",
+        IO.ANSI.enabled?(),
+        ToastTest.Formatting.Color.crash()
       )
     end
 

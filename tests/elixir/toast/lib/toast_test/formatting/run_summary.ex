@@ -2,17 +2,14 @@ defmodule ToastTest.Formatting.RunSummary do
   @moduledoc false
 
   import ToastTest.Formatting
+  alias ToastTest.Formatting.{Color, Utils}
 
   @spec print([ToastTest.SuiteResult.t()], non_neg_integer()) :: :ok
   def print(suite_results, elapsed_us) do
     {mod_counts, test_counts} = count(suite_results)
     colors = IO.ANSI.enabled?()
-    bar = String.duplicate("\u2500", 80)
 
-    IO.puts("")
-    IO.puts(colorize(bar, :blue, colors))
-    IO.puts(colorize(" SUMMARY", :blue, colors))
-
+    Utils.print_header("SUMMARY", colors, Color.summary())
     IO.puts(format_line("Modules", mod_counts, colors))
     IO.puts(format_line("Test cases", test_counts, colors))
     IO.puts("  Runtime:     #{format_duration(elapsed_us)}")
