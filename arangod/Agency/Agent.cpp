@@ -34,6 +34,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
@@ -485,6 +486,10 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
     return priv_rpc_ret_t(false, t);
   }
 
+  TRI_IF_FAILURE("Agent::recvAppendEntriesRPC::drop") {
+    return priv_rpc_ret_t(false, t);
+  }
+
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
     LOG_TOPIC("449b2", DEBUG, Logger::AGENCY)
@@ -675,6 +680,12 @@ void Agent::sendAppendEntriesRPC() {
       Store snapshot("snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
+
+      TRI_IF_FAILURE("Agent::sendAppendEntriesRPC::pauseAfterGetEntries") {
+        if (needSnapshot) {
+          std::this_thread::sleep_for(std::chrono::seconds(5));
+        }
+      }
 
       if (lowest > lastConfirmed || needSnapshot) {
         // Ooops, compaction has thrown away so many log entries that

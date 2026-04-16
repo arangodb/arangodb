@@ -178,6 +178,10 @@ class State {
     return os;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  friend class StateTest;
+#endif
+
   /// @brief compact state machine
   bool compact(arangodb::consensus::index_t cind,
                arangodb::consensus::index_t keep);
