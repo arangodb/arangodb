@@ -73,10 +73,11 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testMatchVariableLengthPathVariableEnd: function() {
-          const query = aql`FOR v IN ["vc1/v0"]
-                              FOR w IN vc3
-                              MATCH (v) -[ e:ec1 * 1..2 ]-> (w)
-                              RETURN [v, e, w]`;
+          const query = aql`WITH vc1, vc2, vc3
+                              FOR v IN ["vc1/v0"]
+                                FOR w IN vc3
+                                  MATCH (v) -[ e:ec1 * 1..2 ]-> (w)
+                                  RETURN [v, e, w]`;
 
           const expected = [ 
             [ "vc1/v0", 
@@ -94,9 +95,10 @@ function aqlMatchStatementVariableLengthTestSuite() {
 
 
         testMatchVariableLengthPathCollectionEnd: function() {
-          const query = aql`FOR v IN ["vc1/v0"]
-                              MATCH (v) -[ e:ec1 * 1..2 ]-> (w:vc1)
-                              RETURN [v, e, w]`;
+          const query = aql`WITH vc1, vc2, vc3
+                              FOR v IN ["vc1/v0"]
+                                MATCH (v) -[ e:ec1 * 1..2 ]-> (w:vc1)
+                                RETURN [v, e, w]`;
           const expected = [ 
             [ "vc1/v0", 
               { "edges" : [ [ "vc1/v0", "vc1/v1" ] ], 
@@ -117,10 +119,11 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testMatchVariableLengthPathWithPWithVariableEnd: function() {
-          const query = aql`FOR v IN ["vc1/v0"]
-                              FOR w IN vc3
-                                MATCH p = (v) -[ e:ec1 * 2..3 ]-> (w)
-                                RETURN p`;
+          const query = aql`WITH vc1, vc2, vc3
+                              FOR v IN ["vc1/v0"]
+                                FOR w IN vc3
+                                  MATCH p = (v) -[ e:ec1 * 2..3 ]-> (w)
+                                  RETURN p`;
 
           const expected = [
             { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
@@ -145,9 +148,10 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthPathWithPWithCollectionEnd: function() {
-          const query = aql`FOR v IN ["vc1/v0"]
-                              MATCH p = (v) -[ e:ec1 * 2..3 ]-> (w:vc1)
-                                RETURN p`;
+          const query = aql`WITH vc1, vc2, vc3
+                              FOR v IN ["vc1/v0"]
+                                MATCH p = (v) -[ e:ec1 * 2..3 ]-> (w:vc1)
+                                  RETURN p`;
 
           const expected = [
             { "edges" : [ [ "vc1/v0", "vc1/v1" ], 
@@ -164,7 +168,8 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthPathWithPComposes: function() {
-          const query = aql`FOR v IN [{_id: "vc1/v0"}]
+          const query = aql`WITH vc1, vc2, vc3
+                              FOR v IN [{_id: "vc1/v0"}]
                                 MATCH p = (v) -[ e1:ec1 ]-> (w:vc1)
                                               -[ e2:ec1 * 1..2 ]-> (u:vc3)
                                 RETURN p`;
@@ -180,10 +185,11 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthPathWithPComposesBack: function() {
-          const query = aql`FOR v IN [{_id: "vc1/v0"}]
-                              MATCH p = (v) -[ e2:ec1 * 1..2 ]-> (u:vc3)
-                                            -[ e3:ec1 ]-> (w:vc3)
-                                RETURN p`;
+          const query = aql`WITH vc1, vc2, vc3
+                              FOR v IN [{_id: "vc1/v0"}]
+                                MATCH p = (v) -[ e2:ec1 * 1..2 ]-> (u:vc3)
+                                              -[ e3:ec1 ]-> (w:vc3)
+                                  RETURN p`;
           const expected = [
             { "edges" : [ [ "vc1/v0", "vc2/v0" ], 
                           [ "vc2/v0", "vc3/v0" ],
@@ -196,10 +202,11 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthInbound: function() {
-          const query = aql`FOR v IN ["vc3/v3"]
-                              FOR w IN vc3
-                                MATCH p = (v) <-[ e:ec1 * 1..2 ]- (w)
-                                RETURN p`;
+          const query = aql`WITH vc1, vc2, vc3
+                              FOR v IN ["vc3/v3"]
+                                FOR w IN vc3
+                                  MATCH p = (v) <-[ e:ec1 * 1..2 ]- (w)
+                                  RETURN p`;
 
           const expected = [
             { "edges" : [ [ "vc3/v2", "vc3/v3" ], 
@@ -214,10 +221,11 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(r2, expected, JSON.stringify(result));
         },
         testMatchVariableLengthAny: function() {
-          const query = aql`FOR v IN ["vc3/v3"]
-                              FOR w IN vc3
-                                MATCH p = (v) -[ e:ec1 * 1..2 ]- (w)
-                                RETURN p`;
+          const query = aql`WITH vc1, vc2, vc3
+                              FOR v IN ["vc3/v3"]
+                                FOR w IN vc3
+                                  MATCH p = (v) -[ e:ec1 * 1..2 ]- (w)
+                                  RETURN p`;
 
           const expected = [
             { "edges" : [ [ "vc3/v2", "vc3/v3" ], 
