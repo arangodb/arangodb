@@ -460,6 +460,10 @@ function VectorIndexLargeLimitTestSuite() {
         testFetchLargeNumberOfDocsWithMaxNProbe: function() {
             const limits = [1500, 3000, 4000, largeLimitNumberOfDocs];
 
+            const actualCollectionCount = collection.count();
+            assertEqual(actualCollectionCount, largeLimitNumberOfDocs,
+                `Collection count mismatch: actual=${actualCollectionCount} vs expected=${largeLimitNumberOfDocs}`);
+
             for (const limit of limits) {
                 const query = aql`
                   FOR d IN ${collection}
@@ -469,17 +473,26 @@ function VectorIndexLargeLimitTestSuite() {
 
                 const queryResults = db._query(query, {count: true}, {fullCount: true});
                 const results = queryResults.toArray();
-                assertEqual(limit, results.length,
-                    "Expected " + limit + " results");
 
                 const uniqueResults = new Set(results);
-                assertEqual(limit, uniqueResults.size,
-                    "All " + limit + " returned documents should be unique");
-
-                assertEqual(queryResults.count(), limit, `The count assertion failed on query: ${JSON.stringify(query)}`);
-
                 const stats = queryResults.getExtra().stats;
-                assertEqual(stats.fullCount, largeLimitNumberOfDocs, `The fullCount failed on query: ${JSON.stringify(query)}`);
+
+                const diag = `limit=${limit}, results.length=${results.length}, ` +
+                    `unique=${uniqueResults.size}, count=${queryResults.count()}, ` +
+                    `fullCount=${stats.fullCount}, expectedFullCount=${largeLimitNumberOfDocs}, ` +
+                    `collectionCount=${actualCollectionCount}, nLists=${nLists}`;
+
+                assertEqual(limit, results.length,
+                    `Expected ${limit} results. ${diag}`);
+
+                assertEqual(limit, uniqueResults.size,
+                    `All ${limit} returned documents should be unique. ${diag}`);
+
+                assertEqual(queryResults.count(), limit,
+                    `Count mismatch. ${diag}`);
+
+                assertEqual(stats.fullCount, largeLimitNumberOfDocs,
+                    `FullCount mismatch. ${diag}`);
             }
         },
     };
