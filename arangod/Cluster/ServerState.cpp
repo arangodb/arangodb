@@ -128,7 +128,8 @@ void ServerState::findHost(std::string const& fallback) {
 
   // Now look at the contents of the file /etc/machine-id, if it exists:
   std::string name = "/etc/machine-id";
-  if (arangodb::basics::FileUtils::exists(name)) {
+  std::error_code existsEc;
+  if (std::filesystem::exists(name, existsEc)) {
     try {
       _host = arangodb::basics::FileUtils::slurp(name);
       while (!_host.empty() && (_host.back() == '\r' || _host.back() == '\n' ||
@@ -617,7 +618,8 @@ std::string ServerState::getUuidFilename() const {
 
 bool ServerState::hasPersistedId() {
   std::string uuidFilename = getUuidFilename();
-  return FileUtils::exists(uuidFilename);
+  std::error_code existsEc;
+  return std::filesystem::exists(uuidFilename, existsEc);
 }
 
 bool ServerState::writePersistedId(std::string const& id) {

@@ -23,6 +23,8 @@
 
 #include "DatabasePathFeature.h"
 
+#include <filesystem>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -154,7 +156,8 @@ void DatabasePathFeature::prepare() {
   }
 
   if (_options.requiredDirectoryState == "non-existing") {
-    if (basics::FileUtils::isDirectory(_options.directory)) {
+    std::error_code dirEc;
+    if (std::filesystem::is_directory(_options.directory, dirEc)) {
       LOG_TOPIC("25452", FATAL, arangodb::Logger::STARTUP)
           << "database directory '" << _options.directory
           << "' already exists, but option "
@@ -165,7 +168,8 @@ void DatabasePathFeature::prepare() {
   }
 
   // existing, empty, populated when we get here
-  if (!basics::FileUtils::isDirectory(_options.directory)) {
+  std::error_code dirEc;
+  if (!std::filesystem::is_directory(_options.directory, dirEc)) {
     LOG_TOPIC("3b1df", FATAL, arangodb::Logger::STARTUP)
         << "database directory '" << _options.directory
         << "' does not exist, but option '--database.required-directory-state' "
@@ -181,7 +185,8 @@ void DatabasePathFeature::prepare() {
 
   std::vector<std::string> files;
   for (auto const& it : basics::FileUtils::listFiles(_options.directory)) {
-    if (it.empty() || basics::FileUtils::isDirectory(it)) {
+    std::error_code entryDirEc;
+    if (it.empty() || std::filesystem::is_directory(it, entryDirEc)) {
       continue;
     }
 
@@ -214,7 +219,8 @@ void DatabasePathFeature::prepare() {
 
 void DatabasePathFeature::start() {
   // create base directory if it does not exist
-  if (!basics::FileUtils::isDirectory(_options.directory)) {
+  std::error_code dirEc;
+  if (!std::filesystem::is_directory(_options.directory, dirEc)) {
     std::string systemErrorStr;
     long errorNo;
 

@@ -62,7 +62,8 @@ void TimeZoneFeature::prepareTimeZoneData(
     std::string test_exe =
         FileUtils::buildFilename(binaryExecutionPath, "tzdata");
 
-    if (FileUtils::isDirectory(test_exe)) {
+    std::error_code dirEc;
+    if (std::filesystem::is_directory(test_exe, dirEc)) {
       test_exe = basics::FileUtils::absolutePath(test_exe).string();
       tz_path = std::filesystem::path(test_exe).make_preferred().string();
     } else {
@@ -77,7 +78,8 @@ void TimeZoneFeature::prepareTimeZoneData(
     }
   }
 
-  if (FileUtils::isDirectory(tz_path)) {
+  std::error_code dirEc;
+  if (std::filesystem::is_directory(tz_path, dirEc)) {
     date::set_install(tz_path);
   } else {
     LOG_TOPIC("67bdc", FATAL, arangodb::Logger::STARTUP)

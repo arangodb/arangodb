@@ -23,6 +23,8 @@
 
 #include "GeneralServer/AcceptorUnixDomain.h"
 
+#include <filesystem>
+
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -39,13 +41,17 @@ using namespace arangodb::rest;
 
 void AcceptorUnixDomain::open() {
   std::string path(((EndpointUnixDomain*)_endpoint)->path());
-  if (basics::FileUtils::exists(path)) {
+  std::error_code existsEc;
+  if (std::filesystem::exists(path, existsEc)) {
     // socket file already exists
     LOG_TOPIC("e0ae1", WARN, arangodb::Logger::FIXME)
         << "socket file '" << path << "' already exists.";
 
     // delete previously existing socket file
-    if (basics::FileUtils::remove(path) == TRI_ERROR_NO_ERROR) {
+    std::error_code ec;
+    bool const deleted =
+        std::filesystem::remove(std::filesystem::path(path), ec);
+    if (!ec && deleted) {
       LOG_TOPIC("2b5b6", WARN, arangodb::Logger::FIXME)
           << "deleted previously existing socket file '" << path << "'";
     } else {
@@ -109,7 +115,10 @@ void AcceptorUnixDomain::close() {
     _ctx.io_context.wrap([this]() {
       _acceptor.close();
       std::string path = static_cast<EndpointUnixDomain*>(_endpoint)->path();
-      if (basics::FileUtils::remove(path) != TRI_ERROR_NO_ERROR) {
+      std::error_code ec;
+      bool const deleted =
+          std::filesystem::remove(std::filesystem::path(path), ec);
+      if (ec || !deleted) {
         LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
             << "unable to remove socket file '" << path << "'";
       }

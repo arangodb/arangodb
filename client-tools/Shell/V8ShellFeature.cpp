@@ -288,8 +288,8 @@ void V8ShellFeature::copyInstallationFiles() {
       << _copyDirectory << "'";
 
   _nodeModulesDirectory = _startupDirectory;
-
-  if (FileUtils::exists(_copyDirectory)) {
+  std::error_code ec;
+  if (std::filesystem::exists(_copyDirectory, ec)) {
     auto res = TRI_ERROR_NO_ERROR;
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
@@ -651,7 +651,8 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
   bool ok = true;
 
   for (auto const& file : files) {
-    if (!FileUtils::exists(file)) {
+    std::error_code ec;
+    if (!std::filesystem::exists(file, ec)) {
       LOG_TOPIC("4beec", ERR, arangodb::Logger::FIXME)
           << "error: JavaScript file not found: '" << file << "'";
       ok = false;
@@ -791,7 +792,8 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   uint32_t i = 0;
 
   for (auto const& file : files) {
-    if (!FileUtils::exists(file)) {
+    std::error_code ec;
+    if (!std::filesystem::exists(file, ec)) {
       LOG_TOPIC("51bdb", ERR, arangodb::Logger::FIXME)
           << "error: JavaScript file not found: '" << file << "'";
       ok = false;
@@ -1066,7 +1068,8 @@ void V8ShellFeature::initGlobals() {
   LOG_TOPIC("5095d", DEBUG, Logger::V8)
       << "checking for existence of version-specific startup-directory '"
       << versionedPath << "'";
-  if (basics::FileUtils::isDirectory(versionedPath)) {
+  std::error_code dirEc;
+  if (std::filesystem::is_directory(versionedPath, dirEc)) {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
@@ -1078,7 +1081,8 @@ void V8ShellFeature::initGlobals() {
     LOG_TOPIC("2abe3", DEBUG, Logger::V8)
         << "checking for existence of version-specific module-directory '"
         << versionedPath << "'";
-    if (basics::FileUtils::isDirectory(versionedPath)) {
+    std::error_code moduleDirEc;
+    if (std::filesystem::is_directory(versionedPath, moduleDirEc)) {
       // version-specific js path exists!
       it = versionedPath;
     }

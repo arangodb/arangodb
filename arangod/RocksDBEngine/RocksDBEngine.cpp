@@ -23,6 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine.h"
+
+#include <filesystem>
+
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -1000,7 +1003,8 @@ void RocksDBEngine::start() {
   _path = _databasePathFeature.subdirectoryName("engine-rocksdb");
 
   [[maybe_unused]] bool createdEngineDir = false;
-  if (!basics::FileUtils::isDirectory(_path)) {
+  std::error_code engineDirEc;
+  if (!std::filesystem::is_directory(_path, engineDirEc)) {
     std::string systemErrorStr;
     long errorNo;
 
@@ -1049,7 +1053,8 @@ void RocksDBEngine::start() {
 
 #ifdef USE_SST_INGESTION
   _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
-  if (basics::FileUtils::isDirectory(_idxPath)) {
+  std::error_code idxDirEc;
+  if (std::filesystem::is_directory(_idxPath, idxDirEc)) {
     for (auto const& fileName : TRI_FullTreeDirectory(_idxPath.c_str())) {
       TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
     }
@@ -2862,8 +2867,10 @@ void RocksDBEngine::pruneWalFiles() {
       LOG_TOPIC("68e4a", DEBUG, Logger::ENGINES)
           << "deleting RocksDB WAL file '" << (*it).first << "'";
       rocksdb::Status s;
-      if (basics::FileUtils::exists(basics::FileUtils::buildFilename(
-              _dbOptions.wal_dir, (*it).first))) {
+      std::error_code existsEc;
+      if (std::filesystem::exists(
+              basics::FileUtils::buildFilename(_dbOptions.wal_dir, (*it).first),
+              existsEc)) {
         // only attempt file deletion if the file actually exists.
         // otherwise RocksDB may complain about non-existing files and log a
         // big error message

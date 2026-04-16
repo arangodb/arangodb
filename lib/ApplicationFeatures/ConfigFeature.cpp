@@ -117,7 +117,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   // always prefer an explicitly given config file
   if (!_options.file.empty()) {
-    if (!FileUtils::exists(_options.file)) {
+    std::error_code existsEc;
+    if (!std::filesystem::exists(_options.file, existsEc)) {
       LOG_TOPIC("f21f9", FATAL, Logger::CONFIG)
           << "cannot read config file '" << _options.file << "'";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
@@ -199,7 +200,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     LOG_TOPIC("393e7", TRACE, Logger::CONFIG)
         << "checking config file '" << name << "'";
 
-    if (FileUtils::exists(name)) {
+    std::error_code existsEc;
+    if (std::filesystem::exists(name, existsEc)) {
       LOG_TOPIC("e6bd8", DEBUG, Logger::CONFIG)
           << "found config file '" << name << "'";
       filename = name;
@@ -210,7 +212,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
       name = FileUtils::buildFilename(location, "arangoimp.conf");
       LOG_TOPIC("b629e", TRACE, Logger::CONFIG)
           << "checking config file '" << name << "'";
-      if (FileUtils::exists(name)) {
+      std::error_code existsEc;
+      if (std::filesystem::exists(name, existsEc)) {
         LOG_TOPIC("fc54e", DEBUG, Logger::CONFIG)
             << "found config file '" << name << "'";
         filename = name;

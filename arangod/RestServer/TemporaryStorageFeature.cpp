@@ -21,8 +21,6 @@
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <filesystem>
-
 #include "TemporaryStorageFeature.h"
 
 #include <filesystem>
@@ -33,7 +31,6 @@
 #include "StorageEngine/StorageEngineFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
@@ -264,7 +261,8 @@ void TemporaryStorageFeature::prepare() {
     return;
   }
 
-  if (basics::FileUtils::isDirectory(_options.basePath)) {
+  std::error_code dirEc;
+  if (std::filesystem::is_directory(_options.basePath, dirEc)) {
     // intentionally do not set _cleanedUpDirectory flag here
     cleanupDirectory();
   } else {

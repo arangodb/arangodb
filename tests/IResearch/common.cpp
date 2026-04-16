@@ -482,21 +482,24 @@ static void findIResearchTestResources() {
     // environment variable not set, so try to auto-detect the location
     testResourceDir = ".";
     do {
-      if (basics::FileUtils::isDirectory(
-              basics::FileUtils::buildFilename(testResourceDir, toBeFound))) {
+      std::error_code dirEc;
+      if (std::filesystem::is_directory(
+              basics::FileUtils::buildFilename(testResourceDir, toBeFound),
+              dirEc)) {
         testResourceDir =
             basics::FileUtils::buildFilename(testResourceDir, toBeFound);
         return;
       }
       testResourceDir = basics::FileUtils::buildFilename(testResourceDir, "..");
-      if (!basics::FileUtils::isDirectory(testResourceDir)) {
+      if (!std::filesystem::is_directory(testResourceDir, dirEc)) {
         testResourceDir = IResearch_test_resource_dir;
         break;
       }
     } while (true);
   }
 
-  if (!basics::FileUtils::isDirectory(testResourceDir)) {
+  std::error_code dirEc;
+  if (!std::filesystem::is_directory(testResourceDir, dirEc)) {
     LOG_TOPIC("45f9d", ERR, Logger::FIXME)
         << "unable to find directory for IResearch test resources. use "
            "environment variable IRESEARCH_TEST_RESOURCE_DIR to set it";

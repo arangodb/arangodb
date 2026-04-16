@@ -40,6 +40,7 @@
 #include <array>
 #include <atomic>
 #include <cmath>
+#include <filesystem>
 #include <cstdint>
 #include <cstdlib>
 #include <string>
@@ -103,7 +104,8 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const versionFilename("/proc/version");
 
-    if (basics::FileUtils::exists(versionFilename)) {
+    std::error_code existsEc;
+    if (std::filesystem::exists(versionFilename, existsEc)) {
       _operatingSystem =
           basics::StringUtils::trim(basics::FileUtils::slurp(versionFilename));
     }
@@ -120,7 +122,8 @@ void EnvironmentFeature::prepare() {
       std::string const procFilename =
           absl::StrCat("/proc/", parentId, "/stat");
 
-      if (basics::FileUtils::exists(procFilename)) {
+      std::error_code existsEc;
+      if (std::filesystem::exists(procFilename, existsEc)) {
         std::string content = basics::FileUtils::slurp(procFilename);
         std::string_view procName = ::trimProcName(content);
         if (!procName.empty()) {
@@ -169,7 +172,8 @@ void EnvironmentFeature::prepare() {
 
     std::string const filename("/proc/cpu/alignment");
     try {
-      if (basics::FileUtils::exists(filename)) {
+      std::error_code existsEc;
+      if (std::filesystem::exists(filename, existsEc)) {
         std::string const cpuAlignment = basics::FileUtils::slurp(filename);
         auto start = cpuAlignment.find("User faults:");
 
@@ -229,7 +233,8 @@ void EnvironmentFeature::prepare() {
 
     std::string const cpuInfoFilename("/proc/cpuinfo");
     try {
-      if (basics::FileUtils::exists(cpuInfoFilename)) {
+      std::error_code existsEc;
+      if (std::filesystem::exists(cpuInfoFilename, existsEc)) {
         std::string const cpuInfo = basics::FileUtils::slurp(cpuInfoFilename);
         auto start = cpuInfo.find("ARMv6");
 
@@ -299,7 +304,8 @@ void EnvironmentFeature::prepare() {
       //   policy that attempts to prevent any overcommit of memory.
       std::string const ratioFilename("/proc/sys/vm/overcommit_ratio");
 
-      if (basics::FileUtils::exists(ratioFilename)) {
+      std::error_code existsEc;
+      if (std::filesystem::exists(ratioFilename, existsEc)) {
         content = basics::FileUtils::slurp(ratioFilename);
         uint64_t r = basics::StringUtils::uint64(content);
         // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
@@ -352,7 +358,8 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const ipV6Filename("/proc/net/if_inet6");
 
-    if (!basics::FileUtils::exists(ipV6Filename)) {
+    std::error_code existsEc;
+    if (!std::filesystem::exists(ipV6Filename, existsEc)) {
       LOG_TOPIC("0f48d", INFO, arangodb::Logger::COMMUNICATION)
           << "IPv6 support seems to be disabled";
     }
@@ -364,7 +371,8 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const portFilename("/proc/sys/net/ipv4/ip_local_port_range");
 
-    if (basics::FileUtils::exists(portFilename)) {
+    std::error_code existsEc;
+    if (std::filesystem::exists(portFilename, existsEc)) {
       std::string content = basics::FileUtils::slurp(portFilename);
       auto parts = basics::StringUtils::split(content, '\t');
       if (parts.size() == 2) {
@@ -396,7 +404,8 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const recycleFilename("/proc/sys/net/ipv4/tcp_tw_recycle");
 
-    if (basics::FileUtils::exists(recycleFilename)) {
+    std::error_code existsEc;
+    if (std::filesystem::exists(recycleFilename, existsEc)) {
       std::string content = basics::FileUtils::slurp(recycleFilename);
       uint64_t v = basics::StringUtils::uint64(content);
       if (v != 0) {
@@ -431,7 +440,8 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const reclaimFilename("/proc/sys/vm/zone_reclaim_mode");
 
-    if (basics::FileUtils::exists(reclaimFilename)) {
+    std::error_code existsEc;
+    if (std::filesystem::exists(reclaimFilename, existsEc)) {
       std::string content = basics::FileUtils::slurp(reclaimFilename);
       uint64_t v = basics::StringUtils::uint64(content);
       if (v != 0) {
@@ -460,7 +470,8 @@ void EnvironmentFeature::prepare() {
 
   for (auto const& file : paths) {
     try {
-      if (basics::FileUtils::exists(file)) {
+      std::error_code existsEc;
+      if (std::filesystem::exists(file, existsEc)) {
         std::string value = basics::FileUtils::slurp(file);
         size_t start = value.find('[');
         size_t end = value.find(']');
@@ -483,13 +494,13 @@ void EnvironmentFeature::prepare() {
     }
   }
 
-  bool numa = FileUtils::exists("/sys/devices/system/node/node1");
-
-  if (numa) {
+  std::error_code existsEc;
+  if (std::filesystem::exists("/sys/devices/system/node/node1", existsEc)) {
     try {
       std::string const mapsFilename("/proc/self/numa_maps");
 
-      if (basics::FileUtils::exists(mapsFilename)) {
+      std::error_code existsEc;
+      if (std::filesystem::exists(mapsFilename, existsEc)) {
         std::string content = basics::FileUtils::slurp(mapsFilename);
         auto values = basics::StringUtils::split(content, '\n');
 
@@ -515,7 +526,8 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const settingsFilename("/proc/sys/kernel/randomize_va_space");
 
-    if (basics::FileUtils::exists(settingsFilename)) {
+    std::error_code existsEc;
+    if (std::filesystem::exists(settingsFilename, existsEc)) {
       std::string content = basics::FileUtils::slurp(settingsFilename);
       uint64_t v = basics::StringUtils::uint64(content);
       // from man proc:

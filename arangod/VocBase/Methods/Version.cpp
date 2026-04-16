@@ -102,7 +102,8 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
   }
 
   std::string versionFile = vocbase->engine().versionFilename(vocbase->id());
-  if (!basics::FileUtils::exists(versionFile)) {
+  std::error_code existsEc;
+  if (!std::filesystem::exists(versionFile, existsEc)) {
     LOG_TOPIC("fde3f", DEBUG, Logger::STARTUP)
         << "VERSION file '" << versionFile << "' not found";
     return VersionResult{VersionResult::NO_VERSION_FILE, 0, 0, {}};
