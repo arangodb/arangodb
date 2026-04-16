@@ -15,6 +15,7 @@
       - paths_server
       - version
       - shell_client_large
+      - legacy
 
 # Single Server Replication Tests
 - replication_shell:

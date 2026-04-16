@@ -39,6 +39,7 @@ const functionsDocumentation = {
   'shell_client_transaction': 'transaction tests',
   'shell_client_replication2_recovery': 'replication2 cluster recovery tests',
   'shell_client_traffic': 'traffic metrics tests',
+  'legacy': 'legacy tests',
 };
 const optionsDocumentation = [
   '   - `skipGraph`: if set to true the graph tests are skipped'
@@ -67,6 +68,7 @@ const testPaths = {
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
   'shell_client_traffic': [ tu.pathForTesting('client/shell/traffic') ],
+  'legacy': [ tu.pathForTesting('client/legacy') ],
 };
 
 /// ensure that we have enough db servers in cluster tests
@@ -360,6 +362,23 @@ function shellClientReplication2Recovery(options) {
   return rc;
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: legacy
+// //////////////////////////////////////////////////////////////////////////////
+
+function legacy(options) {
+  let name = 'legacy';
+  let testCases = tu.scanTestPaths(testPaths.legacy, options);
+  testCases = tu.splitBuckets(options, testCases);
+
+  var opts = ensureServers(options, 1);
+  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+
+  let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
+}
+
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_v8'] = shellV8;
@@ -375,6 +394,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['shell_client_transaction'] = shellClientTransaction;
   testFns['shell_client_replication2_recovery'] = shellClientReplication2Recovery;
   testFns['shell_client_traffic'] = shellClientTraffic;
+  testFns['legacy'] = legacy;
 
   opts['skipAql'] = false;
   opts['skipRanges'] = true;
