@@ -405,7 +405,7 @@ function VectorIndexLargeLimitTestSuite() {
     let collection;
     let randomPoint;
     const largeLimitDimension = 128;
-    const largeLimitNumberOfDocs = 4500;
+    const largeLimitNumberOfDocs = 5000;
     const nLists = 32;
     const seed = generateSeed();
 
@@ -458,7 +458,7 @@ function VectorIndexLargeLimitTestSuite() {
         },
 
         testFetchLargeNumberOfDocsWithMaxNProbe: function() {
-            const limits = [1500, 3000, 4000];
+            const limits = [1500, 3000, 4000, largeLimitNumberOfDocs];
 
             for (const limit of limits) {
                 const query = aql`
@@ -479,7 +479,7 @@ function VectorIndexLargeLimitTestSuite() {
                 assertEqual(queryResults.count(), limit);
 
                 const stats = queryResults.getExtra().stats;
-                assertEqual(stats.fullCount, largeLimitNumberOfDocs);
+                assertEqual(stats.fullCount, largeLimitNumberOfDocs, `The fullCount failed on query: ${JSON.stringify(query)}`);
             }
         },
     };
