@@ -2590,11 +2590,13 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
         auto traversalVertexOutputId =
             createPropertyAccess(traversalVertexOutputVar, "_id");
-        auto vertexCollectionName = node->getMember(1);
+        auto vertexCollection = node->getMember(1);
+        auto vertexCollectionName = vertexCollection->getStringView();
 
         auto args = _ast->createNodeArray();
         args->addMember(traversalVertexOutputId);
-        args->addMember(vertexCollectionName);
+        args->addMember(_ast->createNodeValueString(
+            vertexCollectionName.data(), vertexCollectionName.length()));
 
         auto root =
             _ast->createNodeFunctionCall("IS_SAME_COLLECTION", args, true);
