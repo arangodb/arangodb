@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -25,7 +25,7 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
+#include "Aql/Optimizer/Utils/LateMaterializedCommon.h"
 #include "Aql/Projections.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExpressionContext.h"

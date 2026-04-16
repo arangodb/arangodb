@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,8 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include <memory>
@@ -32,7 +33,7 @@ struct OptimizerRule;
 
 /// @brief replaces the last element on path access with the direct output of
 /// vertex/edge
-void optimizeEnumeratePathsFilterRule(Optimizer* opt,
+void replaceLastAccessOnGraphPathRule(Optimizer* opt,
                                       std::unique_ptr<ExecutionPlan> plan,
                                       OptimizerRule const&);
 

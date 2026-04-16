@@ -1,5 +1,3 @@
-add_subdirectory(EnumeratePathsFilter)
-
 target_sources(arango_aql PRIVATE
   AsyncPrefetch.cpp
   BatchMaterializeDocuments.cpp
@@ -8,11 +6,17 @@ target_sources(arango_aql PRIVATE
   DistributeFilterCalcToCluster.cpp
   DistributeInCluster.cpp
   DistributeSortToCluster.cpp
+  EnumeratePathsFilter.cpp
   FuseFilters.cpp
   GeoIndex.cpp
+  HandleConstrainedSortInView.cpp
+  HandleViews.cpp
+  ImmutableSearchCondition.cpp
   InlineSubqueries.cpp
   InterchangeAdjacentEnumerations.cpp
   JoinIndexNodes.cpp
+  LateDocumentMaterialization.cpp
+  LateDocumentMaterializationArangoSearch.cpp
   MaterializeIntoSeparateVariable.cpp
   MoveCalculationsDown.cpp
   MoveCalculationsUp.cpp
@@ -23,10 +27,6 @@ target_sources(arango_aql PRIVATE
   OptimizeProjections.cpp
   OptimizeSubqueries.cpp
   OptimizeTraversals.cpp
-  OptimizerRulesGraph.cpp
-  OptimizerRulesIResearchView.cpp
-  OptimizerRulesIndexNode.cpp
-  OptimizerRulesLateMaterializedCommon.cpp
   ParallelizeGather.cpp
   PropagateConstantAttributes.cpp
   PushDownLateMaterialization.cpp
@@ -45,11 +45,13 @@ target_sources(arango_aql PRIVATE
   RemoveUnnecessaryRemoteScatter.cpp
   ReplaceEntriesWithObjectIteration.cpp
   ReplaceEqualAttributeAccess.cpp
+  ReplaceLastAccessOnGraphPath.cpp
   ReplaceLikeWithRange.cpp
   ReplaceNearWithinFulltext.cpp
   ReplaceOrWithIn.cpp
   RestrictToSingleShard.cpp
   ScatterInCluster.cpp
+  ScatterViewInCluster.cpp
   SimplifyConditions.cpp
   SortInValues.cpp
   SortLimit.cpp

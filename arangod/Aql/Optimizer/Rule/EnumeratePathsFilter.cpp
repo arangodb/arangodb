@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -26,8 +26,8 @@
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Optimizer/Utils/EnumeratePathsFilterMatcher.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilterMatcher.h"
 #include "Containers/SmallVector.h"
 
 using namespace arangodb;
