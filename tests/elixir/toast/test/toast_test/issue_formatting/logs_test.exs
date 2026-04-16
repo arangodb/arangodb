@@ -8,6 +8,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
   import ToastTest.TimeTestHelpers, only: [to_us: 1]
 
   @usec_per_sec 1_000_000
+  @usec_per_ms 1_000
 
   # --- parse_server_filter/1 ---
 
@@ -135,7 +136,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
       ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :crash, time_bounds: {ts, ts}}
       {start_us, end_us} = Logs.display_window(issue, nil)
-      assert ts - start_us == 20 * @usec_per_sec
+      assert ts - start_us == 5 * @usec_per_sec
       assert end_us - ts == 0
     end
 
@@ -144,15 +145,15 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
       f = to_us(~U[2026-03-09 10:00:05Z])
       issue = %{type: :test_failure, time_bounds: {s, f}}
       {start_us, end_us} = Logs.display_window(issue, nil)
-      assert s - start_us == 1 * @usec_per_sec
-      assert end_us - f == 1 * @usec_per_sec
+      assert s - start_us == 100 * @usec_per_ms
+      assert end_us - f == 100 * @usec_per_ms
     end
 
     test "timeout default window" do
       ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :timeout, time_bounds: {ts, ts}}
       {start_us, end_us} = Logs.display_window(issue, nil)
-      assert ts - start_us == 10 * @usec_per_sec
+      assert ts - start_us == 5 * @usec_per_sec
       assert end_us - ts == 0
     end
 
@@ -160,8 +161,8 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
       ts = to_us(~U[2026-03-09 10:00:00Z])
       issue = %{type: :sanitizer_report, time_bounds: {ts, ts}}
       {start_us, end_us} = Logs.display_window(issue, nil)
-      assert ts - start_us == 5 * @usec_per_sec
-      assert end_us - ts == 1 * @usec_per_sec
+      assert ts - start_us == 100 * @usec_per_ms
+      assert end_us - ts == 100 * @usec_per_ms
     end
 
     test "custom window spec overrides defaults" do
@@ -469,7 +470,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
         }
       }
 
-      # Crash default: 20s before, 0s after
+      # Crash display default: 5s before, 0s after
       issue = %{type: :crash, time_bounds: {ts, ts}}
       window = Logs.display_window(issue, nil)
 

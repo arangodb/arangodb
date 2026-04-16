@@ -14,21 +14,17 @@ defmodule ToastTest.Attribution.TimeWindows do
 
   @usec_per_ms 1_000
 
-  @padding %{
-    crash: {-20_000, 0},
-    timeout: {-10_000, 0},
-    test_failure: {-1_000, 1_000},
-    sanitizer: {-5_000, 1_000},
-    sanitizer_report: {-5_000, 1_000}
-  }
-
-  @spec padding_for(atom()) :: {integer(), integer()}
-  def padding_for(type), do: Map.fetch!(@padding, type)
-
-  @spec pad(integer(), integer(), atom()) :: {integer(), integer()}
-  def pad(start_us, end_us, type) do
-    {before_ms, after_ms} = padding_for(type)
+  @doc "Apply millisecond padding to a microsecond window."
+  @spec pad(integer(), integer(), {integer(), integer()}) :: {integer(), integer()}
+  def pad(start_us, end_us, {before_ms, after_ms}) do
     {start_us + before_ms * @usec_per_ms, end_us + after_ms * @usec_per_ms}
+  end
+
+  @doc "Look up `type` in `padding_map` and apply the padding."
+  @spec pad(integer(), integer(), atom(), %{atom() => {integer(), integer()}}) ::
+          {integer(), integer()}
+  def pad(start_us, end_us, type, padding_map) do
+    pad(start_us, end_us, Map.fetch!(padding_map, type))
   end
 
   @type windows :: %{

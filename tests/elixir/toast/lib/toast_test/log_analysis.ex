@@ -121,17 +121,22 @@ defmodule ToastTest.LogAnalysis do
 
   # --- Display window ---
 
-  @usec_per_ms 1_000
+  @display_padding %{
+    crash: {-5_000, 0},
+    timeout: {-5_000, 0},
+    test_failure: {-100, 100},
+    sanitizer_report: {-100, 100}
+  }
 
   @doc "Compute the display window for a given issue using its `:time_bounds`."
   def display_window(%{time_bounds: nil}, _window_spec), do: nil
 
   def display_window(%{time_bounds: {start_us, end_us}, type: type}, nil) do
-    TimeWindows.pad(start_us, end_us, type)
+    TimeWindows.pad(start_us, end_us, type, @display_padding)
   end
 
-  def display_window(%{time_bounds: {start_us, end_us}}, {before_ms, after_ms}) do
-    {start_us + before_ms * @usec_per_ms, end_us + after_ms * @usec_per_ms}
+  def display_window(%{time_bounds: {start_us, end_us}}, {_before_ms, _after_ms} = padding) do
+    TimeWindows.pad(start_us, end_us, padding)
   end
 
   # --- Server filtering ---

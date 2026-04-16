@@ -9,6 +9,13 @@ defmodule ToastTest.Attribution.ServerLogs do
   alias ToastTest.Attribution.TimeWindows
   alias ToastTest.Enrichment
 
+  @padding %{
+    crash: {-20_000, 0},
+    timeout: {-10_000, 0},
+    test_failure: {-1_000, 1_000},
+    sanitizer_report: {-5_000, 1_000}
+  }
+
   @type window :: {Toast.timestamp(), Toast.timestamp()}
 
   @doc """
@@ -89,7 +96,7 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   defp issue_window(%{type: :test_failure, scope: {:test, mod, name}}, windows) do
     case Map.get(windows.tests, {mod, name}) do
-      %{started_at: s, finished_at: f} -> [TimeWindows.pad(s, f, :test_failure)]
+      %{started_at: s, finished_at: f} -> [pad(s, f, :test_failure)]
       nil -> []
     end
   end
@@ -98,25 +105,27 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   defp issue_window(%{type: :sanitizer_report, detail: %{timestamp: ts}}, _windows)
        when is_integer(ts) do
-    [TimeWindows.pad(ts, ts, :sanitizer)]
+    [pad(ts, ts, :sanitizer_report)]
   end
 
   defp issue_window(%{type: :sanitizer_report}, _windows), do: []
 
   defp issue_window(%{type: :crash, detail: %{crash_info: %{timestamp: ts}}}, _windows)
        when is_integer(ts) do
-    [TimeWindows.pad(ts, ts, :crash)]
+    [pad(ts, ts, :crash)]
   end
 
   defp issue_window(%{type: :crash}, _windows), do: []
 
   defp issue_window(%{type: :timeout, detail: %{timestamp: ts}}, _windows)
        when is_integer(ts) do
-    [TimeWindows.pad(ts, ts, :timeout)]
+    [pad(ts, ts, :timeout)]
   end
 
   defp issue_window(%{type: :timeout}, _windows), do: []
   defp issue_window(_issue, _windows), do: []
+
+  defp pad(start_us, end_us, type), do: TimeWindows.pad(start_us, end_us, type, @padding)
 
   # --- Merge implementation ---
 
