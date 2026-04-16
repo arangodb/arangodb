@@ -29,7 +29,6 @@
 #include "Basics/StaticStrings.h"
 #include "Utils/CollectionNameResolver.h"
 
-using namespace arangodb;
 namespace arangodb::aql {
 
 class AttributeAccessorKey final : public AttributeAccessor {
@@ -105,7 +104,7 @@ class AttributeAccessorSingle final : public AttributeAccessor {
 class AttributeAccessorMulti final : public AttributeAccessor {
  public:
   explicit AttributeAccessorMulti(Variable const* variable,
-                                  arangodb::aql::AttributeNamePath&& path)
+                                  AttributeNamePath&& path)
       : AttributeAccessor(variable), _path(std::move(path)) {}
 
   AqlValue get(CollectionNameResolver const& resolver,
@@ -117,7 +116,7 @@ class AttributeAccessorMulti final : public AttributeAccessor {
   }
 
  private:
-  arangodb::aql::AttributeNamePath const _path;
+  AttributeNamePath const _path;
 };
 
 /// @brief create the accessor
@@ -135,8 +134,8 @@ void AttributeAccessor::replaceVariable(
   }
 }
 
-AttributeAccessor* AttributeAccessor::create(
-    arangodb::aql::AttributeNamePath&& path, Variable const* variable) {
+AttributeAccessor* AttributeAccessor::create(AttributeNamePath&& path,
+                                             Variable const* variable) {
   TRI_ASSERT(variable != nullptr);
   TRI_ASSERT(!path.empty());
 

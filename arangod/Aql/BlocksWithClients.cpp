@@ -375,8 +375,8 @@ auto BlocksWithClientsImpl<Executor>::remainingRowsForClient(
 }
 #endif
 
-template class ::arangodb::aql::BlocksWithClientsImpl<ScatterExecutor>;
-template class ::arangodb::aql::BlocksWithClientsImpl<DistributeExecutor>;
-template class ::arangodb::aql::BlocksWithClientsImpl<MutexExecutor>;
+template class BlocksWithClientsImpl<ScatterExecutor>;
+template class BlocksWithClientsImpl<DistributeExecutor>;
+template class BlocksWithClientsImpl<MutexExecutor>;
 
 }  // namespace arangodb::aql

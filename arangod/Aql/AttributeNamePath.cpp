@@ -31,14 +31,14 @@
 
 namespace arangodb::aql {
 
-AttributeNamePath::AttributeNamePath(arangodb::ResourceMonitor& resourceMonitor)
+AttributeNamePath::AttributeNamePath(ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor) {
   // if this throws, we are ok. now dtor called
   _resourceMonitor.increaseMemoryUsage(memoryUsage());
 }
 
 AttributeNamePath::AttributeNamePath(std::string attribute,
-                                     arangodb::ResourceMonitor& resourceMonitor)
+                                     ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor) {
   _path.emplace_back(std::move(attribute));
 
@@ -47,7 +47,7 @@ AttributeNamePath::AttributeNamePath(std::string attribute,
 }
 
 AttributeNamePath::AttributeNamePath(std::vector<std::string> path,
-                                     arangodb::ResourceMonitor& resourceMonitor)
+                                     ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor), _path(std::move(path)) {
   // if this throws, we are ok. now dtor called
   _resourceMonitor.increaseMemoryUsage(memoryUsage());

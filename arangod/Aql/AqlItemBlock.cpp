@@ -42,9 +42,10 @@
 
 #include <algorithm>
 #include <limits>
+
+namespace arangodb::aql {
 namespace {
 
-using namespace arangodb::aql;
 inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
                           AqlValue const& a, size_t rowNumber,
                           RegisterId::value_t col, SharedAqlItemBlockPtr& res) {
@@ -69,9 +70,7 @@ inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
 }
 }  // namespace
 
-namespace arangodb::aql {
-
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+using VelocyPackHelper = basics::VelocyPackHelper;
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t numRows,
@@ -524,7 +523,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
       } else {
         // this is a normal row.
         for (RegisterId::value_t col = 0; col < numRegs; col++) {
-          ::copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
+          copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
         }
       }
     }
@@ -597,8 +596,7 @@ auto AqlItemBlock::slice(std::span<std::pair<size_t, size_t> const> ranges)
 
     for (size_t row = from; row < modifiedTo; row++, targetRow++) {
       for (RegisterId::value_t col = 0; col < _numRegisters; col++) {
-        ::copyValueOver(cache, _data[getAddress(row, col)], targetRow, col,
-                        res);
+        copyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
       }
       res->copySubqueryDepthFromOtherBlock(targetRow, *this, row, false);
     }
@@ -619,8 +617,8 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(
   SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNumRegisters)};
   for (auto const& col : registers) {
     TRI_ASSERT(col.isRegularRegister() && col < _numRegisters);
-    ::copyValueOver(cache, _data[getAddress(row, col.value())], 0, col.value(),
-                    res);
+    copyValueOver(cache, _data[getAddress(row, col.value())], 0, col.value(),
+                  res);
   }
   res->copySubqueryDepthFromOtherBlock(0, *this, row, false);
 
@@ -646,7 +644,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
     size_t const row = chosen[chosenIdx];
 
     for (RegisterId::value_t col = 0; col < _numRegisters; col++) {
-      ::copyValueOver(cache, _data[getAddress(row, col)], resultRow, col, res);
+      copyValueOver(cache, _data[getAddress(row, col)], resultRow, col, res);
     }
     res->copySubqueryDepthFromOtherBlock(resultRow, *this, row, false);
   }

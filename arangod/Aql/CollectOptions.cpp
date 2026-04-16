@@ -130,7 +130,7 @@ std::string_view CollectOptions::methodToString(
 }
 
 bool CollectOptions::requiresSortedInput() const noexcept {
-  return method != arangodb::aql::CollectOptions::CollectMethod::kHash;
+  return method != CollectOptions::CollectMethod::kHash;
 }
 
 }  // namespace arangodb::aql

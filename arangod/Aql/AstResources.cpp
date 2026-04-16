@@ -30,7 +30,6 @@
 
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
 namespace arangodb::aql {
 
 namespace {

@@ -29,7 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb::aql {
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+using VelocyPackHelper = basics::VelocyPackHelper;
 
 /// @brief create the manager
 AqlItemBlockManager::AqlItemBlockManager(

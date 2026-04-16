@@ -28,7 +28,7 @@
 #include "Aql/Variable.h"
 
 namespace arangodb::aql {
-
+namespace {
 auto doNothingVisitor = [](AstNode const*) {};
 
 bool isTargetVariable(AstNode const* const current,
@@ -64,9 +64,12 @@ bool isTargetVariable(AstNode const* const current,
   return false;
 };
 
-auto arangodb::aql::ast::getReferencedAttributesForKeep(
-    AstNode const* const node, Variable const* const searchVariable,
-    bool& isSafeForOptimization) -> std::vector<std::string> {
+}  // namespace
+
+auto ast::getReferencedAttributesForKeep(AstNode const* const node,
+                                         Variable const* const searchVariable,
+                                         bool& isSafeForOptimization)
+    -> std::vector<std::string> {
   auto result = std::vector<std::string>();
   isSafeForOptimization = true;
 

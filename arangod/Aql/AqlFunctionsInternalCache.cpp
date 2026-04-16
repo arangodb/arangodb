@@ -57,7 +57,7 @@ icu_64_64::RegexMatcher* AqlFunctionsInternalCache::buildLikeMatcher(
 }
 
 icu_64_64::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(
-    AqlValue const& splitExpression, arangodb::velocypack::Options const* opts,
+    AqlValue const& splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   std::string rx;
 
@@ -75,12 +75,12 @@ icu_64_64::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(
         rx += '|';
       }
 
-      arangodb::velocypack::ValueLength length;
+      velocypack::ValueLength length;
       char const* str = it.getString(length);
       basics::StringUtils::escapeRegexParams(rx, str, length);
     }
   } else if (splitExpression.isString()) {
-    arangodb::velocypack::ValueLength length;
+    velocypack::ValueLength length;
     char const* str = slice.getString(length);
     basics::StringUtils::escapeRegexParams(rx, str, length);
     if (rx.empty()) {
@@ -92,15 +92,14 @@ icu_64_64::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(
   return fromCache(rx, _likeCache);
 }
 
-arangodb::ValidatorBase* AqlFunctionsInternalCache::buildValidator(
+ValidatorBase* AqlFunctionsInternalCache::buildValidator(
     VPackSlice validatorParams) {
   auto matcherIter =
       _validatorCache
-          .try_emplace(
-              validatorParams.hash(), arangodb::lazyConstruct([&] {
-                return std::unique_ptr<arangodb::ValidatorBase>(
-                    new arangodb::ValidatorJsonSchema(validatorParams));
-              }))
+          .try_emplace(validatorParams.hash(), lazyConstruct([&] {
+                         return std::unique_ptr<ValidatorBase>(
+                             new ValidatorJsonSchema(validatorParams));
+                       }))
           .first;
 
   return matcherIter->second.get();
@@ -115,10 +114,10 @@ icu_64_64::RegexMatcher* AqlFunctionsInternalCache::fromCache(
   // insert into cache, no matter if pattern is valid or not
   auto matcherIter =
       cache
-          .try_emplace(pattern, arangodb::lazyConstruct([&] {
+          .try_emplace(pattern, lazyConstruct([&] {
                          return std::unique_ptr<icu_64_64::RegexMatcher>(
-                             arangodb::basics::Utf8Helper::DefaultUtf8Helper
-                                 .buildMatcher(pattern));
+                             basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(
+                                 pattern));
                        }))
           .first;
 

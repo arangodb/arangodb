@@ -38,7 +38,7 @@
 #include "Basics/tryEmplaceHelper.h"
 
 namespace arangodb::aql {
-using EN = arangodb::aql::ExecutionNode;
+using EN = ExecutionNode;
 
 bool ConditionFinder::before(ExecutionNode* en) {
   switch (en->getType()) {
