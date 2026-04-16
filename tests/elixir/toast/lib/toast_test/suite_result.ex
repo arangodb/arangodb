@@ -79,7 +79,7 @@ defmodule ToastTest.SuiteResult do
 
   @type test_result :: %{
           name: atom(),
-          outcome: :passed | :failed | :skipped | :excluded | :invalid,
+          outcome: :passed | :failed | :skipped | :excluded | :invalid | :invalidated,
           duration_us: non_neg_integer(),
           started_at: DateTime.t() | nil,
           finished_at: DateTime.t() | nil,

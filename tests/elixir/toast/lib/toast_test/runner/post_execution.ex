@@ -52,6 +52,7 @@ defmodule ToastTest.Runner.PostExecution do
     Logger.debug("Running attribution")
 
     crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
+    test_data = ToastTest.Attribution.Invalidation.apply(test_data, crash_events)
 
     {issues, coredump_reports} =
       ToastTest.Attribution.run(test_data, artifacts, crash_events,

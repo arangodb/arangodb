@@ -408,4 +408,73 @@ defmodule ToastTest.Formatting.PostExecSummaryTest do
     assert output =~ "WARNINGS"
     assert output =~ "Coredump discovery may not work: handler unknown"
   end
+
+  # --- Invalidated tests footer (under CRASHES section) ---
+
+  defp modules_with_invalidated(count) do
+    tests =
+      for i <- 1..count do
+        %{
+          name: :"test_#{i}",
+          outcome: :invalidated,
+          duration_us: 0,
+          started_at: ~U[2026-03-09 10:02:00Z],
+          finished_at: ~U[2026-03-09 10:02:01Z],
+          tags: %{}
+        }
+      end
+
+    %{
+      SomeModule => %{
+        started_at: ~U[2026-03-09 10:00:00Z],
+        finished_at: ~U[2026-03-09 10:05:00Z],
+        setup_finished_at: ~U[2026-03-09 10:00:01Z],
+        teardown_started_at: ~U[2026-03-09 10:04:59Z],
+        tests: tests
+      }
+    }
+  end
+
+  defp suite_result_with_invalidated(issues, invalidated_count, opts \\ []) do
+    sr = suite_result(issues, opts)
+    %{sr | modules: modules_with_invalidated(invalidated_count)}
+  end
+
+  test "prints invalidated-tests footer under CRASHES section when present" do
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(suite_result_with_invalidated([crash_issue_with_coredump()], 3))
+      end)
+
+    assert output =~ "CRASHES (1)"
+    assert output =~ "3 subsequent tests invalidated by crash"
+  end
+
+  test "invalidated footer uses singular wording when exactly one" do
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(suite_result_with_invalidated([crash_issue_with_coredump()], 1))
+      end)
+
+    assert output =~ "1 subsequent test invalidated by crash"
+  end
+
+  test "no invalidated footer when there are no invalidated tests" do
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(suite_result([crash_issue_with_coredump()]))
+      end)
+
+    refute output =~ "invalidated by crash"
+  end
+
+  test "no invalidated footer when there are no crash issues (even if tests are invalidated)" do
+    # Without crash issues there's no crash section, so the footer has no home.
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(suite_result_with_invalidated([], 2))
+      end)
+
+    refute output =~ "invalidated by crash"
+  end
 end

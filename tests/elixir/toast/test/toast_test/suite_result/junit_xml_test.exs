@@ -1038,4 +1038,53 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       assert xml =~ ~r/<testsuites[^>]*errors="1"/
     end)
   end
+
+  # --- Invalidated tests (post-crash) ---
+
+  defp build_test_data_with_invalidated do
+    test_data = build_test_data()
+
+    update_in(test_data, [:modules, FakeModule, :tests], fn tests ->
+      Enum.map(tests, fn
+        %{name: :"test fails"} = t -> %{t | outcome: :invalidated}
+        t -> t
+      end)
+    end)
+  end
+
+  test "invalidated tests render as <skipped> with a descriptive message" do
+    with_tmp_dir(fn dir ->
+      result =
+        build_suite_result(
+          test_data: build_test_data_with_invalidated(),
+          issues: []
+        )
+
+      SuiteResult.write_junit_xml(result, dir)
+      xml = read_xml!(dir, "smoke.xml")
+
+      # The :invalidated testcase contains a <skipped> child with a message.
+      assert xml =~
+               ~r/<testcase[^>]*name="test fails"[^>]*>[^<]*<skipped message="invalidated by prior server crash"/s
+
+      # And no <failure> element for that test.
+      refute xml =~ ~r/<testcase[^>]*name="test fails"[^>]*>[^<]*<failure/s
+    end)
+  end
+
+  test "invalidated tests count toward skipped and not failures in testsuites" do
+    with_tmp_dir(fn dir ->
+      result =
+        build_suite_result(
+          test_data: build_test_data_with_invalidated(),
+          issues: []
+        )
+
+      SuiteResult.write_junit_xml(result, dir)
+      xml = read_xml!(dir, "smoke.xml")
+
+      assert xml =~ ~r/<testsuites[^>]*failures="0"/
+      assert xml =~ ~r/<testsuites[^>]*skipped="1"/
+    end)
+  end
 end

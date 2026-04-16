@@ -14,7 +14,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     tests = SuiteResult.flat_tests(result)
     total = length(tests)
     failures = Enum.count(tests, &(&1.outcome == :failed))
-    skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded]))
+    skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded, :invalidated]))
     time = format_duration(result.times_us.run)
 
     failure_index = build_failure_index(result.issues)
@@ -71,7 +71,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
   defp render_testsuite({module, %{tests: tests}}, suite, failure_index, issue_index) do
     name = Atom.to_string(module)
     failures = Enum.count(tests, &(&1.outcome == :failed))
-    skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded]))
+    skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded, :invalidated]))
     time = tests |> Enum.map(& &1.duration_us) |> Enum.sum() |> format_duration()
 
     module_issues = Map.get(issue_index, {:module, module}, [])
@@ -121,6 +121,9 @@ defmodule ToastTest.SuiteResult.JUnitXML do
 
         :invalid ->
           ["      <error/>"]
+
+        :invalidated ->
+          [~s(      <skipped message="invalidated by prior server crash"/>) | infra_errors]
 
         outcome when outcome in [:skipped, :excluded] ->
           ["      <skipped/>" | infra_errors]

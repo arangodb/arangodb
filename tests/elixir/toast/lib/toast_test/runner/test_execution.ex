@@ -114,10 +114,9 @@ defmodule ToastTest.Runner.TestExecution do
         Exception.format(kind, error, stack)
       end)
 
-    test_word = if count == 1, do: "test", else: "tests"
-
     Logger.error(
-      "setup_all failed for #{inspect(module)} — #{count} #{test_word} invalidated\n#{formatted}"
+      "setup_all failed for #{inspect(module)} — " <>
+        "#{count} #{Toast.Utils.pluralize(count, "test")} invalidated\n#{formatted}"
     )
   end
 

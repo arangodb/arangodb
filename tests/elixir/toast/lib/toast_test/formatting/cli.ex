@@ -159,7 +159,6 @@ defmodule ToastTest.Formatting.CLI do
     elapsed = elapsed_ms(state.module_start_time)
     mod_name = inspect(state.pending_module.name)
     count = state.module_test_count
-    test_word = if count == 1, do: "test", else: "tests"
 
     skip_part =
       if state.module_skipped_count > 0,
@@ -168,7 +167,7 @@ defmodule ToastTest.Formatting.CLI do
 
     IO.puts(
       "#{timestamp()} #{colorize("[------------]", :cyan, state)} " <>
-        "#{count} #{test_word} from #{colorize(mod_name, :bold, state)} (#{elapsed}ms total#{skip_part})"
+        "#{count} #{Toast.Utils.pluralize(count, "test")} from #{colorize(mod_name, :bold, state)} (#{elapsed}ms total#{skip_part})"
     )
   end
 
@@ -177,11 +176,10 @@ defmodule ToastTest.Formatting.CLI do
     if state.module_skipped_count > 0 do
       mod_name = inspect(state.pending_module.name)
       count = state.module_skipped_count
-      test_word = if count == 1, do: "test", else: "tests"
 
       IO.puts(
         "#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} " <>
-          "#{count} #{test_word} from #{colorize(mod_name, :bold, state)}"
+          "#{count} #{Toast.Utils.pluralize(count, "test")} from #{colorize(mod_name, :bold, state)}"
       )
     end
   end

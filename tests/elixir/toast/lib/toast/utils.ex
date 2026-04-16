@@ -13,4 +13,9 @@ defmodule Toast.Utils do
   @spec maybe_put(map(), term(), term()) :: map()
   def maybe_put(map, _key, nil), do: map
   def maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  @doc "Naive English pluralization: appends \"s\" when `count != 1`."
+  @spec pluralize(integer(), String.t()) :: String.t()
+  def pluralize(1, word), do: word
+  def pluralize(_count, word), do: word <> "s"
 end

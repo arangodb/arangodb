@@ -11,14 +11,20 @@ defmodule ToastTest.Formatting.PostExecSummary do
   def print(%SuiteResult{issues: issues, warnings: warnings} = result) do
     index = Issues.build_coredump_index(result.coredumps)
     issues = Issues.resolve_coredumps(issues, index)
-    print_issues(issues)
+    print_issues(issues, result)
     print_warnings(warnings)
     :ok
   end
 
-  defp print_issues([]), do: :ok
+  defp invalidated_count(%SuiteResult{modules: modules}) do
+    Enum.reduce(modules, 0, fn {_mod, %{tests: tests}}, acc ->
+      acc + Enum.count(tests, &(&1.outcome == :invalidated))
+    end)
+  end
 
-  defp print_issues(issues) do
+  defp print_issues([], _result), do: :ok
+
+  defp print_issues(issues, result) do
     colors = IO.ANSI.enabled?()
     grouped = Enum.group_by(issues, & &1.type)
 
@@ -27,7 +33,25 @@ defmodule ToastTest.Formatting.PostExecSummary do
     |> Enum.each(fn type ->
       issues_of_type = Map.fetch!(grouped, type)
       print_section(type, issues_of_type, colors)
+      if type == :crash, do: print_crash_footer(result, colors)
     end)
+  end
+
+  defp print_crash_footer(result, colors) do
+    case invalidated_count(result) do
+      0 ->
+        :ok
+
+      count ->
+        IO.puts(
+          "\n  " <>
+            colorize(
+              "#{count} subsequent #{Toast.Utils.pluralize(count, "test")} invalidated by crash",
+              :yellow,
+              colors
+            )
+        )
+    end
   end
 
   defp print_warnings([]), do: :ok
@@ -117,8 +141,7 @@ defmodule ToastTest.Formatting.PostExecSummary do
 
     if servers != [] do
       server_count = length(servers)
-      server_word = if server_count == 1, do: "server", else: "servers"
-      IO.puts("    Aborted #{server_count} #{server_word}:")
+      IO.puts("    Aborted #{server_count} #{Toast.Utils.pluralize(server_count, "server")}:")
 
       Enum.each(servers, &print_server_detail(&1, colors))
     end
