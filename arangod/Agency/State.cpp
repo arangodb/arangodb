@@ -1050,6 +1050,12 @@ index_t State::loadCompacted() {
       // Schedule next compaction:
       _lastCompactionAt = _cur;
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
+
+      // Initialize cached snapshot for atomic reads
+      Store cached("snapshot");
+      cached.setNodeValue(ii);
+      term_t snapshotTerm = ii.get("term").getNumber<uint64_t>();
+      updateCachedSnapshot(cached, _cur, snapshotTerm);
     } catch (std::exception const& e) {
       _cur = 0;
       LOG_TOPIC("bc330", ERR, Logger::AGENCY) << e.what();
@@ -1364,6 +1370,11 @@ bool State::compact(index_t cind, index_t keep) {
           << "Could not persist compaction snapshot.";
       return false;
     }
+
+    {
+      std::lock_guard logLocker{_logLock};
+      updateCachedSnapshot(snapshot, cind, last.term);
+    }
   }
 
   // Now clean up old stuff which is included in the latest compaction snapshot:
@@ -1601,6 +1612,9 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
   _clientIdLookupTable.clear();
   _clientIdLookupCount = 0;
   _cur = index;
+
+  // Update cached snapshot (caller holds _logLock)
+  updateCachedSnapshot(snapshot, index, term);
 
   // This empty log should soon be rectified!
   return true;
@@ -1974,6 +1988,44 @@ void State::toVelocyPack(velocypack::Builder& builder) const {
   VPackValueLength keyLength;
   char const* key = keySlice.getString(keyLength);
   return index_t(arangodb::basics::StringUtils::uint64(key, keyLength));
+}
+
+void State::updateCachedSnapshot(Store const& snapshot, index_t index,
+                                 term_t term) {
+  // _logLock must be held by the caller.
+  // Always create a new shared_ptr so that readers who grabbed the old
+  // pointer are not affected (publish-via-swap pattern).
+  auto fresh = std::make_shared<Store>("snapshot");
+  *fresh = snapshot;
+  _cachedSnapshot = std::move(fresh);
+  _cachedSnapshotIndex = index;
+  _cachedSnapshotTerm = term;
+}
+
+bool State::getSnapshotAndEntries(std::shared_ptr<Store>& snapshot,
+                                  index_t& snapshotIndex, term_t& snapshotTerm,
+                                  std::vector<log_t>& entries,
+                                  size_t maxEntries) {
+  std::lock_guard mutexLocker{_logLock};
+  if (!_cachedSnapshot || _cachedSnapshotTerm == 0) {
+    return false;
+  }
+
+  // Cheap shared_ptr copy — the snapshot is immutable once published.
+  snapshot = _cachedSnapshot;
+  snapshotIndex = _cachedSnapshotIndex;
+  snapshotTerm = _cachedSnapshotTerm;
+
+  if (!_log.empty() && snapshotIndex > 0) {
+    auto const [startBound, endBound] =
+        determineLogBounds(snapshotIndex - 1, snapshotIndex - 1 + maxEntries);
+    entries.reserve(endBound - startBound);
+    for (size_t i = startBound; i < endBound; ++i) {
+      TRI_ASSERT(i < _log.size());
+      entries.push_back(_log[i]);
+    }
+  }
+  return true;
 }
 
 }  // namespace consensus

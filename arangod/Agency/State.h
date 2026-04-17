@@ -208,6 +208,14 @@ class State {
   /// `index` to 0 if there is no compacted snapshot.
   bool loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term);
 
+  /// @brief Atomically load the cached in-memory snapshot and log entries
+  /// following it. Returns false if no snapshot is available.
+  /// This avoids the TOCTOU race between reading the snapshot from disk
+  /// and reading log entries from memory.
+  bool getSnapshotAndEntries(std::shared_ptr<Store>& snapshot,
+                             index_t& snapshotIndex, term_t& snapshotTerm,
+                             std::vector<log_t>& entries, size_t maxEntries);
+
   /// @brief lastCompactedAt
   index_t lastCompactionAt() const;
 
@@ -287,12 +295,24 @@ class State {
 
   std::atomic<bool> _ready;
 
+  /// @brief Update the cached in-memory snapshot. Must be called after
+  /// a successful persistCompactionSnapshot under _logLock.
+  void updateCachedSnapshot(Store const& snapshot, index_t index, term_t term);
+
   /**< @brief Mutex for modifying
-     _log & _cur
+     _log, _cur, and _cachedSnapshot
   */
   mutable std::mutex _logLock;
   std::deque<log_t> _log; /**< @brief  State entries */
   // Invariant: This has at least one entry at all times!
+
+  /// @brief Cached copy of the latest compacted snapshot, protected by
+  /// _logLock. Used by getSnapshotAndEntries to atomically read the
+  /// snapshot and log entries together.
+  std::shared_ptr<Store> _cachedSnapshot;
+  index_t _cachedSnapshotIndex = 0;
+  term_t _cachedSnapshotTerm = 0;
+
   bool _collectionsLoaded;
   std::multimap<std::string, arangodb::consensus::index_t> _clientIdLookupTable;
 

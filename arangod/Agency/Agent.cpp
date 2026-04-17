@@ -627,18 +627,32 @@ void Agent::sendAppendEntriesRPC() {
       // following logs. Else try to have the follower catch up in regular
       // order.
       bool needSnapshot = lastConfirmed < _state.firstIndex();
+
+      std::shared_ptr<Store> snapshot;
+      index_t snapshotIndex = 0;
+      term_t snapshotTerm = 0;
+      std::vector<log_t> unconfirmed;
+
       if (needSnapshot) {
-        lastConfirmed = _state.lastCompactionAt() - 1;
+        // Read snapshot and log entries atomically under _logLock to
+        // avoid a TOCTOU race with compaction (which could advance
+        // the snapshot between separate reads).
+        bool success = _state.getSnapshotAndEntries(
+            snapshot, snapshotIndex, snapshotTerm, unconfirmed, 99);
+        if (!success || snapshotTerm == 0) {
+          needSnapshot = false;
+        } else {
+          lastConfirmed = snapshotIndex - 1;
+        }
       }
 
-      LOG_TOPIC("7c578", TRACE, Logger::AGENCY)
-          << "Getting unconfirmed from " << lastConfirmed << " to "
-          << lastConfirmed + 99;
-      // If lastConfirmed is one minus the first log entry, then this is
-      // corrected in _state::get and we only get from the beginning of the
-      // log.
-      std::vector<log_t> unconfirmed =
-          _state.get(lastConfirmed, lastConfirmed + 99);
+      if (!needSnapshot) {
+        // Regular path: no snapshot needed, just fetch unconfirmed entries.
+        LOG_TOPIC("7c578", TRACE, Logger::AGENCY)
+            << "Getting unconfirmed from " << lastConfirmed << " to "
+            << lastConfirmed + 99;
+        unconfirmed = _state.get(lastConfirmed, lastConfirmed + 99);
+      }
 
       lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.2) {
@@ -677,50 +691,20 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      Store snapshot("snapshot");
-      index_t snapshotIndex;
-      term_t snapshotTerm;
-
-      TRI_IF_FAILURE("Agent::sendAppendEntriesRPC::pauseAfterGetEntries") {
-        if (needSnapshot) {
-          std::this_thread::sleep_for(std::chrono::seconds(5));
-        }
-      }
-
-      if (lowest > lastConfirmed || needSnapshot) {
-        // Ooops, compaction has thrown away so many log entries that
-        // we cannot actually update the follower. We need to send our
-        // latest snapshot instead:
-        bool success = false;
-        try {
-          success = _state.loadLastCompactedSnapshot(snapshot, snapshotIndex,
-                                                     snapshotTerm);
-        } catch (std::exception const& e) {
-          LOG_TOPIC("f2287", WARN, Logger::AGENCY)
-              << "Exception thrown by loadLastCompactedSnapshot: " << e.what();
-        }
-        if (!success) {
+      if (lowest > lastConfirmed && !needSnapshot) {
+        // Compaction advanced between the firstIndex() check and get(),
+        // so the entries we fetched start past lastConfirmed.  Fall back
+        // to sending a snapshot.
+        bool success = _state.getSnapshotAndEntries(
+            snapshot, snapshotIndex, snapshotTerm, unconfirmed, 99);
+        if (!success || snapshotTerm == 0) {
           LOG_TOPIC("6e2b8", WARN, Logger::AGENCY)
-              << "Could not load last compacted snapshot, not sending "
-                 "appendEntriesRPC!";
+              << "Could not load snapshot for follower " << followerId;
           continue;
         }
-        // If compaction advanced the snapshot past the entries we already
-        // fetched, re-fetch entries consistent with the snapshot.
-        if (needSnapshot && snapshotIndex > unconfirmed.back().index) {
-          lastConfirmed = snapshotIndex - 1;
-          unconfirmed = _state.get(lastConfirmed, lastConfirmed + 99);
-          if (unconfirmed.empty()) {
-            LOG_TOPIC("a3f21", WARN, Logger::AGENCY)
-                << "No log entries after snapshot at index " << snapshotIndex;
-            continue;
-          }
-          lowest = unconfirmed.front().index;
-        }
-        if (snapshotTerm == 0) {
-          // No shapshot yet
-          needSnapshot = false;
-        }
+        needSnapshot = true;
+        lastConfirmed = snapshotIndex - 1;
+        lowest = unconfirmed.front().index;
       }
 
       index_t prevLogIndex = unconfirmed.front().index;
@@ -741,7 +725,7 @@ void Agent::sendAppendEntriesRPC() {
           builder.add(VPackValue("readDB"));
           {
             VPackArrayBuilder guard2(&builder);
-            snapshot.dumpToBuilder(builder);
+            snapshot->dumpToBuilder(builder);
           }
           builder.add("term", VPackValue(snapshotTerm));
           builder.add("index", VPackValue(snapshotIndex));
