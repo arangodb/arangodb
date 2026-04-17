@@ -15,9 +15,6 @@ parameters:
   use-minimal-debug-info:
     type: boolean
     default: true
-  arangod-without-v8:
-    type: boolean
-    default: true
   extra_args:
     type: string
     default: ""
@@ -77,7 +74,7 @@ parameters:
     default: "arangodb"
     # The arangodb target consists of arangod and the list of client-tools which already
     # conditionally contains arangobackup and arangosh, depending on whether we build in
-    # enterprise mode, and whether we build with V8 or not.
+    # enterprise mode
     # This should also improve build times because this way the individual targets can be
     # built in parallel (a list of individual targets is built serially).
   test-build-targets:
@@ -532,9 +529,6 @@ jobs:
       build-tests:
         type: boolean
         default: true
-      build-v8:
-        type: boolean
-        default: false
       publish-artifacts:
         type: boolean
         default: true
@@ -574,11 +568,6 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
-            if [ << pipeline.parameters.arangod-without-v8 >> = true ]; then
-              BUILD_V8_ARANGOD="OFF"
-            else
-              BUILD_V8_ARANGOD="ON"
-            fi
 
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
@@ -587,7 +576,6 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
-              -DUSE_V8=$BUILD_V8_ARANGOD \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
               -DCMAKE_INSTALL_PREFIX=/
       - run:
