@@ -29,6 +29,7 @@
 #include "Agency/AgencyCommon.h"
 #include "Agency/State.h"
 #include "Metrics/MetricsFeature.h"
+#include "Mocks/Death_Test.h"
 #include "Mocks/Servers.h"
 
 namespace arangodb::consensus {
@@ -65,7 +66,7 @@ TEST_F(StateTest, get_crashes_when_cur_beyond_log) {
   populateLog(state, 6008, 6601);
   setCur(state, 7023);
 
-  EXPECT_DEATH(state.get(0, 6513), "");
+  EXPECT_DEATH_CORE_FREE(state.get(0, 6513), "");
 }
 
 // Verify get() returns correct entries when _cur is consistent with the log.

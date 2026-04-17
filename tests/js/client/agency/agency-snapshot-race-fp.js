@@ -193,6 +193,8 @@ function agencySnapshotRaceSuite() {
 
     tearDown: function () {
       agencyServers.forEach(url => clearFailAt(url));
+      // Remove test data so subsequent tests see a clean agency
+      accessAgency("write", [[{"/race": {"op": "delete"}}]]);
     },
 
     //--------------------------------------------------------------------------
