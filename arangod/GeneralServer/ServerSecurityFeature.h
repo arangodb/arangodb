@@ -37,6 +37,7 @@ class ServerSecurityFeature final
       application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   // disable Foxx API. must only be called during server startup
   void disableFoxxApi() noexcept;

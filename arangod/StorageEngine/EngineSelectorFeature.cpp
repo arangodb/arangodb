@@ -85,6 +85,12 @@ void EngineSelectorFeature::collectOptions(
   provider.declareOptions(options, _options);
 }
 
+void EngineSelectorFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  arangodb::engine_selector::EngineSelectorOptionsProvider provider;
+  provider.validateOptions(options, _options);
+}
+
 void EngineSelectorFeature::prepare() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   if (_selected.load()) {

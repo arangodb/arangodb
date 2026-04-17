@@ -37,4 +37,8 @@ void BootstrapOptionsProvider::declareOptions(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
+void BootstrapOptionsProvider::validateOptions(
+    std::shared_ptr<ProgramOptions> /*options*/,
+    BootstrapFeatureOptions& /*opts*/) {}
+
 }  // namespace arangodb::bootstrap

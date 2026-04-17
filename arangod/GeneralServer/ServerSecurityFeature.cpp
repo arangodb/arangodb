@@ -44,6 +44,24 @@ void ServerSecurityFeature::collectOptions(
   provider.declareOptions(options, _options);
 }
 
+void ServerSecurityFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  arangodb::security::ServerSecurityOptionsProvider provider;
+  provider.validateOptions(options, _options);
+}
+
+void ServerSecurityFeature::disableFoxxApi() noexcept {
+  _options.enableFoxxApi = false;
+}
+
+bool ServerSecurityFeature::isFoxxApiDisabled() const noexcept {
+  return !_options.enableFoxxApi;
+}
+
+bool ServerSecurityFeature::isFoxxStoreDisabled() const noexcept {
+  return !_options.enableFoxxStore;
+}
+
 bool ServerSecurityFeature::isRestApiHardened() const noexcept {
   return _options.hardenedRestApi;
 }

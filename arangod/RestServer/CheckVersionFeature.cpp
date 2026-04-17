@@ -29,17 +29,13 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
-#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "RestServer/EnvironmentFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Version.h"
@@ -75,29 +71,9 @@ void CheckVersionFeature::collectOptions(
 
 void CheckVersionFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (!_options.checkVersion) {
-    return;
-  }
-
-  // hard-code our role to a single server instance, because
-  // noone else will set our role
-  ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
-
-  server().forceDisableFeatures(_nonServerFeatures);
-
-  LoggerFeature& logger = server().getFeature<LoggerFeature>();
-  logger.disableThreaded();
-
-  ReplicationFeature& replicationFeature =
-      server().getFeature<ReplicationFeature>();
-  replicationFeature.disableReplicationApplier();
-
-  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
-  databaseFeature.enableCheckVersion();
-
-  // we can turn off all warnings about environment here, because they
-  // wil show up on a regular start later anyway
-  server().disableFeatures<EnvironmentFeature>();
+  arangodb::check_version::CheckVersionOptionsProvider provider;
+  provider.validateCheckVersionOptions(options, _options, server(),
+                                       _nonServerFeatures);
 }
 
 void CheckVersionFeature::start() {

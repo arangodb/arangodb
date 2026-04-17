@@ -38,6 +38,9 @@ struct FileDescriptorsOptionsProvider
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       FileDescriptorsFeatureOptions& options) override;
+
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       FileDescriptorsFeatureOptions& options) override;
 };
 
 }  // namespace arangodb::file_descriptors

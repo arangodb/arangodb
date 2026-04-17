@@ -24,6 +24,9 @@
 
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Statistics/ConnectionStatistics.h"
+#include "Statistics/RequestStatistics.h"
+#include "Statistics/StatisticsFeature.h"
 
 namespace arangodb::statistics {
 
@@ -36,7 +39,7 @@ void StatisticsOptionsProvider::declareOptions(
         options
             ->addOption("--server.statistics",
                         "Whether to enable statistics gathering and statistics APIs.",
-                        new BooleanParameter(&_options.statistics))
+                        new BooleanParameter(&opts.statistics))
             .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
 statistics gathering is turned off. Statistics gathering causes regular
 background CPU activity, memory usage, and writes to the storage engine, so
@@ -50,7 +53,7 @@ server statistics at `/_admin/statistics` returns HTTP 404.)");
         options
             ->addOption("--server.statistics-history",
                         "Whether to store statistics in the database.",
-                        new BooleanParameter(&_options.statisticsHistory),
+                        new BooleanParameter(&opts.statisticsHistory),
                         arangodb::options::makeDefaultFlags(
                             arangodb::options::Flags::Dynamic))
             .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
@@ -69,11 +72,24 @@ This is less intrusive than setting the `--server.statistics` option to
             ->addOption(
                 "--server.statistics-all-databases",
                 "Provide cluster statistics in the web interface for all databases.",
-                new BooleanParameter(&_options.statisticsAllDatabases),
+                new BooleanParameter(&opts.statisticsAllDatabases),
                 arangodb::options::makeFlags(
                     arangodb::options::Flags::DefaultNoComponents,
                     arangodb::options::Flags::OnCoordinator))
             .setIntroducedIn(30800);
+}
+
+bool StatisticsOptionsProvider::validateStatisticsOptions(
+    std::shared_ptr<ProgramOptions> options,
+    StatisticsFeatureOptions& opts,
+    StatisticsFeature& feature) {
+  if (opts.statistics) {
+    ConnectionStatistics::initialize();
+    RequestStatistics::initialize();
+  } else {
+    feature.disable();
+  }
+  return options->processingResult().touched("--server.statistics-history");
 }
 
 }  // namespace arangodb::statistics

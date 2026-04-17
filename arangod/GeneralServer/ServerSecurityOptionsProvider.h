@@ -37,6 +37,9 @@ struct ServerSecurityOptionsProvider : OptionsProvider<ServerSecurityFeatureOpti
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       ServerSecurityFeatureOptions& options) override;
+
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       ServerSecurityFeatureOptions& options) override;
 };
 
 }  // namespace arangodb::security

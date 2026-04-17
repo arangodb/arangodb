@@ -37,6 +37,9 @@ struct EngineSelectorOptionsProvider : OptionsProvider<EngineSelectorFeatureOpti
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       EngineSelectorFeatureOptions& options) override;
+
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       EngineSelectorFeatureOptions& options) override;
 };
 
 }  // namespace arangodb::engine_selector

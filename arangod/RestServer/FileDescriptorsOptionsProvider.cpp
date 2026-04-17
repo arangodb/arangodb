@@ -22,6 +22,8 @@
 
 #include "FileDescriptorsOptionsProvider.h"
 
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -40,6 +42,20 @@ void FileDescriptorsOptionsProvider::declareOptions(
           "(0 = disable counting).",
           new UInt64Parameter(&opts.countDescriptorsInterval), makeFlags())
       .setIntroducedIn(31100);
+}
+
+void FileDescriptorsOptionsProvider::validateOptions(
+    std::shared_ptr<ProgramOptions> /*options*/,
+    FileDescriptorsFeatureOptions& opts) {
+  constexpr uint64_t lowerBound = 10000;
+  if (opts.countDescriptorsInterval > 0 &&
+      opts.countDescriptorsInterval < lowerBound) {
+    LOG_TOPIC("c3011", WARN, Logger::SYSCALL)
+        << "too low value for `--server.count-descriptors-interval`. Should be "
+           "at least "
+        << lowerBound;
+    opts.countDescriptorsInterval = lowerBound;
+  }
 }
 
 }  // namespace arangodb::file_descriptors

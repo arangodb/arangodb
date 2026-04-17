@@ -30,13 +30,25 @@ namespace arangodb::options {
 class ProgramOptions;
 }
 
-namespace arangodb::statistics {
+namespace arangodb {
+
+class StatisticsFeature;
+
+namespace statistics {
 
 struct StatisticsOptionsProvider : OptionsProvider<StatisticsFeatureOptions> {
   StatisticsOptionsProvider() = default;
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       StatisticsFeatureOptions& options) override;
+
+  /// Initializes connection/request statistics or disables the feature; returns
+  /// whether `--server.statistics-history` was touched on the command line.
+  bool validateStatisticsOptions(
+      std::shared_ptr<options::ProgramOptions> opts,
+      StatisticsFeatureOptions& options,
+      StatisticsFeature& feature);
 };
 
-}  // namespace arangodb::statistics
+}  // namespace statistics
+}  // namespace arangodb

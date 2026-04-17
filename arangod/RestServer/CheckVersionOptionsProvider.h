@@ -25,6 +25,12 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "CheckVersionFeatureOptions.h"
 #include <memory>
+#include <span>
+#include <typeindex>
+
+namespace arangodb::application_features {
+class ApplicationServer;
+}
 
 namespace arangodb::options {
 class ProgramOptions;
@@ -37,6 +43,12 @@ struct CheckVersionOptionsProvider : OptionsProvider<CheckVersionFeatureOptions>
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       CheckVersionFeatureOptions& options) override;
+
+  void validateCheckVersionOptions(
+      std::shared_ptr<options::ProgramOptions> opts,
+      CheckVersionFeatureOptions& options,
+      application_features::ApplicationServer& server,
+      std::span<const std::type_index> nonServerFeatures);
 };
 
 }  // namespace arangodb::check_version

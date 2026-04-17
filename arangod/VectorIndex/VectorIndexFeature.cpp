@@ -21,6 +21,7 @@
 
 #include "VectorIndex/VectorIndexFeature.h"
 
+#include "VectorIndex/VectorIndexOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Futures/Utilities.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -59,6 +60,12 @@ Agents in a cluster as it has no effect on them other than that you need to
 leave the option enabled.)");
 
   options->addOldOption("--experimental-vector-index", "--vector-index");
+}
+
+void VectorIndexFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
+  arangodb::vector_index::VectorIndexOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 bool VectorIndexFeature::shouldRunBuildManager() const {

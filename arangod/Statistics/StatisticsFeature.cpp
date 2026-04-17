@@ -24,7 +24,6 @@
 #include "StatisticsFeature.h"
 
 #include "Statistics/StatisticsOptionsProvider.h"
-#include "GeneralServer/RequestStatisticsMetrics.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
@@ -698,17 +697,9 @@ void StatisticsFeature::collectOptions(
 
 void StatisticsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_options.statistics) {
-    // initialize counters for all HTTP request types
-    ConnectionStatistics::initialize();
-    RequestStatistics::initialize();
-  } else {
-    // turn ourselves off
-    disable();
-  }
-
+  arangodb::statistics::StatisticsOptionsProvider provider;
   _statisticsHistoryTouched =
-      options->processingResult().touched("--server.statistics-history");
+      provider.validateStatisticsOptions(options, _options, *this);
 }
 
 void StatisticsFeature::start() {

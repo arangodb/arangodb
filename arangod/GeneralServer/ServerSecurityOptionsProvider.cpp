@@ -39,4 +39,8 @@ void ServerSecurityOptionsProvider::declareOptions(
       new BooleanParameter(&opts.hardenedRestApi));
 }
 
+void ServerSecurityOptionsProvider::validateOptions(
+    std::shared_ptr<ProgramOptions> /*options*/,
+    ServerSecurityFeatureOptions& /*opts*/) {}
+
 }  // namespace arangodb::security

@@ -37,6 +37,9 @@ struct BootstrapOptionsProvider : OptionsProvider<BootstrapFeatureOptions> {
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       BootstrapFeatureOptions& options) override;
+
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       BootstrapFeatureOptions& options) override;
 };
 
 }  // namespace arangodb::bootstrap

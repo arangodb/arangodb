@@ -1,4 +1,4 @@
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2026 ArangoDB GmbH, Hyderabad, India
@@ -37,5 +37,9 @@ void VectorIndexOptionsProvider::declareOptions(
 
   options->addOldOption("--experimental-vector-index", "--vector-index");
 }
+
+void VectorIndexOptionsProvider::validateOptions(
+    std::shared_ptr<options::ProgramOptions> /*options*/,
+    VectorIndexFeatureOptions& /*opts*/) {}
 
 }  // namespace arangodb::vector_index

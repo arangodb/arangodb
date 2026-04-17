@@ -50,4 +50,8 @@ in the server refusing to start. You may use `auto` to let ArangoDB choose the
 previously used one.)");
 }
 
+void EngineSelectorOptionsProvider::validateOptions(
+    std::shared_ptr<ProgramOptions> /*options*/,
+    EngineSelectorFeatureOptions& /*opts*/) {}
+
 }  // namespace arangodb::engine_selector
