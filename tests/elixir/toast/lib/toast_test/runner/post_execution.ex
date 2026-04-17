@@ -92,7 +92,6 @@ defmodule ToastTest.Runner.PostExecution do
       )
 
     SuiteResult.write_all(suite_result, test_config.result_dir)
-    print_post_exec_summary(suite_result)
     suite_result
   end
 
@@ -136,9 +135,5 @@ defmodule ToastTest.Runner.PostExecution do
       {:error, reason} ->
         Logger.warning("Failed to write agency dump: #{inspect(reason)}")
     end
-  end
-
-  defp print_post_exec_summary(suite_result) do
-    ToastTest.Formatting.PostExecSummary.print(suite_result)
   end
 end

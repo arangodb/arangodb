@@ -178,6 +178,7 @@ defmodule Mix.Tasks.Toast do
       System.convert_time_unit(System.monotonic_time() - start_time, :native, :microsecond)
 
     suite_results = Enum.map(result.suites, & &1.suite_result)
+    Enum.each(suite_results, &ToastTest.Formatting.PostExecSummary.print/1)
     ToastTest.Formatting.RunSummary.print(suite_results, elapsed_us)
     ToastTest.Formatting.RrSummary.print(test_config.base_dir)
 

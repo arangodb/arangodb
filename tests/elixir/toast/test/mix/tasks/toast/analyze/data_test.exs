@@ -63,16 +63,26 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
     # The suite scope is the only clause that differs from Issues.format_scope/1:
     # Issues.format_scope(:suite) returns nil, but Data.format_scope/1 maps nil to ":suite".
     test "suite scope returns string :suite fallback" do
-      assert Data.format_scope(:suite) == ":suite"
+      assert Data.format_scope(%{scope: :suite}) == ":suite"
     end
 
     test "module scope delegates to Issues.format_scope and returns module name" do
-      assert Data.format_scope({:module, MyApp.SomeTest}) == "MyApp.SomeTest"
+      assert Data.format_scope(%{scope: {:module, MyApp.SomeTest}}) == "MyApp.SomeTest"
     end
 
     test "test scope delegates to Issues.format_scope and returns module > test name" do
-      result = Data.format_scope({:test, MyApp.SomeTest, :"test does something"})
+      result = Data.format_scope(%{scope: {:test, MyApp.SomeTest, :"test does something"}})
       assert result == "MyApp.SomeTest > \"does something\""
+    end
+
+    test "test scope includes file:line when test_location is present" do
+      issue = %{
+        scope: {:test, MyApp.SomeTest, :"test does something"},
+        test_location: "suites/smoke/test_something.exs:42"
+      }
+
+      assert Data.format_scope(issue) ==
+               "MyApp.SomeTest > \"does something\" (suites/smoke/test_something.exs:42)"
     end
   end
 

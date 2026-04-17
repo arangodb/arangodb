@@ -111,6 +111,18 @@ defmodule ToastTest.Formatting.Issues do
     "#{inspect(mod)} > \"#{ToastTest.Formatting.display_test_name(name)}\""
   end
 
+  def attach_test_location(%{scope: {:test, mod, name}} = issue, modules) do
+    with %{^mod => %{tests: tests}} <- modules,
+         %{tags: %{file: file, line: line}} when is_binary(file) and is_integer(line) <-
+           Enum.find(tests, &(&1.name == name)) do
+      Map.put(issue, :test_location, "#{Path.relative_to_cwd(file)}:#{line}")
+    else
+      _ -> issue
+    end
+  end
+
+  def attach_test_location(issue, _modules), do: issue
+
   def timeout_source_label(:startup_timeout), do: "Startup Timeout"
   def timeout_source_label(:shutdown_timeout), do: "Shutdown Timeout"
   def timeout_source_label(:test_timeout), do: "Test Timeout"

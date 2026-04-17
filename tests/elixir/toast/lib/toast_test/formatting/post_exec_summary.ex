@@ -11,8 +11,12 @@ defmodule ToastTest.Formatting.PostExecSummary do
   @spec print(SuiteResult.t()) :: :ok
   def print(%SuiteResult{issues: issues, warnings: warnings} = result) do
     index = Issues.build_coredump_index(result.coredumps)
-    issues = Issues.resolve_coredumps(issues, index)
-    print_issues(issues, result)
+
+    issues
+    |> Issues.resolve_coredumps(index)
+    |> Enum.map(&Issues.attach_test_location(&1, result.modules))
+    |> print_issues(result)
+
     print_warnings(warnings)
     :ok
   end
@@ -82,8 +86,6 @@ defmodule ToastTest.Formatting.PostExecSummary do
   defp section_header(:sanitizer_report, count),
     do: {"SANITIZER REPORTS (#{count})", Color.sanitizer()}
 
-  # --- Test failures ---
-
   defp print_issue(:test_failure, issue, counter, _colors) do
     %{detail: %{test: %ExUnit.Test{state: {:failed, failures}} = test}} = issue
 
@@ -99,42 +101,29 @@ defmodule ToastTest.Formatting.PostExecSummary do
     counter + 1
   end
 
-  # --- Sanitizer reports ---
-
   defp print_issue(:sanitizer_report, issue, counter, colors) do
-    %{scope: scope, detail: %{server: server}} = issue
-
-    print_attribution(scope, server, colors)
+    %{detail: %{server: server}} = issue
+    print_attribution(issue, server, colors)
     print_indented(Issues.format_sanitizer(issue), "    ")
-
     counter + 1
   end
-
-  # --- Crashes ---
 
   defp print_issue(:crash, issue, counter, colors) do
-    %{scope: scope, detail: detail} = issue
-    %{server: server} = detail
-
-    print_attribution(scope, server, colors)
+    %{detail: %{server: server} = detail} = issue
+    print_attribution(issue, server, colors)
     print_crash_info(detail, colors)
     print_crash_detail(detail, colors)
-
     counter + 1
   end
-
-  # --- Timeouts ---
 
   defp print_issue(:timeout, issue, counter, colors) do
     %{detail: %{source: source, reason: reason, servers: servers}} = issue
-
     label = Issues.timeout_source_label(source)
     IO.puts("\n  #{colorize("[#{label}] #{reason}", :red, colors)}")
 
     if servers != [] do
       server_count = length(servers)
       IO.puts("    Aborted #{server_count} #{Toast.Utils.pluralize(server_count, "server")}:")
-
       Enum.each(servers, &print_server_detail(&1, colors))
     end
 
@@ -153,8 +142,6 @@ defmodule ToastTest.Formatting.PostExecSummary do
       IO.puts(IO.ANSI.format([:blue, "      Coredump: #{server.coredump}", :reset]))
     end
   end
-
-  # --- Crash details ---
 
   defp print_crash_info(%{crash_info: _} = detail, colors) do
     case Issues.format_crash_info(detail) do
@@ -181,16 +168,20 @@ defmodule ToastTest.Formatting.PostExecSummary do
   defp print_blue(nil), do: :ok
   defp print_blue(text), do: IO.puts(IO.ANSI.format([:blue, "    #{text}", :reset]))
 
-  # --- Attribution ---
+  defp print_attribution(issue, server, colors) do
+    label = format_scope_with_location(issue)
 
-  defp print_attribution(scope, server, colors) do
-    case Issues.format_scope(scope) do
+    case label do
       nil -> IO.puts("  #{colorize(server, :cyan, colors)}")
-      label -> IO.puts("  #{colorize(server, :cyan, colors)} \u2014 #{label}")
+      _ -> IO.puts("  #{colorize(server, :cyan, colors)} \u2014 #{label}")
     end
   end
 
-  # --- Helpers ---
+  defp format_scope_with_location(%{scope: scope, test_location: loc}) when is_binary(loc) do
+    "#{Issues.format_scope(scope)} (#{loc})"
+  end
+
+  defp format_scope_with_location(%{scope: scope}), do: Issues.format_scope(scope)
 
   defp print_indented(text, prefix) do
     text

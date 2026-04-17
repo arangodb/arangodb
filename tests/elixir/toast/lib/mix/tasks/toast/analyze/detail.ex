@@ -125,7 +125,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
 
   defp print_issue_header(issue, idx, color) do
     type_label = issue.type |> Atom.to_string() |> String.replace("_", " ") |> String.upcase()
-    scope_label = Data.format_scope(issue.scope)
+    scope_label = Data.format_scope(issue)
     server_label = Data.format_server(issue)
 
     header =

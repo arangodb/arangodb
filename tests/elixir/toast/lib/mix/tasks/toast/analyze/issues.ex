@@ -35,7 +35,7 @@ defmodule Mix.Tasks.Toast.Analyze.Issues do
           %{
             idx: to_string(idx),
             type: Atom.to_string(issue.type),
-            scope: Data.format_scope(issue.scope),
+            scope: Data.format_scope(issue),
             server: Data.format_server(issue)
           }
         end)
