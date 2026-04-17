@@ -55,15 +55,15 @@ ClusterUpgradeFeature::ClusterUpgradeFeature(
 }
 
 void ClusterUpgradeFeature::collectOptions(
-  std::shared_ptr<options::ProgramOptions> options) {
-    arangodb::upgrade::ClusterUpgradeOptionsProvider provider;
-    provider.declareOptions(options, _options);
+    std::shared_ptr<options::ProgramOptions> options) {
+  arangodb::upgrade::ClusterUpgradeOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ClusterUpgradeFeature::validateOptions(
-  std::shared_ptr<options::ProgramOptions> options) {
-    arangodb::upgrade::ClusterUpgradeOptionsProvider provider;
-    provider.validateClusterUpgradeOptions(options, _options, _databaseFeature);
+    std::shared_ptr<options::ProgramOptions> options) {
+  arangodb::upgrade::ClusterUpgradeOptionsProvider provider;
+  provider.validateClusterUpgradeOptions(options, _options, _databaseFeature);
 }
 
 void ClusterUpgradeFeature::start() {

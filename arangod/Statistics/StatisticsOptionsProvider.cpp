@@ -34,13 +34,13 @@ using namespace arangodb::options;
 
 void StatisticsOptionsProvider::declareOptions(
     std::shared_ptr<ProgramOptions> options, StatisticsFeatureOptions& opts) {
-        options->addOldOption("server.disable-statistics", "server.statistics");
+  options->addOldOption("server.disable-statistics", "server.statistics");
 
-        options
-            ->addOption("--server.statistics",
-                        "Whether to enable statistics gathering and statistics APIs.",
-                        new BooleanParameter(&opts.statistics))
-            .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
+  options
+      ->addOption("--server.statistics",
+                  "Whether to enable statistics gathering and statistics APIs.",
+                  new BooleanParameter(&opts.statistics))
+      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
 statistics gathering is turned off. Statistics gathering causes regular
 background CPU activity, memory usage, and writes to the storage engine, so
 using this option to turn statistics off might relieve heavily-loaded instances
@@ -49,14 +49,14 @@ a bit.
 A side effect of setting this option to `false` is that no statistics are
 shown in the dashboard of ArangoDB's web interface, and that the REST API for
 server statistics at `/_admin/statistics` returns HTTP 404.)");
-      
-        options
-            ->addOption("--server.statistics-history",
-                        "Whether to store statistics in the database.",
-                        new BooleanParameter(&opts.statisticsHistory),
-                        arangodb::options::makeDefaultFlags(
-                            arangodb::options::Flags::Dynamic))
-            .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
+
+  options
+      ->addOption("--server.statistics-history",
+                  "Whether to store statistics in the database.",
+                  new BooleanParameter(&opts.statisticsHistory),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Dynamic))
+      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
 statistics gathering is turned off. Statistics gathering causes regular
 background CPU activity, memory usage, and writes to the storage engine, so
 using this option to turn statistics off might relieve heavily-loaded instances
@@ -67,21 +67,20 @@ web interface, but the current statistics are available and can be queried
 using the REST API for server statistics at `/_admin/statistics`.
 This is less intrusive than setting the `--server.statistics` option to
 `false`.)");
-      
-        options
-            ->addOption(
-                "--server.statistics-all-databases",
-                "Provide cluster statistics in the web interface for all databases.",
-                new BooleanParameter(&opts.statisticsAllDatabases),
-                arangodb::options::makeFlags(
-                    arangodb::options::Flags::DefaultNoComponents,
-                    arangodb::options::Flags::OnCoordinator))
-            .setIntroducedIn(30800);
+
+  options
+      ->addOption(
+          "--server.statistics-all-databases",
+          "Provide cluster statistics in the web interface for all databases.",
+          new BooleanParameter(&opts.statisticsAllDatabases),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator))
+      .setIntroducedIn(30800);
 }
 
 bool StatisticsOptionsProvider::validateStatisticsOptions(
-    std::shared_ptr<ProgramOptions> options,
-    StatisticsFeatureOptions& opts,
+    std::shared_ptr<ProgramOptions> options, StatisticsFeatureOptions& opts,
     StatisticsFeature& feature) {
   if (opts.statistics) {
     ConnectionStatistics::initialize();

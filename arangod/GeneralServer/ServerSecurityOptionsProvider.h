@@ -32,7 +32,8 @@ class ProgramOptions;
 
 namespace arangodb::security {
 
-struct ServerSecurityOptionsProvider : OptionsProvider<ServerSecurityFeatureOptions> {
+struct ServerSecurityOptionsProvider
+    : OptionsProvider<ServerSecurityFeatureOptions> {
   ServerSecurityOptionsProvider() = default;
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,

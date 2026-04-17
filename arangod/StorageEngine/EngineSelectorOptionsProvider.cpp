@@ -34,12 +34,13 @@ void EngineSelectorOptionsProvider::declareOptions(
     std::shared_ptr<ProgramOptions> options,
     EngineSelectorFeatureOptions& opts) {
   options
-      ->addOption("--server.storage-engine",
-                  "The storage engine type "
-                  "(note that the MMFiles engine is unavailable since "
-                  "v3.7.0 and cannot be used anymore).",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &opts.engineName, EngineSelectorFeature::availableEngineNames()))
+      ->addOption(
+          "--server.storage-engine",
+          "The storage engine type "
+          "(note that the MMFiles engine is unavailable since "
+          "v3.7.0 and cannot be used anymore).",
+          new DiscreteValuesParameter<StringParameter>(
+              &opts.engineName, EngineSelectorFeature::availableEngineNames()))
       .setLongDescription(R"(ArangoDB's storage engine is based on RocksDB, see
 http://rocksdb.org. It is the only available engine from ArangoDB v3.7 onwards.
 

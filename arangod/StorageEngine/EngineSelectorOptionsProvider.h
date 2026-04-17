@@ -32,7 +32,8 @@ class ProgramOptions;
 
 namespace arangodb::engine_selector {
 
-struct EngineSelectorOptionsProvider : OptionsProvider<EngineSelectorFeatureOptions> {
+struct EngineSelectorOptionsProvider
+    : OptionsProvider<EngineSelectorFeatureOptions> {
   EngineSelectorOptionsProvider() = default;
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,

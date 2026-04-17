@@ -44,10 +44,9 @@ struct StatisticsOptionsProvider : OptionsProvider<StatisticsFeatureOptions> {
 
   /// Initializes connection/request statistics or disables the feature; returns
   /// whether `--server.statistics-history` was touched on the command line.
-  bool validateStatisticsOptions(
-      std::shared_ptr<options::ProgramOptions> opts,
-      StatisticsFeatureOptions& options,
-      StatisticsFeature& feature);
+  bool validateStatisticsOptions(std::shared_ptr<options::ProgramOptions> opts,
+                                 StatisticsFeatureOptions& options,
+                                 StatisticsFeature& feature);
 };
 
 }  // namespace statistics

@@ -32,7 +32,8 @@ class ProgramOptions;
 
 namespace arangodb::crash_handler {
 
-struct CrashHandlerOptionsProvider : OptionsProvider<CrashHandlerFeatureOptions> {
+struct CrashHandlerOptionsProvider
+    : OptionsProvider<CrashHandlerFeatureOptions> {
   CrashHandlerOptionsProvider() = default;
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,

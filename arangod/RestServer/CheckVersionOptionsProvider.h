@@ -38,7 +38,8 @@ class ProgramOptions;
 
 namespace arangodb::check_version {
 
-struct CheckVersionOptionsProvider : OptionsProvider<CheckVersionFeatureOptions> {
+struct CheckVersionOptionsProvider
+    : OptionsProvider<CheckVersionFeatureOptions> {
   CheckVersionOptionsProvider() = default;
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,

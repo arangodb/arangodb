@@ -36,7 +36,8 @@ class DatabaseFeature;
 
 namespace upgrade {
 
-struct ClusterUpgradeOptionsProvider : OptionsProvider<ClusterUpgradeFeatureOptions> {
+struct ClusterUpgradeOptionsProvider
+    : OptionsProvider<ClusterUpgradeFeatureOptions> {
   ClusterUpgradeOptionsProvider() = default;
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
@@ -45,8 +46,7 @@ struct ClusterUpgradeOptionsProvider : OptionsProvider<ClusterUpgradeFeatureOpti
   /// Applies `--cluster.upgrade` mode to DatabaseFeature (coordinator only).
   void validateClusterUpgradeOptions(
       std::shared_ptr<options::ProgramOptions> opts,
-      ClusterUpgradeFeatureOptions& options,
-      DatabaseFeature& databaseFeature);
+      ClusterUpgradeFeatureOptions& options, DatabaseFeature& databaseFeature);
 };
 
 }  // namespace upgrade
