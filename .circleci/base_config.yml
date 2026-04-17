@@ -622,6 +622,7 @@ jobs:
             fi
 
             cmake --preset << parameters.preset >> \
+              -G Ninja \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
               -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
