@@ -27,6 +27,8 @@
 #include "Aql/ExecutionState.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 
@@ -109,6 +111,15 @@ void EnumerateNearVectorsExecutor::searchResults() {
       _infos.isCoveredByStoredValues);
   _currentProcessedResultCount = 0;
   TRI_ASSERT(hasResults());
+
+  auto validCount = std::count_if(_labels.begin(), _labels.end(),
+                                  [](auto const& l) { return l != -1; });
+  LOG_TOPIC("f1a2b", WARN, Logger::ENGINES) << std::format(
+      "EnumerateNearVectors::searchResults: requested={}, returned={}, "
+      "validLabels={}, collectionCount={}",
+      _infos.getNumberOfResults(), _labels.size(), validCount,
+      _collectionCount);
+
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
 
@@ -217,14 +228,13 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     skipped += remainingRows * _collectionCount;
     call.didSkip(skipped);
 
-    LOG_INTERNAL << ADB_HERE
-                 << std::format(
-                        ": skipped={}, remainingRows={}, currentProcessed={}, "
-                        "nr={}, state={}, "
-                        "hasResults={}, call={}, colCount={}",
-                        skipped, remainingRows, _currentProcessedResultCount,
-                        _infos.getNumberOfResults(), state(), hasResults(),
-                        to_string(call), _collectionCount);
+    LOG_TOPIC("f1a2c", DEBUG, Logger::ENGINES) << std::format(
+        "EnumerateNearVectors::skipRowsRange(fullCount): skipped={}, "
+        "remainingRows={}, currentProcessed={}, nr={}, state={}, "
+        "hasResults={}, call={}, colCount={}",
+        skipped, remainingRows, _currentProcessedResultCount,
+        _infos.getNumberOfResults(), state(), hasResults(), to_string(call),
+        _collectionCount);
 
     auto upstreamCall = AqlCall{};
 

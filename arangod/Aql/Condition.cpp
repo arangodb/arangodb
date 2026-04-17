@@ -51,8 +51,7 @@
 
 #include <velocypack/Builder.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 enum ConditionPartCompareResult {
@@ -457,12 +456,12 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
           for (size_t j = 0; j < n2; ++j) {
             auto w = other.valueNode->getMemberUnchecked(j);
 
-            ::CompareResult res =
+            CompareResult res =
                 ResultsTable[compareAstNodes(v, w, true) + 1][0][0];
 
-            if (res != ::CompareResult::OTHER_CONTAINED_IN_SELF &&
-                res != ::CompareResult::CONVERT_EQUAL &&
-                res != ::CompareResult::IMPOSSIBLE) {
+            if (res != CompareResult::OTHER_CONTAINED_IN_SELF &&
+                res != CompareResult::CONVERT_EQUAL &&
+                res != CompareResult::IMPOSSIBLE) {
               return false;
             }
           }
@@ -524,13 +523,12 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-  ::CompareResult res =
+  CompareResult res =
       ResultsTable[compareAstNodes(other.valueNode, valueNode, true) + 1]
                   [other.whichCompareOperation()][whichCompareOperation()];
 
-  if (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
-      res == ::CompareResult::CONVERT_EQUAL ||
-      res == ::CompareResult::IMPOSSIBLE) {
+  if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
+      res == CompareResult::CONVERT_EQUAL || res == CompareResult::IMPOSSIBLE) {
     return true;
   }
 
@@ -769,7 +767,7 @@ std::vector<std::vector<basics::AttributeName>> Condition::getConstAttributes(
     auto member = node->getMember(i);
 
     if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      ::clearAttributeAccess(parts);
+      clearAttributeAccess(parts);
 
       auto lhs = member->getMember(0);
       auto rhs = member->getMember(1);
@@ -823,7 +821,7 @@ Condition::getNonNullAttributes(Variable const* reference) const {
     if (member->type == NODE_TYPE_OPERATOR_BINARY_NE ||
         member->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         member->type == NODE_TYPE_OPERATOR_BINARY_LT) {
-      ::clearAttributeAccess(parts);
+      clearAttributeAccess(parts);
 
       AstNode const* lhs = member->getMember(0);
       AstNode const* rhs = member->getMember(1);
@@ -1024,11 +1022,11 @@ bool canInRangeBeRemoved(auto const* inRangeNode, auto const* otherAndNode,
               result, isFromTraverser) ||
           result.first != variable ||
           !basics::AttributeName::isIdentical(result.second, elem, false)) {
-        ::clearAttributeAccess(result);
+        clearAttributeAccess(result);
         isFieldCoveredByIndex = true;
         break;
       }
-      ::clearAttributeAccess(result);
+      clearAttributeAccess(result);
     }
 
     if (!isFieldCoveredByIndex) {
@@ -1076,7 +1074,7 @@ void Condition::collectOverlappingMembers(
       lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
       rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
 
-      ::clearAttributeAccess(result);
+      clearAttributeAccess(result);
 
       if (rhs->isNullValue() &&
           lhs->isAttributeAccessForVariable(result,
@@ -1125,7 +1123,7 @@ void Condition::collectOverlappingMembers(
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           (allowIndexedAccessInArray && lhs->type == NODE_TYPE_EXPANSION)) {
-        ::clearAttributeAccess(result);
+        clearAttributeAccess(result);
 
         if (lhs->isAttributeAccessForVariable(result,
                                               allowIndexedAccessInArray) &&
@@ -1142,7 +1140,7 @@ void Condition::collectOverlappingMembers(
 
       if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           rhs->type == NODE_TYPE_EXPANSION) {
-        ::clearAttributeAccess(result);
+        clearAttributeAccess(result);
 
         if (rhs->isAttributeAccessForVariable(result,
                                               allowIndexedAccessInArray) &&
@@ -1502,8 +1500,8 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
     // and do not have to discard sub-conditions anymore
     andNode->sortMembers([](AstNode const* lhs, AstNode const* rhs) noexcept {
       // try to re-order comparison operators
-      int l = ::operationWeight(lhs);
-      int r = ::operationWeight(rhs);
+      int l = operationWeight(lhs);
+      int r = operationWeight(rhs);
       if (l != r) {
         return l < r;
       }
@@ -1653,15 +1651,15 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 // enumerate over IN list
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
-                  ::CompareResult res =
+                  CompareResult res =
                       ResultsTable[compareAstNodes(value, other.valueNode,
                                                    true) +
                                    1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                                   [other.whichCompareOperation()];
 
                   bool const keep =
-                      (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
-                       res == ::CompareResult::CONVERT_EQUAL);
+                      (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
+                       res == CompareResult::CONVERT_EQUAL);
 
                   if (keep) {
                     inNode->addMember(value);
@@ -1686,14 +1684,14 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-            ::CompareResult res =
+            CompareResult res =
                 resultsTable[compareAstNodes(current.valueNode, other.valueNode,
                                              true) +
                              1][current.whichCompareOperation()]
                             [other.whichCompareOperation()];
 
             switch (res) {
-              case ::CompareResult::IMPOSSIBLE: {
+              case CompareResult::IMPOSSIBLE: {
                 // impossible condition
                 // j = positions.size();
                 // we remove this one, so fast forward the loops to their end:
@@ -1701,20 +1699,20 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 retry = true;
                 goto fastForwardToNextOrItem;
               }
-              case ::CompareResult::SELF_CONTAINED_IN_OTHER: {
+              case CompareResult::SELF_CONTAINED_IN_OTHER: {
                 TRI_ASSERT(!positions.empty());
                 andNode->removeMemberUncheckedUnordered(positions.at(l).first);
                 goto restartThisOrItem;
               }
-              case ::CompareResult::OTHER_CONTAINED_IN_SELF: {
+              case CompareResult::OTHER_CONTAINED_IN_SELF: {
                 TRI_ASSERT(j < positions.size());
                 andNode->removeMemberUncheckedUnordered(positions.at(j).first);
                 goto restartThisOrItem;
               }
-              case ::CompareResult::CONVERT_EQUAL: {  // both ok, now transform
-                                                      // to
-                                                      // a
-                                                      // == x (== y)
+              case CompareResult::CONVERT_EQUAL: {  // both ok, now transform
+                                                    // to
+                                                    // a
+                                                    // == x (== y)
                 TRI_ASSERT(!positions.empty());
                 TRI_ASSERT(j < positions.size());
                 TRI_ASSERT(positions.at(j).first >
@@ -1739,10 +1737,10 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 andNode->changeMember(positions.at(l).first, newNode);
                 goto restartThisOrItem;
               }
-              case ::CompareResult::DISJOINT: {
+              case CompareResult::DISJOINT: {
                 break;
               }
-              case ::CompareResult::UNKNOWN: {
+              case CompareResult::UNKNOWN: {
                 break;
               }
             }
@@ -1854,7 +1852,7 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
             (allowArrayExpansion && lhs->type == NODE_TYPE_EXPANSION)) {
-          ::clearAttributeAccess(result);
+          clearAttributeAccess(result);
 
           if (lhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
               result.first == me.variable) {
@@ -1880,7 +1878,7 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
 
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
             rhs->type == NODE_TYPE_EXPANSION) {
-          ::clearAttributeAccess(result);
+          clearAttributeAccess(result);
 
           if (rhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
               result.first == me.variable) {
@@ -2083,7 +2081,7 @@ AstNode* Condition::transformNodePreorder(
   }
 
   // normalize any comparisons
-  return ::normalizeCompare(_ast, node);
+  return normalizeCompare(_ast, node);
 }
 
 /// @brief converts from negation normal to disjunctive normal form
@@ -2136,7 +2134,7 @@ AstNode* Condition::transformNodePostorder(
       //  a   c      b   c
       //
 
-      ::arangodb::containers::SmallVector<::PermutationState, 4> clauses;
+      containers::SmallVector<PermutationState, 4> clauses;
       clauses.reserve(n);
 
       size_t orMembers = 1;
@@ -2320,3 +2318,5 @@ bool Condition::isEmpty() const noexcept {
 }
 
 bool Condition::isSorted() const noexcept { return _isSorted; }
+
+}  // namespace arangodb::aql

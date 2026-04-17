@@ -27,11 +27,8 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-
+namespace arangodb::aql {
 namespace {
-
 auto doNothingVisitor = [](AstNode const*) {};
 
 bool isTargetVariable(AstNode const* const current,
@@ -69,9 +66,10 @@ bool isTargetVariable(AstNode const* const current,
 
 }  // namespace
 
-auto arangodb::aql::ast::getReferencedAttributesForKeep(
-    AstNode const* const node, Variable const* const searchVariable,
-    bool& isSafeForOptimization) -> std::vector<std::string> {
+auto ast::getReferencedAttributesForKeep(AstNode const* const node,
+                                         Variable const* const searchVariable,
+                                         bool& isSafeForOptimization)
+    -> std::vector<std::string> {
   auto result = std::vector<std::string>();
   isSafeForOptimization = true;
 
@@ -125,7 +123,9 @@ auto arangodb::aql::ast::getReferencedAttributesForKeep(
   // Traverse AST and call visitor before recursing on each node
   // as long as visitor returns true the traversal continues. In
   // that branch
-  Ast::traverseReadOnly(node, visitor, ::doNothingVisitor);
+  Ast::traverseReadOnly(node, visitor, doNothingVisitor);
 
   return result;
 }
+
+}  // namespace arangodb::aql

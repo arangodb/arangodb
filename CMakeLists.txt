@@ -470,6 +470,13 @@ endif()
 # argument is passed
 find_program(MAKE make gmake)
 
+include(ProcessorCount)
+ProcessorCount(NPROC)
+if(NPROC EQUAL 0)
+  set(NPROC 1)
+endif()
+set(MAKE_JOBS "-j${NPROC}" CACHE STRING "Parallel job flag for external project make invocations")
+
 find_program(
   CHMOD_EXECUTABLE chmod
   PATHS "/bin/" "/usr/bin/"
