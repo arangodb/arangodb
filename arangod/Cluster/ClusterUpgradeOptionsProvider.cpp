@@ -34,27 +34,26 @@ using namespace arangodb::options;
 void ClusterUpgradeOptionsProvider::declareOptions(
     std::shared_ptr<ProgramOptions> options,
     ClusterUpgradeFeatureOptions& opts) {
-  options
-      ->addOption("--cluster.upgrade",
-                  "Perform a cluster upgrade if necessary (auto = perform an upgrade "
-                  "and shut down only if `--database.auto-upgrade true` is set, "
-                  "disable = ignore `--database.auto-upgrade` and never perform an "
-                  "upgrade, force = ignore `--database.auto-upgrade` and always "
-                  "perform an upgrade and shut down, online = always perform an "
-                  "upgrade but don't shut down).",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &opts.upgradeMode,
-                      std::unordered_set<std::string>{"auto", "disable", "force",
-                                                      "online"}),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator));
+  options->addOption(
+      "--cluster.upgrade",
+      "Perform a cluster upgrade if necessary (auto = perform an upgrade "
+      "and shut down only if `--database.auto-upgrade true` is set, "
+      "disable = ignore `--database.auto-upgrade` and never perform an "
+      "upgrade, force = ignore `--database.auto-upgrade` and always "
+      "perform an upgrade and shut down, online = always perform an "
+      "upgrade but don't shut down).",
+      new DiscreteValuesParameter<StringParameter>(
+          &opts.upgradeMode,
+          std::unordered_set<std::string>{"auto", "disable", "force",
+                                          "online"}),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator));
 }
 
 void ClusterUpgradeOptionsProvider::validateClusterUpgradeOptions(
     std::shared_ptr<ProgramOptions> /*options*/,
-    ClusterUpgradeFeatureOptions& opts,
-    DatabaseFeature& databaseFeature) {
+    ClusterUpgradeFeatureOptions& opts, DatabaseFeature& databaseFeature) {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }
