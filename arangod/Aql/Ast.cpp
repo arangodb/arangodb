@@ -1988,7 +1988,8 @@ AstNode* Ast::createPatternLabelAnd(AstNode const* left, AstNode const* right) {
 
 AstNode* Ast::createPatternEdge(AstNode const* outVariable,
                                 AstNode const* label, AstNode const* properties,
-                                AstNode const* filterExpression, bool isInbound,
+                                AstNode const* filterExpression,
+                                AstNode const* rangeExpression, bool isInbound,
                                 bool isOutbound) {
   auto node = createNode(NODE_TYPE_PATTERN_EDGE);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
@@ -2002,6 +2003,7 @@ AstNode* Ast::createPatternEdge(AstNode const* outVariable,
   }
 
   node->addMember(createNodeValueInt(!isInbound << 1 | !isOutbound));
+  node->addMember(rangeExpression ? rangeExpression : createNodeNop());
   return node;
 }
 AstNode* Ast::createPatternNodePattern(AstNode const* outVariable,

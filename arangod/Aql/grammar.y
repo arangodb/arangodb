@@ -1164,11 +1164,9 @@ pattern_maybe_property_key_value_expression:
   }
   | /* empty */ { $$ = nullptr;}
 
-/* not supported for now, will be used later
 %type<node> pattern_variable_length_relationship;
 pattern_variable_length_relationship:
-    T_TIMES expression { $$ = $2; }
-*/
+  T_TIMES expression T_RANGE expression { $$ = parser->ast()->createNodeRange($2, $4); }
 
 %type <node> pattern_node_pattern;
 pattern_node_pattern:
@@ -1196,11 +1194,11 @@ pattern_close_relation:
 %type <node> pattern_edge;
 pattern_edge: pattern_open_relation pattern_out_variable pattern_label pattern_maybe_property_key_value_expression
     pattern_maybe_where_expression pattern_close_relation {
-        $$ = parser->ast()->createPatternEdge($2, $3, $4, $5, $1, $6);
+        $$ = parser->ast()->createPatternEdge($2, $3, $4, $5, nullptr, $1, $6);
     }
-/*  | pattern_open_relation pattern_out_variable pattern_label pattern_variable_length_relationship pattern_close_relation {
-        $$ = parser->ast()->createPatternEdge($2, $3, nullptr, nullptr, $1, $5);
-    } not supported for now */
+    | pattern_open_relation pattern_out_variable pattern_label pattern_variable_length_relationship pattern_close_relation {
+        $$ = parser->ast()->createPatternEdge($2, $3, nullptr, nullptr, $4, $1, $5);
+    }
 
 pattern_segment: pattern_edge pattern_node_pattern {
     auto node = parser->ast()->createPatternSegment($1, $2);
