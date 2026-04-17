@@ -515,7 +515,7 @@ set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base librar
 include(CheckCompilerVersion)
 
 CheckCompilerVersion(
-  16.0 # Clang
+  19.0 # Clang
 )
 
 if(CMAKE_COMPILER_IS_CLANG)
