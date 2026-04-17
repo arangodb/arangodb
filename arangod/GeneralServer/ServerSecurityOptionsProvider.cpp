@@ -37,6 +37,27 @@ void ServerSecurityOptionsProvider::declareOptions(
       "Lock down REST APIs that reveal version information or server "
       "internals for non-admin users.",
       new BooleanParameter(&opts.hardenedRestApi));
+
+  options->addOption(
+      "--foxx.api",
+      "Enable the Foxx management API.",
+      new BooleanParameter(&opts.enableFoxxApi),
+      makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
+                Flags::OnSingle));
+
+  options->addOption(
+      "--foxx.store",
+      "Enable the Foxx store in the web interface.",
+      new BooleanParameter(&opts.enableFoxxStore),
+      makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
+                Flags::OnSingle));
+
+  options->addOption(
+      "--foxx.allow-install-from-remote",
+      "Allow installing Foxx apps from remote URLs other than Github.",
+      new BooleanParameter(&opts.foxxAllowInstallFromRemote),
+      makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
+                Flags::OnSingle));
 }
 
 void ServerSecurityOptionsProvider::validateOptions(
