@@ -79,18 +79,33 @@ defmodule Toast.Diagnostics.Sanitizer do
     if Enum.empty?(active) do
       []
     else
-      Enum.map(active, fn san_var ->
-        options =
-          san_var
-          |> build_base_options(explicit)
-          |> merge_env_options(san_var)
-          |> add_log_path(san_var, log_dir)
-          |> add_suppressions(san_var, repo_root)
+      san_vars =
+        Enum.map(active, fn san_var ->
+          options =
+            san_var
+            |> build_base_options(explicit)
+            |> merge_env_options(san_var)
+            |> add_log_path(san_var, log_dir)
+            |> add_suppressions(san_var, repo_root)
 
-        {san_var, format_options(options)}
-      end)
+          {san_var, format_options(options)}
+        end)
+
+      # Tell our __sanitizer_report_error_summary override where to write
+      # per-report timestamps.  See arangod/RestServer/SanitizerReportHook.cpp.
+      sidecar = {"ARANGODB_SANITIZER_REPORT_LOG", report_log_prefix(log_dir)}
+      [sidecar | san_vars]
     end
   end
+
+  @doc """
+  Path prefix for per-report timestamp sidecar files.
+
+  The C++ hook appends `.<pid>` to produce the actual filename, mirroring
+  the sanitizer runtime's own `log_path` convention.
+  """
+  @spec report_log_prefix(String.t()) :: String.t()
+  def report_log_prefix(log_dir), do: Path.join(log_dir, "sanitizer_reports.log")
 
   defp build_base_options(_san_var, nil), do: %{}
 

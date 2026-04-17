@@ -215,8 +215,15 @@ defmodule ToastTest.Attribution do
   defp sanitizer_issues(artifacts, windows) do
     for {server_id, server_artifacts} <- artifacts,
         san_file <- server_artifacts.sanitizer_files,
-        {:ok, result} <- [Enrichment.Sanitizer.read(san_file)] do
-      {scope, confidence, phase} = TimeWindows.attribute(result.timestamp, windows)
+        sidecar = Enrichment.Sanitizer.sidecar_path_for(san_file),
+        {:ok, results} <- [Enrichment.Sanitizer.read_all(san_file, sidecar)],
+        result <- results do
+      {scope, confidence, phase} =
+        if is_integer(result.timestamp) do
+          TimeWindows.attribute(result.timestamp, windows)
+        else
+          {:suite, nil, nil}
+        end
 
       detail =
         %{

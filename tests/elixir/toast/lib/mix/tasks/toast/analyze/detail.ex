@@ -168,7 +168,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
 
   defp print_issue_body(%{type: :sanitizer_report, detail: detail}, _color, _bt_opts) do
     if detail[:timestamp] do
-      Mix.shell().info("  Time:   #{DateTime.to_iso8601(detail.timestamp)}")
+      Mix.shell().info("  Time:   #{Data.fmt_dt(detail.timestamp)}")
     end
 
     Mix.shell().info("")
@@ -190,7 +190,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
     Mix.shell().info("  #{colorize("[#{label}] #{detail.reason}", :red, color)}")
 
     if detail[:timestamp] do
-      Mix.shell().info("  Time:   #{DateTime.to_iso8601(detail.timestamp)}")
+      Mix.shell().info("  Time:   #{Data.fmt_dt(detail.timestamp)}")
     end
 
     if detail.servers != [] do

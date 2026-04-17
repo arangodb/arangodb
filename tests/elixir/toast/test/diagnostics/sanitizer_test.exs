@@ -115,11 +115,19 @@ defmodule Toast.Diagnostics.SanitizerTest do
       assert Sanitizer.build_env(MapSet.new(), "/tmp/log", "/repo") == []
     end
 
+    test "includes ARANGODB_SANITIZER_REPORT_LOG pointing to sidecar prefix" do
+      active = MapSet.new(["TSAN_OPTIONS"])
+      env = Sanitizer.build_env(active, "/tmp/server1", "/repo")
+
+      assert env_value(env, "ARANGODB_SANITIZER_REPORT_LOG") ==
+               "/tmp/server1/sanitizer_reports.log"
+    end
+
     test "generates ASAN_OPTIONS with log_path" do
       active = MapSet.new(["ASAN_OPTIONS"])
       env = Sanitizer.build_env(active, "/tmp/server1", "/repo")
 
-      assert [{"ASAN_OPTIONS", value}] = env
+      value = env_value(env, "ASAN_OPTIONS")
       assert String.contains?(value, "log_path=/tmp/server1/alubsan.log")
       assert String.contains?(value, "log_exe_name=true")
     end
@@ -128,7 +136,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
       active = MapSet.new(["TSAN_OPTIONS"])
       env = Sanitizer.build_env(active, "/tmp/server1", "/repo")
 
-      assert [{"TSAN_OPTIONS", value}] = env
+      value = env_value(env, "TSAN_OPTIONS")
       assert String.contains?(value, "log_path=/tmp/server1/tsan.log")
       assert String.contains?(value, "log_exe_name=true")
     end
@@ -139,7 +147,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
       active = MapSet.new(["ASAN_OPTIONS"])
       env = Sanitizer.build_env(active, "/tmp/server1", "/repo")
 
-      assert [{"ASAN_OPTIONS", value}] = env
+      value = env_value(env, "ASAN_OPTIONS")
       assert String.contains?(value, "halt_on_error=0")
       assert String.contains?(value, "detect_leaks=1")
       assert String.contains?(value, "log_path=")
@@ -158,7 +166,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
       active = MapSet.new(["LSAN_OPTIONS"])
       env = Sanitizer.build_env(active, "/tmp/server1", tmp_dir)
 
-      assert [{"LSAN_OPTIONS", value}] = env
+      value = env_value(env, "LSAN_OPTIONS")
       assert String.contains?(value, "suppressions=")
       assert String.contains?(value, "lsan_arangodb_suppressions.txt")
     end
@@ -167,7 +175,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
       active = MapSet.new(["ASAN_OPTIONS"])
       env = Sanitizer.build_env(active, "/tmp/server1", "/repo", :alubsan)
 
-      assert [{"ASAN_OPTIONS", value}] = env
+      value = env_value(env, "ASAN_OPTIONS")
       assert String.contains?(value, "halt_on_error=0")
       assert String.contains?(value, "detect_leaks=1")
     end
@@ -176,7 +184,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
       active = MapSet.new(["TSAN_OPTIONS"])
       env = Sanitizer.build_env(active, "/tmp/server1", "/repo", :tsan)
 
-      assert [{"TSAN_OPTIONS", value}] = env
+      value = env_value(env, "TSAN_OPTIONS")
       assert String.contains?(value, "halt_on_error=0")
       assert String.contains?(value, "history_size=7")
     end
@@ -185,7 +193,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
       active = MapSet.new(["UBSAN_OPTIONS"])
       env = Sanitizer.build_env(active, "/tmp/server1", "/repo", :alubsan)
 
-      assert [{"UBSAN_OPTIONS", value}] = env
+      value = env_value(env, "UBSAN_OPTIONS")
       assert String.contains?(value, "halt_on_error=0")
       assert String.contains?(value, "print_stacktrace=1")
     end
@@ -196,7 +204,7 @@ defmodule Toast.Diagnostics.SanitizerTest do
       active = MapSet.new(["TSAN_OPTIONS"])
       env = Sanitizer.build_env(active, "/tmp/server1", "/repo", :tsan)
 
-      assert [{"TSAN_OPTIONS", value}] = env
+      value = env_value(env, "TSAN_OPTIONS")
       assert String.contains?(value, "halt_on_error=1")
       assert String.contains?(value, "history_size=4")
     end
@@ -205,9 +213,11 @@ defmodule Toast.Diagnostics.SanitizerTest do
       active = MapSet.new(["ASAN_OPTIONS"])
       env = Sanitizer.build_env(active, "/tmp/server1", "/repo")
 
-      assert [{"ASAN_OPTIONS", value}] = env
+      value = env_value(env, "ASAN_OPTIONS")
       refute String.contains?(value, "halt_on_error=")
       refute String.contains?(value, "detect_leaks=")
     end
   end
+
+  defp env_value(env, key), do: Enum.find_value(env, fn {k, v} -> if k == key, do: v end)
 end
