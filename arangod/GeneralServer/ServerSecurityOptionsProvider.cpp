@@ -38,19 +38,16 @@ void ServerSecurityOptionsProvider::declareOptions(
       "internals for non-admin users.",
       new BooleanParameter(&opts.hardenedRestApi));
 
-  options->addOption(
-      "--foxx.api",
-      "Enable the Foxx management API.",
-      new BooleanParameter(&opts.enableFoxxApi),
-      makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
-                Flags::OnSingle));
+  options->addOption("--foxx.api", "Enable the Foxx management API.",
+                     new BooleanParameter(&opts.enableFoxxApi),
+                     makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
+                               Flags::OnSingle));
 
-  options->addOption(
-      "--foxx.store",
-      "Enable the Foxx store in the web interface.",
-      new BooleanParameter(&opts.enableFoxxStore),
-      makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
-                Flags::OnSingle));
+  options->addOption("--foxx.store",
+                     "Enable the Foxx store in the web interface.",
+                     new BooleanParameter(&opts.enableFoxxStore),
+                     makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
+                               Flags::OnSingle));
 
   options->addOption(
       "--foxx.allow-install-from-remote",
