@@ -43,7 +43,7 @@ class StateTest : public ::testing::Test {
   }
 
   static void populateLog(State& state, index_t from, index_t to,
-                           term_t term = 1) {
+                          term_t term = 1) {
     velocypack::Builder builder;
     builder.openObject();
     builder.close();
