@@ -261,8 +261,7 @@ void TemporaryStorageFeature::prepare() {
     return;
   }
 
-  std::error_code dirEc;
-  if (std::filesystem::is_directory(_options.basePath, dirEc)) {
+  if (std::filesystem::is_directory(_options.basePath)) {
     // intentionally do not set _cleanedUpDirectory flag here
     cleanupDirectory();
   } else {

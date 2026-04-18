@@ -1157,8 +1157,7 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
     for (auto const& it : basics::FileUtils::listFiles(_options.inputPath)) {
       std::string path =
           basics::FileUtils::buildFilename(_options.inputPath, it);
-      std::error_code dirEc;
-      if (std::filesystem::is_directory(path, dirEc)) {
+      if (std::filesystem::is_directory(path)) {
         EncryptionFeature* encryption{};
 #ifdef USE_ENTERPRISE
         TRI_ASSERT(server().hasFeature<EncryptionFeature>());

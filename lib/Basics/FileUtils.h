@@ -76,9 +76,6 @@ void appendToFile(std::string const& filename, char const* ptr, size_t len,
 void appendToFile(std::string const& filename, std::string_view s,
                   bool sync = false);
 
-// if a file could be removed returns TRI_ERROR_NO_ERROR.
-// otherwise, returns TRI_ERROR_SYS_ERROR and sets LastError.
-
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
 /// returns true (now wrapper for version below with TRI_copy_recursive_e

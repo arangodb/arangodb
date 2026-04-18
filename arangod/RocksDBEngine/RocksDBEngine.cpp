@@ -1003,8 +1003,7 @@ void RocksDBEngine::start() {
   _path = _databasePathFeature.subdirectoryName("engine-rocksdb");
 
   [[maybe_unused]] bool createdEngineDir = false;
-  std::error_code engineDirEc;
-  if (!std::filesystem::is_directory(_path, engineDirEc)) {
+  if (!std::filesystem::is_directory(_path)) {
     std::string systemErrorStr;
     long errorNo;
 
@@ -1053,8 +1052,7 @@ void RocksDBEngine::start() {
 
 #ifdef USE_SST_INGESTION
   _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
-  std::error_code idxDirEc;
-  if (std::filesystem::is_directory(_idxPath, idxDirEc)) {
+  if (std::filesystem::is_directory(_idxPath)) {
     for (auto const& fileName : TRI_FullTreeDirectory(_idxPath.c_str())) {
       TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
     }

@@ -482,16 +482,14 @@ static void findIResearchTestResources() {
     // environment variable not set, so try to auto-detect the location
     testResourceDir = ".";
     do {
-      std::error_code dirEc;
       if (std::filesystem::is_directory(
-              basics::FileUtils::buildFilename(testResourceDir, toBeFound),
-              dirEc)) {
+              basics::FileUtils::buildFilename(testResourceDir, toBeFound))) {
         testResourceDir =
             basics::FileUtils::buildFilename(testResourceDir, toBeFound);
         return;
       }
       testResourceDir = basics::FileUtils::buildFilename(testResourceDir, "..");
-      if (!std::filesystem::is_directory(testResourceDir, dirEc)) {
+      if (!std::filesystem::is_directory(testResourceDir)) {
         testResourceDir = IResearch_test_resource_dir;
         break;
       }

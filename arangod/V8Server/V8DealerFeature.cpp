@@ -451,16 +451,16 @@ void V8DealerFeature::start() {
     std::string const commonPath = FileUtils::buildFilename(dbJSPath, "common");
     std::string const nodeModulesPath =
         FileUtils::buildFilename(dbJSPath, "node", "node_modules");
-    std::error_code dirEc;
-    if (std::filesystem::is_directory(dbJSPath, dirEc) &&
-        std::filesystem::exists(checksumFile, dirEc) &&
-        std::filesystem::is_directory(serverPath, dirEc) &&
-        std::filesystem::is_directory(commonPath, dirEc)) {
+
+    if (std::filesystem::is_directory(dbJSPath) &&
+        std::filesystem::exists(checksumFile) &&
+        std::filesystem::is_directory(serverPath) &&
+        std::filesystem::is_directory(commonPath)) {
       // js directory inside database directory looks good. now use it!
       _options.startupDirectory = dbJSPath;
       // older versions didn't copy node_modules. so check if it exists inside
       // the database directory or not.
-      if (std::filesystem::is_directory(nodeModulesPath, dirEc)) {
+      if (std::filesystem::is_directory(nodeModulesPath)) {
         _nodeModulesDirectory = nodeModulesPath;
       } else {
         _nodeModulesDirectory = _options.startupDirectory;
@@ -510,8 +510,8 @@ void V8DealerFeature::start() {
       paths.push_back(std::string("application '" + _options.appPath + "'"));
 
       // create app directory if it does not exist
-      std::error_code appDirEc;
-      if (!std::filesystem::is_directory(_options.appPath, appDirEc)) {
+
+      if (!std::filesystem::is_directory(_options.appPath)) {
         std::string systemErrorStr;
         long errorNo;
 
@@ -633,10 +633,9 @@ void V8DealerFeature::copyInstallationFiles() {
       FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
 
   bool overwriteCopy = false;
-  std::error_code existsEc;
-  if (!std::filesystem::exists(copyJSPath, existsEc) ||
-      !std::filesystem::exists(checksumFile, existsEc) ||
-      !std::filesystem::exists(copyChecksumFile, existsEc)) {
+  if (!std::filesystem::exists(copyJSPath) ||
+      !std::filesystem::exists(checksumFile) ||
+      !std::filesystem::exists(copyChecksumFile)) {
     overwriteCopy = true;
   } else {
     try {
@@ -666,7 +665,7 @@ void V8DealerFeature::copyInstallationFiles() {
         << "Copying JS installation files from '" << _options.startupDirectory
         << "' to '" << copyJSPath << "'";
     auto res = TRI_ERROR_NO_ERROR;
-    if (std::filesystem::exists(copyJSPath, copyExistsEc)) {
+    if (std::filesystem::exists(copyJSPath)) {
       res = TRI_RemoveDirectory(copyJSPath.c_str());
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("1a20d", FATAL, Logger::V8)
@@ -739,8 +738,7 @@ void V8DealerFeature::copyInstallationFiles() {
     std::string const enterpriseJs = basics::FileUtils::buildFilename(
         _options.startupDirectory, "..", "enterprise", "js");
 
-    std::error_code entDirEc;
-    if (std::filesystem::is_directory(enterpriseJs, entDirEc)) {
+    if (std::filesystem::is_directory(enterpriseJs)) {
       std::function<bool(std::string const&)> const passAllFilter =
           [](std::string const&) { return false; };
       if (!FileUtils::copyRecursive(enterpriseJs, copyJSPath, passAllFilter,

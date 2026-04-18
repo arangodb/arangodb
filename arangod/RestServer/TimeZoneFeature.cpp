@@ -62,8 +62,7 @@ void TimeZoneFeature::prepareTimeZoneData(
     std::string test_exe =
         FileUtils::buildFilename(binaryExecutionPath, "tzdata");
 
-    std::error_code dirEc;
-    if (std::filesystem::is_directory(test_exe, dirEc)) {
+    if (std::filesystem::is_directory(test_exe)) {
       test_exe = basics::FileUtils::absolutePath(test_exe).string();
       tz_path = std::filesystem::path(test_exe).make_preferred().string();
     } else {

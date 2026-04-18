@@ -104,8 +104,7 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const versionFilename("/proc/version");
 
-    std::error_code existsEc;
-    if (std::filesystem::exists(versionFilename, existsEc)) {
+    if (std::filesystem::exists(versionFilename)) {
       _operatingSystem =
           basics::StringUtils::trim(basics::FileUtils::slurp(versionFilename));
     }
@@ -122,8 +121,7 @@ void EnvironmentFeature::prepare() {
       std::string const procFilename =
           absl::StrCat("/proc/", parentId, "/stat");
 
-      std::error_code existsEc;
-      if (std::filesystem::exists(procFilename, existsEc)) {
+      if (std::filesystem::exists(procFilename)) {
         std::string content = basics::FileUtils::slurp(procFilename);
         std::string_view procName = ::trimProcName(content);
         if (!procName.empty()) {
@@ -172,8 +170,7 @@ void EnvironmentFeature::prepare() {
 
     std::string const filename("/proc/cpu/alignment");
     try {
-      std::error_code existsEc;
-      if (std::filesystem::exists(filename, existsEc)) {
+      if (std::filesystem::exists(filename)) {
         std::string const cpuAlignment = basics::FileUtils::slurp(filename);
         auto start = cpuAlignment.find("User faults:");
 
@@ -233,8 +230,7 @@ void EnvironmentFeature::prepare() {
 
     std::string const cpuInfoFilename("/proc/cpuinfo");
     try {
-      std::error_code existsEc;
-      if (std::filesystem::exists(cpuInfoFilename, existsEc)) {
+      if (std::filesystem::exists(cpuInfoFilename)) {
         std::string const cpuInfo = basics::FileUtils::slurp(cpuInfoFilename);
         auto start = cpuInfo.find("ARMv6");
 
@@ -304,8 +300,7 @@ void EnvironmentFeature::prepare() {
       //   policy that attempts to prevent any overcommit of memory.
       std::string const ratioFilename("/proc/sys/vm/overcommit_ratio");
 
-      std::error_code existsEc;
-      if (std::filesystem::exists(ratioFilename, existsEc)) {
+      if (std::filesystem::exists(ratioFilename)) {
         content = basics::FileUtils::slurp(ratioFilename);
         uint64_t r = basics::StringUtils::uint64(content);
         // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
@@ -371,8 +366,7 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const portFilename("/proc/sys/net/ipv4/ip_local_port_range");
 
-    std::error_code existsEc;
-    if (std::filesystem::exists(portFilename, existsEc)) {
+    if (std::filesystem::exists(portFilename)) {
       std::string content = basics::FileUtils::slurp(portFilename);
       auto parts = basics::StringUtils::split(content, '\t');
       if (parts.size() == 2) {
@@ -404,8 +398,7 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const recycleFilename("/proc/sys/net/ipv4/tcp_tw_recycle");
 
-    std::error_code existsEc;
-    if (std::filesystem::exists(recycleFilename, existsEc)) {
+    if (std::filesystem::exists(recycleFilename)) {
       std::string content = basics::FileUtils::slurp(recycleFilename);
       uint64_t v = basics::StringUtils::uint64(content);
       if (v != 0) {
@@ -440,8 +433,7 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const reclaimFilename("/proc/sys/vm/zone_reclaim_mode");
 
-    std::error_code existsEc;
-    if (std::filesystem::exists(reclaimFilename, existsEc)) {
+    if (std::filesystem::exists(reclaimFilename)) {
       std::string content = basics::FileUtils::slurp(reclaimFilename);
       uint64_t v = basics::StringUtils::uint64(content);
       if (v != 0) {
@@ -470,8 +462,7 @@ void EnvironmentFeature::prepare() {
 
   for (auto const& file : paths) {
     try {
-      std::error_code existsEc;
-      if (std::filesystem::exists(file, existsEc)) {
+      if (std::filesystem::exists(file)) {
         std::string value = basics::FileUtils::slurp(file);
         size_t start = value.find('[');
         size_t end = value.find(']');
@@ -499,8 +490,7 @@ void EnvironmentFeature::prepare() {
     try {
       std::string const mapsFilename("/proc/self/numa_maps");
 
-      std::error_code existsEc;
-      if (std::filesystem::exists(mapsFilename, existsEc)) {
+      if (std::filesystem::exists(mapsFilename)) {
         std::string content = basics::FileUtils::slurp(mapsFilename);
         auto values = basics::StringUtils::split(content, '\n');
 
@@ -526,8 +516,7 @@ void EnvironmentFeature::prepare() {
   try {
     std::string const settingsFilename("/proc/sys/kernel/randomize_va_space");
 
-    std::error_code existsEc;
-    if (std::filesystem::exists(settingsFilename, existsEc)) {
+    if (std::filesystem::exists(settingsFilename)) {
       std::string content = basics::FileUtils::slurp(settingsFilename);
       uint64_t v = basics::StringUtils::uint64(content);
       // from man proc:

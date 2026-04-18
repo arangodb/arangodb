@@ -185,8 +185,7 @@ void DatabasePathFeature::prepare() {
 
   std::vector<std::string> files;
   for (auto const& it : basics::FileUtils::listFiles(_options.directory)) {
-    std::error_code entryDirEc;
-    if (it.empty() || std::filesystem::is_directory(it, entryDirEc)) {
+    if (it.empty() || std::filesystem::is_directory(it)) {
       continue;
     }
 
@@ -219,8 +218,7 @@ void DatabasePathFeature::prepare() {
 
 void DatabasePathFeature::start() {
   // create base directory if it does not exist
-  std::error_code dirEc;
-  if (!std::filesystem::is_directory(_options.directory, dirEc)) {
+  if (!std::filesystem::is_directory(_options.directory)) {
     std::string systemErrorStr;
     long errorNo;
 

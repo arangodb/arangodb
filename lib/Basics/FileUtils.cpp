@@ -323,8 +323,7 @@ bool copyRecursive(
     std::string const& source, std::string const& target,
     std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
     std::string& error) {
-  std::error_code ec;
-  if (std::filesystem::is_directory(source, ec)) {
+  if (std::filesystem::is_directory(source)) {
     return copyDirectoryRecursive(source, target, filter, error);
   }
 

@@ -80,9 +80,8 @@ std::size_t numberOfEffectiveCoresImpl() {
     }
     case cgroup::Version::V1: {
       try {
-        std::error_code existsEc;
-        if (std::filesystem::exists(kCgroupV1CpuQuotaPath, existsEc) &&
-            std::filesystem::exists(kCgroupV1CpuPeriodPath, existsEc)) {
+        if (std::filesystem::exists(kCgroupV1CpuQuotaPath) &&
+            std::filesystem::exists(kCgroupV1CpuPeriodPath)) {
           auto quota =
               basics::FileUtils::readCgroupFileValue(kCgroupV1CpuQuotaPath);
           auto period =
@@ -107,8 +106,7 @@ std::size_t numberOfEffectiveCoresImpl() {
     }
     case cgroup::Version::V2: {
       try {
-        std::error_code existsEc;
-        if (std::filesystem::exists(kCgroupV2CpuMaxPath, existsEc)) {
+        if (std::filesystem::exists(kCgroupV2CpuMaxPath)) {
           std::string content = basics::FileUtils::slurp(kCgroupV2CpuMaxPath);
           std::istringstream stream(content);
           std::string quotaStr, periodStr;

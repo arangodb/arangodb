@@ -288,8 +288,7 @@ void V8ShellFeature::copyInstallationFiles() {
       << _copyDirectory << "'";
 
   _nodeModulesDirectory = _startupDirectory;
-  std::error_code ec;
-  if (std::filesystem::exists(_copyDirectory, ec)) {
+  if (std::filesystem::exists(_copyDirectory)) {
     auto res = TRI_ERROR_NO_ERROR;
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1068,8 +1067,7 @@ void V8ShellFeature::initGlobals() {
   LOG_TOPIC("5095d", DEBUG, Logger::V8)
       << "checking for existence of version-specific startup-directory '"
       << versionedPath << "'";
-  std::error_code dirEc;
-  if (std::filesystem::is_directory(versionedPath, dirEc)) {
+  if (std::filesystem::is_directory(versionedPath)) {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
@@ -1081,8 +1079,7 @@ void V8ShellFeature::initGlobals() {
     LOG_TOPIC("2abe3", DEBUG, Logger::V8)
         << "checking for existence of version-specific module-directory '"
         << versionedPath << "'";
-    std::error_code moduleDirEc;
-    if (std::filesystem::is_directory(versionedPath, moduleDirEc)) {
+    if (std::filesystem::is_directory(versionedPath)) {
       // version-specific js path exists!
       it = versionedPath;
     }

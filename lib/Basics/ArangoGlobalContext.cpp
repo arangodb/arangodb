@@ -115,11 +115,10 @@ void ArangoGlobalContext::normalizePath(std::string& path,
   StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
 
   path = std::filesystem::path(path).make_preferred().string();
-  std::error_code ec;
-  if (!std::filesystem::exists(path, ec)) {
+  if (!std::filesystem::exists(path)) {
     std::string directory =
         arangodb::basics::FileUtils::buildFilename(_runRoot, path);
-    if (!std::filesystem::exists(directory, ec)) {
+    if (!std::filesystem::exists(directory)) {
       if (!fatal) {
         return;
       }
