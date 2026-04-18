@@ -110,19 +110,6 @@ class Condition {
   /// @brief destroy the condition
   ~Condition();
 
-  /// @brief: note: index may be a nullptr
-  /// There are different rules for processing certain types of nodes
-  /// when we're dealing with traversals. Previously, a null index ptr
-  /// was used to imply a traversal. Now we've made it explicit with the
-  /// the introduction of the isFromTraverser arg.
-  static void collectOverlappingMembers(
-      ExecutionPlan const* plan, Variable const* variable,
-      AstNode const* andNode, AstNode const* otherAndNode,
-      containers::HashSet<size_t>& toRemove, Index const* index,
-      bool isFromTraverser,  //  indicates whether the function is called from
-                             //  traversals
-      bool isPathCondition);
-
   /// @brief return the condition root
   AstNode* root() const noexcept;
 
@@ -169,6 +156,15 @@ class Condition {
   /// don't want to remove eventually unneccessary filters.
   void normalize();
 
+  static containers::HashSet<size_t> collectOverlappingMembersForIndex(
+      ExecutionPlan const* plan, Variable const* variable,
+      AstNode const* andNode, AstNode const* otherAndNode, Index const* index);
+
+  static containers::HashSet<size_t> collectOverlappingMembersForTraversal(
+      ExecutionPlan const* plan, Variable const* variable,
+      AstNode const* andNode, AstNode const* otherAndNode,
+      bool isPathCondition);
+
   /// @brief removes condition parts from another
   AstNode* removeIndexCondition(ExecutionPlan const* plan,
                                 Variable const* variable,
@@ -210,11 +206,19 @@ class Condition {
   AstNode* transformCondition(AstNode* root,
                               ConditionOptimization conditionOptimization);
 
-  /// @brief internal worker function for removeIndexCondition and
-  /// removeTraversalCondition
-  AstNode* removeCondition(ExecutionPlan const* plan, Variable const* variable,
-                           AstNode const* condition, Index const* index,
-                           bool isFromTraverser);
+  static bool isConditionCoveredBy(ExecutionPlan const* plan,
+                                   Variable const* variable,
+                                   AstNode const* condition,
+                                   AstNode const* otherAndNode);
+
+  static bool extractSingleAndNodes(AstNode const* root,
+                                    AstNode const* condition,
+                                    AstNode const*& andNode,
+                                    AstNode const*& conditionAndNode);
+
+  static AstNode* rebuildConditionWithoutMembers(
+      Ast* ast, AstNode const* andNode,
+      containers::HashSet<size_t> const& toRemove);
 
   /// @brief optimize the condition expression tree
   void optimize(ExecutionPlan*, bool multivalued);

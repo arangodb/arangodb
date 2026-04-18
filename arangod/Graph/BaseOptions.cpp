@@ -464,10 +464,9 @@ BaseOptions::LookupInfo BaseOptions::createLookupInfo(
     }
   }
 
-  ::arangodb::containers::HashSet<size_t> toRemove;
-  aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition,
-                                            info.indexCondition, toRemove,
-                                            nullptr, true, false);
+  auto toRemove = aql::Condition::collectOverlappingMembersForTraversal(
+      plan, _tmpVar, condition, info.indexCondition, /*isPathCondition*/ false);
+  
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.

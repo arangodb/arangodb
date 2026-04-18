@@ -709,10 +709,9 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   auto generateExpression =
       [&](aql::AstNode* remainderCondition,
           aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
-    containers::HashSet<size_t> toRemove;
-    aql::Condition::collectOverlappingMembers(
+    auto toRemove = aql::Condition::collectOverlappingMembersForTraversal(
         _plan, options()->tmpVar(), remainderCondition, indexCondition,
-        toRemove, nullptr, true, false);
+        /*isPathCondition*/ false);
     size_t n = remainderCondition->numMembers();
 
     if (n != toRemove.size()) {
