@@ -67,7 +67,7 @@ defmodule ToastTest.ArtifactCollector do
     opts
     |> Keyword.take([:coredump_dir, :not_before])
     |> Keyword.merge(server_dir: server.server_dir, os_pids: os_pids)
-    |> Coredump.discover()
+    |> Coredump.Discovery.discover()
   end
 
   defp merge_pids(nil, historical), do: historical

@@ -12,7 +12,7 @@ defmodule ToastTest.Formatting.RunSummary do
     Utils.print_header("SUMMARY", colors, Color.summary())
     IO.puts(format_line("Modules", mod_counts, colors))
     IO.puts(format_line("Test cases", test_counts, colors))
-    IO.puts("  Runtime:     #{format_duration(elapsed_us)}")
+    IO.puts("  Runtime:     #{format_duration_us(elapsed_us)}")
 
     :ok
   end
@@ -104,22 +104,6 @@ defmodule ToastTest.Formatting.RunSummary do
       |> Enum.intersperse(", ")
 
     IO.iodata_to_binary(["  ", padded | items])
-  end
-
-  defp format_duration(us) when us < 1_000, do: "#{us}µs"
-  defp format_duration(us) when us < 1_000_000, do: "#{Float.round(us / 1_000, 1)}ms"
-
-  defp format_duration(us) do
-    total_seconds = div(us, 1_000_000)
-    minutes = div(total_seconds, 60)
-    seconds = rem(total_seconds, 60)
-    frac = us |> rem(1_000_000) |> div(100_000)
-
-    if minutes > 0 do
-      "#{minutes}m #{seconds}.#{frac}s"
-    else
-      "#{seconds}.#{frac}s"
-    end
   end
 
   defp colorize_count(0, suffix, _color, _colors), do: "0#{suffix}"

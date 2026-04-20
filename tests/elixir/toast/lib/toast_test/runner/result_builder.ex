@@ -53,7 +53,7 @@ defmodule ToastTest.Runner.ResultBuilder do
     if crash_events != [] and not ToastTest.ArtifactCollector.has_coredumps?(artifacts) do
       [
         sanitizer_coredump_warning(active_sanitizers),
-        Toast.Diagnostics.Coredump.coredump_discovery_warning(coredump_dir)
+        Toast.Diagnostics.Coredump.Discovery.coredump_discovery_warning(coredump_dir)
       ]
       |> Toast.Utils.compact()
     else

@@ -60,10 +60,10 @@ defmodule ToastTest.Runner.TestExecution do
     {to_run_tests, excluded_and_skipped_tests} =
       TestFilter.filter(config.filters, test_module.tests)
 
-    finish_module_execution(config, test_module, to_run_tests, excluded_and_skipped_tests)
+    execute_module_tests(config, test_module, to_run_tests, excluded_and_skipped_tests)
   end
 
-  defp finish_module_execution(config, test_module, to_run_tests, excluded_and_skipped_tests) do
+  defp execute_module_tests(config, test_module, to_run_tests, excluded_and_skipped_tests) do
     for excluded_or_skipped_test <- excluded_and_skipped_tests do
       Compat.test_started(config.manager, excluded_or_skipped_test)
       Compat.test_finished(config.manager, excluded_or_skipped_test)

@@ -122,6 +122,7 @@ defmodule ToastTest.EventStore.Projections do
           Map.update(acc.servers, did, deployment_servers, fn existing ->
             Map.merge(deployment_servers, existing, fn
               :incarnations, _new, old when old != [] -> old
+              _key, nil, old -> old
               _key, new, _old -> new
             end)
           end)

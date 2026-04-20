@@ -112,4 +112,10 @@ defmodule ToastTest.ExUnitCompat do
   def run_on_exit(pid, timeout) do
     ExUnit.OnExitHandler.run(pid, timeout)
   end
+
+  @spec clear_after_suite() :: :ok
+  def clear_after_suite do
+    Application.put_env(:ex_unit, :after_suite, [])
+    :ok
+  end
 end

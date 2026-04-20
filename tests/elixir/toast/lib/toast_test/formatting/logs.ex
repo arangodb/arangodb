@@ -116,7 +116,9 @@ defmodule ToastTest.Formatting.Logs do
     if color_enabled do
       color_code = color_map[server_id]
       level_extra = level_emphasis(entry)
-      "\e[38;5;#{color_code}m#{level_extra}[#{tag}] #{line}\e[0m"
+
+      [IO.ANSI.color(color_code), level_extra, "[", tag, "] ", line, IO.ANSI.reset()]
+      |> IO.iodata_to_binary()
     else
       "[#{tag}] #{line}"
     end

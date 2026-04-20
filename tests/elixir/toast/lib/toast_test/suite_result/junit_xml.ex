@@ -12,7 +12,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
 
   defp render(result) do
     tests = SuiteResult.flat_tests(result)
-    total = length(tests)
+    test_count = length(tests)
     failures = Enum.count(tests, &(&1.outcome == :failed))
     skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded, :invalidated]))
     time = format_duration(result.times_us.run)
@@ -20,7 +20,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     failure_index = build_failure_index(result.issues)
     issue_index = build_issue_index(result.issues)
 
-    errors =
+    base_errors =
       Enum.count(tests, &(&1.outcome == :invalid)) +
         count_infra_errors(tests, issue_index)
 
@@ -40,8 +40,9 @@ defmodule ToastTest.SuiteResult.JUnitXML do
 
     infra_suite = render_infra_testsuite(synthetic_suite)
 
-    total = total + length(synthetic_suite) + module_synthetic_count
-    errors = errors + length(synthetic_suite) + module_synthetic_count
+    synthetic_count = length(synthetic_suite) + module_synthetic_count
+    total = test_count + synthetic_count
+    errors = base_errors + synthetic_count
 
     [
       ~s(<?xml version="1.0" encoding="UTF-8"?>),

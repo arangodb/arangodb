@@ -39,6 +39,7 @@ defmodule Toast.Deployment.Config do
           memory_budget: pos_integer() | nil,
           rr: MapSet.t(atom()) | nil,
           rr_path: Path.t() | nil,
+          protocol: :http1 | :http2,
           authentication: boolean(),
           jwt_algorithm: jwt_algorithm(),
           ssl: boolean()
@@ -57,6 +58,7 @@ defmodule Toast.Deployment.Config do
             memory_budget: nil,
             rr: nil,
             rr_path: nil,
+            protocol: :http1,
             authentication: false,
             jwt_algorithm: :hmac,
             ssl: false

@@ -61,14 +61,22 @@ defmodule ToastTest.Case do
 
     endpoint = Toast.Deployment.default_endpoint(deployment)
 
+    client =
+      Toast.Client.new(endpoint,
+        api_version: deployment.api_version,
+        protocol: deployment.protocol
+      )
+
+    client =
+      case deployment.jwt_provider do
+        nil -> client
+        provider -> Toast.Client.with_auth(client, {:jwt_provider, provider})
+      end
+
     base = %{
       deployment: deployment,
       endpoint: endpoint,
-      client:
-        Toast.Client.new(endpoint,
-          api_version: deployment.api_version,
-          protocol: Application.get_env(:toast, :protocol, :http1)
-        )
+      client: client
     }
 
     Map.merge(base, extra_context)

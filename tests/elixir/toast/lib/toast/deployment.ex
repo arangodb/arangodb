@@ -89,12 +89,13 @@ defmodule Toast.Deployment do
           id: String.t(),
           controller: pid() | nil,
           api_version: non_neg_integer() | String.t() | nil,
+          protocol: :http1 | :http2,
           servers: %{String.t() => ServerInfo.t()},
           jwt_provider: Toast.JWT.Provider.t() | nil
         }
 
   @enforce_keys [:id]
-  defstruct [:id, :controller, :api_version, :jwt_provider, servers: %{}]
+  defstruct [:id, :controller, :api_version, :jwt_provider, protocol: :http1, servers: %{}]
 
   @doc "Returns true if this is a cluster deployment."
   @spec cluster?(t()) :: boolean()
@@ -193,6 +194,7 @@ defmodule Toast.Deployment do
          id: info.id,
          controller: pid,
          api_version: config.api_version,
+         protocol: config.protocol,
          servers: build_server_infos(info),
          jwt_provider: jwt_provider
        }}
@@ -599,12 +601,12 @@ defmodule Toast.Deployment do
   end
 
   defp build_client(%__MODULE__{jwt_provider: nil} = deployment, srv) do
-    Client.new(srv.endpoint, api_version: deployment.api_version)
+    Client.new(srv.endpoint, api_version: deployment.api_version, protocol: deployment.protocol)
   end
 
   defp build_client(%__MODULE__{jwt_provider: provider} = deployment, srv) do
     srv.endpoint
-    |> Client.new(api_version: deployment.api_version)
+    |> Client.new(api_version: deployment.api_version, protocol: deployment.protocol)
     |> Client.with_auth({:jwt_provider, provider})
   end
 

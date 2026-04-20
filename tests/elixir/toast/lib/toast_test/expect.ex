@@ -20,9 +20,14 @@ defmodule ToastTest.Expect do
 
   ## Limitations
 
-  Variable bindings from pattern matches inside `expect` are unreliable —
-  they are undefined when the expectation fails. Use `assert` when you need
-  matched values for subsequent code.
+  - Variable bindings from pattern matches inside `expect` are unreliable —
+    they are undefined when the expectation fails. Use `assert` when you need
+    matched values for subsequent code.
+
+  - Expectations must be called from the test process. Failures recorded in
+    spawned tasks or child processes are silently lost because each process
+    has its own dictionary. This also applies to `assert` in unlinked child
+    processes, but `expect` has no crash-based fallback to surface the issue.
   """
 
   @pdict_key :toast_expect_failures

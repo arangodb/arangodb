@@ -93,10 +93,21 @@ defmodule ToastTest.Interactive do
           try do
             context = Compat.get_test_setup(module, context)
             apply(module, test.name, [context])
-            :passed
+
+            case ToastTest.Expect.collect_failures() do
+              [] -> :passed
+              failures -> {:failed, {:error, %ExUnit.MultiError{errors: failures}, []}}
+            end
           catch
             kind, error ->
-              {:failed, {kind, error, __STACKTRACE__}}
+              case ToastTest.Expect.collect_failures() do
+                [] ->
+                  {:failed, {kind, error, __STACKTRACE__}}
+
+                prior ->
+                  all = prior ++ [{kind, error, __STACKTRACE__}]
+                  {:failed, {:error, %ExUnit.MultiError{errors: all}, []}}
+              end
           end
 
         send(parent_pid, {self(), :test_finished, result})

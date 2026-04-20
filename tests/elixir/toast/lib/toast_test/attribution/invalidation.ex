@@ -17,11 +17,11 @@ defmodule ToastTest.Attribution.Invalidation do
 
   alias ToastTest.CrashEvent
 
-  @spec apply(map(), [CrashEvent.t()]) :: map()
-  def apply(test_data, []), do: test_data
-  def apply(%{failures: []} = test_data, _crash_events), do: test_data
+  @spec invalidate(map(), [CrashEvent.t()]) :: map()
+  def invalidate(test_data, []), do: test_data
+  def invalidate(%{failures: []} = test_data, _crash_events), do: test_data
 
-  def apply(test_data, crash_events) do
+  def invalidate(test_data, crash_events) do
     case earliest_crash_us(crash_events) do
       nil ->
         test_data

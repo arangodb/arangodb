@@ -9,7 +9,15 @@ defmodule ToastTest.Runner.PostExecution do
 
   @spec run(Toast.Deployment.t() | nil, map(), ToastTest.Config.t()) :: SuiteResult.t()
   def run(nil, test_data, _test_config) do
-    SuiteResult.build(test_data, [])
+    snapshot = EventStore.snapshot()
+    crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
+
+    {issues, _coredump_reports} =
+      ToastTest.Attribution.run(test_data, %{}, crash_events,
+        timeout_kills: snapshot.timeout_kills
+      )
+
+    SuiteResult.build(test_data, issues, events: snapshot.events)
   end
 
   def run(deployment, test_data, %ToastTest.Config{} = test_config) do
@@ -57,7 +65,7 @@ defmodule ToastTest.Runner.PostExecution do
     Logger.debug("Running attribution")
 
     crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
-    test_data = ToastTest.Attribution.Invalidation.apply(test_data, crash_events)
+    test_data = ToastTest.Attribution.Invalidation.invalidate(test_data, crash_events)
 
     {issues, coredump_reports} =
       ToastTest.Attribution.run(test_data, artifacts, crash_events,
@@ -71,7 +79,7 @@ defmodule ToastTest.Runner.PostExecution do
     server_logs = ToastTest.Attribution.ServerLogs.collect(issues, all_log_files, windows)
 
     Logger.debug("Building results (#{length(issues)} issues found)")
-    active_sanitizers = Application.get_env(:toast, :active_sanitizers, MapSet.new())
+    active_sanitizers = test_config.active_sanitizers
 
     warnings =
       ResultBuilder.coredump_warnings(

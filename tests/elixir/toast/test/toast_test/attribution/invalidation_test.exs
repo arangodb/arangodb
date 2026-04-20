@@ -84,7 +84,7 @@ defmodule ToastTest.Attribution.InvalidationTest do
           [failure]
         )
 
-      assert Invalidation.apply(test_data, []) == test_data
+      assert Invalidation.invalidate(test_data, []) == test_data
     end
   end
 
@@ -104,7 +104,7 @@ defmodule ToastTest.Attribution.InvalidationTest do
       # Crash happens between test_one finish and test_two start.
       crashes = [crash_event(~U[2026-03-09 10:01:02Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.invalidate(test_data, crashes)
 
       assert fetch_test(result, :test_one).outcome == :passed
       assert fetch_test(result, :test_two).outcome == :invalidated
@@ -126,7 +126,7 @@ defmodule ToastTest.Attribution.InvalidationTest do
       # Crash happens during test_one, before test_two starts.
       crashes = [crash_event(~U[2026-03-09 10:00:30Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.invalidate(test_data, crashes)
 
       # test_one is the "trigger" (started before crash) and stays failed.
       # test_two started after crash and is invalidated.
@@ -148,7 +148,7 @@ defmodule ToastTest.Attribution.InvalidationTest do
       # Crash happens while test_one is still running (between its start and finish).
       crashes = [crash_event(~U[2026-03-09 10:00:30Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.invalidate(test_data, crashes)
 
       assert fetch_test(result, :test_one).outcome == :failed
       assert result.failures == [failure]
@@ -177,7 +177,7 @@ defmodule ToastTest.Attribution.InvalidationTest do
         crash_event(~U[2026-03-09 10:01:02Z])
       ]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.invalidate(test_data, crashes)
 
       assert fetch_test(result, :test_two).outcome == :invalidated
       assert fetch_test(result, :test_three).outcome == :invalidated
@@ -198,7 +198,7 @@ defmodule ToastTest.Attribution.InvalidationTest do
 
       crashes = [crash_event(~U[2026-03-09 10:00:30Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.invalidate(test_data, crashes)
 
       assert fetch_test(result, :test_one).outcome == :passed
       assert fetch_test(result, :test_two).outcome == :skipped
@@ -231,7 +231,7 @@ defmodule ToastTest.Attribution.InvalidationTest do
 
       crashes = [crash_event(~U[2026-03-09 09:00:00Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.invalidate(test_data, crashes)
 
       assert fetch_test(result, :test_one).outcome == :failed
       assert result.failures == [failure]

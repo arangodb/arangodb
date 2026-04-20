@@ -1,16 +1,22 @@
 defmodule ToastTest.DiagnosticsSummary do
   @moduledoc "Summarizes suite results: sanitizer detection, artifact inventory, exit codes."
 
-  @doc """
-  Check whether any suite has sanitizer errors.
+  @doc "Check whether any suite has server crash issues."
+  @spec has_server_crash?([map()]) :: boolean()
+  def has_server_crash?(suites), do: has_issue_type?(suites, :crash)
 
-  Examines `SuiteResult.issues` for `:sanitizer_report` type issues.
-  """
+  @doc "Check whether any suite has timeout issues (e.g., startup/shutdown timeout)."
+  @spec has_timeout?([map()]) :: boolean()
+  def has_timeout?(suites), do: has_issue_type?(suites, :timeout)
+
+  @doc "Check whether any suite has sanitizer error issues."
   @spec has_sanitizer_errors?([map()]) :: boolean()
-  def has_sanitizer_errors?(suites) do
+  def has_sanitizer_errors?(suites), do: has_issue_type?(suites, :sanitizer_report)
+
+  defp has_issue_type?(suites, type) do
     Enum.any?(suites, fn
       %{suite_result: %ToastTest.SuiteResult{issues: issues}} ->
-        Enum.any?(issues, &(&1.type == :sanitizer_report))
+        Enum.any?(issues, &(&1.type == type))
 
       _ ->
         false

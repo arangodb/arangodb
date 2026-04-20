@@ -19,6 +19,14 @@ defmodule ToastTest.Suite do
     jwt_algorithm: :hmac
   ]
 
+  @doc "Returns the weight declared by a test module, defaulting to 1."
+  @spec weight(module()) :: pos_integer()
+  def weight(module) do
+    if function_exported?(module, :__toast_weight__, 0),
+      do: module.__toast_weight__(),
+      else: 1
+  end
+
   defmacro __using__(opts \\ []) do
     defaults = Macro.escape(@default_opts)
 

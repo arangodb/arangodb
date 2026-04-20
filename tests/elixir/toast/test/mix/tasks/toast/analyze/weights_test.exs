@@ -3,34 +3,63 @@ defmodule Mix.Tasks.Toast.Analyze.WeightsTest do
 
   alias Mix.Tasks.Toast.Analyze.Weights
 
+  # A fake module with a custom weight for testing
+  defmodule HeavyModule do
+    def __toast_weight__, do: 10
+  end
+
+  defp make_result(suite, modules_map) do
+    %ToastTest.SuiteResult{
+      suite: suite,
+      started_at: DateTime.utc_now(),
+      finished_at: DateTime.utc_now(),
+      times_us: %{async: nil, load: nil, run: 0},
+      modules: modules_map
+    }
+  end
+
+  defp make_tests(durations) do
+    durations
+    |> Enum.with_index()
+    |> Enum.map(fn {dur, i} ->
+      %{
+        name: :"test_#{i}",
+        outcome: :passed,
+        duration_us: dur,
+        started_at: nil,
+        finished_at: nil,
+        tags: %{}
+      }
+    end)
+  end
+
   describe "suggest_weights/1" do
     test "empty input returns empty list" do
-      assert Weights.suggest_weights(%{}) == []
+      assert Weights.suggest_weights([]) == []
     end
 
     test "returns nothing when all weights already match" do
-      outcomes = %{
-        "smoke" => [
-          %{"module" => "Elixir.Smoke.AqlTest", "duration_us" => 10_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.DocTest", "duration_us" => 10_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.GraphTest", "duration_us" => 10_000, "weight" => 1}
-        ]
-      }
+      # All modules unknown (weight defaults to 1) with equal durations
+      result =
+        make_result("smoke", %{
+          :"Elixir.Smoke.AqlTest" => %{tests: make_tests([10_000])},
+          :"Elixir.Smoke.DocTest" => %{tests: make_tests([10_000])},
+          :"Elixir.Smoke.GraphTest" => %{tests: make_tests([10_000])}
+        })
 
-      assert Weights.suggest_weights(outcomes) == []
+      assert Weights.suggest_weights([result]) == []
     end
 
     test "suggests weight change when current weight differs from calculated" do
-      outcomes = %{
-        "smoke" => [
-          %{"module" => "Elixir.Smoke.FastA", "duration_us" => 1_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.FastB", "duration_us" => 1_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.FastC", "duration_us" => 1_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.HeavyTest", "duration_us" => 10_000, "weight" => 1}
-        ]
-      }
+      result =
+        make_result("smoke", %{
+          :"Elixir.Smoke.FastA" => %{tests: make_tests([1_000])},
+          :"Elixir.Smoke.FastB" => %{tests: make_tests([1_000])},
+          :"Elixir.Smoke.FastC" => %{tests: make_tests([1_000])},
+          :"Elixir.Smoke.HeavyTest" => %{tests: make_tests([10_000])}
+        })
 
-      result = Weights.suggest_weights(outcomes)
+      result = Weights.suggest_weights([result])
       heavy = Enum.find(result, &(&1.module == "Elixir.Smoke.HeavyTest"))
 
       assert heavy.suggested_weight == 10
@@ -38,36 +67,38 @@ defmodule Mix.Tasks.Toast.Analyze.WeightsTest do
     end
 
     test "omits module whose current weight already matches suggestion" do
-      outcomes = %{
-        "smoke" => [
-          %{"module" => "Elixir.Smoke.FastA", "duration_us" => 1_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.FastB", "duration_us" => 1_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.FastC", "duration_us" => 1_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.HeavyTest", "duration_us" => 10_000, "weight" => 10}
-        ]
-      }
+      # HeavyModule has __toast_weight__ returning 10
+      heavy_mod = __MODULE__.HeavyModule
 
-      result = Weights.suggest_weights(outcomes)
+      result =
+        make_result("smoke", %{
+          :"Elixir.Smoke.FastA" => %{tests: make_tests([1_000])},
+          :"Elixir.Smoke.FastB" => %{tests: make_tests([1_000])},
+          :"Elixir.Smoke.FastC" => %{tests: make_tests([1_000])},
+          heavy_mod => %{tests: make_tests([10_000])}
+        })
 
-      # Heavy already has correct weight, fast modules are weight 1 which matches
+      result = Weights.suggest_weights([result])
+
+      # HeavyModule already has weight 10 which matches calculated, fast modules are weight 1
       assert result == []
     end
 
     test "modules across multiple suites" do
-      outcomes = %{
-        "smoke" => [
-          %{"module" => "Elixir.Smoke.FastTest", "duration_us" => 1_000, "weight" => 1}
-        ],
-        "resilience" => [
-          %{"module" => "Elixir.Resilience.SlowTest", "duration_us" => 5_000, "weight" => 1}
-        ]
-      }
+      results = [
+        make_result("smoke", %{
+          :"Elixir.Smoke.FastTest" => %{tests: make_tests([1_000])}
+        }),
+        make_result("resilience", %{
+          :"Elixir.Resilience.SlowTest" => %{tests: make_tests([5_000])}
+        })
+      ]
 
-      result = Weights.suggest_weights(outcomes)
+      result = Weights.suggest_weights(results)
 
       # Median of [1000, 5000] = 3000
-      # Fast: max(1, round(1000/3000)) = 1 → matches current, omitted
-      # Slow: max(1, round(5000/3000)) = 2 → differs from current 1
+      # Fast: max(1, round(1000/3000)) = 1 -> matches current, omitted
+      # Slow: max(1, round(5000/3000)) = 2 -> differs from current 1
       assert length(result) == 1
       slow = hd(result)
       assert slow.module == "Elixir.Resilience.SlowTest"
@@ -76,45 +107,42 @@ defmodule Mix.Tasks.Toast.Analyze.WeightsTest do
     end
 
     test "results are sorted by duration descending" do
-      outcomes = %{
-        "smoke" => [
-          %{"module" => "Elixir.Smoke.MediumTest", "duration_us" => 5_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.SlowTest", "duration_us" => 20_000, "weight" => 1}
-        ]
-      }
+      result =
+        make_result("smoke", %{
+          :"Elixir.Smoke.MediumTest" => %{tests: make_tests([5_000])},
+          :"Elixir.Smoke.SlowTest" => %{tests: make_tests([20_000])}
+        })
 
-      result = Weights.suggest_weights(outcomes)
+      result = Weights.suggest_weights([result])
       durations = Enum.map(result, & &1.duration_us)
 
       assert durations == Enum.sort(durations, :desc)
     end
 
     test "multiple tests in same module are summed" do
-      outcomes = %{
-        "smoke" => [
-          %{"module" => "Elixir.Smoke.BigTest", "duration_us" => 3_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.BigTest", "duration_us" => 7_000, "weight" => 1},
-          %{"module" => "Elixir.Smoke.SmallTest", "duration_us" => 1_000, "weight" => 1}
-        ]
-      }
+      result =
+        make_result("smoke", %{
+          :"Elixir.Smoke.BigTest" => %{tests: make_tests([3_000, 7_000])},
+          :"Elixir.Smoke.SmallTest" => %{tests: make_tests([1_000])}
+        })
 
-      result = Weights.suggest_weights(outcomes)
+      result = Weights.suggest_weights([result])
       big = Enum.find(result, &(&1.module == "Elixir.Smoke.BigTest"))
 
       assert big.duration_us == 10_000
     end
 
-    test "defaults to weight 1 when weight field is missing" do
-      outcomes = %{
-        "smoke" => [
-          %{"module" => "Elixir.Smoke.FastA", "duration_us" => 1_000},
-          %{"module" => "Elixir.Smoke.FastB", "duration_us" => 1_000},
-          %{"module" => "Elixir.Smoke.FastC", "duration_us" => 1_000},
-          %{"module" => "Elixir.Smoke.SlowTest", "duration_us" => 10_000}
-        ]
-      }
+    test "defaults to weight 1 for modules without __toast_weight__" do
+      # All fake module atoms - none define __toast_weight__, so all default to 1
+      result =
+        make_result("smoke", %{
+          :"Elixir.Smoke.FastA" => %{tests: make_tests([1_000])},
+          :"Elixir.Smoke.FastB" => %{tests: make_tests([1_000])},
+          :"Elixir.Smoke.FastC" => %{tests: make_tests([1_000])},
+          :"Elixir.Smoke.SlowTest" => %{tests: make_tests([10_000])}
+        })
 
-      result = Weights.suggest_weights(outcomes)
+      result = Weights.suggest_weights([result])
       slow = Enum.find(result, &(&1.module == "Elixir.Smoke.SlowTest"))
 
       assert slow.current_weight == 1

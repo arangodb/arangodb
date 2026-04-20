@@ -96,7 +96,7 @@ defmodule ToastTest.Formatting.RunSummaryTest do
 
       output = capture_io(fn -> RunSummary.print([suite], 72_500_000) end) |> strip_ansi()
 
-      assert output =~ "Runtime:     1m 12.5s"
+      assert output =~ "Runtime:     1m12.5s"
     end
 
     test "module with only failing tests counts as failed" do

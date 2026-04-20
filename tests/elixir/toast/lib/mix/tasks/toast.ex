@@ -176,12 +176,10 @@ defmodule Mix.Tasks.Toast do
     ToastTest.Formatting.RunSummary.print(suite_results, elapsed_us)
     ToastTest.Formatting.RrSummary.print(test_config.base_dir)
 
-    abort_reason = ToastTest.Abort.reason()
-
     run_results = %{
       test_failures: result.stats.failures,
-      server_crashed: match?({:crash, _}, abort_reason),
-      infrastructure_failure: abort_reason != nil and not match?({:crash, _}, abort_reason),
+      server_crashed: DiagnosticsSummary.has_server_crash?(result.suites),
+      infrastructure_failure: DiagnosticsSummary.has_timeout?(result.suites),
       sanitizer_errors: DiagnosticsSummary.has_sanitizer_errors?(result.suites)
     }
 
@@ -322,11 +320,7 @@ defmodule Mix.Tasks.Toast do
         Enum.map(test_modules, fn mod -> {suite_name, mod} end)
       end)
 
-    weights_fn = fn mod ->
-      if function_exported?(mod, :__toast_weight__, 0), do: mod.__toast_weight__(), else: 1
-    end
-
-    selected = ToastTest.Bucket.select(all_modules, index, total, weights_fn)
+    selected = ToastTest.Bucket.select(all_modules, index, total, &ToastTest.Suite.weight/1)
     selected_set = MapSet.new(selected, fn {_suite, mod} -> mod end)
 
     suite_data

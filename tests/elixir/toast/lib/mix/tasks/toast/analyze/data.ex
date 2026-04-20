@@ -33,11 +33,14 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
       coredump_index = Issues.build_coredump_index(Map.get(result, :coredumps, []))
 
       result.issues
-      |> Enum.map(&Map.put(&1, :suite, result.suite))
-      |> Enum.map(&attach_time_bounds(&1, result.modules))
-      |> Enum.map(&Map.put(&1, :servers, all_servers))
-      |> Enum.map(&Map.put(&1, :deployments, deployments))
-      |> Enum.map(&Map.put(&1, :events, events))
+      |> Enum.map(fn issue ->
+        issue
+        |> Map.put(:suite, result.suite)
+        |> attach_time_bounds(result.modules)
+        |> Map.put(:servers, all_servers)
+        |> Map.put(:deployments, deployments)
+        |> Map.put(:events, events)
+      end)
       |> Enum.map(&Issues.attach_test_location(&1, result.modules))
       |> then(&Issues.resolve_coredumps(&1, coredump_index))
     end)

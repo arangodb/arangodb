@@ -39,13 +39,8 @@ defmodule ToastTest.SuiteResult.JSON do
       "module" => Atom.to_string(test.module),
       "name" => Atom.to_string(test.name),
       "outcome" => Atom.to_string(test.outcome),
-      "duration_us" => test.duration_us,
-      "weight" => module_weight(test.module)
+      "duration_us" => test.duration_us
     }
-  end
-
-  defp module_weight(mod) do
-    if function_exported?(mod, :__toast_weight__, 0), do: mod.__toast_weight__(), else: 1
   end
 
   defp json_encoder(nil, _encoder, _opts), do: "null"

@@ -1,23 +1,33 @@
 defmodule Mix.Tasks.Toast.Analyze.Weights do
   @moduledoc false
 
+  alias Mix.Tasks.Toast.Analyze.Data
+
   import ToastTest.Formatting, only: [colorize: 3, format_duration_us: 1]
 
   @doc """
-  Suggests module weights based on runtime distribution from outcomes data.
+  Suggests module weights based on runtime distribution from suite results.
 
-  Takes a map of `%{suite_name => [%{"module" => ..., "duration_us" => ..., "weight" => ...}]}`
-  and returns suggestions where the suggested weight differs from the current weight,
-  sorted by duration descending.
+  Takes a list of `%ToastTest.SuiteResult{}` structs and returns suggestions
+  where the suggested weight differs from the current weight, sorted by
+  duration descending.
   """
-  @spec suggest_weights(%{String.t() => [map()]}) :: [map()]
-  def suggest_weights(outcomes_by_suite) when outcomes_by_suite == %{}, do: []
+  @spec suggest_weights([ToastTest.SuiteResult.t()]) :: [map()]
+  def suggest_weights([]), do: []
 
-  def suggest_weights(outcomes_by_suite) do
+  def suggest_weights(results) do
     module_stats =
-      for {suite, tests} <- outcomes_by_suite,
-          {module, duration_us, current_weight} <- aggregate_by_module(tests) do
-        %{module: module, suite: suite, duration_us: duration_us, current_weight: current_weight}
+      for result <- results,
+          {module, %{tests: tests}} <- result.modules do
+        duration_us = tests |> Enum.map(& &1.duration_us) |> Enum.sum()
+        current_weight = get_weight(module)
+
+        %{
+          module: Atom.to_string(module),
+          suite: result.suite,
+          duration_us: duration_us,
+          current_weight: current_weight
+        }
       end
 
     median = median_duration(module_stats)
@@ -30,15 +40,7 @@ defmodule Mix.Tasks.Toast.Analyze.Weights do
     |> Enum.sort_by(& &1.duration_us, :desc)
   end
 
-  defp aggregate_by_module(tests) do
-    tests
-    |> Enum.group_by(& &1["module"])
-    |> Enum.map(fn {module, module_tests} ->
-      total = module_tests |> Enum.map(& &1["duration_us"]) |> Enum.sum()
-      weight = module_tests |> List.first() |> Map.get("weight", 1)
-      {module, total, weight}
-    end)
-  end
+  defp get_weight(module), do: ToastTest.Suite.weight(module)
 
   defp median_duration(entries) do
     durations = entries |> Enum.map(& &1.duration_us) |> Enum.sort()
@@ -52,24 +54,13 @@ defmodule Mix.Tasks.Toast.Analyze.Weights do
     end
   end
 
-  def run(result_dir, _opts, color) do
-    outcomes_by_suite = load_outcomes(result_dir)
+  def run(result_dir, opts, color) do
+    results =
+      result_dir
+      |> Data.load_results()
+      |> Data.maybe_filter_suite(opts[:suite])
 
-    if outcomes_by_suite == %{} do
-      Mix.shell().info("No outcomes.json files found in #{result_dir}")
-    else
-      print_suggestions(suggest_weights(outcomes_by_suite), color)
-    end
-  end
-
-  defp load_outcomes(result_dir) do
-    result_dir
-    |> Path.join("**/outcomes.json")
-    |> Path.wildcard()
-    |> Enum.reduce(%{}, fn path, acc ->
-      data = path |> File.read!() |> :json.decode()
-      Map.put(acc, data["suite"], data["tests"])
-    end)
+    print_suggestions(suggest_weights(results), color)
   end
 
   defp print_suggestions([], _color) do

@@ -2,7 +2,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
   use ExUnit.Case, async: true
 
   alias Toast.Diagnostics.Coredump
-  alias Toast.Diagnostics.Coredump.Report
+  alias Toast.Diagnostics.Coredump.{Discovery, Report}
 
   describe "discover/1" do
     setup do
@@ -17,7 +17,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
       File.write!(Path.join(dir, "core"), "fake core")
       File.write!(Path.join(dir, "not_a_core"), "other file")
 
-      cores = Coredump.discover(server_dir: dir)
+      cores = Discovery.discover(server_dir: dir)
 
       assert length(cores) == 2
       basenames = Enum.map(cores, &Path.basename/1)
@@ -29,11 +29,11 @@ defmodule Toast.Diagnostics.CoredumpTest do
     test "returns empty list when no core files found", %{dir: dir} do
       File.write!(Path.join(dir, "some_file.txt"), "not a core")
 
-      assert Coredump.discover(server_dir: dir) == []
+      assert Discovery.discover(server_dir: dir) == []
     end
 
     test "returns empty list for nonexistent directory" do
-      assert Coredump.discover(
+      assert Discovery.discover(
                server_dir: "/nonexistent/dir/#{System.unique_integer([:positive])}"
              ) == []
     end
@@ -41,7 +41,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
     test "deduplicates paths", %{dir: dir} do
       File.write!(Path.join(dir, "core.99999"), "fake core")
 
-      cores = Coredump.discover(server_dir: dir, os_pid: nil)
+      cores = Discovery.discover(server_dir: dir, os_pid: nil)
 
       # Each core file should appear only once
       assert cores == Enum.uniq(cores)
@@ -63,7 +63,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
         File.rm(non_matching_file)
       end)
 
-      cores = Coredump.discover(server_dir: dir, os_pid: pid)
+      cores = Discovery.discover(server_dir: dir, os_pid: pid)
       basenames = Enum.map(cores, &Path.basename/1)
 
       assert "core.#{pid_str}" in basenames
@@ -87,7 +87,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
       # Set not_before to a time far in the future so the file is "too old"
       future_ts = DateTime.to_unix(DateTime.utc_now()) + 86_400
 
-      cores = Coredump.discover(server_dir: dir, not_before: future_ts)
+      cores = Discovery.discover(server_dir: dir, not_before: future_ts)
       assert cores == []
     end
 
@@ -96,7 +96,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
       File.write!(core_path, "new core")
 
       # Set not_before to epoch so the file is definitely "new enough"
-      cores = Coredump.discover(server_dir: dir, not_before: 0)
+      cores = Discovery.discover(server_dir: dir, not_before: 0)
       assert core_path in cores
     end
   end
@@ -236,6 +236,7 @@ defmodule Toast.Diagnostics.CoredumpOverrideDirTest do
   use ExUnit.Case, async: true
 
   alias Toast.Diagnostics.Coredump
+  alias Toast.Diagnostics.Coredump.Discovery
 
   describe "discover/1 with coredump_dir override" do
     setup do
@@ -263,7 +264,7 @@ defmodule Toast.Diagnostics.CoredumpOverrideDirTest do
       File.write!(Path.join(override_dir, "core.override"), "override core")
       File.write!(Path.join(server_dir, "core.server"), "server core")
 
-      cores = Coredump.discover(server_dir: server_dir, coredump_dir: override_dir)
+      cores = Discovery.discover(server_dir: server_dir, coredump_dir: override_dir)
       basenames = Enum.map(cores, &Path.basename/1)
 
       assert "core.override" in basenames
@@ -276,7 +277,7 @@ defmodule Toast.Diagnostics.CoredumpOverrideDirTest do
     } do
       File.write!(Path.join(server_dir, "core.server"), "server core")
 
-      assert Coredump.discover(server_dir: server_dir, coredump_dir: override_dir) == []
+      assert Discovery.discover(server_dir: server_dir, coredump_dir: override_dir) == []
     end
 
     test "filters override dir files by PID when os_pids provided", %{
@@ -287,7 +288,7 @@ defmodule Toast.Diagnostics.CoredumpOverrideDirTest do
       File.write!(Path.join(override_dir, "core.99999"), "other core")
 
       cores =
-        Coredump.discover(
+        Discovery.discover(
           server_dir: server_dir,
           coredump_dir: override_dir,
           os_pids: [12_345]
@@ -305,14 +306,14 @@ defmodule Toast.Diagnostics.CoredumpOverrideDirTest do
       File.write!(Path.join(override_dir, "core.111"), "core1")
       File.write!(Path.join(override_dir, "core.222"), "core2")
 
-      cores = Coredump.discover(server_dir: server_dir, coredump_dir: override_dir)
+      cores = Discovery.discover(server_dir: server_dir, coredump_dir: override_dir)
 
       assert length(cores) == 2
     end
 
     test "returns empty list when override dir does not exist", %{server_dir: server_dir} do
       cores =
-        Coredump.discover(
+        Discovery.discover(
           server_dir: server_dir,
           coredump_dir: "/nonexistent/override_#{System.unique_integer([:positive])}"
         )

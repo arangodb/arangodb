@@ -56,7 +56,7 @@ defmodule ToastTest.Enrichment.Coredump do
         id -> Enum.split_with(threads, &(&1.id == id))
       end
 
-    threads = crash ++ Enum.sort_by(rest, &String.to_integer(&1.id))
+    threads = crash ++ Enum.sort_by(rest, &thread_sort_key/1)
 
     %{
       threads: threads,
@@ -75,6 +75,13 @@ defmodule ToastTest.Enrichment.Coredump do
       os_id: Map.get(thread, :os_id),
       frames: thread.frames
     }
+  end
+
+  defp thread_sort_key(%{id: id}) do
+    case Integer.parse(id) do
+      {n, ""} -> {0, n}
+      _ -> {1, id}
+    end
   end
 
   defp format_frame(frame, idx) do

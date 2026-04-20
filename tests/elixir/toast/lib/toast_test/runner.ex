@@ -11,7 +11,7 @@ defmodule ToastTest.Runner do
 
   require Logger
 
-  defmodule Config do
+  defmodule RunContext do
     @moduledoc false
 
     defmodule Filters do
@@ -313,11 +313,11 @@ defmodule ToastTest.Runner do
     %Pipeline{manager: manager, stats_pid: stats_pid, result_collector_pid: result_collector_pid}
   end
 
-  defp build_test_config(opts, suite_opts, suite_run, %Pipeline{} = pipeline, between_tests_fn) do
-    %Config{
+  defp build_run_context(opts, suite_opts, suite_run, %Pipeline{} = pipeline, between_tests_fn) do
+    %RunContext{
       between_tests: between_tests_fn,
       capture_log: opts[:capture_log],
-      filters: %Config.Filters{
+      filters: %RunContext.Filters{
         include: opts[:include],
         exclude: opts[:exclude],
         only_test_ids: Keyword.get(suite_opts, :only_test_ids, opts[:only_test_ids]),
@@ -530,7 +530,7 @@ defmodule ToastTest.Runner do
       )
 
     config =
-      build_test_config(
+      build_run_context(
         opts,
         suite_opts,
         suite_run,

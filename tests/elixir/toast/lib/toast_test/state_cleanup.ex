@@ -5,7 +5,7 @@ defmodule ToastTest.StateCleanup do
   def reset do
     ToastTest.DeploymentRegistry.clear()
     ToastTest.Abort.clear!()
-    Application.put_env(:ex_unit, :after_suite, [])
+    ToastTest.ExUnitCompat.clear_after_suite()
     ToastTest.EventStore.clear()
   end
 end
