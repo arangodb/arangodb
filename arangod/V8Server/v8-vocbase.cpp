@@ -1805,6 +1805,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // The check for authorization to create the database is done in the
   // following method.
 
+  std::string const dbName = TRI_ObjectToString(isolate, args[0]);
   Result res =
       methods::Databases::create(vocbase.server(), ExecContext::current(),
                                  dbName, users.slice(), options.slice());

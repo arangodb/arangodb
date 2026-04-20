@@ -359,7 +359,6 @@ Result Databases::create(application_features::ApplicationServer& server,
                          ExecContext const& exec, std::string const& dbName,
                          velocypack::Slice users, velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
-    // Only admin users are permitted to create databases
     if (auto r = exec.canCreateDatabase(std::string(dbName)); r.fail()) {
       events::CreateDatabase(dbName, r, exec);
       return r;
