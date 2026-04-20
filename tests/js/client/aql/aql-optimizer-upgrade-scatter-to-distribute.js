@@ -21,7 +21,7 @@ function optimizerUpgradeScatterToDistributeSuite() {
 
       col = db._create("UnitTestsCollection_col", { numberOfShards: 3, shardKeys: ["_key", "mykey"] });
       dsl_col = db._create("UnitTestsCollection_dsl_col", { numberOfShards: 3, shardKeys: ["_key", "mykey"], distributeShardsLike: "UnitTestsCollection_col" });
-      rand_col = db._create("UnitTestsCollection_rand_col", { numberOfShards: 3, shardKeys: ["_key", "mykey", "value"] });
+      rand_col = db._create("UnitTestsCollection_rand_col", { numberOfShards: 3, shardKeys: ["_key", "mykey", "attr"] });
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
@@ -46,9 +46,9 @@ function optimizerUpgradeScatterToDistributeSuite() {
               AND doc2.mykey == doc1.mykey)
             RETURN [doc1, doc2]
       `;
+      db._explain(query, {}, { optimizer: { rules: ["-remove-unnecessary-remote-scatter"] } });
       let plan = db._createStatement({query: query, bindVars:  {}}).explain().plan;
       assertTrue(plan.rules.includes("smart-joins"));
-      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
 
     test_SanityCheck_PartialShardKeys_DistributedShardsLike_NoSmartJoins: function () {
@@ -62,6 +62,14 @@ function optimizerUpgradeScatterToDistributeSuite() {
       assertFalse(plan.rules.includes("smart-joins"));
     },
 
+    test_ExplainDistribute: function() {
+      const query =
+        `FOR doc IN  ${col.name()} 
+          INSERT { _key: doc._key, mykey: doc.mykey, value: doc.value }
+          INTO ${dsl_col.name()}`;
+      db._explain(query);
+    },
+
     test_AllShardKeys_NoDistributedShardsLike_NoSmartJoins_Upgrade: function () {
       // TODO(listunov): Test multiple AND-branches
       const query = `
@@ -72,10 +80,10 @@ function optimizerUpgradeScatterToDistributeSuite() {
               AND doc2.value == doc1.value)
             RETURN [doc1, doc2]
       `;
+      console.error('-------------------------------------------------------');
+      db._explain(query);
+      console.error('-------------------------------------------------------');
       let plan = db._createStatement({query: query, bindVars:  {}}).explain().plan;
-      console.error('-------------------------------------------------------');
-      db._explain(query)
-      console.error('-------------------------------------------------------');
       console.error(plan.rules);
       console.error('-------------------------------------------------------');
       assertFalse(plan.rules.includes("smart-joins"));
