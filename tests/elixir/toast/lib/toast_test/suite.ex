@@ -34,11 +34,13 @@ defmodule ToastTest.Suite do
 
       defmacro __using__(test_opts) do
         suite_module = __MODULE__
+        {weight, case_opts} = Keyword.pop(test_opts, :weight, 1)
 
         quote do
-          use ToastTest.Case, unquote(test_opts)
+          use ToastTest.Case, unquote(case_opts)
           @toast_suite unquote(suite_module)
           def __toast_suite__, do: unquote(suite_module)
+          def __toast_weight__, do: unquote(weight)
         end
       end
     end

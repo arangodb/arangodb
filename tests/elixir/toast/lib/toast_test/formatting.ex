@@ -50,4 +50,23 @@ defmodule ToastTest.Formatting do
 
   @spec display_test_name(atom() | String.t()) :: String.t()
   def display_test_name(name), do: name |> to_string() |> String.replace_prefix("test ", "")
+
+  @spec format_duration_us(non_neg_integer()) :: String.t()
+  def format_duration_us(us) when us >= 60_000_000 do
+    minutes = div(us, 60_000_000)
+    secs = Float.round(rem(us, 60_000_000) / 1_000_000, 1)
+    "#{minutes}m#{:erlang.float_to_binary(secs, decimals: 1)}s"
+  end
+
+  def format_duration_us(us) when us >= 1_000_000 do
+    secs = Float.round(us / 1_000_000, 1)
+    "#{:erlang.float_to_binary(secs, decimals: 1)}s"
+  end
+
+  def format_duration_us(us) when us >= 1_000 do
+    ms = Float.round(us / 1_000, 0) |> trunc()
+    "#{ms}ms"
+  end
+
+  def format_duration_us(us), do: "#{us}µs"
 end

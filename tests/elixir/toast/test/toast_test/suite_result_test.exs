@@ -201,6 +201,7 @@ defmodule ToastTest.SuiteResultTest do
         assert passed["module"] == "Elixir.FakeModule"
         assert passed["name"] == "test passes"
         assert passed["duration_us"] == 58_000_000
+        assert passed["weight"] == 1
       end)
     end
 

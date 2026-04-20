@@ -64,6 +64,30 @@ defmodule ToastTest.SuiteTest do
     assert TestUsingParent.__toast_suite__() == ToastTest.SuiteTest.ParentSuite
   end
 
+  test "test module using suite has default weight of 1" do
+    defmodule DefaultWeightSuite do
+      use ToastTest.Suite
+    end
+
+    defmodule TestDefaultWeight do
+      use ToastTest.SuiteTest.DefaultWeightSuite
+    end
+
+    assert TestDefaultWeight.__toast_weight__() == 1
+  end
+
+  test "test module using suite with custom weight" do
+    defmodule WeightedSuite do
+      use ToastTest.Suite
+    end
+
+    defmodule TestCustomWeight do
+      use ToastTest.SuiteTest.WeightedSuite, weight: 5
+    end
+
+    assert TestCustomWeight.__toast_weight__() == 5
+  end
+
   test "test module using suite gets @toast_suite attribute" do
     defmodule AttrSuite do
       use ToastTest.Suite

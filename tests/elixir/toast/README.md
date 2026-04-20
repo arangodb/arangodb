@@ -122,6 +122,7 @@ mix toast --include edge_case
 | `--cluster-dbservers N` | Number of DB servers (default: 3) |
 | `--cluster-coordinators N` | Number of coordinators (default: 1) |
 | `--replication-factor N` | Default replication factor (default: 2) |
+| `--test-buckets TOTAL/INDEX` | Run only bucket INDEX of TOTAL (0-indexed). See [Test Bucketing](#test-bucketing). |
 | `--ci` | Enable CI mode (packages results for upload) |
 | `--force-all-tiers` | Package all tiers regardless of outcome (CI only) |
 | `--no-agency-dump` | Skip agency state dump on error |
@@ -559,6 +560,54 @@ mix toast.analyze detail all --logs --log-servers dbserver-0 --log-window -20000
 # Control coredump backtrace output
 mix toast.analyze detail all --threads all --backtrace-frames 30
 ```
+
+## Test Bucketing
+
+For CI parallelization, Toast can split test modules into balanced buckets so
+each CI job runs a subset:
+
+```bash
+# Split into 4 buckets, run bucket 0
+mix toast --build-dir /path/to/build --test-buckets 4/0
+
+# Run bucket 1 of 4
+mix toast --build-dir /path/to/build --test-buckets 4/1
+```
+
+The index is 0-based. Each bucket gets a roughly equal share of total test
+weight while minimizing the number of suites per bucket (since each suite
+requires its own server deployment).
+
+### Module Weights
+
+By default every test module has weight 1. For modules that take significantly
+longer, declare a higher weight:
+
+```elixir
+defmodule Smoke.HeavyTest do
+  use Smoke.Suite, weight: 5
+
+  # ...tests...
+end
+```
+
+The bucketing algorithm uses these weights to balance load across buckets.
+Weights don't need to be precise -- the goal is to distinguish fast modules
+from slow ones so they aren't all placed in the same bucket.
+
+### Suggesting Weights
+
+After a test run, use `mix toast.analyze weights` to get weight suggestions
+based on actual runtimes:
+
+```bash
+mix toast.analyze weights
+mix toast.analyze weights /path/to/toast-results
+```
+
+This compares each module's runtime against the median and suggests a weight
+proportional to its relative duration. Only modules where the suggested weight
+differs from the current weight are shown.
 
 ## Interactive Mode
 

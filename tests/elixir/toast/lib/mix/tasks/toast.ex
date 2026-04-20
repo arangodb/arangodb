@@ -40,6 +40,13 @@ defmodule Mix.Tasks.Toast do
       --cluster-coordinators N    - Number of coordinators (default: 1)
       --replication-factor N      - Default replication factor (default: 2)
 
+  ## Bucketing Options
+
+      --test-buckets TOTAL/INDEX    - Run only bucket INDEX of TOTAL (0-indexed).
+                                      Modules are partitioned by weight for balanced
+                                      parallel CI execution. Set weight per test module
+                                      via `use YourSuite, weight: N` (default: 1).
+
   ## CI Options
 
       --ci                        - Enable CI mode (packages results into tiers for upload)
@@ -107,6 +114,7 @@ defmodule Mix.Tasks.Toast do
     cluster_coordinators: :integer,
     replication_factor: :integer,
     test: :string,
+    test_buckets: :string,
     no_agency_dump: :boolean,
     ci: :boolean,
     force_all_tiers: :boolean,
@@ -168,6 +176,8 @@ defmodule Mix.Tasks.Toast do
       Enum.flat_map(suite_modules, fn {suite_module, suite_dir} ->
         prepare_suite(suite_module, suite_dir, file_filters, test_filter)
       end)
+
+    suite_data = apply_bucket_filter(suite_data, opts[:test_buckets])
 
     test_config = ToastTest.Config.new()
     Toast.Application.reconfigure_file_logger(test_config.result_dir)
@@ -309,5 +319,37 @@ defmodule Mix.Tasks.Toast do
         "#{relative} is not a test file (must start with test_) and is not compiled as a helper (must end in .ex). This file is ignored."
       )
     end)
+  end
+
+  ## Bucketing helpers
+
+  defp apply_bucket_filter(suite_data, nil), do: suite_data
+
+  defp apply_bucket_filter(suite_data, spec) do
+    case ToastTest.Bucket.parse_spec(spec) do
+      {:ok, {total, index}} -> filter_to_bucket(suite_data, total, index)
+      {:error, reason} -> Mix.raise(reason)
+    end
+  end
+
+  defp filter_to_bucket(suite_data, total, index) do
+    all_modules =
+      Enum.flat_map(suite_data, fn {_suite_mod, test_modules, _opts, suite_name} ->
+        Enum.map(test_modules, fn mod -> {suite_name, mod} end)
+      end)
+
+    weights_fn = fn mod ->
+      if function_exported?(mod, :__toast_weight__, 0), do: mod.__toast_weight__(), else: 1
+    end
+
+    selected = ToastTest.Bucket.select(all_modules, index, total, weights_fn)
+    selected_set = MapSet.new(selected, fn {_suite, mod} -> mod end)
+
+    suite_data
+    |> Enum.map(fn {suite_mod, test_modules, opts, suite_name} ->
+      filtered = Enum.filter(test_modules, &MapSet.member?(selected_set, &1))
+      {suite_mod, filtered, opts, suite_name}
+    end)
+    |> Enum.reject(fn {_, test_modules, _, _} -> test_modules == [] end)
   end
 end

@@ -13,6 +13,7 @@ defmodule Mix.Tasks.Toast.Analyze do
       detail[s]       Show full diagnostic detail for issues
       info            Show overview of diagnostics file contents
       perf            Performance analysis (module/test timing breakdown)
+      weights         Suggest module weights based on runtime distribution
 
   ## Issue spec (detail only)
 
@@ -61,6 +62,7 @@ defmodule Mix.Tasks.Toast.Analyze do
   alias Mix.Tasks.Toast.Analyze.Info
   alias Mix.Tasks.Toast.Analyze.Issues
   alias Mix.Tasks.Toast.Analyze.Perf
+  alias Mix.Tasks.Toast.Analyze.Weights
 
   @switches [
     result_dir: :string,
@@ -88,10 +90,11 @@ defmodule Mix.Tasks.Toast.Analyze do
     "details" => "detail",
     "info" => "info",
     "perf" => "perf",
+    "weights" => "weights",
     "help" => "help"
   }
 
-  @canonical_subcommands ~w(issues detail info perf help)
+  @canonical_subcommands ~w(issues detail info perf weights help)
 
   @impl Mix.Task
   def run(args) do
@@ -111,6 +114,7 @@ defmodule Mix.Tasks.Toast.Analyze do
         "detail" -> Detail.run(result_dir, opts, rest, color)
         "info" -> Info.run(result_dir, opts, color)
         "perf" -> Perf.run(result_dir, opts, color)
+        "weights" -> Weights.run(result_dir, opts, color)
       end
     end
   end
