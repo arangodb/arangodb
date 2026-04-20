@@ -57,10 +57,12 @@ class StateTest : public ::testing::Test {
   static void setCur(State& state, size_t cur) { state._cur = cur; }
 };
 
-// Reproduces the production crash: TOCTOU race in sendAppendEntriesRPC sets
-// _cur from a newer snapshot (7023) while _log has old entries (6008-6601).
-// get() calls determineLogBounds which does start -= _cur, underflowing
-// because _cur > _log.back().index, then hits ADB_PROD_ASSERT(i < _log.size()).
+// Regression guard for the ADB_PROD_ASSERT inside State::get. Reproduces the
+// inconsistent state observed in the production crash (_cur=7023 while _log
+// covered 6008-6601), where determineLogBounds underflows start -= _cur and
+// the assert fires. This validates the defensive check, not the fix: the
+// leader-side fix (atomic snapshot+log read in getSnapshotAndEntries)
+// prevents a follower from ever reaching this state.
 TEST_F(StateTest, get_crashes_when_cur_beyond_log) {
   auto state = createState();
   populateLog(state, 6008, 6601);
