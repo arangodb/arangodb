@@ -72,11 +72,14 @@ defmodule Toast.Deployment.ShutdownPipeline do
     {killed_servers, state} = abort_all(state)
 
     if reason == :timeout do
-      state.event_listener.on_timeout_kill(
-        :startup_timeout,
-        "Startup timeout — deployment did not become ready in time",
-        killed_servers
-      )
+      state.event_listener.on_event(%{
+        event: :timeout_kill,
+        deployment_id: state.id,
+        source: :startup_timeout,
+        reason: "Startup timeout — deployment did not become ready in time",
+        servers: killed_servers,
+        timestamp: Toast.get_timestamp()
+      })
     end
 
     rollback(state, reason)
@@ -168,10 +171,13 @@ defmodule Toast.Deployment.ShutdownPipeline do
   defp record_shutdown_escalations(id, listener, escalated) do
     Logger.warning("#{id}: #{length(escalated)} server(s) required shutdown escalation")
 
-    listener.on_timeout_kill(
-      :shutdown_timeout,
-      "Shutdown timeout — server(s) did not respond to SIGTERM",
-      escalated
-    )
+    listener.on_event(%{
+      event: :timeout_kill,
+      deployment_id: id,
+      source: :shutdown_timeout,
+      reason: "Shutdown timeout — server(s) did not respond to SIGTERM",
+      servers: escalated,
+      timestamp: Toast.get_timestamp()
+    })
   end
 end

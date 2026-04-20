@@ -86,7 +86,7 @@ defmodule ToastTest.Interactive do
 
     {test_pid, test_ref} =
       spawn_monitor(fn ->
-        ExUnit.OnExitHandler.register(self())
+        Compat.register_on_exit(self())
         context = setup_all_context |> Map.merge(test.tags) |> Map.put(:test_pid, self())
 
         result =

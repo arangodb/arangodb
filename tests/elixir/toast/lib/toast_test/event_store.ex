@@ -64,19 +64,6 @@ defmodule ToastTest.EventStore do
     snapshot().timeout_kills
   end
 
-  @doc """
-  Record that servers were killed due to a timeout.
-  """
-  @spec record_timeout_kill(atom(), String.t(), [map()]) :: :ok
-  def record_timeout_kill(source, reason, killed_servers) do
-    notify(%{
-      event: :timeout_kill,
-      source: source,
-      reason: reason,
-      servers: killed_servers
-    })
-  end
-
   @doc "Reconstruct deployment metadata from events."
   @spec deployments() :: %{String.t() => map()}
   def deployments do

@@ -135,20 +135,20 @@ defmodule Toast.Deployment.Controller do
     GenServer.call(server, :get_info)
   end
 
-  @spec stop_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
-  def stop_server(server, server_id, _opts \\ []),
+  @spec stop_server(GenServer.server(), term()) :: :ok | {:error, term()}
+  def stop_server(server, server_id),
     do: GenServer.call(server, {:stop_server, server_id}, :infinity)
 
-  @spec kill_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
-  def kill_server(server, server_id, _opts \\ []),
+  @spec kill_server(GenServer.server(), term()) :: :ok | {:error, term()}
+  def kill_server(server, server_id),
     do: GenServer.call(server, {:kill_server, server_id}, :infinity)
 
-  @spec pause_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
-  def pause_server(server, server_id, _opts \\ []),
+  @spec pause_server(GenServer.server(), term()) :: :ok | {:error, term()}
+  def pause_server(server, server_id),
     do: GenServer.call(server, {:pause_server, server_id}, :infinity)
 
-  @spec resume_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
-  def resume_server(server, server_id, _opts \\ []),
+  @spec resume_server(GenServer.server(), term()) :: :ok | {:error, term()}
+  def resume_server(server, server_id),
     do: GenServer.call(server, {:resume_server, server_id}, :infinity)
 
   @spec restart_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
@@ -557,7 +557,6 @@ defmodule Toast.Deployment.Controller do
 
   defp fail_server(server_id, crash_info, state) do
     notify_crash_event(state, server_id, crash_info, false)
-    state.event_listener.on_crash(server_id, crash_info)
     stop_health_monitor(state, server_id)
 
     state =

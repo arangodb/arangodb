@@ -10,7 +10,7 @@ defmodule ToastTest.TestLifecycle do
     parent_pid = self()
 
     spawn_monitor(fn ->
-      ExUnit.OnExitHandler.register(self())
+      Compat.register_on_exit(self())
 
       result =
         try do
@@ -44,6 +44,6 @@ defmodule ToastTest.TestLifecycle do
   @doc false
   @spec run_on_exit(pid(), timeout()) :: :ok | {atom(), term(), Exception.stacktrace()}
   def run_on_exit(pid, timeout) do
-    ExUnit.OnExitHandler.run(pid, timeout)
+    Compat.run_on_exit(pid, timeout)
   end
 end

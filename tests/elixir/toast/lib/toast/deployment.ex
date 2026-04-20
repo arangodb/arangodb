@@ -479,21 +479,20 @@ defmodule Toast.Deployment do
 
   @doc "Gracefully stop a server (SIGTERM). The server can be restarted later with `start_server/3`."
   @spec stop_server(t(), server_target()) :: :ok | {:error, term()}
-  def stop_server(%__MODULE__{} = d, target), do: controller_call_control(d, :stop_server, target)
+  def stop_server(%__MODULE__{} = d, target), do: controller_control(d, :stop_server, [target])
 
   @doc "Immediately kill a server (SIGKILL). The server can be restarted later with `start_server/3`."
   @spec kill_server(t(), server_target()) :: :ok | {:error, term()}
-  def kill_server(%__MODULE__{} = d, target), do: controller_call_control(d, :kill_server, target)
+  def kill_server(%__MODULE__{} = d, target), do: controller_control(d, :kill_server, [target])
 
   @doc "Pause a server by sending SIGSTOP. The process stays alive but stops executing. Resume with `resume_server/2`."
   @spec pause_server(t(), server_target()) :: :ok | {:error, term()}
-  def pause_server(%__MODULE__{} = d, target),
-    do: controller_call_control(d, :pause_server, target)
+  def pause_server(%__MODULE__{} = d, target), do: controller_control(d, :pause_server, [target])
 
   @doc "Resume a previously paused server by sending SIGCONT."
   @spec resume_server(t(), server_target()) :: :ok | {:error, term()}
   def resume_server(%__MODULE__{} = d, target),
-    do: controller_call_control(d, :resume_server, target)
+    do: controller_control(d, :resume_server, [target])
 
   @doc """
   Restart a server — stops it gracefully, then starts it again.
@@ -502,7 +501,7 @@ defmodule Toast.Deployment do
   """
   @spec restart_server(t(), server_target(), keyword()) :: :ok | {:error, term()}
   def restart_server(%__MODULE__{} = d, target, opts \\ []),
-    do: controller_call_control(d, :restart_server, target, opts)
+    do: controller_control(d, :restart_server, [target, opts])
 
   @doc """
   Start a server that was previously stopped, killed, or crashed.
@@ -511,7 +510,7 @@ defmodule Toast.Deployment do
   """
   @spec start_server(t(), server_target(), keyword()) :: :ok | {:error, term()}
   def start_server(%__MODULE__{} = d, target, opts \\ []),
-    do: controller_call_control(d, :start_server, target, opts)
+    do: controller_control(d, :start_server, [target, opts])
 
   @doc """
   Register that a server crash is expected (e.g., before a deliberate kill).
@@ -574,13 +573,11 @@ defmodule Toast.Deployment do
     :exit, _ -> :ok
   end
 
-  defp controller_call_control(deployment, op, target, opts \\ [])
-
-  defp controller_call_control(%{controller: nil}, _op, _target, _opts),
+  defp controller_control(%{controller: nil}, _op, _args),
     do: {:error, :controller_not_available}
 
-  defp controller_call_control(deployment, op, target, opts) do
-    apply(Controller, op, [deployment.controller, target, opts])
+  defp controller_control(deployment, op, args) do
+    apply(Controller, op, [deployment.controller | args])
   catch
     :exit, _ -> {:error, :controller_not_available}
   end

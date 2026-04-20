@@ -3,13 +3,14 @@ defmodule ToastTest.DeploymentListener do
   @behaviour Toast.Deployment.EventListener
 
   @impl true
+  def on_event(
+        %{event: :server_crashed, expected: false, server_id: server_id, crash_info: crash_info} =
+          event
+      ) do
+    ToastTest.EventStore.notify(event)
+    ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
+  end
+
+  @impl true
   def on_event(event), do: ToastTest.EventStore.notify(event)
-
-  @impl true
-  def on_crash(server_id, crash_info),
-    do: ToastTest.CrashMonitor.handle_crash(server_id, crash_info)
-
-  @impl true
-  def on_timeout_kill(source, reason, servers),
-    do: ToastTest.EventStore.record_timeout_kill(source, reason, servers)
 end

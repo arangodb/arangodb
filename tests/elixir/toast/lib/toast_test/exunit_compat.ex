@@ -102,4 +102,14 @@ defmodule ToastTest.ExUnitCompat do
   def get_setup_all(module, context) do
     module.__ex_unit__(:setup_all, context)
   end
+
+  @spec register_on_exit(pid()) :: :ok
+  def register_on_exit(pid) do
+    ExUnit.OnExitHandler.register(pid)
+  end
+
+  @spec run_on_exit(pid(), timeout()) :: :ok | {atom(), term(), Exception.stacktrace()}
+  def run_on_exit(pid, timeout) do
+    ExUnit.OnExitHandler.run(pid, timeout)
+  end
 end

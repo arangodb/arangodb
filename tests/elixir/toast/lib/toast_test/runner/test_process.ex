@@ -38,7 +38,7 @@ defmodule ToastTest.Runner.TestProcess do
        ) do
     spawn_monitor(fn ->
       Process.set_label({test.case, test.name})
-      ExUnit.OnExitHandler.register(self())
+      Compat.register_on_exit(self())
       context = context |> Map.merge(test.tags) |> Map.put(:test_pid, self())
       capture_log = Map.get(context, :capture_log, capture_log)
 

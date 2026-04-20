@@ -383,8 +383,6 @@ defmodule ToastTest.Formatting.CLI do
 
   defp display_name(%ExUnit.Test{name: name}), do: display_test_name(name)
 
-  defp module_file(%ExUnit.TestModule{state: {:failed, %{tags: %{file: file}}}}), do: file
-
   defp module_file(%ExUnit.TestModule{name: name}) do
     if function_exported?(name, :__ex_unit__, 0),
       do: Map.get(name.__ex_unit__(), :file, inspect(name)),
