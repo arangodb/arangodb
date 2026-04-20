@@ -80,10 +80,6 @@ class ExecContext : public RequestContext {
 
   bool isSuperuser() const noexcept { return _authMode.isSuperuser(); }
 
-  bool isReadOnly() const noexcept {
-    std::abort();  // TODO remove this method
-  }
-
   /// @brief tells you if this execution was canceled
   // TODO I think it's strange to to have this in ExecContext. It's implemented
   //      in the VocbaseContext.
