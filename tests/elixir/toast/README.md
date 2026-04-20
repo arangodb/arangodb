@@ -51,6 +51,25 @@ end
 
 Note: the module names of all files belonging to a suite must be namespaced with the suite name.
 
+## Toast CLI
+
+Instead of running `mix toast` directly from the `tests/elixir/toast/` directory,
+you can use the `toast` wrapper script from anywhere in the repository. It
+automatically finds the correct `toast` directory and forwards to `mix toast`.
+
+Set it up once:
+
+```bash
+tests/elixir/toast/toast --setup-completion
+```
+
+This adds a `toast` shell function and bash completion to your `~/.bashrc`.
+After restarting your shell (or `source ~/.bashrc`), you get:
+
+- **`toast run [options] [suites...]`** — runs tests (equivalent to `mix toast`)
+- **`toast analyze [subcommand] [options]`** — analyzes results (equivalent to `mix toast.analyze`)
+- **Tab completion** for suites, test files within suites, options, and analyze subcommands
+
 ## Running Tests
 
 ### Command-Line Usage
