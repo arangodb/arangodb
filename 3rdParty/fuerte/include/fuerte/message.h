@@ -22,6 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include "fuerte/ApiVersion.h"
 #ifndef ARANGO_CXX_DRIVER_MESSAGE
 #define ARANGO_CXX_DRIVER_MESSAGE
 
@@ -110,7 +111,7 @@ struct RequestHeader final : public MessageHeader {
 
   /// @brief API version, if specified via /_arango/vX or /_arango/experimental.
   /// std::nullopt means no prefix was present; appendPath will not add one.
-  std::optional<std::string> apiVersion = std::nullopt;
+  std::optional<api_version::ApiVersion> apiVersion = std::nullopt;
 
   // accept header accessors
   ContentType acceptType() const { return _acceptType; }

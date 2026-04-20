@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
 
 namespace arangodb { namespace fuerte { namespace api_version {
@@ -44,6 +45,17 @@ constexpr auto from(std::string_view s) -> std::optional<ApiVersion> {
     return ApiVersion::Experimental;
   }
   return std::nullopt;
+}
+
+constexpr auto to_string(ApiVersion v) -> std::string {
+  switch (v) {
+    case ApiVersion::V0:
+      return "v0";
+    case ApiVersion::V1:
+      return "v1";
+    case ApiVersion::Experimental:
+      return "experimental";
+  }
 }
 
 }}}}  // namespace arangodb::fuerte::api_version::v1

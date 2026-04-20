@@ -88,9 +88,13 @@ void RequestHeader::acceptType(std::string const& type) {
 }
 
 namespace {
-// returns version and rest of path
-auto splitPathByVersion(std::string_view path)
-    -> std::optional<std::pair<std::string_view, std::string_view>> {
+using VersionString = std::string_view;
+using PathRest = std::string_view;
+
+/// split paths /_arango/version/some/other/rest
+/// into version and some/other/rest
+auto extractVersionFromPath(std::string_view path)
+    -> std::optional<std::pair<VersionString, PathRest>> {
   auto split = path | std::views::split('/');
   auto it = split.begin();
 
@@ -133,18 +137,17 @@ void RequestHeader::parseArangoPath(std::string_view p) {
   // Detect and strip /_arango/vX or /_arango/experimental prefix.
   // This must come before /_db/<name>.
   {
-    auto maybe_splitPath = splitPathByVersion(this->path);
+    auto maybe_splitPath = extractVersionFromPath(this->path);
     if (maybe_splitPath != std::nullopt) {
-      auto& [version_string, rest] = *maybe_splitPath;
-      if (auto maybe_v = fuerte::api_version::from(version_string);
+      auto& [versionString, pathRest] = *maybe_splitPath;
+      if (auto maybe_v = fuerte::api_version::from(versionString);
           maybe_v != std::nullopt) {
-        this->apiVersion =
-            version_string;  // TODO will be an ApiVersion: *maybe_v
-        this->path = rest;
-      } else if (version_string.starts_with('v')) {
+        this->apiVersion = *maybe_v;
+        this->path = pathRest;
+      } else if (versionString.starts_with('v')) {
         //  check for additional zeros after v
 
-        std::string_view afterV = version_string.substr(1);
+        std::string_view afterV = versionString.substr(1);
         size_t numEnd = 0;
         while (numEnd < afterV.size() &&
                (afterV[numEnd] >= '0' && afterV[numEnd] <= '9')) {
@@ -164,8 +167,12 @@ void RequestHeader::parseArangoPath(std::string_view p) {
               version = version * 10 + d;
             }
             if (!overflow) {
-              this->apiVersion = "v" + std::to_string(version);
-              this->path = rest;
+              if (auto maybe_v =
+                      fuerte::api_version::from(std::to_string(version));
+                  maybe_v != std::nullopt) {
+                this->apiVersion = *maybe_v;
+                this->path = pathRest;
+              }
             }
           }
         }
