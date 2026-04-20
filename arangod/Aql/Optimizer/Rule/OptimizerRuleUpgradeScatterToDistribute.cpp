@@ -9,9 +9,11 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
@@ -24,63 +26,9 @@
 
 #include "Logger/LogMacros.h"
 
-#define LOG_RULE LOG_DEVEL_IF(true)
+#define LOG_RULE LOG_DEVEL_IF(true) << "UpgradeScatterToDistribute: "
 
 using EN = arangodb::aql::ExecutionNode;
-
-struct AttributeAccess {
-  std::string attr;
-
-  explicit AttributeAccess(arangodb::aql::AstNode const* node) {
-    auto current = node;
-    while (current->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-      attr += "." + current->getString();
-      current = current->getMember(0);
-    }
-    if (current->type == arangodb::aql::NODE_TYPE_REFERENCE) {
-      auto variable =
-          static_cast<arangodb::aql::Variable const*>(current->getData());
-      attr = variable->name + attr;
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, "internal node for AttributeAccess struct");
-    }
-  }
-
-  AttributeAccess(arangodb::aql::Variable const* variable, std::string const& a)
-      : attr(a) {
-    attr = variable->name + "." + attr;
-  }
-
-  std::string const& toString() const noexcept { return attr; }
-
-  bool operator==(AttributeAccess const& other) const {
-    return attr == other.attr;
-  }
-
-  bool operator!=(AttributeAccess const& other) const {
-    return !(*this == other);
-  }
-};
-
-namespace std {
-
-template<>
-struct hash<AttributeAccess> {
-  size_t operator()(AttributeAccess const& x) const noexcept {
-    return std::hash<std::string>()(x.toString());
-  }
-};
-
-template<>
-struct equal_to<AttributeAccess> {
-  bool operator()(AttributeAccess const& a,
-                  AttributeAccess const& b) const noexcept {
-    return a == b;
-  }
-};
-
-}  // namespace std
 
 arangodb::aql::Collection const* getCollection(
     arangodb::aql::ExecutionNode const* node) {
@@ -101,53 +49,12 @@ arangodb::aql::Collection const* getCollection(
   }
 }
 
-struct Cache {
-  explicit Cache(arangodb::aql::ExecutionPlan* plan) : plan(plan) {}
-
-  arangodb::aql::ExecutionPlan* plan;
-  std::unordered_map<AttributeAccess, std::unordered_set<AttributeAccess>>
-      aliases;
-  std::unordered_map<arangodb::aql::Variable const*, std::vector<std::string>>
-      shardKeys;
-
-  arangodb::aql::Collection const* getCollectionForVariable(
-      arangodb::aql::Variable const* variable) {
-    auto setter = plan->getVarSetBy(variable->id);
-    if (setter == nullptr ||
-        (setter->getType() != EN::INDEX &&
-         setter->getType() != EN::ENUMERATE_COLLECTION &&
-         setter->getType() != EN::ENUMERATE_IRESEARCH_VIEW)) {
-      return nullptr;
-    }
-    return getCollection(setter);
-  }
-
-  std::vector<std::string> const& getShardKeys(
-      arangodb::aql::Variable const* variable) {
-    auto it = shardKeys.find(variable);
-    if (it == shardKeys.end()) {
-      std::vector<std::string> keys;
-
-      auto collection = getCollectionForVariable(variable);
-      if (collection != nullptr) {
-        keys = collection->shardKeys(true);
-        if (!collection->smartJoinAttribute().empty()) {
-          keys.clear();
-          keys.emplace_back(collection->smartJoinAttribute());
-        }
-      }
-      it = shardKeys.emplace(variable, std::move(keys)).first;
-    }
-
-    return (*it).second;
-  }
-};
-
 arangodb::aql::Variable const* getVariableFromAttributeAccess(
     arangodb::aql::AstNode const* node) {
-  TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+  if (node->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    return nullptr;
+  }
 
-  // TODO(listunov): (what?) adjust for nested shard keys
   node = node->getMember(0);
 
   if (node->type != arangodb::aql::NODE_TYPE_REFERENCE) {
@@ -157,42 +64,11 @@ arangodb::aql::Variable const* getVariableFromAttributeAccess(
   return static_cast<arangodb::aql::Variable const*>(node->getData());
 }
 
-bool checkAliasesForAllShardsKeysOfVar(arangodb::aql::AstNode const* lhs,
-                                       arangodb::aql::AstNode const* rhs,
-                                       arangodb::aql::Variable const* var,
-                                       Cache& cache) {
-  TRI_ASSERT(lhs->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-  TRI_ASSERT(rhs->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-
-  arangodb::aql::Variable const* lhsVar = getVariableFromAttributeAccess(lhs);
-  arangodb::aql::Variable const* rhsVar = getVariableFromAttributeAccess(rhs);
-
-  if (lhsVar == nullptr || rhsVar == nullptr) {
-    return false;
-  }
-
-  // TODO (listunov): is this right ? what if condition also contains a third col ?
-  if (lhsVar != var && rhsVar != var) {
-    return false;
-  }
-
-  std::vector<std::string> const& v1Keys = cache.getShardKeys(var);
-  for (auto const& key : v1Keys) {
-    if (!cache.aliases.contains(AttributeAccess(var, key))) {
-      return false;
-    }
-  }
-  return true;
-}
-
 arangodb::aql::Variable const* getOutVariable(
     arangodb::aql::ExecutionNode const* node) {
   using arangodb::aql::ExecutionNode;
 
   switch (node->getType()) {
-    case EN::CALCULATION:
-      return ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node)
-          ->outVariable();
     case EN::INDEX:
     case EN::ENUMERATE_COLLECTION: {
       auto const* n =
@@ -201,131 +77,155 @@ arangodb::aql::Variable const* getOutVariable(
         return n->outVariable();
       }
     }
-    default: {
-      return nullptr;
-    }
+    default:
+      break;
   }
+  return nullptr;
 }
 
-void buildAliases(arangodb::aql::AstNode const* root, Cache& cache) {
-  if (root == nullptr ||
-      root->type != arangodb::aql::NODE_TYPE_OPERATOR_NARY_OR ||
-      root->numMembers() != 1) {
-    return;
-  }
-
-  for (size_t i = 0; i < root->numMembers(); ++i) {
-    arangodb::aql::AstNode const* andNode = root->getMemberUnchecked(i);
-
-    if (andNode == nullptr) {
-      continue;
-    }
-
-    TRI_ASSERT(andNode->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
-
-    size_t numConds = andNode->numMembers();
-
-    for (size_t j = 0; j < numConds; ++j) {
-      arangodb::aql::AstNode const* condNode = andNode->getMember(j);
-
-      if (condNode == nullptr ||
-          condNode->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        // something other than an equality join. we do not
-        // support this
-        continue;
-      }
-
-      // equality comparison
-      auto const* lhs = condNode->getMember(0);
-      auto const* rhs = condNode->getMember(1);
-
-      if (lhs->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
-          rhs->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-        // something else
-        continue;
-      }
-
-      auto lhsVar = getVariableFromAttributeAccess(lhs);
-      auto rhsVar = getVariableFromAttributeAccess(rhs);
-
-      if (lhsVar == nullptr || rhsVar == nullptr) {
-        // something else
-        continue;
-      }
-
-      AttributeAccess one(lhs);
-      AttributeAccess two(rhs);
-      cache.aliases[one].emplace(two);
-      cache.aliases[two].emplace(one);
-    }
-  }
-}
-
+struct DistributeNodeDep {
+  arangodb::aql::Variable const* distVar{nullptr};
+  std::set<std::string> members;
+};
 bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
                                 arangodb::aql::ExecutionNode const* node,
-                                Cache& cache) {
+                                DistributeNodeDep& distDep) {
+  using namespace arangodb::aql;
+
   if (root == nullptr) {
     return false;
   }
 
-  if (root->type != arangodb::aql::NODE_TYPE_OPERATOR_NARY_OR) {
+  if (root->type != AstNodeType::NODE_TYPE_OPERATOR_NARY_OR) {
     return false;
   }
+
   // number of ANDs
   size_t const numAnds = root->numMembers();
-
   if (numAnds != 1) {
+    // TODO(listunov): do we really only support one AND-branch ? or what is happening here ?
+    LOG_RULE << "found more than one AND-branch, stop evaluation";
     return false;
   }
 
-  arangodb::aql::Variable const* var = getOutVariable(node);
+  Variable const* var = getOutVariable(node);
+  if (var == nullptr) {
+    LOG_RULE << "no out variable for node, skip";
+    return false;
+  }
+  Collection const* collection = getCollection(node);
+  LOG_RULE << std::format("checking node {}({}) for var({}) and collection({})",
+                         node->getTypeString(), node->id(), var->name,
+                         collection->name());
+  std::vector<std::string> shardKeys{ collection->shardKeys(true) };
 
-  // currently numAnds will always be one here.
-  // however, when we support multiple shard keys, we actually may have
-  // more than one condition to care about here.
+  uint32_t foundAllShardKeysCount{0};
   for (size_t i = 0; i < numAnds; ++i) {
-    arangodb::aql::AstNode const* andNode = root->getMemberUnchecked(i);
-
+    AstNode const* andNode = root->getMemberUnchecked(i);
     if (andNode == nullptr) {
       continue;
     }
-
     TRI_ASSERT(andNode->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
-
-    size_t numConds = andNode->numMembers();
-
+    size_t const numConds = andNode->numMembers();
+    LOG_RULE << "found " << numConds << " conditions. iterating";
+    std::set<std::string> shardKeySet{shardKeys.begin(), shardKeys.end()};
     for (size_t j = 0; j < numConds; ++j) {
-      arangodb::aql::AstNode const* condNode = andNode->getMember(j);
-
+      AstNode const* condNode = andNode->getMember(j);
       if (condNode == nullptr ||
-          condNode->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        // something other than an equality join. we do not
-        // support this
+          condNode->type != AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
+        LOG_RULE << "condition not equal operator, skip.";
+        continue;
+      }
+      auto const* lhs{ condNode->getMember(0) };
+      auto const* rhs{ condNode->getMember(1) };
+      if (lhs->type != AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS &&
+          rhs->type != AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // No side has attribute access, something else, we cant check for shardKey access
+        LOG_RULE << "condition has no attribute access, skip";
         continue;
       }
 
-      // equality comparison
-      // now check if this comparison has the pattern
-      // <variable from collection1>.<attribute from collection1> == <variable
-      // from collection2>.<attribute from collection2>
+      // TODO(listunov): getVariableFromAttributeAccess can probably be removed but it does a check on NODE_TYPE_REFERENCE, maybe its easier to keep it in separate function
+      Variable const* lhsVar = getVariableFromAttributeAccess(lhs);
+      Variable const* rhsVar = getVariableFromAttributeAccess(rhs);
 
-      auto const* lhs = condNode->getMember(0);
-      auto const* rhs = condNode->getMember(1);
-
-      if (lhs->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
-          rhs->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-        // something else
+      // TODO(listunov): we could work if one of them is nullptr, so is this a check only for smartJoinsRule ?
+      if (lhsVar == nullptr || rhsVar == nullptr) {
+        // TODO(listunov): when can this happen?
+        // TODO(listunov): when its not NODE_TYPE_REFERENCE, what is NODE_TYPE_REFERENCE?
+        LOG_RULE << "lhsVar or rhsVar are null, skip";
         continue;
       }
 
-      if (checkAliasesForAllShardsKeysOfVar(lhs, rhs, var, cache)) {
-        // all shard keys are accounted in the cache aliases
-        return true;
+      AstNode const* attribute{ nullptr };
+      AstNode const* other{ nullptr };
+      if (lhsVar == var) {
+        distDep.distVar = rhsVar;
+        attribute = lhs;
+        other = rhs;
+      } else if (rhsVar == var) {
+        distDep.distVar = lhsVar;
+        attribute = rhs;
+        other = lhs;
+      }
+
+      if (attribute == nullptr) {
+        // Neither side is our var, ignore
+        LOG_RULE << "var is neither on the left nor on the right side, skip";
+        continue;
+      }
+      std::string const shardField = attribute->getString();
+      LOG_RULE << "Found attribute, remove from set: " << shardField;
+      auto const numErased = shardKeySet.erase(shardField);
+      if (numErased > 0 && other != nullptr) {
+        distDep.members.insert(other->getString());
       }
     }
+    if (shardKeySet.empty()) {
+      LOG_RULE << "found all shardKeys for " << var->name;
+      foundAllShardKeysCount++;
+    } else {
+      for (auto const& leftOver : shardKeySet) {
+        LOG_RULE << "LeftOver ShardKey: " << leftOver;
+      }
+      // Some condition does not handle all shard-keys -> bail
+      return false;
+    }
+  }
+  // Found shard-keys in all and-branches
+  return foundAllShardKeysCount == numAnds;
+}
+
+void replaceScatterWithDistribute(arangodb::aql::ExecutionPlan& plan,
+  arangodb::aql::ExecutionNode* scatter, arangodb::aql::Collection const* coll,
+  arangodb::aql::ExecutionNodeId targetNodeId, DistributeNodeDep const& distDep) {
+
+  // TODO(listunov): targetNodeId IndexNode is wrong here, isn't it ? EnumerateCollectionNode sounds more plausible
+
+  using namespace arangodb::aql;
+
+  Ast* ast = plan.getAst();
+
+  Variable* shardInputVar = ast->variables()->createTemporaryVariable();
+  AstNode* obj = ast->createNodeObject();
+
+  for (auto const& member : distDep.members) {
+    LOG_RULE << "Add Member: " << distDep.distVar->name << "." << member;
+    obj->addMember(ast->createNodeObjectElement(
+      member,
+      ast->createNodeAttributeAccess(ast->createNodeReference(distDep.distVar), member)));
   }
 
-  return false;
+  auto expr = std::make_unique<Expression>(ast, obj);
+  auto* calc = plan.createNode<CalculationNode>(
+      &plan, plan.nextId(), std::move(expr), shardInputVar);
+
+  auto* distribution = plan.createNode<DistributeNode>(
+    &plan, plan.nextId(), ScatterNode::ScatterType::SHARD, coll,
+    shardInputVar, targetNodeId);
+
+  plan.replaceNode(scatter, distribution);
+  plan.insertBefore(distribution, calc);
 }
 
 namespace arangodb::aql {
@@ -351,7 +251,6 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
                         },
                         true);
 
-  LOG_RULE << " ---- FOUND NODES: " << nodes.size();
   for (auto& node : nodes) {
     ExecutionNode* current = node->getFirstParent();
     while (current != nullptr) {
@@ -375,18 +274,18 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
       }
 
       if (condition.root() != nullptr) {
-        LOG_RULE << "----- NODE: " << current->getTypeString() << " CONDITION: " << condition.root()->toString();
         condition.normalize(plan.get());
-        Cache cache(plan.get());
-        buildAliases(condition.root(), cache);
 
-        // TODO(listunov): SmartJoinsRule seems to be breaking here ? 
-        if (checkIfAllShardKeysAreUsed(condition.root(), current, cache)) {
-          LOG_RULE << "------ CHECK IF I CAN UPGRADE";
-          if (!plan->shouldExcludeFromScatterGather(current)) {
-            wasModified = true;
-            LOG_RULE << "------ UPGRADE";
-          }
+        DistributeNodeDep distDep;
+        if (checkIfAllShardKeysAreUsed(condition.root(), current, distDep)) {
+          auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
+          Collection const* coll{ getCollection(current) };
+          LOG_RULE << "--------------------------------------";
+          plan->show();
+          replaceScatterWithDistribute(*plan, scatterNode, coll, current->id(), distDep);
+          wasModified = true;
+          LOG_RULE << "--------------------------------------";
+          plan->show();
         }
         // Only the first Index / Enumeration Parent-Node is relevant for us, we can skip the rest
         break;
