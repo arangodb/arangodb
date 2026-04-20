@@ -165,7 +165,7 @@ defmodule ToastTest.ExpectTest do
           timeout_factor: 1,
           suite_deadline: nil,
           global_deadline: nil,
-          trace: false
+          disable_timeouts: false
         }
       }
 

@@ -69,10 +69,7 @@ defmodule Mix.Tasks.Toast.Helpers do
     option_keys = [
       :include,
       :exclude,
-      :trace,
-      :timeout,
       :max_failures,
-      :colors,
       :exit_status,
       :only_test_ids
     ]
@@ -82,7 +79,6 @@ defmodule Mix.Tasks.Toast.Helpers do
       |> filter_opts(:include)
       |> filter_opts(:exclude)
       |> filter_only()
-      |> color_opts()
       |> Keyword.put_new(:exit_status, 2)
       |> Keyword.take(option_keys)
 
@@ -274,16 +270,6 @@ defmodule Mix.Tasks.Toast.Helpers do
         |> Keyword.delete(:only)
         |> Keyword.update(:include, parsed, &(parsed ++ &1))
         |> Keyword.update(:exclude, [:test], &[:test | &1])
-    end
-  end
-
-  defp color_opts(opts) do
-    case Keyword.fetch(opts, :color) do
-      {:ok, enabled?} ->
-        opts |> Keyword.delete(:color) |> Keyword.put(:colors, enabled: enabled?)
-
-      :error ->
-        opts
     end
   end
 end

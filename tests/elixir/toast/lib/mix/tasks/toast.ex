@@ -12,7 +12,6 @@ defmodule Mix.Tasks.Toast do
       mix toast --build-dir ../build-clang
       mix toast --cluster --cluster-dbservers 2
       mix toast --sanitizer alubsan
-      mix toast test/my_test.exs --trace
       mix toast --exclude slow
 
   ## Toast Options
@@ -30,7 +29,7 @@ defmodule Mix.Tasks.Toast do
       --timeout-factor N          - Timeout multiplier (default: 1, auto-set to 3 for sanitizer builds)
       --keep-data                 - Keep server data/logs even on success
       --sanitizer TYPE            - Sanitizer: tsan or alubsan (auto-detected from build dir)
-      --attach-debugger           - Pause after deployment for live debugger attachment
+      --attach-debugger           - Pause after deployment for live debugger attachment (disables test timeouts)
       --http2                     - Use HTTP/2 (h2c) for client requests (default: HTTP/1.1)
       --rr ROLES                  - Record with rr: "default", "all", or comma-separated roles
                                     (single, agent, dbserver, coordinator)
@@ -53,18 +52,13 @@ defmodule Mix.Tasks.Toast do
       --force-all-tiers           - Package all tiers regardless of outcome (CI only)
       --no-agency-dump            - Skip agency state dump on error
 
-  ## ExUnit Options
+  ## Filtering Options
 
-      --include       - Include tests matching the filter
-      --exclude       - Exclude tests matching the filter
-      --only          - Run only tests matching the filter (excludes all others)
-      --trace         - Enable verbose output
-      --timeout       - Timeout per test in milliseconds
-      --max-failures  - Stop after N failures
-      --color         - Enable ANSI coloring
-      --no-color      - Disable ANSI coloring
-      --no-compile    - Skip project compilation
-      --no-start      - Skip application startup
+      --include TAG               - Include tests matching the filter
+      --exclude TAG               - Exclude tests matching the filter
+      --only TAG                  - Run only tests matching the filter (excludes all others)
+      --max-failures N            - Stop after N failures
+      --test PATTERN              - Run only tests whose name contains PATTERN
 
   All Toast options can also be set via `TOAST_*` environment variables.
   CLI arguments take precedence over environment variables.
@@ -81,16 +75,11 @@ defmodule Mix.Tasks.Toast do
   @compile {:no_warn_undefined, [ExUnit, ExUnit.Filters]}
 
   @switches [
-    # ExUnit options
+    # Filtering options
     include: :keep,
     exclude: :keep,
     only: :keep,
-    trace: :boolean,
-    timeout: :integer,
     max_failures: :integer,
-    color: :boolean,
-    compile: :boolean,
-    start: :boolean,
     # Toast options
     build_dir: :string,
     base_dir: :string,
@@ -123,8 +112,7 @@ defmodule Mix.Tasks.Toast do
 
   @aliases [
     i: :include,
-    e: :exclude,
-    t: :trace
+    e: :exclude
   ]
 
   @impl Mix.Task
@@ -134,15 +122,11 @@ defmodule Mix.Tasks.Toast do
     if opts[:help] || args_rest == ["help"] do
       print_help()
     else
-      unless opts[:compile] == false do
-        Mix.Task.run("compile", [])
-      end
+      Mix.Task.run("compile", [])
 
       opts |> Helpers.opts_to_env_list() |> Toast.Env.load() |> Toast.Env.apply!()
 
-      unless opts[:start] == false do
-        Mix.Task.run("app.start", [])
-      end
+      Mix.Task.run("app.start", [])
 
       Application.ensure_all_started(:ex_unit)
 

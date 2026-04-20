@@ -190,7 +190,7 @@ Design decisions:
 | `ToastTest.StateCleanup` | Resets shared state between suite runs (ETS tables, formatters, callbacks). |
 | `ToastTest.TestLifecycle` | Shared test lifecycle primitives (spawn_setup_all, spawn_test, etc.) used by both Interactive and Runner. |
 | `ToastTest.Interactive` | Run individual tests against an existing deployment (debugging). |
-| `ToastTest.DebuggerAttach` | Print debugger attach commands and wait for user input (--attach-debugger). |
+| `ToastTest.DebuggerAttach` | Print debugger attach commands and wait for user input (--attach-debugger). When active, test timeouts are disabled. |
 | `ToastTest.TimeoutError` | Custom exception for test/suite timeout conditions. |
 
 ### Diagnostics (`Toast.Diagnostics.*`)

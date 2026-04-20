@@ -215,18 +215,6 @@ defmodule Mix.Tasks.ToastTest do
       assert opts[:exit_status] == 2
     end
 
-    test "passes through trace" do
-      opts = Helpers.process_opts(trace: true)
-
-      assert opts[:trace] == true
-    end
-
-    test "passes through timeout" do
-      opts = Helpers.process_opts(timeout: 5000)
-
-      assert opts[:timeout] == 5000
-    end
-
     test "passes through max_failures" do
       opts = Helpers.process_opts(max_failures: 3)
 
@@ -258,24 +246,6 @@ defmodule Mix.Tasks.ToastTest do
       include = opts[:include]
       assert :smoke in include or {:smoke, true} in include
       assert :fast in include or {:fast, true} in include
-    end
-
-    test "color true sets colors: [enabled: true]" do
-      opts = Helpers.process_opts(color: true)
-
-      assert opts[:colors] == [enabled: true]
-    end
-
-    test "color false sets colors: [enabled: false]" do
-      opts = Helpers.process_opts(color: false)
-
-      assert opts[:colors] == [enabled: false]
-    end
-
-    test "no color option omits colors key" do
-      opts = Helpers.process_opts([])
-
-      refute Keyword.has_key?(opts, :colors)
     end
 
     test "strips non-ExUnit keys from output" do

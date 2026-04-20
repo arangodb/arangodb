@@ -334,7 +334,7 @@ defmodule ToastTest.Runner do
         suite_timeout: suite_run.suite_timeout,
         global_deadline: suite_run.global_deadline,
         global_timeout: suite_run.global_timeout,
-        trace: opts[:trace] || false
+        disable_timeouts: suite_run.test_config.attach_debugger
       }
     }
   end

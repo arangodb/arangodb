@@ -17,8 +17,8 @@ mix toast --build-dir /path/to/build smoke
 # Run in cluster mode
 mix toast --build-dir /path/to/build --cluster
 
-# Run with verbose output
-mix toast --build-dir /path/to/build --trace
+# Run with debugger (pauses after deployment, disables test timeouts)
+mix toast --build-dir /path/to/build --attach-debugger
 ```
 
 A minimal test suite consists of two files under `suites/<name>/`:
@@ -107,7 +107,7 @@ Filter by test name substring (case-insensitive):
 mix toast --test "version"
 ```
 
-Use ExUnit filter options to include/exclude by tag:
+Filter by tag:
 
 ```bash
 mix toast --only cluster_only
@@ -133,7 +133,7 @@ mix toast --include edge_case
 | `--timeout-factor N` | Timeout multiplier (default: 1, auto-set to 3 for sanitizer builds, 10 for rr) |
 | `--keep-data` | Keep server data and logs even on success |
 | `--sanitizer TYPE` | Sanitizer type: `tsan` or `alubsan` (auto-detected from build dir) |
-| `--attach-debugger` | Pause after deployment for live debugger attachment |
+| `--attach-debugger` | Pause after deployment for live debugger attachment (disables test timeouts) |
 | `--rr ROLES` | Record with rr: `default`, `all`, or comma-separated roles (single, agent, dbserver, coordinator). `default` records single server or dbserver+coordinator in cluster mode |
 | `--http2` | Use HTTP/2 (h2c) for client requests (default: HTTP/1.1) |
 | `--memory-budget BYTES` | Memory budget for server processes (auto-detected from system) |
@@ -146,19 +146,14 @@ mix toast --include edge_case
 | `--force-all-tiers` | Package all tiers regardless of outcome (CI only) |
 | `--no-agency-dump` | Skip agency state dump on error |
 
-### ExUnit Options
+### Filtering Options
 
 | Option | Description |
 |---|---|
-| `--include` / `-i` | Include tests matching the filter |
-| `--exclude` / `-e` | Exclude tests matching the filter |
-| `--only` | Run only tests matching the filter |
-| `--trace` / `-t` | Enable verbose per-test output |
-| `--timeout MS` | Per-test timeout (ExUnit level) |
+| `--include TAG` / `-i` | Include tests matching the filter |
+| `--exclude TAG` / `-e` | Exclude tests matching the filter |
+| `--only TAG` | Run only tests matching the filter (excludes all others) |
 | `--max-failures N` | Stop after N failures |
-| `--color` / `--no-color` | Enable/disable ANSI coloring |
-| `--no-compile` | Skip project compilation |
-| `--no-start` | Skip application startup |
 
 ## Writing Tests
 
@@ -699,7 +694,7 @@ for CI pipelines or shell aliases:
 | `TOAST_PROTOCOL` | `--http2` | `http1` or `http2` |
 | `TOAST_SSL` | -- | Enable SSL (`true` or `false`) |
 | `TOAST_RR` | `--rr` | rr recording: `default`, `all`, or comma-separated roles |
-| `TOAST_ATTACH_DEBUGGER` | `--attach-debugger` | Pause for debugger attachment |
+| `TOAST_ATTACH_DEBUGGER` | `--attach-debugger` | Pause for debugger attachment (disables test timeouts) |
 | `TOAST_CLUSTER_AGENTS` | `--cluster-agents` | Number of agency nodes |
 | `TOAST_CLUSTER_DBSERVERS` | `--cluster-dbservers` | Number of DB servers |
 | `TOAST_CLUSTER_COORDINATORS` | `--cluster-coordinators` | Number of coordinators |

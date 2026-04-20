@@ -14,7 +14,7 @@ defmodule ToastTest.Runner.TimeoutTest do
           suite_timeout: nil,
           global_deadline: nil,
           global_timeout: nil,
-          trace: false
+          disable_timeouts: false
         },
         Map.new(settings_overrides)
       )
@@ -40,8 +40,8 @@ defmodule ToastTest.Runner.TimeoutTest do
       assert {15_000, :test} = Timeout.get_timeout(config, tags())
     end
 
-    test "trace mode returns infinity with :test source" do
-      config = make_config(base_timeout: 5_000, trace: true)
+    test "attach-debugger disables timeouts" do
+      config = make_config(base_timeout: 5_000, disable_timeouts: true)
       assert {:infinity, :test} = Timeout.get_timeout(config, tags())
     end
   end

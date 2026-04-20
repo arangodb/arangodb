@@ -7,7 +7,7 @@ defmodule ToastTest.Runner.Timeout do
 
   defmodule Settings do
     @moduledoc false
-    @enforce_keys [:base_timeout, :timeout_factor, :suite_deadline, :trace]
+    @enforce_keys [:base_timeout, :timeout_factor, :suite_deadline, :disable_timeouts]
 
     defstruct [
       :base_timeout,
@@ -16,7 +16,7 @@ defmodule ToastTest.Runner.Timeout do
       :suite_timeout,
       :global_deadline,
       :global_timeout,
-      :trace
+      :disable_timeouts
     ]
 
     @type t :: %__MODULE__{
@@ -26,7 +26,7 @@ defmodule ToastTest.Runner.Timeout do
             suite_timeout: pos_integer() | nil,
             global_deadline: integer() | nil,
             global_timeout: pos_integer() | nil,
-            trace: boolean()
+            disable_timeouts: boolean()
           }
   end
 
@@ -76,7 +76,7 @@ defmodule ToastTest.Runner.Timeout do
     end
   end
 
-  defp compute_base_timeout(%{trace: true}, _tags), do: :infinity
+  defp compute_base_timeout(%{disable_timeouts: true}, _tags), do: :infinity
   defp compute_base_timeout(ts, tags), do: Map.get(tags, :timeout, ts.base_timeout)
 
   defp apply_timeout_factor(:infinity, _factor), do: :infinity
