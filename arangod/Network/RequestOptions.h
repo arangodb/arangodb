@@ -25,6 +25,7 @@
 #include "Assertions/Assert.h"
 #include "GeneralServer/RequestLane.h"
 #include "Network/types.h"
+#include "fuerte/ApiVersion.h"
 
 #include <fuerte/types.h>
 
@@ -61,6 +62,8 @@ struct RequestOptions {
   // the leader, but rather to the server given here. This is read for
   // the "allowDirtyReads" options when we want to read from followers.
   std::string overrideDestination;
+
+  std::optional<fuerte::api_version::ApiVersion> apiVersion;
 
   template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
