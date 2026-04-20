@@ -27,16 +27,10 @@
 namespace arangodb { namespace fuerte { namespace api_version {
 inline namespace v1 {
 
-/// @brief API version constants shared between fuerte and the ArangoDB server.
-/// Defined here (in fuerte) so that fuerte does not need to include server
-/// headers.  lib/Rest/ApiVersion.h re-exports these values.
+/// ApiVersion is also used by ArangoDB server but is defined here (in fuerte)
+/// so that fuerte does not need to include server headers.
+/// lib/Rest/ApiVersion.h re-exports this enum.
 
-struct ApiVersion {
-  /// Version used when no /_arango/vX prefix is present
-  static constexpr uint32_t defaultApiVersion = 0;
-
-  /// Version accessed via /_arango/experimental
-  static constexpr uint32_t experimentalApiVersion = 2;
-};
+enum class ApiVersion { V0 = 0, V1, Experimental };
 
 }}}}  // namespace arangodb::fuerte::api_version::v1

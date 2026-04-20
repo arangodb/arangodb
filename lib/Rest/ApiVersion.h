@@ -45,13 +45,13 @@ static constexpr uint32_t deprecatedApiVersions[] = {};
 // Value is defined in fuerte so that fuerte can use it without depending on
 // server headers.
 static constexpr uint32_t defaultApiVersion =
-    fuerte::api_version::ApiVersion::defaultApiVersion;
+    static_cast<uint32_t>(fuerte::api_version::ApiVersion::V0);
 
 // The experimental API version (accessed via /_arango/experimental).
 // Value is defined in fuerte so that fuerte can use it without depending on
 // server headers.
 static constexpr uint32_t experimentalApiVersion =
-    fuerte::api_version::ApiVersion::experimentalApiVersion;
+    static_cast<uint32_t>(fuerte::api_version::ApiVersion::Experimental);
 
 // Helper function to get the number of supported API versions
 static constexpr size_t numSupportedApiVersions() {
