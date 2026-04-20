@@ -2,7 +2,7 @@
 
 ## Migration philosophy
  
-In the "classic" system permissions were given on a per user basis and
+In the "classic" system permissions were given on a per-user basis and
 could only be configured for databases and collections. Essentially, there
 were three levels:
 
@@ -18,7 +18,7 @@ The `_system` database has played an important role, since many API
 accesses were authorized by asking if the user has RW access to the
 `_system` database.
 
-Often, access to meta data was goverened by RO or RW permissions on
+Often, access to metadata was governed by RO or RW permissions on
 the **container**. For example, creating an index on a collection was
 allowed, if the user had RW access to the database which contained
 the collection.
@@ -26,7 +26,25 @@ the collection.
 Finally, there is the "SUPERUSER" access, which means that a valid
 JWT token without a `preferred_username` field was found. SUPERUSER
 access has **no restrictions whatsoever** and is allowed to **do
-everything**. This is used for cluster-internal communication.
+everything**.
+
+SUPERUSER is currently being used for three different reasons:
+* Cluster-internal communication:
+
+  Only Coordinators do detailed authentication or authorization.
+  DBServers and Agents generally only accept API calls from a
+  SUPERUSER.
+* Platform-internal operations:
+
+  Certain internal tools and services use SUPERUSER access to the
+  database.
+* Internally overriding permission checks:
+
+  E.g. certain APIs need to access certain (system) collections, but
+  they should work even without the user having explicit access to
+  those collections. The permission checks are (or have been) ignorant
+  of such decisions, so the caller did its own checks, switched to a
+  SUPERUSER context, and proceeded.
 
 This was all not very convenient and flexible and was for many things
 very **coarse-grained**.
@@ -43,7 +61,7 @@ RBAC strives to
 Of course, we need to maintain backwards compatibility for the case that
 RBAC is **not enabled** in the core DB.
 
-The basic way to implement this new system is to overhaul all of the
+The basic way to implement this new system is to overhaul all the
 authorization across all APIs in the following way:
 
 We create an abstraction so that we can specify which access permissions
@@ -233,6 +251,14 @@ when trying to access it should be "NOTFOUND", to not give away the
 information that the collection exists! This must be considered in the
 central implementation of these methods.
 
+NOTE (Tobias): `canCreate` can to some extent leak information that
+should be protected by `canSee`, if the user knows the extent of its
+own create permissions. As creating something that already exists will
+have to fail in one way or another. A noncommittal error message
+does not countervail this.
+So: Should we always require `see` permissions along with `create`,
+forcing them to be laminar - or document this and leave it to the
+user?
 
 ### Implementation details for the abstract methods for RBAC disabled
 
