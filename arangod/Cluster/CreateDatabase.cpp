@@ -80,7 +80,11 @@ bool CreateDatabase::first() {
   }
 
   TRI_IF_FAILURE("CreateDatabase::delay") {
+    LOG_TOPIC("5fb67", DEBUG, Logger::MAINTENANCE)
+          << "DBG: CreateDatabase: CreateDatabase::delay: start.";
     std::this_thread::sleep_for(std::chrono::seconds(15));
+    LOG_TOPIC("5fb67", DEBUG, Logger::MAINTENANCE)
+          << "DBG: CreateDatabase: CreateDatabase::delay: end.";
   }
   Result res;
 

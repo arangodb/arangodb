@@ -31,6 +31,10 @@ let { instanceRole } = require('@arangodb/testutils/instance');
 let db = arangodb.db;
 let IM = global.instanceManager;
 
+function logMessage(msg) {
+  internal.print(`${new Date().toISOString()} DBG: ${msg}`);
+}
+
 const {
   getCtrlCoordinators
 } = require('@arangodb/test-helper');
@@ -71,31 +75,45 @@ function createCoordinatorUnreachableSuite() {
         let count = 0;
         let code = -1;
         while (true) {
+          logMessage(`arango.PUT(asyncJobId = ${asyncJobId})`);
           let s = arango.PUT(`/_api/job/${asyncJobId}`,{});
+          logMessage(`arango.PUT(asyncJobId = ${asyncJobId}) response: ${JSON.stringify(s)}`);
           code = s.code;
 
-          if (s.code !== 204 || count > timeoutInSeconds)
+          if (s.code !== 204 || count > timeoutInSeconds) {
+            logMessage(`s.code = ${s.code}, count = ${count}, timeoutInSeconds = ${timeoutInSeconds}`);
             break;
+          }
 
+          logMessage(`internal.wait(1)`);
           internal.wait(1);
         }
         return [code, count];
       };
 
       // 1. First test with an unreachable coordinator
+      logMessage(`CreateDatabase::delay start.`);
       IM.debugSetFailAt("CreateDatabase::delay", instanceRole.dbServer);
+      logMessage(`POST_RAW async _api/database ${databaseName}.`);
       let createDb = arango.POST_RAW("/_api/database", {name:databaseName}, {"x-arango-async":"store"});
+      logMessage(`POST_RAW async _api/database ${databaseName} response: (${JSON.stringify(createDb)}).`);
 
       let coordinators = getCtrlCoordinators();
 
       // Suspend coordinators for 15 sec which will make
       // the agency remove the database from the plan.
+      logMessage(`Suspending coordinators.`);
       suspend(coordinators);
+      logMessage(`Waiting for 15 sec.`);
       internal.wait(15);
+      logMessage(`Resuming coordinators.`);
       resume(coordinators);
+      logMessage(`Coordinators resumed.`);
 
       const timeoutSeconds = 20;
+      logMessage(`waitForAsyncJob ${createDb.headers["x-arango-async-id"]}.`);
       let result = waitForAsyncJob(createDb.headers["x-arango-async-id"], timeoutSeconds);
+      logMessage(`waitForAsyncJob ${createDb.headers["x-arango-async-id"]} returned ${result}.`);
       let exitCode = result[0];
       let count = result[1];
 
@@ -104,8 +122,12 @@ function createCoordinatorUnreachableSuite() {
 
       //  2. Now test with a reachable coordinator
       IM.debugRemoveFailAt("CreateDatabase::delay");
+      logMessage(`CreateDatabase::delay end.`);
+      logMessage(`Trying create database with reachable coordinator.`);
       createDb = arango.POST_RAW("/_api/database",{name:databaseName},{"x-arango-async":"store"});
+      logMessage(`POST_RAW(_api/database ${databaseName}) returned ${JSON.stringify(createDb)}.`);
       result = waitForAsyncJob(createDb.headers["x-arango-async-id"], timeoutSeconds);
+      logMessage(`waitForAsyncJob(${createDb.headers["x-arango-async-id"]}) returned ${result}.`);
       exitCode = result[0];
       count = result[1];
 

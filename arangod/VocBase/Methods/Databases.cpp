@@ -362,9 +362,13 @@ Result Databases::create(application_features::ApplicationServer& server,
 
     // Only admin users are permitted to create databases
     if (!exec.isAdminUser()) {
+      LOG_TOPIC("87642", ERR, Logger::COMMUNICATION) <<
+        "DBG: Databases::create: not an admin user FAILED";
       return res.reset(TRI_ERROR_FORBIDDEN);
     }
     if (ServerState::readOnly() && !exec.isSuperuser()) {
+      LOG_TOPIC("87642", ERR, Logger::COMMUNICATION) <<
+        "DBG: Databases::create: server is in read-only mode FAILED.";
       return res.reset(TRI_ERROR_FORBIDDEN, "server is in read-only mode");
     }
 
@@ -373,6 +377,9 @@ Result Databases::create(application_features::ApplicationServer& server,
     if (auto res = DatabaseNameValidator::validateName(
             /*allowSystem*/ false, extendedNames, dbName);
         res.fail()) {
+      LOG_TOPIC("87642", ERR, Logger::COMMUNICATION) <<
+        "DBG: Databases::create: validateName(" << std::boolalpha << extendedNames << ", " <<
+        dbName << ") FAILED.";
       return res;
     }
 
@@ -391,10 +398,15 @@ Result Databases::create(application_features::ApplicationServer& server,
     res = createInfo.load(dbName, options, users);
 
     if (!res.ok()) {
+      LOG_TOPIC("87642", ERR, Logger::COMMUNICATION) <<
+        "DBG: Databases::create: createInfo.load FAILED";
       return res;
     }
 
     if (createInfo.getName() != dbName) {
+      LOG_TOPIC("87642", ERR, Logger::COMMUNICATION) <<
+        "DBG: Databases::create: createInfo.getName() = " << createInfo.getName() <<
+        ", illegal database name FAILED";
       // check if name after normalization will change
       res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME,
                 "database name is not properly UTF-8 NFC-normalized");
@@ -416,6 +428,8 @@ Result Databases::create(application_features::ApplicationServer& server,
       auto& selector = server.getFeature<EngineSelectorFeature>();
       auto& engine = selector.engine<RocksDBEngine>();
       if (engine.syncThread() == nullptr) {
+        LOG_TOPIC("87642", ERR, Logger::COMMUNICATION) <<
+          "DBG: Databases::create: Automatic syncing must be enabled FAILED.";
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
                       "Automatic syncing must be enabled for replication "
                       "version 2. Please make sure the --rocksdb.sync-interval "
@@ -449,7 +463,8 @@ Result Databases::create(application_features::ApplicationServer& server,
     if (res.fail() && !res.is(TRI_ERROR_BAD_PARAMETER) &&
         !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
       LOG_TOPIC("1964a", ERR, Logger::FIXME)
-          << "Could not create database: " << res.errorMessage();
+          << "Could not create database: ErrCode: " <<
+          res.errorNumber() << ", " << res.errorMessage();
     }
 
     return res;
