@@ -68,17 +68,37 @@ find_package(Git 1.5.3 REQUIRED)
 # ARANGODB_VERSION_PRELEASE_TYPE   = TYPE
 # ARANGODB_VERSION_PRELEASE_NUMBER = NUMBER
 #
-set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "12")
+# The authoritative version string lives in the top-level ARANGO-VERSION file.
+# We parse it here so there is a single source of truth that external tooling
+# (Docker, CircleCI, release scripts) can also consume without running CMake.
+set(ARANGO_VERSION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ARANGO-VERSION")
+if(NOT EXISTS "${ARANGO_VERSION_FILE}")
+  message(FATAL_ERROR "ARANGO-VERSION file not found at '${ARANGO_VERSION_FILE}'")
+endif()
+file(READ "${ARANGO_VERSION_FILE}" ARANGO_VERSION_FILE_CONTENT)
+string(STRIP "${ARANGO_VERSION_FILE_CONTENT}" ARANGO_VERSION_FILE_CONTENT)
 
-# when building the nightly ARANGODB_VERSION_PATCH will be set
+# Expected formats:
+#   MAJOR.MINOR.PATCH
+#   MAJOR.MINOR.PATCH-TYPE           (e.g. "3.12.10-devel" or "3.12.5-1" for hotfixes)
+#   MAJOR.MINOR.PATCH-TYPE.NUMBER    (e.g. "3.12.5-rc.1")
+if(NOT ARANGO_VERSION_FILE_CONTENT MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)(-([^.]+)(\\.([0-9]+))?)?$")
+  message(FATAL_ERROR "Cannot parse ARANGO-VERSION content: '${ARANGO_VERSION_FILE_CONTENT}'")
+endif()
+
+set(ARANGODB_VERSION_MAJOR "${CMAKE_MATCH_1}")
+set(ARANGODB_VERSION_MINOR "${CMAKE_MATCH_2}")
+
+# Nightly builds override ARANGODB_VERSION_PATCH externally (via -D), in which
+# case we drop the pre-release suffix from ARANGO-VERSION entirely.
 if(NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "10")
-  set(ARANGODB_VERSION_RELEASE_TYPE "devel")
-  set(ARANGODB_VERSION_RELEASE_NUMBER "")
-else()
-  unset(ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
-  unset(ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
+  set(ARANGODB_VERSION_PATCH "${CMAKE_MATCH_3}")
+  if(NOT "${CMAKE_MATCH_5}" STREQUAL "")
+    set(ARANGODB_VERSION_RELEASE_TYPE "${CMAKE_MATCH_5}")
+  endif()
+  if(NOT "${CMAKE_MATCH_7}" STREQUAL "")
+    set(ARANGODB_VERSION_RELEASE_NUMBER "${CMAKE_MATCH_7}")
+  endif()
 endif()
 
 # unset TYPE and NUMBER in case they are empty
@@ -264,12 +284,6 @@ if(NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
 else()
   set(GENERATE_BUILD_DATE OFF CACHE INTERNAL "whether we should generate the build date")
 endif()
-
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/ARANGO-VERSION"
-  NEWLINE_STYLE UNIX
-)
 
 ################################################################################
 ## Find the git revision
