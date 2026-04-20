@@ -78,10 +78,6 @@ class ExecContext : public RequestContext {
 
   [[nodiscard]] auto can() const -> auth::Can const&;
 
-  bool isInternal() const noexcept {
-    std::abort();  // TODO remove this method
-  }
-
   bool isSuperuser() const noexcept { return _authMode.isSuperuser(); }
 
   bool isReadOnly() const noexcept {

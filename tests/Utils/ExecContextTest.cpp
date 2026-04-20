@@ -63,7 +63,6 @@ TEST(ExecContextTest, basic_construction) {
   EXPECT_TRUE(ctx.canUseDatabase("testdb", DatabaseAccessLevel::Write).ok());
   EXPECT_TRUE(
       ctx.canUseAdminAction(arangodb::rbac::Category::AdminBackup{}).ok());
-  EXPECT_FALSE(ctx.isInternal());
   EXPECT_FALSE(ctx.isSuperuser());
   EXPECT_FALSE(ctx.isReadOnly());
   EXPECT_FALSE(ctx.hasJwtToken());
@@ -192,7 +191,6 @@ TEST(ExecContextTest, canUseDatabase_same_db_uses_dbAuthLevel) {
 TEST(ExecContextTest, superuser_singleton) {
   auto const& su = ExecContext::superuser();
 
-  EXPECT_TRUE(su.isInternal());
   EXPECT_TRUE(su.isSuperuser());
   EXPECT_FALSE(su.isReadOnly());
   EXPECT_TRUE(su.canUseAdminAction(arangodb::rbac::Category::AdminFoxx{}).ok());
