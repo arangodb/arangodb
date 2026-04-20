@@ -23,6 +23,8 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace arangodb { namespace fuerte { namespace api_version {
 inline namespace v1 {
@@ -32,5 +34,16 @@ inline namespace v1 {
 /// lib/Rest/ApiVersion.h re-exports this enum.
 
 enum class ApiVersion { V0 = 0, V1, Experimental };
+
+constexpr auto from(std::string_view s) -> std::optional<ApiVersion> {
+  if (s == "v0") {
+    return ApiVersion::V0;
+  } else if (s == "v1") {
+    return ApiVersion::V1;
+  } else if (s == "experimental") {
+    return ApiVersion::Experimental;
+  }
+  return std::nullopt;
+}
 
 }}}}  // namespace arangodb::fuerte::api_version::v1
