@@ -45,6 +45,7 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
+#include <filesystem>
 
 using namespace arangodb::options;
 
@@ -211,10 +212,10 @@ endpoint. Requests with expiry times above this value will be rejected.)");
                       arangodb::options::Flags::Experimental))
       .setLongDescription(
           R"(When set to a non-empty string, this must be the HTTP or HTTPS
-endpoint of an external RBAC authorization service for use by coordinators and single
-servers. In this case, all requests with use role-based-access-control (RBAC) via the
-specified service for authorization decisions. When set to an empty string, RBAC is
-disabled and instead the old permission system is used.)");
+endpoint of an external RBAC authorization service for use by Coordinators and
+single servers. In this case, all requests use role-based-access-control
+(RBAC) via the specified service for authorization decisions. When set to an
+empty string, RBAC is disabled and instead the old permission system is used.)");
 
   options->addObsoleteOption(
       "--server.local-authentication",
@@ -563,21 +564,23 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
       basics::FileUtils::listFiles(_options.jwtSecretFolderProgramOption);
 
   // filter out empty filenames, hidden files, tmp files and symlinks
-  list.erase(std::remove_if(list.begin(), list.end(),
-                            [this](std::string const& file) {
-                              if (file.empty() || file[0] == '.') {
-                                return true;
-                              }
-                              if (file.ends_with(".tmp")) {
-                                return true;
-                              }
-                              auto p = basics::FileUtils::buildFilename(
-                                  _options.jwtSecretFolderProgramOption, file);
-                              if (basics::FileUtils::isSymbolicLink(p)) {
-                                return true;
-                              }
-                              return false;
-                            }),
+  list.erase(std::remove_if(
+                 list.begin(), list.end(),
+                 [this](std::string const& file) {
+                   if (file.empty() || file[0] == '.') {
+                     return true;
+                   }
+                   if (file.ends_with(".tmp")) {
+                     return true;
+                   }
+                   auto p =
+                       std::filesystem::path(basics::FileUtils::buildFilename(
+                           _options.jwtSecretFolderProgramOption, file));
+                   if (std::filesystem::is_symlink(p)) {
+                     return true;
+                   }
+                   return false;
+                 }),
              list.end());
 
   if (list.empty()) {

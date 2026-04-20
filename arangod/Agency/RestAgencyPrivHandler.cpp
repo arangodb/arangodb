@@ -32,7 +32,6 @@
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::consensus;
@@ -41,7 +40,7 @@ using namespace arangodb::velocypack;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
-
+namespace arangodb {
 RestAgencyPrivHandler::RestAgencyPrivHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response, Agent* agent)
@@ -294,3 +293,5 @@ RestStatus RestAgencyPrivHandler::execute() {
   }
   return RestStatus::DONE;
 }
+
+}  // namespace arangodb

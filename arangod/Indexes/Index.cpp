@@ -1023,7 +1023,7 @@ bool Index::canWarmup() const noexcept { return false; }
 
 bool Index::isVectorIndexReady() const noexcept { return false; }
 
-UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
+vector::UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,

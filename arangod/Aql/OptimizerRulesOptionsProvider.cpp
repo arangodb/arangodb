@@ -59,8 +59,8 @@ state.)");
           "--query.parallelize-gather-writes",
           "Whether to enable write parallelization for gather nodes.", false)
       .setLongDescription(
-          "Starting with 3.11 almost all queries support parallelization of "
-          "gather nodes, making this option obsolete.");
+          R"(Starting with 3.11 almost all queries support parallelization of
+gather nodes, making this option obsolete.)");
 }
 
 }  // namespace arangodb::aql

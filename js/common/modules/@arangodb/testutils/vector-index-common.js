@@ -269,10 +269,9 @@ function vectorIndexesMatchState(indexes, state, indexName) {
 // If indexName is provided, only that single index is checked.
 function waitForState(collection, state, timeoutSec, indexName) {
     const internal = require("internal");
-    const isCluster = internal.isCluster();
     const iterations = Math.floor(timeoutSec / sleepIntervalSec);
     for (let i = 0; i < iterations; i++) {
-        const indexes = isCluster ? collection.indexes(true, true) : collection.indexes();
+        const indexes = collection.indexes(false, true);
         if (vectorIndexesMatchState(indexes, state, indexName)) {
             return true;
         }
@@ -284,24 +283,42 @@ function waitForState(collection, state, timeoutSec, indexName) {
 /**
  * Inserts docs in batches, calling ensureIndex() at a random batch slot
  * determined by the seed. This tests that index creation works regardless of
- * whether it happens before, during, or after data insertion.
+ * whether it happens before, during, or after data insertion. After all docs
+ * are inserted, waits for the vector index to reach the ready state.
  *
  * @param {object} opts
  * @param {ArangoCollection} opts.collection
  * @param {Array} opts.docs - documents to insert
  * @param {number} opts.seed - random seed (used to pick ensureIndex slot)
- * @param {function} opts.ensureIndex - callback that creates the index(es)
+ * @param {object} opts.indexDef - index definition passed to ensureIndex()
+ * @param {string} opts.indexName - name of the vector index to assert ready
  * @param {number} [opts.batchSize=100]
  * @param {function} [opts.onBatchInserted] - called with insert result per batch
+ * @param {number} [opts.readyTimeoutSec=60] - timeout for waiting until the
+ *   vector index reaches the ready state
  */
-function insertDocsAndEnsureIndex({collection, docs, seed, ensureIndex,
-                                    batchSize = 100, onBatchInserted}) {
+function insertDocsAndAssertIndex({collection, docs, seed, indexDef,
+                                    indexName, batchSize = 100,
+                                    onBatchInserted,
+                                    readyTimeoutSec = 60}) {
     const numBatches = Math.ceil(docs.length / batchSize);
     const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
+    const fullIndexDef = {name: indexName, ...indexDef};
+
+    const tryEnsureIndex = () => {
+        try {
+            collection.ensureIndex(fullIndexDef);
+        } catch (e) {
+            // Index creation may fail if not enough data is present yet
+            // (e.g. vector index training threshold not met on a shard).
+            // The index still exists in unusable state and the background
+            // build manager will retry once enough data arrives.
+        }
+    };
 
     for (let i = 0; i < numBatches; i++) {
         if (i === ensureIndexSlot) {
-            ensureIndex();
+            tryEnsureIndex();
         }
         const start = i * batchSize;
         const end = Math.min(start + batchSize, docs.length);
@@ -311,7 +328,16 @@ function insertDocsAndEnsureIndex({collection, docs, seed, ensureIndex,
         }
     }
     if (ensureIndexSlot === numBatches) {
-        ensureIndex();
+        collection.ensureIndex(fullIndexDef);
+    }
+    const ready = waitForVectorIndexState(
+        collection, indexName, VectorIndexTrainingState.kReady,
+        readyTimeoutSec);
+    if (!ready) {
+        throw new Error(
+            `Vector index '${indexName}' on collection ` +
+            `'${collection.name()}' did not reach ready state ` +
+            `within ${readyTimeoutSec}s`);
     }
 }
 
@@ -364,4 +390,4 @@ exports.DistanceFunctions = DistanceFunctions;
 exports.VectorIndexTrainingState = VectorIndexTrainingState;
 exports.waitForVectorIndexState = waitForVectorIndexState;
 exports.waitForAllVectorIndexesState = waitForAllVectorIndexesState;
-exports.insertDocsAndEnsureIndex = insertDocsAndEnsureIndex;
+exports.insertDocsAndAssertIndex = insertDocsAndAssertIndex;

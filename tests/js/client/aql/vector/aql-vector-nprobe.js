@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue */
+/*global assertEqual, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -32,9 +32,7 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndEnsureIndex,
-    waitForAllVectorIndexesState,
-    VectorIndexTrainingState,
+    insertDocsAndAssertIndex,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
@@ -77,10 +75,10 @@ function VectorIndexL2NprobeTestSuite() {
                     vector
                 });
             }
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -89,13 +87,8 @@ function VectorIndexL2NprobeTestSuite() {
                         dimension: dimension,
                         nLists: 300,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected vector index to become trained"
-            );
         },
 
         tearDownAll: function() {

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,8 +27,7 @@
 const internal = require("internal");
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const helper = require("@arangodb/aql-helper");
-const assertQueryError = helper.assertQueryError;
+const aql = arangodb.aql;
 const errors = internal.errors;
 const db = internal.db;
 const {
@@ -69,9 +68,10 @@ function createIndex(collection, sparse, inBackground = false) {
   });
 }
 
-function buildSearchQuery(collectionName) {
-  return "FOR d IN " + collectionName +
-    " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d._key";
+function buildSearchQuery(collection, qp, nProbe = nLists) {
+  return aql`FOR d IN ${collection}
+    SORT APPROX_NEAR_L2(d.vector, ${qp}, {nProbe: ${nProbe}})
+    LIMIT 5 RETURN d._key`;
 }
 
 function assertIndexUnusable(collection, indexName) {
@@ -144,7 +144,7 @@ function VectorTrainingStateTestSuite(sparse) {
 
       assertTrue(
         waitForVectorIndexState(
-          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable),
         "Index should remain unusable with no documents"
       );
 
@@ -152,11 +152,12 @@ function VectorTrainingStateTestSuite(sparse) {
 
       const gen = randomNumberGeneratorFloat(seed);
       const qp = Array.from({length: dimension}, () => gen());
-      assertQueryError(
-        errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code,
-        buildSearchQuery(collection.name()),
-        {qp},
-      );
+      try {
+        db._query(buildSearchQuery(collection, qp));
+        fail();
+      } catch (e) {
+        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum);
+      }
     },
 
     testBelowThresholdIndexRemainsUnusable: function () {
@@ -168,18 +169,19 @@ function VectorTrainingStateTestSuite(sparse) {
 
       assertTrue(
         waitForVectorIndexState(
-          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable),
         "Index should remain unusable with " + belowThresholdCount + " docs"
       );
 
       assertIndexUnusable(collection, "vec_l2");
 
       const qp = Array.from({length: dimension}, () => gen());
-      assertQueryError(
-        errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code,
-        buildSearchQuery(collection.name()),
-        {qp},
-      );
+      try {
+        db._query(buildSearchQuery(collection, qp));
+        fail();
+      } catch (e) {
+        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum);
+      }
     },
 
     testAboveThresholdIndexBecomesReady: function () {
@@ -187,7 +189,9 @@ function VectorTrainingStateTestSuite(sparse) {
       const docs = generateDocs(gen, aboveThresholdCount, dimension);
       collection.insert(docs);
 
-      createIndex(collection, sparse);
+      const result = createIndex(collection, sparse);
+      assertFalse(result.hasOwnProperty("errorMessage") && result.errorMessage.length > 0,
+        "ensureIndex response should not have an errorMessage when index becomes ready");
 
       assertTrue(
         waitForVectorIndexState(
@@ -198,7 +202,7 @@ function VectorTrainingStateTestSuite(sparse) {
       assertIndexReady(collection, "vec_l2");
 
       const qp = docs[0].vector;
-      const results = db._query(buildSearchQuery(collection.name()), {qp}).toArray();
+      const results = db._query(buildSearchQuery(collection, qp)).toArray();
       assertEqual(5, results.length);
     },
 
@@ -211,7 +215,7 @@ function VectorTrainingStateTestSuite(sparse) {
 
       assertTrue(
         waitForVectorIndexState(
-          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable),
         "Index should start as unusable with " + belowThresholdCount + " docs"
       );
 
@@ -226,7 +230,7 @@ function VectorTrainingStateTestSuite(sparse) {
       );
 
       const qp = initialDocs[0].vector;
-      const results = db._query(buildSearchQuery(collection.name()), {qp}).toArray();
+      const results = db._query(buildSearchQuery(collection, qp)).toArray();
       assertEqual(5, results.length);
     },
   };
@@ -277,7 +281,7 @@ function SparseVectorIndexTestSuite() {
 
       assertTrue(
         waitForVectorIndexState(
-          collection, "vec_l2", VectorIndexTrainingState.kUnusable, 10),
+          collection, "vec_l2", VectorIndexTrainingState.kUnusable),
         "Sparse index should remain unusable when total docs exceed threshold " +
         "but vector-bearing docs (" + belowThresholdCount + ") do not"
       );
@@ -285,11 +289,12 @@ function SparseVectorIndexTestSuite() {
       assertIndexUnusable(collection, "vec_l2");
 
       const qp = vectorDocs[0].vector;
-      assertQueryError(
-        errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code,
-        buildSearchQuery(collection.name()),
-        {qp},
-      );
+      try {
+        db._query(buildSearchQuery(collection, qp));
+        fail();
+      } catch (e) {
+        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum);
+      }
     },
   };
 }
@@ -306,8 +311,130 @@ function SparseVectorTrainingStateTestSuite() {
   return suite;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Sparse + scaling nLists tests
+///
+/// These tests cover the shouldDoFullIteration path in collectTrainingDataset,
+/// where numDocsHint may overestimate the actual vector-bearing doc count for
+/// sparse indexes. The training threshold equals minNLists (see RocksDBVectorIndex.cpp).
+////////////////////////////////////////////////////////////////////////////////
+
+function SparseScalingVectorIndexTestSuite() {
+  let collection;
+  const seed = generateSeed();
+
+  // threshold = minNLists (per RocksDBVectorIndex construction)
+  const scalingMinNLists = 10;
+  const vectorDocsBelowThreshold = scalingMinNLists - 1;
+  const vectorDocsAboveThreshold =
+      isCluster ? scalingMinNLists * 3 + 50 : scalingMinNLists + 50;
+
+  function createSparseScalingIndex(collection) {
+    return collection.ensureIndex({
+      name: "vec_l2",
+      type: "vector",
+      fields: ["vector"],
+      inBackground: false,
+      sparse: true,
+      params: {
+        metric: "l2",
+        dimension,
+        nLists: {
+          strategy: "autoSqrt",
+          multiplier: 4,
+          minNLists: scalingMinNLists,
+          tiers: [],
+        },
+        trainingIterations: 10,
+      },
+    });
+  }
+
+  return {
+    setUpAll: function() {
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+    },
+
+    setUp: function() {
+      collection = db._create(collName, {numberOfShards: 3});
+    },
+
+    tearDown: function() {
+      db._drop(collName);
+    },
+
+    tearDownAll: function() {
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+
+    testSparseScalingIndexBecomesReady: function() {
+      const gen = randomNumberGeneratorFloat(seed);
+      const docs = generateDocs(gen, vectorDocsAboveThreshold, dimension);
+      collection.insert(docs);
+
+      const result = createSparseScalingIndex(collection);
+      assertFalse(
+        result.hasOwnProperty("errorMessage") && result.errorMessage.length > 0,
+        "ensureIndex should not return an errorMessage when index becomes ready"
+      );
+
+      assertTrue(
+        waitForVectorIndexState(
+          collection, "vec_l2", VectorIndexTrainingState.kReady, 120),
+        "Sparse scaling index should become ready with " +
+        vectorDocsAboveThreshold + " vector-bearing docs"
+      );
+
+      assertIndexReady(collection, "vec_l2");
+
+      const qp = docs[0].vector;
+      const results = db._query(buildSearchQuery(collection, qp, scalingMinNLists)).toArray();
+      assertEqual(5, results.length);
+    },
+
+    testSparseScalingRemainsUnusableWhenFewVectorDocs: function() {
+      const gen = randomNumberGeneratorFloat(seed);
+      const vectorDocs = generateDocs(gen, vectorDocsBelowThreshold, dimension);
+      const nonVectorDocs = [];
+      for (let i = 0; i < 200; ++i) {
+        nonVectorDocs.push({name: "no_vector_" + i});
+      }
+      collection.insert(vectorDocs);
+      collection.insert(nonVectorDocs);
+
+      try {
+        createSparseScalingIndex(collection);
+        fail();
+      } catch (e) {
+        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum,
+          "Expected NOT_READY when vector-bearing docs (" + vectorDocsBelowThreshold +
+          ") are below threshold (" + scalingMinNLists +
+          "), even though total docs (" + (200 + vectorDocsBelowThreshold) +
+          ") exceed threshold"
+        );
+      }
+    },
+
+    testSparseScalingOnEmptyCollectionRemainsUnusable: function() {
+      try {
+        createSparseScalingIndex(collection);
+        fail();
+      } catch (e) {
+        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum,
+          "Expected NOT_READY when collection is empty"
+        );
+      }
+    },
+  };
+}
+
 jsunity.run(DenseVectorTrainingStateTestSuite);
 jsunity.run(SparseVectorTrainingStateTestSuite);
 jsunity.run(SparseVectorIndexTestSuite);
+jsunity.run(SparseScalingVectorIndexTestSuite);
 
 return jsunity.done();

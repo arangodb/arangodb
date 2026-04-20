@@ -26,7 +26,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "RocksDBIndex.h"
 #include "RocksDBValue.h"
 #include "RocksDBEngine/RocksDBIndex.h"

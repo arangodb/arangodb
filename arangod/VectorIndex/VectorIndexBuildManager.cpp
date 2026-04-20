@@ -75,7 +75,7 @@ DECLARE_HISTOGRAM(arangodb_vector_index_ingestion_duration,
 #include <pthread.h>
 #endif
 
-namespace arangodb {
+namespace arangodb::vector {
 
 VectorIndexBuildManager::VectorIndexBuildManager(
     DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
@@ -157,7 +157,7 @@ void VectorIndexBuildManager::fulfillAllWaiters(Result const& result) {
 
 bool VectorIndexBuildManager::shouldSkipRetry(
     FailedBuildsMap const& failedBuilds, std::uint64_t objectId,
-    std::int64_t currentDocCount) {
+    std::uint64_t currentDocCount) {
   auto const it = failedBuilds.find(objectId);
   if (it == failedBuilds.end()) {
     return false;
@@ -247,8 +247,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
 
         auto const* rcoll =
             static_cast<RocksDBCollection*>(coll->getPhysical());
-        auto const numDocs =
-            static_cast<std::int64_t>(rcoll->meta().numberDocuments());
+        auto const numDocs = rcoll->meta().numberDocuments();
         if (numDocs < vecIdx.trainingThreshold()) {
           skippedWaiters.insert(vecIdx.id().id());
           reportIndexError(
@@ -274,7 +273,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
 
         _trainingOngoingCount.fetch_add(1);
         auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
-        vector::VectorIndexBuildManager builder(vecIdx);
+        VectorIndexBuilder builder(vecIdx);
         auto const res = builder.build(std::move(indexPtr), _trainingDuration,
                                        _ingestionDuration, stopToken);
         _trainingOngoingCount.fetch_sub(1);
@@ -381,4 +380,4 @@ void VectorIndexBuildManager::clearIndexError(
   _maintenance.clearIndexError(database, collection, shard, indexId);
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::vector

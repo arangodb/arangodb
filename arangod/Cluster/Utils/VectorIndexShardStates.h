@@ -38,6 +38,7 @@ using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 struct VectorIndexShardState {
   std::string trainingState;
   std::string error;
+  std::size_t resolvedNLists{0};
 };
 
 /// Gathers the per-shard training state and error info for a vector index
