@@ -3435,7 +3435,7 @@ struct Shower final
     }
 
     LoggerStream logLn;
-    logLn << Logger::LOGID("24fa8") << LogLevel::INFO << Logger::AQL;
+    logLn << Logger::LOGID("24fa8") << LogLevel::ERR << Logger::AQL;
 
     for (int i = 0; i < 2 * indent; i++) {
       logLn << ' ';
