@@ -628,15 +628,15 @@ void Agent::sendAppendEntriesRPC() {
       // order.
       bool needSnapshot = lastConfirmed < _state.firstIndex();
 
-      std::shared_ptr<Store> snapshot;
+      Store snapshot("snapshot");
       index_t snapshotIndex = 0;
       term_t snapshotTerm = 0;
       std::vector<log_t> unconfirmed;
 
       if (needSnapshot) {
-        // Read snapshot and log entries atomically under _logLock to
-        // avoid a TOCTOU race with compaction (which could advance
-        // the snapshot between separate reads).
+        // Load the on-disk snapshot and the matching log entries together.
+        // getSnapshotAndEntries guards against compaction running between
+        // the two reads by re-validating under _logLock.
         bool success = _state.getSnapshotAndEntries(
             snapshot, snapshotIndex, snapshotTerm, unconfirmed, 99);
         if (!success || snapshotTerm == 0) {
@@ -725,7 +725,7 @@ void Agent::sendAppendEntriesRPC() {
           builder.add(VPackValue("readDB"));
           {
             VPackArrayBuilder guard2(&builder);
-            snapshot->dumpToBuilder(builder);
+            snapshot.dumpToBuilder(builder);
           }
           builder.add("term", VPackValue(snapshotTerm));
           builder.add("index", VPackValue(snapshotIndex));
