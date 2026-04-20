@@ -486,10 +486,6 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
     return priv_rpc_ret_t(false, t);
   }
 
-  TRI_IF_FAILURE("Agent::recvAppendEntriesRPC::drop") {
-    return priv_rpc_ret_t(false, t);
-  }
-
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
     LOG_TOPIC("449b2", DEBUG, Logger::AGENCY)
