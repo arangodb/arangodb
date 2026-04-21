@@ -78,7 +78,6 @@ function authenticationClient (options) {
 
 const authTestExpectRC = [
   [401, 401, 401, 401, 401, 401, 401],
-  [401, 401, 401, 401, 401, 404, 404],
   [404, 404, 200, 301, 301, 404, 404]
 ];
 
@@ -94,19 +93,13 @@ const authTestUrls = [
 
 const authTestNames = [
   'Full',
-  'SystemAuth',
   'None'
 ];
 
 const authTestServerParams = [{
-  'server.authentication': 'true',
-  'server.authentication-system-only': 'false'
+  'server.authentication': 'true'
 }, {
-  'server.authentication': 'true',
-  'server.authentication-system-only': 'true'
-}, {
-  'server.authentication': 'false',
-  'server.authentication-system-only': 'true'
+  'server.authentication': 'false'
 }];
 
 function checkBodyForJsonToParse (request) {
@@ -140,7 +133,7 @@ function authenticationParameters (options) {
   let continueTesting = true;
   let results = {};
 
-  for (let test = 0; test < 3; test++) {
+  for (let test = 0; test < 2; test++) {
     let cleanup = true;
 
     let instanceManager = new im.instanceManager('tcp', options,

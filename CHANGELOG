@@ -4,6 +4,9 @@
 * COR-429: Removed support for the `--ssl.protocol` startup option values 1, 2 and 3,
   which stand for SSL v2, SSL v2/3, and SSL v3.
 
+* COR-376: Removed startup option `--server.authentication-system-only`. It's
+  now considered a legacy option, so it will be silently ignored on startup.
+
 * COR-295: Removed `StatisticsFeature`. The `--server.statistics-all-databases` and
   `--server.statistics-history` startup options are now obsolete and ignored.
 
