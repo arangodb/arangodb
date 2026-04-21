@@ -30,14 +30,12 @@
 #include "RestServer/AqlFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 
-using namespace arangodb::application_features;
-
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 using FF = Function::Flags;
 
-AqlFunctionFeature::AqlFunctionFeature(ApplicationServer& server)
+AqlFunctionFeature::AqlFunctionFeature(
+    application_features::ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::ClusterFeaturePhase>();
@@ -606,5 +604,4 @@ void AqlFunctionFeature::addMiscFunctions() {
        &functions::NotImplemented});
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

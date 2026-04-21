@@ -451,6 +451,13 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
   }
 }
 
+void RocksDBCollection::swapIndex(std::shared_ptr<Index> const& oldIdx,
+                                  std::shared_ptr<Index> const& newIdx) {
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  removeIndex(_indexes, oldIdx->id());
+  _indexes.emplace(newIdx);
+}
+
 futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     VPackSlice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress,

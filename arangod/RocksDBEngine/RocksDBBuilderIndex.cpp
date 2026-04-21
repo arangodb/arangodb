@@ -25,12 +25,8 @@
 
 #include "Indexes/Index.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/files.h"
-#include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
@@ -355,7 +351,7 @@ static Result fillIndex(
   if (ridx.type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
     auto& vecIdx = static_cast<RocksDBVectorIndex&>(ridx);
     it->Seek(bounds.start());
-    auto res = vector::ingestVectors(vecIdx, rootDB, std::move(it));
+    res = vector::ingestVectors(vecIdx, rootDB, std::move(it));
     if (res.ok()) {
       res = trx.commit();
     }

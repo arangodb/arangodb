@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <filesystem>
+#include <signal.h>
+#include <unistd.h>
+
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -73,11 +76,62 @@ using namespace arangodb::options;
 using namespace arangodb::rest;
 
 namespace {
+v8::Isolate* global_isolate = nullptr;
 // this variable's value can be changed by the exit or quit commands.
 // if it's set, the main REPL loop will be aborted
 bool exitRepl = false;
 
 std::string const DEFAULT_CLIENT_MODULE = "client.js";
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void alarmHandler(int /*sig*/) { _exit(142); }  // 128 + 14 (SIGALRM)
+
+// V8 interrupt callback — fires at the next V8 safe point (within
+// microseconds when JS is executing). Captures the JS stack trace,
+// A 30s SIGALRM is the safety net in case termination stalls.
+void v8InterruptCallback(v8::Isolate* isolate, void* /*data*/) {
+  v8::Local<v8::StackTrace> stacktrace =
+      v8::StackTrace::CurrentStackTrace(isolate, 10, v8::StackTrace::kDetailed);
+  int frameCount = stacktrace->GetFrameCount();
+  if (frameCount > 0) {
+    for (int i = 0; i < frameCount; i++) {
+      auto frame = stacktrace->GetFrame(isolate, i);
+      TRI_Utf8ValueNFC file(isolate, frame->GetScriptName());
+      TRI_Utf8ValueNFC fn(isolate, frame->GetFunctionName());
+      LOG_TOPIC("cac44", ERR, arangodb::Logger::V8)
+          << *file << " - " << *fn << "():" << frame->GetLineNumber();
+    }
+  } else {
+    LOG_TOPIC("cac45", ERR, arangodb::Logger::V8)
+        << "no js stacktrace could be acquired";
+  }
+  arangodb::Logger::flush();
+
+  // Also expire the execution deadline so cooperative checks see it.
+  triggerV8DeadlineNow(true, ExternalId());
+
+  // Safety net: force-kill after 30s if termination stalls.
+  // We set this here (not in the signal handler) because sigprocmask
+  // changes made inside a signal handler are reverted on return.
+  {
+    struct sigaction act = {};
+    act.sa_handler = alarmHandler;
+    sigaction(SIGALRM, &act, nullptr);
+    sigset_t unblock;
+    sigemptyset(&unblock);
+    sigaddset(&unblock, SIGALRM);
+    pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
+  }
+  alarm(30);
+}
+
+// Signal handler — only calls async-signal-safe functions plus
+// RequestInterrupt (documented as signal-safe by V8).
+void signalHandler(int /*signal*/) {
+  global_isolate->RequestInterrupt(v8InterruptCallback, nullptr);
+}
+#endif  // ARANGODB_ENABLE_MAINTAINER_MODE
+
 }  // namespace
 
 namespace arangodb {
@@ -176,8 +230,10 @@ void V8ShellFeature::start() {
   LOG_TOPIC("9c2f7", DEBUG, Logger::V8)
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
-  _isolate = platform.createIsolate();
-
+  ::global_isolate = _isolate = platform.createIsolate();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  signal(SIGBUS, signalHandler);
+#endif
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
@@ -220,6 +276,7 @@ void V8ShellFeature::start() {
 void V8ShellFeature::unprepare() {
   {
     v8::Locker locker{_isolate};
+    global_isolate = nullptr;
 
     v8::Isolate::Scope isolate_scope(_isolate);
     v8::HandleScope handle_scope(_isolate);
@@ -337,8 +394,8 @@ void V8ShellFeature::copyInstallationFiles() {
       return true;
     }
 
-    std::string normalized = filename;
-    FileUtils::normalizePath(normalized);
+    std::string const normalized =
+        std::filesystem::path(filename).make_preferred().string();
     if (filterPath(normalized, nodeModulesPath) ||
         filterPath(normalized, nodeModulesPathVersioned) ||
         filterPath(normalized, jsAppsPath) ||
@@ -679,7 +736,10 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
           current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"))
               .FromMaybe(v8::Handle<v8::Value>());
 
-      auto dirname = FileUtils::dirname(TRI_ObjectToString(isolate, filename));
+      std::string const dirname =
+          std::filesystem::path(TRI_ObjectToString(isolate, filename))
+              .parent_path()
+              .string();
 
       current
           ->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"),

@@ -34,9 +34,7 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndEnsureIndex,
-    waitForAllVectorIndexesState,
-    VectorIndexTrainingState,
+    insertDocsAndAssertIndex,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -80,10 +78,10 @@ function VectorIndexFullCountTestSuite() {
                     vector,
                 });
             }
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -94,13 +92,8 @@ function VectorIndexFullCountTestSuite() {
                         trainingIterations: 10,
                         defaultNProbe: nLists,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -269,10 +262,10 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                 });
             }
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -282,13 +275,8 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                         nLists: 10,
                         trainingIterations: 10,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -359,10 +347,10 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                 });
             }
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -372,13 +360,8 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                         nLists: 1,
                         trainingIterations: 10,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -422,7 +405,7 @@ function VectorIndexLargeLimitTestSuite() {
     let collection;
     let randomPoint;
     const largeLimitDimension = 128;
-    const largeLimitNumberOfDocs = 4500;
+    const largeLimitNumberOfDocs = 5000;
     const nLists = 32;
     const seed = generateSeed();
 
@@ -449,13 +432,14 @@ function VectorIndexLargeLimitTestSuite() {
                 });
             }
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection,
                 docs,
                 seed,
                 batchSize: 1000,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                readyTimeoutSec: 120,
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -464,13 +448,8 @@ function VectorIndexLargeLimitTestSuite() {
                         dimension: largeLimitDimension,
                         nLists: nLists,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
-                "Expected index to become ready with " + largeLimitNumberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -479,7 +458,11 @@ function VectorIndexLargeLimitTestSuite() {
         },
 
         testFetchLargeNumberOfDocsWithMaxNProbe: function() {
-            const limits = [1500, 3000, 4000];
+            const limits = [1500, 3000, 4000, largeLimitNumberOfDocs];
+
+            const actualCollectionCount = collection.count();
+            assertEqual(actualCollectionCount, largeLimitNumberOfDocs,
+                `Collection count mismatch: actual=${actualCollectionCount} vs expected=${largeLimitNumberOfDocs}`);
 
             for (const limit of limits) {
                 const query = aql`
@@ -490,17 +473,26 @@ function VectorIndexLargeLimitTestSuite() {
 
                 const queryResults = db._query(query, {count: true}, {fullCount: true});
                 const results = queryResults.toArray();
-                assertEqual(limit, results.length,
-                    "Expected " + limit + " results");
 
                 const uniqueResults = new Set(results);
-                assertEqual(limit, uniqueResults.size,
-                    "All " + limit + " returned documents should be unique");
-
-                assertEqual(queryResults.count(), limit);
-
                 const stats = queryResults.getExtra().stats;
-                assertEqual(stats.fullCount, largeLimitNumberOfDocs);
+
+                const diag = `limit=${limit}, results.length=${results.length}, ` +
+                    `unique=${uniqueResults.size}, count=${queryResults.count()}, ` +
+                    `fullCount=${stats.fullCount}, expectedFullCount=${largeLimitNumberOfDocs}, ` +
+                    `collectionCount=${actualCollectionCount}, nLists=${nLists}`;
+
+                assertEqual(limit, results.length,
+                    `Expected ${limit} results. ${diag}`);
+
+                assertEqual(limit, uniqueResults.size,
+                    `All ${limit} returned documents should be unique. ${diag}`);
+
+                assertEqual(queryResults.count(), limit,
+                    `Count mismatch. ${diag}`);
+
+                assertEqual(stats.fullCount, largeLimitNumberOfDocs,
+                    `FullCount mismatch. ${diag}`);
             }
         },
     };

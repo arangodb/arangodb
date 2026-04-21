@@ -51,8 +51,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 ClientsExecutorInfos::ClientsExecutorInfos(std::vector<std::string> clientIds)
     : _clientIds(std::move(clientIds)) {
@@ -376,6 +375,8 @@ auto BlocksWithClientsImpl<Executor>::remainingRowsForClient(
 }
 #endif
 
-template class ::arangodb::aql::BlocksWithClientsImpl<ScatterExecutor>;
-template class ::arangodb::aql::BlocksWithClientsImpl<DistributeExecutor>;
-template class ::arangodb::aql::BlocksWithClientsImpl<MutexExecutor>;
+template class BlocksWithClientsImpl<ScatterExecutor>;
+template class BlocksWithClientsImpl<DistributeExecutor>;
+template class BlocksWithClientsImpl<MutexExecutor>;
+
+}  // namespace arangodb::aql

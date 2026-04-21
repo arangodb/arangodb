@@ -33,8 +33,9 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndEnsureIndex,
-    waitForAllVectorIndexesState,
+    generateDocs,
+    insertDocsAndAssertIndex,
+    waitForVectorIndexState,
     VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
@@ -85,10 +86,11 @@ function VectorIndexCreateAndRemoveTestSuite() {
                 });
             }
             insertedDocs = [];
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                readyTimeoutSec: 120,
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -97,14 +99,9 @@ function VectorIndexCreateAndRemoveTestSuite() {
                         dimension,
                         nLists: 10
                     },
-                }),
+                },
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
-                "Expected index to become ready with " + insertedDocsCount + " docs"
-            );
         },
 
         tearDown: function() {
@@ -542,10 +539,11 @@ function VectorIndexStoredValuesTestSuite() {
                 });
             }
             insertedDocs = [];
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2_stored",
+                readyTimeoutSec: 120,
+                indexName: "vector_l2_stored",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -555,14 +553,9 @@ function VectorIndexStoredValuesTestSuite() {
                         dimension,
                         nLists: 1
                     },
-                }),
+                },
                 onBatchInserted: (result) => insertedDocs.push(...result),
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
-                "Expected index to become ready with " + insertedDocsCount + " docs"
-            );
         },
 
         tearDown: function() {
@@ -752,9 +745,80 @@ function VectorIndexStoredValuesTestSuite() {
 }
 
 
+function VectorIndexInsertDuringTrainingSuite() {
+    const IM = global.instanceManager;
+    const dim = 500;
+    const nLists = 10;
+    const seed = generateSeed();
+    let collection;
+
+    return {
+        setUp: function() {
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+            collection = db._create(collName, {numberOfShards: 1});
+
+            const gen = randomNumberGeneratorFloat(seed);
+            const numDocs = isCluster ? nLists * 3 + 500 : nLists + 500;
+            const docs = generateDocs(gen, numDocs, dim);
+            collection.insert(docs);
+        },
+
+        tearDown: function() {
+            if (IM && IM.debugCanUseFailAt()) {
+                IM.debugClearFailAt();
+            }
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+        },
+
+        testInsertWithoutVectorFieldFailsDuringTrainingDense: function() {
+            if (!IM || !IM.debugCanUseFailAt()) {
+                return;
+            }
+
+            IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeTraining");
+
+            collection.ensureIndex({
+                name: "vec_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: true,
+                sparse: false,
+                params: {
+                    metric: "l2",
+                    dimension: dim,
+                    nLists: nLists,
+                    trainingIterations: 10,
+                },
+            });
+
+            assertTrue(
+                waitForVectorIndexState(
+                    collection, "vec_l2",
+                    VectorIndexTrainingState.kTraining, 30),
+                "Index should reach training state"
+            );
+
+            // For a dense index the insert must be rejected even while
+            // the index is still training — the vector field is mandatory.
+            try {
+                collection.insert({name: "no_vector_doc"});
+                fail("Insert of document without vector field should fail " +
+                     "for a dense index during training");
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+            }
+        },
+    };
+}
+
 jsunity.run(VectorIndexCreateAndRemoveTestSuite);
 jsunity.run(VectorIndexStoredValuesTestSuite);
 
 jsunity.run(VectorIndexTestCreationWithVectors);
+jsunity.run(VectorIndexInsertDuringTrainingSuite);
 
 return jsunity.done();

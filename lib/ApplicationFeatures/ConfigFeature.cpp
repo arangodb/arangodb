@@ -127,7 +127,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
     IniFileParser parser(options.get());
 
-    if (FileUtils::exists(local) && FileUtils::isRegularFile(local)) {
+    std::error_code pathEc;
+    if (std::filesystem::is_regular_file(local, pathEc)) {
       LOG_TOPIC("9b20a", DEBUG, Logger::CONFIG)
           << "loading override '" << local << "'";
 
@@ -214,7 +215,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   LOG_TOPIC("f6420", TRACE, Logger::CONFIG)
       << "checking override '" << local << "'";
 
-  if (FileUtils::exists(local) && FileUtils::isRegularFile(local)) {
+  std::error_code pathEc;
+  if (std::filesystem::is_regular_file(local, pathEc)) {
     LOG_TOPIC("3d2d0", DEBUG, Logger::CONFIG)
         << "loading override '" << local << "'";
 

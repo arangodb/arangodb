@@ -149,6 +149,7 @@ class StaticStrings {
   static std::string_view constexpr IndexTrainingStateTraining{"training"};
   static std::string_view constexpr IndexTrainingStateIngesting{"ingesting"};
   static std::string_view constexpr IndexTrainingStateReady{"ready"};
+  static std::string_view constexpr IndexResolvedNLists{"resolvedNLists"};
 
   // static index names
   static std::string const IndexNameEdge;
