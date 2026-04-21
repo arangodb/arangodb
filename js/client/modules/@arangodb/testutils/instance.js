@@ -375,6 +375,10 @@ class instance {
       // the argparser barely ignores them and breaks others...
       default_args['javascript.app-path'] = this.appDir;
       default_args['javascript.copy-installation'] = false;
+      default_args['javascript.files-allowlist'] = ".*";
+      default_args['javascript.environment-variables-allowlist'] = ".*";
+      default_args['javascript.endpoints-allowlist'] = ".*";
+      default_args['javascript.startup-options-allowlist'] = ".*";
     }
     this.args = _.defaults(this.args, default_args);
     if (this.options.extremeVerbosity) {

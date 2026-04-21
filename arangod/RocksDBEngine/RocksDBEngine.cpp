@@ -71,7 +71,7 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"

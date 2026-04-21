@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -17,32 +17,12 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <memory>
-#include <string_view>
+#include <chrono>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/VectorIndexFeatureOptions.h"
-
-namespace arangodb {
-
-class VectorIndexFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "VectorIndex"; }
-
-  explicit VectorIndexFeature(application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  bool isVectorIndexEnabled() const;
-
- private:
-  VectorIndexFeatureOptions _options;
-};
-
-}  // namespace arangodb
+namespace arangodb::activities {
+using ActivityCreated = std::chrono::time_point<std::chrono::system_clock>;
+}

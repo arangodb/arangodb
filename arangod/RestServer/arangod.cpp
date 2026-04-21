@@ -29,6 +29,7 @@
 // please add new includes there!
 #include "RestServer/CrashHandlerFeature.h"
 #include "RestServer/arangod_includes.h"
+#include "V8/V8SecurityFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

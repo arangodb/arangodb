@@ -24,12 +24,14 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <regex>
 #include <string>
 #include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "Basics/DenyAllow.h"
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeatureOptions.h"
 
@@ -50,13 +52,19 @@ enum class FSAccessType { READ, WRITE };
 class TempFeature;
 class V8PlatformFeature;
 
+enum class AllowListStrictness {
+  STRICT,    // if an allowlist is empty, default to deny
+  NONSTRICT  // if an allowlist is empty, default to allow
+};
+
 class V8SecurityFeature final
     : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "V8Security"; }
 
-  explicit V8SecurityFeature(application_features::ApplicationServer& server)
-      : ApplicationFeature{server, *this} {
+  explicit V8SecurityFeature(application_features::ApplicationServer& server,
+                             AllowListStrictness strictness)
+      : ApplicationFeature{server, *this}, _strictness(strictness) {
     setOptional(false);
     startsAfter<TempFeature>();
     startsAfter<V8PlatformFeature>();
@@ -65,7 +73,6 @@ class V8SecurityFeature final
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
   void dumpAccessLists() const;
 
   /// @brief tests if in the current security context it is allowed to
@@ -115,41 +122,31 @@ class V8SecurityFeature final
  private:
   V8SecurityFeatureOptions _options;
 
-  std::string _readAllowList;
-  std::unordered_set<std::string> _readAllowListSet;
-  std::regex _readAllowListRegex;
-
-  std::string _writeAllowList;
-  std::unordered_set<std::string> _writeAllowListSet;
-  std::regex _writeAllowListRegex;
-
   // All the following options have allow lists and deny lists.
   // The allow list will take precedence over the deny list
   // Items is the corresponding Vector will be joined with
   // an logical OR to the final expression. That in turn
   // will be compiled into an std::regex.
 
-  std::string _startupOptionsAllowList;
-  std::regex _startupOptionsAllowListRegex;
-  std::string _startupOptionsDenyList;
-  std::regex _startupOptionsDenyListRegex;
-
-  /// @brief regular expression string for forbidden IP address/host names
-  /// to connect to via JS_Download/internal.download
-  std::string _endpointsAllowList;
-  std::regex _endpointsAllowListRegex;
-  std::string _endpointsDenyList;
-  std::regex _endpointsDenyListRegex;
-
-  /// @brief regular expression string for environment variables filtering
-  std::string _environmentVariablesAllowList;
-  std::regex _environmentVariablesAllowListRegex;
-  std::string _environmentVariablesDenyList;
-  std::regex _environmentVariablesDenyListRegex;
-
   /// @brief variables for file access
-  std::string _filesAllowList;
-  std::regex _filesAllowListRegex;
+  std::string _readAllowList;
+  std::unordered_set<std::string> _readAllowListSet;
+
+  std::string _writeAllowList;
+  std::unordered_set<std::string> _writeAllowListSet;
+
+  AllowListStrictness _strictness;
+
+  DenyAllow _startupOptions;
+  DenyAllow _endpoints;
+  DenyAllow _environmentVariables;
+
+  // TODO: COR-348, replace internal allow regexes by a simpler
+  // construct
+  std::optional<std::regex> _readAllowRegex{std::nullopt};
+  std::optional<std::regex> _writeAllowRegex{std::nullopt};
+
+  DenyAllow _files;
 };
 
 }  // namespace arangodb
