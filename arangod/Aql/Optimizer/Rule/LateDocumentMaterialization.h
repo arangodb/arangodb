@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,25 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class Optimizer;
-class ExecutionPlan;
 struct OptimizerRule;
+class ExecutionPlan;
 
-/// @brief replaces the last element on path access with the direct output of
-/// vertex/edge
-void replaceLastAccessOnGraphPathRule(Optimizer* opt,
-                                      std::unique_ptr<ExecutionPlan> plan,
-                                      OptimizerRule const&);
+/// @brief moves document materialization from index nodes to materialize nodes
+void lateDocumentMaterializationRule(
+    arangodb::aql::Optimizer* opt,
+    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+    arangodb::aql::OptimizerRule const& rule);
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

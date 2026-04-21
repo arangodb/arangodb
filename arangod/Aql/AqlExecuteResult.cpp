@@ -37,8 +37,7 @@
 #include <string_view>
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 // hack for MSVC
@@ -223,3 +222,5 @@ auto AqlExecuteResult::asTuple() const noexcept
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   return {state(), skipped(), block()};
 }
+
+}  // namespace arangodb::aql
