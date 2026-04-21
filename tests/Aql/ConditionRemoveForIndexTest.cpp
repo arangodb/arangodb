@@ -80,7 +80,7 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
 
 TEST_F(ConditionRemoveForIndexTest, RemovesCoveredMemberKeepsUncovered) {
   // mine  = { d.a == 1  AND  d.b > 2 }
-  // other = { d.a == 1 } 
+  // other = { d.a == 1 } -> covered by mine (IndexNode)
   // persistent (non-sparse) index on field "a"
   auto* mineAttrA =
       _ast->createNodeAttributeAccess(_ast->createNodeReference(_d), "a");
@@ -114,7 +114,7 @@ TEST_F(ConditionRemoveForIndexTest, RemovesCoveredMemberKeepsUncovered) {
 
   ASSERT_NE(result, nullptr);
 
-  // The surviving member is d.b > 2, returned directly (not inside an AND).
+  // "d.b > 2" survives
   EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_GT);
   ASSERT_EQ(result->numMembers(), 2U);
 
