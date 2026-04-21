@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -698,6 +698,8 @@ containers::HashSet<size_t> Condition::collectOverlappingMembersForIndex(
     if (isSparse && operand->isComparisonOperator() &&
         (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
          operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
+      // look for `!= null` and `> null`
+      // these can be removed if we are working with a sparse index!    
       auto lhs = const_cast<AstNode*>(
           plan->resolveVariableAlias(operand->getMemberUnchecked(0)));
       auto rhs = const_cast<AstNode*>(
@@ -713,8 +715,12 @@ containers::HashSet<size_t> Condition::collectOverlappingMembersForIndex(
           if (auto ty = index->type();
               ty == Index::TRI_IDX_TYPE_MDI_INDEX ||
               ty == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+            // For an MDI all fields are equal, and we are allowed to drop
+            // conditions for non-null on every attribute in the sparse case.    
             return true;
           }
+          // otherwise only remove the condition if the index is exactly on the
+          // same attribute as the condition
 
           return index->fields().size() == 1 &&
                  basics::AttributeName::isIdentical(result.second,
@@ -822,8 +828,10 @@ AstNode* Condition::rebuildConditionWithoutMembers(
     if (toRemove.find(i) == toRemove.end()) {
       auto what = andNode->getMemberUnchecked(i);
       if (newNode == nullptr) {
+        // the only node so far
         newNode = what;
       } else {
+        // AND-combine with existing node
         newNode = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
                                                 newNode, what);
       }
