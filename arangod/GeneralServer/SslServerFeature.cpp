@@ -69,10 +69,20 @@ SslServerFeature::SslServerFeature(
 }
 
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("ssl", "SSL communication");
+  options->addSection("tls", "TLS communication");
+
+  options->addOldOption("--ssl.cafile", "--tls.cafile");
+  options->addOldOption("--ssl.keyfile", "--tls.keyfile");
+  options->addOldOption("--ssl.session-cache", "--tls.session-cache");
+  options->addOldOption("--ssl.cipher-list", "--tls.cipher-list");
+  options->addOldOption("--ssl.protocol", "--tls.protocol");
+  options->addOldOption("--ssl.options", "--tls.options");
+  options->addOldOption("--ssl.ecdh-curve", "--tls.ecdh-curve");
+  options->addOldOption("--ssl.prefer-http1-in-alpn",
+                        "--tls.prefer-http1-in-alpn");
 
   options
-      ->addOption("--ssl.cafile", "The CA file used for secure connections.",
+      ->addOption("--tls.cafile", "The CA file used for secure connections.",
                   new StringParameter(&_options.cafile))
       .setLongDescription(R"(You can use this option to specify a file with
 CA certificates that are sent to the client whenever the server requests a
@@ -83,7 +93,7 @@ you want clients to be able to connect without specific certificates.
 The certificates in the file must be PEM-formatted.)");
 
   options
-      ->addOption("--ssl.keyfile",
+      ->addOption("--tls.keyfile",
                   "The path to a PEM file (server certificate + private key) "
                   "to use for secure connections.",
                   new StringParameter(&_options.keyfile))
@@ -136,12 +146,12 @@ above commands should create a valid keyfile with a structure like this:
 For further information please check the manuals of the tools you use to create
 the certificate.)");
 
-  options->addOption("--ssl.session-cache",
+  options->addOption("--tls.session-cache",
                      "Enable the session cache for connections.",
                      new BooleanParameter(&_options.sessionCache));
 
   options
-      ->addOption("--ssl.cipher-list",
+      ->addOption("--tls.cipher-list",
                   "The SSL ciphers to use. See the OpenSSL documentation.",
                   new StringParameter(&_options.cipherList))
       .setLongDescription(R"(You can use this option to restrict the server to
@@ -168,7 +178,7 @@ Mac=SHA1
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
   options
-      ->addOption("--ssl.protocol", availableSslProtocolsDescription(),
+      ->addOption("--tls.protocol", availableSslProtocolsDescription(),
                   new DiscreteValuesParameter<UInt64Parameter>(
                       &_options.sslProtocol, sslProtocols))
       .setLongDescription(R"(Use this option to specify the default encryption
@@ -181,7 +191,7 @@ security vulnerabilities in this protocol. Selecting SSLv2 as protocol aborts
 the startup.)");
 
   options
-      ->addOption("--ssl.options",
+      ->addOption("--tls.options",
                   "The SSL connection options. See the OpenSSL documentation.",
                   new UInt64Parameter(&_options.sslOptions),
                   arangodb::options::makeDefaultFlags(
@@ -209,11 +219,11 @@ A description of the options can be found online in the OpenSSL documentation:
 http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html))");
 
   options->addOption(
-      "--ssl.ecdh-curve",
+      "--tls.ecdh-curve",
       "The SSL ECDH curve, see the output of \"openssl ecparam -list_curves\".",
       new StringParameter(&_options.ecdhCurve));
 
-  options->addOption("--ssl.prefer-http1-in-alpn",
+  options->addOption("--tls.prefer-http1-in-alpn",
                      "Allows to let the server prefer HTTP/1.1 over HTTP/2 in "
                      "ALPN protocol negotiations",
                      new BooleanParameter(&_options.preferHttp11InAlpn));
@@ -253,7 +263,7 @@ void SslServerFeature::verifySslOptions() {
   // check keyfile
   if (_options.keyfile.empty()) {
     LOG_TOPIC("f0dca", FATAL, arangodb::Logger::SSL)
-        << "no value specified for '--ssl.keyfile'";
+        << "no value specified for '--tls.keyfile'";
     FATAL_ERROR_EXIT();
   }
 
@@ -262,7 +272,7 @@ void SslServerFeature::verifySslOptions() {
   if (_options.sslProtocol <= SSL_UNKNOWN || _options.sslProtocol >= SSL_LAST) {
     LOG_TOPIC("1f48b", FATAL, arangodb::Logger::SSL)
         << "invalid SSL protocol version specified. Please use a valid "
-           "value for '--ssl.protocol'";
+           "value for '--tls.protocol'";
     FATAL_ERROR_EXIT();
   }
 

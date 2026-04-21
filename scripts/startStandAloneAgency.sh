@@ -133,7 +133,7 @@ if [ "$LOG_LEVEL" == "" ];  then
 fi
 
 if [ "$TRANSPORT" == "ssl" ]; then
-  SSLKEYFILE="--ssl.keyfile etc/testing/server.pem"
+  SSLKEYFILE="--tls.keyfile etc/testing/server.pem"
   CURL="curl --insecure -ks https://"
 else
   SSLKEYFILE=""
