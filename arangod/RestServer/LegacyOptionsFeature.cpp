@@ -188,6 +188,15 @@ void LegacyOptionsFeature::collectOptions(
                              "Provide cluster statistics for all databases.",
                              false);
 
+  options->addObsoleteOption(
+      "--server.statistics",
+      "Whether to enable statistics gathering and statistics APIs.", true);
+
+  options->addObsoleteOption(
+      "--server.statistics-all-databases",
+      "Provide cluster statistics in the web interface for all databases.",
+      true);
+
   // ScriptFeature options
   options->addObsoleteOption("--javascript.script-parameter",
                              "Script parameter.", true);
