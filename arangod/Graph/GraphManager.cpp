@@ -1099,33 +1099,18 @@ Result GraphManager::checkDropGraphPermissions(
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool mustDropAtLeastOneCollection =
-      !followersToBeRemoved.empty() || !leadersToBeRemoved.empty();
-  Result canUseDatabaseRW =
-      execContext.canUseDatabase(databaseName, DatabaseAccessLevel::Write);
-
-  if (mustDropAtLeastOneCollection && canUseDatabaseRW.fail()) {
-    LOG_TOPIC("fdc57", DEBUG, Logger::GRAPHS)
-        << logprefix << "Must drop at least one collection in " << databaseName
-        << ", but don't have permissions.";
-    return canUseDatabaseRW;
-  }
-
   for (auto const& col :
        boost::join(followersToBeRemoved, leadersToBeRemoved)) {
     // We need RW to drop a collection.
-    if (auto r = execContext.canUseCollection(databaseName, col,
-                                              CollectionAccessLevel::WriteMeta);
-        r.fail()) {
+    if (auto r = execContext.canDropCollection(databaseName, col); r.fail()) {
       LOG_TOPIC("96384", DEBUG, Logger::GRAPHS)
-          << logprefix << "No write (metadata) access to " << databaseName
-          << "." << col;
+          << logprefix << "Cannot drop " << databaseName << "." << col;
       return r;
     }
   }
 
-  // We need RW on _graphs (which is the same as RW on the database). But in
-  // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
+  // We need RW on _graphs. But in case we don't even have RO access,
+  // throw FORBIDDEN instead of READ_ONLY.
   if (auto r = execContext.canUseCollection(databaseName,
                                             StaticStrings::GraphsCollection,
                                             CollectionAccessLevel::Read);
@@ -1136,11 +1121,6 @@ Result GraphManager::checkDropGraphPermissions(
     return r;
   }
 
-  // Note that this check includes the following check from before
-  //   if (mustDropAtLeastOneCollection && !canUseDatabaseRW)
-  // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
-  // However, in case a collection has to be created but can't, we have to
-  // throw FORBIDDEN instead of READ_ONLY for backwards compatibility.
   if (execContext
           .canUseCollection(databaseName, StaticStrings::GraphsCollection,
                             CollectionAccessLevel::WriteData)
