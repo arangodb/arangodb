@@ -261,15 +261,6 @@ when trying to access it should be "NOTFOUND", to not give away the
 information that the collection exists! This must be considered in the
 central implementation of these methods.
 
-NOTE (Tobias): `canCreate` can to some extent leak information that
-should be protected by `canSee`, if the user knows the extent of its
-own create permissions. As creating something that already exists will
-have to fail in one way or another. A noncommittal error message
-does not countervail this.
-So: Should we always require `see` permissions along with `create`,
-forcing them to be laminar - or document this and leave it to the
-user?
-
 ### Implementation details for the abstract methods for RBAC disabled
 
  - `canUseAdminAction(rbac::Category::Any const action) -> Result`
