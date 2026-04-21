@@ -59,7 +59,9 @@ arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
     if (!vocbase.isSystem()) {
       // request must be made in the system database
       res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    } else if (ExecContext::isAuthEnabled() &&
+    // TODO Replace the check with a semantic method call, then drop
+    //      the calls to isAuthEnabled and isSuperuser.
+    } else if (ExecContext::current().isAuthEnabled() &&
                !ExecContext::current().isSuperuser()) {
       // request must be made only by superusers (except authentication is
       // turned off)
@@ -210,7 +212,10 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
       // request must be made in the system database
       return res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     }
-    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    auto const& context = ExecContext::current();
+    // TODO Replace the check with a semantic method call, then drop
+    //      the calls to isAuthEnabled and isSuperuser.
+    if (context.isAuthEnabled() && !context.isSuperuser()) {
       // request must be made only by superusers (except authentication is
       // turned off)
       return res.reset(

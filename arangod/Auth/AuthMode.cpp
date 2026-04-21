@@ -51,6 +51,10 @@ bool AuthMode::isSuperuser() const noexcept {
   return std::holds_alternative<Superuser>(authMode);
 }
 
+bool AuthMode::isDisabled() const noexcept {
+  return std::holds_alternative<Disabled>(authMode);
+}
+
 auto AuthMode::Superuser::username() const noexcept -> std::string_view {
   return "";
 }

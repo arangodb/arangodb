@@ -1181,12 +1181,6 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection,
   std::string const logprefix = stringstream.str();
 
   ExecContext const& execContext = ExecContext::current();
-  if (!ExecContext::isAuthEnabled()) {
-    LOG_TOPIC("08e1f", DEBUG, Logger::GRAPHS)
-        << logprefix << "Permissions are turned off.";
-    return true;
-  }
-
   if (execContext.canUseCollection(databaseName, collection, level).ok()) {
     return true;
   }
@@ -1206,19 +1200,16 @@ Result GraphOperations::checkEdgeDefinitionPermissions(
                << "." << graph().name() << "`: ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const& execContext = ExecContext::current();
-  if (!ExecContext::isAuthEnabled()) {
-    LOG_TOPIC("18e8e", DEBUG, Logger::GRAPHS)
-        << logprefix << "Permissions are turned off.";
-    return TRI_ERROR_NO_ERROR;
-  }
-
   // collect all used collections in one container
   std::set<std::string> graphCollections;
   setUnion(graphCollections, edgeDefinition.getFrom());
   setUnion(graphCollections, edgeDefinition.getTo());
   graphCollections.emplace(edgeDefinition.getName());
 
+  // TODO Consolidate the subsequent permission checks: We don't want
+  //      to make dozens of separate calls (and possibly HTTP requests
+  //      with RBAC).
+  auto const& execContext = ExecContext::current();
   Result canUseDatabaseRW =
       execContext.canUseDatabase(databaseName, DatabaseAccessLevel::Write);
   for (auto const& col : graphCollections) {

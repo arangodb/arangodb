@@ -93,11 +93,12 @@ void RestQueryPlanCacheHandler::readPlans() {
   auto filter = [databaseName = _vocbase.name()](
                     aql::QueryPlanCache::Key const& key,
                     aql::QueryPlanCache::Value const& value) -> bool {
-    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    auto const& context = ExecContext::current();
+    if (context.isAuthEnabled() && !context.isSuperuser()) {
       // check if non-superusers have at least read permissions on all
       // collections/views used in the query
       for (auto const& dataSource : value.dataSources) {
-        if (!ExecContext::current()
+        if (!context
                  .canUseCollection(databaseName, dataSource.second.name,
                                    AccessLevel::Read)
                  .ok()) {

@@ -401,6 +401,15 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         .FromMaybe(false);
   }
 
+  // TODO I think we either need to drop IsAdminUser completely, or
+  //      at least when using RBAC - it's nonsensical there.
+  //      We need to check whether this is publicly documented,
+  //      and whether it's used (e.g. in the UI).
+  //      But using the AdminFoxx admin action is most probably the
+  //      wrong change here.
+  //      Either way, we should stop relying on checking
+  //      isAuthEnabled(), and just do one sensibly semantic call to
+  //      ExecContext.
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
     if (user.empty() ||
@@ -413,8 +422,8 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     }
   } else {
     req->Set(context, IsAdminUser,
-             ExecContext::isAuthEnabled() ? v8::False(isolate)
-                                          : v8::True(isolate))
+             ExecContext::current().isAuthEnabled() ? v8::False(isolate)
+                                                    : v8::True(isolate))
         .FromMaybe(false);
   }
 

@@ -24,7 +24,6 @@
 #include "ExecContext.h"
 
 #include "Basics/Result.h"
-#include "GeneralServer/AuthenticationFeature.h"
 
 #include <variant>
 
@@ -61,11 +60,15 @@ auto ExecContext::can() const -> auth::Can const& { return _can; }
 ExecContext::ExecContext(ConstructorToken, AuthMode authMode)
     : _authMode(std::move(authMode)), _can(_authMode) {}
 
-// TODO make this non-static, use _authenticationFeature instead
-bool ExecContext::isAuthEnabled() {
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  TRI_ASSERT(af != nullptr);
-  return af->isActive();
+bool ExecContext::isAuthEnabled() const {
+  /// TODO Note there's a subtle change in the behavior by checking
+  ///      _authMode instead of the AuthenticationFeature:
+  ///     When authentication is disabled, but the request comes with
+  ///     a valid JWT superuser token, this now returns true.
+  ///     I'd like to get rid of this method completely; but if that
+  ///     doesn't work out, we have to a) check that this doesn't
+  ///     break any caller, and b) we should change the name.
+  return !_authMode.isDisabled();
 }
 
 Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {

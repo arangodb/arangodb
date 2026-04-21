@@ -60,10 +60,14 @@ class ExecContext : public RequestContext {
   ExecContext(ExecContext&&) = delete;
 
  public:
-  virtual ~ExecContext() = default;
+  ~ExecContext() override = default;
 
   /// shortcut helper to check the AuthenticationFeature
-  static bool isAuthEnabled();
+  [[deprecated(
+      "This should be an internal information and unnecessary for permission "
+      "checks. Use an existing, or add a new, method with appropriate "
+      "semantics instead.")]] [[nodiscard]] bool
+  isAuthEnabled() const;
 
   /// Should always contain a reference to current user context
   static ExecContext const& current();
