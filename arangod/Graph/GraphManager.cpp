@@ -802,6 +802,28 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
     return TRI_ERROR_NO_ERROR;
   }
 
+  auto checkCollectionAccess = [&](std::string const& col,
+                                   bool withExistsCheck) -> bool {
+    // We need RO on all collections. And, in case any collection does not
+    // exist, we need RW on the database.
+    if (withExistsCheck) {
+      if (!collectionExists(col)) {
+        LOG_TOPIC("ca4de", DEBUG, Logger::GRAPHS)
+            << logprefix << "Cannot create collection " << databaseName << "."
+            << col;
+        return false;
+      }
+    }
+    if (execContext
+            .canUseCollection(databaseName, col, CollectionAccessLevel::Read)
+            .fail()) {
+      LOG_TOPIC("b4d48", DEBUG, Logger::GRAPHS)
+          << logprefix << "No read access to " << databaseName << "." << col;
+      return false;
+    }
+    return true;
+  };
+
   // Test if we are allowed to modify _graphs first.
   // Note that this check includes the following check in the loop
   //   if (!collectionExists(col) && !canUseDatabaseRW)
@@ -815,28 +837,10 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
     // Check for all collections: if it exists and if we have RO access to it.
     // If none fails the check above we need to return READ_ONLY.
     // Otherwise we return FORBIDDEN
-    auto checkCollectionAccess = [&](std::string const& col) -> bool {
-      // We need RO on all collections. And, in case any collection does not
-      // exist, we need RW on the database.
-      if (!collectionExists(col)) {
-        LOG_TOPIC("ca4de", DEBUG, Logger::GRAPHS)
-            << logprefix << "Cannot create collection " << databaseName << "."
-            << col;
-        return false;
-      }
-      if (execContext
-              .canUseCollection(databaseName, col, CollectionAccessLevel::Read)
-              .fail()) {
-        LOG_TOPIC("b4d48", DEBUG, Logger::GRAPHS)
-            << logprefix << "No read access to " << databaseName << "." << col;
-        return false;
-      }
-      return true;
-    };
 
     // Test all edge Collections
     for (auto const& it : graph->edgeCollections()) {
-      if (!checkCollectionAccess(it)) {
+      if (!checkCollectionAccess(it, true)) {
         return {TRI_ERROR_FORBIDDEN,
                 "Createing graphs requires RW access on the database (" +
                     databaseName + ")"};
@@ -845,7 +849,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
 
     // Test all vertex Collections
     for (auto const& it : graph->vertexCollections()) {
-      if (!checkCollectionAccess(it)) {
+      if (!checkCollectionAccess(it, true)) {
         return {TRI_ERROR_FORBIDDEN,
                 "Createing graphs requires RW access on the database (" +
                     databaseName + ")"};
@@ -860,29 +864,16 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
                 databaseName + ")"};
   }
 
-  auto checkCollectionAccess = [&](std::string const& col) -> bool {
-    // We need RO on all collections. And, in case any collection does not
-    // exist, we need RW on the database.
-    if (execContext
-            .canUseCollection(databaseName, col, CollectionAccessLevel::Read)
-            .fail()) {
-      LOG_TOPIC("43c84", DEBUG, Logger::GRAPHS)
-          << logprefix << "No read access to " << databaseName << "." << col;
-      return false;
-    }
-    return true;
-  };
-
   // Test all edge Collections
   for (auto const& it : graph->edgeCollections()) {
-    if (!checkCollectionAccess(it)) {
+    if (!checkCollectionAccess(it, false)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
 
   // Test all vertex Collections
   for (auto const& it : graph->vertexCollections()) {
-    if (!checkCollectionAccess(it)) {
+    if (!checkCollectionAccess(it, false)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
