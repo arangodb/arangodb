@@ -23,6 +23,8 @@
 
 #include "ApplicationFeatures/ConfigFeature.h"
 
+#include <filesystem>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -164,7 +166,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   std::vector<std::string> locations;
   locations.reserve(4);
 
-  std::string current = FileUtils::currentDirectory().result();
+  auto const current = std::filesystem::current_path().string();
   // ./etc/relative/ is always first choice, if it exists
   locations.emplace_back(FileUtils::buildFilename(current, "etc", "relative"));
 

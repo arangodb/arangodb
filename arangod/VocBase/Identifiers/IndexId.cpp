@@ -23,7 +23,21 @@
 
 #include "VocBase/Identifiers/IndexId.h"
 
+#include "Basics/StringUtils.h"
+#include "Basics/voc-errors.h"
+
 namespace arangodb {
+
+ResultT<IndexId> IndexId::fromString(std::string_view str) {
+  if (auto const pos = str.find('/'); pos != std::string_view::npos) {
+    str = str.substr(pos + 1);
+  }
+  auto const parsed = basics::StringUtils::try_uint64(str);
+  if (parsed.fail()) {
+    return ResultT<IndexId>::error(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+  }
+  return IndexId{parsed.get()};
+}
 
 /// @brief whether or not the id is set (not none())
 bool IndexId::isSet() const noexcept {

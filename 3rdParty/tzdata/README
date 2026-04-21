@@ -1,8 +1,8 @@
 README for the tz distribution
 
-"Where do I set the hands of the clock?" -- Les Tremayne as The King
-"Oh that--you can set them any place you want." -- Frank Baxter as The Scientist
-					(from the Bell System film "About Time")
+“Where do I set the hands of the clock?” – Les Tremayne as The King
+“Oh that – you can set them any place you want.” – Frank Baxter as The Scientist
+					(from the Bell System film “About Time”)
 
 The Time Zone Database (called tz, tzdb or zoneinfo) contains code and
 data that represent the history of local time for many representative
@@ -13,12 +13,12 @@ and daylight-saving rules.
 See <https://www.iana.org/time-zones/repository/tz-link.html> or the
 file tz-link.html for how to acquire the code and data.
 
-Once acquired, read the leading comments in the file "Makefile"
+Once acquired, read the leading comments in the file ‘Makefile’
 and make any changes needed to make things right for your system,
 especially when using a platform other than current GNU/Linux.
 
 Then run the following commands, substituting your desired
-installation directory for "$HOME/tzdir":
+installation directory for ‘$HOME/tzdir’:
 
 	make TOPDIR="$HOME/tzdir" install
 	"$HOME/tzdir/usr/bin/zdump" -v America/Los_Angeles
@@ -39,12 +39,12 @@ The information in the time zone data files is by no means authoritative;
 fixes and enhancements are welcome.  Please see the file CONTRIBUTING
 for details.
 
-Thanks to these Time Zone Caballeros who've made major contributions to the
+Thanks to these Time Zone Caballeros who’ve made major contributions to the
 time conversion package: Keith Bostic; Bob Devine; Paul Eggert; Robert Elz;
 Guy Harris; Mark Horton; John Mackin; and Bradley White.  Thanks also to
 Michael Bloom, Art Neilson, Stephen Prince, John Sovereign, and Frank Wales
 for testing work, and to Gwillim Law for checking local mean time data.
-Thanks in particular to Arthur David Olson, the project's founder and first
+Thanks in particular to Arthur David Olson, the project’s founder and first
 maintainer, to whom the time zone community owes the greatest debt of all.
 None of them are responsible for remaining errors.
 

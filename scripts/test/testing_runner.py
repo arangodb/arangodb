@@ -76,7 +76,7 @@ def testing_runner(testing_instance, this, arangosh):
             this.suite,
             this.arangosh_args,
             this.args,
-            15 * 60,  # 15 Minutes screen idle before timeout
+            16 * 60,  # 16 Minutes screen idle before timeout - so 15 mins testing.js can work
             this.base_logdir,
             this.log_file,
             this.name_enum,

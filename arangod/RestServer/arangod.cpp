@@ -23,6 +23,7 @@
 
 #include "RestServer/arangod.h"
 
+#include <filesystem>
 #include <type_traits>
 
 // The list of includes for the features is defined in the following file -
@@ -281,7 +282,7 @@ int main(int argc, char* argv[]) {
     f();
   }
 
-  std::string workdir(basics::FileUtils::currentDirectory().result());
+  auto workdir = std::filesystem::current_path();
 
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
@@ -312,8 +313,8 @@ int main(int argc, char* argv[]) {
   // cases, we need outside help to get the process restarted.
   res = chdir(workdir.c_str());
   if (res != 0) {
-    std::cerr << "WARNING: could not change into directory '" << workdir << "'"
-              << std::endl;
+    std::cerr << "WARNING: could not change into directory '"
+              << workdir.string() << "'" << std::endl;
   }
   if (execvp(argv[0], argv) == -1) {
     std::cerr << "WARNING: could not execvp ourselves, restore will not work!"

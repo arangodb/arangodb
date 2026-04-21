@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/async.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -36,6 +37,7 @@
 #include "Network/NetworkFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -43,6 +45,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -653,6 +656,118 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
+futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
+    std::shared_ptr<LogicalCollection> const& coll, IndexId indexId) {
+  // Polling interval when waiting for vector index readiness on Coordinator.
+  static constexpr auto kCoordinatorPollInterval = std::chrono::seconds(3);
+  // Maximum time to wait for vector index readiness on Coordinator.
+  static constexpr auto kCoordinatorWaitTimeout = std::chrono::seconds(300);
+
+  // DBServer / SingleServer: delegate to build manager.
+  if (ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isSingleServer()) {
+    auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
+    co_return co_await vectorIndexFeature.waitForIndexReady(indexId);
+  }
+
+  // Coordinator: poll shard training states until all report "ready".
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+
+  auto bareIndexId = std::to_string(indexId.id());
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto planIdStr = std::to_string(coll->planId().id());
+
+  auto const deadline =
+      std::chrono::steady_clock::now() + kCoordinatorWaitTimeout;
+
+  while (true) {
+    if (server().isStopping()) {
+      co_return Result(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::shared_ptr<CollectionInfoCurrent> collCurrent =
+        ci.getCollectionCurrent(_vocbase.name(), planIdStr);
+
+    if (collCurrent) {
+      auto const shardIds = coll->shardIds();
+      if (shardIds) {
+        auto const states =
+            getVectorIndexShardStates(*collCurrent, *shardIds, bareIndexId);
+        auto const aggregateState = aggregateTrainingState(states);
+
+        if (aggregateState == StaticStrings::IndexTrainingStateReady) {
+          co_return Result();
+        }
+
+        // "unusable" with an explicit shard error is a permanent failure.
+        if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
+          for (auto const& [shardId, shardState] : states) {
+            if (!shardState.error.empty()) {
+              co_return Result(
+                  TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                  absl::StrCat("vector index training failed on shard ",
+                               static_cast<std::string>(shardId), ": ",
+                               shardState.error));
+            }
+          }
+        }
+      }
+    }
+
+    if (std::chrono::steady_clock::now() >= deadline) {
+      co_return Result(TRI_ERROR_LOCK_TIMEOUT,
+                       "timed out waiting for vector index to become ready");
+    }
+
+    co_await SchedulerFeature::SCHEDULER->delay("wait-vec-idx-ready",
+                                                kCoordinatorPollInterval);
+  }
+}
+
+futures::Future<Result> RestIndexHandler::awaitAndRefreshVectorIndex(
+    std::shared_ptr<LogicalCollection> const& coll, VPackSlice body,
+    velocypack::Builder& response) {
+  bool const inBackground = body.get("inBackground").isTrue();
+  if (inBackground || !response.slice().get("type").isString() ||
+      response.slice().get("type").stringView() !=
+          StaticStrings::IndexNameVector) {
+    co_return Result{};
+  }
+
+  auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
+  if (!vectorIndexFeature.isVectorIndexEnabled()) {
+    co_return Result{};
+  }
+
+  auto idSlice = response.slice().get("id");
+  if (!idSlice.isString()) {
+    co_return Result{};
+  }
+
+  auto const indexId = IndexId::fromString(idSlice.stringView());
+  if (indexId.fail()) {
+    co_return indexId.result();
+  }
+
+  auto res = co_await waitForVectorIndexReady(coll, indexId.get());
+  if (res.fail()) {
+    co_return res;
+  }
+
+  // Update the trainingState field to reflect that the index is now ready
+  // and clear any errorMessage that was set while the index was still building.
+  VPackBuilder patch;
+  {
+    VPackObjectBuilder guard(&patch);
+    patch.add(StaticStrings::IndexTrainingState,
+              VPackValue(StaticStrings::IndexTrainingStateReady));
+    patch.add(StaticStrings::ErrorMessage, VPackValue(""));
+  }
+  response = VPackCollection::merge(response.slice(), patch.slice(), false);
+
+  co_return Result{};
+}
+
 async<void> RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
@@ -723,6 +838,12 @@ async<void> RestIndexHandler::createIndex() {
 
     if (result.ok()) {
       TRI_ASSERT(response.slice().isObject());
+      auto vecRes = co_await awaitAndRefreshVectorIndex(coll, body, response);
+      if (vecRes.fail()) {
+        generateError(vecRes);
+        co_return;
+      }
+
       VPackSlice const created = response.slice().get("isNewlyCreated");
       auto const resCode = created.isBool() && created.getBool()
                                ? rest::ResponseCode::CREATED
