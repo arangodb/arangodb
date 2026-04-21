@@ -652,18 +652,6 @@ std::string SslServerFeature::stringifySslOptions(uint64_t opts) const {
   }
 #endif
 
-#ifdef SSL_OP_NO_SSLv2
-  if (opts & SSL_OP_NO_SSLv2) {
-    result.append(", SSL_OP_NO_SSLv2");
-  }
-#endif
-
-#ifdef SSL_OP_NO_SSLv3
-  if (opts & SSL_OP_NO_SSLv3) {
-    result.append(", SSL_OP_NO_SSLv3");
-  }
-#endif
-
 #ifdef SSL_OP_NO_TLSv1
   if (opts & SSL_OP_NO_TLSv1) {
     result.append(", SSL_OP_NO_TLSv1");
