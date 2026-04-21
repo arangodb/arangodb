@@ -1,17 +1,60 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-376: Removed startup option `--server.authentication-system-only`. It's
+  now considered a legacy option, so it will be silently ignored on startup.
+
+* COR-295: Removed `StatisticsFeature`. The `--server.statistics-all-databases` and
+  `--server.statistics-history` startup options are now obsolete and ignored.
+
+* Upgraded included rclone to v1.73.4 with go1.25.9 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.20.0-preview-9.
+
+* Upgraded OpenSSL to 3.5.6.
+
+* COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
+
+* Mark `--server.rest-server` and legacy `--no-server` as obsolete startup options.
+  They are still accepted for backward compatibility but are ignored and no longer
+  appear in `--help`. Coordinator runs with `--database.auto-upgrade` now disable
+  the HTTP listener stack without requiring `--server.rest-server false`. Packaging
+  and init scripts no longer pass these flags.
+
+* Remove `RequestStatistics` and `--server.statistics` option; HTTP request metrics
+  are now recorded synchronously via Prometheus metrics.
+
+* COR-359: Removed WAL related endpoints `/_api/wal/open-transactions`,
+  `/_api/replication/logger-first-tick`, `/_api/replication/logger-tick-ranges`,
+  `/_admin/wal/transactions`.
+
+* COR-377: Removed deprecated `status` and `statusString` attributes from collection
+  HTTP responses, and the `status()` collection function from the JavaScript API.
+
+* Removed leftover unit test and handling of `@arangodb/locals` module that was
+  only used for Foxx.
+
+* Remove `GET | DELETE /_admin/log` (superseded by `GET | DELETE /_admin/log/entries`).
+
+* Remove deprecated `Timestamp` attribute from `GET /_admin/cluster/health`.
+
+* COR-353: Removed deprecated JS index creation functions `ensureUniqueConstraint()`,
+  `ensureGeoIndex()`, and `ensureGeoConstraint()` from collection objects.
+* COR-334: Removed _admin/status mode and writeOpsEnabled attributes remainders.
+
 * Removed leftover range() method from collection objects in JavaScript API
+
+* COR-325 Remove FULLTEXT remnants
 
 * Remove `/_admin/job` (duplicate of `/_api/job`), `/_admin/version` (duplicate of
   `/_api/version`), `/_admin/wal/properties`, and `/_api/endpoint`.
 
+* COR-330: Removed APIs associated with foxx.
+
 * COR-283: Removed remainded active failover references.
 
 * Remove 30xx FOXX error codes
-
-* Upgraded included rclone to v1.73.2 with go1.25.8 and non-vulnerable
-  dependencies.
 
 * Changed the remaining two uses of the log topics BENCH and SECURITY and
   removed these log topics.
@@ -24,8 +67,6 @@
 
 * Legacy geo index types `geo1` and `geo2` are no longer supported. Existing
   indexes of these types are automatically dropped during database upgrade.
-
-* Updated ArangoDB Starter to v0.20.0-preview-4.
 
 * Restrict to GET only for `/_api/version`, `/_admin/time`, `/_admin/status`
   and `/_admin/support-info`.
@@ -258,6 +299,8 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Fix an issue when removing documents while using sparse vector index.
+
 * Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
 
 * Fixed a bug in arangosh that made it quit when entering `global`.
@@ -368,8 +411,6 @@
 
 * OASIS-26699: Fixed a bug in arangosearch that returned incorrect
   results when condition optimization is turned off.
-
-* Upgraded OpenSSL to 3.5.5.
 
 * FE-954: make view validation on UI less strict.
 

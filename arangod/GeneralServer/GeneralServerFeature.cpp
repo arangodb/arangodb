@@ -44,6 +44,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/RequestStatisticsMetrics.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "Metrics/CounterBuilder.h"
@@ -99,7 +100,6 @@
 #include "RestHandler/RestTimeHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestTtlHandler.h"
-#include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsageMetricsHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
@@ -128,6 +128,7 @@
 #include <chrono>
 #include <stdexcept>
 #include <thread>
+#include "Metrics/FixScale.h"
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -149,16 +150,71 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
+namespace {
+std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0,
+                                                                   60.0};
+struct ConnectionTimeScale {
+  static metrics::FixScale<double> scale() {
+    return {0.1, 60.0, ConnectionTimeDistributionCuts};
+  }
+};
+}  // namespace
+
+DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
+              "The number of client connections that are currently open");
+
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
-      _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_requests_memory_usage{})),
+      _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
+      _histTotalTime(
+          metrics.add(arangodb_client_connection_statistics_total_time{})),
+      _histRequestTime(
+          metrics.add(arangodb_client_connection_statistics_request_time{})),
+      _histQueueTime(
+          metrics.add(arangodb_client_connection_statistics_queue_time{})),
+      _histIoTime(metrics.add(arangodb_client_connection_statistics_io_time{})),
+      _histBytesReceived(
+          metrics.add(arangodb_client_connection_statistics_bytes_received{})),
+      _histBytesSent(
+          metrics.add(arangodb_client_connection_statistics_bytes_sent{})),
+      _histBytesReceivedUser(metrics.add(
+          arangodb_client_user_connection_statistics_bytes_received{})),
+      _histBytesSentUser(
+          metrics.add(arangodb_client_user_connection_statistics_bytes_sent{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
-      _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
+      _http2Connections(metrics.add(arangodb_http2_connections_total{})),
+      _httpReqsTotal(
+          metrics.add(arangodb_http_request_statistics_total_requests_total{})),
+      _httpReqsSuperuser(metrics.add(
+          arangodb_http_request_statistics_superuser_requests_total{})),
+      _httpReqsUser(
+          metrics.add(arangodb_http_request_statistics_user_requests_total{})),
+      _httpReqsAsync(
+          metrics.add(arangodb_http_request_statistics_async_requests_total{})),
+      _httpReqsDelete(metrics.add(
+          arangodb_http_request_statistics_http_delete_requests_total{})),
+      _httpReqsGet(metrics.add(
+          arangodb_http_request_statistics_http_get_requests_total{})),
+      _httpReqsHead(metrics.add(
+          arangodb_http_request_statistics_http_head_requests_total{})),
+      _httpReqsOptions(metrics.add(
+          arangodb_http_request_statistics_http_options_requests_total{})),
+      _httpReqsPatch(metrics.add(
+          arangodb_http_request_statistics_http_patch_requests_total{})),
+      _httpReqsPost(metrics.add(
+          arangodb_http_request_statistics_http_post_requests_total{})),
+      _httpReqsPut(metrics.add(
+          arangodb_http_request_statistics_http_put_requests_total{})),
+      _httpReqsOther(metrics.add(
+          arangodb_http_request_statistics_other_http_requests_total{})),
+      _connectionDuration(
+          metrics.add(arangodb_client_connection_statistics_connection_time{})),
+      _connectionHttp(metrics.add(
+          arangodb_client_connection_statistics_client_connections{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -475,6 +531,85 @@ rest::AsyncJobManager& GeneralServerFeature::jobManager() {
   return *_jobManager;
 }
 
+void GeneralServerFeature::countHttpRequestByMethod(
+    rest::RequestType requestType) noexcept {
+  using rest::RequestType;
+  switch (requestType) {
+    case RequestType::DELETE_REQ:
+      _httpReqsDelete.count();
+      break;
+    case RequestType::GET:
+      _httpReqsGet.count();
+      break;
+    case RequestType::POST:
+      _httpReqsPost.count();
+      break;
+    case RequestType::PUT:
+      _httpReqsPut.count();
+      break;
+    case RequestType::HEAD:
+      _httpReqsHead.count();
+      break;
+    case RequestType::PATCH:
+      _httpReqsPatch.count();
+      break;
+    case RequestType::OPTIONS:
+      _httpReqsOptions.count();
+      break;
+    case RequestType::ILLEGAL:
+      _httpReqsOther.count();
+      break;
+  }
+}
+
+void GeneralServerFeature::recordHttpRequestStatistics(
+    RequestTimingData const& data) noexcept {
+  _httpReqsTotal.count();
+  if (data.async) {
+    _httpReqsAsync.count();
+  }
+  countHttpRequestByMethod(data.requestType);
+
+  using td = RequestTimingData;
+  auto readStart = data.readStart;
+
+  if (readStart != td::time_point{} &&
+      (data.async || data.writeEnd != td::time_point{})) {
+    double const totalTime = data.async
+                                 ? td::toSeconds(data.requestEnd - readStart)
+                                 : td::toSeconds(data.writeEnd - readStart);
+
+    if (data.superuser) {
+      _httpReqsSuperuser.count();
+    } else {
+      _httpReqsUser.count();
+    }
+
+    _histTotalTime.count(totalTime);
+    double const reqT = td::toSeconds(data.requestEnd - data.requestStart);
+    _histRequestTime.count(reqT);
+
+    double queueTime = 0.0;
+    if (data.queueStart != td::time_point{} &&
+        data.queueEnd != td::time_point{}) {
+      queueTime = td::toSeconds(data.queueEnd - data.queueStart);
+      _histQueueTime.count(queueTime);
+    }
+
+    double const ioTime = totalTime - reqT - queueTime;
+    if (ioTime >= 0.0) {
+      _histIoTime.count(ioTime);
+    }
+
+    _histBytesSent.count(data.sentBytes);
+    _histBytesReceived.count(data.receivedBytes);
+    if (!data.superuser) {
+      _histBytesSentUser.count(data.sentBytes);
+      _histBytesReceivedUser.count(data.receivedBytes);
+    }
+  }
+}
+
 void GeneralServerFeature::buildServers() {
   EndpointFeature& endpoint =
       server().getFeature<HttpEndpointProvider, EndpointFeature>();
@@ -571,9 +706,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::INDEX_PATH,
                      RestHandlerCreator<RestIndexHandler>::createNoData, {1});
-
-  f.addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                     RestHandlerCreator<RestUploadHandler>::createNoData, {1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
                      RestHandlerCreator<RestUsersHandler>::createNoData, {1});

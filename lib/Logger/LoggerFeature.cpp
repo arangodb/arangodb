@@ -393,10 +393,10 @@ data, this API has to be secured properly. By default, the API is accessible
 for admin users (administrative access to the `_system` database).
 However, you can restrict it further to the superuser or disable it altogether:
 
- - `true`: The `/_admin/log` API is accessible for admin users.
- - `jwt`: The `/_admin/log` API is accessible for the superuser only
+ - `true`: The `/_admin/log/entries` API is accessible for admin users.
+ - `jwt`: The `/_admin/log/entries` API is accessible for the superuser only
    (authentication with JWT superuser token and empty username).
- - `false`: The `/_admin/log` API is not accessible at all.)");
+ - `false`: The `/_admin/log/entries` API is not accessible at all.)");
   }
 
   options

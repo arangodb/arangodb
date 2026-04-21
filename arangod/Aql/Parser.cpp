@@ -227,6 +227,21 @@ void Parser::pushObjectElement(AstNode* attributeName, AstNode* node) {
   object->addMember(element);
 }
 
+void Parser::pushPatternNode(AstNode* element) {
+  auto object = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(object != nullptr);
+  TRI_ASSERT(object->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION)
+      << object->type;
+  object->addMember(element);
+}
+
+void Parser::pushMatchExprNode(AstNode* element) {
+  auto object = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(object != nullptr);
+  TRI_ASSERT(object->type == NODE_TYPE_MATCH) << object->type;
+  object->addMember(element);
+}
+
 /// @brief push a temporary value on the parser's stack
 void Parser::pushStack(void* value) {
   TRI_ASSERT(value != nullptr);

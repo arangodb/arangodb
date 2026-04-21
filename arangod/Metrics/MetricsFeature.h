@@ -36,14 +36,13 @@
 #include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Statistics/ServerStatistics.h"
+#include "Statistics/TransactionStatistics.h"
 
 #include <map>
 #include <shared_mutex>
 
 namespace arangodb {
 class QueryRegistryFeature;
-class StatisticsFeature;
 class EngineSelectorFeature;
 class ClusterFeature;
 }  // namespace arangodb
@@ -62,8 +61,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
           lazyQueryRegistryFeatureRef,
-      LazyApplicationFeatureReference<StatisticsFeature>
-          lazyStatisticsFeatureRef,
       LazyApplicationFeatureReference<EngineSelectorFeature>
           lazyEngineSelectorFeatureRef,
       LazyApplicationFeatureReference<ClusterMetricsFeature>
@@ -119,7 +116,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
   void toVPack(velocypack::Builder& builder, MetricsParts metricsParts) const;
 
-  ServerStatistics& serverStatistics() noexcept;
+  TransactionStatistics& transactionStatistics() noexcept;
+  double uptime() const noexcept;
 
   template<typename MetricType>
   MetricType& batchAdd(std::string_view name, std::string_view labels) {
@@ -144,7 +142,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   LazyApplicationFeatureReference<QueryRegistryFeature>
       _lazyQueryRegistryFeatureRef;
-  LazyApplicationFeatureReference<StatisticsFeature> _lazyStatisticsFeatureRef;
   LazyApplicationFeatureReference<EngineSelectorFeature>
       _lazyEngineSelectorFeatureRef;
   LazyApplicationFeatureReference<ClusterMetricsFeature>
@@ -152,7 +149,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   LazyApplicationFeatureReference<ClusterFeature> _lazyClusterFeatureRef;
 
   QueryRegistryFeature* _queryRegistryFeature = nullptr;
-  StatisticsFeature* _statisticsFeature = nullptr;
   EngineSelectorFeature* _engineSelectorFeature = nullptr;
   ClusterMetricsFeature* _clusterMetricsFeature = nullptr;
   ClusterFeature* _clusterFeature = nullptr;
@@ -164,7 +160,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   containers::FlatHashMap<std::string_view, std::unique_ptr<IBatch>> _batch;
 
-  std::unique_ptr<ServerStatistics> _serverStatistics;
+  std::unique_ptr<TransactionStatistics> _transactionStatistics;
+  double _startTime = 0.0;
 
   mutable std::string _globals;
   mutable bool hasShortname = false;

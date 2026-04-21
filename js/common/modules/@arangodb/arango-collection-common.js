@@ -32,24 +32,6 @@ var ArangoError = arangodb.ArangoError;
 var sprintf = arangodb.sprintf;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief collection is corrupted
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.STATUS_CORRUPTED = 0;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief collection is loaded
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.STATUS_LOADED = 3;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief collection is deleted
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.STATUS_DELETED = 5;
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief document collection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -68,21 +50,8 @@ ArangoCollection.prototype.isArangoCollection = true;
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._PRINT = function (context) {
-  var status = 'unknown';
   var type = 'unknown';
   var name = this.name();
-
-  switch (this.status()) {
-    case ArangoCollection.STATUS_LOADED:
-      status = 'loaded';
-      break;
-    case ArangoCollection.STATUS_CORRUPTED:
-      status = 'corrupted';
-      break;
-    case ArangoCollection.STATUS_DELETED:
-      status = 'deleted';
-      break;
-  }
 
   switch (this.type()) {
     case ArangoCollection.TYPE_DOCUMENT:
@@ -104,7 +73,7 @@ ArangoCollection.prototype._PRINT = function (context) {
   if (useColor) { context.output += colors.COLOR_STRING; }
   context.output += name || 'unknown';
   if (useColor) { context.output += colors.COLOR_RESET; }
-  context.output += '" (type ' + type + ', status ' + status + ')]';
+  context.output += '" (type ' + type + ')]';
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -149,91 +118,6 @@ ArangoCollection.prototype.updateByExample = function (example, newValue, keepNu
 // / SECTION Indexes
 // //////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief add options from arguments to index specification
-// //////////////////////////////////////////////////////////////////////////////
-
-function addIndexOptions(body, parameters) {
-  body.fields = [];
-
-  var setOption = function (k) {
-    if (!body.hasOwnProperty(k)) {
-      body[k] = parameters[i][k];
-    }
-  };
-
-  var i;
-  for (i = 0; i < parameters.length; ++i) {
-    if (typeof parameters[i] === 'string') {
-      // set fields
-      body.fields.push(parameters[i]);
-    }
-    else if (typeof parameters[i] === 'object' &&
-      !Array.isArray(parameters[i]) &&
-      parameters[i] !== null) {
-      // set arbitrary options
-      Object.keys(parameters[i]).forEach(setOption);
-      break;
-    }
-  }
-
-  return body;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a unique constraint
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureUniqueConstraint = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'persistent',
-    unique: true
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a geo index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
-  'use strict';
-
-  if (typeof lat !== 'string') {
-    throw 'usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>[, <pointsOnly>]])';
-  }
-
-  if (typeof lon === 'boolean') {
-    return this.ensureIndex({
-      type: 'geo',
-      fields: [ lat ],
-      geoJson: lon
-    });
-  }
-
-  if (lon === undefined) {
-    return this.ensureIndex({
-      type: 'geo',
-      fields: [ lat ],
-      geoJson: false
-    });
-  }
-
-  return this.ensureIndex({
-    type: 'geo',
-    fields: [ lat, lon ]
-  });
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a geo constraint
-// / since ArangoDB 2.5, this is just a redirection to ensureGeoIndex
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
-  return this.ensureGeoIndex(lat, lon);
-};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ensures a vertex-centric index

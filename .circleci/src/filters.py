@@ -32,7 +32,6 @@ class FilterCriteria:
 
     # Build configuration
     architecture: Optional[Architecture] = None  # Current build architecture
-    v8: bool = True  # Whether V8 (JavaScript) is enabled in this build
     build_variant: Optional[BuildVariant] = None  # Build variant (for instrumentation)
 
     # Deployment type filter (None = accept all deployment types)
@@ -40,6 +39,9 @@ class FilterCriteria:
 
     # Feature flags
     enterprise: bool = True
+
+    # filter for testsuites if commanded
+    test_suite: str = ""
 
     @property
     def is_full_run(self) -> bool:
@@ -50,11 +52,6 @@ class FilterCriteria:
     def is_instrumented_build(self) -> bool:
         """Check if this is an instrumented build (TSAN/ALUBSAN/COVERAGE)."""
         return self.build_variant is not None and self.build_variant.is_instrumented
-
-    @property
-    def is_v8_build(self) -> bool:
-        """Check if this is a V8-enabled build."""
-        return self.v8
 
 
 def is_gtest_suite(suite: SuiteConfig) -> bool:
@@ -70,8 +67,7 @@ def is_gtest_suite(suite: SuiteConfig) -> bool:
     return suite.name.startswith(GTEST_PREFIX)
 
 
-def _check_requirements_match(
-    requires: TestRequirements, criteria: FilterCriteria
+def _check_requirements_match(requires: TestRequirements, criteria: FilterCriteria
 ) -> bool:
     """
     Check if test requirements match filter criteria.
@@ -81,7 +77,6 @@ def _check_requirements_match(
     - Full flag compatibility
     - Instrumentation flag compatibility (TSAN/ALUBSAN/COVERAGE)
     - Coverage flag compatibility (COVERAGE only)
-    - V8 flag compatibility
 
     Args:
         requires: TestRequirements to check
@@ -127,15 +122,6 @@ def _check_requirements_match(
     if requires.instrumentation is False and criteria.is_instrumented_build:
         return False  # Regular-build-only, but we're in instrumented mode
 
-    # Check v8 flag compatibility
-    # - v8=True: Only for V8-enabled builds
-    # - v8=False: Only for non-V8 builds (JavaScript disabled)
-    # - v8=None (unspecified): Include in both
-    if requires.v8 is True and not criteria.is_v8_build:
-        return False  # Requires V8 build, but we're in non-V8 mode
-    if requires.v8 is False and criteria.is_v8_build:
-        return False  # Non-V8-only, but we're in V8 mode
-
     return True
 
 
@@ -152,6 +138,12 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     """
     # Check common requirements (architecture, full, instrumentation)
     if not _check_requirements_match(job.requires, criteria):
+        return False
+
+    # if we should filter for a name:
+    if (criteria.test_suite is not None and
+        criteria.test_suite != "" and
+        criteria.test_suite not in job.name):
         return False
 
     # Check deployment type filter

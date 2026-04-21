@@ -32,7 +32,6 @@
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
 #include "Basics/FloatingPoint.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -89,7 +88,7 @@ constexpr frozen::unordered_map<int, std::string_view, 26> kOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 /// @brief type names for AST nodes
-frozen::unordered_map<int, std::string_view, 81> kTypeNames{
+frozen::unordered_map<int, std::string_view, 89> kTypeNames{
     {static_cast<int>(NODE_TYPE_ROOT), "root"},
     {static_cast<int>(NODE_TYPE_FOR), "for"},
     {static_cast<int>(NODE_TYPE_LET), "let"},
@@ -174,6 +173,16 @@ frozen::unordered_map<int, std::string_view, 81> kTypeNames{
     {static_cast<int>(NODE_TYPE_ARRAY_FILTER), "array filter"},
     {static_cast<int>(NODE_TYPE_DESTRUCTURING), "destructuring"},
     {static_cast<int>(NODE_TYPE_WINDOW), "window"},
+    {static_cast<int>(NODE_TYPE_PATTERN_EDGE), "PATTERN edge"},
+    {static_cast<int>(NODE_TYPE_PATTERN_NODE_PATTERN), "pattern node pattern"},
+    {static_cast<int>(NODE_TYPE_PATTERN_SEGMENT), "pattern segment"},
+    {static_cast<int>(NODE_TYPE_PATTERN_LABEL), "pattern label"},
+    {static_cast<int>(NODE_TYPE_PATTERN_PATH_VARIABLE),
+     "pattern path variable"},
+    {static_cast<int>(NODE_TYPE_PATTERN_MATCH_EXPRESSION),
+     "pattern match expression"},
+    {static_cast<int>(NODE_TYPE_MATCH), "match"},
+    {static_cast<int>(NODE_TYPE_ARRAY_SPLICE), "array splice"},
 };
 
 /// @brief names for AST node value types
@@ -652,6 +661,14 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_WINDOW:
     case NODE_TYPE_ARRAY_FILTER:
     case NODE_TYPE_DESTRUCTURING:
+    case NODE_TYPE_PATTERN_LABEL:
+    case NODE_TYPE_PATTERN_EDGE:
+    case NODE_TYPE_PATTERN_SEGMENT:
+    case NODE_TYPE_PATTERN_NODE_PATTERN:
+    case NODE_TYPE_PATTERN_PATH_VARIABLE:
+    case NODE_TYPE_PATTERN_MATCH_EXPRESSION:
+    case NODE_TYPE_MATCH:
+    case NODE_TYPE_ARRAY_SPLICE:
       break;
   }
 

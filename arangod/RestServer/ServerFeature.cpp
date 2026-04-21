@@ -24,31 +24,19 @@
 #include "ServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/SslServerFeature.h"
-#include "RestServer/DaemonFeature.h"
-#include "RestServer/SupervisorFeature.h"
 #include "RestServer/UpgradeFeature.h"
-#include "Basics/application-exit.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Replication/ReplicationFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
-using namespace arangodb::rest;
 
 namespace arangodb {
 
@@ -62,10 +50,16 @@ ServerFeature::ServerFeature(ApplicationServer& server, int* res)
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "server features");
 
-  options->addOption(
-      "--server.rest-server", "Start a REST server.",
-      new BooleanParameter(&_options.restServer),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options->addObsoleteOption(
+      "--server.rest-server",
+      "Has no effect; the REST API is always available except during "
+      "database upgrade, initialization, and version check.",
+      true);
+  options->addObsoleteOption(
+      "--no-server",
+      "Has no effect; use --database.auto-upgrade, --database.check-version, "
+      "or --database.init-database as appropriate.",
+      false);
 
   options->addOption(
       "--server.validate-utf8-strings",
@@ -75,39 +69,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
-void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  DatabaseFeature& db = server().getFeature<DatabaseFeature>();
-
-  if (!_options.restServer && !db.upgrade() &&
-      !options->processingResult().touched("rocksdb.verify-sst")) {
-    LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
-        << "Rest server cannot be disabled any more, because it is pointless.";
-    FATAL_ERROR_EXIT();
-  }
-
-  auto disableDeamonAndSupervisor = [&]() {
-#ifdef ARANGODB_HAVE_FORK
-    server().disableFeatures<DaemonFeature>();
-    server().disableFeatures<SupervisorFeature>();
-#endif
-  };
-
-  if (!_options.restServer) {
-    server()
-        .disableFeatures<HttpEndpointProvider, GeneralServerFeature,
-                         SslServerFeature, StatisticsFeature>();
-    disableDeamonAndSupervisor();
-
-    if (!options->processingResult().touched("replication.auto-start")) {
-      // turn off replication applier when we do not have a rest server
-      // but only if the config option is not explicitly set (the recovery
-      // test want the applier to be enabled for testing it)
-      ReplicationFeature& replicationFeature =
-          server().getFeature<ReplicationFeature>();
-      replicationFeature.disableReplicationApplier();
-    }
-  }
-
+void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   server().getFeature<ShutdownFeature>().disable();
 }
 

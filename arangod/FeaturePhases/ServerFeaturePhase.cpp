@@ -30,8 +30,6 @@
 #include "Network/NetworkFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UpgradeFeature.h"
-#include "Statistics/StatisticsFeature.h"
-
 namespace arangodb {
 class SslServerFeature;
 }
@@ -49,7 +47,6 @@ ServerFeaturePhase::ServerFeaturePhase(
   startsAfter<NetworkFeature>();
   startsAfter<ServerFeature>();
   startsAfter<SslServerFeature>();
-  startsAfter<StatisticsFeature>();
   startsAfter<UpgradeFeature>();
 }
 }  // namespace arangodb::application_features

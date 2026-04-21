@@ -149,12 +149,12 @@ def create_generator_config(
     test_image: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: bool,
     gtest: bool,
     full: bool,
     replication_two: bool,
     create_docker_images: bool,
     validate_only: bool,
+    test_suite: str,
 ) -> GeneratorConfig:
     """
     Create GeneratorConfig from command line arguments.
@@ -184,14 +184,13 @@ def create_generator_config(
     filter_criteria = FilterCriteria(
         gtest=gtest,
         full=full,
-        v8=not arangod_without_v8,
+        test_suite=test_suite,
     )
 
     # Create test execution config
     arangosh_args_list = TestArguments.parse_args_string(arangosh_args or "")
     extra_args_list = TestArguments.parse_args_string(
         extra_args or "",
-        add_skip_server_js=arangod_without_v8,
     )
 
     test_execution = TestExecutionConfig(
@@ -265,11 +264,6 @@ def create_generator_config(
     help="Additional arguments to append to testing.js",
 )
 @click.option(
-    "--arangod-without-v8",
-    is_flag=True,
-    help="Run without JavaScript (V8 disabled)",
-)
-@click.option(
     "--gtest",
     is_flag=True,
     help="Only run gtest tests",
@@ -295,6 +289,10 @@ def create_generator_config(
     is_flag=True,
     help="Validate test definitions without generating config",
 )
+@click.option(
+    "--test-suite",
+    help="filter for testsuite",
+)
 def main(
     base_config: str,
     definitions: tuple,
@@ -307,12 +305,12 @@ def main(
     driver_branch_overrides: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: bool,
     gtest: bool,
     full: bool,
     replication_two: bool,
     create_docker_images: bool,
     validate_only: bool,
+    test_suite: str,
 ):
     """
     Generate CircleCI configuration from test definitions.
@@ -340,12 +338,12 @@ def main(
             test_image=test_image,
             arangosh_args=arangosh_args,
             extra_args=extra_args,
-            arangod_without_v8=arangod_without_v8,
             gtest=gtest,
             full=full,
             replication_two=replication_two,
             create_docker_images=create_docker_images,
             validate_only=validate_only,
+            test_suite=test_suite,
         )
 
         # If validate-only, we're done

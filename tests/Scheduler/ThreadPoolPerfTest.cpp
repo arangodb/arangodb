@@ -46,7 +46,6 @@ struct SupervisedSchedulerPool {
       : metricsFeature(std::make_shared<arangodb::metrics::MetricsFeature>(
             mockApplicationServer.server(),
             LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-            LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
             LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
             LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
                 nullptr),

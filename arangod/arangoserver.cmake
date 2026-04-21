@@ -106,7 +106,6 @@ add_library(arangoserver STATIC
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
-  RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestOpenApiHandler.cpp
@@ -156,11 +155,7 @@ add_library(arangoserver STATIC
   Sharding/ShardingInfo.cpp
   Sharding/ShardingStrategy.cpp
   Sharding/ShardingStrategyDefault.cpp
-  Statistics/ConnectionStatistics.cpp
-  Statistics/Descriptions.cpp
-  Statistics/RequestStatistics.cpp
-  Statistics/ServerStatistics.cpp
-  Statistics/StatisticsFeature.cpp
+  Statistics/TransactionStatistics.cpp
   Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp

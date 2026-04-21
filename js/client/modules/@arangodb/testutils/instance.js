@@ -389,7 +389,6 @@ class instance {
     }
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
-      this.args['server.statistics'] = false;
     }
 
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
@@ -709,9 +708,6 @@ class instance {
       '--database.auto-upgrade': 'true',
       '--log.foreground-tty': 'true'
     };
-    if (this.role === instanceRole.coordinator) {
-      moreArgs['--server.rest-server'] = 'false';
-    }
     this.exitStatus = null;
     this.pid = this._executeArangod(moreArgs, instanceJson).pid;
     sleep(1);

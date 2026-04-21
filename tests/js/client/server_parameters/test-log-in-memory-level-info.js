@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertMatch, arango */
+/* global getOptions, assertEqual, assertTrue, assertMatch, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -37,26 +37,25 @@ const { logServer } = require('@arangodb/test-helper');
 
 function testSuite() {
   let checkEmpty = function() {
-    // check that the in-memory logger does not return them (min log level is FATAL)
-    let res = arango.GET("/_admin/log?upto=trace");
-    assertEqual(0, res.totalAmount);
-    assertEqual([], res.lid);
-    assertEqual([], res.topic);
-    assertEqual([], res.level);
-    assertEqual([], res.timestamp);
-    assertEqual([], res.text);
+    // check that the in-memory logger does not return them (min log level is INFO)
+    let res = arango.GET("/_admin/log/entries?upto=trace");
+    assertEqual(0, res.total);
+    assertEqual(0, res.messages.length);
   };
   
   let checkPresent = function(level) {
-    let res = arango.GET("/_admin/log?upto=trace");
-    assertEqual(50, res.totalAmount, res);
-    assertEqual(50, res.lid.length, res);
-    assertEqual(50, res.topic.length, res);
-    assertEqual(50, res.level.length, res);
-    res.level.forEach((l) => assertEqual(level, l, res));
-    assertEqual(50, res.timestamp.length, res);
-    assertEqual(50, res.text.length, res);
-    res.text.forEach((t) => assertMatch(/testi/, t, res));
+    let res = arango.GET("/_admin/log/entries?upto=trace");
+    assertEqual(50, res.total);
+    assertEqual(50, res.messages.length);
+    res.messages.forEach((message) => {
+      assertTrue(message.hasOwnProperty("id"));
+      assertTrue(message.hasOwnProperty("topic"));
+      assertTrue(message.hasOwnProperty("level"));
+      assertTrue(message.hasOwnProperty("date"));
+      assertTrue(message.hasOwnProperty("message"));
+      assertEqual(level, message.level);
+      assertMatch(/testi/, message.message);
+    });
   };
       
   let log = function(level) {
@@ -79,7 +78,7 @@ function testSuite() {
     },
 
     setUp : function() {
-      arango.DELETE("/_admin/log");
+      arango.DELETE("/_admin/log/entries");
     },
 
     testApiTrace : function() {
@@ -94,22 +93,23 @@ function testSuite() {
 
     testApiInfo : function() {
       log("info");
-      checkPresent(3);
+      // /_admin/log/entries returns string literals e.g. "INFO", "WARNING", "ERROR"
+      checkPresent("INFO");
     },
     
     testApiWarn : function() {
       log("warn");
-      checkPresent(2);
+      checkPresent("WARNING");
     },
     
     testApiErr : function() {
       log("error");
-      checkPresent(1);
+      checkPresent("ERROR");
     },
     
     testApiFatal : function() {
       log("fatal");
-      checkPresent(0);
+      checkPresent("FATAL");
     },
   };
 }

@@ -60,7 +60,6 @@
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -265,7 +264,6 @@ class SharedMaintenanceTest : public ::testing::Test {
     }
 
     col.add("id", VPackValue(std::to_string(localId++)));
-    col.add("status", VPackValue(3));
     col.add("keyOptions", keyOptions.slice());
     col.add("cacheEnabled", VPackValue(false));
     col.add("waitForSync", VPackValue(false));
@@ -273,7 +271,6 @@ class SharedMaintenanceTest : public ::testing::Test {
     col.add("isSystem", VPackValue(true));
     col.add("name", VPackValue(colname));
     col.add("shardingStrategy", VPackValue("hash"));
-    col.add("statusString", VPackValue("loaded"));
     col.add("shardKeys", shardKeys.slice());
   }
 
@@ -542,7 +539,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& selector = as.addFeature<EngineSelectorFeature>();
     auto& metrics = as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        selector,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));

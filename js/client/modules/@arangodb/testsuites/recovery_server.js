@@ -84,7 +84,6 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
     // enable development debugging if extremeVerbosity is set
     let args = Object.assign({
       'rocksdb.wal-file-timeout-initial': 10,
-      'server.rest-server': 'false',
       'replication.auto-start': 'true',
       'javascript.script': params.script,
       'log.output': 'file://' + params.crashLog

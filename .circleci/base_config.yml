@@ -1,3 +1,4 @@
+---
 version: 2.1
 
 orbs:
@@ -14,15 +15,12 @@ parameters:
   use-minimal-debug-info:
     type: boolean
     default: true
-  arangod-without-v8:
-    type: boolean
-    default: true
   extra_args:
     type: string
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:20"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:21"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-809e7ff4f
@@ -63,6 +61,9 @@ parameters:
   config-definitions:
     type: string
     default: ""
+  filter-testsuite:
+    type: string
+    default: ""
   config-definitions-branches:
     type: string
     default: ""
@@ -73,7 +74,7 @@ parameters:
     default: "arangodb"
     # The arangodb target consists of arangod and the list of client-tools which already
     # conditionally contains arangobackup and arangosh, depending on whether we build in
-    # enterprise mode, and whether we build with V8 or not.
+    # enterprise mode
     # This should also improve build times because this way the individual targets can be
     # built in parallel (a list of individual targets is built serially).
   test-build-targets:
@@ -328,7 +329,7 @@ commands:
       - when:
           condition:
             not:
-              equal: [ << parameters.sanitizer >>, ""]
+              equal: [<< parameters.sanitizer >>, ""]
           steps:
             - run:
                 name: Symbolizer server
@@ -528,9 +529,6 @@ jobs:
       build-tests:
         type: boolean
         default: true
-      build-v8:
-        type: boolean
-        default: false
       publish-artifacts:
         type: boolean
         default: true
@@ -540,7 +538,7 @@ jobs:
         type: string
         default: ""
       arch:
-          type: string
+        type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
@@ -570,11 +568,6 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
-            if [ << pipeline.parameters.arangod-without-v8 >> = true ]; then
-              BUILD_V8_ARANGOD="OFF"
-            else
-              BUILD_V8_ARANGOD="ON"
-            fi
 
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
@@ -583,7 +576,6 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
-              -DUSE_V8=$BUILD_V8_ARANGOD \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
               -DCMAKE_INSTALL_PREFIX=/
       - run:
@@ -611,11 +603,16 @@ jobs:
                   DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
                   cp build/bin/arangodb ./install/usr/bin/
                   if [ << parameters.enterprise >> = true ]; then
-                    cp build/bin/rclone-arangodb ./install/usr/bin/
+                  cp build/bin/rclone-arangodb ./install/usr/bin/
                   fi
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
                   tar -czf install.tar.gz -C install ./
+                  echo done
+            - persist_to_workspace:
+                root: .
+                paths:
+                  - install.tar.gz
       - run:
           name: Size leaderboard
           command: |
@@ -693,11 +690,11 @@ jobs:
   create-docker-image:
     parameters:
       resource-class:
-          type: string
+        type: string
       arch:
-          type: string
+        type: string
       tag:
-          type: string
+        type: string
     docker:
       - image: cimg/base:current
     resource_class: << parameters.resource-class >>
@@ -707,7 +704,7 @@ jobs:
       - aws-ecr/ecr_login:
           public_registry: true
       - setup_remote_docker:
-            docker_layer_caching: true
+          docker_layer_caching: true
       - attach_workspace:
           at: .
       - run:
@@ -926,7 +923,7 @@ workflows:
             - minimal-checkout
       - eslint:
           name: eslint
-          context: [ circleci-token ]
+          context: [circleci-token]
           requires:
             - minimal-checkout
-  # all other workflows are defined in generate_config.py
+# all other workflows are defined in generate_config.py

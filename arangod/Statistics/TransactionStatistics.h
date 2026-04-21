@@ -25,7 +25,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <functional>
 
 #include "Metrics/Fwd.h"
 
@@ -87,23 +86,6 @@ struct TransactionStatistics {
   };
 
   std::optional<ReadWriteMetrics> _readWriteMetrics;
-};
-
-struct ServerStatistics {
-  ServerStatistics(ServerStatistics const&) = delete;
-  ServerStatistics(ServerStatistics&&) = delete;
-  ServerStatistics& operator=(ServerStatistics const&) = delete;
-  ServerStatistics& operator=(ServerStatistics&&) = delete;
-
-  void setupDocumentMetrics();
-
-  TransactionStatistics _transactionsStatistics;
-  double const _startTime;
-
-  double uptime() const noexcept;
-
-  explicit ServerStatistics(metrics::MetricsFeature& metrics, double start)
-      : _transactionsStatistics(metrics), _startTime(start) {}
 };
 
 }  // namespace arangodb

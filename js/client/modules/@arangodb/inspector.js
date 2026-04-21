@@ -582,7 +582,7 @@ function getServerData(arango) {
           }
 
           const version = arango.GET('_api/version?details=true'); // version api
-          const log = arango.GET('_admin/log'); // log api
+          const log = arango.GET('_admin/log/entries'); // log api
 
           const statistics = {
             time: require('internal').time(),

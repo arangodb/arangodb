@@ -38,6 +38,8 @@
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -177,6 +179,11 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
     std::array greetingsFeature{std::type_index(typeid(GreetingsFeature))};
     server().forceDisableFeatures(greetingsFeature);
+    std::array coordinatorHttpFeatures{
+        std::type_index(typeid(GeneralServerFeature)),
+        std::type_index(typeid(HttpEndpointProvider)),
+        std::type_index(typeid(SslServerFeature))};
+    server().forceDisableFeatures(coordinatorHttpFeatures);
     disableDaemonAndSupervisor();
   } else {
     server().forceDisableFeatures(_nonServerFeatures);

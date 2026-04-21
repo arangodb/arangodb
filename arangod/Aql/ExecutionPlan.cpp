@@ -2367,6 +2367,395 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
+ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
+                                            AstNode const* matchNode) {
+  auto const createPropertyAccess = [&](Variable const* variable,
+                                        std::string_view property) {
+    return _ast->createNodeAttributeAccess(_ast->createNodeReference(variable),
+                                           property);
+  };
+
+  auto const createPropertiesFilter = [&](Variable const* variable,
+                                          AstNode* properties,
+                                          AstNode* additionalExpression) {
+    AstNode* root = additionalExpression->type == NODE_TYPE_NOP
+                        ? nullptr
+                        : additionalExpression;
+    ADB_PROD_ASSERT(properties->type == NODE_TYPE_OBJECT ||
+                    properties->type == NODE_TYPE_NOP);
+
+    for (auto member : properties->getMemberList()) {
+      ADB_PROD_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+
+      auto key = member->getStringView();
+      auto value = member->getMember(0);
+
+      auto access = createPropertyAccess(variable, key);
+      auto operatorEq = _ast->createNodeBinaryOperator(
+          NODE_TYPE_OPERATOR_BINARY_EQ, access, value);
+      if (root) {
+        root = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
+                                              root, operatorEq);
+      } else {
+        root = operatorEq;
+      }
+    }
+
+    if (root == nullptr) {
+      root = _ast->createNodeValueBool(true);
+    }
+
+    Variable const* filterVar = _ast->variables()->createTemporaryVariable();
+    CalculationNode* calc = createNode<CalculationNode>(
+        this, nextId(), std::make_unique<Expression>(_ast, root), filterVar);
+    FilterNode* filter = createNode<FilterNode>(this, nextId(), filterVar);
+    filter->addDependency(calc);
+    return std::make_tuple(calc, filter);
+  };
+
+  auto const createCollectionAccess = [&](AstNode const* member) {
+    auto variable =
+        static_cast<Variable const*>(member->getMember(0)->getData());
+    auto collectionName = member->getMember(1)->getString();
+    auto& collections = _ast->query().collections();
+    auto collection = collections.get(collectionName);
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "no collection for EnumerateCollection");
+    }
+    IndexHint hint(_ast->query(), _ast->createNodeNop(),
+                   IndexHint::FromCollectionOperation{});
+    auto enumCollection = createNode<EnumerateCollectionNode>(
+        this, nextId(), collection, variable, false, std::move(hint));
+    auto [firstNode, lastNode] = createPropertiesFilter(
+        variable, member->getMember(2), member->getMember(3));
+    firstNode->addDependency(enumCollection);
+    return std::make_tuple(enumCollection, lastNode, variable);
+  };
+
+  auto const createVertexEdgeFilter = [&](Variable const* leftVertex,
+                                          Variable const* edge,
+                                          Variable const* rightVertex,
+                                          int direction) {
+    AstNode* root =
+        nullptr;  //_ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_OR);
+
+    if (direction & 2) {
+      auto leftVertexId = createPropertyAccess(leftVertex, "_id");
+      auto rightVertexId = createPropertyAccess(rightVertex, "_id");
+      auto edgeFrom = createPropertyAccess(edge, "_from");
+      auto edgeTo = createPropertyAccess(edge, "_to");
+      auto first = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                  leftVertexId, edgeFrom);
+      auto second = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                   edgeTo, rightVertexId);
+      root = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
+                                            first, second);
+    }
+    if (direction & 1) {
+      auto leftVertexId = createPropertyAccess(leftVertex, "_id");
+      auto rightVertexId = createPropertyAccess(rightVertex, "_id");
+      auto edgeFrom = createPropertyAccess(edge, "_from");
+      auto edgeTo = createPropertyAccess(edge, "_to");
+      auto first = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                  leftVertexId, edgeTo);
+      auto second = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                   edgeFrom, rightVertexId);
+      auto andNode = _ast->createNodeBinaryOperator(
+          NODE_TYPE_OPERATOR_BINARY_AND, first, second);
+      if (root) {
+        auto orNode = _ast->createNodeBinaryOperator(
+            NODE_TYPE_OPERATOR_BINARY_OR, root, andNode);
+        root = orNode;
+      } else {
+        root = andNode;
+      }
+    }
+
+    Variable const* filterVar = _ast->variables()->createTemporaryVariable();
+    CalculationNode* calc = createNode<CalculationNode>(
+        this, nextId(), std::make_unique<Expression>(_ast, root), filterVar);
+    FilterNode* filter = createNode<FilterNode>(this, nextId(), filterVar);
+    filter->addDependency(calc);
+    return std::make_tuple(calc, filter);
+  };
+
+  auto const createTraversalForPattern =
+      [&](Variable const* startNodeVar,                        //
+          AstNode const* edge, /* edge part of the pattern */  //
+          AstNode const* node) /* node part of the pattern */  //
+      -> std::tuple<ExecutionNode*, ExecutionNode*, Variable const*> {
+    auto const* patternEdgeOutputVariable =
+        static_cast<Variable const*>(edge->getMember(0)->getData());
+    auto const* patternEdgeCollectionName = edge->getMember(1);
+
+    aql::QueryContext& query = _ast->query();
+    auto options = std::make_unique<traverser::TraverserOptions>(query);
+    auto range = edge->getMember(5);
+    options->minDepth = range->getMember(0)->getIntValue();
+    options->maxDepth = range->getMember(1)->getIntValue();
+
+    auto dirNode = _ast->createNodeValueInt(std::invoke(
+        [](int64_t d) {
+          switch (d) {
+            case 1:
+              return 1;
+            case 2:
+              return 2;
+            case 3:
+              return 0;
+            default:
+              THROW_ARANGO_EXCEPTION_MESSAGE(
+                  TRI_ERROR_INTERNAL, "invalid direction for match expression");
+          }
+        },
+        edge->getMember(4)->getIntValue()));
+
+    auto* startNode = _ast->createNodeReference(startNodeVar);
+
+    auto* edgeCollectionList = _ast->createNodeArray();
+    edgeCollectionList->addMember(patternEdgeCollectionName);
+    auto* graphNode = _ast->createNodeCollectionList(edgeCollectionList,
+                                                     _ast->query().resolver());
+
+    auto* traversal =
+        createNode<TraversalNode>(this /* plan */,                         //
+                                  nextId() /* id */,                       //
+                                  &_ast->query().vocbase() /* vocbase */,  //
+                                  dirNode /* direction */,                 //
+                                  startNode, /* start */                   //
+                                  graphNode, /* graph */                   //
+                                  nullptr, /* prune expression */          //
+                                  std::move(options));
+
+    traversal->setPathOutput(
+        patternEdgeOutputVariable); /* note that it is intentional to
+                                    output the path segment that is
+                                    output by the traversal into the
+                                    edge variable in the pattern; see
+                                    transformations below */
+    auto traversalEdgeOutputVar = _ast->variables()->createTemporaryVariable();
+    traversal->setEdgeOutput(traversalEdgeOutputVar);
+
+    switch (node->type) {
+      case NODE_TYPE_REFERENCE: {
+        /*
+          FOR w IN ovc
+            MATCH (v:vc) -[ e:ec * 2..3 ]-> (w)
+              RETURN [v, e, w]
+
+          FOR w IN ovc
+            FOR v IN vc
+              FOR #3,_,e IN 2..3 OUTBOUND v ec
+                FILTER #3._id == w._id
+                RETURN [v, e, w]
+         */
+
+        auto const* traversalVertexOutputVar =
+            _ast->variables()->createTemporaryVariable();
+        traversal->setVertexOutput(traversalVertexOutputVar);
+        auto rightVertexVar = static_cast<Variable*>(node->getData());
+
+        auto traversalOutputVertexId =
+            createPropertyAccess(traversalVertexOutputVar, "_id");
+        auto rightVertexId = createPropertyAccess(rightVertexVar, "_id");
+        auto condition = _ast->createNodeBinaryOperator(
+            NODE_TYPE_OPERATOR_BINARY_EQ, rightVertexId,
+            traversalOutputVertexId);
+        auto const* filterVar = _ast->variables()->createTemporaryVariable();
+        CalculationNode* calc = createNode<CalculationNode>(
+            this, nextId(), std::make_unique<Expression>(_ast, condition),
+            filterVar);
+        calc->addDependency(traversal);
+        FilterNode* filter = createNode<FilterNode>(this, nextId(), filterVar);
+        filter->addDependency(calc);
+
+        return std::make_tuple(traversal, filter, rightVertexVar);
+
+      } break;
+      case NODE_TYPE_PATTERN_NODE_PATTERN: {
+        /*
+           MATCH (v:vc) -[ e:ec * 2..3 ]-> (w:ovc)
+            RETURN [v, e, w]
+
+          FOR v IN vc
+            FOR w,_,e IN 2..3 OUTBOUND v ec
+              FILTER IS_SAME_COLLECTION(w._id, "ovc")
+              RETURN [v, e, w]
+        */
+
+        auto traversalVertexOutputVar =
+            static_cast<Variable const*>(node->getMember(0)->getData());
+        traversal->setVertexOutput(traversalVertexOutputVar);
+
+        auto traversalVertexOutputId =
+            createPropertyAccess(traversalVertexOutputVar, "_id");
+        auto vertexCollection = node->getMember(1);
+        auto vertexCollectionName = vertexCollection->getStringView();
+
+        auto args = _ast->createNodeArray();
+        args->addMember(traversalVertexOutputId);
+        args->addMember(_ast->createNodeValueString(
+            vertexCollectionName.data(), vertexCollectionName.length()));
+
+        auto root =
+            _ast->createNodeFunctionCall("IS_SAME_COLLECTION", args, true);
+        auto const* filterVar = _ast->variables()->createTemporaryVariable();
+        CalculationNode* calc = createNode<CalculationNode>(
+            this, nextId(), std::make_unique<Expression>(_ast, root),
+            filterVar);
+        calc->addDependency(traversal);
+        FilterNode* filter = createNode<FilterNode>(this, nextId(), filterVar);
+        filter->addDependency(calc);
+
+        return std::make_tuple(traversal, filter, traversalVertexOutputVar);
+      } break;
+      default: {
+        // Throw
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unexpected match expression member");
+        return std::make_tuple(nullptr, nullptr, nullptr);
+      }
+    }
+  };
+
+  auto const constructArray = [&](std::vector<AstNode const*> const& vars) {
+    auto root = _ast->createNodeArray();
+    for (auto v : vars) {
+      root->addMember(v);
+    }
+    return root;
+  };
+
+  auto const constructPathObject =
+      [&](Variable const* outVariable,
+          std::vector<AstNode const*> const& vertices,
+          std::vector<AstNode const*> const& edges) {
+        auto root = _ast->createNodeObject();
+
+        root->addMember(
+            _ast->createNodeObjectElement("edges", constructArray(edges)));
+        root->addMember(_ast->createNodeObjectElement(
+            "vertices", constructArray(vertices)));
+
+        CalculationNode* calc = createNode<CalculationNode>(
+            this, nextId(), std::make_unique<Expression>(_ast, root),
+            outVariable);
+
+        return calc;
+      };
+
+  auto en = previous;
+  auto nMembers = matchNode->numMembers();
+
+  for (size_t i = 0; i < nMembers; ++i) {
+    auto matchExpr = matchNode->getMemberUnchecked(i);
+
+    Variable const* prevVar = nullptr;
+    Variable const* pathVariable = nullptr;
+    std::vector<AstNode const*> pathVertices;
+    std::vector<AstNode const*> pathEdges;
+
+    ADB_PROD_ASSERT(matchExpr->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION);
+
+    for (size_t j = 0; j < matchExpr->numMembers(); ++j) {
+      auto member = matchExpr->getMemberUnchecked(j);
+
+      if (member->type == NODE_TYPE_PATTERN_NODE_PATTERN) {
+        // generate code like
+        // FOR <outvariable> IN <collection>
+        //  FILTER <outvariable>.property1 == xxx && ....
+        ExecutionNode* lastNode;
+        std::tie(en, lastNode, prevVar) = createCollectionAccess(member);
+        en->addDependency(previous);
+        previous = en = lastNode;
+        pathVertices.push_back(_ast->createNodeReference(prevVar));
+      } else if (member->type == NODE_TYPE_PATTERN_PATH_VARIABLE) {
+        pathVariable = static_cast<Variable const*>(member->getData());
+      } else if (member->type == NODE_TYPE_REFERENCE) {
+        prevVar = static_cast<Variable*>(member->getData());
+        pathVertices.push_back(_ast->createNodeReference(prevVar));
+      } else if (member->type == NODE_TYPE_PATTERN_SEGMENT) {
+        // generate code like
+        //  FOR <outvar> IN <edge>
+        //    FILTER <outvar>._from == <prevVar>._id
+        auto edge = member->getMember(0);
+        auto node = member->getMember(1);
+        ADB_PROD_ASSERT(prevVar != nullptr);
+
+        if (edge->getMember(5)->type == NODE_TYPE_NOP) {
+          ExecutionNode* lastNodeFilter;
+          Variable const* edgeVar;
+          std::tie(en, lastNodeFilter, edgeVar) = createCollectionAccess(edge);
+          en->addDependency(previous);
+          previous = en = lastNodeFilter;
+
+          Variable const* rightVertexVar;
+
+          if (node->type == NODE_TYPE_REFERENCE) {
+            rightVertexVar = static_cast<Variable*>(node->getData());
+          } else {
+            ADB_PROD_ASSERT(node->type == NODE_TYPE_PATTERN_NODE_PATTERN)
+                << member->type;
+            std::tie(en, lastNodeFilter, rightVertexVar) =
+                createCollectionAccess(node);
+            en->addDependency(previous);
+            previous = en = lastNodeFilter;
+          }
+
+          auto [firstNode, lastNode] =
+              createVertexEdgeFilter(prevVar, edgeVar, rightVertexVar,
+                                     edge->getMember(4)->getIntValue());
+          firstNode->addDependency(previous);
+          previous = en = lastNode;
+          prevVar = rightVertexVar;
+
+          pathEdges.push_back(_ast->createNodeReference(edgeVar));
+          pathVertices.push_back(_ast->createNodeReference(prevVar));
+        } else {
+          auto [firstNode, lastNode, rightVertexVar] =
+              createTraversalForPattern(prevVar,  // start node
+                                        edge,     // edge part of the pattern
+                                        node      // node part of the pattern
+              );
+
+          firstNode->addDependency(previous);
+          previous = en = lastNode;
+          prevVar = rightVertexVar;
+
+          pathEdges.push_back(
+              _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
+                  _ast->createNodeReference(static_cast<Variable const*>(
+                      edge->getMember(0)->getData())),
+                  "edges")));
+
+          // The path output of the traversal contains the start vertex.
+          pathVertices.pop_back();
+          pathVertices.push_back(
+              _ast->createNodeArraySplice(_ast->createNodeAttributeAccess(
+                  _ast->createNodeReference(static_cast<Variable const*>(
+                      edge->getMember(0)->getData())),
+                  "vertices")));
+        }
+
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unexpected match expression member");
+      }
+    }
+
+    // produce path variable if requested
+    if (pathVariable != nullptr) {
+      auto calcNode =
+          constructPathObject(pathVariable, pathVertices, pathEdges);
+      calcNode->addDependency(previous);
+      previous = en = calcNode;
+    }
+  }
+
+  return en;
+}
+
 /// @brief create an execution plan from an abstract syntax tree node
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
@@ -2470,6 +2859,11 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 
       case NODE_TYPE_WINDOW: {
         en = fromNodeWindow(en, member);
+        break;
+      }
+
+      case NODE_TYPE_MATCH: {
+        en = fromNodeMatch(en, member);
         break;
       }
 

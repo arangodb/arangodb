@@ -28,6 +28,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -57,6 +58,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <cstdint>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1969,6 +1971,116 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
   return node;
 }
 
+AstNode* Ast::createPatternLabel(std::string_view label) {
+  ADB_PROD_ASSERT(label.starts_with(":")) << "Invalid pattern label: " << label;
+  label.remove_prefix(1);
+  auto node = createNode(NODE_TYPE_PATTERN_LABEL);
+  node->setStringValue(label.data(), label.size());
+  return node;
+}
+
+AstNode* Ast::createPatternLabelAnd(AstNode const* left, AstNode const* right) {
+  auto node = createNode(NODE_TYPE_OPERATOR_BINARY_AND);
+  node->addMember(left);
+  node->addMember(right);
+  return node;
+}
+
+AstNode* Ast::createPatternEdge(AstNode const* outVariable,
+                                AstNode const* label, AstNode const* properties,
+                                AstNode const* filterExpression,
+                                AstNode const* rangeExpression, bool isInbound,
+                                bool isOutbound) {
+  auto node = createNode(NODE_TYPE_PATTERN_EDGE);
+  node->addMember(outVariable ? outVariable : createNodeValueNull());
+  node->addMember(label ? label : createNodeValueNull());
+  node->addMember(properties ? properties : createNodeNop());
+  node->addMember(filterExpression ? filterExpression : createNodeNop());
+  if (isInbound && isOutbound) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        "found pattern edge having both inbound and outbound operator");
+  }
+
+  node->addMember(createNodeValueInt(!isInbound << 1 | !isOutbound));
+  node->addMember(rangeExpression ? rangeExpression : createNodeNop());
+  return node;
+}
+AstNode* Ast::createPatternNodePattern(AstNode const* outVariable,
+                                       AstNode const* labels,
+                                       AstNode const* properties,
+                                       AstNode const* filterExpression) {
+  auto node = createNode(NODE_TYPE_PATTERN_NODE_PATTERN);
+  node->addMember(outVariable ? outVariable : createNodeValueNull());
+  node->addMember(labels ? labels : createNodeValueNull());
+  node->addMember(properties ? properties : createNodeNop());
+  node->addMember(filterExpression ? filterExpression : createNodeNop());
+  return node;
+}
+
+AstNode* Ast::createPatternSegment(AstNode const* edge, AstNode const* node) {
+  auto n = createNode(NODE_TYPE_PATTERN_SEGMENT);
+  n->addMember(edge);
+  n->addMember(node);
+  return n;
+}
+
+AstNode* Ast::createPatternPathVariable(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (_scopes.existsVariable(name)) {
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
+  }
+
+  auto variable = _variables.createVariable(name, true);
+  _scopes.addVariable(variable);
+
+  auto n = createNode(NODE_TYPE_PATTERN_PATH_VARIABLE);
+  n->setData(variable);
+  return n;
+}
+
+AstNode* Ast::createNodeMatch() {
+  if (not query().queryOptions().isMatchStatementEnabled()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "the MATCH statement is an experimental feature. If you want to use "
+        "it, please specify `matchStatement: 'experimental'` in the query "
+        "options.");
+  }
+
+  return createNode(NODE_TYPE_MATCH);
+}
+
+AstNode* Ast::createNodeMatchExpr() {
+  return createNode(NODE_TYPE_PATTERN_MATCH_EXPRESSION);
+}
+
+AstNode* Ast::createNodeVariableOrReference(std::string_view name) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (auto var = _scopes.getVariable(name)) {
+    return createNodeReference(var);
+  }
+
+  auto variable = _variables.createVariable(name, true);
+  _scopes.addVariable(variable);
+
+  AstNode* node = createNode(NODE_TYPE_VARIABLE);
+  node->setData(variable);
+  return node;
+}
+
+AstNode* Ast::createNodeArraySplice(AstNode const* in) {
+  AstNode* node = createNode(NODE_TYPE_ARRAY_SPLICE);
+  node->addMember(in);
+  return node;
+}
+
 /// @brief injects first-stage bind parameter values into the AST
 /// (i.e. collection bind parameters and bound attribute names,
 /// e.g. @@foo and `doc.@attr`).
@@ -2340,7 +2452,7 @@ AstNode* Ast::replaceAttributeAccess(Ast* ast, AstNode* node,
 
     while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       attributePath.emplace_back(node->getStringView());
-      node = node->getMember(0);
+      node = const_cast<AstNode*>(ast::AttributeAccessNode(node).getObject());
     }
 
     if (attributePath.size() != attribute.size()) {
@@ -2496,7 +2608,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
       TRI_ASSERT(ctx->filterDepth == -1);
       ctx->filterDepth = 0;
     } else if (node->type == NODE_TYPE_TRAVERSAL) {
-      size_t parallelism = extractParallelism(node->getMember(4));
+      size_t parallelism =
+          extractParallelism(ast::TraversalNode(node).getOptions());
       if (parallelism > 1) {
         setContainsParallelNode();
       }
@@ -3922,7 +4035,7 @@ AstNode* Ast::optimizeIndexedAccess(
       // e.g. array['0'] is not the same as array.0 but must remain a['0'] or
       // (a[0])
       return this->optimizeAttributeAccess(
-          createNodeAttributeAccess(node->getMember(0), indexValue),
+          createNodeAttributeAccess(indexedNode.getObject(), indexValue),
           variableDefinitions);
     }
   }
@@ -4103,7 +4216,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node,
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     attributeNames.push_back(node->getStringView());
-    node = node->getMember(0);
+    node = ast::AttributeAccessNode(node).getObject();
   }
 
   size_t which = attributeNames.size();
@@ -4505,13 +4618,13 @@ namespace {
 auto matchGraphSubject(AstNode const* node) -> std::optional<AstNode const*> {
   switch (node->type) {
     case NODE_TYPE_TRAVERSAL: {
-      return node->getMember(2);
+      return ast::TraversalNode(node).getGraph();
     } break;
     case NODE_TYPE_SHORTEST_PATH: {
-      return node->getMember(3);
+      return ast::ShortestPathNode(node).getGraph();
     } break;
     case NODE_TYPE_ENUMERATE_PATHS: {
-      return node->getMember(4);
+      return ast::EnumeratePathsNode(node).getGraph();
     } break;
     default: {
       return std::nullopt;

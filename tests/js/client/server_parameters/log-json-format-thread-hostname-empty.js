@@ -105,20 +105,20 @@ function LoggerSuite() {
         }
         assertMatch(/testmann: done/, filtered[51]);
 
-        let res = arango.GET("/_admin/log");
-        assertTrue(res.hasOwnProperty("totalAmount"));
-        assertTrue(res.hasOwnProperty("lid"));
-        assertTrue(res.hasOwnProperty("topic"));
-        assertTrue(res.hasOwnProperty("level"));
-        assertTrue(res.hasOwnProperty("timestamp"));
-        assertTrue(res.hasOwnProperty("text"));
-
-        for (let i = 0; i < res.totalAmount; ++i) {
-          assertMatch(/^\d+$/, res.lid[i]);
-          assertMatch(/^[A-Za-z]{1,}$/, res.topic[i]);
-          assertMatch(/^\d+$/, res.level[i]);
-          assertMatch(/^\d+$/, res.timestamp[i]);
-        }
+        let res = arango.GET("/_admin/log/entries");
+        assertTrue(res.hasOwnProperty("total"));
+        assertTrue(res.hasOwnProperty("messages"));
+        res.messages.forEach((message) => {
+          assertTrue(message.hasOwnProperty("id"));
+          assertMatch(/^\d+$/, message.id);
+          assertTrue(message.hasOwnProperty("topic"));
+          assertMatch(/^[A-Za-z]{1,}$/, message.topic);
+          assertTrue(message.hasOwnProperty("level"));
+          assertMatch(/^[A-Za-z]{1,}$/, message.level);
+          assertTrue(message.hasOwnProperty("date"));
+          assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+/, message.date);
+          assertTrue(message.hasOwnProperty("message"));
+        });
       });
       IM.reconnectMe();
     },

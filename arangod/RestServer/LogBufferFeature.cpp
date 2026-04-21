@@ -217,7 +217,7 @@ void LogBufferFeature::collectOptions(
       .setDeprecatedIn(40000)
       .setIntroducedIn(30800)
       .setLongDescription(R"(You can use this option to toggle storing log
-messages in memory, from which they can be consumed via the `/_admin/log`
+messages in memory, from which they can be consumed via the `/_admin/log/entries`
 HTTP API.
 
 By default, this option is turned on, so log messages are consumable via the API.

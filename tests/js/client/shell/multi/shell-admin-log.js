@@ -65,7 +65,7 @@ function adminLogSuite() {
     },
 
     setUp: function () {
-      arango.DELETE("/_admin/log");
+      arango.DELETE("/_admin/log/entries");
     },
 
     testPutInvalidLevelReturnsError: function () {
@@ -135,7 +135,7 @@ function adminLogSuite() {
         });
 
         // delete all exiting log messages
-        arango.DELETE("/_admin/log");
+        arango.DELETE("/_admin/log/entries");
 
         log("trace");
         // wait until we have at least 5 log messages (should not
@@ -190,21 +190,14 @@ function adminLogSuite() {
       assertEqual(old.json.trx, newOld.trx);
     },
 
-    testGetAdminLogOldFormat: function () {
+    testGetDeprecatedAdminLog: function () {
       log("warn");
       let res = arango.GET("/_admin/log?upto=warning");
-      let level = 2;
-      assertEqual(50, res.totalAmount, res);
-      assertEqual(50, res.lid.length, res);
-      assertEqual(50, res.topic.length, res);
-      assertEqual(50, res.level.length, res);
-      res.level.forEach((l) => assertEqual(level, l, res));
-      assertEqual(50, res.timestamp.length, res);
-      assertEqual(50, res.text.length, res);
-      res.text.forEach((t) => assertMatch(/testi/, t, res));
+      assertTrue(res.error);
+      assertEqual(410, res.code);
     },
 
-    testGetAdminLogNewFormat: function () {
+    testGetAdminLogEntries: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning");
       assertTrue(Array.isArray(res.messages));
@@ -223,7 +216,7 @@ function adminLogSuite() {
       });
     },
 
-    testGetAdminLogNewFormatUpToFatal: function () {
+    testGetAdminLogEntriesUpToFatal: function () {
       log("fatal");
 
       let res = arango.GET("/_admin/log/entries?upto=fatal");
@@ -247,7 +240,7 @@ function adminLogSuite() {
       assertEqual(50, res.total);
     },
 
-    testGetAdminLogNewFormatUpToErr: function () {
+    testGetAdminLogEntriesUpToErr: function () {
       log("error");
 
       let res = arango.GET("/_admin/log/entries?upto=fatal");
@@ -271,7 +264,7 @@ function adminLogSuite() {
       assertEqual(50, res.total);
     },
 
-    testGetAdminLogNewFormatUpToWarn: function () {
+    testGetAdminLogEntriesUpToWarn: function () {
       log("warn");
 
       let res = arango.GET("/_admin/log/entries?upto=fatal");
@@ -295,7 +288,7 @@ function adminLogSuite() {
       assertEqual(50, res.total);
     },
 
-    testGetAdminLogNewFormatUpToInfo: function () {
+    testGetAdminLogEntriesUpToInfo: function () {
       log("info");
 
       let res = arango.GET("/_admin/log/entries?upto=fatal");
@@ -319,7 +312,7 @@ function adminLogSuite() {
       assertEqual(50, res.total);
     },
 
-    testGetAdminLogNewFormatReverse: function () {
+    testGetAdminLogEntriesReverse: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning&sort=desc");
       assertTrue(Array.isArray(res.messages));
@@ -338,7 +331,7 @@ function adminLogSuite() {
       });
     },
 
-    testGetAdminLogNewFormatSearch: function () {
+    testGetAdminLogEntriesSearch: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning&search=testi");
       assertTrue(Array.isArray(res.messages));
@@ -364,7 +357,7 @@ function adminLogSuite() {
       assertEqual(0, res.messages.length);
     },
 
-    testGetAdminLogNewFormatSize: function () {
+    testGetAdminLogEntriesSize: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning&size=4");
       assertTrue(Array.isArray(res.messages));
@@ -392,7 +385,7 @@ function adminLogSuite() {
       assertEqual(50, res.total);
     },
 
-    testGetAdminLogNewFormatOffset: function () {
+    testGetAdminLogEntriesOffset: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning&offset=0&size=4");
       assertTrue(Array.isArray(res.messages));

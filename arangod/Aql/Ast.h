@@ -458,6 +458,26 @@ class Ast {
   /// @brief create an AST n-ary operator
   AstNode* createNodeNaryOperator(AstNodeType, AstNode const*);
 
+  AstNode* createPatternLabel(std::string_view label);
+  AstNode* createPatternLabelAnd(AstNode const* left, AstNode const* right);
+  AstNode* createPatternEdge(AstNode const* outVariable, AstNode const* label,
+                             AstNode const* properties,
+                             AstNode const* filterExpression,
+                             AstNode const* rangeExpression, bool isInbound,
+                             bool isOutbound);
+  AstNode* createPatternNodePattern(AstNode const* outVariable,
+                                    AstNode const* labels,
+                                    AstNode const* properties,
+                                    AstNode const* filterExpression);
+
+  AstNode* createPatternSegment(AstNode const* edge, AstNode const* node);
+  AstNode* createPatternPathVariable(std::string_view variable);
+  AstNode* createNodeMatch();
+  AstNode* createNodeMatchExpr();
+  AstNode* createNodeVariableOrReference(std::string_view name);
+
+  AstNode* createNodeArraySplice(AstNode const* in);
+
   /// @brief injects first-stage bind parameter values into the AST
   /// (i.e. collection bind parameters and bound attribute names,
   /// e.g. @@foo and `doc.@attr`).

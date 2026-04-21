@@ -441,10 +441,6 @@ Mode:
 
 ## Debugging
 
-### Runtime
-
-- Cheapen startup for valgrind: `--server.rest-server false`
-
 ### Debugging AQL execution blocks
 
 To debug AQL execution blocks, two steps are required:
@@ -1103,7 +1099,6 @@ Debugging a storage engine:
        gdb --args ./build/bin/arangod \
            --console \
            --foxx.queues false \
-           --server.statistics false \
            --server.endpoint http+tcp://0.0.0.0:7777 \
            ../arangodb-data-rocksdb
     (gdb) catch throw

@@ -254,7 +254,7 @@ echo "run 'arango-secure-installation' to set a root password"
 echo "the current password is '$ARANGODB_DEFAULT_ROOT_PASSWORD'"
 echo "(You should do this for a FRESH install! For an UPGRADE the password does not need to be changed)"
 
-/usr/sbin/arango-init-database --uid arangodb --gid arangodb --server.rest-server false --server.statistics false || true
+/usr/sbin/arango-init-database --uid arangodb --gid arangodb --foxx.queues false || true
 
 exit 0
 
