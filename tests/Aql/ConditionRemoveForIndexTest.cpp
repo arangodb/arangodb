@@ -79,8 +79,8 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
 };
 
 TEST_F(ConditionRemoveForIndexTest, RemovesCoveredMemberKeepsUncovered) {
-  // mine  = { d.a == 1  AND  d.b > 2 }
-  // other = { d.a == 1 } -> covered by mine (IndexNode)
+  // mine  = { d.a == 1  AND  d.b > 2 } -> FilterNode condition
+  // other = { d.a == 1 } -> IndexNode condition
   // persistent (non-sparse) index on field "a"
   auto* mineAttrA =
       _ast->createNodeAttributeAccess(_ast->createNodeReference(_d), "a");
