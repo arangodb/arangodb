@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Aql/AstNode.h"
+#include "Aql/ConditionPart.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Containers/HashSet.h"
@@ -46,8 +47,6 @@ class ExecutionPlan;
 class SortCondition;
 struct Variable;
 
-// note to maintainers:
-//
 enum class ConditionOptimization {
   kNone,  // only generic optimizations are made (e.g. AND to n-ry AND, sorting
           // and deduplicating IN nodes )
@@ -56,46 +55,6 @@ enum class ConditionOptimization {
   kNoDNF,       // no conversions to DNF are made and no condition optimization
   kAuto,        // all existing condition optimizations are applied
 
-};
-
-/// @brief side on which an attribute occurs in a condition
-enum AttributeSideType { ATTRIBUTE_LEFT, ATTRIBUTE_RIGHT };
-
-struct ConditionPart {
-  ConditionPart() = delete;
-
-  ConditionPart(Variable const*, std::string const&, AstNode const*,
-                AttributeSideType, void*);
-
-  ConditionPart(Variable const*, std::vector<basics::AttributeName> const&,
-                AstNode const*, AttributeSideType, void*);
-
-  ~ConditionPart();
-
-  int whichCompareOperation() const noexcept;
-
-  /// @brief returns the lower bound
-  AstNode const* lowerBound() const;
-
-  /// @brief returns if the lower bound is inclusive
-  bool isLowerInclusive() const noexcept;
-
-  /// @brief returns the upper bound
-  AstNode const* upperBound() const;
-
-  /// @brief returns if the upper bound is inclusive
-  bool isUpperInclusive() const noexcept;
-
-  /// @brief true if the condition is completely covered by the other condition
-  bool isCoveredBy(ConditionPart const& other, bool isReversed) const;
-
-  Variable const* variable;
-  std::string attributeName;
-  AstNodeType operatorType;
-  bool isExpanded;
-  AstNode const* operatorNode;
-  AstNode const* valueNode;
-  void* data;
 };
 
 class Condition {

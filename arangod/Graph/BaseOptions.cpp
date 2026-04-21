@@ -466,7 +466,7 @@ BaseOptions::LookupInfo BaseOptions::createLookupInfo(
 
   auto toRemove = aql::Condition::collectOverlappingMembersForTraversal(
       plan, _tmpVar, condition, info.indexCondition, /*isPathCondition*/ false);
-  
+
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.
