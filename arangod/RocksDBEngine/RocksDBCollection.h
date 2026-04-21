@@ -168,6 +168,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
     return _primaryIndex;
   }
 
+  TransactionStatistics& statistics() { return _statistics; }
+
  private:
   Result doLookupKey(transaction::Methods* trx, std::string_view key,
                      std::pair<LocalDocumentId, RevisionId>& result,
