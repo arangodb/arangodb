@@ -482,25 +482,41 @@ static void findIResearchTestResources() {
     // environment variable not set, so try to auto-detect the location
     testResourceDir = ".";
     do {
+      std::error_code dirEc;
       if (std::filesystem::is_directory(
-              basics::FileUtils::buildFilename(testResourceDir, toBeFound))) {
+              basics::FileUtils::buildFilename(testResourceDir, toBeFound),
+              dirEc)) {
         testResourceDir =
             basics::FileUtils::buildFilename(testResourceDir, toBeFound);
         return;
+      } else if (dirEc) {
+        LOG_TOPIC("45f9a", ERR, Logger::FIXME)
+            << "testResourceDir is not a directory"
+               "Error:"
+            << dirEc.message();
       }
       testResourceDir = basics::FileUtils::buildFilename(testResourceDir, "..");
-      if (!std::filesystem::is_directory(testResourceDir)) {
+      if (!std::filesystem::is_directory(testResourceDir, dirEc)) {
         testResourceDir = IResearch_test_resource_dir;
+        LOG_TOPIC("45f9b", ERR, Logger::FIXME)
+            << "testResourceDir is not a directory"
+               "Error:"
+            << dirEc.message();
         break;
       }
     } while (true);
   }
-
   std::error_code dirEc;
   if (!std::filesystem::is_directory(testResourceDir, dirEc)) {
-    LOG_TOPIC("45f9d", ERR, Logger::FIXME)
-        << "unable to find directory for IResearch test resources. use "
-           "environment variable IRESEARCH_TEST_RESOURCE_DIR to set it";
+    if (dirEc) {
+      LOG_TOPIC("45f9d", ERR, Logger::FIXME)
+          << "Error checking directory: " << dirEc.message() << " (code "
+          << dirEc.value() << ")";
+    } else {
+      LOG_TOPIC("45f9d", ERR, Logger::FIXME)
+          << "Path exists but is not a directory. "
+          << "Use environment variable IRESEARCH_TEST_RESOURCE_DIR to set it.";
+    }
   }
 }
 

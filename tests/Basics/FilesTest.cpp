@@ -116,13 +116,12 @@ TEST_F(FilesTest, tst_copyfile) {
   EXPECT_EQ("", FileUtils::slurp(dest));
 
   // copy over an existing target file
-  std::error_code removeEc;
-  std::filesystem::remove(source, removeEc);
+  std::filesystem::remove(source);
   FileUtils::spit(source, std::string("foobar"), false);
   EXPECT_FALSE(TRI_CopyFile(source, dest, error));
 
-  std::filesystem::remove(source, removeEc);
-  std::filesystem::remove(dest, removeEc);
+  std::filesystem::remove(source);
+  std::filesystem::remove(dest);
   FileUtils::spit(source, std::string("foobar"), false);
   EXPECT_TRUE(TRI_CopyFile(source, dest, error));
   EXPECT_EQ("foobar", FileUtils::slurp(dest));
@@ -133,8 +132,8 @@ TEST_F(FilesTest, tst_copyfile) {
     value += value;
   }
 
-  std::filesystem::remove(source, removeEc);
-  std::filesystem::remove(dest, removeEc);
+  std::filesystem::remove(source);
+  std::filesystem::remove(dest);
   FileUtils::spit(source, value, false);
   EXPECT_TRUE(TRI_CopyFile(source, dest, error));
   EXPECT_EQ(value, FileUtils::slurp(dest));
@@ -142,8 +141,8 @@ TEST_F(FilesTest, tst_copyfile) {
 
   // copy file slightly larger than copy buffer
   std::string value2(128 * 1024 + 1, 'x');
-  std::filesystem::remove(source, removeEc);
-  std::filesystem::remove(dest, removeEc);
+  std::filesystem::remove(source);
+  std::filesystem::remove(dest);
   FileUtils::spit(source, value2, false);
   EXPECT_TRUE(TRI_CopyFile(source, dest, error));
   EXPECT_EQ(value2, FileUtils::slurp(dest));
