@@ -68,7 +68,7 @@ We create an abstraction so that we can specify which access permissions
 one needs for each operation across all APIs. Then we implement this
 abstraction by a number of methods on the `ExecContext`, which contains
 the user and role data from authentication. For example, there will be
-methods like `ExecContext::canSeeCollection(<dbname>, <collname>) -> bool`.
+methods like `ExecContext::canSeeCollection(<dbname>, <collname>) -> Result`.
 
 The `ExecContext` then has a member `AuthMode _authMode`, which implements
 these abstractions. `AuthMode` itself is then just an interface and we can
@@ -114,15 +114,19 @@ there are a select few URL paths, which are "open" and do not require
 any authentication, and we need to handle the case of "no authentication",
 too.
 
-After authentication, we perform a first authorization check: Namely, the
-identity detected (user/roles) has to have **read access** to the database
-which was specified in the `/_db/<dbname>` part of the URL path. This check
-is done globally already in the `CommTask` to error out early, since we want
-to enforce it **for all routes** (with very few exceptions). We want to change
-this, rather than performing this authorization check in the `CommTask`, we
-want to do it on the scheduler before we run the state machine for the
-`RestHandler`. The check should be implemented in a virtual method of the
-`RestVocbaseBaseHandler`, which is called from `runHandler`.
+In the meantime we have changed this to perform header parsing but **not
+any further checks** in the `CommTask`. Then, we have some virtual methods
+on the `RestHandler` class which are called early during the execution
+(but already on the Scheduler thread) of the `RestHandler`. These perform
+then authentication checks - depending on the particular needs of the
+URL path (some do checks, some don't).
+
+After authentication, we perform a first authorization check: Namely,
+the identity detected (user/roles) has to have **read access** to the
+database which was specified in the `/_db/<dbname>` part of the URL
+path. This check is done globally already in the above mentioned virtual
+methods of the `RestHandler` to error out early, since we want to
+enforce it **for all routes** (with very few exceptions).
 
 The bulk of the authorization checks is then performed in the `RestHandlers`
 (or, for 3.12, in the server-side JavaScript functions). The idea is that
@@ -164,20 +168,27 @@ enabled:
    a database, and one has level "RW", if one has both `db.ReadDatabase` and
    `db.WriteDatabase` for the database.
  - For collections, we split "Collection RW" into two separate access
-   levels: "RWDATA" (which includes reading the collection meta data and
-   data!) and "RW" (which additionally includes creating, dropping,
-   and modifying the collection meta data), so we have these access
+   levels (which are independent of each other): "RWDATA" (which includes
+   reading the collection meta data and
+   data!) and "RWMETA" (which includes and modifying the collection meta data,
+   for example creating and dropping indexes), so we have these access
    levels:
     1. NONE
     2. RO
     3. RWDATA
-    4. RW
- - There are three RBAC actions for collections: `db:ReadCollection`,
+    4. RWMETA
+   where RWDATA and RWMETA include RO, but RWMETA does not include RWDATA,
+   since it is entirely possible that we want to allow somebody to modify
+   indexes of a collection but not data.
+ - Permission to create and drop collections are separate from this hierarchy.
+ - There are five RBAC actions for collections: `db:ReadCollection`,
    `db:WriteCollectionData` and `db:WriteCollectionMeta`. To reach
    level `Read` for a collection, one only needs "allow" for
-   `db:ReadCollection`. To reach level `RW data` one needs "allow" for
-   `db:ReadCollection` and `db:WriteCollectionData`. To reach level `RW
-   all` one needs "allow" on all three actions.
+   `db:ReadCollection`. To reach level `RWDATA` one needs "allow" for
+   `db:ReadCollection` and `db:WriteCollectionData`. To reach level `RWMETA`
+   one needs "allow" on `db:ReadCollection` and `db:WriteCollectionData`.
+   To create a collection, one needs `db:CreateCollection`, to drop a collection,
+   one needs `db:DropCollection`.
  - For views, there are three levels:
     1. NONE
     2. RO
@@ -238,8 +249,7 @@ return a `Result`, so that a decline can return the actual reason
 
  - `isSuperUser() -> bool`
 
-Note that for now, `canSee*` is equivalent to `canUse*(RO)` and
-`canCreate**` and `canDrop*` are equivalent to `canUse*(RW)`. For
+Note that for now, `canSee*` is equivalent to `canUse*(RO)`. For
 collections `canUseCollection(RWDATA)` is needed to write data. However,
 we keep the semantic checks separate in case we want to split things
 further later.
@@ -402,19 +412,18 @@ user?
   
  - `canCreateCollection(std::string_view db, std::string_view coll) -> Result`
 
-   check collection access level to be RW, i.e., check RBAC actions
-   `db:ReadCollection` and `db:WriteCollectionData` and `db:WriteCollectionMeta`.
+   check `db:CreateCollection`
   
  - `canDropCollection(std::string_view db, std::string_view coll) -> Result`
 
-   check collection access level to be RW, i.e., check RBAC actions
-   `db:ReadCollection` and `db:WriteCollectionData` and `db:WriteCollectionMeta`.
+   check `db:DropCollection`
   
  - `canUseCollection(std::string_view db, std::string_view coll, CollectionAccessLevel const level) -> Result`
 
    check collection access level, i.e., check RBAC actions
    `db:ReadCollection` and `db:WriteCollectionData` and
-   `db:WriteCollectionMeta` to find NONE, or RO, or RWDATA, or RW
+   `db:WriteCollectionMeta` to find NONE, or RO, or RWDATA, or RW,
+   as described above.
 
    If the user is not allowed to see the collection, this must return NOT_FOUND!
   
