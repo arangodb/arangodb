@@ -619,35 +619,17 @@ void Agent::sendAppendEntriesRPC() {
 
       index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
-      // If the follower is behind our first log entry send last snapshot and
-      // following logs. Else try to have the follower catch up in regular
-      // order.
-      bool needSnapshot = lastConfirmed < _state.firstIndex();
-
-      Store snapshot("snapshot");
-      index_t snapshotIndex = 0;
-      term_t snapshotTerm = 0;
-      std::vector<log_t> unconfirmed;
-
-      if (needSnapshot) {
-        // Load the on-disk snapshot and the matching log entries together.
-        // getSnapshotAndEntries guards against compaction running between
-        // the two reads by re-validating under _logLock.
-        bool success = _state.getSnapshotAndEntries(
-            snapshot, snapshotIndex, snapshotTerm, unconfirmed, 99);
-        if (!success || snapshotTerm == 0) {
-          needSnapshot = false;
-        } else {
-          lastConfirmed = snapshotIndex - 1;
-        }
+      auto payloadResult = _state.buildAppendEntriesPayload(lastConfirmed, 99);
+      if (payloadResult.fail()) {
+        LOG_TOPIC("6e2b8", WARN, Logger::AGENCY)
+            << "Could not build AppendEntries payload for follower "
+            << followerId << ": " << payloadResult.errorMessage();
+        continue;
       }
-
-      if (!needSnapshot) {
-        // Regular path: no snapshot needed, just fetch unconfirmed entries.
-        LOG_TOPIC("7c578", TRACE, Logger::AGENCY)
-            << "Getting unconfirmed from " << lastConfirmed << " to "
-            << lastConfirmed + 99;
-        unconfirmed = _state.get(lastConfirmed, lastConfirmed + 99);
+      auto& payload = payloadResult.get();
+      std::vector<log_t>& unconfirmed = payload.entries;
+      if (payload.snapshot.has_value()) {
+        lastConfirmed = payload.snapshot->index - 1;
       }
 
       lockTime = steady_clock::now() - startTime;
@@ -685,29 +667,12 @@ void Agent::sendAppendEntriesRPC() {
                    follower._lastAckedTime.time_since_epoch())
                    .count();
       }
-      index_t lowest = unconfirmed.front().index;
-
-      if (lowest > lastConfirmed && !needSnapshot) {
-        // Compaction advanced between the firstIndex() check and get(),
-        // so the entries we fetched start past lastConfirmed.  Fall back
-        // to sending a snapshot.
-        bool success = _state.getSnapshotAndEntries(
-            snapshot, snapshotIndex, snapshotTerm, unconfirmed, 99);
-        if (!success || snapshotTerm == 0) {
-          LOG_TOPIC("6e2b8", WARN, Logger::AGENCY)
-              << "Could not load snapshot for follower " << followerId;
-          continue;
-        }
-        needSnapshot = true;
-        lastConfirmed = snapshotIndex - 1;
-        lowest = unconfirmed.front().index;
-      }
 
       index_t prevLogIndex = unconfirmed.front().index;
       index_t prevLogTerm = unconfirmed.front().term;
-      if (needSnapshot) {
-        prevLogIndex = snapshotIndex;
-        prevLogTerm = snapshotTerm;
+      if (payload.snapshot.has_value()) {
+        prevLogIndex = payload.snapshot->index;
+        prevLogTerm = payload.snapshot->term;
       }
 
       // Body
@@ -715,17 +680,15 @@ void Agent::sendAppendEntriesRPC() {
       Builder builder(buffer);
       builder.add(VPackValue(VPackValueType::Array));
 
-      if (needSnapshot) {
+      if (payload.snapshot.has_value()) {
+        VPackObjectBuilder guard(&builder);
+        builder.add(VPackValue("readDB"));
         {
-          VPackObjectBuilder guard(&builder);
-          builder.add(VPackValue("readDB"));
-          {
-            VPackArrayBuilder guard2(&builder);
-            snapshot.dumpToBuilder(builder);
-          }
-          builder.add("term", VPackValue(snapshotTerm));
-          builder.add("index", VPackValue(snapshotIndex));
+          VPackArrayBuilder guard2(&builder);
+          payload.snapshot->store.dumpToBuilder(builder);
         }
+        builder.add("term", VPackValue(payload.snapshot->term));
+        builder.add("index", VPackValue(payload.snapshot->index));
       }
 
       size_t toLog = 0;
@@ -797,9 +760,9 @@ void Agent::sendAppendEntriesRPC() {
       LOG_TOPIC("2d80d", DEBUG, Logger::AGENCY)
           << "Appending (" << (uint64_t)(TRI_microtime() * 1000000000.0) << ") "
           << unconfirmed.size() - 1 << " entries up to index " << highest
-          << (needSnapshot ? " and a snapshot" : "") << " to follower "
-          << followerId << ". Next real log contact to " << followerId
-          << " in: "
+          << (payload.snapshot.has_value() ? " and a snapshot" : "")
+          << " to follower " << followerId << ". Next real log contact to "
+          << followerId << " in: "
           << std::chrono::duration<double, std::milli>(earliestPackage -
                                                        steady_clock::now())
                  .count()

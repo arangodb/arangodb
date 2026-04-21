@@ -1976,31 +1976,37 @@ void State::toVelocyPack(velocypack::Builder& builder) const {
   return index_t(arangodb::basics::StringUtils::uint64(key, keyLength));
 }
 
-bool State::getSnapshotAndEntries(Store& snapshot, index_t& snapshotIndex,
-                                  term_t& snapshotTerm,
-                                  std::vector<log_t>& entries,
-                                  size_t maxEntries) {
-  // Hold _logLock across both the disk snapshot load and the log read so
-  // that no compaction can interleave and leave the two inconsistent.
-  // Disk I/O under the lock is acceptable here because snapshot sends are
-  // rare (a follower has to fall behind the leader's compaction horizon).
+ResultT<State::AppendEntriesPayload> State::buildAppendEntriesPayload(
+    index_t lastConfirmed, size_t maxEntries) {
+  // Disk I/O under _logLock is acceptable: snapshot sends are rare because
+  // a follower has to fall behind the leader's compaction horizon first.
   std::lock_guard mutexLocker{_logLock};
-  if (!loadLastCompactedSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
-    return false;
+
+  if (_log.empty()) {
+    return Result{TRI_ERROR_INTERNAL, "agency log is empty"};
   }
-  if (snapshotIndex == 0 || _log.empty()) {
-    return false;
+
+  AppendEntriesPayload payload;
+  index_t fetchStart = lastConfirmed;
+
+  if (lastConfirmed < _cur) {
+    AppendEntriesPayload::SnapshotInfo info;
+    if (!loadLastCompactedSnapshot(info.store, info.index, info.term) ||
+        info.index == 0 || info.term == 0) {
+      return Result{TRI_ERROR_INTERNAL, "could not load compacted snapshot"};
+    }
+    fetchStart = info.index - 1;
+    payload.snapshot.emplace(std::move(info));
   }
 
   auto const [startBound, endBound] =
-      determineLogBounds(snapshotIndex - 1, snapshotIndex - 1 + maxEntries);
-  entries.clear();
-  entries.reserve(endBound - startBound);
+      determineLogBounds(fetchStart, fetchStart + maxEntries);
+  payload.entries.reserve(endBound - startBound);
   for (size_t i = startBound; i < endBound; ++i) {
     TRI_ASSERT(i < _log.size());
-    entries.push_back(_log[i]);
+    payload.entries.push_back(_log[i]);
   }
-  return true;
+  return payload;
 }
 
 }  // namespace consensus

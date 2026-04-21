@@ -25,6 +25,7 @@
 
 #include "Agency/Store.h"
 #include "Agency/AgencyCommon.h"
+#include "Basics/ResultT.h"
 #include "Metrics/Fwd.h"
 #include "Utils/OperationOptions.h"
 
@@ -32,6 +33,7 @@
 #include <deque>
 #include <map>
 #include <mutex>
+#include <optional>
 
 struct TRI_vocbase_t;
 
@@ -204,18 +206,25 @@ class State {
   /// `index` to 0 if there is no compacted snapshot.
   bool loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term);
 
-  /// @brief Atomically load the latest persisted snapshot together with log
-  /// entries that start at the snapshot's index. Returns false if no snapshot
-  /// is available or if a consistent pair could not be obtained within a
-  /// bounded number of retries.
-  /// The snapshot is read from disk (outside _logLock). Log entries are read
-  /// under _logLock and validated against the snapshot's index to detect
-  /// compaction running between the two reads; on mismatch the read is
-  /// retried. This avoids the TOCTOU race between reading the snapshot from
-  /// disk and reading log entries from memory.
-  bool getSnapshotAndEntries(Store& snapshot, index_t& snapshotIndex,
-                             term_t& snapshotTerm, std::vector<log_t>& entries,
-                             size_t maxEntries);
+  struct AppendEntriesPayload {
+    struct SnapshotInfo {
+      Store store;
+      index_t index = 0;
+      term_t term = 0;
+    };
+    std::vector<log_t> entries;
+    /// Set iff the follower has fallen behind our compaction horizon; in
+    /// that case `entries` start at `snapshot->index - 1`. Otherwise
+    /// `entries` start at the caller's `lastConfirmed`.
+    std::optional<SnapshotInfo> snapshot;
+  };
+
+  /// @brief Build the payload for an AppendEntriesRPC to a follower. The
+  /// needSnapshot decision, the on-disk snapshot load and the log read all
+  /// happen under a single lock, so compaction cannot interleave and make
+  /// snapshot and entries inconsistent.
+  ResultT<AppendEntriesPayload> buildAppendEntriesPayload(index_t lastConfirmed,
+                                                          size_t maxEntries);
 
   /// @brief lastCompactedAt
   index_t lastCompactionAt() const;
