@@ -226,8 +226,14 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   if (resolved.fail()) {
     return std::move(resolved).result();
   }
-  std::size_t const reservoirCapacity =
-      resolved.get() * kMaxTrainingSizePerNLists;
+  std::size_t const reservoirCapacity = std::invoke([&] {
+    auto const capacity = resolved.get() * kMaxTrainingSizePerNLists;
+    if (_index.sparse()) {
+      return capacity;
+    }
+
+    return std::min(capacity, numDocsHint);
+  });
 
   auto const seed = RandomDevice::seed64();
 
