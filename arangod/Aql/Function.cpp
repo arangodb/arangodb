@@ -32,7 +32,7 @@
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 /// @brief create the function
 Function::Function(std::string const& name, char const* arguments,
@@ -261,3 +261,5 @@ void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
               velocypack::Value(implementation == &functions::NotImplemented));
   builder.close();
 }
+
+}  // namespace arangodb::aql
