@@ -35,6 +35,7 @@
 namespace arangodb::aql {
 
 /// @brief create the function
+// cppcheck-suppress virtualCallInConstructor
 Function::Function(std::string const& name, char const* arguments,
                    std::underlying_type<Flags>::type flags,
                    functions::FunctionImplementation implementation)
@@ -81,6 +82,7 @@ Function::Function(std::string const& name, char const* arguments,
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // constructor to create a function stub. only used from tests
+// cppcheck-suppress virtualCallInConstructor
 Function::Function(std::string const& name,
                    functions::FunctionImplementation implementation)
     : name(name),
