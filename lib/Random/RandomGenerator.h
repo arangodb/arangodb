@@ -50,6 +50,8 @@ class RandomDevice {
 
   static unsigned long seed();
 
+  static std::uint64_t seed64();
+
   int32_t random(int32_t left, int32_t right);
 
  private:

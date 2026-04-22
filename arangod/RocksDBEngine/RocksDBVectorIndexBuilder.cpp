@@ -38,7 +38,6 @@
 #include <format>
 #include <functional>
 #include <optional>
-#include <random>
 #include <string>
 #include <thread>
 
@@ -49,6 +48,7 @@
 #include "Basics/voc-errors.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -211,16 +211,6 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
   }
 }
 
-namespace {
-
-std::uint64_t makeSeed() {
-  std::random_device rd;
-  return (static_cast<std::uint64_t>(rd()) << 32) |
-         static_cast<std::uint64_t>(rd());
-}
-
-}  // namespace
-
 ResultT<VectorIndexTrainer::TrainingDataset>
 VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
                                            rocksdb::Slice upper,
@@ -243,7 +233,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     reservoirCapacity = resolved.get() * kMaxTrainingSizePerNLists;
   }
 
-  std::uint64_t const seed = makeSeed();
+  auto const seed = RandomDevice::seed64();
 
   LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
       "[shard={}, index={}] Collecting training data dimension {} for {} "
@@ -283,9 +273,8 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
 
   std::size_t const validSeen = sampler.itemsSeen();
 
-  // Sparse+scaling: resize the reservoir to the k implied by the actual
-  // valid-vector count. A uniform subsample of a uniform sample stays
-  // uniform, so this preserves the Algorithm L guarantee.
+  // Sparse+scaling: we need to resize after full iteration since we cannot
+  // calculate the
   if (sparseScaling && validSeen > 0) {
     auto resolved = resolveNLists(validSeen);
     if (resolved.fail()) {
@@ -459,8 +448,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
       if constexpr (returnsResult) {
         setResult(fn());
-      }
-      else {
+      } else {
         fn();
       }
     } catch (basics::Exception const& e) {
