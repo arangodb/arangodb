@@ -213,100 +213,6 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
 
 namespace {
 
-// Reservoir sampler implementing Algorithm L (Li 1994) for uniform-without-
-// replacement sampling over a stream of unknown-but-bounded length. Each
-// slot holds `dimension` consecutive floats. With no capacity set, consume()
-// just appends — useful when we don't know an upper bound on the stream size.
-class ReservoirSampler {
- public:
-  ReservoirSampler(std::size_t dimension, std::optional<std::size_t> capacity,
-                   std::mt19937_64& rng)
-      : _dimension{dimension}, _capacity{capacity}, _rng{rng} {
-    if (_capacity.has_value()) {
-      _data.reserve(*_capacity * _dimension);
-    }
-  }
-
-  void consume(std::vector<float> const& vector) {
-    TRI_ASSERT(vector.size() == _dimension);
-    if (!_capacity.has_value() || _itemsSeen < *_capacity) {
-      _data.insert(_data.end(), vector.begin(), vector.end());
-      ++_itemsSeen;
-      if (_capacity.has_value() && _itemsSeen == *_capacity) {
-        primeSampler();
-      }
-      return;
-    }
-    if (_itemsSeen == _nextReplacement) {
-      std::size_t const k = *_capacity;
-      std::uniform_int_distribution<std::size_t> slotDist{0, k - 1};
-      std::size_t const slot = slotDist(_rng);
-      std::copy(vector.begin(), vector.end(),
-                _data.begin() + slot * _dimension);
-      _w *= std::exp(std::log(sampleOpenUnit()) / static_cast<double>(k));
-      TRI_ASSERT(_w > 0.0 && _w < 1.0);
-      _nextReplacement += 1 + skipCount(_w);
-    }
-    ++_itemsSeen;
-  }
-
-  // Uniformly subsample down to `newCapacity` slots via a partial
-  // Fisher–Yates shuffle. No-op if the reservoir already fits.
-  void resize(std::size_t newCapacity) {
-    std::size_t const current = _data.size() / _dimension;
-    if (newCapacity >= current) {
-      return;
-    }
-    for (std::size_t i = 0; i < newCapacity; ++i) {
-      std::uniform_int_distribution<std::size_t> dist{i, current - 1};
-      std::size_t const j = dist(_rng);
-      if (i != j) {
-        std::swap_ranges(_data.begin() + i * _dimension,
-                         _data.begin() + (i + 1) * _dimension,
-                         _data.begin() + j * _dimension);
-      }
-    }
-    _data.resize(newCapacity * _dimension);
-  }
-
-  std::vector<float> release() && { return std::move(_data); }
-  std::size_t itemsSeen() const noexcept { return _itemsSeen; }
-
- private:
-  // Draws u ∈ (0, 1); rejects 0 so std::log(u) stays finite.
-  double sampleOpenUnit() {
-    std::uniform_real_distribution<double> dist;
-    double u;
-    do {
-      u = dist(_rng);
-    } while (u <= 0.0);
-    return u;
-  }
-
-  // Geometric skip count: floor(log(U) / log(1 - w)). Uses log1p for
-  // numerical stability when w is close to 0.
-  std::size_t skipCount(double w) {
-    return static_cast<std::size_t>(
-        std::floor(std::log(sampleOpenUnit()) / std::log1p(-w)));
-  }
-
-  void primeSampler() {
-    std::size_t const k = *_capacity;
-    TRI_ASSERT(k > 0);
-    _w = std::exp(std::log(sampleOpenUnit()) / static_cast<double>(k));
-    TRI_ASSERT(_w > 0.0 && _w < 1.0);
-    _nextReplacement = k + skipCount(_w);
-  }
-
-  std::size_t _dimension;
-  std::optional<std::size_t> _capacity;
-  std::mt19937_64& _rng;
-  std::size_t _itemsSeen{0};
-  double _w{0.0};
-  std::size_t _nextReplacement{0};
-  std::vector<float> _data;
-};
-
 std::uint64_t makeSeed() {
   std::random_device rd;
   return (static_cast<std::uint64_t>(rd()) << 32) |
@@ -338,7 +244,6 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   }
 
   std::uint64_t const seed = makeSeed();
-  std::mt19937_64 rng{seed};
 
   LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
       "[shard={}, index={}] Collecting training data dimension {} for {} "
@@ -349,7 +254,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
                                     : std::string{"unbounded"},
       seed);
 
-  ReservoirSampler sampler{def.dimension, reservoirCapacity, rng};
+  VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
   std::vector<float> input;
   input.reserve(def.dimension);
 
