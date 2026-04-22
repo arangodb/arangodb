@@ -34,6 +34,7 @@ const rp = require('@arangodb/testutils/result-processing');
 const pm = require('@arangodb/testutils/portmanager');
 const yaml = require('js-yaml');
 const internal = require('internal');
+const {versionHas} = require("@arangodb/test-helper");
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const ArangoError = require('@arangodb').ArangoError;
@@ -381,7 +382,7 @@ class instance {
       default_args['javascript.startup-options-allowlist'] = ".*";
     }
     this.args = _.defaults(this.args, default_args);
-    if (this.options.extremeVerbosity) {
+    if (this.options.extremeVerbosity && versionHas('maintainer-mode') ) {
       this.args['dump-env'] = true;
     }
 
