@@ -1,0 +1,116 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jure Bajic
+////////////////////////////////////////////////////////////////////////////////
+
+#include "VectorIndex/VectorIndexTrainingSampler.h"
+
+#include "Assertions/Assert.h"
+
+#include <algorithm>
+#include <cmath>
+#include <utility>
+
+namespace arangodb::vector {
+
+VectorIndexTrainingSampler::VectorIndexTrainingSampler(
+    std::size_t dimension, std::optional<std::size_t> capacity,
+    std::uint64_t seed)
+    : _dimension{dimension}, _capacity{capacity}, _rng{seed} {
+  if (_capacity.has_value()) {
+    _data.reserve(*_capacity * _dimension);
+  }
+}
+
+void VectorIndexTrainingSampler::consume(std::vector<float> const& vector) {
+  TRI_ASSERT(vector.size() == _dimension);
+  if (!_capacity.has_value() || _itemsSeen < *_capacity) {
+    _data.insert(_data.end(), vector.begin(), vector.end());
+    ++_itemsSeen;
+    if (_capacity.has_value() && _itemsSeen == *_capacity) {
+      primeSampler();
+    }
+    return;
+  }
+  if (_itemsSeen == _nextReplacement) {
+    std::size_t const k = *_capacity;
+    std::uniform_int_distribution<std::size_t> slotDist{0, k - 1};
+    std::size_t const slot = slotDist(_rng);
+    std::copy(vector.begin(), vector.end(),
+              _data.begin() + slot * _dimension);
+    _w *= std::exp(std::log(sampleOpenUnit()) / static_cast<double>(k));
+    TRI_ASSERT(_w > 0.0 && _w < 1.0);
+    _nextReplacement += 1 + skipCount(_w);
+  }
+  ++_itemsSeen;
+}
+
+void VectorIndexTrainingSampler::resize(std::size_t newCapacity) {
+  std::size_t const current = _data.size() / _dimension;
+  if (newCapacity >= current) {
+    return;
+  }
+  for (std::size_t i = 0; i < newCapacity; ++i) {
+    std::uniform_int_distribution<std::size_t> dist{i, current - 1};
+    std::size_t const j = dist(_rng);
+    if (i != j) {
+      std::swap_ranges(_data.begin() + i * _dimension,
+                       _data.begin() + (i + 1) * _dimension,
+                       _data.begin() + j * _dimension);
+    }
+  }
+  _data.resize(newCapacity * _dimension);
+}
+
+std::vector<float> VectorIndexTrainingSampler::release() && {
+  return std::move(_data);
+}
+
+std::size_t VectorIndexTrainingSampler::itemsSeen() const noexcept {
+  return _itemsSeen;
+}
+
+// Draws u ∈ (0, 1); rejects 0 so std::log(u) stays finite.
+double VectorIndexTrainingSampler::sampleOpenUnit() {
+  std::uniform_real_distribution<double> dist;
+  double u;
+  do {
+    u = dist(_rng);
+  } while (u <= 0.0);
+  return u;
+}
+
+// Geometric skip count: floor(log(U) / log(1 - w)). Uses log1p for
+// numerical stability when w is close to 0.
+std::size_t VectorIndexTrainingSampler::skipCount(double w) {
+  return static_cast<std::size_t>(
+      std::floor(std::log(sampleOpenUnit()) / std::log1p(-w)));
+}
+
+void VectorIndexTrainingSampler::primeSampler() {
+  std::size_t const k = *_capacity;
+  TRI_ASSERT(k > 0);
+  _w = std::exp(std::log(sampleOpenUnit()) / static_cast<double>(k));
+  TRI_ASSERT(_w > 0.0 && _w < 1.0);
+  _nextReplacement = k + skipCount(_w);
+}
+
+}  // namespace arangodb::vector

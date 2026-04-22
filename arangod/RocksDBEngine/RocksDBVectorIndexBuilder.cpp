@@ -37,6 +37,8 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <optional>
+#include <random>
 #include <string>
 #include <thread>
 
@@ -57,6 +59,7 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "Transaction/Helpers.h"
+#include "VectorIndex/VectorIndexTrainingSampler.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
@@ -74,10 +77,6 @@
 #include "faiss/utils/distances.h"
 
 namespace arangodb::vector {
-
-// Minimum vectors to collect unconditionally before applying the adaptive cap
-// in the sparse+scaling path.
-constexpr std::size_t kSparseScalingBootstrapVectors{1000};
 
 Result readDocumentVectorData(
     velocypack::Slice doc,
@@ -212,41 +211,150 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
   }
 }
 
+namespace {
+
+// Reservoir sampler implementing Algorithm L (Li 1994) for uniform-without-
+// replacement sampling over a stream of unknown-but-bounded length. Each
+// slot holds `dimension` consecutive floats. With no capacity set, consume()
+// just appends — useful when we don't know an upper bound on the stream size.
+class ReservoirSampler {
+ public:
+  ReservoirSampler(std::size_t dimension, std::optional<std::size_t> capacity,
+                   std::mt19937_64& rng)
+      : _dimension{dimension}, _capacity{capacity}, _rng{rng} {
+    if (_capacity.has_value()) {
+      _data.reserve(*_capacity * _dimension);
+    }
+  }
+
+  void consume(std::vector<float> const& vector) {
+    TRI_ASSERT(vector.size() == _dimension);
+    if (!_capacity.has_value() || _itemsSeen < *_capacity) {
+      _data.insert(_data.end(), vector.begin(), vector.end());
+      ++_itemsSeen;
+      if (_capacity.has_value() && _itemsSeen == *_capacity) {
+        primeSampler();
+      }
+      return;
+    }
+    if (_itemsSeen == _nextReplacement) {
+      std::size_t const k = *_capacity;
+      std::uniform_int_distribution<std::size_t> slotDist{0, k - 1};
+      std::size_t const slot = slotDist(_rng);
+      std::copy(vector.begin(), vector.end(),
+                _data.begin() + slot * _dimension);
+      _w *= std::exp(std::log(sampleOpenUnit()) / static_cast<double>(k));
+      TRI_ASSERT(_w > 0.0 && _w < 1.0);
+      _nextReplacement += 1 + skipCount(_w);
+    }
+    ++_itemsSeen;
+  }
+
+  // Uniformly subsample down to `newCapacity` slots via a partial
+  // Fisher–Yates shuffle. No-op if the reservoir already fits.
+  void resize(std::size_t newCapacity) {
+    std::size_t const current = _data.size() / _dimension;
+    if (newCapacity >= current) {
+      return;
+    }
+    for (std::size_t i = 0; i < newCapacity; ++i) {
+      std::uniform_int_distribution<std::size_t> dist{i, current - 1};
+      std::size_t const j = dist(_rng);
+      if (i != j) {
+        std::swap_ranges(_data.begin() + i * _dimension,
+                         _data.begin() + (i + 1) * _dimension,
+                         _data.begin() + j * _dimension);
+      }
+    }
+    _data.resize(newCapacity * _dimension);
+  }
+
+  std::vector<float> release() && { return std::move(_data); }
+  std::size_t itemsSeen() const noexcept { return _itemsSeen; }
+
+ private:
+  // Draws u ∈ (0, 1); rejects 0 so std::log(u) stays finite.
+  double sampleOpenUnit() {
+    std::uniform_real_distribution<double> dist;
+    double u;
+    do {
+      u = dist(_rng);
+    } while (u <= 0.0);
+    return u;
+  }
+
+  // Geometric skip count: floor(log(U) / log(1 - w)). Uses log1p for
+  // numerical stability when w is close to 0.
+  std::size_t skipCount(double w) {
+    return static_cast<std::size_t>(
+        std::floor(std::log(sampleOpenUnit()) / std::log1p(-w)));
+  }
+
+  void primeSampler() {
+    std::size_t const k = *_capacity;
+    TRI_ASSERT(k > 0);
+    _w = std::exp(std::log(sampleOpenUnit()) / static_cast<double>(k));
+    TRI_ASSERT(_w > 0.0 && _w < 1.0);
+    _nextReplacement = k + skipCount(_w);
+  }
+
+  std::size_t _dimension;
+  std::optional<std::size_t> _capacity;
+  std::mt19937_64& _rng;
+  std::size_t _itemsSeen{0};
+  double _w{0.0};
+  std::size_t _nextReplacement{0};
+  std::vector<float> _data;
+};
+
+std::uint64_t makeSeed() {
+  std::random_device rd;
+  return (static_cast<std::uint64_t>(rd()) << 32) |
+         static_cast<std::uint64_t>(rd());
+}
+
+}  // namespace
+
 ResultT<VectorIndexTrainer::TrainingDataset>
 VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
                                            rocksdb::Slice upper,
                                            std::uint64_t numDocsHint,
                                            std::stop_token stopToken) const {
   auto const& def = _index.getDefinition();
-  std::vector<float> trainingData;
-  std::vector<float> input;
-  input.reserve(def.dimension);
-  std::optional<std::size_t> maxVectors;
+  bool const sparseScaling = _index.sparse() && isNListsScaling(def.nLists);
 
-  LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
-      "[shard={}, index={}] Collecting training data "
-      "dimension {} for training for {} index with the numDocsHint: {}.",
-      _index.collection().name(), _index.id().id(), def.dimension,
-      _index.sparse() ? "sparse" : "non-sparse", numDocsHint);
-
-  // We need to do a full iteration to properly resolve the number of nLists
-  bool const shouldDoFullIteration =
-      _index.sparse() && isNListsScaling(def.nLists);
-  if (!shouldDoFullIteration) {
+  // Size the reservoir from numDocsHint. For sparse+scaling this is an upper
+  // bound on the valid vector count, so we may subsample further once the
+  // actual count is known. If numDocsHint is 0 in sparse+scaling mode we have
+  // no upper bound and fall back to an unbounded reservoir; the subsample at
+  // the end still produces a uniform sample.
+  std::optional<std::size_t> reservoirCapacity;
+  if (!sparseScaling || numDocsHint > 0) {
     auto resolved = resolveNLists(numDocsHint);
     if (resolved.fail()) {
       return std::move(resolved).result();
     }
-    maxVectors = resolved.get() * kMaxTrainingSizePerNLists;
+    reservoirCapacity = resolved.get() * kMaxTrainingSizePerNLists;
   }
-  // only one of these can be true
-  TRI_ASSERT(shouldDoFullIteration ^ maxVectors.has_value());
 
-  std::size_t trainingDatasetCounter{0};
+  std::uint64_t const seed = makeSeed();
+  std::mt19937_64 rng{seed};
+
+  LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
+      "[shard={}, index={}] Collecting training data dimension {} for {} "
+      "index with numDocsHint: {}, reservoir capacity: {}, sampler seed: {}.",
+      _index.collection().name(), _index.id().id(), def.dimension,
+      _index.sparse() ? "sparse" : "non-sparse", numDocsHint,
+      reservoirCapacity.has_value() ? std::to_string(*reservoirCapacity)
+                                    : std::string{"unbounded"},
+      seed);
+
+  ReservoirSampler sampler{def.dimension, reservoirCapacity, rng};
+  std::vector<float> input;
+  input.reserve(def.dimension);
   std::size_t iterationCounter{0};
-  while (it.Valid() &&
-         (shouldDoFullIteration ||
-          (maxVectors.has_value() && trainingDatasetCounter < *maxVectors))) {
+
+  while (it.Valid()) {
     if (iterationCounter % 1000 == 0 && stopToken.stop_requested()) {
       return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "vector training aborted"};
@@ -258,6 +366,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
         res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER) && _index.sparse()) {
         it.Next();
+        ++iterationCounter;
         continue;
       }
       return Result{
@@ -267,37 +376,29 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
               "embeddings are in a wrong format and index is not sparse: {}",
               res.errorMessage())};
     }
-
-    if (!shouldDoFullIteration) {
-      trainingData.insert(trainingData.end(), input.begin(), input.end());
-      ++trainingDatasetCounter;
-    } else {
-      // We collect only in case when we are below minimum 1000 docs or when we
-      // have do not have enough docs for the currently projected nLists value
-      bool shouldCollect =
-          trainingDatasetCounter < kSparseScalingBootstrapVectors;
-      if (!shouldCollect) {
-        auto resolved = resolveNLists(trainingDatasetCounter);
-        if (resolved.fail()) {
-          return std::move(resolved).result();
-        }
-        shouldCollect =
-            trainingDatasetCounter < resolved.get() * kMaxTrainingSizePerNLists;
-      }
-      if (shouldCollect) {
-        trainingData.insert(trainingData.end(), input.begin(), input.end());
-        ++trainingDatasetCounter;
-      }
-    }
+    sampler.consume(input);
     input.clear();
-
     it.Next();
     ++iterationCounter;
   }
 
+  std::size_t const validSeen = sampler.itemsSeen();
+
+  // Sparse+scaling: resize the reservoir to the k implied by the actual
+  // valid-vector count. A uniform subsample of a uniform sample stays
+  // uniform, so this preserves the Algorithm L guarantee.
+  if (sparseScaling && validSeen > 0) {
+    auto resolved = resolveNLists(validSeen);
+    if (resolved.fail()) {
+      return std::move(resolved).result();
+    }
+    sampler.resize(resolved.get() * kMaxTrainingSizePerNLists);
+  }
+
+  auto trainingData = std::move(sampler).release();
+  std::size_t const finalCount = trainingData.size() / def.dimension;
   if (def.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(def.dimension, trainingDatasetCounter,
-                          trainingData.data());
+    faiss::fvec_renorm_L2(def.dimension, finalCount, trainingData.data());
   }
 
   if (trainingData.empty()) {
@@ -308,7 +409,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
                   "training process."};
   }
 
-  return ResultT<TrainingDataset>({std::move(trainingData), iterationCounter});
+  return ResultT<TrainingDataset>({std::move(trainingData), validSeen});
 }
 
 ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
