@@ -502,6 +502,25 @@ ArangoCollection.prototype.compact = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief retrains a vector index on this collection. Kicks off an
+// / asynchronous rebuild on the server; the existing index keeps serving
+// / reads and writes until the new one is ready.
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.retrain = function (indexName) {
+  if (typeof indexName !== 'string' || indexName.length === 0) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
+      errorMessage: "retrain() requires a vector index name or id"
+    });
+  }
+  let url = this._baseurl('retrain') + '?index=' + encodeURIComponent(indexName);
+  let requestResult = this._database._connection.PUT(url, null);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief loads a collection
 // //////////////////////////////////////////////////////////////////////////////
 
