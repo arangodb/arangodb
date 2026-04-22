@@ -80,7 +80,7 @@ function NewAqlReplaceAnyWithINTestSuite() {
         var calcNodesWith = findExecutionNodes(planWithRule, "CalculationNode");
         var calcNodesWithout = findExecutionNodes(planWithoutRule, "CalculationNode");
 
-        assertTrue(calcNodesWith.length > 0 || calcNodesWithout.length > 0,
+        assertTrue(calcNodesWith.length > 0 && calcNodesWithout.length > 0,
             "Plans should have calculation nodes: " + query);
 
         assertTrue(planWithRule.nodes.length > 0, "Plan with rule should have nodes");
@@ -399,7 +399,10 @@ function NewAqlReplaceAnyWithINTestSuite() {
 
             var plan = getPlan(query, {}, {optimizer: {rules: ["-all", "+" + ruleName]}});
             assertTrue(plan.rules.indexOf(ruleName) !== -1, "Rule should fire");
-            assertEqual(0, executeWithRule(query, {}).length);
+            var withRule = executeWithRule(query, {});
+            var withoutRule = executeWithoutRule(query, {});
+            assertEqual(0, withRule.length);
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
         },
 
         testFiresNonDeterministicLhs: function () {
@@ -424,7 +427,10 @@ function NewAqlReplaceAnyWithINTestSuite() {
 
             var plan = getPlan(query, {}, {optimizer: {rules: ["-all", "+" + ruleName]}});
             assertTrue(plan.rules.indexOf(ruleName) !== -1, "Rule should fire");
-            assertEqual(40, executeWithRule(query, {}).length);
+            var withRule = executeWithRule(query, {});
+            var withoutRule = executeWithoutRule(query, {});
+            assertEqual(40, withRule.length);
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
         },
 
         testFiresBothConstantArrays: function () {
@@ -436,7 +442,10 @@ function NewAqlReplaceAnyWithINTestSuite() {
 
             var plan = getPlan(query, {}, {optimizer: {rules: ["-all", "+" + ruleName]}});
             assertTrue(plan.rules.indexOf(ruleName) !== -1, "Rule should fire");
-            assertEqual(0, executeWithRule(query, {}).length);
+            var withRule = executeWithRule(query, {});
+            var withoutRule = executeWithoutRule(query, {});
+            assertEqual(0, withRule.length);
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
         },
 
         testSkipsAnyNe: function () {
@@ -631,16 +640,16 @@ function NewAqlReplaceAnyWithINTestSuite() {
         testAnyOrBranchesOnSameAttribute: function () {
             var query = "FOR doc IN " + replace.name() +
                 " FILTER [5] ANY == doc.value OR [15] ANY == doc.value RETURN doc";
-            
-            var result = db._query(query).toArray();
-            assertEqual(2, result.length, "Should return 2 documents with value 5 or 15");
-            
-            var values = result.map(d => d.value).sort((a, b) => a - b);
+
+            var plan = getPlan(query, {}, {optimizer: {rules: ["-all", "+" + ruleName]}});
+            assertTrue(plan.rules.indexOf(ruleName) !== -1, "Rule should fire");
+
+            var withRule = executeWithRule(query, {});
+            var withoutRule = executeWithoutRule(query, {});
+            assertEqual(2, withRule.length, "Should return 2 documents with value 5 or 15");
+            var values = withRule.map(d => d.value).sort((a, b) => a - b);
             assertEqual([5, 15], values);
-            
-            var plan = db._createStatement({query: query}).explain();
-            var foundRule = plan.plan.rules.indexOf("replace-any-eq-with-in") !== -1;
-            assertTrue(foundRule, "replace-any-eq-with-in rule should fire");
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
         }
     };
 }

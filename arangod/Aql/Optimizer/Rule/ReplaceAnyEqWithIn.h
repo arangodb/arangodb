@@ -23,10 +23,12 @@
 
 #pragma once
 
-#include "Aql/ExecutionPlan.h"
+#include <memory>
 
 namespace arangodb::aql {
+class ExecutionPlan;
 class Optimizer;
+struct OptimizerRule;
 
 /// @brief replace ANY == array comparisons with IN expressions
 void replaceAnyEqWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,

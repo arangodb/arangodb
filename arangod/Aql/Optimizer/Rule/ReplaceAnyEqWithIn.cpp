@@ -57,6 +57,10 @@ struct AnySimplifier {
       return nullptr;
     }
 
+    // We don't apply the rule for UNARY_NOT as in NOT (lhs ANY == rhs), as,
+    // though it's equivalent to rhs NOT IN lhs, it's less useful for index and
+    // ReplaceOrWithIn, which is a rule that also maps to rhs IN lhs, also
+    // doesn't apply it.
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
         node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
       auto* lhs = node->getMember(0);

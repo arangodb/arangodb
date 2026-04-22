@@ -459,6 +459,16 @@ struct OptimizerRule {
       "Also constrained sort rule now does not expects any late "
       "materialization variables replacement");
 
+  static_assert(replaceAnyEqWithInRule < useIndexesRule,
+                "replaceAnyEqWithInRule must run before useIndexesRule so the "
+                "rewritten IN expressions are visible to index selection");
+
+  static_assert(
+      replaceAnyEqWithInRule < removeUnnecessaryFiltersRule2,
+      "replaceAnyEqWithInRule must run before removeUnnecessaryFiltersRule2 "
+      "so constant-false IN expressions produced by the rewrite can be "
+      "eliminated");
+
   static_assert(useVectorIndexForSort < useIndexesRule,
                 "useVectorIndexForSort must happen before useIndexesRule rule, "
                 "otherwise the forcing of vector index hint does not work");
