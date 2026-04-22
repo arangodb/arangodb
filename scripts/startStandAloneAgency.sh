@@ -239,7 +239,6 @@ for aid in "${aaid[@]}"; do
     --server.descriptors-minimum 0 \
     --server.authentication false \
     --server.endpoint $TRANSPORT://[::]:$port \
-    --server.statistics false \
     $SSLKEYFILE \
     | tee agency/$PORT.stdout 2>&1 &
   PIDS+=$!
