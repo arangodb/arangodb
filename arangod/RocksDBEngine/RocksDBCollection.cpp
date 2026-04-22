@@ -67,6 +67,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -457,6 +458,58 @@ void RocksDBCollection::swapIndex(std::shared_ptr<Index> const& oldIdx,
   RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   removeIndex(_indexes, oldIdx->id());
   _indexes.emplace(newIdx);
+}
+
+Result RocksDBCollection::retrainVectorIndex(IndexId iid) {
+  if (ServerState::instance()->isCoordinator()) {
+    // On the coordinator there are no physical shards to retrain. The
+    // cluster broadcast fans the request out to DBServers directly.
+    return {TRI_ERROR_CLUSTER_UNSUPPORTED,
+            "retrainVectorIndex must not be called on a coordinator"};
+  }
+
+  auto target = lookupIndex(iid);
+  if (target == nullptr) {
+    return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
+  }
+
+  auto& feature =
+      _logicalCollection.vocbase().server().getFeature<VectorIndexFeature>();
+  return feature.requestRetrain(target);
+}
+
+void RocksDBCollection::addShadowIndex(std::shared_ptr<Index> const& shadow) {
+  TRI_ASSERT(shadow != nullptr);
+  TRI_ASSERT(shadow->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  // The shadow is expected to carry a fresh IndexId; assert this so that
+  // callers do not accidentally register a duplicate with an existing
+  // index's id.
+  TRI_ASSERT(
+      std::none_of(_indexes.begin(), _indexes.end(),
+                   [&](auto const& idx) { return idx->id() == shadow->id(); }));
+  _indexes.emplace(shadow);
+}
+
+void RocksDBCollection::abortShadowIndex(std::shared_ptr<Index> const& shadow) {
+  TRI_ASSERT(shadow != nullptr);
+  {
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    removeIndex(_indexes, shadow->id());
+  }
+  // Best-effort: range-delete any partial entries written under the
+  // shadow's objectId. The shadow was never persisted to the Definitions
+  // CF, so there is no marker to rewrite — this is purely disk-space
+  // reclamation.
+  auto rocksIdx = std::dynamic_pointer_cast<RocksDBIndex>(shadow);
+  if (rocksIdx != nullptr) {
+    auto res = rocksIdx->drop();
+    if (res.fail()) {
+      LOG_TOPIC("e16fa", WARN, Logger::ENGINES)
+          << "failed to clean up aborted shadow vector index "
+          << shadow->id().id() << ": " << res.errorMessage();
+    }
+  }
 }
 
 futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
