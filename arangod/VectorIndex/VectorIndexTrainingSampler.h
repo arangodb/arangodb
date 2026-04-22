@@ -42,7 +42,15 @@ class VectorIndexTrainingSampler {
                              std::optional<std::size_t> capacity,
                              std::uint64_t seed);
 
-  void consume(std::vector<float> const& vector);
+  // Hands out the internal scratch buffer for the next vector. The buffer is
+  // empty on return; the caller is expected to fill it with exactly
+  // `dimension` floats before calling consume().
+  std::vector<float>& inputBuffer() noexcept;
+
+  // Consumes the current scratch buffer (must hold `dimension` floats). Runs
+  // one step of Algorithm L: either grows the reservoir, replaces a slot, or
+  // skips the item.
+  void consume();
 
   // Uniformly subsample down to `newCapacity` slots via a partial
   // Fisher–Yates shuffle. No-op if the reservoir already fits.
@@ -63,6 +71,7 @@ class VectorIndexTrainingSampler {
   double _w{0.0};
   std::size_t _nextReplacement{0};
   std::vector<float> _data;
+  std::vector<float> _input;
 };
 
 }  // namespace arangodb::vector

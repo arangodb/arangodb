@@ -255,8 +255,6 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       seed);
 
   VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
-  std::vector<float> input;
-  input.reserve(def.dimension);
 
   while (it.Valid()) {
     if (stopToken.stop_requested()) {
@@ -265,8 +263,8 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     }
     TRI_ASSERT(it.key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it.value().data()));
-    if (auto const res =
-            readDocumentVectorData(doc, _index.fields(), def.dimension, input);
+    if (auto const res = readDocumentVectorData(
+            doc, _index.fields(), def.dimension, sampler.inputBuffer());
         res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER) && _index.sparse()) {
         it.Next();
@@ -279,8 +277,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
               "embeddings are in a wrong format and index is not sparse: {}",
               res.errorMessage())};
     }
-    sampler.consume(input);
-    input.clear();
+    sampler.consume();
     it.Next();
   }
 

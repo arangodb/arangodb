@@ -38,12 +38,18 @@ VectorIndexTrainingSampler::VectorIndexTrainingSampler(
   if (_capacity.has_value()) {
     _data.reserve(*_capacity * _dimension);
   }
+  _input.reserve(_dimension);
 }
 
-void VectorIndexTrainingSampler::consume(std::vector<float> const& vector) {
-  TRI_ASSERT(vector.size() == _dimension);
+std::vector<float>& VectorIndexTrainingSampler::inputBuffer() noexcept {
+  _input.clear();
+  return _input;
+}
+
+void VectorIndexTrainingSampler::consume() {
+  TRI_ASSERT(_input.size() == _dimension);
   if (!_capacity.has_value() || _itemsSeen < *_capacity) {
-    _data.insert(_data.end(), vector.begin(), vector.end());
+    _data.insert(_data.end(), _input.begin(), _input.end());
     ++_itemsSeen;
     if (_capacity.has_value() && _itemsSeen == *_capacity) {
       primeSampler();
@@ -54,8 +60,7 @@ void VectorIndexTrainingSampler::consume(std::vector<float> const& vector) {
     std::size_t const k = *_capacity;
     std::uniform_int_distribution<std::size_t> slotDist{0, k - 1};
     std::size_t const slot = slotDist(_rng);
-    std::copy(vector.begin(), vector.end(),
-              _data.begin() + slot * _dimension);
+    std::copy(_input.begin(), _input.end(), _data.begin() + slot * _dimension);
     _w *= std::exp(std::log(sampleOpenUnit()) / static_cast<double>(k));
     TRI_ASSERT(_w > 0.0 && _w < 1.0);
     _nextReplacement += 1 + skipCount(_w);
