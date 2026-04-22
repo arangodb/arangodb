@@ -195,6 +195,12 @@ Result compactOnAllDBServers(ClusterFeature&, bool changeLevel,
 Result compactOnAllDBServers(ClusterFeature&, std::string const& dbname,
                              std::string const& collname);
 
+/// @brief retrain a vector index on all shard leaders of a collection
+Result retrainVectorIndexOnAllDBServers(ClusterFeature&,
+                                        std::string const& dbname,
+                                        std::string const& collname,
+                                        std::string const& indexName);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create hotbackup on a coordinator
 //////////////////////////////////////////////////////////////////////////////

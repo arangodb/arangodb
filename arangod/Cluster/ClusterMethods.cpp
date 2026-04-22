@@ -2694,6 +2694,61 @@ Result compactOnAllDBServers(ClusterFeature& feature, std::string const& dbname,
   return {};
 }
 
+/// @brief retrain a vector index on all shards of a collection. Only the
+/// shard leaders need to run the retrain; followers rebuild their vector
+/// index from the leader's replicated WAL entries.
+Result retrainVectorIndexOnAllDBServers(ClusterFeature& feature,
+                                        std::string const& dbname,
+                                        std::string const& collname,
+                                        std::string const& indexName) {
+  ClusterInfo& ci = feature.clusterInfo();
+
+  auto collinfo = ci.getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+
+  std::string const baseUrl = "/_api/collection/";
+
+  VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.add(VPackSlice::emptyObjectSlice());
+
+  network::Headers headers;
+  network::RequestOptions options;
+  options.database = dbname;
+  options.timeout = network::Timeout(3600.0);
+  options.param("index", indexName);
+
+  std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+  std::vector<network::FutureRes> futures;
+  for (auto const& shard : *shardList) {
+    // Only contact the shard leader. Followers rebuild the vector index
+    // from replicated inserts/removals; retraining the leader is enough
+    // to trigger the full rebuild pipeline across replicas.
+    if (shard.second.empty()) {
+      continue;
+    }
+    ServerID const& leader = shard.second.front();
+    std::string uri =
+        absl::StrCat(baseUrl, std::string{shard.first}, "/retrain");
+    auto f = network::sendRequestRetry(pool, "server:" + leader,
+                                       fuerte::RestVerb::Put, std::move(uri),
+                                       body, options, headers);
+    futures.emplace_back(std::move(f));
+  }
+
+  for (Future<network::Response>& f : futures) {
+    Result res = f.waitAndGet().combinedResult();
+    if (res.fail()) {
+      return res;
+    }
+  }
+  return {};
+}
+
 std::string const apiStr("/_admin/backup/");
 
 arangodb::Result hotBackupList(
