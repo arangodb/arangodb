@@ -119,9 +119,18 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   if (!_options.file.empty()) {
     std::error_code existsEc;
     if (!std::filesystem::exists(_options.file, existsEc)) {
-      LOG_TOPIC("f21f9", FATAL, Logger::CONFIG)
-          << "cannot read config file '" << _options.file << "'";
-      FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
+      if (existsEc) {
+        // An actual error occurred (permissions, I/O, invalid path, etc.
+        LOG_TOPIC("f21fa", FATAL, Logger::CONFIG)
+            << "error checking config file '" << _options.file
+            << "': " << existsEc.message();
+        FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
+      } else {
+        // File simply does not exist
+        LOG_TOPIC("f21f9", FATAL, Logger::CONFIG)
+            << "cannot read config file '" << _options.file << "'";
+        FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
+      }
     }
 
     auto local = _options.file + ".local";
@@ -206,6 +215,15 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
           << "found config file '" << name << "'";
       filename = name;
       break;
+    } else if (existsEc) {
+      // An error occurred while checking the file
+      LOG_TOPIC("e6bd9", ERR, Logger::CONFIG)
+          << "error checking config file '" << name
+          << "': " << existsEc.message();
+    } else {
+      // File simply does not exist
+      LOG_TOPIC("e6bda", DEBUG, Logger::CONFIG)
+          << "config file '" << name << "' does not exist";
     }
 
     if (checkArangoImp) {
@@ -218,6 +236,15 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
             << "found config file '" << name << "'";
         filename = name;
         break;
+      } else if (existsEc) {
+        // An error occurred while checking the file
+        LOG_TOPIC("fc54f", ERR, Logger::CONFIG)
+            << "error checking config file '" << name
+            << "': " << existsEc.message();
+      } else {
+        // File simply does not exist
+        LOG_TOPIC("fc550", DEBUG, Logger::CONFIG)
+            << "config file '" << name << "' does not exist";
       }
     }
   }

@@ -163,7 +163,8 @@ void DaemonFeature::unprepare() {
   std::filesystem::remove(_options.pidFile, removeEc);
   if (removeEc) {
     LOG_TOPIC("1b46c", ERR, arangodb::Logger::FIXME)
-        << "cannot remove pid file '" << _options.pidFile << "'";
+        << "cannot remove pid file '" << _options.pidFile << "'"
+        << "Error:" << removeEc.message();
   }
 }
 
@@ -175,7 +176,13 @@ void DaemonFeature::checkPidFile() {
       LOG_TOPIC("6b3c0", FATAL, arangodb::Logger::FIXME)
           << "pid-file '" << _options.pidFile << "' is a directory";
       FATAL_ERROR_EXIT();
-    } else if (std::filesystem::exists(_options.pidFile, dirEc) &&
+    } else if (dirEc) {
+      LOG_TOPIC("6b3c1", FATAL, arangodb::Logger::FIXME)
+          << "pid-file '" << _options.pidFile
+          << "' Path does not exist or insufficient permissions"
+          << "Error:" << dirEc.message();
+      FATAL_ERROR_EXIT();
+    } else if (std::filesystem::exists(_options.pidFile) &&
                std::filesystem::file_size(_options.pidFile) > 0) {
       LOG_TOPIC("cf10a", INFO, Logger::STARTUP)
           << "pid-file '" << _options.pidFile
@@ -231,7 +238,8 @@ void DaemonFeature::checkPidFile() {
             LOG_TOPIC("fddfc", FATAL, arangodb::Logger::FIXME)
                 << "pid-file '" << _options.pidFile
                 << "' exists, no process with pid " << oldPid
-                << " exists, but pid-file cannot be removed";
+                << " exists, but pid-file cannot be removed"
+                << "Error:" << removeEc.message();
             FATAL_ERROR_EXIT();
           }
 
