@@ -42,14 +42,13 @@
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 template<bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback aql::getCallback(
+IndexIterator::DocumentCallback getCallback(
     DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId token, aql::DocumentData&& data,
+  return [&context](LocalDocumentId token, DocumentData&& data,
                     VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
@@ -113,10 +112,10 @@ IndexIterator::DocumentCallback aql::getCallback(
 }
 
 template<bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback aql::getCallback(
+IndexIterator::DocumentCallback getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context) {
-  return [&](LocalDocumentId t, aql::DocumentData&& v, velocypack::Slice s) {
+  return [&](LocalDocumentId t, DocumentData&& v, velocypack::Slice s) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(t)) {
         // Document already found, skip it
@@ -157,7 +156,7 @@ IndexIterator::DocumentCallback aql::getCallback(
 }
 
 template<bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback aql::buildDocumentCallback(
+IndexIterator::DocumentCallback buildDocumentCallback(
     DocumentProducingFunctionContext& context) {
   auto const& p = context.getProjections();
   if (!p.empty()) {
@@ -175,7 +174,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 }
 
 template<bool checkUniqueness, bool produceResult>
-IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
+IndexIterator::LocalDocumentIdCallback getNullCallback(
     DocumentProducingFunctionContext& context) {
   TRI_ASSERT(!context.hasFilter());
 
@@ -360,17 +359,17 @@ void DocumentProducingFunctionContext::setOutputRow(
   _outputRow = outputRow;
 }
 
-aql::Projections const& DocumentProducingFunctionContext::getProjections()
+Projections const& DocumentProducingFunctionContext::getProjections()
     const noexcept {
   return *_activeProjections;
 }
 
-aql::Projections const& DocumentProducingFunctionContext::getFilterProjections()
+Projections const& DocumentProducingFunctionContext::getFilterProjections()
     const noexcept {
   return _filterProjections;
 }
 
-aql::Projections const&
+Projections const&
 DocumentProducingFunctionContext::getProjectionsForRegisters() const noexcept {
   return *_activeProjectionsForRegisters;
 }
@@ -406,8 +405,7 @@ void DocumentProducingFunctionContext::setAllowCoveringIndexOptimization(
 }
 
 void DocumentProducingFunctionContext::setActiveProjections(
-    aql::Projections const* proj,
-    aql::Projections const* projForRegs) noexcept {
+    Projections const* proj, Projections const* projForRegs) noexcept {
   _activeProjections = proj;
   _activeProjectionsForRegisters = projForRegs;
 }
@@ -538,7 +536,7 @@ bool DocumentProducingFunctionContext::hasFilter() const noexcept {
 }
 
 template<bool checkUniqueness, bool skip>
-IndexIterator::CoveringCallback aql::getCallback(
+IndexIterator::CoveringCallback getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context) {
   if (context.hasFilter()) {
@@ -610,7 +608,7 @@ IndexIterator::CoveringCallback aql::getCallback(
 }
 
 template<bool checkUniqueness, bool skip, bool produceResult>
-IndexIterator::CoveringCallback aql::getCallback(
+IndexIterator::CoveringCallback getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context) {
   return [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
@@ -640,8 +638,7 @@ IndexIterator::CoveringCallback aql::getCallback(
       if constexpr (produceResult) {
         // read the full document from the storage engine only now,
         // after checking the filter condition
-        auto cb = [&](LocalDocumentId token, aql::DocumentData&& v,
-                      VPackSlice s) {
+        auto cb = [&](LocalDocumentId token, DocumentData&& v, VPackSlice s) {
           OutputAqlItemRow& output = context.getOutputRow();
           TRI_ASSERT(!output.isFull());
 
@@ -707,80 +704,82 @@ IndexIterator::CoveringCallback aql::getCallback(
   };
 }
 
-template IndexIterator::CoveringCallback aql::getCallback<false, false>(
+template IndexIterator::CoveringCallback getCallback<false, false>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, false>(
+template IndexIterator::CoveringCallback getCallback<true, false>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<false, true>(
+template IndexIterator::CoveringCallback getCallback<false, true>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, true>(
+template IndexIterator::CoveringCallback getCallback<true, true>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
 // there are only six valid instantiations for WithFilterCoveredByIndex,
 // because if skip = true, then we can't have produceResult = true.
-template IndexIterator::CoveringCallback aql::getCallback<false, false, false>(
+template IndexIterator::CoveringCallback getCallback<false, false, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, false, false>(
+template IndexIterator::CoveringCallback getCallback<true, false, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<false, true, false>(
+template IndexIterator::CoveringCallback getCallback<false, true, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, true, false>(
+template IndexIterator::CoveringCallback getCallback<true, true, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<false, false, true>(
+template IndexIterator::CoveringCallback getCallback<false, false, true>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, false, true>(
+template IndexIterator::CoveringCallback getCallback<true, false, true>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
-template IndexIterator::DocumentCallback aql::getCallback<false, false>(
+template IndexIterator::DocumentCallback getCallback<false, false>(
     DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, false>(
+template IndexIterator::DocumentCallback getCallback<true, false>(
     DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<false, true>(
+template IndexIterator::DocumentCallback getCallback<false, true>(
     DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, true>(
+template IndexIterator::DocumentCallback getCallback<true, true>(
     DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
-template IndexIterator::DocumentCallback aql::getCallback<false, false>(
+template IndexIterator::DocumentCallback getCallback<false, false>(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, false>(
+template IndexIterator::DocumentCallback getCallback<true, false>(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<false, true>(
+template IndexIterator::DocumentCallback getCallback<false, true>(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, true>(
+template IndexIterator::DocumentCallback getCallback<true, true>(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
 
-template IndexIterator::LocalDocumentIdCallback
-aql::getNullCallback<false, false>(DocumentProducingFunctionContext& context);
-template IndexIterator::LocalDocumentIdCallback
-aql::getNullCallback<true, false>(DocumentProducingFunctionContext& context);
-template IndexIterator::LocalDocumentIdCallback
-aql::getNullCallback<false, true>(DocumentProducingFunctionContext& context);
-template IndexIterator::LocalDocumentIdCallback
-aql::getNullCallback<true, true>(DocumentProducingFunctionContext& context);
-
-template IndexIterator::DocumentCallback aql::buildDocumentCallback<
-    false, false>(DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::buildDocumentCallback<
-    true, false>(DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::buildDocumentCallback<
-    false, true>(DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::buildDocumentCallback<true, true>(
+template IndexIterator::LocalDocumentIdCallback getNullCallback<false, false>(
     DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback getNullCallback<true, false>(
+    DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback getNullCallback<false, true>(
+    DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback getNullCallback<true, true>(
+    DocumentProducingFunctionContext& context);
+
+template IndexIterator::DocumentCallback buildDocumentCallback<false, false>(
+    DocumentProducingFunctionContext& context);
+template IndexIterator::DocumentCallback buildDocumentCallback<true, false>(
+    DocumentProducingFunctionContext& context);
+template IndexIterator::DocumentCallback buildDocumentCallback<false, true>(
+    DocumentProducingFunctionContext& context);
+template IndexIterator::DocumentCallback buildDocumentCallback<true, true>(
+    DocumentProducingFunctionContext& context);
+
+}  // namespace arangodb::aql

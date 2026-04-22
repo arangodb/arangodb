@@ -45,8 +45,7 @@
 
 #include <string_view>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 #define LOG_QUERY(logId, level)            \
   LOG_TOPIC(logId, level, Logger::QUERIES) \
@@ -215,3 +214,5 @@ auto ExecutionBlock::printBlockInfo() const -> std::string const {
 auto ExecutionBlock::stopAsyncTasks() -> void {}
 
 auto ExecutionBlock::isPrefetchTaskActive() noexcept -> bool { return false; }
+
+}  // namespace arangodb::aql
