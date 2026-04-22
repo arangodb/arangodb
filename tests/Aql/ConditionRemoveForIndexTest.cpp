@@ -109,6 +109,13 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
     return _ast->createNodeBinaryOperator(op, access, rhs);
   }
 
+  AstNode* cmpNull(AstNodeType op, Variable const* v, char const* attr) {
+    AstNode* access =
+        _ast->createNodeAttributeAccess(_ast->createNodeReference(v), attr);
+    AstNode* rhs = _ast->createNodeValueNull();
+    return _ast->createNodeBinaryOperator(op, access, rhs);
+  }
+
   static std::string attrOf(AstNode const* cmp) {
     auto const* lhs = cmp->getMember(0);
     EXPECT_EQ(lhs->type, NODE_TYPE_ATTRIBUTE_ACCESS);
@@ -116,137 +123,138 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
   }
 };
 
-TEST_F(ConditionRemoveForIndexTest, ReturnsNullptrWhenRootIsNull) {
-  // mine : nullptr (FilterNode condition)
-  // other: d.a == 1 (IndexNode condition, index on "a")
-  // Expected: The early guard `_root == nullptr` returns early.
-  Condition mine(_ast);
+// -----------------------------------------------------------------------------
+// Pass 1: Fundamental behavior
+// -----------------------------------------------------------------------------
 
-  Condition other(_ast);
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  other.normalize();
+TEST_F(ConditionRemoveForIndexTest, ReturnsNullptrWhenRootIsNull) {
+  // filter: nullptr
+  // index : d.a == 1
+  // => nullptr (early guard: _root == nullptr)
+  Condition filterCond(_ast);
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
 
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
   ASSERT_EQ(result, nullptr);
-  ASSERT_EQ(mine.root(), nullptr);
+  ASSERT_EQ(filterCond.root(), nullptr);
 }
 
 TEST_F(ConditionRemoveForIndexTest, ReturnsOriginalWhenConditionIsNull) {
-  // mine :  d.a == 1 (FilterNode condition)
-  // other: nullptr (IndexNode condition)
-  // Expected: The early guard `condition == nullptr` returns early.
-  Condition mine(_ast);
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  mine.normalize();
+  // filter: d.a == 1
+  // index : nullptr
+  // => unchanged (early guard: condition == nullptr)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.normalize();
 
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* before = mine.root();
+  AstNode* before = filterCond.root();
   ASSERT_NE(before, nullptr);
 
-  AstNode* result = mine.removeIndexCondition(_plan, _d, nullptr, index.get());
+  AstNode* result = filterCond.removeIndexCondition(_plan, _d, nullptr, index.get());
 
   ASSERT_EQ(result, before);
-  ASSERT_EQ(mine.root(), before);
+  ASSERT_EQ(filterCond.root(), before);
 }
 
 TEST_F(ConditionRemoveForIndexTest, ReturnsOriginalWhenNothingRemoved) {
-  // mine:  d.a > 2 (FilterNode condition)
-  // other: d.b == 1 (IndexNode condition, index on "b")
-  // Expected: Result is the exact same as mine.root() since nothing was
-  // removed.
-  Condition mine(_ast);
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 2));
-  mine.normalize();
+  // filter: d.a > 2
+  // index : d.b == 1
+  // => unchanged (different attribute, nothing removed)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 2));
+  filterCond.normalize();
 
-  Condition other(_ast);
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 1));
-  other.normalize();
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 1));
+  indexCond.normalize();
 
   auto index = makePersistent({"b"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* before = mine.root();
+  AstNode* before = filterCond.root();
   ASSERT_NE(before, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
 
   ASSERT_EQ(result, before);
 }
 
 TEST_F(ConditionRemoveForIndexTest, ReturnsNullptrWhenMemberRemoved) {
-  // mine:  d.a == 1 (FilterNode condition)
-  // other: d.a == 1 (IndexNode condition, index on "a")
-  // Expected: Return nullptr since all members were removed.
-  Condition mine(_ast);
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  mine.normalize();
+  // filter: d.a == 1
+  // index : d.a == 1
+  // => nullptr
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.normalize();
 
-  Condition other(_ast);
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  other.normalize();
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
 
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
 
 TEST_F(ConditionRemoveForIndexTest, ReturnsNullptrWhenAllMembersRemoved) {
-  // mine  : d.a == 1  AND  d.b == 2 (FilterNode condition)
-  // other : d.a == 1  AND  d.b == 2 (IndexNode condition, index on [a, b])
-  // Expected: Return nullptr since all members were removed.
-  Condition mine(_ast);
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 2));
-  mine.normalize();
+  // filter: d.a == 1 AND d.b == 2
+  // index : d.a == 1 AND d.b == 2 
+  // => nullptr
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 2));
+  filterCond.normalize();
 
-  Condition other(_ast);
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 2));
-  other.normalize();
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 2));
+  indexCond.normalize();
 
   auto index = makePersistent({"a", "b"});
   ASSERT_NE(index, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
 
   EXPECT_EQ(result, nullptr);
 }
 
 TEST_F(ConditionRemoveForIndexTest, RemovesCoveredMemberKeepsUncovered) {
-  // mine  : d.a == 1  AND  d.b > 2 (FilterNode condition)
-  // other : d.a == 1 (IndexNode condition, index on "a")
-  // Expected: Remove the covered member "d.a == 1" and keep the uncovered
-  // member "d.b > 2".
-  Condition mine(_ast);
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "b", 2));
-  mine.normalize();
+  // filter: d.a == 1 AND d.b > 2
+  // index : d.a == 1
+  // => d.b > 2 (single survivor)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "b", 2));
+  filterCond.normalize();
 
-  Condition other(_ast);
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  other.normalize();
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
 
   auto index = makePersistent({"a"}, /*sparse*/ false);
   ASSERT_NE(index, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
 
-  // "d.b > 2" survives
   EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_GT);
   ASSERT_EQ(result->numMembers(), 2U);
 
@@ -261,25 +269,24 @@ TEST_F(ConditionRemoveForIndexTest, RemovesCoveredMemberKeepsUncovered) {
 
 TEST_F(ConditionRemoveForIndexTest,
        RemovesCoveredMemberKeepsMultipleUncovered) {
-  // mine  : d.a == 1  AND  d.b > 2  AND  d.c == 3 (FilterNode condition)
-  // other : d.a == 1 (IndexNode condition, index on "a")
-  // Expected: Remove the covered member "d.a == 1" and keep the uncovered
-  // members "d.b > 2" and "d.c == 3".
-  Condition mine(_ast);
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "b", 2));
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "c", 3));
-  mine.normalize();
+  // filter: d.a == 1 AND d.b > 2 AND d.c == 3
+  // index : d.a == 1
+  // => `d.b > 2` AND `d.c == 3`
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "b", 2));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "c", 3));
+  filterCond.normalize();
 
-  Condition other(_ast);
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  other.normalize();
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
 
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
   ASSERT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_AND);
@@ -290,99 +297,291 @@ TEST_F(ConditionRemoveForIndexTest,
   EXPECT_EQ(survivors, (std::set<std::string>{"b", "c"}));
 }
 
-TEST_F(ConditionRemoveForIndexTest, EqIndexImpliesRangeBounds) {
-  // mine:  d.a > 0 AND d.a < 10 AND d.a == 5 (FilterNode condition)
-  // other: d.a == 5 (IndexNode condition, index on "a")
-  // Expected: Remove all the conditions since `d.a == 5` implies the range
-  // bounds.
-  Condition mine(_ast);
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 0));
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_LT, _d, "a", 10));
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 5));
-  mine.normalize();
+// -----------------------------------------------------------------------------
+// Pass 2: Implied member coverage
+// -----------------------------------------------------------------------------
+// A filter member that index does not extract is still removed when extracted
+// member implies the covered member (via ConditionPart::ResultsTable).
 
-  Condition other(_ast);
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 5));
-  other.normalize();
+TEST_F(ConditionRemoveForIndexTest, EqIndexImpliesRangeBounds) {
+  // filter: d.a > 0 AND d.a < 10 AND d.a == 5
+  // index : d.a == 5
+  // => nullptr (d.a == 5 implies the range bounds)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 0));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_LT, _d, "a", 10));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 5));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 5));
+  indexCond.normalize();
 
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
 
 TEST_F(ConditionRemoveForIndexTest, EqIndexImpliesLe) {
-  // mine:  d.a == 1 AND d.a <= 5 (FilterNode condition)
-  // other: d.a == 1 (IndexNode condition, index on "a")
-  // Expected: Remove all the conditions since `d.a == 1` implies the lower
-  // bound.
-  Condition mine(_ast);
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_LE, _d, "a", 5));
-  mine.normalize();
+  // filter: d.a == 1 AND d.a <= 5
+  // index : d.a == 1
+  // => nullptr (d.a == 1 implies the upper bound)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_LE, _d, "a", 5));
+  filterCond.normalize();
 
-  Condition other(_ast);
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
-  other.normalize();
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
 
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
 
 TEST_F(ConditionRemoveForIndexTest, StrictBoundImpliesLooserSameSide) {
-  // mine:  d.a >= 5 AND d.a > 10 (FilterNode condition)
-  // other: d.a > 10 (IndexNode condition, index on "a")
-  // Expected: Remove all the conditions since `d.a > 10` satisfies both
-  // conditions.
-  Condition mine(_ast);
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GE, _d, "a", 5));
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 10));
-  mine.normalize();
+  // filter: d.a >= 5 AND d.a > 10
+  // index : d.a > 10
+  // => nullptr (d.a > 10 implies d.a >= 5)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GE, _d, "a", 5));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 10));
+  filterCond.normalize();
 
-  Condition other(_ast);
-  other.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 10));
-  other.normalize();
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 10));
+  indexCond.normalize();
 
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
 
 TEST_F(ConditionRemoveForIndexTest, NonConstantDropsOnlyThatMember) {
-  // mine:  d.a == e AND d.b > 3 (FilterNode condition)
-  // other: d.a == e (IndexNode condition, index on "a")
-  // Expected: `d.b > 3` survives and `d.a == e` is dropped because it also
-  // supports non-constant.
-  Condition mine(_ast);
-  mine.andCombine(cmpVar(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", _e));
-  mine.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "b", 3));
-  mine.normalize();
+  // filter: d.a == e AND d.b > 3 (e is a non-constant variable)
+  // index : d.a == e
+  // => d.b > 3 (non-constant variable drops d.a == e)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpVar(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", _e));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "b", 3));
+  filterCond.normalize();
 
-  Condition other(_ast);
-  other.andCombine(cmpVar(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", _e));
-  other.normalize();
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpVar(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", _e));
+  indexCond.normalize();
 
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
   AstNode* result =
-      mine.removeIndexCondition(_plan, _d, other.root(), index.get());
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
   ASSERT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_GT);
   ASSERT_EQ(attrOf(result), "b");
+}
+
+// -----------------------------------------------------------------------------
+// Pass 3: Sparse index
+// -----------------------------------------------------------------------------
+// Sparse indexes skip null entries, so `a != null` and `a > null` are redundant
+// and can be dropped, but only with single field index.
+
+TEST_F(ConditionRemoveForIndexTest, NonSparseKeepsNeNull) {
+  // filter: d.a != null AND d.a > 5
+  // index : d.a > 5 (non-sparse index on `a`)
+  // => d.a != null (NE never considered on non-sparse)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpNull(NODE_TYPE_OPERATOR_BINARY_NE, _d, "a"));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 5));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 5));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"}, /*sparse*/ false);
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result =
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+
+  ASSERT_NE(result, nullptr);
+  EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_NE);
+  EXPECT_EQ(attrOf(result), "a");
+}
+
+TEST_F(ConditionRemoveForIndexTest, SparseRemovesNeNullSingleMember) {
+  // filter: d.a != null AND d.a > 5
+  // index : d.a > 5 (sparse index on `a`)
+  // => nullptr (sparse drops `!= null`)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpNull(NODE_TYPE_OPERATOR_BINARY_NE, _d, "a"));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 5));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 5));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"}, /*sparse*/ true);
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result =
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+
+  ASSERT_EQ(result, nullptr);
+}
+
+TEST_F(ConditionRemoveForIndexTest, SparseRemovesGtNullSingleMember) {
+  // filter: d.a > null AND d.a > 5
+  // index : d.a > 5 (sparse index on `a`)
+  // => nullptr (sparse drops `> null`)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpNull(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a"));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 5));
+  filterCond.normalize();
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "a", 5));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"}, /*sparse*/ true);
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result =
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+
+  ASSERT_EQ(result, nullptr);
+}
+
+TEST_F(ConditionRemoveForIndexTest, SparseCompoundKeepsNeNull) {
+    // filter: d.a != null AND d.a == 1
+    // index : d.a == 1 (sparse index on `a` and `b`)
+  // => d.a != null (sparse `!= null` drop requires fields.size() == 1)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpNull(NODE_TYPE_OPERATOR_BINARY_NE, _d, "a"));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a", "b"}, /*sparse*/ true);
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result =
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+
+  ASSERT_NE(result, nullptr);
+  EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_NE);
+  EXPECT_EQ(attrOf(result), "a");
+}
+
+// -----------------------------------------------------------------------------
+// Pass 4: NE, NIN, non-comparison op
+// -----------------------------------------------------------------------------
+// Filter members whose top-level op is NE (non-null), NIN, or non-comparison op
+// are skipped by collectOverlappingMembersForIndex and survive.
+
+TEST_F(ConditionRemoveForIndexTest, KeepsNeNonNullONNonSparse) {
+  // filter: d.a != 2 AND d.a == 1
+  // index : d.a == 1 (non-sparse index on `a`)
+  // => d.a != 2 (NE never considered on non-sparse)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_NE, _d, "a", 2));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"}, /*sparse*/ false);
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result =
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+
+  ASSERT_NE(result, nullptr);
+  EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_NE);
+  EXPECT_EQ(attrOf(result), "a");
+}
+
+TEST_F(ConditionRemoveForIndexTest, KeepsNinAlways) {
+  AstNode* ninArr = _ast->createNodeArray(2);
+  ninArr->addMember(_ast->createNodeValueInt(2));
+  ninArr->addMember(_ast->createNodeValueInt(3));
+  AstNode* aNinArr = _ast->createNodeBinaryOperator(
+    NODE_TYPE_OPERATOR_BINARY_NIN,
+    _ast->createNodeAttributeAccess(_ast->createNodeReference(_d), "a"),
+    ninArr
+  );
+
+  // filter: d.a NOT IN [2, 3] AND d.a == 1
+  // index : d.a == 1
+  // => d.a NOT IN [2, 3] (NIN always skipped)
+  Condition filterCond(_ast);
+  filterCond.andCombine(aNinArr);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"}, /*sparse*/ false);
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result =
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+
+  ASSERT_NE(result, nullptr);
+  EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_NIN);
+  EXPECT_EQ(attrOf(result), "a");     
+}
+
+TEST_F(ConditionRemoveForIndexTest, KeepsNonComparionsOp) {
+  AstNode* notNode = _ast->createNodeUnaryOperator(
+    NODE_TYPE_OPERATOR_UNARY_NOT,
+    cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 2)
+  );
+
+  // filter: NOT (d.a == 2) AND d.a == 1
+  // index : d.a == 1
+  // => NOT (d.a == 2) (non-comparison op skipped)
+  Condition filterCond(_ast);
+  filterCond.andCombine(notNode);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"}, /*sparse*/ false);
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result =
+      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+
+  ASSERT_NE(result, nullptr);
+  EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_UNARY_NOT);
+  ASSERT_EQ(result->getMember(0)->type, NODE_TYPE_OPERATOR_BINARY_EQ);
+  EXPECT_EQ(attrOf(result->getMember(0)), "a");
 }
 
 }  // namespace
