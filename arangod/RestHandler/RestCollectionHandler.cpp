@@ -648,6 +648,47 @@ async<void> RestCollectionHandler::handleCommandPut() {
     generateError(res);
     co_return;
   }
+  if (sub == "retrain") {
+    // Retrain a vector index in place: the build manager builds a fresh
+    // shadow index alongside the existing one, which continues serving
+    // reads and writes, and atomically swaps them once the shadow reaches
+    // the ready state. Accepts the index name or id via the "index"
+    // query parameter.
+    std::string indexName = _request->value("index");
+    if (indexName.empty()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "missing 'index' query parameter");
+      co_return;
+    }
+
+    if (ServerState::instance()->isCoordinator()) {
+      auto& feature = server().getFeature<ClusterFeature>();
+      auto res = retrainVectorIndexOnAllDBServers(feature, _vocbase.name(),
+                                                  name, indexName);
+      if (res.fail()) {
+        generateError(res);
+        co_return;
+      }
+    } else {
+      auto idx = coll->lookupIndex(indexName);
+      if (idx == nullptr) {
+        generateError(Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND});
+        co_return;
+      }
+      auto retrainRes = coll->getPhysical()->retrainVectorIndex(idx->id());
+      if (retrainRes.fail()) {
+        generateError(retrainRes);
+        co_return;
+      }
+    }
+
+    {
+      VPackObjectBuilder obj(&_builder, true);
+      obj->add("result", VPackValue(true));
+    }
+    standardResponse();
+    co_return;
+  }
   if (sub == "loadIndexesIntoMemory") {
     OperationOptions options(_context);
     auto res = co_await methods::Collections::warmup(_vocbase, *coll);
@@ -670,7 +711,8 @@ async<void> RestCollectionHandler::handleCommandPut() {
     resExtra.reset(
         TRI_ERROR_HTTP_NOT_FOUND,
         "expecting one of the actions 'load', 'unload', 'truncate',"
-        " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
+        " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory',"
+        " 'retrain'");
     generateError(resExtra);
   } else if (resExtra.fail()) {
     generateError(resExtra);
