@@ -274,7 +274,9 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   std::size_t const validSeen = sampler.itemsSeen();
 
   // Sparse+scaling: we need to resize after full iteration since we cannot
-  // calculate the
+  // calculate the true k from numDocsHint (which over-counts by the number of
+  // docs without the vector field). A uniform subsample of a uniform sample
+  // stays uniform, so this preserves the Algorithm L guarantee.
   if (sparseScaling && validSeen > 0) {
     auto resolved = resolveNLists(validSeen);
     if (resolved.fail()) {
@@ -290,8 +292,8 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   }
 
   if (trainingData.empty()) {
-    // This should never happen
-    return Result{TRI_ERROR_NOT_IMPLEMENTED,
+    // Reachable in sparse mode when no document carries the vector field.
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
                   "For the vector index to be created documents "
                   "must be present in the respective collection for the "
                   "training process."};
@@ -329,7 +331,7 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
     return numDocsHint;
   });
   if (numberOfVectors == 0) {
-    return Result{TRI_ERROR_NOT_IMPLEMENTED,
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
                   std::format("Vector index requires at least {} "
                               "vectors for training, "
                               "but none were found.",
@@ -347,7 +349,7 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
 
   if (numOfTrainingVectors < _index.trainingThreshold()) {
     return Result{
-        TRI_ERROR_NOT_IMPLEMENTED,
+        TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
         std::format("Vector index requires at least {} "
                     "vectors for training, "
                     "but only {} were found.",
