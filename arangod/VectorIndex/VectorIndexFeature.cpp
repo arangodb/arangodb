@@ -104,4 +104,21 @@ futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
   return _buildManager->waitForIndexReady(indexId);
 }
 
+Result VectorIndexFeature::requestRetrain(
+    LogicalCollection& collection, std::shared_ptr<Index> const& oldIndex) {
+  if (!_buildManager.has_value()) {
+    return {TRI_ERROR_INTERNAL,
+            "vector index build manager is not running on this server"};
+  }
+  return _buildManager->requestRetrain(collection, oldIndex);
+}
+
+futures::Future<Result> VectorIndexFeature::waitForRetrainComplete(
+    IndexId oldIndexId) {
+  if (!_buildManager.has_value()) {
+    return futures::makeFuture(Result{});
+  }
+  return _buildManager->waitForRetrainComplete(oldIndexId);
+}
+
 }  // namespace arangodb
