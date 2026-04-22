@@ -1,8 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* COR-420: Removed `statistics` log topic. The remaining usages of it were migrated 
-  to the `general` log topic. 
+* COR-420: Removed `statistics` log topic. The remaining log messages were
+  migrated to the `general` log topic.
 
 * COR-376: Removed startup option `--server.authentication-system-only`. It's
   now considered a legacy option, so it will be silently ignored on startup.

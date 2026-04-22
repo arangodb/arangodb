@@ -629,32 +629,29 @@ void MetricsFeature::toPrometheus(std::string& result,
           auto const type = stat[1];
           if (builder.name() != name) {
             foundError = true;
-            LOG_TOPIC("f66dd", ERR, Logger::FIXME)
-                << "Statistic '" << it.first << "' has mismatching names: '"
-                << builder.name() << "' in statBuilder but '" << name
-                << "' in statStrings";
+            LOG_DEVEL << "Statistic '" << it.first
+                      << "' has mismatching names: '" << builder.name()
+                      << "' in statBuilder but '" << name << "' in statStrings";
           }
           if (builder.type() != type) {
             foundError = true;
-            LOG_TOPIC("9fe22", ERR, Logger::FIXME)
-                << "Statistic '" << it.first
-                << "' has mismatching types (for API v2): '" << builder.type()
-                << "' in statBuilder but '" << type << "' in statStrings";
+            LOG_DEVEL << "Statistic '" << it.first
+                      << "' has mismatching types (for API v2): '"
+                      << builder.type() << "' in statBuilder but '" << type
+                      << "' in statStrings";
           }
         }
       } else {
         foundError = true;
-        LOG_TOPIC("015da", ERR, Logger::FIXME)
-            << "Statistic '" << it.first
-            << "' defined in statBuilder, but not in statStrings";
+        LOG_DEVEL << "Statistic '" << it.first
+                  << "' defined in statBuilder, but not in statStrings";
       }
     }
     for (auto const& it : statStrings) {
       if (statBuilder.find(it.first) == statBuilder.end()) {
         foundError = true;
-        LOG_TOPIC("eedac", ERR, Logger::FIXME)
-            << "Statistic '" << it.first
-            << "' defined in statStrings, but not in statBuilder";
+        LOG_DEVEL << "Statistic '" << it.first
+                  << "' defined in statStrings, but not in statBuilder";
       }
     }
     if (foundError) {
