@@ -37,7 +37,6 @@
 namespace arangodb {
 
 class Index;
-class LogicalCollection;
 
 class VectorIndexFeature final
     : public application_features::ApplicationFeature {
@@ -69,8 +68,7 @@ class VectorIndexFeature final
   // shadow reaches the ready state. Returns immediately; progress can be
   // observed by polling the index state or by calling
   // waitForRetrainComplete() on the old IndexId.
-  Result requestRetrain(LogicalCollection& collection,
-                        std::shared_ptr<Index> const& oldIndex);
+  Result requestRetrain(std::shared_ptr<Index> const& oldIndex);
 
   // Returns a future that resolves when the retrain of the given index
   // finishes (or fails). If no retrain is in flight for this id, the

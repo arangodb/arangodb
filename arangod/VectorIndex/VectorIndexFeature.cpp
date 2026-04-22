@@ -105,12 +105,12 @@ futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
 }
 
 Result VectorIndexFeature::requestRetrain(
-    LogicalCollection& collection, std::shared_ptr<Index> const& oldIndex) {
+    std::shared_ptr<Index> const& oldIndex) {
   if (!_buildManager.has_value()) {
     return {TRI_ERROR_INTERNAL,
             "vector index build manager is not running on this server"};
   }
-  return _buildManager->requestRetrain(collection, oldIndex);
+  return _buildManager->requestRetrain(oldIndex);
 }
 
 futures::Future<Result> VectorIndexFeature::waitForRetrainComplete(
