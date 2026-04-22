@@ -30,16 +30,11 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterIndexMethods.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
 #include "IResearch/IResearchCommon.h"
@@ -491,28 +486,21 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     }
   });
 
-  // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const& exec = ExecContext::current();
-  bool canReadDb = exec.canUseDatabase(collection.vocbase().name(),
-                                       DatabaseAccessLevel::Read)
-                       .ok();
-  bool canWriteDb = exec.canUseDatabase(collection.vocbase().name(),
-                                        DatabaseAccessLevel::Write)
-                        .ok();
-  bool canModify =
-      exec.canUseCollection(collection.vocbase().name(), collection.name(),
-                            AccessLevel::WriteMeta)
-          .ok();
-  bool canRead = exec.canUseCollection(collection.vocbase().name(),
-                                       collection.name(), AccessLevel::Read)
-                     .ok();
-  if ((create && (!canWriteDb || !canModify)) || (!canReadDb || !canRead)) {
-    ensureIndexResult = TRI_ERROR_FORBIDDEN;
-    co_return Result(
-        TRI_ERROR_FORBIDDEN,
-        absl::StrCat("insufficient permissions (meta data) to create index on "
-                     "collection '",
-                     collection.name(), "'"));
+  if (create) {
+    if (auto r =
+            exec.canCreateIndex(collection.vocbase().name(), collection.name());
+        r.fail()) {
+      ensureIndexResult = TRI_ERROR_FORBIDDEN;
+      co_return r;
+    }
+  } else {
+    if (auto r = exec.canUseCollection(collection.vocbase().name(),
+                                       collection.name(), AccessLevel::Read);
+        r.fail()) {
+      ensureIndexResult = TRI_ERROR_FORBIDDEN;
+      co_return r;
+    }
   }
 
   VPackBuilder normalized;

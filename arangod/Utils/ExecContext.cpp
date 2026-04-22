@@ -117,6 +117,16 @@ Result ExecContext::canUseCollection(std::string_view db, std::string_view coll,
   return Result{};
 }
 
+Result ExecContext::canCreateIndex(std::string_view db,
+                                   std::string_view coll) const {
+  return Result{};
+}
+
+Result ExecContext::canDropIndex(std::string_view db,
+                                 std::string_view coll) const {
+  return Result{};
+}
+
 Result ExecContext::canSeeView(std::string_view db,
                                std::string_view view) const {
   return Result{};

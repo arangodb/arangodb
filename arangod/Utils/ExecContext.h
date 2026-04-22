@@ -117,6 +117,9 @@ class ExecContext : public RequestContext {
   Result canUseCollection(std::string_view db, std::string_view coll,
                           CollectionAccessLevel level) const;
 
+  Result canCreateIndex(std::string_view db, std::string_view coll) const;
+  Result canDropIndex(std::string_view db, std::string_view coll) const;
+
   Result canSeeView(std::string_view db, std::string_view view) const;
   Result canCreateView(std::string_view db, std::string_view view) const;
   Result canDropView(std::string_view db, std::string_view view) const;

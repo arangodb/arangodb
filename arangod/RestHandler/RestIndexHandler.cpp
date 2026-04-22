@@ -227,6 +227,11 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
     std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
+      if (auto r = ExecContext::current().canUseCollection(
+              _vocbase.name(), cName, AccessLevel::Read);
+          r.fail()) {
+        return nullptr;
+      }
       return server()
           .getFeature<ClusterFeature>()
           .clusterInfo()

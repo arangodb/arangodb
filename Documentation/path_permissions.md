@@ -237,6 +237,9 @@ return a `Result`, so that a decline can return the actual reason
  - `canDropCollection(std::string_view db, std::string_view coll) -> Result`
  - `canUseCollection(std::string_view db, std::string_view coll, CollectionAccessLevel const level) -> Result`
 
+ - `canCreateIndex(std::string_view db, std::string_view coll) -> Result`
+ - `canDropIndex(std::stgring_view db, std::string_view coll) -> Result`
+
  - `canSeeView(std::string_view db, std::string_view view) -> Result`
  - `canCreateView(std::string_view db, std::string_view view) -> Result`
  - `canDropView(std::string_view db, std::string_view view) -> Result`
@@ -314,6 +317,16 @@ central implementation of these methods.
       - CollectionAccessLevel::WriteMeta: needs auth::Level::RW and auth::Level::RW on database!
 
    If the user is not allowed to see the collection, this must return NOT_FOUND!
+  
+ - `canCreateIndex(std::string_view db, std::string_view coll) -> Result`
+
+   The user needs to have CollectionAccessLevel::WriteMeta for the collection
+   and DatabaseAccessLevel::Write for the database.
+  
+ - `canDropIndex(std::stgring_view db, std::string_view coll) -> Result`
+
+   The user needs to have CollectionAccessLevel::WriteMeta for the collection
+   and DatabaseAccessLevel::Write for the database.
   
  - `canSeeView(std::string_view db, std::string_view view) -> Result`
 
@@ -417,6 +430,14 @@ central implementation of these methods.
    as described above.
 
    If the user is not allowed to see the collection, this must return NOT_FOUND!
+  
+ - `canCreateIndex(std::string_view db, std::string_view coll) -> Result`
+
+   check `db:WriteCollectionMeta` for the collection.
+  
+ - `canDropIndex(std::stgring_view db, std::string_view coll) -> Result`
+
+   check `db:WriteCollectionMeta` for the collection.
   
  - `canSeeView(std::string_view db, std::string_view view) -> Result`
 
@@ -753,11 +774,11 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    |    | PUT    | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseColl(vColl, RWDATA)                | COLL RWDATA                         |                                          |                        |
 | X  |    |    | PATCH  | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseColl(vColl, RWDATA)                | COLL RWDATA                         |                                          |                        |
 | X  |    |    | DELETE | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseColl(vColl, RWDATA)                | COLL RWDATA                         |                                          |                        |
-|    |    |    | GET    | `/_api/index`                                                | RestIndexHandler           |                                          | DB Read, canUseCollection(Read)     | needs API in ExecContext                 | FIXME                  |
-|    |    |    | GET    | `/_api/index/selectivity`                                    | RestIndexHandler           |                                          | DB Read, canUseCollection(Read)     | needs API in ExecContext                 | FIXME                  |
-|    |    |    | POST   | `/_api/index`                                                | RestIndexHandler           |                                          | DB Read, canUseCollection(WriteMeta)| needs API in ExecContext                 | FIXME                  |
-|    |    |    | POST   | `/_api/index/sync-caches`                                    | RestIndexHandler           |                                          | DB Read, canUseCollection(WriteMeta)| needs API in ExecContext                 | FIXME                  |
-|    |    |    | DELETE | `/_api/index/{collection}/{id}`                              | RestIndexHandler           |                                          | DB Read, canUseCollection(WriteMEta)| needs API in ExecContext                 | FIXME                  |
+| X  |    |    | GET    | `/_api/index`                                                | RestIndexHandler           | canUseColl(Read)                         | COLL RO                             |                                          |                        |
+| X  |    |    | GET    | `/_api/index/selectivity`                                    | RestIndexHandler           | canUseColl(Read) (via trx)               | COLL RO                             |                                          |                        |
+| X  |    |    | POST   | `/_api/index`                                                | RestIndexHandler           | canCreateIndex(coll)                     | COLL RWMETA                         |                                          |                        |
+| X  |    |    | POST   | `/_api/index/sync-caches`                                    | RestIndexHandler           | AUTHEN                                   | AUTHEN                              |                                          |                        |
+| X  |    |    | DELETE | `/_api/index/{collection}/{id}`                              | RestIndexHandler           | canDropIndex(coll)                       | COLL RWMETA                         |                                          |                        |
 |    |    |    | GET    | `/_api/key-generators`                                       | RestKeyGeneratorsHandler   |                                          | AUTHEN                              |                                          |                        |
 |    |    |    | GET    | `/_api/log`                                                  | RestLogHandler             |                                          | AdminReadReplicatedLog              | (replication2 + cluster only)            |                        |
 |    |    |    | POST   | `/_api/log`                                                  | RestLogHandler             |                                          | AdminWriteReplicatedLog             | (replication2 + cluster only)            |                        |
