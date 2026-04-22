@@ -71,16 +71,6 @@ SslServerFeature::SslServerFeature(
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("tls", "TLS communication");
 
-  options->addOldOption("--ssl.cafile", "--tls.cafile");
-  options->addOldOption("--ssl.keyfile", "--tls.keyfile");
-  options->addOldOption("--ssl.session-cache", "--tls.session-cache");
-  options->addOldOption("--ssl.cipher-list", "--tls.cipher-list");
-  options->addOldOption("--ssl.protocol", "--tls.protocol");
-  options->addOldOption("--ssl.options", "--tls.options");
-  options->addOldOption("--ssl.ecdh-curve", "--tls.ecdh-curve");
-  options->addOldOption("--ssl.prefer-http1-in-alpn",
-                        "--tls.prefer-http1-in-alpn");
-
   options
       ->addOption("--tls.cafile", "The CA file used for secure connections.",
                   new StringParameter(&_options.cafile))
@@ -152,7 +142,7 @@ the certificate.)");
 
   options
       ->addOption("--tls.cipher-list",
-                  "The SSL ciphers to use. See the OpenSSL documentation.",
+                  "The TLS ciphers to use. See the OpenSSL documentation.",
                   new StringParameter(&_options.cipherList))
       .setLongDescription(R"(You can use this option to restrict the server to
 certain SSL ciphers only, and to define the relative usage preference of SSL
@@ -192,7 +182,7 @@ the startup.)");
 
   options
       ->addOption("--tls.options",
-                  "The SSL connection options. See the OpenSSL documentation.",
+                  "The TLS connection options. See the OpenSSL documentation.",
                   new UInt64Parameter(&_options.sslOptions),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
@@ -220,13 +210,23 @@ http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html))");
 
   options->addOption(
       "--tls.ecdh-curve",
-      "The SSL ECDH curve, see the output of \"openssl ecparam -list_curves\".",
+      "The TLS ECDH curve, see the output of \"openssl ecparam -list_curves\".",
       new StringParameter(&_options.ecdhCurve));
 
   options->addOption("--tls.prefer-http1-in-alpn",
                      "Allows to let the server prefer HTTP/1.1 over HTTP/2 in "
                      "ALPN protocol negotiations",
                      new BooleanParameter(&_options.preferHttp11InAlpn));
+
+  options->addOldOption("--ssl.cafile", "--tls.cafile");
+  options->addOldOption("--ssl.keyfile", "--tls.keyfile");
+  options->addOldOption("--ssl.session-cache", "--tls.session-cache");
+  options->addOldOption("--ssl.cipher-list", "--tls.cipher-list");
+  options->addOldOption("--ssl.protocol", "--tls.protocol");
+  options->addOldOption("--ssl.options", "--tls.options");
+  options->addOldOption("--ssl.ecdh-curve", "--tls.ecdh-curve");
+  options->addOldOption("--ssl.prefer-http1-in-alpn",
+                        "--tls.prefer-http1-in-alpn");
 }
 
 void SslServerFeature::validateOptions(
@@ -246,7 +246,7 @@ void SslServerFeature::prepare() {
 
   if (!_options.cipherList.empty()) {
     LOG_TOPIC("9b126", INFO, arangodb::Logger::SSL)
-        << "using SSL cipher-list '" << _options.cipherList << "'";
+        << "using TLS cipher-list '" << _options.cipherList << "'";
   }
 
   UniformCharacter r(
@@ -271,18 +271,18 @@ void SslServerFeature::verifySslOptions() {
   // cppcheck-suppress unsignedLessThanZero
   if (_options.sslProtocol <= SSL_UNKNOWN || _options.sslProtocol >= SSL_LAST) {
     LOG_TOPIC("1f48b", FATAL, arangodb::Logger::SSL)
-        << "invalid SSL protocol version specified. Please use a valid "
+        << "invalid TLS protocol version specified. Please use a valid "
            "value for '--tls.protocol'";
     FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC("47161", DEBUG, arangodb::Logger::SSL)
-      << "using SSL protocol version '"
+      << "using TLS protocol version '"
       << protocolName(SslProtocol(_options.sslProtocol)) << "'";
 
   if (!FileUtils::exists(_options.keyfile)) {
     LOG_TOPIC("51cf0", FATAL, arangodb::Logger::SSL)
-        << "unable to find SSL keyfile '" << _options.keyfile << "'";
+        << "unable to find TLS keyfile '" << _options.keyfile << "'";
     FATAL_ERROR_EXIT();
   }
 

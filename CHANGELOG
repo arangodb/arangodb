@@ -1,8 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* COR-442: Renamed the startup options of the --ssl.* group into --tls.*,
-  but still accept the old naming pattern as alias to the new one.
+* COR-442: Renamed the startup options of the `--ssl.*` group into `--tls.*`,
+  but still accept the old naming pattern as an alias to the new one.
+  Config files using `[ssl]` sections are remapped automatically as well.
 
 * COR-376: Removed startup option `--server.authentication-system-only`. It's
   now considered a legacy option, so it will be silently ignored on startup.
