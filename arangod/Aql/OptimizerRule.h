@@ -469,6 +469,11 @@ struct OptimizerRule {
       "so constant-false IN expressions produced by the rewrite can be "
       "eliminated");
 
+  static_assert(
+      replaceAnyEqWithInRule < optimizeTraversalsRule,
+      "replaceAnyEqWithInRule must run before optimizeTraversalsRule "
+      "so rewritten IN edge conditions can be pushed into TraversalNode");
+
   static_assert(useVectorIndexForSort < useIndexesRule,
                 "useVectorIndexForSort must happen before useIndexesRule rule, "
                 "otherwise the forcing of vector index hint does not work");

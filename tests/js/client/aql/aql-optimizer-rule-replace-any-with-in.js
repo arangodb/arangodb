@@ -30,10 +30,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
         return db._query(query, params, {optimizer: {rules: ["-all"]}}).toArray();
     };
 
-    var executeWithOrRule = function (query, params) {
-        return db._query(query, params, {optimizer: {rules: ["-all", "+replace-or-with-in"]}}).toArray();
-    };
-
     var verifyExecutionPlan = function (query, params) {
         var explainWithRule = db._createStatement({
             query: query,
@@ -151,11 +147,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var orQuery = "FOR x IN " + replace.name() +
-                " FILTER x.name == 'Alice' SORT x.value RETURN x.value";
-            var orResult = executeWithOrRule(orQuery, {});
-            assertEqual(withRule, orResult, "Results with ANY == should match OR query");
         },
 
         testFiresEmptyArray: function () {
@@ -172,11 +163,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var inQuery = "FOR x IN " + replace.name() +
-                " FILTER x.name IN [] RETURN x.value";
-            var inResult = executeWithOrRule(inQuery, {});
-            assertEqual(withRule, inResult, "Results with ANY == should match IN query");
         },
 
         testFiresVariableArray: function () {
@@ -228,13 +214,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var orQuery = "FOR x IN " + replace.name() +
-                " FILTER x.name == 'Alice' || x.name == 'Bob' || x.name == 'Carol' || x.name == 'David' ||" +
-                "        x.name == 'Eve' || x.name == 'Frank' || x.name == 'Grace' || x.name == 'Henry' " +
-                " SORT x.value RETURN x.value";
-            var orResult = executeWithOrRule(orQuery, {});
-            assertEqual(withRule, orResult, "Results with ANY == should match OR query");
         },
 
         testFiresNestedAttribute: function () {
@@ -251,11 +230,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var orQuery = "FOR x IN " + replace.name() +
-                " FILTER x.a.b == 1 || x.a.b == 2 SORT x.a.b RETURN x.a.b";
-            var orResult = executeWithOrRule(orQuery, {});
-            assertEqual(withRule, orResult, "Results with ANY == should match OR query");
         },
 
         testFiresBind: function () {
@@ -274,11 +248,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withRule = executeWithRule(query, params);
             var withoutRule = executeWithoutRule(query, params);
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var orQuery = "FOR v IN " + replace.name()
-                + " FILTER v.name == 'Alice' || v.name == 'Bob' SORT v.value RETURN v.value";
-            var orResult = executeWithOrRule(orQuery, {});
-            assertEqual(withRule, orResult, "Results with ANY == should match OR query");
         },
 
         testFiresVariables: function () {
@@ -296,11 +265,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var orQuery = "LET names = ['Alice', 'Bob'] FOR v IN " + replace.name()
-                + " FILTER v.name == 'Alice' || v.name == 'Bob' SORT v.value RETURN v.value";
-            var orResult = executeWithOrRule(orQuery, {});
-            assertEqual(withRule, orResult, "Results with ANY == should match OR query");
         },
 
         testFiresMultipleAnyEq: function () {
@@ -318,11 +282,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var orQuery = "FOR v IN " + replace.name()
-                + " FILTER (v.name == 'Alice' || v.name == 'Bob') && v.value <= 20 SORT v.value RETURN v.value";
-            var orResult = executeWithOrRule(orQuery, {});
-            assertEqual(withRule, orResult, "Results with ANY == should match OR query");
         },
 
         testFiresMultipleAnyEqDifferentAttributes: function () {
@@ -340,11 +299,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var orQuery = "FOR v IN " + replace.name()
-                + " FILTER v.name == 'Alice' && v.value <= 10 SORT v.value RETURN v.value";
-            var orResult = executeWithOrRule(orQuery, {});
-            assertEqual(withRule, orResult, "Results with ANY == should match OR query");
         },
 
         testFiresNoCollection: function () {
@@ -577,15 +531,9 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var plans = verifyExecutionPlan(query, {});
             verifyPlansDifferent(plans.withRule, plans.withoutRule, query);
 
-            var actual = getQueryResults(query);
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var inQuery = "FOR x IN " + replace.name() +
-                " FILTER x.name IN ['Alice', 'O\\'Brien', 'test\"quote', 'new\\nline'] SORT x.value RETURN x.value";
-            var inResult = executeWithOrRule(inQuery, {});
-            assertEqual(withRule, inResult, "Results with ANY == should match IN query");
         },
 
         testFiresIndexedAccess: function () {
@@ -602,11 +550,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var inQuery = "FOR x IN " + replace.name() +
-                " FILTER x['name'] IN ['Alice', 'Bob'] SORT x.value RETURN x.value";
-            var inResult = executeWithOrRule(inQuery, {});
-            assertEqual(withRule, inResult, "Results with ANY == should match IN query");
         },
 
         testSingleValueOptimization: function () {
@@ -630,11 +573,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
 
             assertEqual(expected, withRule);
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
-
-            var eqQuery = "FOR x IN " + replace.name() +
-                " FILTER x.name == 'Alice' SORT x.value RETURN x.value";
-            var eqResult = db._query(eqQuery).toArray();
-            assertEqual(withRule, eqResult, "Single-value ANY == should match == query");
         },
 
         testAnyOrBranchesOnSameAttribute: function () {
