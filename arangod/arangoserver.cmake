@@ -196,8 +196,7 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
-        Auth/Can.cpp
-        Auth/Can.h)
+)
 
 if(USE_V8)
   target_sources(arangoserver PRIVATE

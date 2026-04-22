@@ -59,7 +59,7 @@ auto AuthMode::Superuser::username() const noexcept -> std::string_view {
   return "";
 }
 
-auto AuthMode::Superuser::canUse(Permission permission) const -> Result {
+auto AuthMode::Superuser::check(auth::Permission permission) const -> Result {
   return {};
 }
 
@@ -70,10 +70,12 @@ auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
 }
 
-auto AuthMode::Classic::canUse(Permission permission) const -> Result {
+auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
+  namespace p = auth::perms;
+
   return std::visit(
       overload{
-          [&](Permission::Database const& database) -> Result {
+          [&](p::UseDatabase const& database) -> Result {
             auto const storedLevel =
                 _userManager.databaseAuthLevel(username(), database.name, true);
             auto const maxLevel =
@@ -100,9 +102,9 @@ auto AuthMode::Classic::canUse(Permission permission) const -> Result {
             }
             ADB_PROD_CRASH();
           },
-          [&](Permission::Collection const& collection) -> Result {
+          [&](p::UseCollection const& collection) -> Result {
             auto const storedLevel = _userManager.collectionAuthLevel(
-                username(), collection.database, collection.name, true);
+                username(), collection.db, collection.name, true);
             auto const maxLevel =
                 ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
             auto const level = std::min(storedLevel, maxLevel);
@@ -139,7 +141,7 @@ auto AuthMode::Classic::canUse(Permission permission) const -> Result {
                 return {TRI_ERROR_FORBIDDEN,
                         "insufficient collection access level for '" +
                             collection.name + "' in database '" +
-                            collection.database + "'"};
+                            collection.db + "'"};
               case AccessLevel::WriteData:
               case AccessLevel::WriteMeta:
                 if (level >= auth::Level::RW) {
@@ -148,13 +150,13 @@ auto AuthMode::Classic::canUse(Permission permission) const -> Result {
                 return {TRI_ERROR_FORBIDDEN,
                         "insufficient collection access level for '" +
                             collection.name + "' in database '" +
-                            collection.database + "'"};
+                            collection.db + "'"};
             }
             ADB_PROD_CRASH();
           },
-          [&](Permission::View const& view) -> Result {
+          [&](p::UseView const& view) -> Result {
             auto const storedLevel = _userManager.collectionAuthLevel(
-                username(), view.database, view.name, true);
+                username(), view.db, view.name, true);
             auto const maxLevel =
                 ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
             auto const level = std::min(storedLevel, maxLevel);
@@ -168,20 +170,20 @@ auto AuthMode::Classic::canUse(Permission permission) const -> Result {
                 }
                 return {TRI_ERROR_FORBIDDEN,
                         "insufficient view access level for '" + view.name +
-                            "' in database '" + view.database + "'"};
+                            "' in database '" + view.db + "'"};
               case ViewAccessLevel::Modify:
                 if (level >= auth::Level::RW) {
                   return {};
                 }
                 return {TRI_ERROR_FORBIDDEN,
                         "insufficient view access level for '" + view.name +
-                            "' in database '" + view.database + "'"};
+                            "' in database '" + view.db + "'"};
             }
             ADB_PROD_CRASH();
           },
-          [&](Permission::Analyzer const& analyzer) -> Result {
+          [&](p::UseAnalyzer const& analyzer) -> Result {
             auto const storedLevel = _userManager.collectionAuthLevel(
-                username(), analyzer.database, analyzer.name, true);
+                username(), analyzer.db, analyzer.name, true);
             auto const maxLevel =
                 ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
             auto const level = std::min(storedLevel, maxLevel);
@@ -195,37 +197,62 @@ auto AuthMode::Classic::canUse(Permission permission) const -> Result {
                 }
                 return {TRI_ERROR_FORBIDDEN,
                         "insufficient analyzer access level for '" +
-                            analyzer.name + "' in database '" +
-                            analyzer.database + "'"};
+                            analyzer.name + "' in database '" + analyzer.db +
+                            "'"};
               case AnalyzerAccessLevel::Modify:
                 if (level >= auth::Level::RW) {
                   return {};
                 }
                 return {TRI_ERROR_FORBIDDEN,
                         "insufficient analyzer access level for '" +
-                            analyzer.name + "' in database '" +
-                            analyzer.database + "'"};
+                            analyzer.name + "' in database '" + analyzer.db +
+                            "'"};
             }
             ADB_PROD_CRASH();
           },
-          [&](Permission::Admin const& admin) -> Result {
-            // this recurses to canUse, but with a Database permission
+          [&](p::Admin const& admin) -> Result {
+            // recurses into check() with a UseDatabase permission
             return isAdmin();
           },
+          // TODO Implement proper classic-system checks for these.
+          [&](p::HardenedAdmin const& admin) -> Result { return {}; },
+          [&](p::SeeDatabase const&) -> Result { return {}; },
+          [&](p::CreateDatabase const&) -> Result { return {}; },
+          [&](p::DropDatabase const&) -> Result { return {}; },
+          [&](p::SeeCollection const&) -> Result { return {}; },
+          [&](p::CreateCollection const&) -> Result { return {}; },
+          [&](p::DropCollection const&) -> Result { return {}; },
+          [&](p::SeeView const&) -> Result { return {}; },
+          [&](p::CreateView const&) -> Result { return {}; },
+          [&](p::ModifyView const&) -> Result { return {}; },
+          [&](p::RenameView const&) -> Result { return {}; },
+          [&](p::DropView const&) -> Result {
+            // TODO this must check
+            //      * RW access to the database
+            //      * RO access to each collection
+            //      and possibly some access to the view itself, but I
+            //      haven't looked where that check currently happens.
+            return {};
+          },
+          [&](p::SeeAnalyzer const&) -> Result { return {}; },
+          [&](p::CreateAnalyzer const&) -> Result { return {}; },
+          [&](p::DropAnalyzer const&) -> Result { return {}; },
+          [&](p::ReadUser const&) -> Result { return {}; },
+          [&](p::WriteUser const&) -> Result { return {}; },
       },
-      permission.permission);
+      permission);
 }
 
 Result AuthMode::Classic::isAdmin() const {
-  return canUse({Permission::Database{.name = StaticStrings::SystemDatabase,
-                                      .level = DatabaseAccessLevel::Write}});
+  return check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                        .level = DatabaseAccessLevel::Write});
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {
   return _username;
 }
 
-auto AuthMode::Rbac::canUse(Permission permission) const -> Result {
+auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   std::abort();  // TODO implement
   // NOTE Remember to handle "supportsRbac" flag for collections; we will need
   // access to the collection somehow!
@@ -238,35 +265,44 @@ auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
   return _username;
 }
 
-auto AuthMode::Unauthenticated::canUse(Permission permission) const -> Result {
+auto AuthMode::Unauthenticated::check(auth::Permission permission) const
+    -> Result {
+  namespace p = auth::perms;
+
   return std::visit(
-      [](auto const& perm) -> Result {
-        using T = std::decay_t<decltype(perm)>;
-        if constexpr (std::is_same_v<T, Permission::Database>) {
-          if (perm.level <= DatabaseAccessLevel::None) {
-            return {};
-          }
-          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
-        } else if constexpr (std::is_same_v<T, Permission::Collection>) {
-          if (perm.level <= CollectionAccessLevel::None) {
-            return {};
-          }
-          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
-        } else if constexpr (std::is_same_v<T, Permission::View>) {
-          if (perm.level <= ViewAccessLevel::None) {
-            return {};
-          }
-          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
-        } else if constexpr (std::is_same_v<T, Permission::Analyzer>) {
-          if (perm.level <= AnalyzerAccessLevel::None) {
-            return {};
-          }
-          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
-        } else {
-          return {TRI_ERROR_FORBIDDEN, "not authenticated"};
-        }
+      overload{
+          // Level-based checks: allow if the requested level is "None",
+          // otherwise deny (not authenticated).
+          [](p::UseDatabase const& perm) -> Result {
+            if (perm.level <= DatabaseAccessLevel::None) {
+              return {};
+            }
+            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
+          },
+          [](p::UseCollection const& perm) -> Result {
+            if (perm.level <= CollectionAccessLevel::None) {
+              return {};
+            }
+            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
+          },
+          [](p::UseView const& perm) -> Result {
+            if (perm.level <= ViewAccessLevel::None) {
+              return {};
+            }
+            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
+          },
+          [](p::UseAnalyzer const& perm) -> Result {
+            if (perm.level <= AnalyzerAccessLevel::None) {
+              return {};
+            }
+            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
+          },
+          // Everything else: no authentication → no permissions.
+          [](auto const&) -> Result {
+            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
+          },
       },
-      permission.permission);
+      permission);
 }
 
 AuthMode::Disabled::Disabled(std::string username)
@@ -276,7 +312,7 @@ auto AuthMode::Disabled::username() const noexcept -> std::string_view {
   return _username;
 }
 
-auto AuthMode::Disabled::canUse(Permission permission) const -> Result {
+auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {
   return {};
 }
 
@@ -285,9 +321,9 @@ auto AuthMode::Mockable::username() const noexcept -> std::string_view {
   return mock->username();
 }
 
-auto AuthMode::Mockable::canUse(Permission permission) const -> Result {
+auto AuthMode::Mockable::check(auth::Permission permission) const -> Result {
   ADB_PROD_ASSERT(mock != nullptr);
-  return mock->canUse(permission);
+  return mock->check(permission);
 }
 
 }  // namespace arangodb
