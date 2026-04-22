@@ -352,10 +352,9 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   ReservoirSampler sampler{def.dimension, reservoirCapacity, rng};
   std::vector<float> input;
   input.reserve(def.dimension);
-  std::size_t iterationCounter{0};
 
   while (it.Valid()) {
-    if (iterationCounter % 1000 == 0 && stopToken.stop_requested()) {
+    if (stopToken.stop_requested()) {
       return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "vector training aborted"};
     }
@@ -366,7 +365,6 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
         res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER) && _index.sparse()) {
         it.Next();
-        ++iterationCounter;
         continue;
       }
       return Result{
@@ -379,7 +377,6 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     sampler.consume(input);
     input.clear();
     it.Next();
-    ++iterationCounter;
   }
 
   std::size_t const validSeen = sampler.itemsSeen();
