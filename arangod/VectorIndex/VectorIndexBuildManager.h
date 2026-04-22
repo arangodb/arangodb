@@ -26,9 +26,11 @@
 #include <chrono>
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <stop_token>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Basics/Result.h"
@@ -41,8 +43,10 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class DatabaseFeature;
+class Index;
 class LogicalCollection;
 class MaintenanceFeature;
+class RocksDBCollection;
 class RocksDBVectorIndex;
 class Scheduler;
 }  // namespace arangodb
@@ -50,7 +54,8 @@ class Scheduler;
 namespace arangodb::vector {
 
 /// Single background thread that periodically scans for untrained vector
-/// indexes and builds them one at a time. The same thread scans and builds.
+/// indexes and builds them, and for queued retrains and executes them.
+/// One thread, one pass: scan drains both queues.
 class VectorIndexBuildManager {
  public:
   static constexpr auto kScanInterval = std::chrono::seconds(5);
@@ -70,6 +75,19 @@ class VectorIndexBuildManager {
   // when the index reaches the ready state or the build fails.
   futures::Future<Result> waitForIndexReady(IndexId indexId);
 
+  // Enqueue a retrain job for an existing, ready vector index. Returns
+  // immediately with an error only when the request cannot be accepted
+  // (e.g. because another retrain is already in flight for the same
+  // index, or the index is not in the ready state). Successful acceptance
+  // is reported via the returned OK Result; the retrain itself runs
+  // asynchronously on the build thread.
+  Result requestRetrain(std::shared_ptr<Index> const& oldIndex);
+
+  // Register a waiter that resolves when the retrain of the given old
+  // index finishes (success or failure). If no retrain is currently in
+  // flight, the future resolves immediately with success.
+  futures::Future<Result> waitForRetrainComplete(IndexId oldIndexId);
+
  private:
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
@@ -79,6 +97,34 @@ class VectorIndexBuildManager {
   };
 
   using FailedBuildsMap = std::unordered_map<std::uint64_t, FailedBuildInfo>;
+  using WaiterMap = std::unordered_map<IndexId::BaseType,
+                                       std::vector<futures::Promise<Result>>>;
+
+  // Scratch state populated during a single scan pass and consumed by
+  // the post-scan cleanup in scanAndProcess.
+  struct ScanState {
+    std::unordered_set<IndexId::BaseType> pendingRetrains;
+    std::unordered_set<std::uint64_t> seenObjectIds;
+    std::unordered_set<IndexId::BaseType> seenIndexIds;
+    std::unordered_set<IndexId::BaseType> skippedWaiters;
+    std::uint64_t unusableIndexesCount = 0;
+  };
+
+  // Per-index contribution returned by processVectorIndex. The scan
+  // loop merges these into ScanState without the helper needing to see
+  // accumulated state from other indexes.
+  struct IndexScanResult {
+    IndexId indexId;
+    // Set when the index was in kUnusable state during this scan pass;
+    // value is its objectId.
+    std::optional<std::uint64_t> unusableObjectId;
+    // True when the index was unusable but no build was started this
+    // pass (below threshold or in retry backoff).
+    bool skippedWaiter = false;
+    // True when an unusable index transitioned to kReady during this
+    // pass — the caller publishes the decremented metric.
+    bool buildCompleted = false;
+  };
 
   static bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
                               std::uint64_t objectId,
@@ -86,12 +132,33 @@ class VectorIndexBuildManager {
 
   void run(std::stop_token stopToken);
 
-  void scanAndBuild(std::stop_token const& stopToken,
-                    FailedBuildsMap& failedBuilds);
+  void scanAndProcess(std::stop_token const& stopToken,
+                      FailedBuildsMap& failedBuilds);
 
-  void fulfillWaiters(IndexId indexId, Result const& result);
+  // Per-index work inside the scan: resolves build waiters, runs queued
+  // retrains against kReady indexes, and kicks off deferred builds for
+  // kUnusable indexes that have reached the training threshold.
+  IndexScanResult processVectorIndex(
+      std::unordered_set<IndexId::BaseType>& pendingRetrains,
+      FailedBuildsMap& failedBuilds, TRI_vocbase_t& vocbase,
+      LogicalCollection& coll, std::shared_ptr<Index> const& idx,
+      std::stop_token const& stopToken);
 
-  void fulfillAllWaiters(Result const& result);
+  void runRetrain(TRI_vocbase_t& vocbase, LogicalCollection& coll,
+                  std::shared_ptr<Index> const& oldIdx,
+                  std::stop_token const& stopToken);
+
+  // Resolve all pending build waiters registered for `indexId`.
+  void fulfillBuildWaiters(IndexId indexId, Result const& result);
+
+  // Resolve all pending retrain waiters registered for `oldIndexId` and
+  // remove the id from _activeRetrains so new retrain requests for this
+  // index can be admitted.
+  void fulfillRetrainWaiters(IndexId oldIndexId, Result const& result);
+
+  // Drain all waiters (both kinds) on shutdown, and clear retrain-job
+  // bookkeeping.
+  void fulfillAllWaitersOnShutdown(Result const& result);
 
   void reportIndexError(TRI_vocbase_t const& vocbase,
                         LogicalCollection const& coll,
@@ -111,9 +178,21 @@ class VectorIndexBuildManager {
   metrics::Histogram<metrics::LogScale<double>>& _trainingDuration;
   metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
 
-  std::mutex _waitersMutex;
-  std::unordered_map<IndexId::BaseType, std::vector<futures::Promise<Result>>>
-      _waiters;
+  // Single mutex guarding all waiter and retrain-queue state below.
+  // Build and retrain waiters are kept in separate maps because they
+  // have independent lifecycles (builds resolve from the scanner,
+  // retrains from runRetrain's scope guard) and different invariants
+  // (the retrain target stays kReady throughout the retrain, which
+  // would otherwise collide with build-waiter resolution on the same
+  // id).
+  std::mutex _mutex;
+  WaiterMap _buildWaiters;
+  WaiterMap _retrainWaiters;
+  std::vector<IndexId> _pendingRetrains;
+  // Old-index ids that are currently either queued or actively being
+  // retrained. Used to short-circuit duplicate requestRetrain() calls
+  // without having to walk the queue.
+  std::unordered_set<IndexId::BaseType> _activeRetrains;
 };
 
 }  // namespace arangodb::vector
