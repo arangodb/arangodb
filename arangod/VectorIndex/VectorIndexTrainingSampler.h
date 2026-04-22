@@ -25,7 +25,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <random>
 #include <vector>
 
@@ -33,13 +32,11 @@ namespace arangodb::vector {
 
 // Reservoir sampler implementing Algorithm L (Li 1994) for uniform-without-
 // replacement sampling over a stream of unknown-but-bounded length. Each
-// slot holds `dimension` consecutive floats. With no capacity set, consume()
-// just appends — useful when no upper bound on the stream size is known; a
-// subsequent resize() call can still produce a uniform sample.
+// slot holds `dimension` consecutive floats. The reservoir is bounded at
+// `capacity` slots and never grows past it; resize() can only shrink it.
 class VectorIndexTrainingSampler {
  public:
-  VectorIndexTrainingSampler(std::size_t dimension,
-                             std::optional<std::size_t> capacity,
+  VectorIndexTrainingSampler(std::size_t dimension, std::size_t capacity,
                              std::uint64_t seed);
 
   // Hands out the internal scratch buffer for the next vector. The buffer is
@@ -65,7 +62,7 @@ class VectorIndexTrainingSampler {
   void primeSampler();
 
   std::size_t _dimension;
-  std::optional<std::size_t> _capacity;
+  std::size_t _capacity;
   std::mt19937_64 _rng;
   std::size_t _itemsSeen{0};
   double _w{0.0};

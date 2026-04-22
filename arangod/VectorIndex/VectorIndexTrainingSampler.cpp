@@ -31,13 +31,12 @@
 
 namespace arangodb::vector {
 
-VectorIndexTrainingSampler::VectorIndexTrainingSampler(
-    std::size_t dimension, std::optional<std::size_t> capacity,
-    std::uint64_t seed)
+VectorIndexTrainingSampler::VectorIndexTrainingSampler(std::size_t dimension,
+                                                       std::size_t capacity,
+                                                       std::uint64_t seed)
     : _dimension{dimension}, _capacity{capacity}, _rng{seed} {
-  if (_capacity.has_value()) {
-    _data.reserve(*_capacity * _dimension);
-  }
+  TRI_ASSERT(_capacity > 0);
+  _data.reserve(_capacity * _dimension);
   _input.reserve(_dimension);
 }
 
@@ -48,20 +47,19 @@ std::vector<float>& VectorIndexTrainingSampler::inputBuffer() noexcept {
 
 void VectorIndexTrainingSampler::consume() {
   TRI_ASSERT(_input.size() == _dimension);
-  if (!_capacity.has_value() || _itemsSeen < *_capacity) {
+  if (_itemsSeen < _capacity) {
     _data.insert(_data.end(), _input.begin(), _input.end());
     ++_itemsSeen;
-    if (_capacity.has_value() && _itemsSeen == *_capacity) {
+    if (_itemsSeen == _capacity) {
       primeSampler();
     }
     return;
   }
   if (_itemsSeen == _nextReplacement) {
-    std::size_t const k = *_capacity;
-    std::uniform_int_distribution<std::size_t> slotDist{0, k - 1};
+    std::uniform_int_distribution<std::size_t> slotDist{0, _capacity - 1};
     std::size_t const slot = slotDist(_rng);
     std::copy(_input.begin(), _input.end(), _data.begin() + slot * _dimension);
-    _w *= std::exp(std::log(sampleOpenUnit()) / static_cast<double>(k));
+    _w *= std::exp(std::log(sampleOpenUnit()) / static_cast<double>(_capacity));
     TRI_ASSERT(_w > 0.0 && _w < 1.0);
     _nextReplacement += 1 + skipCount(_w);
   }
@@ -111,11 +109,9 @@ std::size_t VectorIndexTrainingSampler::skipCount(double w) {
 }
 
 void VectorIndexTrainingSampler::primeSampler() {
-  std::size_t const k = *_capacity;
-  TRI_ASSERT(k > 0);
-  _w = std::exp(std::log(sampleOpenUnit()) / static_cast<double>(k));
+  _w = std::exp(std::log(sampleOpenUnit()) / static_cast<double>(_capacity));
   TRI_ASSERT(_w > 0.0 && _w < 1.0);
-  _nextReplacement = k + skipCount(_w);
+  _nextReplacement = _capacity + skipCount(_w);
 }
 
 }  // namespace arangodb::vector

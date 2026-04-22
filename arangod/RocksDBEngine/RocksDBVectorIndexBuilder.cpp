@@ -220,18 +220,14 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
   bool const sparseScaling = _index.sparse() && isNListsScaling(def.nLists);
 
   // Size the reservoir from numDocsHint. For sparse+scaling this is an upper
-  // bound on the valid vector count, so we may subsample further once the
-  // actual count is known. If numDocsHint is 0 in sparse+scaling mode we have
-  // no upper bound and fall back to an unbounded reservoir; the subsample at
-  // the end still produces a uniform sample.
-  std::optional<std::size_t> reservoirCapacity;
-  if (!sparseScaling || numDocsHint > 0) {
-    auto resolved = resolveNLists(numDocsHint);
-    if (resolved.fail()) {
-      return std::move(resolved).result();
-    }
-    reservoirCapacity = resolved.get() * kMaxTrainingSizePerNLists;
+  // bound on the valid vector count; the post-iteration resize below shrinks
+  // it to the true k once the valid-vector count is known.
+  auto resolved = resolveNLists(numDocsHint);
+  if (resolved.fail()) {
+    return std::move(resolved).result();
   }
+  std::size_t const reservoirCapacity =
+      resolved.get() * kMaxTrainingSizePerNLists;
 
   auto const seed = RandomDevice::seed64();
 
@@ -239,9 +235,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       "[shard={}, index={}] Collecting training data dimension {} for {} "
       "index with numDocsHint: {}, reservoir capacity: {}, sampler seed: {}.",
       _index.collection().name(), _index.id().id(), def.dimension,
-      _index.sparse() ? "sparse" : "non-sparse", numDocsHint,
-      reservoirCapacity.has_value() ? std::to_string(*reservoirCapacity)
-                                    : std::string{"unbounded"},
+      _index.sparse() ? "sparse" : "non-sparse", numDocsHint, reservoirCapacity,
       seed);
 
   VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
@@ -448,7 +442,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
       if constexpr (returnsResult) {
         setResult(fn());
-      } else {
+      }
+      else {
         fn();
       }
     } catch (basics::Exception const& e) {
