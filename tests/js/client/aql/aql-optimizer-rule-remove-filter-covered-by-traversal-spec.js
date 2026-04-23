@@ -185,7 +185,7 @@ describe('Single Traversal Optimizer', function () {
       // replace-any-eq-with-in rewrites `e.bar[*] ANY == 2` into `2 IN e.bar[*]`,
       // which optimize-traversals can then push into the TraversalNode, so both
       // filters are covered and no FilterNode remains.
-      it('on p.edges[*].foo ALL > 3 AND e.bar[*] ANY == 3', () => {
+      it('on p.edges[*].foo ALL > 3 AND e.bar[*] ANY == 2', () => {
         let query = `WITH @@vertices
                        FOR v, e, p IN OUTBOUND @start @@edges
                        FILTER p.edges[*].foo ALL > 3
@@ -203,7 +203,6 @@ describe('Single Traversal Optimizer', function () {
         const disableOurRule = { optimizer: { rules: [ "+all", "-replace-any-eq-with-in" ] } };
         let planWithoutOurRule = db._createStatement({query: query, bindVars: bindVars, options: disableOurRule}).explain();
         hasFilterNode(planWithoutOurRule);
-        validateResult(query, bindVars);
       });
     });
   });

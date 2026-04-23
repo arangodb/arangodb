@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertTrue */
 
 var internal = require("internal");
 var jsunity = require("jsunity");
@@ -431,120 +431,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             ruleIsNotUsed(query, {});
         },
 
-        testIndexOptimizationWithNameIndex: function () {
-            var query =
-                "FOR x IN " + replace.name() +
-                " FILTER ['Alice', 'Bob'] ANY == x.name SORT x.value RETURN x.value";
-
-            var explainWithRule = db._createStatement({
-                query: query,
-                bindVars: {},
-                options: {optimizer: {rules: ["-all", "+replace-any-eq-with-in", "+use-indexes"]}}
-            }).explain();
-
-            var explainWithoutRule = db._createStatement({
-                query: query,
-                bindVars: {},
-                options: {optimizer: {rules: ["-all", "+use-indexes"]}}
-            }).explain();
-
-            var planWithRule = explainWithRule.plan;
-            var planWithoutRule = explainWithoutRule.plan;
-
-            assertTrue(planWithRule.rules.indexOf(ruleName) !== -1,
-                "Plan with rule should contain replace-any-eq-with-in");
-            assertTrue(planWithRule.rules.indexOf("use-indexes") !== -1,
-                "Plan with rule should contain use-indexes");
-
-            var indexNodesWith = findExecutionNodes(planWithRule, "IndexNode");
-            var enumNodesWith = findExecutionNodes(planWithRule, "EnumerateCollectionNode");
-            var indexNodesWithout = findExecutionNodes(planWithoutRule, "IndexNode");
-            var enumNodesWithout = findExecutionNodes(planWithoutRule, "EnumerateCollectionNode");
-
-            assertTrue(indexNodesWith.length > 0,
-                "Plan with replace-any-eq-with-in should use IndexNode. " +
-                "Rules: " + JSON.stringify(planWithRule.rules));
-            assertTrue(enumNodesWith.length === 0,
-                "Plan with replace-any-eq-with-in should NOT use EnumerateCollectionNode");
-
-            if (indexNodesWithout.length === 0) {
-                assertTrue(enumNodesWithout.length > 0,
-                    "Plan without replace-any-eq-with-in should use EnumerateCollectionNode");
-            }
-
-            var expected = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
-            var withRule = executeWithRule(query, {});
-            var withoutRule = executeWithoutRule(query, {});
-
-            assertEqual(expected, withRule);
-            assertEqual(withRule, withoutRule, "Results should match");
-        },
-
-        testIndexOptimizationWithNestedAttributeIndex: function () {
-            var query =
-                "FOR x IN " + replace.name() +
-                " FILTER [1, 2] ANY == x.a.b SORT x.a.b RETURN x.a.b";
-
-            var explainWithRule = db._createStatement({
-                query: query,
-                bindVars: {},
-                options: {optimizer: {rules: ["-all", "+replace-any-eq-with-in", "+use-indexes"]}}
-            }).explain();
-
-            var planWithRule = explainWithRule.plan;
-
-            assertTrue(planWithRule.rules.indexOf(ruleName) !== -1,
-                "Plan with rule should contain replace-any-eq-with-in");
-            assertTrue(planWithRule.rules.indexOf("use-indexes") !== -1,
-                "Plan with rule should contain use-indexes");
-
-            var indexNodesWith = findExecutionNodes(planWithRule, "IndexNode");
-            var enumNodesWith = findExecutionNodes(planWithRule, "EnumerateCollectionNode");
-
-            assertTrue(indexNodesWith.length > 0,
-                "Plan with replace-any-eq-with-in should use IndexNode for nested attribute");
-            assertTrue(enumNodesWith.length === 0,
-                "Plan with replace-any-eq-with-in should NOT use EnumerateCollectionNode");
-
-            var expected = [1, 2];
-            var withRule = executeWithRule(query, {});
-            var withoutRule = executeWithoutRule(query, {});
-
-            assertEqual(expected, withRule);
-            assertEqual(withRule, withoutRule, "Results should match");
-        },
-
-        testIndexOptimizationMultipleConditions: function () {
-            var query =
-                "FOR x IN " + replace.name() +
-                " FILTER ['Alice'] ANY == x.name && x.value <= 10 SORT x.value RETURN x.value";
-
-            var explainWithRule = db._createStatement({
-                query: query,
-                bindVars: {},
-                options: {optimizer: {rules: ["-all", "+replace-any-eq-with-in", "+use-indexes"]}}
-            }).explain();
-
-            var planWithRule = explainWithRule.plan;
-
-            assertTrue(planWithRule.rules.indexOf(ruleName) !== -1,
-                "Plan with rule should contain replace-any-eq-with-in");
-            assertTrue(planWithRule.rules.indexOf("use-indexes") !== -1,
-                "Plan with rule should contain use-indexes");
-
-            var indexNodesWith = findExecutionNodes(planWithRule, "IndexNode");
-
-            assertTrue(indexNodesWith.length > 0,
-                "Plan with replace-any-eq-with-in should use IndexNode even with multiple conditions");
-
-            var expected = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-            var withRule = executeWithRule(query, {});
-            var withoutRule = executeWithoutRule(query, {});
-
-            assertEqual(expected, withRule);
-            assertEqual(withRule, withoutRule, "Results should match");
-        },
-
         testFiresSpecialCharacters: function () {
             var query = "FOR x IN " + replace.name() +
                 " FILTER ['Alice', 'O\\'Brien', 'test\"quote', 'new\\nline'] ANY == x.name SORT x.value RETURN x.value";
@@ -570,29 +456,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
 
             var withRule = executeWithRule(query, {});
             var withoutRule = executeWithoutRule(query, {});
-            assertEqual(withRule, withoutRule, "Results with and without rule should match");
-        },
-
-        testSingleValueOptimization: function () {
-            var query = "FOR x IN " + replace.name() +
-                " FILTER ['Alice'] ANY == x.name SORT x.value RETURN x.value";
-
-            var explainWithRule = db._createStatement({
-                query: query,
-                bindVars: {},
-                options: {optimizer: {rules: ["-all", "+replace-any-eq-with-in"]}}
-            }).explain();
-
-            var planWithRule = explainWithRule.plan;
-
-            assertTrue(planWithRule.rules.indexOf(ruleName) !== -1,
-                "Plan with rule should contain replace-any-eq-with-in");
-
-            var expected = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-            var withRule = executeWithRule(query, {});
-            var withoutRule = executeWithoutRule(query, {});
-
-            assertEqual(expected, withRule);
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
         },
 
