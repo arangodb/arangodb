@@ -161,15 +161,9 @@ void VectorIndexBuildManager::fulfillBuildWaiters(IndexId indexId,
   resolveOnScheduler(_scheduler, std::move(promises), result);
 }
 
-void VectorIndexBuildManager::fulfillRetrainWaiters(IndexId oldIndexId,
-                                                    Result const& result) {
-  std::vector<futures::Promise<Result>> promises;
-  {
-    std::lock_guard lock(_mutex);
-    promises = extractWaiters(_retrainWaiters, oldIndexId);
-    _activeRetrains.erase(oldIndexId.id());
-  }
-  resolveOnScheduler(_scheduler, std::move(promises), result);
+void VectorIndexBuildManager::clearActiveRetrain(IndexId oldIndexId) {
+  std::lock_guard lock(_mutex);
+  _activeRetrains.erase(oldIndexId.id());
 }
 
 Result VectorIndexBuildManager::requestRetrain(
@@ -197,43 +191,20 @@ Result VectorIndexBuildManager::requestRetrain(
   return {};
 }
 
-futures::Future<Result> VectorIndexBuildManager::waitForRetrainComplete(
-    IndexId oldIndexId) {
-  futures::Promise<Result> promise;
-  auto future = promise.getFuture();
-  {
-    std::lock_guard lock(_mutex);
-    if (!_activeRetrains.contains(oldIndexId.id())) {
-      // No retrain in flight — resolve immediately.
-      promise.setValue(Result{});
-      return future;
-    }
-    _retrainWaiters[oldIndexId.id()].push_back(std::move(promise));
-  }
-  return future;
-}
-
 void VectorIndexBuildManager::fulfillAllWaitersOnShutdown(
     Result const& result) {
-  WaiterMap buildWaiters;
-  WaiterMap retrainWaiters;
+  BuildWaiterMap buildWaiters;
   {
     std::lock_guard lock(_mutex);
     buildWaiters = std::move(_buildWaiters);
-    retrainWaiters = std::move(_retrainWaiters);
     _buildWaiters.clear();
-    _retrainWaiters.clear();
     _activeRetrains.clear();
     _pendingRetrains.clear();
   }
   std::vector<futures::Promise<Result>> promises;
-  auto const drain = [&](WaiterMap& map) {
-    for (auto& bucket : std::views::values(map)) {
-      std::ranges::move(bucket, std::back_inserter(promises));
-    }
-  };
-  drain(buildWaiters);
-  drain(retrainWaiters);
+  for (auto& bucket : std::views::values(buildWaiters)) {
+    std::ranges::move(bucket, std::back_inserter(promises));
+  }
   resolveOnScheduler(_scheduler, std::move(promises), result);
 }
 
@@ -278,8 +249,7 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
            !stopToken.stop_requested()) {
       {
         std::lock_guard lock(_mutex);
-        if (!_buildWaiters.empty() || !_retrainWaiters.empty() ||
-            !_pendingRetrains.empty()) {
+        if (!_buildWaiters.empty() || !_pendingRetrains.empty()) {
           break;
         }
       }
@@ -386,9 +356,7 @@ void VectorIndexBuildManager::scanAndProcess(std::stop_token const& stopToken,
       }
     } else {
       for (auto const id : state.pendingRetrains) {
-        fulfillRetrainWaiters(
-            IndexId{id}, Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                "index was dropped before retrain could run"});
+        clearActiveRetrain(IndexId{id});
       }
     }
   }
@@ -561,21 +529,20 @@ void VectorIndexBuildManager::runRetrain(TRI_vocbase_t& vocbase,
   TRI_ASSERT(oldIdx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
 
   auto const oldIndexId = oldIdx->id();
-  // Release the retrain waiters on exit. fulfillRetrainWaiters() also
-  // removes the id from _activeRetrains, admitting new retrain requests
-  // for this index.
-  Result retrainResult;
-  auto finishGuard = scopeGuard(
-      [&]() noexcept { fulfillRetrainWaiters(oldIndexId, retrainResult); });
+  // Admit new retrain requests for this index on exit.
+  auto finishGuard =
+      scopeGuard([&]() noexcept { clearActiveRetrain(oldIndexId); });
 
   auto& oldVec = static_cast<RocksDBVectorIndex&>(*oldIdx);
   auto* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
   TRI_ASSERT(rcoll != nullptr);
 
   if (rcoll->meta().numberDocuments() < oldVec.trainingThreshold()) {
-    retrainResult = Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-                           "collection has fewer documents than the vector "
-                           "index training threshold requires"};
+    LOG_TOPIC("e176b", WARN, Logger::ENGINES)
+        << "[shard=" << coll.name() << ", oldIndex=" << oldIndexId.id()
+        << "] Skipping vector index retrain: collection has fewer documents "
+           "than the training threshold ("
+        << oldVec.trainingThreshold() << ").";
     return;
   }
 
@@ -590,10 +557,9 @@ void VectorIndexBuildManager::runRetrain(TRI_vocbase_t& vocbase,
         shadowDef.slice(), /*generateKey*/ false, coll,
         /*isClusterConstructor*/ false);
   } catch (std::exception const& ex) {
-    retrainResult = Result{TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
-                           std::string{"failed to construct retrain shadow "
-                                       "vector index: "} +
-                               ex.what()};
+    LOG_TOPIC("e177b", ERR, Logger::ENGINES)
+        << "[shard=" << coll.name() << ", oldIndex=" << oldIndexId.id()
+        << "] Failed to construct retrain shadow vector index: " << ex.what();
     return;
   }
   TRI_ASSERT(shadow != nullptr);
@@ -625,7 +591,6 @@ void VectorIndexBuildManager::runRetrain(TRI_vocbase_t& vocbase,
         << ", shadow=" << shadow->id().id()
         << "] Vector index retrain build failed: " << buildRes.errorMessage();
     rcoll->abortShadowIndex(shadow);
-    retrainResult = buildRes;
     return;
   }
 
@@ -644,7 +609,6 @@ void VectorIndexBuildManager::runRetrain(TRI_vocbase_t& vocbase,
         << dropRes.errorMessage()
         << ". Shadow will remain alongside the old index until the next "
            "retrain or server restart.";
-    retrainResult = dropRes;
     return;
   }
 

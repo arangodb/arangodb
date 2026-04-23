@@ -66,14 +66,8 @@ class VectorIndexFeature final
   // with a fresh IndexId/objectId, drives it through the standard
   // train+ingest pipeline, and atomically drops the old index once the
   // shadow reaches the ready state. Returns immediately; progress can be
-  // observed by polling the index state or by calling
-  // waitForRetrainComplete() on the old IndexId.
+  // observed by polling the index state.
   Result requestRetrain(std::shared_ptr<Index> const& oldIndex);
-
-  // Returns a future that resolves when the retrain of the given index
-  // finishes (or fails). If no retrain is in flight for this id, the
-  // future resolves immediately with success.
-  futures::Future<Result> waitForRetrainComplete(IndexId oldIndexId);
 
  private:
   bool shouldRunBuildManager() const;

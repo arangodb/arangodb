@@ -83,11 +83,6 @@ class VectorIndexBuildManager {
   // asynchronously on the build thread.
   Result requestRetrain(std::shared_ptr<Index> const& oldIndex);
 
-  // Register a waiter that resolves when the retrain of the given old
-  // index finishes (success or failure). If no retrain is currently in
-  // flight, the future resolves immediately with success.
-  futures::Future<Result> waitForRetrainComplete(IndexId oldIndexId);
-
  private:
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
@@ -97,8 +92,9 @@ class VectorIndexBuildManager {
   };
 
   using FailedBuildsMap = std::unordered_map<std::uint64_t, FailedBuildInfo>;
-  using WaiterMap = std::unordered_map<IndexId::BaseType,
-                                       std::vector<futures::Promise<Result>>>;
+  using BuildWaiterMap =
+      std::unordered_map<IndexId::BaseType,
+                         std::vector<futures::Promise<Result>>>;
 
   // Scratch state populated during a single scan pass and consumed by
   // the post-scan cleanup in scanAndProcess.
@@ -151,12 +147,11 @@ class VectorIndexBuildManager {
   // Resolve all pending build waiters registered for `indexId`.
   void fulfillBuildWaiters(IndexId indexId, Result const& result);
 
-  // Resolve all pending retrain waiters registered for `oldIndexId` and
-  // remove the id from _activeRetrains so new retrain requests for this
-  // index can be admitted.
-  void fulfillRetrainWaiters(IndexId oldIndexId, Result const& result);
+  // Remove `oldIndexId` from _activeRetrains so a new retrain request
+  // for this index can be admitted.
+  void clearActiveRetrain(IndexId oldIndexId);
 
-  // Drain all waiters (both kinds) on shutdown, and clear retrain-job
+  // Drain all build waiters on shutdown and clear retrain-job
   // bookkeeping.
   void fulfillAllWaitersOnShutdown(Result const& result);
 
@@ -179,15 +174,8 @@ class VectorIndexBuildManager {
   metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
 
   // Single mutex guarding all waiter and retrain-queue state below.
-  // Build and retrain waiters are kept in separate maps because they
-  // have independent lifecycles (builds resolve from the scanner,
-  // retrains from runRetrain's scope guard) and different invariants
-  // (the retrain target stays kReady throughout the retrain, which
-  // would otherwise collide with build-waiter resolution on the same
-  // id).
   std::mutex _mutex;
-  WaiterMap _buildWaiters;
-  WaiterMap _retrainWaiters;
+  BuildWaiterMap _buildWaiters;
   std::vector<IndexId> _pendingRetrains;
   // Old-index ids that are currently either queued or actively being
   // retrained. Used to short-circuit duplicate requestRetrain() calls

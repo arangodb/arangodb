@@ -113,12 +113,4 @@ Result VectorIndexFeature::requestRetrain(
   return _buildManager->requestRetrain(oldIndex);
 }
 
-futures::Future<Result> VectorIndexFeature::waitForRetrainComplete(
-    IndexId oldIndexId) {
-  if (!_buildManager.has_value()) {
-    return futures::makeFuture(Result{});
-  }
-  return _buildManager->waitForRetrainComplete(oldIndexId);
-}
-
 }  // namespace arangodb
