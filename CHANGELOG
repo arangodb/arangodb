@@ -1,6 +1,13 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-435: Fix a TOCTOU race in the Agency leader's sendAppendEntriesRPC that
+  could crash a follower agent. The leader read log entries and the compaction
+  snapshot in two non-atomic operations; compaction could advance the snapshot
+  between those reads, causing an inconsistent payload to be sent. The fix
+  loads the snapshot and the matching log entries under a single lock so that
+  no compaction can interleave between the two reads.
+
 * COR-415: Fix vector index catch-up phase to use the proper
   `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that
   WAL entries written during training are correctly ingested, preventing
