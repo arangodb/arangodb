@@ -68,6 +68,7 @@
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryCalculations.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryFilters.h"
 #include "Aql/Optimizer/Rule/RemoveUnnecessaryRemoteScatter.h"
+#include "Aql/Optimizer/Rule/ReplaceAnyEqWithIn.h"
 #include "Aql/Optimizer/Rule/ReplaceEntriesWithObjectIteration.h"
 #include "Aql/Optimizer/Rule/ReplaceEqualAttributeAccess.h"
 #include "Aql/Optimizer/Rule/ReplaceLastAccessOnGraphPath.h"
@@ -395,6 +396,14 @@ are not used in data modification queries.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Combine multiple `OR` equality conditions on the same
 variable or attribute with an `IN` condition.)");
+
+  // try to replace ANY == array comparisons with IN
+  registerRule(
+      "replace-any-eq-with-in", replaceAnyEqWithInRule,
+      OptimizerRule::replaceAnyEqWithInRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace `ANY ==` array comparison expressions with equivalent `IN`
+expressions to enable further optimizations and index usage.)");
 
   // try to remove redundant OR conditions
   registerRule("remove-redundant-or", removeRedundantOrRule,
