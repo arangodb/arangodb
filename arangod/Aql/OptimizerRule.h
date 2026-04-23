@@ -466,8 +466,8 @@ struct OptimizerRule {
   static_assert(
       replaceAnyEqWithInRule < removeUnnecessaryFiltersRule2,
       "replaceAnyEqWithInRule must run before removeUnnecessaryFiltersRule2 "
-      "so constant-false IN expressions produced by the rewrite can be "
-      "eliminated");
+      "so the ordering is preserved if filter elimination is later extended "
+      "to constant-fold IN expressions produced by the rewrite");
 
   static_assert(
       replaceAnyEqWithInRule < optimizeTraversalsRule,

@@ -3,7 +3,8 @@
 
 * COR-411: Introduced optimizer rule `replace-any-eq-with-in` that maps filter
   nodes of the form FILTER [exp1] ANY == exp2 into FILTER exp2 IN [exp1] to
-  make them visible to downstream optimizer rules, such as use-indexes.
+  make them visible to downstream optimizer rules, including use-indexes,
+  optimize-traversals, and sort-in-values.
 
 * COR-435: Fix a TOCTOU race in the Agency leader's sendAppendEntriesRPC that
   could crash a follower agent. The leader read log entries and the compaction

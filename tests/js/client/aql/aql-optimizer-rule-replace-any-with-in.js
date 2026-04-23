@@ -345,6 +345,27 @@ function NewAqlReplaceAnyWithINTestSuite() {
             ruleIsNotUsed(query, {});
         },
 
+        testSkipsNoneQuantifier: function () {
+            const query =
+                "FOR x IN " + replace.name() +
+                " FILTER ['Alice', 'Bob'] NONE == x.name RETURN x.value";
+
+            ruleIsNotUsed(query, {});
+        },
+
+        testSkipsNot: function () {
+            // NOT (lhs ANY == rhs) is equivalent to rhs NOT IN lhs,
+            // but the rule deliberately does not rewrite it (NOT IN is less useful for indexes).
+            const query =
+                "FOR x IN " + replace.name() +
+                " FILTER NOT (['Alice', 'Bob'] ANY == x.name) RETURN x.value";
+
+            ruleIsNotUsed(query, {});
+            const withRule = executeWithRule(query, {});
+            const withoutRule = executeWithoutRule(query, {});
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
+        },
+
         testFiresScalarLhs: function () {
             // lhs='Alice' is not an array → rule fires, x.name IN 'Alice' → false → 0 docs.
             var query =
@@ -572,6 +593,166 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var withoutRule = executeWithoutRule(query, {});
 
             assertEqual(expected, withRule);
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
+        },
+
+        testFiresBothAnyEqArmsOfAnd: function () {
+            // Both arms of AND contain ANY == — simplify() recurses into each arm
+            // and rewrites both. Verifies the recursive descent through BINARY_AND.
+            const query =
+                "FOR v IN " + replace.name() +
+                " FILTER ['Alice', 'Bob'] ANY == v.name AND [1, 2, 3] ANY == v.value" +
+                " SORT v.value RETURN v.value";
+
+            const plan = getPlan(query, {}, {optimizer: {rules: ["-all", "+" + ruleName]}});
+            assertTrue(plan.rules.indexOf(ruleName) !== -1,
+                "Rule should fire on both ANY == arms of AND");
+
+            // Alice values are 1–10, Bob values are 11–20. Only Alice has values 1, 2, 3.
+            const withRule = executeWithRule(query, {});
+            const withoutRule = executeWithoutRule(query, {});
+            assertEqual([1, 2, 3], withRule);
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
+        },
+
+        testFiresBothAnyEqArmsOfOr: function () {
+            // Both arms of OR contain ANY == on different attributes — simplify() recurses
+            // into each arm and rewrites both independently. Verifies BINARY_OR descent.
+            const query =
+                "FOR v IN " + replace.name() +
+                " FILTER ['Alice'] ANY == v.name OR [11, 12] ANY == v.value" +
+                " SORT v.value RETURN v.value";
+
+            const plan = getPlan(query, {}, {optimizer: {rules: ["-all", "+" + ruleName]}});
+            assertTrue(plan.rules.indexOf(ruleName) !== -1,
+                "Rule should fire on both ANY == arms of OR");
+
+            // Alice docs: values 1–10. Bob(11) and Bob(12) match the value arm.
+            const withRule = executeWithRule(query, {});
+            const withoutRule = executeWithoutRule(query, {});
+            assertEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], withRule);
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
+        },
+
+        testFiresNestedAndOrRecursion: function () {
+            // AND( ANY ==, OR( ANY ==, ANY == ) ) — three ANY == nodes in a mixed tree.
+            // Verifies that simplify() recurses correctly through both BINARY_AND and BINARY_OR.
+            const query =
+                "FOR v IN " + replace.name() +
+                " FILTER ['Alice', 'Bob'] ANY == v.name" +
+                "     AND ([1, 5] ANY == v.value OR [11, 15] ANY == v.value)" +
+                " SORT v.value RETURN v.value";
+
+            const plan = getPlan(query, {}, {optimizer: {rules: ["-all", "+" + ruleName]}});
+            assertTrue(plan.rules.indexOf(ruleName) !== -1,
+                "Rule should fire on all three ANY == nodes in the nested tree");
+
+            // name IN ['Alice','Bob'] AND (value IN [1,5] OR value IN [11,15])
+            // → Alice(1), Alice(5), Bob(11), Bob(15)
+            const withRule = executeWithRule(query, {});
+            const withoutRule = executeWithoutRule(query, {});
+            assertEqual([1, 5, 11, 15], withRule);
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
+        },
+
+        testFiresDuplicateArrayValues: function () {
+            // Duplicate values in the array are harmless: ['Alice', 'Alice', 'Bob'] ANY == v.name
+            // rewrites to v.name IN ['Alice', 'Alice', 'Bob'] and returns the same results.
+            const query =
+                "FOR v IN " + replace.name() +
+                " FILTER ['Alice', 'Alice', 'Bob'] ANY == v.name SORT v.value RETURN v.value";
+
+            const plan = getPlan(query, {}, {optimizer: {rules: ["-all", "+" + ruleName]}});
+            assertTrue(plan.rules.indexOf(ruleName) !== -1, "Rule should fire");
+
+            const withRule = executeWithRule(query, {});
+            const withoutRule = executeWithoutRule(query, {});
+            // Alice values 1–10 and Bob values 11–20
+            assertEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                         11, 12, 13, 14, 15, 16, 17, 18, 19, 20], withRule);
+            assertEqual(withRule, withoutRule, "Results with and without rule should match");
+        },
+
+        testRemoveFilterCoveredByIndexInteraction: function () {
+            // replace-any-eq-with-in gates the remove-filter-covered-by-index cascade:
+            // the rewrite produces BINARY_IN, which use-indexes can match to an index,
+            // after which remove-filter-covered-by-index drops the now-redundant FilterNode.
+            // Without the rewrite, BINARY_ARRAY_EQ ANY == is not index-eligible, FilterNode stays.
+            const query =
+                "FOR x IN " + replace.name() +
+                " FILTER ['Alice', 'Bob'] ANY == x.name SORT x.value RETURN x.value";
+
+            // WITH replace-any-eq-with-in: FilterNode is removed by the cascade.
+            const planWithRule = db._createStatement({
+                query: query,
+                bindVars: {},
+                options: {optimizer: {rules: [
+                    "-all",
+                    "+replace-any-eq-with-in",
+                    "+use-indexes",
+                    "+remove-filter-covered-by-index"
+                ]}}
+            }).explain();
+
+            assertTrue(planWithRule.plan.rules.indexOf(ruleName) !== -1,
+                "replace-any-eq-with-in should fire");
+            assertEqual(0, findExecutionNodes(planWithRule, "FilterNode").length,
+                "FilterNode should be removed: index covers the rewritten IN condition");
+
+            // WITHOUT replace-any-eq-with-in: BINARY_ARRAY_EQ ANY == is not index-eligible,
+            // FilterNode remains.
+            const planWithoutRule = db._createStatement({
+                query: query,
+                bindVars: {},
+                options: {optimizer: {rules: [
+                    "-all",
+                    "+use-indexes",
+                    "+remove-filter-covered-by-index"
+                ]}}
+            }).explain();
+
+            assertTrue(findExecutionNodes(planWithoutRule, "FilterNode").length > 0,
+                "FilterNode should remain without replace-any-eq-with-in");
+
+            const withRule = executeWithRule(query, {});
+            const withoutRule = executeWithoutRule(query, {});
+            assertEqual(withRule, withoutRule, "Results should match");
+        },
+
+        testSortInValuesInteraction: function () {
+            // replace-any-eq-with-in gates sort-in-values: the rewrite produces BINARY_IN,
+            // which sort-in-values wraps in SORTED_UNIQUE() for arrays with >= 8 elements.
+            // Without the rewrite there is no BINARY_IN node, so sort-in-values never fires.
+            const query =
+                "FOR x IN " + replace.name() +
+                " FILTER ['Alice', 'Bob', 'Carol', 'David', " +
+                "         'Eve', 'Frank', 'Grace', 'Henry'] " +
+                " ANY == x.name SORT x.value RETURN x.value";
+
+            // WITH replace-any-eq-with-in: rewrite produces BINARY_IN → sort-in-values fires.
+            const planWithRule = db._createStatement({
+                query: query,
+                bindVars: {},
+                options: {optimizer: {rules: ["-all", "+replace-any-eq-with-in", "+sort-in-values"]}}
+            }).explain();
+
+            assertTrue(planWithRule.plan.rules.indexOf(ruleName) !== -1,
+                "replace-any-eq-with-in should fire");
+            assertTrue(planWithRule.plan.rules.indexOf("sort-in-values") !== -1,
+                "sort-in-values should fire on the rewritten IN expression with >= 8 values");
+
+            // WITHOUT replace-any-eq-with-in: no BINARY_IN → sort-in-values does not fire.
+            const planWithoutRule = db._createStatement({
+                query: query,
+                bindVars: {},
+                options: {optimizer: {rules: ["-all", "+sort-in-values"]}}
+            }).explain();
+
+            assertTrue(planWithoutRule.plan.rules.indexOf("sort-in-values") === -1,
+                "sort-in-values should not fire without replace-any-eq-with-in");
+
+            const withRule = executeWithRule(query, {});
+            const withoutRule = executeWithoutRule(query, {});
             assertEqual(withRule, withoutRule, "Results with and without rule should match");
         },
 

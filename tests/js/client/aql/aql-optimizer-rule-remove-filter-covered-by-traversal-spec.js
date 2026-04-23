@@ -191,9 +191,18 @@ describe('Single Traversal Optimizer', function () {
                        FILTER p.edges[*].foo ALL > 3
                        FILTER e.bar[*] ANY == 2
                        RETURN v`;
-        let plan = db._createStatement({query: query, bindVars:  bindVars, options:  activateOptimizer}).explain();
 
-        hasNoFilterNode(plan);
+        // With all rules on: our rewrite fires, optimize-traversals pushes both
+        // conditions into the TraversalNode, no FilterNode remains.
+        let planAllRules = db._createStatement({query: query, bindVars: bindVars, options: activateOptimizer}).explain();
+        hasNoFilterNode(planAllRules);
+        validateResult(query, bindVars);
+
+        // Gate test: disable only replace-any-eq-with-in. The BINARY_ARRAY_EQ ANY ==
+        // form is not pushed by optimize-traversals, so the FilterNode stays.
+        const disableOurRule = { optimizer: { rules: [ "+all", "-replace-any-eq-with-in" ] } };
+        let planWithoutOurRule = db._createStatement({query: query, bindVars: bindVars, options: disableOurRule}).explain();
+        hasFilterNode(planWithoutOurRule);
         validateResult(query, bindVars);
       });
     });
