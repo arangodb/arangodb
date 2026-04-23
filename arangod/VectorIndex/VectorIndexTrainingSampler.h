@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <random>
+#include <span>
 #include <vector>
 
 namespace arangodb::vector {
@@ -39,21 +40,14 @@ class VectorIndexTrainingSampler {
   VectorIndexTrainingSampler(std::size_t dimension, std::size_t capacity,
                              std::uint64_t seed);
 
-  // Hands out the internal scratch buffer for the next vector. The buffer is
-  // empty on return; the caller is expected to fill it with exactly
-  // `dimension` floats before calling consume().
-  // TODO(jbajic) Generalize this so it can be used in other cases
-  std::vector<float>& inputBuffer() noexcept;
-
   // True iff the next observed item must be consumed — either the reservoir
   // is still filling, or we have reached the next replacement position. Lets
   // the caller avoid decoding vectors that the sampler would discard.
   bool wantsItem() const noexcept;
 
-  // Preconditions: wantsItem() returned true and inputBuffer() was filled
-  // with exactly `dimension` floats. Grows the reservoir or replaces a slot
-  // per Algorithm L.
-  void consume();
+  // Preconditions: wantsItem() returned true and `vector.size() == dimension`.
+  // Grows the reservoir or replaces a slot per Algorithm L.
+  void consume(std::span<float const> vector);
 
   // Precondition: wantsItem() returned false. Counts one valid item as seen
   // without touching the reservoir.
@@ -80,7 +74,6 @@ class VectorIndexTrainingSampler {
   double _w{0.0};
   std::size_t _nextReplacement{0};
   std::vector<float> _data;
-  std::vector<float> _input;
 };
 
 }  // namespace arangodb::vector

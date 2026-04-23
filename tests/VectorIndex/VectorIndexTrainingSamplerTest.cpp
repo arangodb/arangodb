@@ -23,6 +23,7 @@
 
 #include "VectorIndex/VectorIndexTrainingSampler.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <numeric>
@@ -38,13 +39,11 @@ using namespace arangodb::vector;
 namespace {
 
 // Feeds one vector through the sampler. Mirrors the production caller: only
-// decode into the buffer when the sampler wants the item; otherwise advance
-// the seen-counter via skip().
+// consume when the sampler wants the item; otherwise advance the seen-counter
+// via skip().
 void feed(VectorIndexTrainingSampler& s, std::vector<float> const& vector) {
   if (s.wantsItem()) {
-    auto& buf = s.inputBuffer();
-    buf.insert(buf.end(), vector.begin(), vector.end());
-    s.consume();
+    s.consume(vector);
   } else {
     s.skip();
   }
@@ -251,22 +250,6 @@ TEST(VectorIndexTrainingSamplerTest, resize_on_undersized_reservoir_is_noop) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// inputBuffer() semantics
-// -----------------------------------------------------------------------------
-
-TEST(VectorIndexTrainingSamplerTest, input_buffer_is_cleared_each_call) {
-  VectorIndexTrainingSampler s{/*dimension=*/3, /*capacity=*/4, kFixedSeed};
-  auto& a = s.inputBuffer();
-  EXPECT_TRUE(a.empty());
-  a.push_back(1.0f);
-  a.push_back(2.0f);
-  // Request the buffer again without consume — must come back empty.
-  auto& b = s.inputBuffer();
-  EXPECT_TRUE(b.empty());
-  EXPECT_EQ(&a, &b) << "inputBuffer() should return a stable reference";
-}
-
 TEST(VectorIndexTrainingSamplerTest, itemsSeen_counts_every_consumed_vector) {
   // itemsSeen must count every consumed vector regardless of whether
   // Algorithm L kept or evicted it.
@@ -308,9 +291,8 @@ TEST(VectorIndexTrainingSamplerTest,
   for (std::size_t i = 0; i < n; ++i) {
     bool const wanted = s.wantsItem();
     if (wanted) {
-      auto& buf = s.inputBuffer();
-      buf.push_back(static_cast<float>(i));
-      s.consume();
+      std::array<float, dim> const buf{static_cast<float>(i)};
+      s.consume(buf);
       ++consumed;
     } else {
       s.skip();
