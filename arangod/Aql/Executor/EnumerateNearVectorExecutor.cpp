@@ -114,7 +114,7 @@ void EnumerateNearVectorsExecutor::searchResults() {
 
   auto validCount = std::count_if(_labels.begin(), _labels.end(),
                                   [](auto const& l) { return l != -1; });
-  LOG_TOPIC("f1a2b", WARN, Logger::ENGINES) << std::format(
+  LOG_TOPIC("f1a2b", INFO, Logger::ENGINES) << std::format(
       "EnumerateNearVectors::searchResults: requested={}, returned={}, "
       "validLabels={}, collectionCount={}",
       _infos.getNumberOfResults(), _labels.size(), validCount,
