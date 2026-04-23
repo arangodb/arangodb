@@ -64,6 +64,8 @@ class VectorIndexTrainingSampler {
   std::size_t _dimension;
   std::size_t _capacity;
   std::mt19937_64 _rng;
+  std::uniform_int_distribution<std::size_t> _slotDist;
+  std::uniform_real_distribution<double> _unitDist;
   std::size_t _itemsSeen{0};
   double _w{0.0};
   std::size_t _nextReplacement{0};

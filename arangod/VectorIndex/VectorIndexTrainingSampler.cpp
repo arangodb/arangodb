@@ -34,7 +34,10 @@ namespace arangodb::vector {
 VectorIndexTrainingSampler::VectorIndexTrainingSampler(std::size_t dimension,
                                                        std::size_t capacity,
                                                        std::uint64_t seed)
-    : _dimension{dimension}, _capacity{capacity}, _rng{seed} {
+    : _dimension{dimension},
+      _capacity{capacity},
+      _rng{seed},
+      _slotDist{0, capacity - 1} {
   TRI_ASSERT(_capacity > 0);
   _data.reserve(_capacity * _dimension);
   _input.reserve(_dimension);
@@ -56,8 +59,7 @@ void VectorIndexTrainingSampler::consume() {
     return;
   }
   if (_itemsSeen == _nextReplacement) {
-    std::uniform_int_distribution<std::size_t> slotDist{0, _capacity - 1};
-    std::size_t const slot = slotDist(_rng);
+    std::size_t const slot = _slotDist(_rng);
     std::copy(_input.begin(), _input.end(), _data.begin() + slot * _dimension);
     _w *= std::exp(std::log(sampleOpenUnit()) / static_cast<double>(_capacity));
     TRI_ASSERT(_w > 0.0 && _w < 1.0);
@@ -71,9 +73,9 @@ void VectorIndexTrainingSampler::resize(std::size_t newCapacity) {
   if (newCapacity >= current) {
     return;
   }
+  using param_t = std::uniform_int_distribution<std::size_t>::param_type;
   for (std::size_t i = 0; i < newCapacity; ++i) {
-    std::uniform_int_distribution<std::size_t> dist{i, current - 1};
-    std::size_t const j = dist(_rng);
+    std::size_t const j = _slotDist(_rng, param_t{i, current - 1});
     if (i != j) {
       std::swap_ranges(_data.begin() + i * _dimension,
                        _data.begin() + (i + 1) * _dimension,
@@ -93,10 +95,9 @@ std::size_t VectorIndexTrainingSampler::itemsSeen() const noexcept {
 
 // Draws u ∈ (0, 1); rejects 0 so std::log(u) stays finite.
 double VectorIndexTrainingSampler::sampleOpenUnit() {
-  std::uniform_real_distribution<double> dist;
   double u;
   do {
-    u = dist(_rng);
+    u = _unitDist(_rng);
   } while (u <= 0.0);
   return u;
 }
