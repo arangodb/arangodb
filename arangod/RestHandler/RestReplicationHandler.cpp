@@ -801,10 +801,6 @@ BAD_CALL:
 }
 
 Result RestReplicationHandler::testPermissions() {
-  if (!_request->authenticated()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
   std::string user = _request->user();
   auto const& suffixes = _request->suffixes();
   size_t const len = suffixes.size();
