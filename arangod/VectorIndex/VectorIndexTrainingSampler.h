@@ -42,6 +42,7 @@ class VectorIndexTrainingSampler {
   // Hands out the internal scratch buffer for the next vector. The buffer is
   // empty on return; the caller is expected to fill it with exactly
   // `dimension` floats before calling consume().
+  // TODO(jbajic) Generalize this so it can be used in other cases
   std::vector<float>& inputBuffer() noexcept;
 
   // True iff the next observed item must be consumed — either the reservoir
