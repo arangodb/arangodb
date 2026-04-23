@@ -32,6 +32,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class AuthenticationFeature;
+class RbacFeature;
+class ServerSecurityFeature;
 
 /// @brief just also stores the context
 class VocbaseContext final : public arangodb::ExecContext {
@@ -40,13 +43,12 @@ class VocbaseContext final : public arangodb::ExecContext {
 
   [[nodiscard]] static std::shared_ptr<VocbaseContext> create(
       AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
-      GeneralRequest& req, TRI_vocbase_t& vocbase);
+      ServerSecurityFeature const& securityFeature, GeneralRequest& req,
+      TRI_vocbase_t& vocbase);
 
   [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
 
-  [[nodiscard]] std::string_view database() const {
-    return _vocbase.name();
-  }
+  [[nodiscard]] std::string_view database() const { return _vocbase.name(); }
 
   /// @brief upgrade to internal superuser
   void forceSuperuser();

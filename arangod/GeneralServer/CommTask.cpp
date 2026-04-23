@@ -39,6 +39,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"
@@ -86,7 +87,9 @@ VocbasePtr lookupDatabaseFromRequest(DatabaseFeature& databaseFeature,
 /// Set the appropriate requestContext
 bool resolveRequestContext(DatabaseFeature& databaseFeature,
                            AuthenticationFeature& authenticationFeature,
-                           RbacFeature& rbacFeature, GeneralRequest& req) {
+                           RbacFeature& rbacFeature,
+                           ServerSecurityFeature& securityFeature,
+                           GeneralRequest& req) {
   auto vocbase = lookupDatabaseFromRequest(databaseFeature, req);
 
   // invalid database name specified, database not found etc.
@@ -97,8 +100,9 @@ bool resolveRequestContext(DatabaseFeature& databaseFeature,
   TRI_ASSERT(!vocbase->isDangling());
 
   // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
-  auto context = VocbaseContext::create(authenticationFeature, rbacFeature, req,
-                                        *vocbase.release());
+  auto context =
+      VocbaseContext::create(authenticationFeature, rbacFeature,
+                             securityFeature, req, *vocbase.release());
   if (!context) {
     return false;
   }
@@ -157,6 +161,7 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
       _auth(&server.server().getFeature<AuthenticationFeature>()),
       _databaseFeature(server.server().getFeature<DatabaseFeature>()),
       _rbacFeature(server.server().getFeature<RbacFeature>()),
+      _securityFeature(server.server().getFeature<ServerSecurityFeature>()),
       _connectionInfo(std::move(info)),
       _connectionStatistics(acquireConnectionStatistics()),
       _isUserRequest(true) {
@@ -282,6 +287,7 @@ CommTask::Flow CommTask::prepareExecution(
 
   // Step 3: Try to resolve vocbase and use
   if (!::resolveRequestContext(_databaseFeature, *_auth, _rbacFeature,
+                               _securityFeature,
                                req)) {  // false if db not found
     if (_auth->isActive()) {
       // prevent guessing database names (issue #5030)

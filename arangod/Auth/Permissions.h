@@ -38,6 +38,8 @@ namespace arangodb {
 // side-by-side with the permission vocabulary because `auth::perms::UseX`
 // takes one of these as its level.
 enum class CollectionAccessLevel { None = 0, Read, WriteData, WriteMeta };
+// TODO We call ::Write for DB, but ::Modify for View and Analyzer.
+//      Should we keep it consistent?
 enum class DatabaseAccessLevel { None = 0, Read, Write };
 enum class ViewAccessLevel { None = 0, Read, Modify };
 enum class AnalyzerAccessLevel { None = 0, Read, Modify };

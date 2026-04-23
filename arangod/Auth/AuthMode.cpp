@@ -63,8 +63,11 @@ auto AuthMode::Superuser::check(auth::Permission permission) const -> Result {
   return {};
 }
 
-AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username)
-    : _userManager(userManager), _username(std::move(username)) {}
+AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username,
+                           bool apiHardened)
+    : _userManager(userManager),
+      _username(std::move(username)),
+      _apiHardened(apiHardened) {}
 
 auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
@@ -73,150 +76,180 @@ auto AuthMode::Classic::username() const noexcept -> std::string_view {
 auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
   namespace p = auth::perms;
 
+  // TODO While this lambda is convenient, it prevents us from
+  //      specifically reporting when access is forbidden (only) due
+  //      to the server being in read-only mode. I think we should
+  //      change that, it seems sensible to communicate that to the
+  //      user.
+  auto const effectiveCollectionAuthLevel =
+      [this](std::string_view db, std::string_view collection) {
+        auto const storedLevel =
+            _userManager.collectionAuthLevel(username(), db, collection, true);
+        auto const maxLevel =
+            ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
+        return std::min(storedLevel, maxLevel);
+      };
+  auto const effectiveDatabaseAuthLevel = [this](std::string_view db) {
+    auto const storedLevel =
+        _userManager.databaseAuthLevel(username(), db, true);
+    auto const maxLevel =
+        ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
+    return std::min(storedLevel, maxLevel);
+  };
+  auto const accessLevelToAuthLevel = overload{
+      [](CollectionAccessLevel level) {
+        switch (level) {
+          case CollectionAccessLevel::None:
+            return auth::Level::NONE;
+          case CollectionAccessLevel::Read:
+            return auth::Level::RO;
+          case CollectionAccessLevel::WriteData:
+          case CollectionAccessLevel::WriteMeta:
+            return auth::Level::RW;
+        }
+        ADB_PROD_CRASH();
+      },
+      [](ViewAccessLevel level) {
+        switch (level) {
+          case ViewAccessLevel::None:
+            return auth::Level::NONE;
+          case ViewAccessLevel::Read:
+            return auth::Level::RO;
+          case ViewAccessLevel::Modify:
+            return auth::Level::RW;
+        }
+        ADB_PROD_CRASH();
+      },
+      [](AnalyzerAccessLevel level) {
+        switch (level) {
+          case AnalyzerAccessLevel::None:
+            return auth::Level::NONE;
+          case AnalyzerAccessLevel::Read:
+            return auth::Level::RO;
+          case AnalyzerAccessLevel::Modify:
+            return auth::Level::RW;
+        }
+        ADB_PROD_CRASH();
+      },
+      [](DatabaseAccessLevel level) {
+        switch (level) {
+          case DatabaseAccessLevel::None:
+            return auth::Level::NONE;
+          case DatabaseAccessLevel::Read:
+            return auth::Level::RO;
+          case DatabaseAccessLevel::Write:
+            return auth::Level::RW;
+        }
+        ADB_PROD_CRASH();
+      },
+  };
+
+  // TODO Instead of recursing in the following visit, implement
+  //      methods resembling canUseDatabase and canUseCollection, like
+  //      they existed on ExecContext previously.
+
   return std::visit(
       overload{
           [&](p::UseDatabase const& database) -> Result {
-            auto const storedLevel =
-                _userManager.databaseAuthLevel(username(), database.name, true);
-            auto const maxLevel =
-                ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
-            auto const level = std::min(storedLevel, maxLevel);
+            auto effectiveLevel = effectiveDatabaseAuthLevel(database.name);
+            auto requestedLevel = accessLevelToAuthLevel(database.level);
 
-            switch (database.level) {
-              case DatabaseAccessLevel::None:
-                return {};
-              case DatabaseAccessLevel::Read:
-                if (level >= auth::Level::RO) {
-                  return {};
-                }
-                return {TRI_ERROR_FORBIDDEN,
-                        "insufficient database access level for '" +
-                            database.name + "'"};
-              case DatabaseAccessLevel::Write:
-                if (level >= auth::Level::RW) {
-                  return {};
-                }
-                return {TRI_ERROR_FORBIDDEN,
-                        "insufficient database access level for '" +
-                            database.name + "'"};
+            if (requestedLevel <= effectiveLevel) {
+              return {};
+            } else {
+              return {TRI_ERROR_FORBIDDEN,
+                      "insufficient database access level for '" +
+                          database.name + "'"};
             }
-            ADB_PROD_CRASH();
           },
           [&](p::UseCollection const& collection) -> Result {
-            auto const storedLevel = _userManager.collectionAuthLevel(
-                username(), collection.db, collection.name, true);
-            auto const maxLevel =
-                ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
-            auto const level = std::min(storedLevel, maxLevel);
+            auto const requestedLevel =
+                accessLevelToAuthLevel(collection.level);
 
-            // TODO translate the following code, copied from ExecContext, to
-            //      work in this function!
-            //      i.e. handle permissions for special collections.
-            //  if (coll.starts_with('_')) {
-            //    // handle fixed permissions here outside auth module.
-            //    // TODO: move this block above, such that it takes effect
-            //    //       when authentication is disabled
-            //    if (dbname == StaticStrings::SystemDatabase &&
-            //        coll == StaticStrings::UsersCollection) {
-            //      // _users (only present in _system database)
-            //      return auth::Level::NONE;
-            //    }
-            //    if (coll == StaticStrings::QueuesCollection) {
-            //      // _queues
-            //      return auth::Level::RO;
-            //    }
-            //    if (coll == StaticStrings::FrontendCollection) {
-            //      // _frontend
-            //      return auth::Level::RW;
-            //    }  // intentional fall through
-            //  }
-
-            switch (collection.level) {
-              case AccessLevel::None:
+            // handle fixed permissions of certain system collections
+            if (collection.name.starts_with('_')) {
+              // _system._users
+              if (collection.db == StaticStrings::SystemDatabase &&
+                  collection.name == StaticStrings::UsersCollection) {
+                if (requestedLevel == auth::Level::NONE) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        std::format("access to {} is restricted",
+                                    StaticStrings::UsersCollection)};
+              }
+              // _queues
+              if (collection.name == StaticStrings::QueuesCollection) {
+                if (requestedLevel <= auth::Level::RO) {
+                  return {};
+                }
+                return {TRI_ERROR_FORBIDDEN,
+                        std::format("write access to {} is restricted",
+                                    StaticStrings::QueuesCollection)};
+              }
+              // _frontend
+              if (collection.name == StaticStrings::FrontendCollection) {
                 return {};
-              case AccessLevel::Read:
-                if (level >= auth::Level::RO) {
-                  return {};
-                }
-                return {TRI_ERROR_FORBIDDEN,
-                        "insufficient collection access level for '" +
-                            collection.name + "' in database '" +
-                            collection.db + "'"};
-              case AccessLevel::WriteData:
-              case AccessLevel::WriteMeta:
-                if (level >= auth::Level::RW) {
-                  return {};
-                }
-                return {TRI_ERROR_FORBIDDEN,
-                        "insufficient collection access level for '" +
-                            collection.name + "' in database '" +
-                            collection.db + "'"};
+              }
             }
-            ADB_PROD_CRASH();
+
+            auto const effectiveLevel =
+                effectiveCollectionAuthLevel(collection.db, collection.name);
+
+            if (requestedLevel <= effectiveLevel) {
+              return {};
+            } else {
+              return {TRI_ERROR_FORBIDDEN,
+                      "insufficient collection access level for '" +
+                          collection.name + "' in database '" + collection.db +
+                          "'"};
+            }
           },
           [&](p::UseView const& view) -> Result {
-            auto const storedLevel = _userManager.collectionAuthLevel(
-                username(), view.db, view.name, true);
-            auto const maxLevel =
-                ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
-            auto const level = std::min(storedLevel, maxLevel);
+            auto const effectiveLevel =
+                effectiveCollectionAuthLevel(view.db, view.name);
+            auto const requestedLevel = accessLevelToAuthLevel(view.level);
 
-            switch (view.level) {
-              case ViewAccessLevel::None:
-                return {};
-              case ViewAccessLevel::Read:
-                if (level >= auth::Level::RO) {
-                  return {};
-                }
-                return {TRI_ERROR_FORBIDDEN,
-                        "insufficient view access level for '" + view.name +
-                            "' in database '" + view.db + "'"};
-              case ViewAccessLevel::Modify:
-                if (level >= auth::Level::RW) {
-                  return {};
-                }
-                return {TRI_ERROR_FORBIDDEN,
-                        "insufficient view access level for '" + view.name +
-                            "' in database '" + view.db + "'"};
+            if (requestedLevel <= effectiveLevel) {
+              return {};
+            } else {
+              return {TRI_ERROR_FORBIDDEN,
+                      "insufficient view access level for '" + view.name +
+                          "' in database '" + view.db + "'"};
             }
-            ADB_PROD_CRASH();
           },
           [&](p::UseAnalyzer const& analyzer) -> Result {
-            auto const storedLevel = _userManager.collectionAuthLevel(
-                username(), analyzer.db, analyzer.name, true);
-            auto const maxLevel =
-                ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
-            auto const level = std::min(storedLevel, maxLevel);
+            auto const effectiveLevel =
+                effectiveCollectionAuthLevel(analyzer.db, analyzer.name);
+            auto const requestedLevel = accessLevelToAuthLevel(analyzer.level);
 
-            switch (analyzer.level) {
-              case AnalyzerAccessLevel::None:
-                return {};
-              case AnalyzerAccessLevel::Read:
-                if (level >= auth::Level::RO) {
-                  return {};
-                }
-                return {TRI_ERROR_FORBIDDEN,
-                        "insufficient analyzer access level for '" +
-                            analyzer.name + "' in database '" + analyzer.db +
-                            "'"};
-              case AnalyzerAccessLevel::Modify:
-                if (level >= auth::Level::RW) {
-                  return {};
-                }
-                return {TRI_ERROR_FORBIDDEN,
-                        "insufficient analyzer access level for '" +
-                            analyzer.name + "' in database '" + analyzer.db +
-                            "'"};
+            if (requestedLevel <= effectiveLevel) {
+              return {};
+            } else {
+              return {TRI_ERROR_FORBIDDEN,
+                      "insufficient analyzer access level for '" +
+                          analyzer.name + "' in database '" + analyzer.db +
+                          "'"};
             }
-            ADB_PROD_CRASH();
           },
           [&](p::Admin const& admin) -> Result {
             // recurses into check() with a UseDatabase permission
             return isAdmin();
           },
           // TODO Implement proper classic-system checks for these.
-          [&](p::HardenedAdmin const& admin) -> Result { return {}; },
-          [&](p::SeeDatabase const&) -> Result { return {}; },
+          [&](p::HardenedAdmin const& admin) -> Result {
+            if (!_apiHardened) {
+              return {};
+            } else {
+              // recurses into check() with a UseDatabase permission
+              return isAdmin();
+            }
+          },
+          [&](p::SeeDatabase const& database) -> Result {
+            // recurses into check() with a UseDatabase permission
+            return check(
+                p::UseDatabase{database.name, DatabaseAccessLevel::Read});
+          },
           [&](p::CreateDatabase const&) -> Result { return {}; },
           [&](p::DropDatabase const&) -> Result { return {}; },
           [&](p::SeeCollection const&) -> Result { return {}; },

@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -56,7 +57,8 @@ VocbaseContext::~VocbaseContext() {
 
 std::shared_ptr<VocbaseContext> VocbaseContext::create(
     AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
-    GeneralRequest& req, TRI_vocbase_t& vocbase) {
+    ServerSecurityFeature const& securityFeature, GeneralRequest& req,
+    TRI_vocbase_t& vocbase) {
   auto authMode = AuthMode{[&]() -> AuthMode::Any {
     bool isSuperUser = req.authenticated() && req.user().empty() &&
                        req.authenticationMethod() == AuthenticationMethod::JWT;
@@ -87,7 +89,8 @@ std::shared_ptr<VocbaseContext> VocbaseContext::create(
     }
 
     ADB_PROD_ASSERT(userManager != nullptr);
-    return AuthMode::Classic(*userManager, req.user());
+    return AuthMode::Classic(*userManager, req.user(),
+                             securityFeature.isRestApiHardened());
   }()};
 
   return std::make_shared<VocbaseContext>(ConstructorToken{},
