@@ -10,18 +10,20 @@ import { QueryOptionsPane } from "./QueryOptionsPane";
 import { QueryResults } from "../queryResults/QueryResults";
 import { SavedQueryView } from "./SavedQueryView";
 
+const AQL_EDITOR_CONTAINER_CLASS = "aql-editor-container";
+
 export const QueryEditorPane = () => {
   const { currentView, queryValue, onQueryValueChange, resetEditor, aqlJsonEditorRef } =
     useQueryContext();
   const refreshEditorSize = useCallback(() => {
-  requestAnimationFrame(() => {
-    const aceEditor = (aqlJsonEditorRef.current as any)?.jsonEditor
-      ?.aceEditor;
-    if (!aceEditor) return;
-    aceEditor.resize(true);
-    aceEditor.renderer.updateFull(true);
-  });
-}, [aqlJsonEditorRef]);
+    requestAnimationFrame(() => {
+      const aceEditor = (aqlJsonEditorRef.current as any)?.jsonEditor
+        ?.aceEditor;
+      if (!aceEditor) return;
+      aceEditor.resize(true);
+      aceEditor.renderer.updateFull(true);
+    });
+  }, [aqlJsonEditorRef]);
   if (currentView === "saved") {
     return (
       <>
@@ -34,9 +36,9 @@ export const QueryEditorPane = () => {
     <Box background="white" height="100%" overflow="hidden">
       <Global
         styles={{
-          ".jsoneditor, .jsoneditor > div, .jsoneditor-outer": {
-            height: "100% !important",
-            overflow: "hidden !important"
+          [`.${AQL_EDITOR_CONTAINER_CLASS} .jsoneditor, .${AQL_EDITOR_CONTAINER_CLASS} .jsoneditor > div, .${AQL_EDITOR_CONTAINER_CLASS} .jsoneditor-outer`]: {
+            height: "100%",
+            overflow: "hidden"
           }
         }}
       />
@@ -58,7 +60,7 @@ export const QueryEditorPane = () => {
             minHeight={0}
             overflow="hidden"
           >
-            <Box minHeight={0} minWidth={0} overflow="hidden">
+            <Box className={AQL_EDITOR_CONTAINER_CLASS} minHeight={0} minWidth={0} overflow="hidden">
               <AQLEditor
                 autoFocus
                 resetEditor={resetEditor}
