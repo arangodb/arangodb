@@ -22,10 +22,8 @@
 
 #include "ClusterUpgradeOptionsProvider.h"
 
-#include "Cluster/ServerState.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabaseFeature.h"
 
 namespace arangodb::upgrade {
 
@@ -49,22 +47,6 @@ void ClusterUpgradeOptionsProvider::declareOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator));
-}
-
-void ClusterUpgradeOptionsProvider::validateClusterUpgradeOptions(
-    std::shared_ptr<ProgramOptions> /*options*/,
-    ClusterUpgradeFeatureOptions& opts, DatabaseFeature& databaseFeature) {
-  if (!ServerState::instance()->isCoordinator()) {
-    return;
-  }
-
-  if (opts.upgradeMode == "force") {
-    databaseFeature.enableUpgrade();
-  } else if (opts.upgradeMode == "disable") {
-    databaseFeature.disableUpgrade();
-  } else if (opts.upgradeMode == "online") {
-    databaseFeature.disableUpgrade();
-  }
 }
 
 }  // namespace arangodb::upgrade

@@ -41,12 +41,6 @@ struct StatisticsOptionsProvider : OptionsProvider<StatisticsFeatureOptions> {
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       StatisticsFeatureOptions& options) override;
-
-  /// Initializes connection/request statistics or disables the feature; returns
-  /// whether `--server.statistics-history` was touched on the command line.
-  bool validateStatisticsOptions(std::shared_ptr<options::ProgramOptions> opts,
-                                 StatisticsFeatureOptions& options,
-                                 StatisticsFeature& feature);
 };
 
 }  // namespace statistics

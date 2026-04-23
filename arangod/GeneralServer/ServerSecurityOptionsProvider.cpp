@@ -57,8 +57,4 @@ void ServerSecurityOptionsProvider::declareOptions(
                 Flags::OnSingle));
 }
 
-void ServerSecurityOptionsProvider::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/,
-    ServerSecurityFeatureOptions& /*opts*/) {}
-
 }  // namespace arangodb::security

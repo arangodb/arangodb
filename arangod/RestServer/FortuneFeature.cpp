@@ -76,11 +76,6 @@ void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   provider.declareOptions(options, _options);
 }
 
-void FortuneFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  arangodb::fortune::FortuneOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 void FortuneFeature::start() {
   if (!_options.fortune) {
     return;

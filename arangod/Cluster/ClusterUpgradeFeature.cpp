@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterUpgradeFeature.h"
-
+#include "Cluster/ServerState.h"
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -61,9 +61,25 @@ void ClusterUpgradeFeature::collectOptions(
 }
 
 void ClusterUpgradeFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  arangodb::upgrade::ClusterUpgradeOptionsProvider provider;
-  provider.validateClusterUpgradeOptions(options, _options, _databaseFeature);
+    std::shared_ptr<ProgramOptions> options) {
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
+
+  if (_options.upgradeMode == "force") {
+    // always perform an upgrade, regardless of the value of
+    // `--database.auto-upgrade`. after the upgrade, shut down the server
+    _databaseFeature.enableUpgrade();
+  } else if (_options.upgradeMode == "disable") {
+    // never perform an upgrade, regardless of the value of
+    // `--database.auto-upgrade`. don't shut down the server
+    _databaseFeature.disableUpgrade();
+  } else if (_options.upgradeMode == "online") {
+    // perform an upgrade, but stay online and don't shut down the server.
+    // disabling the upgrade functionality in the database feature is required
+    // for this.
+    _databaseFeature.disableUpgrade();
+  }
 }
 
 void ClusterUpgradeFeature::start() {

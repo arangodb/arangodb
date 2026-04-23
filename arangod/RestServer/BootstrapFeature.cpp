@@ -135,12 +135,6 @@ void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   provider.declareOptions(options, _options);
 }
 
-void BootstrapFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::bootstrap::BootstrapOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 // Local Helper functions
 namespace {
 

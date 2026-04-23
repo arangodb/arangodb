@@ -22,24 +22,29 @@
 
 #include "VectorIndexOptionsProvider.h"
 
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb::vector_index {
 
+using namespace arangodb::options;
+
 void VectorIndexOptionsProvider::declareOptions(
-    std::shared_ptr<options::ProgramOptions> options,
-    VectorIndexFeatureOptions& /*opts*/) {
-  options->addObsoleteOption(
-      "--vector-index",
-      "Enable the vector index feature. "
-      "Once in use, this option cannot be turned off again.",
-      true);
+    std::shared_ptr<ProgramOptions> programOptions,
+    VectorIndexFeatureOptions& opts) {
+  programOptions
+      ->addOption("--vector-index",
+                  "Enable the vector index feature. "
+                  "Once in use, this option cannot be turned off again.",
+                  new BooleanParameter(&opts.useVectorIndex),
+                  makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
+                            Flags::OnDBServer, Flags::OnSingle))
+      .setIntroducedIn(31204)
+      .setLongDescription(R"(This startup option should not be enabled for
+  Agents in a cluster as it has no effect on them other than that you need to
+  leave the option enabled.)");
 
-  options->addOldOption("--experimental-vector-index", "--vector-index");
+  programOptions->addOldOption("--experimental-vector-index", "--vector-index");
 }
-
-void VectorIndexOptionsProvider::validateOptions(
-    std::shared_ptr<options::ProgramOptions> /*options*/,
-    VectorIndexFeatureOptions& /*opts*/) {}
 
 }  // namespace arangodb::vector_index

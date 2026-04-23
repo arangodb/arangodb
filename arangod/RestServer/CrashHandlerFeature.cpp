@@ -56,12 +56,6 @@ void CrashHandlerFeature::collectOptions(
   provider.declareOptions(options, _options);
 }
 
-void CrashHandlerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::crash_handler::CrashHandlerOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 std::shared_ptr<crash_handler::DumpManager>
 CrashHandlerFeature::getDumpManager() const {
   return _dumpManager;

@@ -37,9 +37,6 @@ struct VectorIndexOptionsProvider : OptionsProvider<VectorIndexFeatureOptions> {
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       VectorIndexFeatureOptions& options) override;
-
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       VectorIndexFeatureOptions& options) override;
 };
 
 }  // namespace arangodb::vector_index

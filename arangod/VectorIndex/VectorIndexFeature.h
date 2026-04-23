@@ -42,7 +42,6 @@ class VectorIndexFeature final
   static constexpr std::string_view name() noexcept { return "VectorIndex"; }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   void start() override final;
 

@@ -44,12 +44,6 @@ void ServerSecurityFeature::collectOptions(
   provider.declareOptions(options, _options);
 }
 
-void ServerSecurityFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::security::ServerSecurityOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 void ServerSecurityFeature::disableFoxxApi() noexcept {
   _options.enableFoxxApi = false;
 }

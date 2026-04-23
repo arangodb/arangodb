@@ -39,8 +39,4 @@ void CrashHandlerOptionsProvider::declareOptions(
                        Flags::OnDBServer, Flags::OnAgent, Flags::OnSingle));
 }
 
-void CrashHandlerOptionsProvider::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/,
-    CrashHandlerFeatureOptions& /*opts*/) {}
-
 }  // namespace arangodb::crash_handler

@@ -36,8 +36,4 @@ void FortuneOptionsProvider::declareOptions(
                      makeDefaultFlags(Flags::Uncommon));
 }
 
-void FortuneOptionsProvider::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/,
-    FortuneFeatureOptions& /*opts*/) {}
-
 }  // namespace arangodb::fortune

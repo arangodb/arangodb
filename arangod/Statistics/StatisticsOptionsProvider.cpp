@@ -79,16 +79,4 @@ This is less intrusive than setting the `--server.statistics` option to
       .setIntroducedIn(30800);
 }
 
-bool StatisticsOptionsProvider::validateStatisticsOptions(
-    std::shared_ptr<ProgramOptions> options, StatisticsFeatureOptions& opts,
-    StatisticsFeature& feature) {
-  if (opts.statistics) {
-    ConnectionStatistics::initialize();
-    RequestStatistics::initialize();
-  } else {
-    feature.disable();
-  }
-  return options->processingResult().touched("--server.statistics-history");
-}
-
 }  // namespace arangodb::statistics

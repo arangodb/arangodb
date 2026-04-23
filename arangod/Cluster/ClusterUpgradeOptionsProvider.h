@@ -30,11 +30,7 @@ namespace arangodb::options {
 class ProgramOptions;
 }
 
-namespace arangodb {
-
-class DatabaseFeature;
-
-namespace upgrade {
+namespace arangodb::upgrade {
 
 struct ClusterUpgradeOptionsProvider
     : OptionsProvider<ClusterUpgradeFeatureOptions> {
@@ -42,12 +38,6 @@ struct ClusterUpgradeOptionsProvider
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       ClusterUpgradeFeatureOptions& options) override;
-
-  /// Applies `--cluster.upgrade` mode to DatabaseFeature (coordinator only).
-  void validateClusterUpgradeOptions(
-      std::shared_ptr<options::ProgramOptions> opts,
-      ClusterUpgradeFeatureOptions& options, DatabaseFeature& databaseFeature);
 };
 
-}  // namespace upgrade
-}  // namespace arangodb
+}  // namespace arangodb::upgrade

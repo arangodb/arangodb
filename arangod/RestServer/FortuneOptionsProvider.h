@@ -37,9 +37,6 @@ struct FortuneOptionsProvider : OptionsProvider<FortuneFeatureOptions> {
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       FortuneFeatureOptions& options) override;
-
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       FortuneFeatureOptions& options) override;
 };
 
 }  // namespace arangodb::fortune
