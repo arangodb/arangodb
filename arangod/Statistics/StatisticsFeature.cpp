@@ -24,7 +24,6 @@
 #include "StatisticsFeature.h"
 
 #include "Statistics/StatisticsOptionsProvider.h"
-//#include "GeneralServer/RequestStatisticsMetrics.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"

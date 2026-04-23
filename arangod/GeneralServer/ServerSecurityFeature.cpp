@@ -53,7 +53,7 @@ bool ServerSecurityFeature::isFoxxApiDisabled() const noexcept {
 }
 
 bool ServerSecurityFeature::isFoxxStoreDisabled() const noexcept {
-  return !_options.enableFoxxStore;
+  return !_options.enableFoxxStore || !_options.enableFoxxApi;
 }
 
 bool ServerSecurityFeature::isRestApiHardened() const noexcept {

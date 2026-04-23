@@ -44,12 +44,6 @@ struct CheckVersionOptionsProvider
 
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       CheckVersionFeatureOptions& options) override;
-
-  void validateCheckVersionOptions(
-      std::shared_ptr<options::ProgramOptions> opts,
-      CheckVersionFeatureOptions& options,
-      application_features::ApplicationServer& server,
-      std::span<const std::type_index> nonServerFeatures);
 };
 
 }  // namespace arangodb::check_version
