@@ -46,9 +46,7 @@ RestUsageMetricsHandler::RestUsageMetricsHandler(
 
 // Mounted at /_admin/usage-metrics (prefix)
 auto RestUsageMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
-  auto& security = server().getFeature<ServerSecurityFeature>();
-
-  if (auto r = security.canAccessHardenedApi(
+  if (auto r = ExecContext::current().canUseHardenedAction(
           rbac::Category::AdminMonitoringInternal{});
       r.fail()) {
     // don't leak information about server internals here

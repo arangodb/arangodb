@@ -2094,11 +2094,9 @@ async<void> RestAdminClusterHandler::handleNumberOfServers() {
   // GET requests are allowed for everyone, PUT, too, unless
   // --server.harden is used. In this case admin privileges are
   // required. with RBAC, db:AdminMaintenance is needed for PUT
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
   if (request()->requestType() != rest::RequestType::GET) {
-    if (auto r =
-            security.canAccessHardenedApi(rbac::Category::AdminMaintenance{});
+    if (auto r = ExecContext::current().canUseHardenedAction(
+            rbac::Category::AdminMaintenance{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());

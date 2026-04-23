@@ -68,10 +68,7 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (auto r = security.canAccessHardenedApi(
+  if (auto r = ExecContext::current().canUseHardenedAction(
           rbac::Category::AdminMonitoringInternal{});
       r.fail()) {
     // dont leak information about server internals here

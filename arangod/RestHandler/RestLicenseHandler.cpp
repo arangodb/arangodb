@@ -47,10 +47,7 @@ RestLicenseHandler::RestLicenseHandler(
 #ifndef USE_ENTERPRISE
 // Mounted at /_admin/license (prefix)
 RestStatus RestLicenseHandler::execute() {
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (auto r = security.canAccessHardenedApi(
+  if (auto r = ExecContext::current().canUseHardenedAction(
           arangodb::rbac::Category::AdminLicense{});
       r.fail()) {
     // dont leak information about server internals here

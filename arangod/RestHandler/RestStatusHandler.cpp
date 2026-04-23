@@ -67,10 +67,8 @@ RestStatusHandler::RestStatusHandler(
 
 // Mounted at /_admin/status (exact)
 RestStatus RestStatusHandler::execute() {
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (auto r = security.canAccessHardenedApi(rbac::Category::AdminMonitoring{});
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          rbac::Category::AdminMonitoring{});
       r.fail()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,

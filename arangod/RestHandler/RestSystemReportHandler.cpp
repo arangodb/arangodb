@@ -80,10 +80,7 @@ std::string exec(std::string const& cmd) {
 
 // Mounted at /_admin/system-report (exact)
 RestStatus RestSystemReportHandler::execute() {
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  if (auto r = security.canAccessHardenedApi(
+  if (auto r = ExecContext::current().canUseHardenedAction(
           arangodb::rbac::Category::AdminMonitoringInternal{});
       r.fail()) {
     // dont leak information about server internals here
