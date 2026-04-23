@@ -30,6 +30,7 @@ const arangodb = require("@arangodb");
 const aql = arangodb.aql;
 const errors = internal.errors;
 const db = internal.db;
+const IM = global.instanceManager;
 const {
   randomNumberGeneratorFloat,
   generateSeed,
@@ -91,6 +92,9 @@ function VectorRetrainTestSuite() {
     },
 
     tearDown: function () {
+      if (IM.debugCanUseFailAt()) {
+        IM.debugClearFailAt();
+      }
       try { db._drop(collName); } catch (e) {}
     },
 
@@ -179,6 +183,31 @@ function VectorRetrainTestSuite() {
         FILTER HAS(d, 'vector')
         COLLECT WITH COUNT INTO c RETURN c`).toArray()[0];
       assertEqual(aboveThresholdCount + extra.length, count);
+    },
+
+    testRetrainRejectsConcurrentRetrain: function () {
+      if (!IM.debugCanUseFailAt()) {
+        return;
+      }
+      // Hold the shadow build at pauseBeforeTraining so _activeRetrains
+      // stays populated long enough for us to fire a second retrain.
+      IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeTraining");
+      collection.retrain(indexName);
+
+      try {
+        collection.retrain(indexName);
+        fail();
+      } catch (e) {
+        assertEqual(errors.ERROR_ARANGO_CONFLICT.code, e.errorNum);
+      }
+
+      // Release the paused build so the index returns to kReady before
+      // tearDown runs.
+      IM.debugClearFailAt();
+      assertTrue(
+        waitForAllVectorIndexesState(
+          collection, VectorIndexTrainingState.kReady, 180),
+        "Index did not return to ready after paused retrain");
     },
   };
 }
