@@ -39,6 +39,7 @@ VectorIndexTrainingSampler::VectorIndexTrainingSampler(std::size_t dimension,
       _rng{seed},
       _slotDist{0, capacity - 1} {
   TRI_ASSERT(_capacity > 0);
+  TRI_ASSERT(_dimension > 0);
   _data.reserve(_capacity * _dimension);
   _input.reserve(_dimension);
 }
