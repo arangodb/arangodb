@@ -26,6 +26,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
+#include "Aql/ConditionCoverage.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
@@ -35,9 +36,31 @@
 #include "Aql/Optimizer.h"
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
+#include "Indexes/Index.h"
 
 namespace arangodb::aql {
 using EN = ExecutionNode;
+
+AstNode* removeIndexCondition(Condition& cond, ExecutionPlan const* plan,
+                              Variable const* variable, AstNode const* other,
+                              Index const* index) {
+  TRI_ASSERT(index != nullptr);
+  AstNode* root = cond.root();
+  if (root == nullptr || other == nullptr) {
+    return root;
+  }
+  AstNode const* andNode = nullptr;
+  AstNode const* conditionAndNode = nullptr;
+  if (!extractSingleAndNodes(root, other, andNode, conditionAndNode)) {
+    return root;
+  }
+  auto toRemove = collectOverlappingMembersForIndex(plan, variable, andNode,
+                                                    conditionAndNode, index);
+  if (toRemove.empty()) {
+    return root;
+  }
+  return rebuildConditionWithoutMembers(plan->getAst(), andNode, toRemove);
+}
 
 void removeFiltersCoveredByIndexRule(Optimizer* opt,
                                      std::unique_ptr<ExecutionPlan> plan,
@@ -87,9 +110,9 @@ void removeFiltersCoveredByIndexRule(Optimizer* opt,
               if (n != 1) {
                 break;
               }
-              newNode = condition.removeIndexCondition(
-                  plan.get(), indexNode->outVariable(), indexCondition->root(),
-                  indexesUsed[0].get());
+              newNode = removeIndexCondition(
+                  condition, plan.get(), indexNode->outVariable(),
+                  indexCondition->root(), indexesUsed[0].get());
             }
             if (newNode == nullptr) {
               toUnlink.emplace(node);

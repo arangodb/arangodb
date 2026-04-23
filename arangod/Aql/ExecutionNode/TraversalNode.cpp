@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/ConditionCoverage.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/GraphNode.h"
@@ -709,7 +710,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   auto generateExpression =
       [&](aql::AstNode* remainderCondition,
           aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
-    auto toRemove = aql::Condition::collectOverlappingMembersForTraversal(
+    auto toRemove = aql::collectOverlappingMembersForTraversal(
         _plan, options()->tmpVar(), remainderCondition, indexCondition,
         /*isPathCondition*/ false);
     size_t n = remainderCondition->numMembers();

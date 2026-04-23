@@ -18,30 +18,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "Aql/ExecutionPlan.h"
+#include "Aql/ConditionPart.h"
+#include "Containers/HashSet.h"
 
 namespace arangodb {
 class Index;
 
 namespace aql {
-class Condition;
-class Optimizer;
-struct Variable;
+class Ast;
 struct AstNode;
+class ExecutionPlan;
+struct Variable;
 
-/// @brief try to remove filters which are covered by indexes
-void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
+bool extractSingleAndNodes(AstNode const* root, AstNode const* condition,
+                           AstNode const*& andNode,
+                           AstNode const*& conditionAndNode);
 
-AstNode* removeIndexCondition(Condition& cond, ExecutionPlan const* plan,
-                              Variable const* variable, AstNode const* other,
-                              Index const* index);
+AstNode* rebuildConditionWithoutMembers(
+    Ast* ast, AstNode const* andNode,
+    containers::HashSet<size_t> const& toRemove);
+
+// Given a filter AND-node and another AND-node that a consumer (index /
+// traversal) already enforces, returns the indices of filter members that are
+// covered by the other and therefore removable.
+containers::HashSet<size_t> collectOverlappingMembersForIndex(
+    ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
+    AstNode const* otherAndNode, Index const* index);
+
+containers::HashSet<size_t> collectOverlappingMembersForTraversal(
+    ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
+    AstNode const* otherAndNode, bool isPathCondition);
 
 }  // namespace aql
 }  // namespace arangodb

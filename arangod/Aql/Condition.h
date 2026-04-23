@@ -37,8 +37,6 @@
 #include <vector>
 
 namespace arangodb {
-class Index;
-
 namespace aql {
 
 class Ast;
@@ -115,24 +113,6 @@ class Condition {
   /// don't want to remove eventually unneccessary filters.
   void normalize();
 
-  static containers::HashSet<size_t> collectOverlappingMembersForIndex(
-      ExecutionPlan const* plan, Variable const* variable,
-      AstNode const* andNode, AstNode const* otherAndNode, Index const* index);
-
-  static containers::HashSet<size_t> collectOverlappingMembersForTraversal(
-      ExecutionPlan const* plan, Variable const* variable,
-      AstNode const* andNode, AstNode const* otherAndNode,
-      bool isPathCondition);
-
-  /// @brief removes condition parts from another
-  AstNode* removeIndexCondition(ExecutionPlan const* plan,
-                                Variable const* variable,
-                                AstNode const* condition, Index const* index);
-
-  /// @brief removes condition parts from another
-  AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*,
-                                    AstNode*, bool isPathCondition);
-
   /// @brief remove (now) invalid variables from the condition
   bool removeInvalidVariables(VarSet const&, bool& noRemoves);
 
@@ -165,20 +145,6 @@ class Condition {
   AstNode* transformCondition(AstNode* root,
                               ConditionOptimization conditionOptimization);
 
-  static bool isConditionCoveredBy(ExecutionPlan const* plan,
-                                   Variable const* variable,
-                                   AstNode const* condition,
-                                   AstNode const* otherAndNode);
-
-  static bool extractSingleAndNodes(AstNode const* root,
-                                    AstNode const* condition,
-                                    AstNode const*& andNode,
-                                    AstNode const*& conditionAndNode);
-
-  static AstNode* rebuildConditionWithoutMembers(
-      Ast* ast, AstNode const* andNode,
-      containers::HashSet<size_t> const& toRemove);
-
   /// @brief optimize the condition expression tree
   void optimize(ExecutionPlan*, bool multivalued);
 
@@ -210,10 +176,6 @@ class Condition {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void validateAst(AstNode const* node, int level);
 #endif
-
-  /// @brief checks if the current condition covers the other
-  static bool canRemove(ExecutionPlan const*, ConditionPart const&,
-                        AstNode const*, bool allowArrayExpansion);
 
   /// @brief deduplicate IN condition values (and sort them).
   /// will return either the unmodified original node or a copy.

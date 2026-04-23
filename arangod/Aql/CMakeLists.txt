@@ -33,6 +33,7 @@ add_library(arango_aql STATIC
   Collections.cpp
   Condition.cpp
   ConditionPart.cpp
+  ConditionCoverage.cpp
   ConditionFinder.cpp
   ConstFetcher.cpp
   CostEstimate.cpp

@@ -2,6 +2,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Optimizer/Rule/RemoveFiltersCoveredByIndex.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
@@ -140,8 +141,8 @@ TEST_F(ConditionRemoveForIndexTest, ReturnsNullptrWhenRootIsNull) {
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
   ASSERT_EQ(result, nullptr);
   ASSERT_EQ(filterCond.root(), nullptr);
 }
@@ -160,7 +161,8 @@ TEST_F(ConditionRemoveForIndexTest, ReturnsOriginalWhenConditionIsNull) {
   AstNode* before = filterCond.root();
   ASSERT_NE(before, nullptr);
 
-  AstNode* result = filterCond.removeIndexCondition(_plan, _d, nullptr, index.get());
+  AstNode* result =
+      removeIndexCondition(filterCond, _plan, _d, nullptr, index.get());
 
   ASSERT_EQ(result, before);
   ASSERT_EQ(filterCond.root(), before);
@@ -184,8 +186,8 @@ TEST_F(ConditionRemoveForIndexTest, ReturnsOriginalWhenNothingRemoved) {
   AstNode* before = filterCond.root();
   ASSERT_NE(before, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_EQ(result, before);
 }
@@ -205,15 +207,15 @@ TEST_F(ConditionRemoveForIndexTest, ReturnsNullptrWhenMemberRemoved) {
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
 
 TEST_F(ConditionRemoveForIndexTest, ReturnsNullptrWhenAllMembersRemoved) {
   // filter: d.a == 1 AND d.b == 2
-  // index : d.a == 1 AND d.b == 2 
+  // index : d.a == 1 AND d.b == 2
   // => nullptr
   Condition filterCond(_ast);
   filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
@@ -228,8 +230,8 @@ TEST_F(ConditionRemoveForIndexTest, ReturnsNullptrWhenAllMembersRemoved) {
   auto index = makePersistent({"a", "b"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   EXPECT_EQ(result, nullptr);
 }
@@ -250,8 +252,8 @@ TEST_F(ConditionRemoveForIndexTest, RemovesCoveredMemberKeepsUncovered) {
   auto index = makePersistent({"a"}, /*sparse*/ false);
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
 
@@ -285,8 +287,8 @@ TEST_F(ConditionRemoveForIndexTest,
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
   ASSERT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_AND);
@@ -320,8 +322,8 @@ TEST_F(ConditionRemoveForIndexTest, EqIndexImpliesRangeBounds) {
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
@@ -342,8 +344,8 @@ TEST_F(ConditionRemoveForIndexTest, EqIndexImpliesLe) {
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
@@ -364,8 +366,8 @@ TEST_F(ConditionRemoveForIndexTest, StrictBoundImpliesLooserSameSide) {
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
@@ -386,8 +388,8 @@ TEST_F(ConditionRemoveForIndexTest, NonConstantDropsOnlyThatMember) {
   auto index = makePersistent({"a"});
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
   ASSERT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_GT);
@@ -416,8 +418,8 @@ TEST_F(ConditionRemoveForIndexTest, NonSparseKeepsNeNull) {
   auto index = makePersistent({"a"}, /*sparse*/ false);
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
   EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_NE);
@@ -440,8 +442,8 @@ TEST_F(ConditionRemoveForIndexTest, SparseRemovesNeNullSingleMember) {
   auto index = makePersistent({"a"}, /*sparse*/ true);
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
@@ -461,15 +463,15 @@ TEST_F(ConditionRemoveForIndexTest, SparseRemovesGtNullSingleMember) {
   auto index = makePersistent({"a"}, /*sparse*/ true);
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_EQ(result, nullptr);
 }
 
 TEST_F(ConditionRemoveForIndexTest, SparseCompoundKeepsNeNull) {
-    // filter: d.a != null AND d.a == 1
-    // index : d.a == 1 (sparse index on `a` and `b`)
+  // filter: d.a != null AND d.a == 1
+  // index : d.a == 1 (sparse index on `a` and `b`)
   // => d.a != null (sparse `!= null` drop requires fields.size() == 1)
   Condition filterCond(_ast);
   filterCond.andCombine(cmpNull(NODE_TYPE_OPERATOR_BINARY_NE, _d, "a"));
@@ -483,8 +485,8 @@ TEST_F(ConditionRemoveForIndexTest, SparseCompoundKeepsNeNull) {
   auto index = makePersistent({"a", "b"}, /*sparse*/ true);
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
   EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_NE);
@@ -513,8 +515,8 @@ TEST_F(ConditionRemoveForIndexTest, KeepsNeNonNullONNonSparse) {
   auto index = makePersistent({"a"}, /*sparse*/ false);
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
   EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_NE);
@@ -526,10 +528,9 @@ TEST_F(ConditionRemoveForIndexTest, KeepsNinAlways) {
   ninArr->addMember(_ast->createNodeValueInt(2));
   ninArr->addMember(_ast->createNodeValueInt(3));
   AstNode* aNinArr = _ast->createNodeBinaryOperator(
-    NODE_TYPE_OPERATOR_BINARY_NIN,
-    _ast->createNodeAttributeAccess(_ast->createNodeReference(_d), "a"),
-    ninArr
-  );
+      NODE_TYPE_OPERATOR_BINARY_NIN,
+      _ast->createNodeAttributeAccess(_ast->createNodeReference(_d), "a"),
+      ninArr);
 
   // filter: d.a NOT IN [2, 3] AND d.a == 1
   // index : d.a == 1
@@ -546,19 +547,18 @@ TEST_F(ConditionRemoveForIndexTest, KeepsNinAlways) {
   auto index = makePersistent({"a"}, /*sparse*/ false);
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
   EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_NIN);
-  EXPECT_EQ(attrOf(result), "a");     
+  EXPECT_EQ(attrOf(result), "a");
 }
 
 TEST_F(ConditionRemoveForIndexTest, KeepsNonComparionsOp) {
   AstNode* notNode = _ast->createNodeUnaryOperator(
-    NODE_TYPE_OPERATOR_UNARY_NOT,
-    cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 2)
-  );
+      NODE_TYPE_OPERATOR_UNARY_NOT,
+      cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 2));
 
   // filter: NOT (d.a == 2) AND d.a == 1
   // index : d.a == 1
@@ -575,8 +575,8 @@ TEST_F(ConditionRemoveForIndexTest, KeepsNonComparionsOp) {
   auto index = makePersistent({"a"}, /*sparse*/ false);
   ASSERT_NE(index, nullptr);
 
-  AstNode* result =
-      filterCond.removeIndexCondition(_plan, _d, indexCond.root(), index.get());
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
 
   ASSERT_NE(result, nullptr);
   EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_UNARY_NOT);

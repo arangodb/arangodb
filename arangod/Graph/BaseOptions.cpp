@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/ConditionCoverage.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
@@ -464,7 +465,7 @@ BaseOptions::LookupInfo BaseOptions::createLookupInfo(
     }
   }
 
-  auto toRemove = aql::Condition::collectOverlappingMembersForTraversal(
+  auto toRemove = aql::collectOverlappingMembersForTraversal(
       plan, _tmpVar, condition, info.indexCondition, /*isPathCondition*/ false);
 
   size_t n = condition->numMembers();
