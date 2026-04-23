@@ -1094,7 +1094,7 @@ Result GraphManager::checkDropGraphPermissions(
   //      to make dozens of separate calls (and possibly HTTP requests
   //      with RBAC).
   auto const& execContext = ExecContext::current();
-  if (!ExecContext::isAuthEnabled()) {
+  if (!execContext.isAuthEnabled()) {
     LOG_TOPIC("56c2f", DEBUG, Logger::GRAPHS)
         << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
