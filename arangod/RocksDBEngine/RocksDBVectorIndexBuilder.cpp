@@ -37,7 +37,6 @@
 #include <cstdint>
 #include <format>
 #include <functional>
-#include <optional>
 #include <string>
 #include <thread>
 
@@ -218,6 +217,15 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
                                            std::stop_token stopToken) const {
   auto const& def = _index.getDefinition();
   bool const sparseScaling = _index.sparse() && isNListsScaling(def.nLists);
+
+  // Empty collection: resolveNLists would reject this in scaling mode, but the
+  // situation is "no vectors to train on", not a parameter error.
+  if (numDocsHint == 0) {
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                  "For the vector index to be created documents "
+                  "must be present in the respective collection for the "
+                  "training process."};
+  }
 
   // Size the reservoir from numDocsHint. For sparse+scaling this is an upper
   // bound on the valid vector count; the post-iteration resize below shrinks
