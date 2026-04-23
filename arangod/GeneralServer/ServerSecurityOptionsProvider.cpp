@@ -38,23 +38,26 @@ void ServerSecurityOptionsProvider::declareOptions(
       "internals for non-admin users.",
       new BooleanParameter(&opts.hardenedRestApi));
 
-  options->addOption("--foxx.api", "Enable the Foxx management API.",
+  options->addOption("--foxx.api",
+                     "Whether to enable the Foxx management REST APIs.",
                      new BooleanParameter(&opts.enableFoxxApi),
                      makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
                                Flags::OnSingle));
 
   options->addOption("--foxx.store",
-                     "Enable the Foxx store in the web interface.",
+                     "Whether to enable the Foxx store in the web interface.",
                      new BooleanParameter(&opts.enableFoxxStore),
                      makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
                                Flags::OnSingle));
 
-  options->addOption(
-      "--foxx.allow-install-from-remote",
-      "Allow installing Foxx apps from remote URLs other than Github.",
-      new BooleanParameter(&opts.foxxAllowInstallFromRemote),
-      makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
-                Flags::OnSingle));
+  options
+      ->addOption(
+          "--foxx.allow-install-from-remote",
+          "Allow installing Foxx apps from remote URLs other than Github.",
+          new BooleanParameter(&opts.foxxAllowInstallFromRemote),
+          makeFlags(Flags::DefaultNoComponents, Flags::OnCoordinator,
+                    Flags::OnSingle))
+      .setIntroducedIn(30805);
 }
 
 }  // namespace arangodb::security
