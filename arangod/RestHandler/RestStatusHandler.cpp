@@ -81,6 +81,8 @@ RestStatus RestStatusHandler::execute() {
   } else if (_request->parsedValue("memory", false)) {
     return executeMemoryProfile();
   } else {
+    ServerSecurityFeature& security =
+        server().getFeature<ServerSecurityFeature>();
     return executeStandard(security);
   }
 }
