@@ -68,6 +68,11 @@ namespace arangodb::auth {
 // body is safe (no overload-resolution hazards).
 namespace perms {
 
+// TODO When both Classic and RBAC implementations are broadly working,
+//      let's review whether we want these types to be owning (e.g.
+//      using std::string, std::vector<std::string> etc.), or views
+//      (e.g. std::string_view, std::span<std::string_view>).
+
 // ---------------------------------------------------------------------------
 // Admin and hardened-admin actions
 // ---------------------------------------------------------------------------
