@@ -7,13 +7,6 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const explainer = require("@arangodb/aql/explainer");
 
-const options = {
-  optimizer:{
-    rules:[
-      "-interchange-adjacent-enumerations"
-    ]}
-};
-
 function optimizerUpgradeScatterToDistributeSuite() {
 
   let col; // main collection, 3 shards
@@ -74,9 +67,9 @@ function optimizerUpgradeScatterToDistributeSuite() {
             FOR doc2 IN ${col.name()}
              FILTER doc2._key == doc1.foreign_key
              RETURN [doc1, doc2]`;
-      let plan = db._createStatement({query: query, options: options}).explain().plan;
+      let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
-      let result = db._query(query, {}, {}, options).toArray();
+      let result = db._query(query).toArray();
       assertEqual(result.length, col.count());
     },
 
@@ -87,10 +80,21 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2.shardKey == doc1.foreign_shardKey
               AND doc2.shardKey2 == doc1.foreign_shardKey2
              RETURN [doc1, doc2]`;
-      let plan = db._createStatement({query: query, options: options}).explain().plan;
+      let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
-      let result = db._query(query, {}, {}, options).toArray();
+      let result = db._query(query).toArray();
       assertEqual(result.length, col_msk.count());
+    },
+
+    test_MultipleShardKeys_NotAllUsed_NoUpgrade: function() {
+      let query =
+          `FOR doc1 IN ${col.name()}
+            FOR doc2 IN ${col_msk.name()}
+             FILTER doc2.shardKey == doc1.foreign_shardKey
+              AND doc2.value == doc1.value
+             RETURN [doc1, doc2]`;
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
 
 
@@ -102,15 +106,13 @@ function optimizerUpgradeScatterToDistributeSuite() {
                AND doc2.shardKey2 == "shardKey2-12"
                AND doc2.value == doc1.value
              RETURN [doc1, doc2]`;
-      db._explain(query, {}, options);
-      let plan = db._createStatement({query: query, options: options}).explain().plan;
+      let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
-      let result = db._query(query, {}, {}, options).toArray();
+      let result = db._query(query).toArray();
       assertEqual(result.length, 1);
     },
 
-    // TODO(listunov): Is this even possible ?
-    test_MultipleAndBranches_AllShards_Upgrade: function() {
+    test_MultipleAndBranches_AllShards_NoUpgrade: function() {
       let query =
           `FOR doc1 IN ${col.name()}
             FOR doc2 IN ${col_msk.name()}
@@ -121,11 +123,8 @@ function optimizerUpgradeScatterToDistributeSuite() {
               AND doc2.shardKey2 == doc1.foreign_shardKey2
               AND doc2.value == 15 AND doc2.foreign_key == "key-15")              
              RETURN [doc1, doc2]`;
-      db._explain(query, {}, options);
-      let plan = db._createStatement({query: query, options: options}).explain().plan;
-      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
-      let result = db._query(query, {}, {}, options).toArray();
-      assertEqual(result.length, 2);
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
   };
 }

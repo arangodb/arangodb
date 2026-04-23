@@ -84,9 +84,11 @@ bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
 
   // number of ANDs
   size_t const numAnds = root->numMembers();
-  // TODO(listunov): Is this even solvable?
   if (numAnds != 1) {
-    LOG_RULE << "found more than one AND-branch, stop evaluation";
+    // The current implementation would only work if every branch has the same
+    // expression that is used for the shardKeys, to keep the logic simpler we
+    // just ignore that case and only allow one branch.
+    LOG_RULE << "found more than one branch, stop evaluation";
     return false;
   }
 
@@ -101,74 +103,63 @@ bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
                           collection->name());
   std::vector<std::string> shardKeys{collection->shardKeys(true)};
 
-  uint32_t foundAllShardKeysCount{0};
-  for (size_t i = 0; i < numAnds; ++i) {
-    AstNode const* andNode = root->getMemberUnchecked(i);
-    if (andNode == nullptr) {
+  AstNode const* andNode = root->getMemberUnchecked(0);
+  if (andNode == nullptr) {
+    return false;
+  }
+  TRI_ASSERT(andNode->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+  size_t const numConds = andNode->numMembers();
+  LOG_RULE << "found " << numConds << " conditions. iterating";
+  for (size_t j = 0; j < numConds; ++j) {
+    AstNode const* condNode = andNode->getMember(j);
+    if (condNode == nullptr ||
+        condNode->type != AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      LOG_RULE << "condition not equal operator, skip.";
       continue;
     }
-    TRI_ASSERT(andNode->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
-    size_t const numConds = andNode->numMembers();
-    LOG_RULE << "found " << numConds << " conditions. iterating";
-    std::set<std::string> shardKeySet{shardKeys.begin(), shardKeys.end()};
-    for (size_t j = 0; j < numConds; ++j) {
-      AstNode const* condNode = andNode->getMember(j);
-      if (condNode == nullptr ||
-          condNode->type != AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        LOG_RULE << "condition not equal operator, skip.";
-        continue;
-      }
-      auto const* lhs{condNode->getMember(0)};
-      auto const* rhs{condNode->getMember(1)};
-      if (lhs->type != AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS &&
-          rhs->type != AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS) {
-        // No side has attribute access, something else, we cant check for
-        // shardKey access
-        LOG_RULE << "condition has no attribute access, skip";
-        continue;
-      }
-
-      Variable const* lhsVar = getVariableFromAttributeAccess(lhs);
-      Variable const* rhsVar = getVariableFromAttributeAccess(rhs);
-      if (lhsVar == nullptr && rhsVar == nullptr) {
-        LOG_RULE << "lhsVar and rhsVar are null, skip";
-        continue;
-      }
-
-      AstNode const* shardKeyNode{nullptr};
-      AstNode const* expression{nullptr};
-      if (lhsVar == var) {
-        shardKeyNode = lhs;
-        expression = rhs;
-      } else if (rhsVar == var) {
-        shardKeyNode = rhs;
-        expression = lhs;
-      }
-
-      if (shardKeyNode == nullptr) {
-        // Neither side is our var, ignore
-        LOG_RULE << "var is neither on the left nor on the right side, skip";
-        continue;
-      }
-      std::string const shardKeyField = shardKeyNode->getString();
-      LOG_RULE << "Found attribute, remove from set: " << shardKeyField;
-      auto const numErased = shardKeySet.erase(shardKeyField);
-      if (numErased > 0 && expression != nullptr) {
-        distDep.shardKeyAccessMap[shardKeyNode->getStringView()] = expression;
-      }
+    auto const* lhs{condNode->getMember(0)};
+    auto const* rhs{condNode->getMember(1)};
+    if (lhs->type != AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS &&
+        rhs->type != AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // No side has attribute access, something else, we cant check for
+      // shardKey access
+      LOG_RULE << "condition has no attribute access, skip";
+      continue;
     }
-    if (shardKeySet.empty()) {
-      foundAllShardKeysCount++;
-    } else {
-      // Some condition does not handle all shard-keys -> bail
-      LOG_RULE << "Found AND-branch without all ShardKeys, cancel.";
-      return false;
+
+    Variable const* lhsVar = getVariableFromAttributeAccess(lhs);
+    Variable const* rhsVar = getVariableFromAttributeAccess(rhs);
+    if (lhsVar == nullptr && rhsVar == nullptr) {
+      LOG_RULE << "lhsVar and rhsVar are null, skip";
+      continue;
+    }
+
+    AstNode const* shardKeyNode{nullptr};
+    AstNode const* expression{nullptr};
+    if (lhsVar == var) {
+      shardKeyNode = lhs;
+      expression = rhs;
+    } else if (rhsVar == var) {
+      shardKeyNode = rhs;
+      expression = lhs;
+    }
+
+    if (shardKeyNode == nullptr) {
+      // Neither side is our var, ignore
+      LOG_RULE << "var is neither on the left nor on the right side, skip";
+      continue;
+    }
+    std::string const attrField = shardKeyNode->getString();
+    bool const isShardKey = std::find(shardKeys.begin(), shardKeys.end(),
+                                      attrField) != shardKeys.end();
+    if (isShardKey > 0 && expression != nullptr) {
+      LOG_RULE << "Found shardKey: " << attrField
+               << "save expression: " << expression->getStringView();
+      distDep.shardKeyAccessMap[shardKeyNode->getStringView()] = expression;
     }
   }
-  LOG_RULE << std::format("Found all the ShardKeys {}-times in {} AND-branches",
-                          foundAllShardKeysCount, numAnds);
-  // Found shard-keys in all and-branches
-  return foundAllShardKeysCount == numAnds;
+  // Found shard-keys in all or-branches
+  return distDep.shardKeyAccessMap.size() == shardKeys.size();
 }
 
 void replaceScatterWithDistribute(arangodb::aql::ExecutionPlan& plan,
