@@ -971,6 +971,12 @@ async<void> RestIndexHandler::dropIndex() {
 }
 
 void RestIndexHandler::syncCaches() {
+  if (ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
+                  "Not implemented on coordinators!");
+    return;
+  }
   StorageEngine& engine = _vocbase.engine();
   engine.syncIndexCaches();
 

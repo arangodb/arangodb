@@ -59,6 +59,17 @@ RestStatus RestQueryCacheHandler::execute() {
 }
 
 void RestQueryCacheHandler::clearCache() {
+  if (!_vocbase.isSystem()) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    return;
+  }
+  if (auto r = ExecContext::current().canUseAdminAction(
+          rbac::Category::AdminQueryCache{});
+      r.fail()) {
+    generateError(r);
+    return;
+  }
   auto queryCache = arangodb::aql::QueryCache::instance();
   queryCache->invalidate(&_vocbase);
 
@@ -110,6 +121,18 @@ void RestQueryCacheHandler::replaceProperties() {
   if (suffixes.size() != 1 || suffixes[0] != "properties") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");
+    return;
+  }
+
+  if (!_vocbase.isSystem()) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    return;
+  }
+  if (auto r = ExecContext::current().canUseAdminAction(
+          rbac::Category::AdminQueryCache{});
+      r.fail()) {
+    generateError(r);
     return;
   }
 

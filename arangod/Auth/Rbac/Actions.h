@@ -107,6 +107,7 @@ struct Category {
   struct AdminFoxx {};
   struct AdminReadAqlFunctions {};
   struct AdminWriteAqlFunctions {};
+  struct AdminQueryCache {};
   using Any = std::variant<
       ReadDatabase, WriteDatabase, ReadCollection, WriteCollectionData,
       WriteCollectionMeta, ReadView, WriteView, ReadAnalyzer, WriteAnalyzer,
@@ -119,7 +120,7 @@ struct Category {
       AdminTasks, AdminReadReplicatedLog, AdminWriteReplicatedLog, AdminDump,
       AdminRestore, AdminReplication, AdminWalAccess, AdminReadAgency,
       AdminReadOnlyMode, AdminFoxx, AdminReadAqlFunctions,
-      AdminWriteAqlFunctions>;
+      AdminWriteAqlFunctions, AdminQueryCache>;
 };
 
 }  // namespace arangodb::rbac

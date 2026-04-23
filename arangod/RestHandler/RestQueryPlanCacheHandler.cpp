@@ -78,22 +78,10 @@ void RestQueryPlanCacheHandler::clearCache() {
 }
 
 void RestQueryPlanCacheHandler::readPlans() {
-  // TODO Should this get a separate admin action/permission?
-  if (auto r = ExecContext::current().canUseDatabase(_vocbase.name(),
-                                                     DatabaseAccessLevel::Read);
-      r.fail()) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        absl::StrCat(
-            "not allowed to retrieve this database's query plan cache entries",
-            r.errorMessage()));
-    return;
-  }
-
   auto filter = [databaseName = _vocbase.name()](
                     aql::QueryPlanCache::Key const& key,
                     aql::QueryPlanCache::Value const& value) -> bool {
-    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuser()) {
       // check if non-superusers have at least read permissions on all
       // collections/views used in the query
       for (auto const& dataSource : value.dataSources) {

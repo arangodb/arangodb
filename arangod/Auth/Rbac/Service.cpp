@@ -210,6 +210,10 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
               -> std::vector<AuthorizationQuery> {
             return {{"db:AdminWriteAqlFunctions", ""}};
           },
+          [](Category::AdminQueryCache const&)
+              -> std::vector<AuthorizationQuery> {
+            return {{"db:AdminQueryCache", ""}};
+          },
       },
       category);
 }

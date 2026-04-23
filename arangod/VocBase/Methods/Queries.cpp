@@ -59,10 +59,8 @@ arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
     if (!vocbase.isSystem()) {
       // request must be made in the system database
       res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    } else if (ExecContext::isAuthEnabled() &&
-               !ExecContext::current().isSuperuser()) {
-      // request must be made only by superusers (except authentication is
-      // turned off)
+    } else if (!ExecContext::current().isSuperuser()) {
+      // request must be made only by superusers
       res.reset(
           TRI_ERROR_FORBIDDEN,
           "only superusers are allowed to perform actions on all queries");
@@ -210,9 +208,8 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
       // request must be made in the system database
       return res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     }
-    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
-      // request must be made only by superusers (except authentication is
-      // turned off)
+    if (!ExecContext::current().isSuperuser()) {
+      // request must be made only by superusers
       return res.reset(
           TRI_ERROR_FORBIDDEN,
           "only superusers may retrieve the list of queries for all databases");
