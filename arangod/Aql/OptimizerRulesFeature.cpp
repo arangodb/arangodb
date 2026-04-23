@@ -676,7 +676,8 @@ and `RemoteNode` are inserted into a distributed query plan.)");
   // distribute operations in cluster
   registerRule("upgrade-scatter-to-distribute", upgradeScatterToDistributeRule,
                OptimizerRule::upgradeScatterToDistributeRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly),
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::CanBeDisabled),
                R"(TODO listunov)");
 
 #ifdef USE_ENTERPRISE
