@@ -193,6 +193,9 @@ struct OptimizerRule {
     // replace simple OR conditions with IN
     replaceOrWithInRule,
 
+    // replace ANY == array comparisons with IN
+    replaceAnyEqWithInRule,
+
     // remove redundant OR conditions
     removeRedundantOrRule,
 
@@ -455,6 +458,15 @@ struct OptimizerRule {
       "views so it should have a try before late materialization. "
       "Also constrained sort rule now does not expects any late "
       "materialization variables replacement");
+
+  static_assert(replaceAnyEqWithInRule < useIndexesRule,
+                "replaceAnyEqWithInRule must run before useIndexesRule so the "
+                "rewritten IN expressions are visible to index selection");
+
+  static_assert(
+      replaceAnyEqWithInRule < optimizeTraversalsRule,
+      "replaceAnyEqWithInRule must run before optimizeTraversalsRule "
+      "so rewritten IN edge conditions can be pushed into TraversalNode");
 
   static_assert(useVectorIndexForSort < useIndexesRule,
                 "useVectorIndexForSort must happen before useIndexesRule rule, "
