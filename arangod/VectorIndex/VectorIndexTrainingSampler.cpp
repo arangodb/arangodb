@@ -49,7 +49,12 @@ std::vector<float>& VectorIndexTrainingSampler::inputBuffer() noexcept {
   return _input;
 }
 
+bool VectorIndexTrainingSampler::wantsItem() const noexcept {
+  return _itemsSeen < _capacity || _itemsSeen == _nextReplacement;
+}
+
 void VectorIndexTrainingSampler::consume() {
+  TRI_ASSERT(wantsItem());
   TRI_ASSERT(_input.size() == _dimension);
   if (_itemsSeen < _capacity) {
     _data.insert(_data.end(), _input.begin(), _input.end());
@@ -59,13 +64,16 @@ void VectorIndexTrainingSampler::consume() {
     }
     return;
   }
-  if (_itemsSeen == _nextReplacement) {
-    std::size_t const slot = _slotDist(_rng);
-    std::copy(_input.begin(), _input.end(), _data.begin() + slot * _dimension);
-    _w *= std::exp(std::log(sampleOpenUnit()) / static_cast<double>(_capacity));
-    TRI_ASSERT(_w > 0.0 && _w < 1.0);
-    _nextReplacement += 1 + skipCount(_w);
-  }
+  std::size_t const slot = _slotDist(_rng);
+  std::ranges::copy(_input, _data.begin() + slot * _dimension);
+  _w *= std::exp(std::log(sampleOpenUnit()) / static_cast<double>(_capacity));
+  TRI_ASSERT(_w > 0.0 && _w < 1.0);
+  _nextReplacement += 1 + skipCount(_w);
+  ++_itemsSeen;
+}
+
+void VectorIndexTrainingSampler::skip() noexcept {
+  TRI_ASSERT(!wantsItem());
   ++_itemsSeen;
 }
 

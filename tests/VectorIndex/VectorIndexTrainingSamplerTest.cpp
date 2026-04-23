@@ -37,12 +37,17 @@ using namespace arangodb::vector;
 
 namespace {
 
-// Feeds one vector through the sampler via its public inputBuffer()/consume()
-// pair.
+// Feeds one vector through the sampler. Mirrors the production caller: only
+// decode into the buffer when the sampler wants the item; otherwise advance
+// the seen-counter via skip().
 void feed(VectorIndexTrainingSampler& s, std::vector<float> const& vector) {
-  auto& buf = s.inputBuffer();
-  buf.insert(buf.end(), vector.begin(), vector.end());
-  s.consume();
+  if (s.wantsItem()) {
+    auto& buf = s.inputBuffer();
+    buf.insert(buf.end(), vector.begin(), vector.end());
+    s.consume();
+  } else {
+    s.skip();
+  }
 }
 
 // Builds a 1-D vector holding the single float `v`. Handy for tests that
@@ -272,4 +277,49 @@ TEST(VectorIndexTrainingSamplerTest, itemsSeen_counts_every_consumed_vector) {
     feed(s, scalar(static_cast<float>(i)));
   }
   EXPECT_EQ(s.itemsSeen(), n);
+}
+
+// -----------------------------------------------------------------------------
+// wantsItem() / skip() semantics
+// -----------------------------------------------------------------------------
+
+TEST(VectorIndexTrainingSamplerTest, wants_item_true_through_fill_phase) {
+  // Every position in the fill phase must request the item; otherwise the
+  // reservoir would end up short and Algorithm L's invariant would break.
+  constexpr std::size_t k = 8;
+  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
+  for (std::size_t i = 0; i < k; ++i) {
+    EXPECT_TRUE(s.wantsItem()) << "wantsItem() false at fill index " << i;
+    feed(s, scalar(static_cast<float>(i)));
+  }
+}
+
+TEST(VectorIndexTrainingSamplerTest,
+     wants_item_decides_whether_skip_or_consume_runs) {
+  // Past capacity, wantsItem() must be true exactly at positions where
+  // feed() actually mutates the reservoir, and false everywhere else.
+  constexpr std::size_t dim = 1;
+  constexpr std::size_t k = 4;
+  constexpr std::size_t n = 200;
+  VectorIndexTrainingSampler s{dim, k, kFixedSeed};
+
+  std::size_t consumed = 0;
+  std::size_t skipped = 0;
+  for (std::size_t i = 0; i < n; ++i) {
+    bool const wanted = s.wantsItem();
+    if (wanted) {
+      auto& buf = s.inputBuffer();
+      buf.push_back(static_cast<float>(i));
+      s.consume();
+      ++consumed;
+    } else {
+      s.skip();
+      ++skipped;
+    }
+  }
+  EXPECT_EQ(consumed + skipped, n);
+  EXPECT_EQ(s.itemsSeen(), n);
+  // Past the fill phase the replacement schedule is sparse, so most items
+  // must have been skipped rather than consumed.
+  EXPECT_GT(skipped, consumed);
 }

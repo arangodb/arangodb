@@ -44,10 +44,19 @@ class VectorIndexTrainingSampler {
   // `dimension` floats before calling consume().
   std::vector<float>& inputBuffer() noexcept;
 
-  // Consumes the current scratch buffer (must hold `dimension` floats). Runs
-  // one step of Algorithm L: either grows the reservoir, replaces a slot, or
-  // skips the item.
+  // True iff the next observed item must be consumed — either the reservoir
+  // is still filling, or we have reached the next replacement position. Lets
+  // the caller avoid decoding vectors that the sampler would discard.
+  bool wantsItem() const noexcept;
+
+  // Preconditions: wantsItem() returned true and inputBuffer() was filled
+  // with exactly `dimension` floats. Grows the reservoir or replaces a slot
+  // per Algorithm L.
   void consume();
+
+  // Precondition: wantsItem() returned false. Counts one valid item as seen
+  // without touching the reservoir.
+  void skip() noexcept;
 
   // Uniformly subsample down to `newCapacity` slots via a partial
   // Fisher–Yates shuffle. No-op if the reservoir already fits.

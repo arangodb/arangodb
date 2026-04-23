@@ -77,6 +77,18 @@
 
 namespace arangodb::vector {
 
+// Shallow field-presence probe; ingestion already rejects malformed vectors.
+bool hasVectorField(
+    velocypack::Slice doc,
+    std::vector<std::vector<basics::AttributeName>> const& fields) {
+  TRI_ASSERT(fields.size() >= 1);
+  try {
+    return !rocksutils::accessDocumentPath(doc, fields[0]).isNone();
+  } catch (velocypack::Exception const&) {
+    return false;
+  }
+}
+
 Result readDocumentVectorData(
     velocypack::Slice doc,
     std::vector<std::vector<basics::AttributeName>> const& fields,
@@ -261,6 +273,19 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     }
     TRI_ASSERT(it.key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it.value().data()));
+
+    if (!sampler.wantsItem()) {
+      // Sparse mode: rows without the vector field must not count toward
+      // itemsSeen, preserving the Algorithm L invariant over valid vectors.
+      if (_index.sparse() && !hasVectorField(doc, _index.fields())) {
+        it.Next();
+        continue;
+      }
+      sampler.skip();
+      it.Next();
+      continue;
+    }
+
     if (auto const res = readDocumentVectorData(
             doc, _index.fields(), def.dimension, sampler.inputBuffer());
         res.fail()) {
