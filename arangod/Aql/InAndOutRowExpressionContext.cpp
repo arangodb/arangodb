@@ -40,8 +40,7 @@ static bool testInternalIdValid(size_t id,
   }
   TRI_ASSERT(id < regs.size());
   return regs[id].value() == RegisterId::maxRegisterId;
-}  // namespace
-   // arangodb::aqlstaticbooltestInternalIdValid(size_tid,std::vector<RegisterId>const&regs)
+}
 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(
     transaction::Methods& trx, QueryContext& context,
