@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Auth/AuthMode.h"
-#include "Auth/Can.h"
 #include "Auth/Common.h"
 #include "Auth/Rbac/Actions.h"
 #include "Auth/Permissions.h"
@@ -32,6 +31,7 @@
 #include "Rest/RequestContext.h"
 
 #include <memory>
+#include <span>
 #include <string>
 
 namespace arangodb {
@@ -60,10 +60,14 @@ class ExecContext : public RequestContext {
   ExecContext(ExecContext&&) = delete;
 
  public:
-  virtual ~ExecContext() = default;
+  ~ExecContext() override = default;
 
   /// shortcut helper to check the AuthenticationFeature
-  static bool isAuthEnabled();
+  [[deprecated(
+      "This should be an internal information and unnecessary for permission "
+      "checks. Use an existing, or add a new, method with appropriate "
+      "semantics instead.")]] [[nodiscard]] bool
+  isAuthEnabled() const;
 
   /// Should always contain a reference to current user context
   static ExecContext const& current();
@@ -76,9 +80,10 @@ class ExecContext : public RequestContext {
   static ExecContext const& superuser();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
-  [[nodiscard]] auto can() const -> auth::Can const&;
-
-  bool isSuperuser() const noexcept { return _authMode.isSuperuser(); }
+  [[nodiscard]] [[deprecated("Use proper permission checks instead")]] bool
+  isSuperuser() const noexcept {
+    return _authMode.isSuperuser();
+  }
 
   /// @brief tells you if this execution was canceled
   // TODO I think it's strange to to have this in ExecContext. It's implemented
@@ -97,7 +102,23 @@ class ExecContext : public RequestContext {
   virtual bool isCanceled() const { return false; }
 
   /// @brief current user, may be empty for internal users
-  std::string_view user() const { return _authMode.getIAuth().username(); }
+  [[nodiscard]] std::string_view user() const {
+    return _authMode.getIAuth().username();
+  }
+
+  // Unified permission-check entry point. Prefer this over the canXxx()
+  // methods below for new code; eventually they are going to be removed.
+  //
+  // Since `auth::Permission` is a `std::variant`, it is implicitly
+  // constructed from any of its alternatives in `auth::perms::...`. Typical
+  // usage:
+  //
+  //   using namespace arangodb::auth::perms;
+  //   if (auto r = ec.can(SeeCollection{.db = db, .name = coll});
+  //       !r.ok()) { /* ... */ }
+  [[nodiscard]] Result can(auth::Permission permission) const {
+    return _authMode.getIAuth().check(std::move(permission));
+  }
 
   // New Result-returning permission check methods:
 
@@ -122,9 +143,21 @@ class ExecContext : public RequestContext {
 
   Result canSeeView(std::string_view db, std::string_view view) const;
   Result canCreateView(std::string_view db, std::string_view view) const;
-  Result canDropView(std::string_view db, std::string_view view) const;
+  // TODO Remove defaulting of the collections parameter, it's only
+  //      there for now so everything compiles.
+  Result canDropView(std::string_view db, std::string_view view,
+                     std::span<std::string> collections = {}) const;
   Result canUseView(std::string_view db, std::string_view view,
                     ViewAccessLevel level) const;
+
+  // TODO These are not yet in path_permissions.md!
+  // TODO We should need only the second, but it's additional work
+  //      to refactor the code in that way.
+  Result canRenameView(std::string_view db, std::string_view oldViewName,
+                       std::string_view newViewName) const;
+  Result canRenameView(std::string_view db, std::string_view oldViewName,
+                       std::string_view newViewName,
+                       std::span<std::string> collections) const;
 
   Result canSeeAnalyzer(std::string_view db, std::string_view analyzer) const;
   Result canCreateAnalyzer(std::string_view db,
@@ -159,7 +192,6 @@ class ExecContext : public RequestContext {
 
  protected:
   AuthMode _authMode;
-  auth::Can _can;
 
  private:
   static std::shared_ptr<ExecContext const> const Superuser;

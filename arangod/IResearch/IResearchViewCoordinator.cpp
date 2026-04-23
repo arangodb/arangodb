@@ -473,12 +473,10 @@ Result IResearchViewCoordinator::dropImpl() {
     collectionNames.emplace_back(it.second->collectionName);
   }
   // check link auth as per https://github.com/arangodb/backlog/issues/459
-  auto const& can = ExecContext::current().can();
-  // TODO We probably need to communicate *why* drop access is denied (in
-  //      particular, if it's due to missing read access to a collection)
-  if (!can.dropView(vocbase().name(), name(), collectionNames)) {
-    return {TRI_ERROR_FORBIDDEN,
-            absl::StrCat("Need drop access to view '", name(), "'")};
+  if (auto r = ExecContext::current().canDropView(vocbase().name(), name(),
+                                                  collectionNames);
+      !r.ok()) {
+    return r;
   }
   containers::FlatHashSet<DataSourceId> collections;
   auto r = IResearchLinkHelper::updateLinks(

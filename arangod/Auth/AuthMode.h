@@ -59,16 +59,25 @@ struct AuthMode {
     [[nodiscard]] virtual auto username() const noexcept
         -> std::string_view = 0;
 
-    // this is a suboptimal interface; it should be batched. but it's closer to
-    // the existing one, and simplifies the migration a little.
-    // this is allowed to throw (e.g. network errors, etc.).
-    [[nodiscard]] virtual auto canUse(Permission) const -> Result = 0;
+    // Ask one authorization question. This is a suboptimal interface; it
+    // should be batched. But it is close to the existing one and simplifies
+    // the migration. Allowed to throw (e.g. network errors).
+    //
+    // Callers can pass either a fully-formed `auth::Permission` or any of
+    // its alternatives directly (e.g. `perms::SeeCollection{...}`), since
+    // `std::variant` is implicitly constructible from its alternatives.
+    //
+    // It also needs to be async, going forward.
+    // TODO Make this async
+    [[nodiscard]] virtual auto check(auth::Permission permission) const
+        -> Result = 0;
   };
 
   // Superuser; may do anything, without further checks.
   struct Superuser : IAuth {
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
-    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
+    [[nodiscard]] auto check(auth::Permission permission) const
+        -> Result override;
   };
 
   // Classic, arangodb-internal authorization, based on permissions in _users.
@@ -80,7 +89,8 @@ struct AuthMode {
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
-    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
+    [[nodiscard]] auto check(auth::Permission permission) const
+        -> Result override;
 
    protected:
     // has _system RW access
@@ -103,7 +113,8 @@ struct AuthMode {
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
-    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
+    [[nodiscard]] auto check(auth::Permission permission) const
+        -> Result override;
   };
 
   // Authentication is on, but the current user is without authentication.
@@ -118,7 +129,8 @@ struct AuthMode {
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
-    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
+    [[nodiscard]] auto check(auth::Permission permission) const
+        -> Result override;
   };
 
   // Authentication is disabled, barely any restrictions.
@@ -129,7 +141,8 @@ struct AuthMode {
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
-    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
+    [[nodiscard]] auto check(auth::Permission permission) const
+        -> Result override;
   };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -150,7 +163,8 @@ struct AuthMode {
     Mockable(std::shared_ptr<IAuth> mock) : mock(std::move(mock)) {}
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
-    [[nodiscard]] auto canUse(Permission permission) const -> Result override;
+    [[nodiscard]] auto check(auth::Permission permission) const
+        -> Result override;
   };
 #define MOCKABLE , Mockable
 #else
@@ -167,6 +181,7 @@ struct AuthMode {
 
   [[nodiscard]] bool isRbac() const noexcept;
   [[nodiscard]] bool isSuperuser() const noexcept;
+  [[nodiscard]] bool isDisabled() const noexcept;
 
   template<typename T, typename... Args>
   void reset(Args&&... args) {

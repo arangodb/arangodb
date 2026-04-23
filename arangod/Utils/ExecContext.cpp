@@ -24,7 +24,6 @@
 #include "ExecContext.h"
 
 #include "Basics/Result.h"
-#include "GeneralServer/AuthenticationFeature.h"
 
 #include <variant>
 
@@ -56,26 +55,29 @@ std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
   return Superuser;
 }
 
-auto ExecContext::can() const -> auth::Can const& { return _can; }
-
 ExecContext::ExecContext(ConstructorToken, AuthMode authMode)
-    : _authMode(std::move(authMode)), _can(_authMode) {}
+    : _authMode(std::move(authMode)) {}
 
-// TODO make this non-static, use _authenticationFeature instead
-bool ExecContext::isAuthEnabled() {
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  TRI_ASSERT(af != nullptr);
-  return af->isActive();
+bool ExecContext::isAuthEnabled() const {
+  /// TODO Note there's a subtle change in the behavior by checking
+  ///      _authMode instead of the AuthenticationFeature:
+  ///     When authentication is disabled, but the request comes with
+  ///     a valid JWT superuser token, this now returns true.
+  ///     I'd like to get rid of this method completely; but if that
+  ///     doesn't work out, we have to a) check that this doesn't
+  ///     break any caller, and b) we should change the name.
+  return !_authMode.isDisabled();
 }
 
 Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {
-  return _authMode.getIAuth().canUse({Permission::Admin{.action = action}});
+  return _authMode.getIAuth().check(auth::perms::Admin{.action = action});
 }
 
 Result ExecContext::canUseHardenedAction(
     rbac::Category::Any const& action) const {
   if (_authMode.isRbac()) {
-    return _authMode.getIAuth().canUse({Permission::Admin{.action = action}});
+    return _authMode.getIAuth().check(
+        auth::perms::HardenedAdmin{.action = action});
   }
   return Result{};
 }
@@ -137,17 +139,30 @@ Result ExecContext::canCreateView(std::string_view db,
   return Result{};
 }
 
-Result ExecContext::canDropView(std::string_view db,
-                                std::string_view view) const {
+Result ExecContext::canDropView(std::string_view db, std::string_view view,
+                                std::span<std::string> collections) const {
   return Result{};
 }
 
 Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
                                ViewAccessLevel requested) const {
-  return _authMode.getIAuth().canUse(
-      {Permission::View{.database = std::string(db),
-                        .name = std::string(viewName),
-                        .level = requested}});
+  return _authMode.getIAuth().check(
+      auth::perms::UseView{.db = std::string(db),
+                           .name = std::string(viewName),
+                           .level = requested});
+}
+
+Result ExecContext::canRenameView(std::string_view db,
+                                  std::string_view oldViewName,
+                                  std::string_view newViewName) const {
+  return Result();
+}
+
+Result ExecContext::canRenameView(std::string_view db,
+                                  std::string_view oldViewName,
+                                  std::string_view newViewName,
+                                  std::span<std::string> collections) const {
+  return Result();
 }
 
 Result ExecContext::canSeeAnalyzer(std::string_view db,

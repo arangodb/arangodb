@@ -61,13 +61,11 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!ExecContext::current().can().readView(view->vocbase().name(),
-                                             view->name())) {
+  if (auto r = ExecContext::current().canUseView(
+          view->vocbase().name(), view->name(), ViewAccessLevel::Read);
+      !r.ok()) {
     // check auth after ensuring that the view exists
-    // TODO Should this be NOT_FOUND instead?
-    generateError(
-        Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get view"));
-
+    generateError(r);
     return;
   }
 
@@ -189,10 +187,11 @@ void RestViewHandler::createView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto const& can = ExecContext::current().can();
-      !can.createView(_vocbase.name(), nameSlice.stringView())) {
-    generateError(
-        Result(TRI_ERROR_FORBIDDEN, "insufficient rights to create view"));
+  auto const& execContext = ExecContext::current();
+  if (auto r =
+          execContext.canCreateView(_vocbase.name(), nameSlice.stringView());
+      !r.ok()) {
+    generateError(r);
     events::CreateView(_vocbase.name(), nameSlice.copyString(),
                        TRI_ERROR_FORBIDDEN);
     return;
@@ -279,9 +278,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
   // First refresh our analyzers cache to see all latest changes in analyzers
-  auto r = analyzers.loadAvailableAnalyzers(
-      _vocbase.name(), transaction::OperationOriginREST{"modifiying view"});
-  if (!r.ok()) {
+  if (auto r = analyzers.loadAvailableAnalyzers(
+          _vocbase.name(), transaction::OperationOriginREST{"modifying view"});
+      !r.ok()) {
     return generateError(r);
   }
 
@@ -294,27 +293,32 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     }
   }
 
-  auto const& can = ExecContext::current().can();
+  auto const& execContext = ExecContext::current();
   if (isRename) {
-    if (!can.renameView(_vocbase.name(), name, body.stringView())) {
-      return generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                           "insufficient rights to rename view");
+    if (auto r =
+            execContext.canRenameView(_vocbase.name(), name, body.stringView());
+        !r.ok()) {
+      return generateError(r);
     }
   } else {
-    if (!can.modifyView(_vocbase.name(), name)) {
-      return generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                           "insufficient rights to modify view");
+    if (auto r = execContext.canUseView(_vocbase.name(), name,
+                                        ViewAccessLevel::Modify);
+        !r.ok()) {
+      return generateError(r);
     }
   }
   velocypack::Builder builder;
   // skip views for which the full view definition cannot be generated, as
   // per https://github.com/arangodb/backlog/issues/459
   builder.openObject();
-  r = view->properties(builder, LogicalDataSource::Serialization::Properties);
-  if (!r.ok()) {
+
+  if (auto r = view->properties(builder,
+                                LogicalDataSource::Serialization::Properties);
+      !r.ok()) {
     return generateError(r);
   }
 
+  auto r = Result{};
   if (isRename) {
     // handle rename functionality
     if (view->name() != body.stringView()) {
@@ -344,8 +348,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   // return updated definition
   builder.clear();
   builder.openObject();
-  r = view->properties(builder, LogicalDataSource::Serialization::Properties);
-  if (!r.ok()) {
+  if (r = view->properties(builder,
+                           LogicalDataSource::Serialization::Properties);
+      !r.ok()) {
     return generateError(r);
   }
   generateResult(rest::ResponseCode::OK, builder.close().slice());
@@ -381,13 +386,12 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  auto const& can = ExecContext::current().can();
-  if (!can.dropView(_vocbase.name(), name)) {  // check auth after ensuring
-                                               // that the view exists
-    generateError(
-        Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
+  if (auto r = ExecContext::current().canDropView(_vocbase.name(), name);
+      !r.ok()) {
+    // check auth after ensuring that the view exists
+    generateError(r);
 
-    events::DropView(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
+    events::DropView(_vocbase.name(), name, r.errorNumber());
     return;
   }
 

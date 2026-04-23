@@ -795,12 +795,10 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
                << ": ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const& execContext = ExecContext::current();
-  if (!ExecContext::isAuthEnabled()) {
-    LOG_TOPIC("952c0", DEBUG, Logger::GRAPHS)
-        << logprefix << "Permissions are turned off.";
-    return TRI_ERROR_NO_ERROR;
-  }
+  // TODO Consolidate the subsequent permission checks: We don't want
+  //      to make dozens of separate calls (and possibly HTTP requests
+  //      with RBAC).
+  auto const& execContext = ExecContext::current();
 
   auto checkCollectionAccess = [&](std::string const& col,
                                    bool withExistsCheck) -> bool {
@@ -1092,7 +1090,10 @@ Result GraphManager::checkDropGraphPermissions(
                << ": ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const& execContext = ExecContext::current();
+  // TODO Consolidate the subsequent permission checks: We don't want
+  //      to make dozens of separate calls (and possibly HTTP requests
+  //      with RBAC).
+  auto const& execContext = ExecContext::current();
   if (!ExecContext::isAuthEnabled()) {
     LOG_TOPIC("56c2f", DEBUG, Logger::GRAPHS)
         << logprefix << "Permissions are turned off.";
