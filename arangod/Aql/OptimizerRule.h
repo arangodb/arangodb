@@ -277,10 +277,10 @@ struct OptimizerRule {
 #endif
 
     // make operations on sharded collections use distribute
-    distributeInClusterRule,  // DUMMY FOR DISTRIBUTE
+    distributeInClusterRule,
 
 #ifdef USE_ENTERPRISE
-    smartJoinsRule,  // inspiration
+    smartJoinsRule,
 #endif
 
     // make operations on sharded collections use scatter / gather / remote
@@ -323,7 +323,10 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
-    upgradeScatterToDistributeRule,  // ??
+    // keeps track of the used shardKeys of an out variable
+    // and if all shardKeys are used it tries to upgrade the corresponding
+    // ScatterNode to a DistribeNode.
+    upgradeScatterToDistributeRule,
 
     // remove calculations that are redundant
     // this is hidden and disabled by default version
