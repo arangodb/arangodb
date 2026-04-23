@@ -29,6 +29,7 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Rest/ApiVersion.h"
 #include "Cluster/ClusterFeature.h"
 #include "Rest/CommonDefines.h"
@@ -42,6 +43,34 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _feature(server.getFeature<Feature>()) {}
+
+namespace {
+
+auto serializeOneServer(VPackBuilder& builder,
+                        futures::Try<network::Response>&& responseFuture)
+    -> void {
+  if (not responseFuture.valid()) {
+    auto result = Result{TRI_ERROR_INTERNAL, "Server response is invalid"};
+    velocypack::serialize(builder, result);
+    return;
+  }
+  auto response = std::move(responseFuture).get();
+  if (response.fail()) {
+    auto error = response.combinedResult();
+    velocypack::serialize(builder, error);
+    return;
+  }
+  auto activitiesOneServer =
+      inspection::deserializeWithErrorT<Output>(response.slice());
+  if (activitiesOneServer.ok()) {
+    velocypack::serialize(builder, activitiesOneServer.get().activities);
+  } else {
+    velocypack::serialize(builder, activitiesOneServer.error().error());
+  }
+  return;
+}
+
+}  // namespace
 
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (_feature.isOnlySuperUserEnabled()) {
@@ -142,23 +171,9 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
       velocypack::serialize(builder, myActivities);
 
       auto responseCount = 0;
-      for (auto& response : responses) {
+      for (auto& responseFuture : responses) {
         builder.add(VPackValue(serverIds[responseCount]));
-        auto res =
-            basics::catchToResultT([&] { return std::move(response).get(); });
-        if (res.ok()) {
-          auto activitiesOneServer =
-              inspection::deserializeWithErrorT<Output>(res.get().slice());
-          if (activitiesOneServer.ok()) {
-            velocypack::serialize(builder,
-                                  activitiesOneServer.get().activities);
-          } else {
-            velocypack::serialize(builder, activitiesOneServer.error().error());
-          }
-        } else {
-          auto error = res.get().combinedResult();
-          velocypack::serialize(builder, error);
-        }
+        serializeOneServer(builder, std::move(responseFuture));
         responseCount++;
       }
       builder.close();

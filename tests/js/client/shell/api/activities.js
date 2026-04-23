@@ -25,7 +25,7 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const { assertTrue, assertEqual } = jsunity.jsUnity.assertions;
+const { assertTrue, assertFalse, assertEqual } = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const internal = require('internal');
 const db = require('internal').db;
@@ -197,8 +197,29 @@ function activitiesOfAllServersSuite() {
     },
 
     testOkIfOneServerIsNotReached: function() {
-      // not sure how
-      if (internal.isCluster()) {
+      if (internal.isCluster()){
+        const someDBServer = Object.entries(arango.GET("/_admin/cluster/health").Health)
+          .filter(([serverId, properties]) => properties.Role === "DBServer")
+          .map(([serverId, properties]) => serverId)[0];
+
+        IM.stopServer(someDBServer);
+  
+        let error;
+        try {
+          const activities_per_server = activitiesModule.get_snapshots_bare_all_servers();
+          assertTrue(activities_per_server[someDBServer]);
+          assertTrue(// if agency knows about failed server
+                     activities_per_server[someDBServer].number === internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code ||
+                     // if agency does not yet know about failed server
+                     activities_per_server[someDBServer].number === internal.errors.ERROR_CLUSTER_TIMEOUT.code,
+                     activities_per_server[someDBServer].number);
+        } catch(e) {
+          error = e;
+        } finally {
+          IM.waitForServerFailed(someDBServer);
+          IM.continueServerWaitOk(someDBServer);
+        }
+        assertFalse(error, error);
       }
     },
 
