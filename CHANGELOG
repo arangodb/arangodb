@@ -1,6 +1,10 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-444: Vector index training now draws a uniformly random training set
+  via reservoir sampling (Algorithm L) over a full iteration of the
+  collection, instead of keeping the first `nLists * 256` documents.
+
 * COR-411: Introduced optimizer rule `replace-any-eq-with-in` that maps filter
   nodes of the form FILTER [exp1] ANY == exp2 into FILTER exp2 IN [exp1] to
   make them visible to downstream optimizer rules, including use-indexes,
