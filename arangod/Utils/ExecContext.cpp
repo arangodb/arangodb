@@ -25,6 +25,7 @@
 
 #include "Basics/Result.h"
 
+#include <ranges>
 #include <variant>
 
 using namespace arangodb;
@@ -70,124 +71,147 @@ bool ExecContext::isAuthEnabled() const {
 }
 
 Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {
-  return _authMode.getIAuth().check(auth::perms::Admin{.action = action});
+  using namespace auth::perms;
+  return can(Admin{.action{action}});
 }
 
 Result ExecContext::canUseHardenedAction(
     rbac::Category::Any const& action) const {
-  if (_authMode.isRbac()) {
-    return _authMode.getIAuth().check(
-        auth::perms::HardenedAdmin{.action = action});
-  }
-  return Result{};
+  using namespace auth::perms;
+  return can(HardenedAdmin{.action{action}});
 }
 
 Result ExecContext::canSeeDatabase(std::string_view db) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(SeeDatabase{.name{db}});
 }
 
 Result ExecContext::canCreateDatabase(std::string_view db) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(CreateDatabase{.name{db}});
 }
 
 Result ExecContext::canDropDatabase(std::string_view db) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(DropDatabase{.name{db}});
 }
 
 Result ExecContext::canUseDatabase(std::string_view db,
                                    DatabaseAccessLevel level) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(UseDatabase{.name{db}, .level = level});
 }
 
 Result ExecContext::canSeeCollection(std::string_view db,
                                      std::string_view coll) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(SeeCollection{.db{db}, .name{coll}});
 }
 
 Result ExecContext::canCreateCollection(std::string_view db,
                                         std::string_view coll) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(CreateCollection{.db{db}, .name{coll}});
 }
 
 Result ExecContext::canDropCollection(std::string_view db,
                                       std::string_view coll) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(DropCollection{.db{db}, .name{coll}});
 }
 
 Result ExecContext::canUseCollection(std::string_view db, std::string_view coll,
                                      CollectionAccessLevel level) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(UseCollection{.db{db}, .name{coll}});
 }
 
 Result ExecContext::canCreateIndex(std::string_view db,
                                    std::string_view coll) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(UseCollection{
+      .db{db}, .name{coll}, .level = CollectionAccessLevel::WriteMeta});
 }
 
 Result ExecContext::canDropIndex(std::string_view db,
                                  std::string_view coll) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(UseCollection{
+      .db{db}, .name{coll}, .level = CollectionAccessLevel::WriteMeta});
 }
 
 Result ExecContext::canSeeView(std::string_view db,
                                std::string_view view) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(SeeView{.db{db}, .name{view}});
 }
 
 Result ExecContext::canCreateView(std::string_view db,
                                   std::string_view view) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(CreateView{.db{db}, .name{view}});
 }
 
 Result ExecContext::canDropView(std::string_view db, std::string_view view,
-                                std::span<std::string> collections) const {
-  return Result{};
+                                std::vector<std::string> collections) const {
+  using namespace auth::perms;
+  return can(DropView{
+      .db{db}, .name{view}, .linkedCollections{std::move(collections)}});
 }
 
 Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
                                ViewAccessLevel requested) const {
-  return _authMode.getIAuth().check(
-      auth::perms::UseView{.db = std::string(db),
-                           .name = std::string(viewName),
-                           .level = requested});
+  using namespace auth::perms;
+  return can(UseView{.db{db}, .name{viewName}, .level = requested});
 }
 
 Result ExecContext::canRenameView(std::string_view db,
                                   std::string_view oldViewName,
                                   std::string_view newViewName) const {
-  return Result();
+  using namespace auth::perms;
+  return can(RenameView{});
 }
 
 Result ExecContext::canRenameView(std::string_view db,
                                   std::string_view oldViewName,
                                   std::string_view newViewName,
-                                  std::span<std::string> collections) const {
-  return Result();
+                                  std::vector<std::string> collections) const {
+  using namespace auth::perms;
+  return can(RenameView{.db{db},
+                        .oldName{oldViewName},
+                        .newName{newViewName},
+                        .linkedCollections{std::move(collections)}});
 }
 
 Result ExecContext::canSeeAnalyzer(std::string_view db,
                                    std::string_view analyzer) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(SeeAnalyzer{.db{db}, .name{analyzer}});
 }
 
 Result ExecContext::canCreateAnalyzer(std::string_view db,
                                       std::string_view analyzer) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(CreateAnalyzer{.db{db}, .name{analyzer}});
 }
 
 Result ExecContext::canDropAnalyzer(std::string_view db,
                                     std::string_view analyzer) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(DropAnalyzer{.db{db}, .name{analyzer}});
 }
 
 Result ExecContext::canUseAnalyzer(std::string_view db,
                                    std::string_view analyzer,
                                    AnalyzerAccessLevel level) const {
-  return Result{};
+  using namespace auth::perms;
+  return can(UseAnalyzer{.db{db}, .name{analyzer}, .level = level});
 }
 
 /// @brief returns true if the user can be read
 bool ExecContext::canReadUser(std::string_view user) const {
+  using namespace auth::perms;
+  return can(ReadUser{.name{user}}).ok();
   // TODO
   // Pseudocode:
   // if superuser: true
@@ -202,6 +226,8 @@ bool ExecContext::canReadUser(std::string_view user) const {
 /// @brief returns true if the user can be modified, note that everybody
 /// can modify themselves (if only to change the password).
 bool ExecContext::canWriteUser(std::string_view user) const {
+  using namespace auth::perms;
+  return can(WriteUser{.name{user}}).ok();
   // TODO
   // Pseudocode:
   // if superuser: true
@@ -215,8 +241,11 @@ bool ExecContext::canWriteUser(std::string_view user) const {
 
 /// @brief returns true for each user which can be read
 std::vector<bool> ExecContext::canReadUsers(
-    std::vector<std::string> users) const {
-  return std::vector<bool>(users.size());
+    std::vector<std::string> const& users) const {
+  using namespace auth::perms;
+  auto canRead = [this](auto&& user) { return can(ReadUser{.name = user}).ok(); };
+  auto view = users | std::views::transform(canRead);
+  return std::vector<bool>{view.begin(), view.end()};
 }
 
 ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)

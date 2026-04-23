@@ -146,7 +146,7 @@ class ExecContext : public RequestContext {
   // TODO Remove defaulting of the collections parameter, it's only
   //      there for now so everything compiles.
   Result canDropView(std::string_view db, std::string_view view,
-                     std::span<std::string> collections = {}) const;
+                     std::vector<std::string> collections = {}) const;
   Result canUseView(std::string_view db, std::string_view view,
                     ViewAccessLevel level) const;
 
@@ -157,7 +157,7 @@ class ExecContext : public RequestContext {
                        std::string_view newViewName) const;
   Result canRenameView(std::string_view db, std::string_view oldViewName,
                        std::string_view newViewName,
-                       std::span<std::string> collections) const;
+                       std::vector<std::string> collections) const;
 
   Result canSeeAnalyzer(std::string_view db, std::string_view analyzer) const;
   Result canCreateAnalyzer(std::string_view db,
@@ -167,12 +167,14 @@ class ExecContext : public RequestContext {
                         AnalyzerAccessLevel level) const;
 
   /// @brief returns true if the user can be read
+  // TODO Should this return a Result?
   bool canReadUser(std::string_view user) const;
 
   /// @brief returns true for each user which can be read
+  // TODO Should this return a std::vector<Result>?
   // TODO Can we use a parameter type that forces fewer copies, like
   //      std::span<std::string_view> or something?
-  std::vector<bool> canReadUsers(std::vector<std::string> users) const;
+  std::vector<bool> canReadUsers(std::vector<std::string> const& users) const;
 
   /// @brief returns true if the user can be modified, note that everybody
   // can modify themselves (if only to change the password).
