@@ -67,7 +67,6 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "VectorIndex/VectorIndexFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -458,24 +457,6 @@ void RocksDBCollection::swapIndex(std::shared_ptr<Index> const& oldIdx,
   RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   removeIndex(_indexes, oldIdx->id());
   _indexes.emplace(newIdx);
-}
-
-Result RocksDBCollection::retrainVectorIndex(IndexId iid) {
-  if (ServerState::instance()->isCoordinator()) {
-    // On the coordinator there are no physical shards to retrain. The
-    // cluster broadcast fans the request out to DBServers directly.
-    return {TRI_ERROR_CLUSTER_UNSUPPORTED,
-            "retrainVectorIndex must not be called on a coordinator"};
-  }
-
-  auto target = lookupIndex(iid);
-  if (target == nullptr) {
-    return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
-  }
-
-  auto& feature =
-      _logicalCollection.vocbase().server().getFeature<VectorIndexFeature>();
-  return feature.requestRetrain(target);
 }
 
 void RocksDBCollection::addShadowIndex(std::shared_ptr<Index> const& shadow) {

@@ -80,12 +80,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void swapIndex(std::shared_ptr<Index> const& oldIdx,
                  std::shared_ptr<Index> const& newIdx);
 
-  /// @brief Entry point for retraining a vector index. Validates the target
-  /// index is a ready vector index on this DBServer / single-server, rejects
-  /// concurrent retrains on the same index, and hands the job to
-  /// VectorIndexBuildManager. Does not block.
-  Result retrainVectorIndex(IndexId iid) override;
-
   /// @brief Insert a shadow vector index into _indexes bypassing the
   /// normal duplicate-name / duplicate-definition checks. The shadow must
   /// carry a fresh IndexId and a fresh objectId. Only the in-memory index

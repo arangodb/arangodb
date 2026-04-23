@@ -187,14 +187,6 @@ class PhysicalCollection {
   /// @brief compact-data operation
   virtual void compact() {}
 
-  /// @brief Retrain a vector index in place. Default implementation rejects
-  /// the request with TRI_ERROR_NOT_IMPLEMENTED; the RocksDB storage engine
-  /// overrides this to hand the job off to the VectorIndexBuildManager.
-  virtual Result retrainVectorIndex(IndexId /*iid*/) {
-    return {TRI_ERROR_NOT_IMPLEMENTED,
-            "vector index retrain is not implemented for this storage engine"};
-  }
-
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
   ///        the collection and it is guaranteed that no one is using

@@ -34,6 +34,7 @@
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
+#include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -44,6 +45,7 @@
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
@@ -675,7 +677,13 @@ async<void> RestCollectionHandler::handleCommandPut() {
         generateError(Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND});
         co_return;
       }
-      auto retrainRes = coll->getPhysical()->retrainVectorIndex(idx->id());
+      if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+        generateError(Result{TRI_ERROR_BAD_PARAMETER,
+                             "retrain target is not a vector index"});
+        co_return;
+      }
+      auto& feature = server().getFeature<VectorIndexFeature>();
+      auto retrainRes = feature.requestRetrain(idx);
       if (retrainRes.fail()) {
         generateError(retrainRes);
         co_return;
