@@ -132,9 +132,14 @@ void ScatterNode::addClient(DistributeConsumerNode const& client) {
   _clients.emplace_back(distId);
 }
 
+void ScatterNode::setNumberOfShards(size_t const numShards) {
+  _maybeNumberOfShards = numShards;
+}
+
 /// @brief estimateCost
 CostEstimate ScatterNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
-  estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
+  estimate.estimatedCost +=
+      estimate.estimatedNrItems * _maybeNumberOfShards.value_or(0);
   return estimate;
 }
