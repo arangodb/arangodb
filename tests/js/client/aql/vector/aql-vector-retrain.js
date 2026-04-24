@@ -67,6 +67,29 @@ function createIndex(collection) {
   });
 }
 
+// Poll until the named index is back to kReady with a different id from
+// preIdx. Returns the post-retrain index, or undefined on timeout.
+//
+// Single-server: retrain swaps the real index for its shadow, producing
+// a fresh DBServer-local IndexId visible via collection.indexes(). The
+// id-change check is a strong completion signal.
+//
+// Cluster: the coordinator's Plan-level IndexId is agency-bound and
+// does NOT change across a retrain.
+function waitForRetrainComplete(collection, preIdx, timeoutMs) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const idx = collection.indexes().find(i => i.name === preIdx.name);
+    if (idx !== undefined &&
+        idx.trainingState === VectorIndexTrainingState.kReady &&
+        (isCluster || idx.id !== preIdx.id)) {
+      return idx;
+    }
+    internal.sleep(0.5);
+  }
+  return undefined;
+}
+
 function VectorRetrainTestSuite() {
   let collection;
   const seed = generateSeed();
@@ -106,32 +129,14 @@ function VectorRetrainTestSuite() {
     testRetrainRebuildsIndexAndKeepsDataSearchable: function () {
       const preIdx = collection.indexes().find(i => i.name === indexName);
       assertEqual(VectorIndexTrainingState.kReady, preIdx.trainingState);
-      const preId = preIdx.id;
 
       collection.retrain(indexName);
 
-      // Retrain is asynchronous and DBServer-local: on a single server
-      // it produces a fresh IndexId visible in collection.indexes(); in
-      // cluster mode the agency Plan's IndexId does not change, since
-      // retrain is per-DBServer. In both cases, poll until the index is
-      // back to kReady and sanity-check that the index is searchable.
-      const timeoutMs = 180_000;
-      const start = Date.now();
-      let postIdx;
-      while (Date.now() - start < timeoutMs) {
-        const idx = collection.indexes().find(i => i.name === indexName);
-        if (idx !== undefined &&
-            idx.trainingState === VectorIndexTrainingState.kReady &&
-            (isCluster || idx.id !== preId)) {
-          postIdx = idx;
-          break;
-        }
-        internal.sleep(0.5);
-      }
+      const postIdx = waitForRetrainComplete(collection, preIdx, 180_000);
       assertTrue(postIdx !== undefined,
         "Retrain did not finish within timeout");
       if (!isCluster) {
-        assertNotEqual(preId, postIdx.id,
+        assertNotEqual(preIdx.id, postIdx.id,
           "Retrain should produce a new IndexId on single server");
       }
 
@@ -208,6 +213,40 @@ function VectorRetrainTestSuite() {
         waitForAllVectorIndexesState(
           collection, VectorIndexTrainingState.kReady, 180),
         "Index did not return to ready after paused retrain");
+    },
+
+    testRetrainByNumericIdViaJsClient: function () {
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+      // idx.id is in "<coll>/<numericId>" form; retrain() accepts either.
+      const numericId = preIdx.id.split('/')[1];
+
+      collection.retrain(numericId);
+
+      const postIdx = waitForRetrainComplete(collection, preIdx, 180_000);
+      assertTrue(postIdx !== undefined,
+        "Retrain-by-id did not finish within timeout");
+      if (!isCluster) {
+        assertNotEqual(preIdx.id, postIdx.id,
+          "Retrain-by-id should produce a new IndexId on single server");
+      }
+    },
+
+    testRetrainViaRestApiByJsonNumberId: function () {
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+      const numericId = parseInt(preIdx.id.split('/')[1], 10);
+      const url = '/_api/index/retrain?collection=' +
+                  encodeURIComponent(collName);
+      const res = arango.POST(url, {index: numericId});
+      assertFalse(res.error, JSON.stringify(res));
+      assertEqual(200, res.code);
+
+      const postIdx = waitForRetrainComplete(collection, preIdx, 180_000);
+      assertTrue(postIdx !== undefined,
+        "REST retrain-by-JSON-number did not finish within timeout");
+      if (!isCluster) {
+        assertNotEqual(preIdx.id, postIdx.id,
+          "REST retrain-by-JSON-number should produce a new IndexId");
+      }
     },
   };
 }
