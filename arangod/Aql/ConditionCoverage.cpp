@@ -91,7 +91,7 @@ bool areInRangeCallsIdentical(AstNode const* arrayNode,
 
 /// @brief checks if the current condition is covered by the other
 bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
-               aql::AstNode const* andNode, bool allowArrayExpansion) {
+               AstNode const* andNode, bool allowArrayExpansion) {
   TRI_ASSERT(andNode != nullptr);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
@@ -99,7 +99,7 @@ bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
 
   size_t const n = andNode->numMembers();
 
-  auto normalize = [&plan](AstNode const* node) -> std::string {
+  auto normalize = [plan](AstNode const* node) -> std::string {
     if (node->type == NODE_TYPE_REFERENCE) {
       auto setter =
           plan->getVarSetBy(static_cast<Variable const*>(node->getData())->id);
@@ -170,8 +170,8 @@ bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
               // non-constant condition
               else {
                 auto opType = operand->type;
-                if (aql::Ast::isReversibleOperator(opType)) {
-                  opType = aql::Ast::reverseOperator(opType);
+                if (Ast::isReversibleOperator(opType)) {
+                  opType = Ast::reverseOperator(opType);
                 }
                 if (me.operatorType == opType &&
                     normalize(me.valueNode) == normalize(lhs)) {
@@ -238,7 +238,7 @@ bool canInRangeBeRemoved(AstNode const* inRangeNode,
   for (std::size_t i{0}; i < otherAndNode->numMembers(); ++i) {
     auto const* operand = otherAndNode->getMemberUnchecked(i);
     if (operand->type != NODE_TYPE_FCALL ||
-        aql::functions::getFunctionName(*operand) != "IN_RANGE") {
+        functions::getFunctionName(*operand) != "IN_RANGE") {
       continue;
     }
 
@@ -297,37 +297,24 @@ bool isConditionCoveredBy(ExecutionPlan const* plan, Variable const* variable,
   auto rhs =
       const_cast<AstNode*>(plan->resolveVariableAlias(condition->getMember(1)));
 
-  if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      lhs->type == NODE_TYPE_EXPANSION) {
-    clearAttributeAccess(result);
-
-    if (lhs->isAttributeAccessForVariable(result, allowIndexedAccessInArray) &&
-        result.first == variable) {
-      ConditionPart current(variable, result.second, condition, ATTRIBUTE_LEFT,
-                            nullptr);
-
-      if (canRemove(plan, current, otherAndNode, allowIndexedAccessInArray)) {
-        return true;
-      }
+  auto tryRemove = [&](AstNode const* node,
+                       AttributeSideType sideType) -> bool {
+    if (node->type != NODE_TYPE_ATTRIBUTE_ACCESS &&
+        node->type != NODE_TYPE_EXPANSION) {
+      return false;
     }
-  }
-
-  if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      rhs->type == NODE_TYPE_EXPANSION) {
     clearAttributeAccess(result);
-
-    if (rhs->isAttributeAccessForVariable(result, allowIndexedAccessInArray) &&
-        result.first == variable) {
-      ConditionPart current(variable, result.second, condition, ATTRIBUTE_RIGHT,
-                            nullptr);
-
-      if (canRemove(plan, current, otherAndNode, allowIndexedAccessInArray)) {
-        return true;
-      }
+    if (!node->isAttributeAccessForVariable(result,
+                                            allowIndexedAccessInArray) ||
+        result.first != variable) {
+      return false;
     }
-  }
+    ConditionPart current(variable, result.second, condition, sideType,
+                          nullptr);
+    return canRemove(plan, current, otherAndNode, allowIndexedAccessInArray);
+  };
 
-  return false;
+  return tryRemove(lhs, ATTRIBUTE_LEFT) || tryRemove(rhs, ATTRIBUTE_RIGHT);
 }
 
 bool extractSingleAndNodes(AstNode const* root, AstNode const* condition,
