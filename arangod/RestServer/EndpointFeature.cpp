@@ -74,12 +74,12 @@ If a TCP/IP endpoint is specified without a port number, then the default port
 (8529) is used.
 
 If you use SSL-encrypted endpoints, you must also supply the path to a server
-certificate using the `--ssl.keyfile` option.
+certificate using the `--tls.keyfile` option.
 
 ```bash
 arangod --server.endpoint tcp://127.0.0.1:8529 \
         --server.endpoint ssl://127.0.0.1:8530 \
-        --ssl.keyfile server.pem /tmp/data-dir
+        --tls.keyfile server.pem /tmp/data-dir
 
 ...
 2022-11-07T10:39:30Z [1] INFO [6ea38] {general} using endpoint 'http+ssl://0.0.0.0:8530' for ssl-encrypted requests
