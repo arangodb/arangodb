@@ -50,9 +50,8 @@ using EN = ExecutionNode;
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
-std::unique_ptr<Expression> tryRemoveFilterNode(
-    auto* maybeFilterNode, auto& plan,
-    auto const* enumerateNearVectorOutputDocument) {
+std::unique_ptr<Expression> tryRemoveFilterNode(auto* maybeFilterNode,
+                                                auto& plan) {
   auto const* filterNode =
       ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
   auto const* filterInVar = filterNode->inVariable();
@@ -67,23 +66,12 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
   auto const* calculationNode =
       ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
 
-  // Check that all variables used in filterExpression can be handled in
-  // EnumerateNearVector node
-  VarSet calculationVars;
   auto filterExpression = calculationNode->expression()->clone(plan->getAst());
-  filterExpression->variables(calculationVars);
-
-  for (auto const* calcVar : calculationVars) {
-    if (calcVar->type() != Variable::Type::Regular) {
-      continue;
-    }
-    if (calcVar != enumerateNearVectorOutputDocument) {
-      return nullptr;
-    }
-  }
 
   // CalculationNode will be removed by the subsequent rule if it is not
-  // referenced by any other node
+  // referenced by any other node. EnumerateNearVectorNode advertises the
+  // filter's variables through getVariablesUsedHere, so the register planner
+  // keeps them alive up to this node.
   plan->unlinkNode(maybeFilterNode);
 
   return filterExpression;
@@ -197,8 +185,8 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
 
     // If there is a FilterNode it comes with CalculationNode, we remove it
     // and handle it in EnumerateNearVectorNode
-    std::unique_ptr<Expression> filterExpression = tryRemoveFilterNode(
-        filterNode, plan, enumerateNearVectorNode->documentOutVariable());
+    std::unique_ptr<Expression> filterExpression =
+        tryRemoveFilterNode(filterNode, plan);
     if (!filterExpression) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
