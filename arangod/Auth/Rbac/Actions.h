@@ -100,7 +100,6 @@ struct Category {
   struct AdminDump {
   };  // Do we want this in RBAC, or just internally for Classic compatibility?
   struct AdminRestore {};
-  struct AdminReplication {};
   struct AdminWalAccess {};
   struct AdminReadAgency {};
   struct AdminReadOnlyMode {};
@@ -118,9 +117,9 @@ struct Category {
       AdminSupervisionState, AdminRemoveServer, AdminClusterInfo,
       AdminMaintenance, AdminRebalance, AdminLicense, AdminBackup, AdminJobs,
       AdminTasks, AdminReadReplicatedLog, AdminWriteReplicatedLog, AdminDump,
-      AdminRestore, AdminReplication, AdminWalAccess, AdminReadAgency,
-      AdminReadOnlyMode, AdminFoxx, AdminReadAqlFunctions,
-      AdminWriteAqlFunctions, AdminQueryCache>;
+      AdminRestore, AdminWalAccess, AdminReadAgency, AdminReadOnlyMode,
+      AdminFoxx, AdminReadAqlFunctions, AdminWriteAqlFunctions,
+      AdminQueryCache>;
 };
 
 }  // namespace arangodb::rbac

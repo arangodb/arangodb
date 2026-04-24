@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -681,6 +681,11 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
       }
       handleCommandServerId();
     } else if (command == ApplierConfig) {
+      if (isCoordinatorError()) {
+        // Makes no sense on coordinators
+        co_return;
+      }
+
       if (type == rest::RequestType::GET) {
         handleCommandApplierGetConfig();
       } else {
@@ -710,6 +715,10 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
 
       handleCommandApplierStop();
     } else if (command == ApplierState) {
+      if (isCoordinatorError()) {
+        co_return;
+      }
+
       if (type == rest::RequestType::DELETE_REQ) {
         handleCommandApplierDeleteState();
       } else {
@@ -722,6 +731,10 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
+      if (isCoordinatorError()) {
+        co_return;
+      }
+
       handleCommandApplierGetStateAll();
     } else if (command == ClusterInventory) {
       if (type != rest::RequestType::GET) {
@@ -807,109 +820,100 @@ Result RestReplicationHandler::testPermissions() {
   if (len >= 1) {
     auto const type = _request->requestType();
     std::string const& command = suffixes[0];
-    if ((command == Batch) ||
-        (command == Inventory && type == rest::RequestType::GET) ||
-        (command == Dump && type == rest::RequestType::GET) ||
-        (command == RestoreCollection && type == rest::RequestType::PUT)) {
-      if (command == Dump) {
-        // check dump collection permissions (at least ro needed)
-        std::string collectionName = _request->value("collection");
+    if (command == Dump && type == rest::RequestType::GET) {
+      // check dump collection permissions (at least ro needed)
+      std::string collectionName = _request->value("collection");
 
-        if (ServerState::instance()->isCoordinator()) {
-          // We have a shard id, need to translate.
-          // This API is explicitly called with Shards not with Collections.
-          ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-          auto maybeShardID = ShardID::shardIdFromString(collectionName);
-          if (maybeShardID.fail()) {
-            // Compatibility with old API, which would return
-            // an empty collection name if we were not handing in a shard.
-            return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
-          }
-          collectionName = ci.getCollectionNameForShard(maybeShardID.get());
+      if (ServerState::instance()->isCoordinator()) {
+        // We have a shard id, need to translate.
+        // This API is explicitly called with Shards not with Collections.
+        ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+        auto maybeShardID = ShardID::shardIdFromString(collectionName);
+        if (maybeShardID.fail()) {
+          // Compatibility with old API, which would return
+          // an empty collection name if we were not handing in a shard.
+          return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
         }
+        collectionName = ci.getCollectionNameForShard(maybeShardID.get());
+      }
 
-        if (!collectionName.empty()) {
-          auto& exec = ExecContext::current();
-          if (exec.canUseAdminAction(arangodb::rbac::Category::AdminDump{})
-                  .fail() &&
-              exec.canUseCollection(_vocbase.name(), collectionName,
-                                    AccessLevel::Read)
-                  .fail()) {
-            // not enough rights
-            return Result(
-                TRI_ERROR_FORBIDDEN,
-                absl::StrCat("insufficient permissions to access collection '",
-                             collectionName, "'"));
-          }
-        } else {
-          // not found, return 404
-          return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      if (!collectionName.empty()) {
+        auto& exec = ExecContext::current();
+        if (exec.canUseAdminAction(arangodb::rbac::Category::AdminDump{})
+                .fail() &&
+            exec.canUseCollection(_vocbase.name(), collectionName,
+                                  AccessLevel::Read)
+                .fail()) {
+          // not enough rights
+          return Result(
+              TRI_ERROR_FORBIDDEN,
+              absl::StrCat("insufficient permissions to access collection '",
+                           collectionName, "'"));
         }
-      } else if (command == RestoreCollection) {
-        VPackSlice const slice = _request->payload();
-        VPackSlice const parameters = slice.get("parameters");
-        if (parameters.isObject()) {
-          if (parameters.get("name").isString()) {
-            std::string collectionName = parameters.get("name").copyString();
-            if (!collectionName.empty()) {
-              std::string dbName = _request->databaseName();
-              DatabaseFeature& databaseFeature =
-                  _vocbase.server().getFeature<DatabaseFeature>();
-              auto vocbase = databaseFeature.useDatabase(dbName);
-              if (vocbase == nullptr) {
-                return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-              }
+      } else {
+        // not found, return 404
+        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
+    } else if (command == RestoreCollection && type == rest::RequestType::PUT) {
+      VPackSlice const slice = _request->payload();
+      VPackSlice const parameters = slice.get("parameters");
+      if (parameters.isObject()) {
+        if (parameters.get("name").isString()) {
+          std::string collectionName = parameters.get("name").copyString();
+          if (!collectionName.empty()) {
+            std::string dbName = _request->databaseName();
+            DatabaseFeature& databaseFeature =
+                _vocbase.server().getFeature<DatabaseFeature>();
+            auto vocbase = databaseFeature.useDatabase(dbName);
+            if (vocbase == nullptr) {
+              return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+            }
 
-              std::string const& overwriteCollection =
-                  _request->value("overwrite");
+            std::string const& overwriteCollection =
+                _request->value("overwrite");
 
-              auto& exec = ExecContext::current();
+            auto& exec = ExecContext::current();
 
-              if (overwriteCollection == "true" ||
-                  vocbase->lookupCollection(collectionName) == nullptr) {
-                // 1.) re-create collection, means: overwrite=true (rw database)
-                // OR 2.) not existing, new collection (rw database)
-                if (exec.canUseAdminAction(
-                            arangodb::rbac::Category::AdminRestore{})
-                        .fail() &&
-                    exec.canUseCollection(dbName, collectionName,
-                                          AccessLevel::WriteMeta)
-                        .fail()) {
-                  return Result(
-                      TRI_ERROR_FORBIDDEN,
-                      absl::StrCat("insufficient permissions to access "
-                                   "(write meta) collection '",
-                                   collectionName, "' in database '", dbName,
-                                   "'"));
-                }
-              } else {
-                // 3.) Existing collection (ro database, rw collection)
-                // no overwrite. restoring into an existing collection
-                if (exec.canUseAdminAction(
-                            arangodb::rbac::Category::AdminRestore{})
-                        .fail() &&
-                    exec.canUseCollection(dbName, collectionName,
-                                          AccessLevel::WriteData)
-                        .fail()) {
-                  return Result(
-                      TRI_ERROR_FORBIDDEN,
-                      absl::StrCat("insufficient permissions to access "
-                                   "(write data) collection '",
-                                   collectionName, "'"));
-                }
+            if (overwriteCollection == "true" ||
+                vocbase->lookupCollection(collectionName) == nullptr) {
+              // 1.) re-create collection, means: overwrite=true (rw database)
+              // OR 2.) not existing, new collection (rw database)
+              if (exec.canUseAdminAction(
+                          arangodb::rbac::Category::AdminRestore{})
+                      .fail() &&
+                  exec.canCreateCollection(dbName, collectionName).fail()) {
+                return Result(TRI_ERROR_FORBIDDEN,
+                              absl::StrCat("insufficient permissions to access "
+                                           "(create) collection '",
+                                           collectionName, "' in database '",
+                                           dbName, "'"));
               }
             } else {
-              return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                            "empty collection name");
+              // 3.) Existing collection (ro database, rw collection)
+              // no overwrite. restoring into an existing collection
+              if (exec.canUseAdminAction(
+                          arangodb::rbac::Category::AdminRestore{})
+                      .fail() &&
+                  exec.canUseCollection(dbName, collectionName,
+                                        AccessLevel::WriteData)
+                      .fail()) {
+                return Result(TRI_ERROR_FORBIDDEN,
+                              absl::StrCat("insufficient permissions to access "
+                                           "(write data) collection '",
+                                           collectionName, "'"));
+              }
             }
           } else {
             return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "invalid collection name type");
+                          "empty collection name");
           }
         } else {
           return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                        "invalid collection parameter type");
+                        "invalid collection name type");
         }
+      } else {
+        return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "invalid collection parameter type");
       }
     }
   }
@@ -966,11 +970,7 @@ void RestReplicationHandler::handleCommandMakeFollower() {
   // will throw if invalid
   configuration.validate();
 
-  // allow access to _users if appropriate
-  ExecContextSuperuserScope escope(
-      ExecContext::current()
-          .canUseAdminAction(arangodb::rbac::Category::AdminReplication{})
-          .ok());
+  // We are on a DBServer anyway, so we are SuperUser if we get here.
 
   // forget about any existing replication applier configuration
   applier->forget();
@@ -2010,6 +2010,14 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
     return {TRI_ERROR_HTTP_BAD_PARAMETER, errorMsg};
   }
 
+  // Check permissions:
+  auto& exec = ExecContext::current();
+  if (exec.canUseAdminAction(rbac::Category::AdminRestore{}).fail()) {
+    if (auto r = exec.canCreateIndex(_vocbase.name(), name); r.fail()) {
+      return r;
+    }
+  }
+
   if (ignoreHiddenEnterpriseCollection(name, force)) {
     return {};
   }
@@ -2142,9 +2150,12 @@ void RestReplicationHandler::handleCommandRestoreView() {
   LOG_TOPIC("f874e", TRACE, Logger::REPLICATION)
       << "restoring view: " << nameSlice.stringView();
 
+  auto& exec = ExecContext::current();
+  std::string name = nameSlice.copyString();
+
   try {
     CollectionNameResolver resolver(_vocbase);
-    auto view = resolver.getView(nameSlice.copyString());
+    auto view = resolver.getView(name);
 
     if (view) {
       if (!overwrite) {
@@ -2157,6 +2168,12 @@ void RestReplicationHandler::handleCommandRestoreView() {
         return;
       }
 
+      auto r1 = exec.canUseAdminAction(rbac::Category::AdminRestore{});
+      auto r2 = exec.canDropView(_vocbase.name(), name);
+      if (r1.fail() && r2.fail()) {
+        generateError(r2);
+        return;
+      }
       auto res = view->drop();
 
       if (!res.ok()) {
@@ -2166,6 +2183,12 @@ void RestReplicationHandler::handleCommandRestoreView() {
     }
 
     // must create() since view was drop()ed
+    auto r1 = exec.canUseAdminAction(rbac::Category::AdminRestore{});
+    auto r2 = exec.canCreateView(_vocbase.name(), name);
+    if (r1.fail() && r2.fail()) {
+      generateError(r2);
+      return;
+    }
     auto res = LogicalView::create(view, _vocbase, slice, true);
 
     if (!res.ok()) {
