@@ -50,8 +50,8 @@ using EN = ExecutionNode;
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
-std::unique_ptr<Expression> tryRemoveFilterNode(auto* maybeFilterNode,
-                                                auto& plan) {
+std::unique_ptr<Expression> tryRemoveFilterNode(
+    auto* maybeFilterNode, auto& plan, Variable const* distanceOutVariable) {
   auto const* filterNode =
       ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
   auto const* filterInVar = filterNode->inVariable();
@@ -67,6 +67,16 @@ std::unique_ptr<Expression> tryRemoveFilterNode(auto* maybeFilterNode,
       ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
 
   auto filterExpression = calculationNode->expression()->clone(plan->getAst());
+
+  // TODO this will be resolved in the ticket COR-461
+  VarSet filterVars;
+  filterExpression->variables(filterVars);
+  if (filterVars.contains(distanceOutVariable)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+        "filter on the distance variable cannot be pushed into the vector "
+        "search; the distance is produced by the search itself");
+  }
 
   // CalculationNode will be removed by the subsequent rule if it is not
   // referenced by any other node. EnumerateNearVectorNode advertises the
@@ -185,8 +195,8 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
 
     // If there is a FilterNode it comes with CalculationNode, we remove it
     // and handle it in EnumerateNearVectorNode
-    std::unique_ptr<Expression> filterExpression =
-        tryRemoveFilterNode(filterNode, plan);
+    std::unique_ptr<Expression> filterExpression = tryRemoveFilterNode(
+        filterNode, plan, enumerateNearVectorNode->distanceOutVariable());
     if (!filterExpression) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
