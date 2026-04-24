@@ -25,6 +25,10 @@ mix toast suite_a suite_b
 **Interactive** (`ToastTest.Interactive`): run individual tests against a
 manually-started deployment. Useful for debugging and development.
 
+**Manual** (`mode: :manual`): suites that don't start an automatic deployment.
+Tests manage their own deployments using `with_deployment`. Useful for testing
+deployment lifecycle itself.
+
 The suite-based model exists because different test suites need different
 deployment configurations (cluster topology, server args, etc.).
 
@@ -106,6 +110,10 @@ For each suite:
      --> clear ETS tables, reset formatters for next suite
 ```
 
+For manual-mode suites, steps 2-3 (deployment start and setup_deployment) and
+step 5 (teardown_deployment) are skipped. Tests manage their own deployments
+via `with_deployment`. Between-test health checks are disabled.
+
 The Runner is derived from `ExUnit.Runner` (Apache-2.0 licensed code from the
 Elixir team) and reproduces its test execution mechanics. This was necessary
 because ExUnit.Runner cannot be configured to:
@@ -117,13 +125,22 @@ because ExUnit.Runner cannot be configured to:
 
 ### Between-Test Health Checks
 
-Between each test, the Runner calls `check_between_tests/2`:
+Between each test, the Runner calls `check_between_tests/2`. The check has
+three phases before the suite callback runs:
 
 ```
 check_between_tests(config, prev_test)
   |
-  +-- suite_config[:between_tests] == false?
+  +-- suite_config[:between_tests] == false? (or mode: :manual)
   |     --> skip (opt-out)
+  |
+  +-- CrashBarrier.await_settled(deployment)
+  |     --> polls /proc/<pid>/status for in-flight crashes
+  |     --> blocks until settled or timeout
+  |
+  +-- HealthBarrier.await_healthy(deployment)
+  |     --> waits for each server's health monitor to report healthy
+  |     --> catches deadlocks, resource exhaustion
   |
   +-- suite_module has between_tests/2?
   |     --> call suite_module.between_tests(deployment, prev_test)

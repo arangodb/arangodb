@@ -142,6 +142,8 @@ Design decisions:
 | `Toast.Deployment.Events` | Event emission for deployment lifecycle. Single source of truth for event format. |
 | `Toast.Deployment.EventListener` | Behaviour for receiving lifecycle events (on_event, on_crash). |
 | `Toast.Deployment.DefaultEventListener` | No-op implementation of EventListener. |
+| `Toast.Deployment.CrashBarrier` | Between-tests barrier that checks `/proc/<pid>/status` to detect in-flight crashes before the next test starts. |
+| `Toast.Deployment.HealthBarrier` | Between-tests barrier that waits for each server's HealthMonitor to report healthy before the next test starts. Catches "alive but unresponsive" cases (deadlocks, resource exhaustion). |
 | `Toast.Deployment.Supervisor` | DynamicSupervisor for Controller processes. |
 
 ### Process Management (`Toast.Process.*`)
@@ -151,6 +153,7 @@ Design decisions:
 | `Toast.Process.ServerProcess` | GenServer wrapping erlexec for one OS process. Lifecycle + crash detection. |
 | `Toast.Process.HealthMonitor` | GenServer polling HTTP health. Notifies listener after N consecutive failures. |
 | `Toast.Process.CrashInfo` | Data struct for crash information (exit status, signal, timestamp, PID). |
+| `Toast.Process.ProcStatus` | Reads `/proc/<pid>/status` to check process state (running, zombie, etc.). Used by CrashBarrier. |
 | `Toast.Process.Supervisor` | DynamicSupervisor for ServerProcess and HealthMonitor children. |
 
 ### JWT (`Toast.JWT.*`)
@@ -169,7 +172,7 @@ Design decisions:
 | `ToastTest.Runner.TestExecution` | Core test execution loop (setup_all, per-test spawn, result handling). |
 | `ToastTest.Runner.TestProcess` | Spawn and manage individual test processes with timeout handling. |
 | `ToastTest.Runner.TestFilter` | Filter test modules by line number, test name, and ExUnit tags. |
-| `ToastTest.Runner.BetweenTests` | Between-test health checks and suite deadline enforcement. |
+| `ToastTest.Runner.BetweenTests` | Between-test checks with three phases: (1) `CrashBarrier.await_settled/2` checks `/proc/<pid>/status` for in-flight crashes, (2) `HealthBarrier.await_healthy/2` waits for health monitors to report healthy, (3) suite's custom `between_tests/2` callback (or default `BetweenTests.check/2`). Also enforces suite deadline. |
 | `ToastTest.Runner.PostExecution` | Post-suite diagnostics collection (agency dump, artifact collection, attribution). |
 | `ToastTest.Runner.ResultBuilder` | Build SuiteResult from test data, diagnostics, and enrichment. |
 | `ToastTest.Runner.FailureFormatter` | Format test failures for display. |
@@ -191,6 +194,9 @@ Design decisions:
 | `ToastTest.TestLifecycle` | Shared test lifecycle primitives (spawn_setup_all, spawn_test, etc.) used by both Interactive and Runner. |
 | `ToastTest.Interactive` | Run individual tests against an existing deployment (debugging). |
 | `ToastTest.DebuggerAttach` | Print debugger attach commands and wait for user input (--attach-debugger). When active, test timeouts are disabled. |
+| `ToastTest.WithDeployment` | Helper for starting scoped deployments within individual test cases. Used in `mode: :manual` suites. |
+| `ToastTest.DeployConfig` | Builds `Toast.Deployment.Config` from flat suite-style options. Used by both Runner and WithDeployment. |
+| `ToastTest.DeploymentEventListener` | Event listener for per-test deployments (manual mode). Records events but does not abort on crashes. |
 | `ToastTest.TimeoutError` | Custom exception for test/suite timeout conditions. |
 
 ### Diagnostics (`Toast.Diagnostics.*`)
@@ -280,6 +286,7 @@ reading/parsing specific artifact types.
 | `Toast.Utils` | Utility functions (conditional_put, compact, compact_join). |
 | `Toast.Utils.Filesystem` | Server directory creation, arangod binary discovery, repo root detection. |
 | `Toast.Utils.Compression` | Compression tool detection and wrappers (zstd, gzip). |
+| `Toast.Utils.Polling` | Generic poll-until-condition utility with deadline-based timeout. |
 | `Toast.LogFormatter` | Custom log format for both Elixir Logger and Erlang `:logger` handler. |
 | `ToastTest.LogAnalysis` | Data transformation for server log analysis (parsing, filtering, k-way merge). Used by `mix toast.analyze`. |
 | `ToastTest.Supervisor` | Supervisor for ToastTest-specific processes. |

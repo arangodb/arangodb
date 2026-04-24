@@ -53,14 +53,14 @@ Note: the module names of all files belonging to a suite must be namespaced with
 
 ## Toast CLI
 
-Instead of running `mix toast` directly from the `tests/elixir/toast/` directory,
+Instead of running `mix toast` directly from the `tests/toast/` directory,
 you can use the `toast` wrapper script from anywhere in the repository. It
 automatically finds the correct `toast` directory and forwards to `mix toast`.
 
 Set it up once:
 
 ```bash
-tests/elixir/toast/toast --setup-completion
+tests/toast/toast --setup-completion
 ```
 
 This adds a `toast` shell function and bash completion to your `~/.bashrc`.
@@ -173,7 +173,7 @@ The `use ToastTest.Suite` macro accepts configuration options:
 
 | Option | Default | Description |
 |---|---|---|
-| `mode` | `:auto` | Deployment mode: `:single_server`, `:cluster`, or `:auto` (follows CLI) |
+| `mode` | `:auto` | Deployment mode: `:single_server`, `:cluster`, `:auto` (follows CLI), or `:manual` (no automatic deployment) |
 | `timeout` | `3_600_000` | Suite-level timeout in milliseconds |
 | `server_args` | `%{}` | Extra arangod CLI arguments as a map (e.g., `%{"log.level" => "debug"}`) |
 | `coordinator_args` | `%{}` | Extra arguments for coordinators (cluster mode) |
@@ -233,7 +233,9 @@ defmodule MyApp.Suite do
   @impl ToastTest.Suite
   def between_tests(deployment, _prev_test) do
     # Called between each test. Return :ok or {:error, reason}.
-    # The default behavior checks deployment status (:ready, :degraded, :failed).
+    # The default behavior runs two phases:
+    #   1. CrashBarrier — checks /proc/<pid>/status for in-flight crashes
+    #   2. HealthBarrier — waits for each server's health monitor to report healthy
     case Toast.Deployment.status(deployment) do
       :ready -> :ok
       other -> {:error, "Deployment not ready (status: #{other})"}
@@ -244,6 +246,53 @@ end
 
 The map returned from `setup_deployment/1` is merged into the test context,
 making its keys available to all tests in the suite.
+
+### Manual Deployments
+
+Suites with `mode: :manual` skip the automatic deployment lifecycle. No
+deployment is started before tests, and the test context does not include
+`deployment`, `endpoint`, or `client`. Between-test health checks are
+disabled. This is useful for tests that need to start and stop deployments
+as part of the test itself.
+
+```elixir
+defmodule Lifecycle.Suite do
+  use ToastTest.Suite, mode: :manual
+end
+```
+
+Tests in manual suites use the `with_deployment` helper to create scoped
+deployments:
+
+```elixir
+defmodule Lifecycle.StartupTest do
+  use Lifecycle.Suite
+
+  test "server starts and responds" do
+    with_deployment fn deployment ->
+      endpoint = Toast.Deployment.default_endpoint(deployment)
+      client = Toast.Client.new(endpoint)
+      body = Client.Admin.version!(client)
+      assert body["server"] == "arango"
+    end
+  end
+
+  test "cluster deployment" do
+    with_deployment [mode: :cluster, cluster_dbservers: 2], fn deployment ->
+      assert Toast.Deployment.status(deployment) == :ready
+    end
+  end
+end
+```
+
+`with_deployment` accepts an optional keyword list of deployment options
+(`:mode`, `:server_args`, `:authentication`, `:cluster_dbservers`, etc.)
+and a function. It starts a deployment, calls the function, and guarantees
+shutdown even if the function raises. When `:mode` is `:auto` (the default),
+the global deployment mode from CLI/environment is used.
+
+The `with_deployment` helper is also available in non-manual suites for tests
+that need an additional deployment beyond the suite's primary one.
 
 ### Test Files
 
