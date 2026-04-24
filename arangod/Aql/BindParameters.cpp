@@ -34,8 +34,7 @@
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 BindParameters::BindParameters(ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
@@ -219,3 +218,5 @@ std::size_t BindParameters::memoryUsage(std::string const& key,
                                         VPackSlice value) const noexcept {
   return 32 + key.size() + value.byteSize();
 }
+
+}  // namespace arangodb::aql

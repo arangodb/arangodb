@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,36 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlCallSet.h"
+#pragma once
+
+#include <memory>
 
 namespace arangodb::aql {
+class ExecutionPlan;
+class Optimizer;
+struct OptimizerRule;
 
-auto operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
-    -> std::ostream& {
-  return out << callPair.dependency << " => " << callPair.call;
-}
-
-auto operator<<(std::ostream& out, AqlCallSet const& callSet) -> std::ostream& {
-  out << "[";
-  auto first = true;
-  for (auto const& it : callSet.calls) {
-    if (first) {
-      out << " ";
-      first = false;
-    } else {
-      out << ", ";
-    }
-    out << it;
-  }
-  out << " ]";
-  return out;
-}
-
-auto AqlCallSet::empty() const noexcept -> bool { return calls.empty(); }
-
-auto AqlCallSet::size() const noexcept -> size_t { return calls.size(); }
+/// @brief replace ANY == array comparisons with IN expressions
+void replaceAnyEqWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                            OptimizerRule const&);
 
 }  // namespace arangodb::aql

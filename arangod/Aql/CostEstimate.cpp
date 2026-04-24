@@ -25,8 +25,8 @@
 
 #include "Basics/debugging.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
+
 CostEstimate::CostEstimate(double estimatedCost, std::size_t estimatedNrItems)
     : estimatedCost(estimatedCost), estimatedNrItems(estimatedNrItems) {}
 
@@ -68,3 +68,5 @@ void CostEstimate::restoreEstimatedNrItems() {
   estimatedNrItems = _outerSubqueryEstimatedNrItems.top();
   _outerSubqueryEstimatedNrItems.pop();
 }
+
+}  // namespace arangodb::aql

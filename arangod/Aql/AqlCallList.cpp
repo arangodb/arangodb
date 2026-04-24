@@ -39,8 +39,7 @@
 #include <iostream>
 #include <string_view>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 AqlCallList::AqlCallList(AqlCall const& call) : _specificCall{call} {
   // We can never create a new CallList with existing skipCounter
@@ -288,8 +287,7 @@ auto AqlCallList::requestLessDataThan(AqlCallList const& other) const noexcept
   return true;
 }
 
-bool arangodb::aql::operator==(AqlCallList const& left,
-                               AqlCallList const& right) {
+bool operator==(AqlCallList const& left, AqlCallList const& right) {
   if (left._specificCall.has_value() != right._specificCall.has_value()) {
     return false;
   }
@@ -306,8 +304,7 @@ bool arangodb::aql::operator==(AqlCallList const& left,
   return true;
 }
 
-auto arangodb::aql::operator<<(std::ostream& out, AqlCallList const& list)
-    -> std::ostream& {
+auto operator<<(std::ostream& out, AqlCallList const& list) -> std::ostream& {
   out << "{specific: [ ";
   if (list._specificCall.has_value()) {
     out << list._specificCall.value();
@@ -319,3 +316,5 @@ auto arangodb::aql::operator<<(std::ostream& out, AqlCallList const& list)
   out << "}";
   return out;
 }
+
+}  // namespace arangodb::aql
