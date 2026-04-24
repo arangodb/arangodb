@@ -23,13 +23,12 @@
 
 #include "RestServer/FortuneFeature.h"
 
+#include "RestServer/FortuneOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/BootstrapFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
@@ -73,10 +72,8 @@ FortuneFeature::FortuneFeature(application_features::ApplicationServer& server)
 }
 
 void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--fortune", "Show a fortune cookie on startup.",
-      new BooleanParameter(&_options.fortune),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  arangodb::fortune::FortuneOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void FortuneFeature::start() {
