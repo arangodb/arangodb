@@ -590,7 +590,7 @@ function VectorIndexL2FilterTestSuite() {
 
             const results = db._query(query, bindVars).toArray();
 
-            assertEqual(results.length, 5);
+            assertEqual(5, results.length);
         },
 
         testApproxL2WithMultipleFilterClauses: function() {
@@ -753,7 +753,7 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
 
             const results = db._query(query, bindVars).toArray();
 
-            assertEqual(results.length, 5);
+            assertEqual(5, results.length, 5);
         },
 
         testApproxL2FilterNotAppliedReversedLoop: function() {
