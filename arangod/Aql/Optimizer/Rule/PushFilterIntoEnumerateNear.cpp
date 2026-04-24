@@ -90,7 +90,7 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
   // referenced by any other node. EnumerateNearVectorNode advertises the
   // filter's variables through getVariablesUsedHere, so the register planner
   // keeps them alive up to this node.
-  plan->unlinkNode(maybeFilterNode);
+  plan->unlinkNode(filterExecutionNode);
 
   return filterExpression;
 }
