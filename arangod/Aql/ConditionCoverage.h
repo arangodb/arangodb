@@ -33,10 +33,6 @@ struct AstNode;
 class ExecutionPlan;
 struct Variable;
 
-bool canInRangeBeRemoved(AstNode const* inRangeNode,
-                         AstNode const* otherAndNode, bool isFromTraverser,
-                         Variable const* variable, Index const* index);
-
 bool isConditionCoveredBy(ExecutionPlan const* plan, Variable const* variable,
                           AstNode const* condition,
                           AstNode const* otherAndNode);

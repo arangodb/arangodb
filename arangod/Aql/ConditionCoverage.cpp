@@ -39,56 +39,6 @@
 namespace arangodb::aql {
 namespace {
 
-bool areInRangeCallsIdentical(AstNode const* arrayNode,
-                              AstNode const* otherArrayNode,
-                              bool isFromTraverser) {
-  for (size_t i = 0; i < arrayNode->numMembers(); ++i) {
-    auto const* functionCallNodeElement = arrayNode->getMemberUnchecked(i);
-    auto const* functionCallNodeOtherElement =
-        otherArrayNode->getMemberUnchecked(i);
-
-    if (functionCallNodeElement->type != functionCallNodeOtherElement->type) {
-      return false;
-    }
-
-    switch (functionCallNodeElement->type) {
-      case NODE_TYPE_ATTRIBUTE_ACCESS: {
-        std::pair<Variable const*, std::vector<basics::AttributeName>>
-            attributeAccessForVariableResult;
-        std::pair<Variable const*, std::vector<basics::AttributeName>>
-            attributeAccessForVariableOtherResult;
-
-        if (!functionCallNodeElement->isAttributeAccessForVariable(
-                attributeAccessForVariableResult, isFromTraverser) ||
-            !functionCallNodeOtherElement->isAttributeAccessForVariable(
-                attributeAccessForVariableOtherResult, isFromTraverser) ||
-            attributeAccessForVariableResult.first !=
-                attributeAccessForVariableOtherResult.first ||
-            !basics::AttributeName::isIdentical(
-                attributeAccessForVariableResult.second,
-                attributeAccessForVariableOtherResult.second, false)) {
-          return false;
-        }
-        break;
-      }
-      case NODE_TYPE_VALUE: {
-        if (aql::compareAstNodes(functionCallNodeElement,
-                                 functionCallNodeOtherElement, true) != 0) {
-          return false;
-        }
-        break;
-      }
-      default: {
-        // We are being extremely pessimistic, meaning if we encounter
-        // anything else we will not remove the expression
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 /// @brief checks if the current condition is covered by the other
 bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
                AstNode const* andNode, bool allowArrayExpansion) {
@@ -205,16 +155,6 @@ containers::HashSet<size_t> collectOverlappingMembersForTraversal(
   for (size_t i = 0; i < andNode->numMembers(); ++i) {
     auto operand = andNode->getMemberUnchecked(i);
 
-    if (operand->type == NODE_TYPE_FCALL &&
-        functions::getFunctionName(*operand) == "IN_RANGE") {
-      if (canInRangeBeRemoved(operand, otherAndNode,
-                              /*isFromTraverser*/ true, variable,
-                              /*index*/ nullptr)) {
-        toRemove.emplace(i);
-      }
-      continue;
-    }
-
     bool allowOps = operand->isComparisonOperator();
     if (isPathCondition) {
       allowOps = allowOps || operand->isArrayComparisonOperator();
@@ -230,51 +170,6 @@ containers::HashSet<size_t> collectOverlappingMembersForTraversal(
   }
 
   return toRemove;
-}
-
-bool canInRangeBeRemoved(AstNode const* inRangeNode,
-                         AstNode const* otherAndNode, bool isFromTraverser,
-                         Variable const* variable, Index const* index) {
-  for (std::size_t i{0}; i < otherAndNode->numMembers(); ++i) {
-    auto const* operand = otherAndNode->getMemberUnchecked(i);
-    if (operand->type != NODE_TYPE_FCALL ||
-        functions::getFunctionName(*operand) != "IN_RANGE") {
-      continue;
-    }
-
-    // since we know that this is IN_RANGE node, it must contain 5 members
-    auto const* operandArrayNode = operand->getMember(0);
-    TRI_ASSERT(operandArrayNode->numMembers() == 5);
-
-    auto const* firstElemInRangeFunction = operandArrayNode->getMember(0);
-
-    bool isFieldCoveredByIndex{false};
-    std::pair<Variable const*, std::vector<basics::AttributeName>> result;
-    for (auto const& elem : index->fields()) {
-      if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
-          !firstElemInRangeFunction->isAttributeAccessForVariable(
-              result, isFromTraverser) ||
-          result.first != variable ||
-          !basics::AttributeName::isIdentical(result.second, elem, false)) {
-        clearAttributeAccess(result);
-        isFieldCoveredByIndex = true;
-        break;
-      }
-      clearAttributeAccess(result);
-    }
-
-    if (!isFieldCoveredByIndex) {
-      return false;
-    }
-
-    auto const* inRangeArrayNode = inRangeNode->getMember(0);
-    if (areInRangeCallsIdentical(inRangeArrayNode, operandArrayNode,
-                                 isFromTraverser)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 bool isConditionCoveredBy(ExecutionPlan const* plan, Variable const* variable,
