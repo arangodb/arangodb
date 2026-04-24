@@ -25,6 +25,7 @@
 
 #include "Agency/Store.h"
 #include "Agency/AgencyCommon.h"
+#include "Basics/ResultT.h"
 #include "Metrics/Fwd.h"
 #include "Utils/OperationOptions.h"
 
@@ -32,6 +33,7 @@
 #include <deque>
 #include <map>
 #include <mutex>
+#include <optional>
 
 struct TRI_vocbase_t;
 
@@ -204,6 +206,26 @@ class State {
   /// `index` to 0 if there is no compacted snapshot.
   bool loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term);
 
+  struct AppendEntriesPayload {
+    struct SnapshotInfo {
+      Store store;
+      index_t index = 0;
+      term_t term = 0;
+    };
+    std::vector<log_t> entries;
+    /// Set iff the follower has fallen behind our compaction horizon; in
+    /// that case `entries` start at `snapshot->index - 1`. Otherwise
+    /// `entries` start at the caller's `lastConfirmed`.
+    std::optional<SnapshotInfo> snapshot;
+  };
+
+  /// @brief Build the payload for an AppendEntriesRPC to a follower. The
+  /// needSnapshot decision, the on-disk snapshot load and the log read all
+  /// happen under a single lock, so compaction cannot interleave and make
+  /// snapshot and entries inconsistent.
+  ResultT<AppendEntriesPayload> buildAppendEntriesPayload(index_t lastConfirmed,
+                                                          size_t maxEntries);
+
   /// @brief lastCompactedAt
   index_t lastCompactionAt() const;
 
@@ -283,12 +305,11 @@ class State {
 
   std::atomic<bool> _ready;
 
-  /**< @brief Mutex for modifying
-     _log & _cur
-  */
+  /**< @brief Mutex for modifying _log and _cur */
   mutable std::mutex _logLock;
   std::deque<log_t> _log; /**< @brief  State entries */
   // Invariant: This has at least one entry at all times!
+
   bool _collectionsLoaded;
   std::multimap<std::string, arangodb::consensus::index_t> _clientIdLookupTable;
 
