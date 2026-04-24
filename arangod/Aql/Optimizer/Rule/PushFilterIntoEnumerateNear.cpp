@@ -41,8 +41,10 @@
 #include "Aql/Optimizer/Utils/VectorIndexHelpers.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/QueryContext.h"
+#include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb::aql {
 
@@ -53,10 +55,13 @@ using EN = ExecutionNode;
 #define LOG_RULE LOG_RULE_IF(true)
 
 std::unique_ptr<Expression> tryRemoveFilterNode(
-    ExecutionNode* maybeFilterNode, std::unique_ptr<ExecutionPlan> const& plan,
+    ExecutionNode* filterExecutionNode,
+    std::unique_ptr<ExecutionPlan> const& plan,
     Variable const* distanceOutVariable) {
+  TRI_ASSERT(filterExecutionNode != nullptr &&
+             filterExecutionNode->getType() == EN::FILTER);
   auto const* filterNode =
-      ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
+      ExecutionNode::castTo<FilterNode const*>(filterExecutionNode);
   auto const* filterInVar = filterNode->inVariable();
 
   // Find the calculation node that populates the filter variable
