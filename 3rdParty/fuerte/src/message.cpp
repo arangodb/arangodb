@@ -95,35 +95,22 @@ using PathRest = std::string_view;
 /// into version and some/other/rest
 auto extractVersionFromPath(std::string_view path)
     -> std::optional<std::pair<VersionString, PathRest>> {
-  auto split = path | std::views::split('/');
-  auto it = split.begin();
-
-  // first suffix is empty because the path starts with '/'
-  if (it == split.end() || not(*it).empty()) {
+  constexpr std::string_view kPrefix = "/_arango/";
+  if (!path.starts_with(kPrefix)) {
     return std::nullopt;
   }
-  ++it;
-
-  // second ("_arango")
-  if (it == split.end() ||
-      std::string_view{(*it).begin(), (*it).end()} != "_arango") {
+  auto const tail = path.substr(kPrefix.size());
+  auto const slash = tail.find('/');
+  if (slash == std::string_view::npos) {
+    if (tail.empty()) {
+      return std::nullopt;
+    }
+    return {{tail, PathRest{"/"}}};
+  }
+  if (slash == 0) {
     return std::nullopt;
   }
-  ++it;
-
-  // third (version)
-  if (it == split.end()) {
-    return std::nullopt;
-  }
-  auto version = std::string_view{(*it).begin(), (*it).end()};
-  ++it;
-
-  // rest
-  if (it == split.end()) {
-    return {{version, "/"}};
-  }
-  size_t offset = std::distance(path.begin(), (*it).begin());
-  return {{version, path.substr(offset)}};
+  return {{tail.substr(0, slash), tail.substr(slash)}};
 }
 }  // namespace
 
@@ -144,43 +131,9 @@ void RequestHeader::parseArangoPath(std::string_view p) {
           maybe_v != std::nullopt) {
         this->apiVersion = *maybe_v;
         this->path = pathRest;
-      } else if (versionString.starts_with('v')) {
-        //  check for additional zeros after v
-
-        std::string_view afterV = versionString.substr(1);
-        size_t numEnd = 0;
-        while (numEnd < afterV.size() &&
-               (afterV[numEnd] >= '0' && afterV[numEnd] <= '9')) {
-          ++numEnd;
-        }
-        if (numEnd > 0 && numEnd == afterV.size()) {
-          // parse version number (reject leading zeros except bare "0")
-          if (!(afterV[0] == '0' && numEnd > 1)) {
-            uint32_t version = 0;
-            bool overflow = false;
-            for (size_t i = 0; i < numEnd; ++i) {
-              uint32_t d = afterV[i] - '0';
-              if (version > (UINT32_MAX - d) / 10) {
-                overflow = true;
-                break;
-              }
-              version = version * 10 + d;
-            }
-            if (!overflow) {
-              if (auto maybe_v =
-                      fuerte::api_version::from(std::to_string(version));
-                  maybe_v != std::nullopt) {
-                this->apiVersion = *maybe_v;
-                this->path = pathRest;
-              }
-            }
-          }
-        }
-      } else {
-        // /_arango/ present but not a valid prefix — leave path unchanged,
-        // apiVersion stays nullopt
       }
     }
+    // in any other case: leave path unchanged, apiVersion stays nullopt
   }
 
   // extract database prefix /_db/<name>/
