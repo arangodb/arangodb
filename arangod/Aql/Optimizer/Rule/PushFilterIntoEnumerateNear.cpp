@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PushFilterIntoEnumerateNear.h"
+#include <memory>
 
 #include "Aql/Ast.h"
 #include "Aql/AstHelper.h"
@@ -29,6 +30,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
@@ -51,7 +53,8 @@ using EN = ExecutionNode;
 #define LOG_RULE LOG_RULE_IF(true)
 
 std::unique_ptr<Expression> tryRemoveFilterNode(
-    auto* maybeFilterNode, auto& plan, Variable const* distanceOutVariable) {
+    ExecutionNode* maybeFilterNode, std::unique_ptr<ExecutionPlan> const& plan,
+    Variable const* distanceOutVariable) {
   auto const* filterNode =
       ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
   auto const* filterInVar = filterNode->inVariable();
