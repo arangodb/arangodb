@@ -37,9 +37,7 @@
 #include <string_view>
 #include <vector>
 
-namespace arangodb {
-namespace fuerte {
-inline namespace v1 {
+namespace arangodb::fuerte { inline namespace v1 {
 const std::string fu_accept_key("accept");
 const std::string fu_authorization_key("authorization");
 const std::string fu_content_length_key("content-length");
@@ -49,7 +47,7 @@ const std::string fu_keep_alive_key("keep-alive");
 
 struct MessageHeader {
   // Header metadata helpers#
-  template<typename K, typename V>
+  template <typename K, typename V>
   void addMeta(K&& key, V&& value) {
     if (fu_accept_key == key) {
       _acceptType = to_ContentType(value);
@@ -92,7 +90,7 @@ struct MessageHeader {
   }
 
  protected:
-  StringMap _meta;     /// Header meta data (equivalent to HTTP headers)
+  StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   ContentType _contentType = ContentType::Unset;
   ContentType _acceptType = ContentType::VPack;
   ContentEncoding _contentEncoding = ContentEncoding::Identity;
@@ -113,7 +111,7 @@ struct RequestHeader final : public MessageHeader {
 
   /// @brief API version, if specified via /_arango/vX or /_arango/experimental.
   /// std::nullopt means no prefix was present; appendPath will not add one.
-  std::optional<std::string> apiVersion = std::nullopt;
+  std::optional<api_version::ApiVersion> apiVersion = std::nullopt;
 
   // accept header accessors
   ContentType acceptType() const { return _acceptType; }
@@ -329,7 +327,5 @@ class Response : public Message {
   velocypack::Buffer<uint8_t> _payload;
   std::size_t _payloadOffset;
 };
-}  // namespace v1
-}  // namespace fuerte
-}  // namespace arangodb
+}}  // namespace arangodb::fuerte::v1
 #endif

@@ -30,7 +30,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 /// @brief convert the statistics to VelocyPack
 void ExecutionStats::toVelocyPack(VPackBuilder& builder,
@@ -122,7 +122,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   }
 }
 
-void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid,
+void ExecutionStats::addNode(ExecutionNodeId nid,
                              ExecutionNodeStats const& stats) {
   auto const alias = _nodeAliases.find(nid);
   if (alias != _nodeAliases.end()) {
@@ -278,3 +278,5 @@ void ExecutionStats::clear() noexcept {
   intermediateCommits = 0;
   _nodes.clear();
 }
+
+}  // namespace arangodb::aql
