@@ -114,8 +114,7 @@
 
 using namespace arangodb::application_features;
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 // @brief list of all rules, sorted by rule level
 std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
@@ -1105,5 +1104,4 @@ void OptimizerRulesFeature::enableOrDisableRules() {
   }
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

@@ -31,8 +31,7 @@
 #include <absl/strings/str_cat.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 static bool testInternalIdValid(size_t id,
                                 std::vector<RegisterId> const& regs) {
@@ -146,3 +145,5 @@ void InAndOutRowExpressionContext::setEdgeValue(velocypack::Slice e) {
 void InAndOutRowExpressionContext::setPathValue(velocypack::Slice p) {
   _pathValue = AqlValue(AqlValueHintSliceNoCopy(p));
 }
+
+}  // namespace arangodb::aql

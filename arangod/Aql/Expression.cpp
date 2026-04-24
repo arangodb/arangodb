@@ -67,8 +67,7 @@
 
 #include <limits>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the expression
@@ -2036,3 +2035,5 @@ std::string_view Expression::typeString() {
   TRI_ASSERT(false);
   return "unknown";
 }
+
+}  // namespace arangodb::aql
