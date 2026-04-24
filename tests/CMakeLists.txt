@@ -109,6 +109,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AttributeNamePathTest.cpp
   Aql/BlockCollector.cpp
   Aql/ConditionRemoveForIndexTest.cpp
+  Aql/ConditionRemoveForTraversalTest.cpp
   Aql/DependencyProxyMock.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
