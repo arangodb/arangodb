@@ -316,7 +316,7 @@ commands:
           steps:
             - attach_workspace_from_s3:
                 at: .
-                archive: binaries.tar.bz2
+                archive: binaries.tar.gz
       - run:
           name: Log processes
           command: |
