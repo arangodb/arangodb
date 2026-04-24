@@ -113,11 +113,11 @@ bool canInRangeBeRemoved(AstNode const* inRangeNode,
     bool isFieldCoveredByIndex{false};
     std::pair<Variable const*, std::vector<basics::AttributeName>> result;
     for (auto const& elem : index->fields()) {
-      if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
-          !firstElemInRangeFunction->isAttributeAccessForVariable(
-              result, /*allowExpansion*/ false) ||
-          result.first != variable ||
-          !basics::AttributeName::isIdentical(result.second, elem, false)) {
+      if (firstElemInRangeFunction->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+          firstElemInRangeFunction->isAttributeAccessForVariable(
+              result, /*allowExpansion*/ false) &&
+          result.first == variable &&
+          basics::AttributeName::isIdentical(result.second, elem, false)) {
         clearAttributeAccess(result);
         isFieldCoveredByIndex = true;
         break;

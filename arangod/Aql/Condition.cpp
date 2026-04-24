@@ -28,8 +28,6 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Expression.h"
-#include "Aql/Functions.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"

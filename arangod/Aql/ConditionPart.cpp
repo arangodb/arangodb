@@ -119,50 +119,6 @@ CompareResult const ResultsTable[3][7][7] = {
       OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
 
-//------------------------------------------------------------------------
-// Rules for multi-valued variables
-//------------------------------------------------------------------------
-//        |         | a == y | a != y | a <  y | a <= y | a >= y | a > y
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
-// x == y |  a == x |   OIS  |   IMP  |   DIJ  |  OIS   |   OIS  |  DIJ
-// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   DIJ  |  DIJ
-// x == y |  a != x |   IMP  |   OIS  |   DIJ  |  DIJ   |   DIJ  |  DIJ
-// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   DIJ  |  DIJ
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
-// x == y |  a <  x |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
-// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
-// x == y |  a <= x |   SIO  |   DIJ  |   SIO  |  OIS   |   DIJ  |  DIJ
-// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO
-// x == y |  a >= x |   SIO  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  SIO
-// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO
-// x == y |  a >  x |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
-// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
-//------------------------------------------------------------------------
-// the 7th column is here as fallback if the operation is not in the table
-// above.
-// IMP -> IMPOSSIBLE -> empty result -> the complete AND set of conditions can
-// be dropped.
-// CEQ -> CONVERT_EQUAL -> both conditions can be combined to a equals x.
-// DIJ -> DISJOINT -> neither condition is a consequence of the other -> both
-// have to stay in place.
-// SIO -> SELF_CONTAINED_IN_OTHER -> the left condition is a consequence of the
-// right condition
-// OIS -> OTHER_CONTAINED_IN_SELF -> the right condition is a consequence of the
-// left condition
-// If a condition (A) is a consequence of another (B), the solution set of A is
-// larger than that of B
-//  -> A can be dropped.
-
 CompareResult const ResultsTableMultiValued[3][7][7] = {
     {// X < Y
      {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,

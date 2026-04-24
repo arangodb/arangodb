@@ -82,6 +82,24 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
         /*sparse*/ true, arangodb::Index::TRI_IDX_TYPE_MDI_INDEX);
   }
 
+  // Builds an IN_RANGE(v.attr, low, high, includeLow, includeHigh) AST node.
+  // Shape mirrors what Ast::createNodeFunctionCall produces for user queries:
+  // NODE_TYPE_FCALL whose first member is a NODE_TYPE_ARRAY with 5 children.
+  AstNode* makeInRange(Variable const* v, char const* attr, int64_t low,
+                       int64_t high, bool includeLow = true,
+                       bool includeHigh = true) {
+    AstNode* access =
+        _ast->createNodeAttributeAccess(_ast->createNodeReference(v), attr);
+    AstNode* args = _ast->createNodeArray(5);
+    args->addMember(access);
+    args->addMember(_ast->createNodeValueInt(low));
+    args->addMember(_ast->createNodeValueInt(high));
+    args->addMember(_ast->createNodeValueBool(includeLow));
+    args->addMember(_ast->createNodeValueBool(includeHigh));
+    return _ast->createNodeFunctionCall("IN_RANGE", args,
+                                        /*allowInternalFunctions*/ false);
+  }
+
   AstNode* cmpInt(AstNodeType op, Variable const* v, char const* attr,
                   int64_t value) {
     AstNode* ref = _ast->createNodeReference(v);
@@ -582,6 +600,34 @@ TEST_F(ConditionRemoveForIndexTest, KeepsNonComparionsOp) {
   EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_UNARY_NOT);
   ASSERT_EQ(result->getMember(0)->type, NODE_TYPE_OPERATOR_BINARY_EQ);
   EXPECT_EQ(attrOf(result->getMember(0)), "a");
+}
+
+// -----------------------------------------------------------------------------
+// Pass 5: IN_RANGE Comparison
+// -----------------------------------------------------------------------------
+// Filter members whose top-level op is IN_RANGE are skipped by
+// collectOverlappingMembersForIndex and survive.
+
+TEST_F(ConditionRemoveForIndexTest, RemovesDuplicateInRangeOnSingleFieldIndex) {
+  // FILTER IN_RANGE(d.a, 0, 10, true, true)
+  auto* filterInRange = makeInRange(_d, "a", /*lo*/ 0, /*hi*/ 10,
+                                    /*includeLo*/ true, /*includeHi*/ true);
+  Condition filterCond(_ast);
+  filterCond.andCombine(filterInRange);
+  filterCond.normalize();
+
+  // Index side: identical IN_RANGE already on `a`
+  auto* indexInRange = makeInRange(_d, "a", 0, 10, true, true);
+  Condition indexCond(_ast);
+  indexCond.andCombine(indexInRange);
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"});  // single-field index
+
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+  EXPECT_EQ(result, nullptr)  // expected: FILTER is fully covered
+      << "single-field index should cover identical IN_RANGE";
 }
 
 }  // namespace
