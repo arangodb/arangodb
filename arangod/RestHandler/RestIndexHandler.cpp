@@ -52,6 +52,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
+#include <absl/strings/numbers.h>
 #include <absl/strings/str_cat.h>
 
 #include <algorithm>
@@ -986,12 +987,17 @@ async<void> RestIndexHandler::retrainIndex() {
   }
 
   VPackSlice indexSlice = body.get("index");
-  if (!indexSlice.isString() || indexSlice.getStringLength() == 0) {
+  std::string indexName;
+  if (indexSlice.isString()) {
+    indexName = indexSlice.copyString();
+  } else if (indexSlice.isNumber()) {
+    indexName = std::to_string(indexSlice.getNumber<uint64_t>());
+  }
+  if (indexName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "body must contain a non-empty 'index' string");
+                  "body must contain a non-empty 'index' string or number");
     co_return;
   }
-  std::string const indexName = indexSlice.copyString();
 
   auto coll = collection(cName);
   if (coll == nullptr) {
@@ -1009,7 +1015,15 @@ async<void> RestIndexHandler::retrainIndex() {
       co_return;
     }
   } else {
+    // Try name first, then fall back to a numeric id. Mirrors the
+    // name-or-id lookup used in IResearch/Search.cpp.
     auto idx = coll->lookupIndex(indexName);
+    if (idx == nullptr) {
+      IndexId::BaseType numericId = 0;
+      if (absl::SimpleAtoi(indexName, &numericId)) {
+        idx = coll->lookupIndex(IndexId{numericId});
+      }
+    }
     if (idx == nullptr) {
       generateError(Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND});
       co_return;
