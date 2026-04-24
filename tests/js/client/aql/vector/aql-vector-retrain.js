@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global arango, assertEqual, assertTrue, assertFalse, assertNotEqual, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -21,7 +21,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
+// / @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -33,12 +33,12 @@ const db = internal.db;
 const IM = global.instanceManager;
 const {
   randomNumberGeneratorFloat,
-  generateSeed,
+  generateSeed
 } = require("@arangodb/testutils/seededRandom");
 const {
   generateDocs,
   waitForAllVectorIndexesState,
-  VectorIndexTrainingState,
+  VectorIndexTrainingState
 } = require("@arangodb/testutils/vector-index-common");
 
 const isCluster = internal.isCluster();
@@ -52,7 +52,7 @@ const aboveThresholdCount =
     isCluster ? trainingThreshold * 3 + 500 : trainingThreshold + 500;
 const indexName = "vec_l2";
 
-function createIndex(collection) {
+function createIndex (collection) {
   return collection.ensureIndex({
     name: indexName,
     type: "vector",
@@ -62,8 +62,8 @@ function createIndex(collection) {
       metric: "l2",
       dimension,
       nLists,
-      trainingIterations: 5,
-    },
+      trainingIterations: 5
+    }
   });
 }
 
@@ -76,9 +76,9 @@ function createIndex(collection) {
 //
 // Cluster: the coordinator's Plan-level IndexId is agency-bound and
 // does NOT change across a retrain.
-function waitForRetrainComplete(collection, preIdx, timeoutMs) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
+function waitForRetrainComplete (collection, preIdx, timeoutSeconds) {
+  const deadline = internal.time() + timeoutSeconds;
+  while (internal.time() < deadline) {
     const idx = collection.indexes().find(i => i.name === preIdx.name);
     if (idx !== undefined &&
         idx.trainingState === VectorIndexTrainingState.kReady &&
@@ -90,14 +90,16 @@ function waitForRetrainComplete(collection, preIdx, timeoutMs) {
   return undefined;
 }
 
-function VectorRetrainTestSuite() {
+function VectorRetrainTestSuite () {
   let collection;
   const seed = generateSeed();
 
   return {
     setUpAll: function () {
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {}
       db._createDatabase(dbName);
       db._useDatabase(dbName);
     },
@@ -118,12 +120,16 @@ function VectorRetrainTestSuite() {
       if (IM.debugCanUseFailAt()) {
         IM.debugClearFailAt();
       }
-      try { db._drop(collName); } catch (e) {}
+      try {
+        db._drop(collName);
+      } catch (e) {}
     },
 
     tearDownAll: function () {
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {}
     },
 
     testRetrainRebuildsIndexAndKeepsDataSearchable: function () {
@@ -132,7 +138,7 @@ function VectorRetrainTestSuite() {
 
       collection.retrain(indexName);
 
-      const postIdx = waitForRetrainComplete(collection, preIdx, 180_000);
+      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
       assertTrue(postIdx !== undefined,
         "Retrain did not finish within timeout");
       if (!isCluster) {
@@ -158,7 +164,9 @@ function VectorRetrainTestSuite() {
 
     testRetrainOnNonVectorIndexFails: function () {
       collection.ensureIndex({
-        type: "persistent", fields: ["foo"], name: "persIdx"
+        type: "persistent",
+        fields: ["foo"],
+        name: "persIdx"
       });
       try {
         collection.retrain("persIdx");
@@ -222,7 +230,7 @@ function VectorRetrainTestSuite() {
 
       collection.retrain(numericId);
 
-      const postIdx = waitForRetrainComplete(collection, preIdx, 180_000);
+      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
       assertTrue(postIdx !== undefined,
         "Retrain-by-id did not finish within timeout");
       if (!isCluster) {
@@ -240,7 +248,7 @@ function VectorRetrainTestSuite() {
       assertFalse(res.error, JSON.stringify(res));
       assertEqual(200, res.code);
 
-      const postIdx = waitForRetrainComplete(collection, preIdx, 180_000);
+      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
       assertTrue(postIdx !== undefined,
         "REST retrain-by-JSON-number did not finish within timeout");
       if (!isCluster) {
@@ -248,9 +256,141 @@ function VectorRetrainTestSuite() {
           "REST retrain-by-JSON-number should produce a new IndexId");
       }
     },
+
+    testRetrainShadowIsVisibleInIndexes: function () {
+      if (isCluster || !IM.debugCanUseFailAt()) {
+        // The shadow is a DBServer-local object; the coordinator's
+        // indexes() view hides it. Only exercise this on single server.
+        return;
+      }
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+      assertEqual(VectorIndexTrainingState.kReady, preIdx.trainingState);
+
+      // Pause the shadow build at its first training checkpoint so the
+      // old index and the shadow coexist in the collection's index set
+      // long enough for us to observe them.
+      IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeTraining");
+      collection.retrain(indexName);
+
+      let matching = [];
+      const deadline = internal.time() + 30;
+      while (internal.time() < deadline) {
+        matching = collection.indexes().filter(i => i.name === indexName);
+        if (matching.length === 2) {
+          break;
+        }
+        internal.sleep(0.2);
+      }
+      assertEqual(2, matching.length,
+        "Both old and shadow indexes should be visible during retrain");
+
+      const shadow = matching.find(i => i.id !== preIdx.id);
+      assertTrue(shadow !== undefined, "Shadow must carry a fresh id");
+      assertNotEqual(VectorIndexTrainingState.kReady, shadow.trainingState,
+        "Shadow should not be ready while the build is paused");
+
+      // Unpause and wait for the swap. Post-retrain the collection must
+      // report exactly one index under the name, carrying the shadow's
+      // fresh id and kReady.
+      IM.debugClearFailAt();
+      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
+      assertTrue(postIdx !== undefined, "Retrain did not complete in time");
+      assertNotEqual(preIdx.id, postIdx.id);
+      const finalMatching =
+        collection.indexes().filter(i => i.name === indexName);
+      assertEqual(1, finalMatching.length,
+        "Exactly one index with the given name should remain after swap");
+    }
+  };
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// Verifies RocksDBVectorIndex::truncateCommit: the range-delete truncate path
+// (triggered when the collection holds >= 32 * 1024 docs) calls truncateCommit
+// //////////////////////////////////////////////////////////////////////////////
+function VectorTruncateCommitTestSuite () {
+  const truncDbName = "vectorTruncateCommitDb";
+  const truncCollName = "vectorTruncateCommitColl";
+  // 32 * 1024 is the hard-coded cutoff for the range-delete truncate path in
+  // RocksDBCollection::truncate. One doc over is enough to exercise it.
+  const rangeDeleteThreshold = 32 * 1024;
+  const docCount = rangeDeleteThreshold + 1;
+  const truncDimension = 4;
+  const truncNLists = 5;
+  let truncCollection;
+
+  return {
+    setUpAll: function () {
+      db._useDatabase("_system");
+      try {
+        db._dropDatabase(truncDbName);
+      } catch (e) {}
+      db._createDatabase(truncDbName);
+      db._useDatabase(truncDbName);
+    },
+
+    setUp: function () {
+      truncCollection = db._create(truncCollName, {numberOfShards: 1});
+      const gen = randomNumberGeneratorFloat(generateSeed());
+      // Insert in batches to keep peak memory bounded.
+      const batchSize = 5000;
+      for (let i = 0; i < docCount; i += batchSize) {
+        const n = Math.min(batchSize, docCount - i);
+        truncCollection.insert(generateDocs(gen, n, truncDimension));
+      }
+      assertEqual(docCount, truncCollection.count());
+
+      truncCollection.ensureIndex({
+        name: indexName,
+        type: "vector",
+        fields: ["vector"],
+        inBackground: false,
+        params: {
+          metric: "l2",
+          dimension: truncDimension,
+          nLists: truncNLists,
+          trainingIterations: 5
+        }
+      });
+      assertTrue(
+        waitForAllVectorIndexesState(
+          truncCollection, VectorIndexTrainingState.kReady, 180),
+        "Index did not reach ready state before truncate-commit test");
+    },
+
+    tearDown: function () {
+      try {
+        db._drop(truncCollName);
+      } catch (e) {}
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      try {
+        db._dropDatabase(truncDbName);
+      } catch (e) {}
+    },
+
+    testTruncateCommitResetsTrainingState: function () {
+      const preIdx =
+        truncCollection.indexes().find(i => i.name === indexName);
+      assertEqual(VectorIndexTrainingState.kReady, preIdx.trainingState);
+
+      truncCollection.truncate();
+      assertEqual(0, truncCollection.count());
+
+      const postIdx =
+        truncCollection.indexes().find(i => i.name === indexName);
+      assertTrue(postIdx !== undefined, "Index disappeared after truncate");
+      assertNotEqual(VectorIndexTrainingState.kReady, postIdx.trainingState,
+        "truncateCommit must reset the training state off kReady");
+    }
   };
 }
 
 jsunity.run(VectorRetrainTestSuite);
+if (!isCluster) {
+  jsunity.run(VectorTruncateCommitTestSuite);
+}
 
 return jsunity.done();
