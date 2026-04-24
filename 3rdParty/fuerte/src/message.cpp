@@ -20,6 +20,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <fuerte/ApiVersion.h>
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
 #include <velocypack/Validator.h>
@@ -28,7 +29,6 @@
 #include <sstream>
 
 #include "debugging.h"
-#include "fuerte/ApiVersion.h"
 
 namespace {
 static std::string const emptyString;
@@ -46,7 +46,7 @@ inline int hex2int(char ch, int errorCode) {
 }
 }  // namespace
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
+namespace arangodb::fuerte { inline namespace v1 {
 
 ///////////////////////////////////////////////
 // class MessageHeader
@@ -105,7 +105,7 @@ auto extractVersionFromPath(std::string_view path)
   ++it;
 
   // second ("_arango")
-  if (it == split.end() &&
+  if (it == split.end() ||
       std::string_view{(*it).begin(), (*it).end()} != "_arango") {
     return std::nullopt;
   }
@@ -385,4 +385,4 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
   _payloadOffset = 0;
   return buffer;
 }
-}}}  // namespace arangodb::fuerte::v1
+}}  // namespace arangodb::fuerte::v1

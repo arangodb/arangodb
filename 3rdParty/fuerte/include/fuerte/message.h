@@ -22,10 +22,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "fuerte/ApiVersion.h"
 #ifndef ARANGO_CXX_DRIVER_MESSAGE
 #define ARANGO_CXX_DRIVER_MESSAGE
 
+#include <fuerte/ApiVersion.h>
 #include <fuerte/asio_ns.h>
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
@@ -37,7 +37,7 @@
 #include <string_view>
 #include <vector>
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
+namespace arangodb::fuerte { inline namespace v1 {
 const std::string fu_accept_key("accept");
 const std::string fu_authorization_key("authorization");
 const std::string fu_content_length_key("content-length");
@@ -327,5 +327,5 @@ class Response : public Message {
   velocypack::Buffer<uint8_t> _payload;
   std::size_t _payloadOffset;
 };
-}}}  // namespace arangodb::fuerte::v1
+}}  // namespace arangodb::fuerte::v1
 #endif
