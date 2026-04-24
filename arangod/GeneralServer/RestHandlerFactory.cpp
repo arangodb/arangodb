@@ -175,8 +175,8 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
   TRI_ASSERT(!_sealed);
 
   for (uint32_t apiVersion : apiVersions) {
-    if (!ApiVersion::isApiVersionSupported(apiVersion) &&
-        apiVersion != ApiVersion::experimentalApiVersion) {
+    if (!api_version::isApiVersionSupported(apiVersion) &&
+        apiVersion != api_version::experimentalApiVersion) {
       // version 1 has been removed from the list of supported versions, but we
       // did not change the version list in the handler factory, so we need to
       // ignore attempts to register handlers for version 1
@@ -206,8 +206,8 @@ void RestHandlerFactory::addPrefixHandler(
   addHandler(path, func, apiVersions, data);
 
   for (uint32_t apiVersion : apiVersions) {
-    if (!ApiVersion::isApiVersionSupported(apiVersion) &&
-        apiVersion != ApiVersion::experimentalApiVersion) {
+    if (!api_version::isApiVersionSupported(apiVersion) &&
+        apiVersion != api_version::experimentalApiVersion) {
       // version 1 has been removed from the list of supported versions, but we
       // did not change the version list in the handler factory, so we need to
       // ignore attempts to register handlers for version 1
