@@ -2710,17 +2710,17 @@ Result retrainVectorIndexOnAllDBServers(ClusterFeature& feature,
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
 
-  std::string const baseUrl = "/_api/collection/";
-
   VPackBuffer<uint8_t> body;
-  VPackBuilder builder(body);
-  builder.add(VPackSlice::emptyObjectSlice());
+  {
+    VPackBuilder builder(body);
+    VPackObjectBuilder ob(&builder);
+    builder.add("index", VPackValue(indexName));
+  }
 
   network::Headers headers;
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(3600.0);
-  options.param("index", indexName);
 
   std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
   std::vector<network::FutureRes> futures;
@@ -2732,11 +2732,11 @@ Result retrainVectorIndexOnAllDBServers(ClusterFeature& feature,
       continue;
     }
     ServerID const& leader = shard.second.front();
-    std::string uri =
-        absl::StrCat(baseUrl, std::string{shard.first}, "/retrain");
-    auto f = network::sendRequestRetry(pool, "server:" + leader,
-                                       fuerte::RestVerb::Put, std::move(uri),
-                                       body, options, headers);
+    network::RequestOptions shardOptions = options;
+    shardOptions.param("collection", std::string{shard.first});
+    auto f = network::sendRequestRetry(
+        pool, "server:" + leader, fuerte::RestVerb::Post, "/_api/index/retrain",
+        body, shardOptions, headers);
     futures.emplace_back(std::move(f));
   }
 

@@ -514,8 +514,8 @@ ArangoCollection.prototype.retrain = function (indexName) {
       errorMessage: "retrain() requires a vector index name or id"
     });
   }
-  let url = this._baseurl('retrain') + '?index=' + encodeURIComponent(indexName);
-  let requestResult = this._database._connection.PUT(url, null);
+  let url = '/_api/index/retrain?collection=' + encodeURIComponent(this.name());
+  let requestResult = this._database._connection.POST(url, {index: indexName});
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };

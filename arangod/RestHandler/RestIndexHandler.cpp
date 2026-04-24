@@ -29,6 +29,7 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/Utils/VectorIndexShardStates.h"
 #include "Cluster/ServerState.h"
@@ -210,6 +211,11 @@ futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
       // refill background thread. it is not supposed to
       // be used publicly.
       co_return syncCaches();
+    }
+    if (_request->suffixes().size() == 1 &&
+        _request->suffixes()[0] == "retrain") {
+      co_await retrainIndex();
+      co_return;
     }
     co_await createIndex();
     co_return;
@@ -962,6 +968,73 @@ async<void> RestIndexHandler::dropIndex() {
   } else {
     generateError(res);
   }
+}
+
+async<void> RestIndexHandler::retrainIndex() {
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    co_return;
+  }
+
+  bool found = false;
+  std::string const& cName = _request->value("collection", found);
+  if (!found || cName.empty()) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    co_return;
+  }
+
+  VPackSlice indexSlice = body.get("index");
+  if (!indexSlice.isString() || indexSlice.getStringLength() == 0) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body must contain a non-empty 'index' string");
+    co_return;
+  }
+  std::string const indexName = indexSlice.copyString();
+
+  auto coll = collection(cName);
+  if (coll == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    co_return;
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    auto& feature = server().getFeature<ClusterFeature>();
+    auto res = retrainVectorIndexOnAllDBServers(feature, _vocbase.name(), cName,
+                                                indexName);
+    if (res.fail()) {
+      generateError(res);
+      co_return;
+    }
+  } else {
+    auto idx = coll->lookupIndex(indexName);
+    if (idx == nullptr) {
+      generateError(Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND});
+      co_return;
+    }
+    if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+      generateError(Result{TRI_ERROR_BAD_PARAMETER,
+                           "retrain target is not a vector index"});
+      co_return;
+    }
+    auto& feature = server().getFeature<VectorIndexFeature>();
+    auto retrainRes = feature.requestRetrain(idx);
+    if (retrainRes.fail()) {
+      generateError(retrainRes);
+      co_return;
+    }
+  }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder guard(&b);
+    guard->add(StaticStrings::Error, VPackValue(false));
+    guard->add(StaticStrings::Code,
+               VPackValue(static_cast<int>(ResponseCode::OK)));
+  }
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 void RestIndexHandler::syncCaches() {

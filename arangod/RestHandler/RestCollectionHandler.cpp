@@ -34,7 +34,6 @@
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -45,7 +44,6 @@
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VectorIndex/VectorIndexFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
@@ -650,53 +648,6 @@ async<void> RestCollectionHandler::handleCommandPut() {
     generateError(res);
     co_return;
   }
-  if (sub == "retrain") {
-    // Retrain a vector index in place: the build manager builds a fresh
-    // shadow index alongside the existing one, which continues serving
-    // reads and writes, and atomically swaps them once the shadow reaches
-    // the ready state. Accepts the index name or id via the "index"
-    // query parameter.
-    std::string indexName = _request->value("index");
-    if (indexName.empty()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "missing 'index' query parameter");
-      co_return;
-    }
-
-    if (ServerState::instance()->isCoordinator()) {
-      auto& feature = server().getFeature<ClusterFeature>();
-      auto res = retrainVectorIndexOnAllDBServers(feature, _vocbase.name(),
-                                                  name, indexName);
-      if (res.fail()) {
-        generateError(res);
-        co_return;
-      }
-    } else {
-      auto idx = coll->lookupIndex(indexName);
-      if (idx == nullptr) {
-        generateError(Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND});
-        co_return;
-      }
-      if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
-        generateError(Result{TRI_ERROR_BAD_PARAMETER,
-                             "retrain target is not a vector index"});
-        co_return;
-      }
-      auto& feature = server().getFeature<VectorIndexFeature>();
-      auto retrainRes = feature.requestRetrain(idx);
-      if (retrainRes.fail()) {
-        generateError(retrainRes);
-        co_return;
-      }
-    }
-
-    {
-      VPackObjectBuilder obj(&_builder, true);
-      obj->add("result", VPackValue(true));
-    }
-    standardResponse();
-    co_return;
-  }
   if (sub == "loadIndexesIntoMemory") {
     OperationOptions options(_context);
     auto res = co_await methods::Collections::warmup(_vocbase, *coll);
@@ -719,8 +670,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     resExtra.reset(
         TRI_ERROR_HTTP_NOT_FOUND,
         "expecting one of the actions 'load', 'unload', 'truncate',"
-        " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory',"
-        " 'retrain'");
+        " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
     generateError(resExtra);
   } else if (resExtra.fail()) {
     generateError(resExtra);
