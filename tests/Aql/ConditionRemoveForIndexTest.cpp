@@ -1,3 +1,26 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Koichi Nakata
+////////////////////////////////////////////////////////////////////////////////
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
@@ -75,11 +98,18 @@ class ConditionRemoveForIndexTest : public ::testing::Test {
   }
 
   std::shared_ptr<arangodb::Index> makeMdiSparse(
-      std::vector<std::string_view> /*fieldNames*/) {
-    return std::make_shared<MockIndex>(
-        _collection,
-        std::vector<std::vector<arangodb::basics::AttributeName>>{},
-        /*sparse*/ true, arangodb::Index::TRI_IDX_TYPE_MDI_INDEX);
+      std::vector<std::string_view> fieldNames) {
+    std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+    fields.reserve(fieldNames.size());
+    for (auto const& name : fieldNames) {
+      std::vector<arangodb::basics::AttributeName> parsed;
+      arangodb::basics::TRI_ParseAttributeString(std::string(name), parsed,
+                                                 /*allowExpansion*/ false);
+      fields.push_back(std::move(parsed));
+    }
+    return std::make_shared<MockIndex>(_collection, std::move(fields),
+                                       /*sparse*/ true,
+                                       arangodb::Index::TRI_IDX_TYPE_MDI_INDEX);
   }
 
   // Builds an IN_RANGE(v.attr, low, high, includeLow, includeHigh) AST node.
@@ -315,6 +345,82 @@ TEST_F(ConditionRemoveForIndexTest,
   std::set<std::string> survivors{attrOf(result->getMember(0)),
                                   attrOf(result->getMember(1))};
   EXPECT_EQ(survivors, (std::set<std::string>{"b", "c"}));
+}
+
+TEST_F(ConditionRemoveForIndexTest, KeepsComparisonWhenVariableDoesNotMatch) {
+  // filter: e.a == 1
+  // index : d.a == 1
+  // => unchanged (filter uses different variable)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _e, "a", 1));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* before = filterCond.root();
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  EXPECT_EQ(result, before);
+}
+
+TEST_F(ConditionRemoveForIndexTest, SparseMdiRemovesNeNullOnCompoundFields) {
+  // filter: d.a != null AND d.a == 1
+  // index : d.a == 1 (sparse MDI on `a`, `b`)
+  // => nullptr (MDI sparse drops `!= null`)
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpNull(NODE_TYPE_OPERATOR_BINARY_NE, _d, "a"));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1));
+  indexCond.normalize();
+
+  auto index = makeMdiSparse({"a", "b"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(ConditionRemoveForIndexTest, KeepsOriginalWhenBothSidesHaveMultipleOrs) {
+  // filter: d.a == 1 OR d.b == 2
+  // index : d.a == 1 OR d.b == 2
+  // => unchanged (removeIndexCondition only handles single OR branch)
+  AstNode* filterOr = _ast->createNodeBinaryOperator(
+      NODE_TYPE_OPERATOR_BINARY_OR,
+      cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1),
+      cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 2));
+
+  Condition filterCond(_ast);
+  filterCond.andCombine(filterOr);
+  filterCond.normalize();
+
+  AstNode* indexOr = _ast->createNodeBinaryOperator(
+      NODE_TYPE_OPERATOR_BINARY_OR,
+      cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "a", 1),
+      cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 2));
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(indexOr);
+  indexCond.normalize();
+
+  auto index = makePersistent({"a", "b"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* before = filterCond.root();
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  EXPECT_EQ(result, before);
 }
 
 // -----------------------------------------------------------------------------
@@ -603,15 +709,65 @@ TEST_F(ConditionRemoveForIndexTest, KeepsNonComparionsOp) {
 }
 
 // -----------------------------------------------------------------------------
-// Pass 5: IN_RANGE Comparison
+// Pass 5: IN Comparison
 // -----------------------------------------------------------------------------
-// Filter members whose top-level op is IN_RANGE are skipped by
-// collectOverlappingMembersForIndex and survive.
 
-TEST_F(ConditionRemoveForIndexTest, RemovesDuplicateInRangeOnSingleFieldIndex) {
-  // FILTER IN_RANGE(d.a, 0, 10, true, true)
-  auto* filterInRange = makeInRange(_d, "a", /*lo*/ 0, /*hi*/ 10,
-                                    /*includeLo*/ true, /*includeHi*/ true);
+TEST_F(ConditionRemoveForIndexTest, RemovesIdenticalInCondition) {
+  // filter: d.a IN [1, 2]
+  // index : d.a IN [1, 2]
+  // => nullptr
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpIntIn(_d, "a", {1, 2}));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpIntIn(_d, "a", {1, 2}));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(ConditionRemoveForIndexTest, RemovesInConditionKeepsUncoveredMember) {
+  // filter: d.a IN [1, 2] AND d.b == 3
+  // index : d.a IN [1, 2]
+  // => d.b == 3
+  Condition filterCond(_ast);
+  filterCond.andCombine(cmpIntIn(_d, "a", {1, 2}));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 3));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpIntIn(_d, "a", {1, 2}));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  ASSERT_NE(result, nullptr);
+  EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_EQ);
+  EXPECT_EQ(attrOf(result), "b");
+}
+
+// -----------------------------------------------------------------------------
+// Pass 6: IN_RANGE Comparison
+// -----------------------------------------------------------------------------
+// IN_RANGE members are removed only when the index side has an identical
+// IN_RANGE call and the index covers the referenced attribute.
+
+TEST_F(ConditionRemoveForIndexTest, RemovesDuplicateInRangeOnIndex) {
+  // filter: IN_RANGE(d.a, 0, 10, true, true)
+  // index:  IN_RANGE(d.a, 0, 10, true, true) (index on `a`)
+  // => nullptr (filter is fully covered by index)
+  auto* filterInRange = makeInRange(_d, "a", 0, 10, true, true);
   Condition filterCond(_ast);
   filterCond.andCombine(filterInRange);
   filterCond.normalize();
@@ -622,12 +778,147 @@ TEST_F(ConditionRemoveForIndexTest, RemovesDuplicateInRangeOnSingleFieldIndex) {
   indexCond.andCombine(indexInRange);
   indexCond.normalize();
 
-  auto index = makePersistent({"a"});  // single-field index
+  auto index = makePersistent({"a"});
 
   AstNode* result = removeIndexCondition(filterCond, _plan, _d,
                                          indexCond.root(), index.get());
-  EXPECT_EQ(result, nullptr)  // expected: FILTER is fully covered
+  EXPECT_EQ(result, nullptr)
       << "single-field index should cover identical IN_RANGE";
+}
+
+TEST_F(ConditionRemoveForIndexTest, KeepsInRangeWhenIndexFieldDoesNotMatch) {
+  // filter: IN_RANGE(d.a, 0, 10, true, true)
+  // index : IN_RANGE(d.a, 0, 10, true, true), index on `b`
+  // => unchanged (index does not cover `a`)
+  Condition filterCond(_ast);
+  filterCond.andCombine(makeInRange(_d, "a", 0, 10));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(makeInRange(_d, "a", 0, 10));
+  indexCond.normalize();
+
+  auto index = makePersistent({"b"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* before = filterCond.root();
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+  EXPECT_EQ(result, before);
+}
+
+TEST_F(ConditionRemoveForIndexTest, KeepsInRangeWhenVariableDoesNotMatch) {
+  // filter: IN_RANGE(e.a, 0, 10, true, true)
+  // index : IN_RANGE(d.a, 0, 10, true, true)
+  // => unchanged (filter condition is on `e` but removal checks `_d`)
+  Condition filterCond(_ast);
+  filterCond.andCombine(makeInRange(_e, "a", 0, 10));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(makeInRange(_d, "a", 0, 10));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* before = filterCond.root();
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  EXPECT_EQ(result, before);
+}
+
+TEST_F(ConditionRemoveForIndexTest,
+       RemovesInRangeOnSecondFieldOfCompoundIndex) {
+  // filter: IN_RANGE(d.b, 0, 10, true, true)
+  // index : IN_RANGE(d.b, 0, 10, true, true), index on `a`, `b`
+  // => nullptr (compounded index covers `b`)
+  Condition filterCond(_ast);
+  filterCond.andCombine(makeInRange(_d, "b", 0, 10));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(makeInRange(_d, "b", 0, 10));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a", "b"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(ConditionRemoveForIndexTest, RemovesInRangeAndComparisonMembers) {
+  // filter: IN_RANGE(d.a, 0, 10, true, true) AND d.b > 5
+  // index : IN_RANGE(d.a, 0, 10, true, true) AND d.b > 5
+  // => nullptr (both members covered)
+  Condition filterCond(_ast);
+  filterCond.andCombine(makeInRange(_d, "a", 0, 10));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "b", 5));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(makeInRange(_d, "a", 0, 10));
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "b", 5));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a", "b"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(ConditionRemoveForIndexTest, RemovesInRangeKeepsUncoveredComparison) {
+  // filter: IN_RANGE(d.a, 0, 10, true, true) AND d.b > 5
+  // index : IN_RANGE(d.a, 0, 10, true, true)
+  // => d.b > 5
+  Condition filterCond(_ast);
+  filterCond.andCombine(makeInRange(_d, "a", 0, 10));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_GT, _d, "b", 5));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(makeInRange(_d, "a", 0, 10));
+  indexCond.normalize();
+
+  auto index = makePersistent({"a"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  ASSERT_NE(result, nullptr);
+  EXPECT_EQ(result->type, NODE_TYPE_OPERATOR_BINARY_GT);
+  EXPECT_EQ(attrOf(result), "b");
+}
+
+TEST_F(ConditionRemoveForIndexTest, KeepsInRangeWhenIndexConditionIsAbsent) {
+  // filter: IN_RANGE(d.a, 0, 10, true, true) AND d.b == 1
+  // index : d.b == 1
+  // => IN_RANGE(d.a, 0, 10, true, true)
+  Condition filterCond(_ast);
+  filterCond.andCombine(makeInRange(_d, "a", 0, 10));
+  filterCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 1));
+  filterCond.normalize();
+
+  Condition indexCond(_ast);
+  indexCond.andCombine(cmpInt(NODE_TYPE_OPERATOR_BINARY_EQ, _d, "b", 1));
+  indexCond.normalize();
+
+  auto index = makePersistent({"b"});
+  ASSERT_NE(index, nullptr);
+
+  AstNode* result = removeIndexCondition(filterCond, _plan, _d,
+                                         indexCond.root(), index.get());
+
+  ASSERT_NE(result, nullptr);
+  EXPECT_EQ(result->type, NODE_TYPE_FCALL);
 }
 
 }  // namespace
