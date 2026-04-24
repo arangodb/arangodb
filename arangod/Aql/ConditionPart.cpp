@@ -228,14 +228,21 @@ ConditionPart::ConditionPart(Variable const* variable,
   isExpanded = (attributeName.find("[*]") != std::string::npos);
 }
 
+namespace {
+std::string joinAttributeNames(
+    std::vector<basics::AttributeName> const& names) {
+  std::string s;
+  TRI_AttributeNamesToString(names, s, false);
+  return s;
+}
+}  // namespace
+
 ConditionPart::ConditionPart(
     Variable const* variable,
     std::vector<basics::AttributeName> const& attributeNames,
     AstNode const* operatorNode, AttributeSideType side, void* data)
-    : ConditionPart(variable, "", operatorNode, side, data) {
-  TRI_AttributeNamesToString(attributeNames, attributeName, false);
-  isExpanded = (attributeName.find("[*]") != std::string::npos);
-}
+    : ConditionPart(variable, joinAttributeNames(attributeNames), operatorNode,
+                    side, data) {}
 
 ConditionPart::~ConditionPart() = default;
 
