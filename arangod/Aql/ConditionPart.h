@@ -55,10 +55,6 @@ using CompareResult = ConditionPartCompareResult;
 extern CompareResult const ResultsTable[3][7][7];
 extern CompareResult const ResultsTableMultiValued[3][7][7];
 
-/// @brief clears the attribute access data
-void clearAttributeAccess(
-    std::pair<Variable const*, std::vector<basics::AttributeName>>& parts);
-
 struct ConditionPart {
   ConditionPart() = delete;
 

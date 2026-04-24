@@ -33,6 +33,7 @@
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/Functions.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
@@ -40,6 +41,84 @@
 
 namespace arangodb::aql {
 using EN = ExecutionNode;
+
+namespace {
+containers::HashSet<size_t> collectOverlappingMembersForIndex(
+    ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
+    AstNode const* otherAndNode, Index const* index) {
+  TRI_ASSERT(index != nullptr);
+
+  containers::HashSet<size_t> toRemove;
+  bool const isSparse = index->sparse();
+  constexpr bool allowIndexedAccessInArray = true;
+
+  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
+
+  for (size_t i = 0; i < andNode->numMembers(); ++i) {
+    auto operand = andNode->getMemberUnchecked(i);
+
+    if (isSparse && operand->isComparisonOperator() &&
+        (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+         operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
+      // look for `!= null` and `> null`
+      // these can be removed if we are working with a sparse index!
+      auto lhs = const_cast<AstNode*>(
+          plan->resolveVariableAlias(operand->getMemberUnchecked(0)));
+      auto rhs = const_cast<AstNode*>(
+          plan->resolveVariableAlias(operand->getMemberUnchecked(1)));
+
+      clearAttributeAccess(result);
+
+      if (rhs->isNullValue() &&
+          lhs->isAttributeAccessForVariable(result,
+                                            allowIndexedAccessInArray) &&
+          result.first == variable) {
+        auto const mayRemove = [&] {
+          if (auto ty = index->type();
+              ty == Index::TRI_IDX_TYPE_MDI_INDEX ||
+              ty == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+            // For an MDI all fields are equal, and we are allowed to drop
+            // conditions for non-null on every attribute in the sparse case.
+            return true;
+          }
+          // otherwise only remove the condition if the index is exactly on the
+          // same attribute as the condition
+
+          return index->fields().size() == 1 &&
+                 basics::AttributeName::isIdentical(result.second,
+                                                    index->fields()[0], false);
+        }();
+
+        if (mayRemove) {
+          toRemove.emplace(i);
+          continue;
+        }
+      }
+    }
+
+    if (operand->type == NODE_TYPE_FCALL &&
+        functions::getFunctionName(*operand) == "IN_RANGE") {
+      if (canInRangeBeRemoved(operand, otherAndNode,
+                              /*isFromTraverser*/ false, variable, index)) {
+        toRemove.emplace(i);
+      }
+      continue;
+    }
+
+    if (!operand->isComparisonOperator() ||
+        operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+        operand->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+      continue;
+    }
+
+    if (isConditionCoveredBy(plan, variable, operand, otherAndNode)) {
+      toRemove.emplace(i);
+    }
+  }
+
+  return toRemove;
+}
+}  // namespace
 
 AstNode* removeIndexCondition(Condition& cond, ExecutionPlan const* plan,
                               Variable const* variable, AstNode const* other,

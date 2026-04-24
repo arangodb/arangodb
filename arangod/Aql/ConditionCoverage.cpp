@@ -25,6 +25,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -88,6 +89,149 @@ bool areInRangeCallsIdentical(AstNode const* arrayNode,
   return true;
 }
 
+/// @brief checks if the current condition is covered by the other
+bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
+               aql::AstNode const* andNode, bool allowArrayExpansion) {
+  TRI_ASSERT(andNode != nullptr);
+  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+
+  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
+
+  size_t const n = andNode->numMembers();
+
+  auto normalize = [&plan](AstNode const* node) -> std::string {
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto setter =
+          plan->getVarSetBy(static_cast<Variable const*>(node->getData())->id);
+      if (setter != nullptr &&
+          setter->getType() == ExecutionNode::CALCULATION) {
+        auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
+        // use expression node instead
+        node = cn->expression()->node();
+      }
+    }
+    // return string representation
+    return node->toString();
+  };
+
+  try {
+    std::string attrName;
+    for (size_t i = 0; i < n; ++i) {
+      auto operand = andNode->getMemberUnchecked(i);
+
+      if (operand->isComparisonOperator() ||
+          (allowArrayExpansion && operand->isArrayComparisonOperator())) {
+        auto lhs = operand->getMember(0);
+        auto rhs = operand->getMember(1);
+
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+            (allowArrayExpansion && lhs->type == NODE_TYPE_EXPANSION)) {
+          clearAttributeAccess(result);
+
+          if (lhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
+              result.first == me.variable) {
+            attrName.clear();
+            TRI_AttributeNamesToString(result.second, attrName);
+            if (attrName == me.attributeName) {
+              if (rhs->isConstant()) {
+                ConditionPart indexCondition(result.first, result.second,
+                                             operand, ATTRIBUTE_LEFT, nullptr);
+
+                if (me.isCoveredBy(indexCondition, false)) {
+                  return true;
+                }
+              }
+              // non-constant condition
+              else if (me.operatorType == operand->type &&
+                       normalize(me.valueNode) == normalize(rhs)) {
+                return true;
+              }
+            }
+          }
+        }
+
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+            rhs->type == NODE_TYPE_EXPANSION) {
+          clearAttributeAccess(result);
+
+          if (rhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
+              result.first == me.variable) {
+            attrName.clear();
+            TRI_AttributeNamesToString(result.second, attrName);
+            if (attrName == me.attributeName) {
+              if (lhs->isConstant()) {
+                ConditionPart indexCondition(result.first, result.second,
+                                             operand, ATTRIBUTE_RIGHT, nullptr);
+
+                if (me.isCoveredBy(indexCondition, true)) {
+                  return true;
+                }
+              }
+              // non-constant condition
+              else {
+                auto opType = operand->type;
+                if (aql::Ast::isReversibleOperator(opType)) {
+                  opType = aql::Ast::reverseOperator(opType);
+                }
+                if (me.operatorType == opType &&
+                    normalize(me.valueNode) == normalize(lhs)) {
+                  return true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (std::exception const& ex) {
+    // simply ignore any errors (except trace-logging) and return false.
+    // this is not an error, but just means we cannot compare the two
+    // conditions for equality because there is no implemented way for
+    // comparing some of their components.
+    LOG_TOPIC("9f37b", TRACE, Logger::QUERIES)
+        << "caught exception in canRemove(): " << ex.what();
+  }
+
+  return false;
+}
+
+}  // namespace
+
+containers::HashSet<size_t> collectOverlappingMembersForTraversal(
+    ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
+    AstNode const* otherAndNode, bool isPathCondition) {
+  containers::HashSet<size_t> toRemove;
+
+  for (size_t i = 0; i < andNode->numMembers(); ++i) {
+    auto operand = andNode->getMemberUnchecked(i);
+
+    if (operand->type == NODE_TYPE_FCALL &&
+        functions::getFunctionName(*operand) == "IN_RANGE") {
+      if (canInRangeBeRemoved(operand, otherAndNode,
+                              /*isFromTraverser*/ true, variable,
+                              /*index*/ nullptr)) {
+        toRemove.emplace(i);
+      }
+      continue;
+    }
+
+    bool allowOps = operand->isComparisonOperator();
+    if (isPathCondition) {
+      allowOps = allowOps || operand->isArrayComparisonOperator();
+    }
+
+    if (!allowOps) {
+      continue;
+    }
+
+    if (isConditionCoveredBy(plan, variable, operand, otherAndNode)) {
+      toRemove.emplace(i);
+    }
+  }
+
+  return toRemove;
+}
+
 bool canInRangeBeRemoved(AstNode const* inRangeNode,
                          AstNode const* otherAndNode, bool isFromTraverser,
                          Variable const* variable, Index const* index) {
@@ -128,113 +272,6 @@ bool canInRangeBeRemoved(AstNode const* inRangeNode,
                                  isFromTraverser)) {
       return true;
     }
-  }
-
-  return false;
-}
-
-/// @brief checks if the current condition is covered by the other
-bool canRemove(ExecutionPlan const* plan, ConditionPart const& me,
-               aql::AstNode const* andNode, bool allowArrayExpansion) {
-  TRI_ASSERT(andNode != nullptr);
-  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-
-  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
-
-  size_t const n = andNode->numMembers();
-
-  auto normalize = [&plan](AstNode const* node) -> std::string {
-    if (node->type == NODE_TYPE_REFERENCE) {
-      auto setter =
-          plan->getVarSetBy(static_cast<Variable const*>(node->getData())->id);
-      if (setter != nullptr &&
-          setter->getType() == ExecutionNode::CALCULATION) {
-        auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
-        // use expression node instead
-        node = cn->expression()->node();
-      }
-    }
-    // return string representation
-    return node->toString();
-  };
-
-  std::string temp;
-
-  try {
-    for (size_t i = 0; i < n; ++i) {
-      auto operand = andNode->getMemberUnchecked(i);
-
-      if (operand->isComparisonOperator() ||
-          (allowArrayExpansion && operand->isArrayComparisonOperator())) {
-        auto lhs = operand->getMember(0);
-        auto rhs = operand->getMember(1);
-
-        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-            (allowArrayExpansion && lhs->type == NODE_TYPE_EXPANSION)) {
-          clearAttributeAccess(result);
-
-          if (lhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
-              result.first == me.variable) {
-            temp.clear();
-            TRI_AttributeNamesToString(result.second, temp);
-            if (temp == me.attributeName) {
-              if (rhs->isConstant()) {
-                ConditionPart indexCondition(result.first, result.second,
-                                             operand, ATTRIBUTE_LEFT, nullptr);
-
-                if (me.isCoveredBy(indexCondition, false)) {
-                  return true;
-                }
-              }
-              // non-constant condition
-              else if (me.operatorType == operand->type &&
-                       normalize(me.valueNode) == normalize(rhs)) {
-                return true;
-              }
-            }
-          }
-        }
-
-        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-            rhs->type == NODE_TYPE_EXPANSION) {
-          clearAttributeAccess(result);
-
-          if (rhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
-              result.first == me.variable) {
-            temp.clear();
-            TRI_AttributeNamesToString(result.second, temp);
-            if (temp == me.attributeName) {
-              if (lhs->isConstant()) {
-                ConditionPart indexCondition(result.first, result.second,
-                                             operand, ATTRIBUTE_RIGHT, nullptr);
-
-                if (me.isCoveredBy(indexCondition, true)) {
-                  return true;
-                }
-              }
-              // non-constant condition
-              else {
-                auto opType = operand->type;
-                if (aql::Ast::isReversibleOperator(opType)) {
-                  opType = aql::Ast::reverseOperator(opType);
-                }
-                if (me.operatorType == opType &&
-                    normalize(me.valueNode) == normalize(lhs)) {
-                  return true;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  } catch (std::exception const& ex) {
-    // simply ignore any errors (except trace-logging) and return false.
-    // this is not an error, but just means we cannot compare the two
-    // conditions for equality because there is no implemented way for
-    // comparing some of their components.
-    LOG_TOPIC("9f37b", TRACE, Logger::QUERIES)
-        << "caught exception in canRemove(): " << ex.what();
   }
 
   return false;
@@ -291,119 +328,6 @@ bool isConditionCoveredBy(ExecutionPlan const* plan, Variable const* variable,
   }
 
   return false;
-}
-
-}  // namespace
-
-containers::HashSet<size_t> collectOverlappingMembersForIndex(
-    ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
-    AstNode const* otherAndNode, Index const* index) {
-  TRI_ASSERT(index != nullptr);
-
-  containers::HashSet<size_t> toRemove;
-  bool const isSparse = index->sparse();
-  constexpr bool allowIndexedAccessInArray = true;
-
-  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
-
-  for (size_t i = 0; i < andNode->numMembers(); ++i) {
-    auto operand = andNode->getMemberUnchecked(i);
-
-    if (isSparse && operand->isComparisonOperator() &&
-        (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
-         operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
-      // look for `!= null` and `> null`
-      // these can be removed if we are working with a sparse index!
-      auto lhs = const_cast<AstNode*>(
-          plan->resolveVariableAlias(operand->getMemberUnchecked(0)));
-      auto rhs = const_cast<AstNode*>(
-          plan->resolveVariableAlias(operand->getMemberUnchecked(1)));
-
-      clearAttributeAccess(result);
-
-      if (rhs->isNullValue() &&
-          lhs->isAttributeAccessForVariable(result,
-                                            allowIndexedAccessInArray) &&
-          result.first == variable) {
-        auto const mayRemove = [&] {
-          if (auto ty = index->type();
-              ty == Index::TRI_IDX_TYPE_MDI_INDEX ||
-              ty == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
-            // For an MDI all fields are equal, and we are allowed to drop
-            // conditions for non-null on every attribute in the sparse case.
-            return true;
-          }
-          // otherwise only remove the condition if the index is exactly on the
-          // same attribute as the condition
-
-          return index->fields().size() == 1 &&
-                 basics::AttributeName::isIdentical(result.second,
-                                                    index->fields()[0], false);
-        }();
-
-        if (mayRemove) {
-          toRemove.emplace(i);
-          continue;
-        }
-      }
-    }
-
-    if (operand->type == NODE_TYPE_FCALL &&
-        functions::getFunctionName(*operand) == "IN_RANGE") {
-      if (canInRangeBeRemoved(operand, otherAndNode,
-                              /*isFromTraverser*/ false, variable, index)) {
-        toRemove.emplace(i);
-      }
-      continue;
-    }
-
-    if (!operand->isComparisonOperator() ||
-        operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
-        operand->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-      continue;
-    }
-
-    if (isConditionCoveredBy(plan, variable, operand, otherAndNode)) {
-      toRemove.emplace(i);
-    }
-  }
-
-  return toRemove;
-}
-
-containers::HashSet<size_t> collectOverlappingMembersForTraversal(
-    ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
-    AstNode const* otherAndNode, bool isPathCondition) {
-  containers::HashSet<size_t> toRemove;
-
-  for (size_t i = 0; i < andNode->numMembers(); ++i) {
-    auto operand = andNode->getMemberUnchecked(i);
-
-    if (operand->type == NODE_TYPE_FCALL &&
-        functions::getFunctionName(*operand) == "IN_RANGE") {
-      if (canInRangeBeRemoved(operand, otherAndNode,
-                              /*isFromTraverser*/ true, variable,
-                              /*index*/ nullptr)) {
-        toRemove.emplace(i);
-      }
-      continue;
-    }
-
-    bool allowOps = operand->isComparisonOperator();
-    if (isPathCondition) {
-      allowOps = allowOps || operand->isArrayComparisonOperator();
-    }
-
-    if (!allowOps) {
-      continue;
-    }
-
-    if (isConditionCoveredBy(plan, variable, operand, otherAndNode)) {
-      toRemove.emplace(i);
-    }
-  }
-
-  return toRemove;
 }
 
 bool extractSingleAndNodes(AstNode const* root, AstNode const* condition,

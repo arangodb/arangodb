@@ -205,12 +205,6 @@ CompareResult const ResultsTableMultiValued[3][7][7] = {
       OTHER_CONTAINED_IN_SELF, DISJOINT},
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
 
-void clearAttributeAccess(
-    std::pair<Variable const*, std::vector<basics::AttributeName>>& parts) {
-  parts.first = nullptr;
-  parts.second.clear();
-}
-
 ConditionPart::ConditionPart(Variable const* variable,
                              std::string const& attributeName,
                              AstNode const* operatorNode,

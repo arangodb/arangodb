@@ -187,6 +187,12 @@ struct PermutationState {
 
 }  // namespace
 
+void clearAttributeAccess(
+  std::pair<Variable const*, std::vector<basics::AttributeName>>& parts) {
+parts.first = nullptr;
+parts.second.clear();
+}
+
 /// @brief create the condition
 Condition::Condition(Ast* ast)
     : _ast(ast), _root(nullptr), _isNormalized(false), _isSorted(false) {}

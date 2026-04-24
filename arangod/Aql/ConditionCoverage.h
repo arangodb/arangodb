@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/ConditionPart.h"
 #include "Containers/HashSet.h"
 
 namespace arangodb {
@@ -34,6 +33,14 @@ struct AstNode;
 class ExecutionPlan;
 struct Variable;
 
+bool canInRangeBeRemoved(AstNode const* inRangeNode,
+                         AstNode const* otherAndNode, bool isFromTraverser,
+                         Variable const* variable, Index const* index);
+
+bool isConditionCoveredBy(ExecutionPlan const* plan, Variable const* variable,
+                          AstNode const* condition,
+                          AstNode const* otherAndNode);
+
 bool extractSingleAndNodes(AstNode const* root, AstNode const* condition,
                            AstNode const*& andNode,
                            AstNode const*& conditionAndNode);
@@ -41,13 +48,6 @@ bool extractSingleAndNodes(AstNode const* root, AstNode const* condition,
 AstNode* rebuildConditionWithoutMembers(
     Ast* ast, AstNode const* andNode,
     containers::HashSet<size_t> const& toRemove);
-
-// Given a filter AND-node and another AND-node that a consumer (index /
-// traversal) already enforces, returns the indices of filter members that are
-// covered by the other and therefore removable.
-containers::HashSet<size_t> collectOverlappingMembersForIndex(
-    ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
-    AstNode const* otherAndNode, Index const* index);
 
 containers::HashSet<size_t> collectOverlappingMembersForTraversal(
     ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,

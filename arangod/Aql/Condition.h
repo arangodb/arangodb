@@ -36,8 +36,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class Ast;
 class EnumerateCollectionNode;
@@ -54,6 +53,10 @@ enum class ConditionOptimization {
   kAuto,        // all existing condition optimizations are applied
 
 };
+
+/// @brief clears the attribute access data
+void clearAttributeAccess(
+    std::pair<Variable const*, std::vector<basics::AttributeName>>& parts);
 
 class Condition {
  public:
@@ -216,5 +219,4 @@ class Condition {
   /// @brief whether or not the condition will return a sorted result
   bool _isSorted;
 };
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
