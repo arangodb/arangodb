@@ -36,7 +36,7 @@
 
 #include <string_view>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 /// @brief create the parser
 Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
@@ -263,3 +263,5 @@ void* Parser::peekStack() const {
   TRI_ASSERT(!_stack.empty());
   return _stack.back();
 }
+
+}  // namespace arangodb::aql

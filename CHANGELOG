@@ -299,6 +299,22 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-444: Vector index training now draws a uniformly random training set
+  via reservoir sampling (Algorithm L) over a full iteration of the
+  collection, instead of keeping the first `nLists * 256` documents.
+
+* COR-411: Introduced optimizer rule `replace-any-eq-with-in` that maps filter
+  nodes of the form FILTER [exp1] ANY == exp2 into FILTER exp2 IN [exp1] to
+  make them visible to downstream optimizer rules, including use-indexes,
+  optimize-traversals, and sort-in-values.
+
+* COR-435: Fix a TOCTOU race in the Agency leader's sendAppendEntriesRPC that
+  could crash a follower agent. The leader read log entries and the compaction
+  snapshot in two non-atomic operations; compaction could advance the snapshot
+  between those reads, causing an inconsistent payload to be sent. The fix
+  loads the snapshot and the matching log entries under a single lock so that
+  no compaction can interleave between the two reads.
+
 * COR-415: Fix vector index catch-up phase to use the proper
   `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that
   WAL entries written during training are correctly ingested, preventing

@@ -43,6 +43,7 @@ target_sources(arango_aql PRIVATE
   RemoveUnnecessaryCalculations.cpp
   RemoveUnnecessaryFilters.cpp
   RemoveUnnecessaryRemoteScatter.cpp
+  ReplaceAnyEqWithIn.cpp
   ReplaceEntriesWithObjectIteration.cpp
   ReplaceEqualAttributeAccess.cpp
   ReplaceLastAccessOnGraphPath.cpp

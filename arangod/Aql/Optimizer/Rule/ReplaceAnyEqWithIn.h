@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,15 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "NonConstExpression.h"
+#pragma once
+
+#include <memory>
 
 namespace arangodb::aql {
+class ExecutionPlan;
+class Optimizer;
+struct OptimizerRule;
 
-NonConstExpression::NonConstExpression(std::unique_ptr<Expression> exp,
-                                       std::vector<size_t> idxPath)
-    : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
+/// @brief replace ANY == array comparisons with IN expressions
+void replaceAnyEqWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                            OptimizerRule const&);
 
 }  // namespace arangodb::aql
