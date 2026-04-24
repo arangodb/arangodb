@@ -570,6 +570,29 @@ function VectorIndexL2FilterTestSuite() {
             verifyResultsMatchFilter(results, (r) => r.outerKey !== undefined);
         },
 
+        testApproxL2WithFilterInOperator: function() {
+            const query = `
+            LET CATEGORIES = (FOR d IN ${collection.name()} RETURN DISTINCT d.category)
+            FOR d IN ${collection.name()}
+            FILTER d.category IN CATEGORIES
+            LET dist = APPROX_NEAR_L2(@qp, d.vector)
+            SORT dist LIMIT 5
+            RETURN d`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+            verifyVectorIndexUsed(plan);
+
+            const results = db._query(query, bindVars).toArray();
+
+            assertEq(results.length, 5);
+        },
+
         testApproxL2WithMultipleFilterClauses: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val >= 5
