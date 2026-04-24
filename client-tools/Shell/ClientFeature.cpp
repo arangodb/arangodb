@@ -208,8 +208,9 @@ arangosh without connecting to a server.)");
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
-  options->addSection("ssl", "SSL communication");
-  options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
+  options->addSection("tls", "TLS communication");
+  options->addOldOption("--ssl.protocol", "--tls.protocol");
+  options->addOption("--tls.protocol", availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
   options
