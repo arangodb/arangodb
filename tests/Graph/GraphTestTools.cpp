@@ -92,7 +92,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
                         false);
   features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                        true);
+                        false);
 
   for (auto& f : features) {
     f.first.prepare();

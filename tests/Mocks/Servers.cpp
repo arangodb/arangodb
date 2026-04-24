@@ -177,7 +177,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
                                          std::span<const std::type_index>{});
   server.addFeature<ViewTypesFeature>(false);    // true ??
   server.addFeature<MaintenanceFeature>(false);  // do not start the thread
-  server.addFeature<VectorIndexFeature>(true);
+  server.addFeature<VectorIndexFeature>(false);
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
