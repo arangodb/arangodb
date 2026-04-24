@@ -44,9 +44,9 @@
 
 #include <velocypack/Collection.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
 using namespace arangodb::basics;
+
+namespace arangodb::aql {
 
 namespace {
 constexpr double kSetupTimeout = 60.0;
@@ -138,7 +138,7 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
     QueryId clusterQueryId, VPackBuilder& infoBuilder, ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
-  LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL)
+  LOG_TOPIC("4bbe6", DEBUG, Logger::AQL)
       << "Building Engine Info for " << server;
 
   infoBuilder.clear();
@@ -200,7 +200,7 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
   return didCreateEngine;
 }
 
-arangodb::futures::Future<Result>
+futures::Future<Result>
 EngineInfoContainerDBServerServerBased::buildSetupRequest(
     transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
     std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
@@ -227,9 +227,8 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
 
   auto buildCallback =
       [this, server, didCreateEngine = std::move(didCreateEngine),
-       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId, fastPath](
-          arangodb::futures::Try<arangodb::network::Response> const& response)
-      -> Result {
+       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId,
+       fastPath](futures::Try<network::Response> const& response) -> Result {
     auto const& resolvedResponse = response.get();
     auto queryId = globalId;
     RebootId rebootId{0};
@@ -720,7 +719,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
     }
     auto remoteId = ExecutionNodeId{0};
     std::string shardId;
-    auto res = ::extractRemoteAndShard(resEntry.key, remoteId, shardId);
+    auto res = extractRemoteAndShard(resEntry.key, remoteId, shardId);
     if (!res.ok()) {
       return res;
     }
@@ -810,7 +809,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
     TRI_ASSERT(!server.starts_with("server:"));
     futureResponses.emplace_back(network::sendRequestRetry(
         pool, "server:" + server, fuerte::RestVerb::Delete,
-        absl::StrCat(::finishUrl, queryId),
+        absl::StrCat(finishUrl, queryId),
         /*copy*/ body, options));
   }
   _query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
@@ -824,7 +823,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
       TRI_ASSERT(!engine.first.starts_with("server:"));
       futureResponses.emplace_back(network::sendRequestRetry(
           pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-          absl::StrCat(::traverserUrl, engine.second), noBody, options));
+          absl::StrCat(traverserUrl, engine.second), noBody, options));
     }
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
     gn->clearEngines();
@@ -861,7 +860,7 @@ void EngineInfoContainerDBServerServerBased::addGraphNode(
 
 // Insert the Locking information into the message to be send to DBServers
 void EngineInfoContainerDBServerServerBased::addLockingPart(
-    arangodb::velocypack::Builder& builder, ServerID const& server) const {
+    velocypack::Builder& builder, ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("lockInfo"));
   builder.openObject();
@@ -871,7 +870,7 @@ void EngineInfoContainerDBServerServerBased::addLockingPart(
 
 // Insert the Options information into the message to be send to DBServers
 void EngineInfoContainerDBServerServerBased::addOptionsPart(
-    arangodb::velocypack::Builder& builder, ServerID const& server) const {
+    velocypack::Builder& builder, ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("options"));
   // toVelocyPack will open & close the "options" object
@@ -902,7 +901,7 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(
 
 // Insert the Variables information into the message to be sent to DBServers
 void EngineInfoContainerDBServerServerBased::addVariablesPart(
-    arangodb::velocypack::Builder& builder) const {
+    velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
   // This will open and close an Object.
@@ -912,7 +911,7 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(
 // Insert the Snippets information into the message to be sent to DBServers
 void EngineInfoContainerDBServerServerBased::addSnippetPart(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
+    velocypack::Builder& builder, ShardLocking& shardLocking,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
     ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
@@ -929,7 +928,7 @@ void EngineInfoContainerDBServerServerBased::addSnippetPart(
 // DBServers
 std::vector<bool>
 EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
-    arangodb::velocypack::Builder& infoBuilder,
+    velocypack::Builder& infoBuilder,
     containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
     ServerID const& server) const {
   std::vector<bool> result;
@@ -952,3 +951,5 @@ EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
   infoBuilder.close();  // traverserEngines
   return result;
 }
+
+}  // namespace arangodb::aql
