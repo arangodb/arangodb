@@ -186,9 +186,9 @@ struct PermutationState {
 }  // namespace
 
 void clearAttributeAccess(
-  std::pair<Variable const*, std::vector<basics::AttributeName>>& parts) {
-parts.first = nullptr;
-parts.second.clear();
+    std::pair<Variable const*, std::vector<basics::AttributeName>>& parts) {
+  parts.first = nullptr;
+  parts.second.clear();
 }
 
 /// @brief create the condition
@@ -1039,7 +1039,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
           ++l;
         }
       }  // cross compare sub-and-nodes
-    }  // foreach sub-and-node
+    }    // foreach sub-and-node
 
   fastForwardToNextOrItem:
     if (!retry) {
