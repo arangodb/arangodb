@@ -209,7 +209,6 @@
 
 - shell_client_aql_large:
     options:
-      buckets: 3
       priority: 250
       type: single
       suffix: _large
@@ -352,7 +351,7 @@
     options:
       priority: 1200
       size: medium
-      buckets: 4
+      buckets: 2
       type: cluster
     args:
       dumpAgencyOnError: true
