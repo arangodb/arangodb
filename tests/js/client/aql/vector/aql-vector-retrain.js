@@ -336,8 +336,6 @@ function VectorRetrainTestSuite () {
         assertTrue(row.category !== undefined, "category must be projectable post-retrain");
         assertTrue(row.value !== undefined, "value must be projectable post-retrain");
       }
-
-      collection.dropIndex(created.id);
     },
 
     testRetrainShadowIsVisibleInIndexes: function () {
