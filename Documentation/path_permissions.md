@@ -250,6 +250,10 @@ return a `Result`, so that a decline can return the actual reason
  - `canDropAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
  - `canUseAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
 
+ - `canReadUser(std::string_view user) -> Result`
+ - `canWriteUser(std::string_view user) -> Result`
+ - `canReadUsers(std::span<std::string_view const> -> std::vector<bool>`
+
  - `isSuperUser() -> bool`
 
 Note that for now, `canSee*` is equivalent to `canUse*(RO)`. For
@@ -371,6 +375,18 @@ central implementation of these methods.
   
    If the user is not allowed to see the analyzer, this must return NOT_FOUND!
   
+ - `canReadUser(std::string_view user) -> Result`
+
+   check RO access in system database
+  
+ - `canWriteUser(std::string_view user) -> Result`
+
+   check RW access in system database
+  
+ - `canReadUsers(std::span<std::string_view const> -> std::vector<bool>`
+
+   check RO access in system database
+  
 - `isSuperUser() -> bool`
 
   must return `true` if and only if the authenticated user is the superuser (JWT
@@ -489,6 +505,18 @@ central implementation of these methods.
    But writing an analyzer is now done via RBAC and reading, too.
 
    If the user is not allowed to see the analyzer, this must return NOT_FOUND!
+  
+ - `canReadUser(std::string_view user) -> Result`
+
+   check RBAC action `db:ReadUser`
+  
+ - `canWriteUser(std::string_view user) -> Result`
+
+   check RBAC action `db:WriteUser`
+  
+ - `canReadUsers(std::span<std::string_view const> -> std::vector<bool>`
+
+   check RBAC action `db:ReadUser`
   
 - `isSuperUser() -> bool`
 
@@ -856,23 +884,23 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    |    | GET    | `/_api/ttl/statistics`                                       | RestTtlHandler             | _system                                  | AUTHEN, _system                     |                                          |                        |
 | X  |    |    | PUT    | `/_api/ttl/properties`                                       | RestTtlHandler             | _system                                  | AUTHEN, _system                     |                                          |                        |
 | X  |    |    | POST   | `/_api/upload`                                               | RestUploadHandler          | -                                        | AUTHEN                              | Gone in 4.0                              | NO FIX                 |
-|    |    |    | GET    | `/_api/user`                                                 | RestUsersHandler           |                                          | AUTHEN, see only canReadUser(u)     |                                          |                        |
-|    |    |    | POST   | `/_api/user`                                                 | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
-|    |    |    | POST   | `/_api/user/{user}`                                          | RestUsersHandler           |                                          | AUTHEN, just check credentials      |                                          |                        |
-|    |    |    | GET    | `/_api/user/{user}`                                          | RestUsersHandler           |                                          | canReadUser(u)                      |                                          |                        |
-|    |    |    | GET    | `/_api/user/{user}/config`                                   | RestUsersHandler           |                                          | canReadUser(u)                      |                                          |                        |
-|    |    |    | GET    | `/_api/user/{user}/database`                                 | RestUsersHandler           |                                          | canReadUser(u)                      |                                          |                        |
-|    |    |    | GET    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           |                                          | canReadUser(u)                      |                                          |                        |
-|    |    |    | GET    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           |                                          | canReadUser(u)                      |                                          |                        |
-|    |    |    | PUT    | `/_api/user/{user}`                                          | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
-|    |    |    | PUT    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
-|    |    |    | PUT    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
-|    |    |    | PUT    | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
-|    |    |    | PATCH  | `/_api/user/{user}`                                          | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
-|    |    |    | DELETE | `/_api/user/{user}`                                          | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
-|    |    |    | DELETE | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
-|    |    |    | DELETE | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
-|    |    |    | DELETE | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           |                                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | GET    | `/_api/user`                                                 | RestUsersHandler           | canReadUsers(list)                       | AUTHEN, see only canReadUser(u)     |                                          |                        |
+| X  |    |    | POST   | `/_api/user`                                                 | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | POST   | `/_api/user/{user}`                                          | RestUsersHandler           | -                                        | AUTHEN, just check credentials      |                                          |                        |
+| X  |    |    | GET    | `/_api/user/{user}`                                          | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
+| X  |    |    | GET    | `/_api/user/{user}/config`                                   | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
+| X  |    |    | GET    | `/_api/user/{user}/database`                                 | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
+| X  |    |    | GET    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
+| X  |    |    | GET    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
+| X  |    |    | PUT    | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | PUT    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | PUT    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | PUT    | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | PATCH  | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | DELETE | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | DELETE | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | DELETE | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    |    | DELETE | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
 |    |    |    | GET    | `/_api/version`                                              | RestVersionHandler         |                                          | AUTHEN, details (2)                 |                                          |                        |
 |    |    |    | GET    | `/_api/view`                                                 |                            |                                          |                                     |                                          |                        |
 |    |    |    | POST   | `/_api/view`                                                 |                            |                                          |                                     |                                          |                        |

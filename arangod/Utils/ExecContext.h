@@ -167,18 +167,17 @@ class ExecContext : public RequestContext {
                         AnalyzerAccessLevel level) const;
 
   /// @brief returns true if the user can be read
-  // TODO Should this return a Result?
-  bool canReadUser(std::string_view user) const;
+  Result canReadUser(std::string_view user) const;
 
   /// @brief returns true for each user which can be read
   // TODO Should this return a std::vector<Result>?
-  // TODO Can we use a parameter type that forces fewer copies, like
-  //      std::span<std::string_view> or something?
-  std::vector<bool> canReadUsers(std::vector<std::string> const& users) const;
+  // MAX: I do not think so, it is used only once to filter the visible
+  // users. All we need is the bool.
+  std::vector<bool> canReadUsers(std::span<std::string_view const> users) const;
 
   /// @brief returns true if the user can be modified, note that everybody
   // can modify themselves (if only to change the password).
-  bool canWriteUser(std::string_view user) const;
+  Result canWriteUser(std::string_view user) const;
 
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {
