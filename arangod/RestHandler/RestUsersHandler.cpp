@@ -344,7 +344,7 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     VPackSlice s = body.get("user");
     std::string user = s.isString() ? s.copyString() : "";
     auto& exec = ExecContext::current();
-    if (auto r1 = exec.canWriteUser(user); r.ok()) {
+    if (auto r1 = exec.canWriteUser(user); r1.ok()) {
       // create user
       Result r = StoreUser(um, 0, user, body);
       if (r.ok()) {
@@ -512,7 +512,7 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
   auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (auto r1 = exec.canWriteUser(user); r.ok()) {
+    if (auto r1 = exec.canWriteUser(user); r1.ok()) {
       // update a user
       Result r = StoreUser(um, 2, user, body);
       if (r.ok()) {
