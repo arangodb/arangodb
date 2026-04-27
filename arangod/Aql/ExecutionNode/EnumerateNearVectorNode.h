@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,7 +30,9 @@
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "Transaction/Methods.h"
 
+#include <atomic>
 #include <memory>
+#include <string_view>
 
 namespace arangodb::aql {
 class ExecutionBlock;
@@ -42,12 +43,37 @@ class Expression;
 
 /// @brief class EnumerateNearVectorNode
 class EnumerateNearVectorNode : public ExecutionNode,
+                                public DocumentProducingNode,
                                 public CollectionAccessingNode {
  public:
+  // How the executor produces output rows.
+  //
+  // The same `_outVariable` register may carry different payloads depending
+  // on the strategy: a uint64 doc-id label that the downstream materializer
+  // resolves (kPassThroughId), the full document slice (kDocument), or
+  // nothing at all (kCovered, when only per-projection registers are
+  // populated from the index' storedValues).
+  enum class Strategy : std::uint8_t {
+    // EnumerateNearVectorNode emits a uint64 label for the AQL doc variable.
+    // A downstream MaterializeRocksDBNode resolves the label into the actual
+    // document. This is the initial state right after useVectorIndexRule.
+    kPassThroughId,
+
+    // The vector index storedValues cover all projections (and the filter,
+    // if any). Per-projection registers are filled directly from the
+    // storedValues entry; no document register is written.
+    kCovered,
+
+    // The executor writes the full document into `_outVariable`'s register.
+    // Per-projection registers (if assigned by the projections rule) are
+    // filled from the same loaded document. Used when the filter forces a
+    // document load anyway, or when projections need the document.
+    kDocument,
+  };
+
   EnumerateNearVectorNode(ExecutionPlan* plan, ExecutionNodeId id,
                           Variable const* inVariable,
-                          Variable const* oldDocumentVariable,
-                          Variable const* documentOutVariable,
+                          Variable const* outVariable,
                           Variable const* distanceOutVariable,
                           std::size_t limit, bool ascending, std::size_t offset,
                           vector::SearchParameters searchParameters,
@@ -73,8 +99,6 @@ class EnumerateNearVectorNode : public ExecutionNode,
   std::vector<const Variable*> getVariablesSetHere() const override;
 
   Variable const* inVariable() const { return _inVariable; }
-  Variable const* oldDocumentVariable() const { return _oldDocumentVariable; }
-  Variable const* documentOutVariable() const { return _documentOutVariable; }
   Variable const* distanceOutVariable() const { return _distanceOutVariable; }
 
   transaction::Methods::IndexHandle const& index() const { return _index; }
@@ -83,9 +107,26 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   bool isAscending() const noexcept;
 
-  void setFilterExpression(Expression* filterExpression);
-
   void setIsCoveredByStoredValues(bool isCoveredByStoredValues) noexcept;
+  bool isCoveredByStoredValues() const noexcept {
+    return _isCoveredByStoredValues;
+  }
+
+  Strategy strategy() const noexcept { return _strategy; }
+  void setStrategy(Strategy s) noexcept { _strategy = s; }
+
+  // Rebind the AQL doc variable. Used by propagateProjectionsIntoEnumerateNear
+  // when materializeIntoSeparateVariable moved downstream attribute
+  // references onto a fresh variable: dropping the materializer requires
+  // us to adopt that fresh variable as our outVariable so downstream
+  // readers stay satisfied.
+  void rebindOutVariable(Variable const* newOutVariable) noexcept {
+    _outVariable = newOutVariable;
+  }
+
+  static std::string_view strategyName(Strategy s) noexcept;
+
+  bool isProduceResult() const override;
 
  protected:
   CostEstimate estimateCost() const override;
@@ -101,11 +142,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// @brief input variable to read the query point from
   Variable const* _inVariable;
 
-  /// @brief old document variable, only used for book keeping
-  Variable const* _oldDocumentVariable;
-
-  /// @brief document id and distance out variables
-  Variable const* _documentOutVariable;
+  /// @brief distance output variable
   Variable const* _distanceOutVariable;
 
   /// @brief contains the limit, this node only produces the top k results
@@ -124,14 +161,11 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// guaranteed to always be a vector index
   transaction::Methods::IndexHandle _index;
 
-  /// @brief filter expression if filter was pushed down into this node
-  std::unique_ptr<Expression> _filterExpression;
-
   /// @brief indicates if the filter expression is fully covered by stored
   /// values
   bool _isCoveredByStoredValues;
 
-  /// @brief filterVarToRegs is set in optimization rule
-  std::vector<std::pair<VariableId, RegisterId>> _filterVarToRegs;
+  /// @brief output strategy chosen for this node
+  Strategy _strategy{Strategy::kPassThroughId};
 };
 }  // namespace arangodb::aql
