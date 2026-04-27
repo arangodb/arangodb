@@ -466,9 +466,8 @@ void RocksDBCollection::addShadowIndex(std::shared_ptr<Index> const& shadow) {
   // The shadow is expected to carry a fresh IndexId; assert this so that
   // callers do not accidentally register a duplicate with an existing
   // index's id.
-  TRI_ASSERT(
-      std::none_of(_indexes.begin(), _indexes.end(),
-                   [&](auto const& idx) { return idx->id() == shadow->id(); }));
+  TRI_ASSERT(std::ranges::find(_indexes, shadow->id(), &Index::id) ==
+             _indexes.end());
   _indexes.emplace(shadow);
 }
 
