@@ -1092,9 +1092,9 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
 }
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this},
-      _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()) {
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature)
+    : ApplicationFeature{server, *this}, _databaseFeature(databaseFeature) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();

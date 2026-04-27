@@ -40,6 +40,9 @@
 #include "RestServer/ApiRecordingFeatureOptions.h"
 
 namespace arangodb {
+namespace metrics {
+class MetricsFeature;
+}  // namespace metrics
 
 // Define a struct for the LogScale used in the histogram
 struct ApiCallTimeScale {
@@ -115,7 +118,8 @@ class ApiRecordingFeature : public application_features::ApplicationFeature,
 
   explicit ApiRecordingFeature(
       application_features::ApplicationServer& server,
-      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+      metrics::MetricsFeature& metrics);
   ~ApiRecordingFeature() override;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

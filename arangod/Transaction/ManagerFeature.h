@@ -33,6 +33,10 @@
 #include <memory>
 #include <mutex>
 
+namespace arangodb::metrics {
+class MetricsFeature;
+}  // namespace arangodb::metrics
+
 namespace arangodb::transaction {
 class Manager;
 
@@ -42,7 +46,8 @@ class ManagerFeature final : public application_features::ApplicationFeature {
     return "TransactionManager";
   }
 
-  explicit ManagerFeature(application_features::ApplicationServer& server);
+  explicit ManagerFeature(application_features::ApplicationServer& server,
+                          metrics::MetricsFeature& metrics);
   ~ManagerFeature();
 
   void collectOptions(

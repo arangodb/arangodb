@@ -38,6 +38,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace metrics {
+class MetricsFeature;
+}  // namespace metrics
 class FlushThread;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -55,7 +58,8 @@ class FlushFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
-  explicit FlushFeature(application_features::ApplicationServer& server);
+  explicit FlushFeature(application_features::ApplicationServer& server,
+                        metrics::MetricsFeature& metrics);
 
   ~FlushFeature();
 

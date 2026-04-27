@@ -43,8 +43,10 @@ class ReplicationFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Replication"; }
 
-  explicit ReplicationFeature(application_features::ApplicationServer& server,
-                              metrics::MetricsFeature& metrics);
+  explicit ReplicationFeature(
+      application_features::ApplicationServer& server,
+      metrics::MetricsFeature& metrics,
+      application_features::CommunicationFeaturePhase& comm);
   ~ReplicationFeature();
 
   void collectOptions(

@@ -101,7 +101,8 @@ class IResearchViewNodeTest
   IResearchViewNodeTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -3661,7 +3662,8 @@ class IResearchViewVolatitlityTest
   IResearchViewVolatitlityTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -4078,7 +4080,8 @@ class IResearchViewBlockTest
   IResearchViewBlockTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();

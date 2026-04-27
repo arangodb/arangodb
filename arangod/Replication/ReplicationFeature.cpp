@@ -58,15 +58,14 @@ namespace arangodb {
 
 ReplicationFeature::ReplicationFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::MetricsFeature& metrics,
+    application_features::CommunicationFeaturePhase& comm)
     : application_features::ApplicationFeature{server, *this},
       _connectTimeout(10.0),
       _requestTimeout(600.0),
       _forceConnectTimeout(false),
       _forceRequestTimeout(false),
-      _connectionCache{
-          server.getFeature<application_features::CommunicationFeaturePhase>(),
-          httpclient::ConnectionCache::Options{5, 120}},
+      _connectionCache{comm, httpclient::ConnectionCache::Options{5, 120}},
       _parallelTailingInvocations(0),
       _inventoryRequests(
           metrics.add(arangodb_replication_cluster_inventory_requests_total{})),

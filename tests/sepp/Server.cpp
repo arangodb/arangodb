@@ -135,7 +135,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   // Adding features explicitly (converted from Visitor pattern)
   // Phases first
   _server.addFeature<AgencyFeaturePhase>();
-  _server.addFeature<CommunicationFeaturePhase>();
+  auto& comm = _server.addFeature<CommunicationFeaturePhase>();
   _server.addFeature<AqlFeaturePhase>();
   _server.addFeature<BasicFeaturePhaseServer>();
   _server.addFeature<ClusterFeaturePhase>();
@@ -161,7 +161,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<VersionFeature>();
   _server.addFeature<ActionFeature>();
   auto& agency = _server.addFeature<AgencyFeature>();
-  _server.addFeature<ApiRecordingFeature>();
+  _server.addFeature<ApiRecordingFeature>(nullptr, metrics);
   _server.addFeature<AqlFeature>();
   _server.addFeature<async_registry::Feature>();
   _server.addFeature<AuthenticationFeature>();
@@ -174,7 +174,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& cacheManager =
       _server.addFeature<CacheManagerFeature>(_cacheOptionsProvider);
   _server.addFeature<CheckVersionFeature>(&result, kNonServerFeatures);
-  _server.addFeature<ClusterFeature>();
+  auto& clusterFeature = _server.addFeature<ClusterFeature>(metrics);
   auto& database = _server.addFeature<DatabaseFeature>();
   _server.addFeature<ClusterUpgradeFeature>(database);
   _server.addFeature<ConfigFeature>(name);
@@ -188,7 +188,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<EngineSelectorFeature>();
   _server.addFeature<EnvironmentFeature>();
   _server.addFeature<FileSystemFeature>();
-  auto& flush = _server.addFeature<FlushFeature>();
+  auto& flush = _server.addFeature<FlushFeature>(metrics);
   _server.addFeature<FortuneFeature>();
 #ifdef USE_V8
   _server.addFeature<FoxxFeature>();
@@ -201,9 +201,9 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<LanguageFeature>();
   _server.addFeature<TimeZoneFeature>();
   _server.addFeature<LockfileFeature>();
-  _server.addFeature<LogBufferFeature>();
+  _server.addFeature<LogBufferFeature>(metrics);
   _server.addFeature<LoggerFeature>(true);
-  _server.addFeature<MaintenanceFeature>();
+  _server.addFeature<MaintenanceFeature>(&clusterFeature);
   _server.addFeature<MaxMapCountFeature>();
   _server.addFeature<NetworkFeature>(metrics,
                                      network::ConnectionPool::Config{});
@@ -212,7 +212,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<PrivilegeFeature>();
   _server.addFeature<QueryRegistryFeature>(metrics);
   _server.addFeature<RandomFeature>();
-  _server.addFeature<ReplicationFeature>(metrics);
+  _server.addFeature<ReplicationFeature>(metrics, comm);
   _server.addFeature<ReplicatedLogFeature>();
   _server.addFeature<ReplicationMetricsFeature>(metrics);
   _server.addFeature<ReplicationTimeoutFeature>();
@@ -239,7 +239,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #endif
   _server.addFeature<SoftShutdownFeature>();
   _server.addFeature<SslFeature>();
-  _server.addFeature<StatisticsFeature>();
+  _server.addFeature<StatisticsFeature>(metrics);
   _server.addFeature<StorageEngineFeature>();
   _server.addFeature<SystemDatabaseFeature>();
   _server.addFeature<TempFeature>(name);
@@ -251,7 +251,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<V8PlatformFeature>();
   _server.addFeature<V8SecurityFeature>();
 #endif
-  _server.addFeature<transaction::ManagerFeature>();
+  _server.addFeature<transaction::ManagerFeature>(metrics);
   _server.addFeature<ViewTypesFeature>();
   _server.addFeature<aql::AqlFunctionFeature>();
   _server.addFeature<aql::OptimizerRulesFeature>();
@@ -263,7 +263,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
                                           : nullptr);
   auto& rocksdbRecovery = _server.addFeature<RocksDBRecoveryManager>();
 #ifdef TRI_HAVE_GETRLIMIT
-  _server.addFeature<FileDescriptorsFeature>();
+  _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
 #ifdef ARANGODB_HAVE_FORK
   _server.addFeature<DaemonFeature>();
@@ -281,8 +281,8 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #else
   _server.addFeature<SslServerFeature>();
 #endif
-  _server.addFeature<iresearch::IResearchAnalyzerFeature>();
-  _server.addFeature<iresearch::IResearchFeature>();
+  _server.addFeature<iresearch::IResearchAnalyzerFeature>(database);
+  _server.addFeature<iresearch::IResearchFeature>(metrics);
   _server.addFeature<ClusterEngine>();
 
   _server.addFeature<RocksDBEngine>(

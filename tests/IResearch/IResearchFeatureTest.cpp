@@ -94,14 +94,18 @@ class IResearchFeatureTest
                                             arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockV8Server server;
+  arangodb::metrics::MetricsFeature& _metrics;
 
-  IResearchFeatureTest() : server(false) {
+  IResearchFeatureTest()
+      : server(false),
+        _metrics(server.getFeature<arangodb::metrics::MetricsFeature>()) {
     arangodb::tests::init();
 
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
-    server.addFeature<arangodb::FlushFeature>(false);
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        false, server.getFeature<arangodb::metrics::MetricsFeature>());
+    auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
+    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+        false, databaseFeature);
+    server.addFeature<arangodb::FlushFeature>(false, _metrics);
+    server.addFeature<arangodb::QueryRegistryFeature>(false, _metrics);
     server.addFeature<arangodb::ServerSecurityFeature>(false);
     server.startFeatures();
   }
@@ -144,7 +148,7 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -232,7 +236,7 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -328,7 +332,7 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -411,7 +415,7 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -492,7 +496,7 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -573,7 +577,7 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -654,7 +658,7 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -736,7 +740,7 @@ TEST_F(IResearchFeatureTest,
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -819,7 +823,7 @@ TEST_F(
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -900,7 +904,7 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -981,7 +985,7 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -1063,7 +1067,7 @@ TEST_F(IResearchFeatureTest,
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -1144,7 +1148,7 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -1226,7 +1230,7 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -1308,7 +1312,7 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -1386,7 +1390,7 @@ TEST_F(IResearchFeatureTest, test_options_threads) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -1464,7 +1468,7 @@ TEST_F(IResearchFeatureTest, test_options_threads_max) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -1542,7 +1546,7 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
-  IResearchFeature feature(server.server());
+  IResearchFeature feature(server.server(), _metrics);
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -1621,7 +1625,7 @@ TEST_F(IResearchFeatureTest, test_execution_threads_limit) {
   using namespace arangodb::iresearch;
   using namespace arangodb::options;
   constexpr uint32_t threadsLimit = 10;
-  IResearchFeature iresearch(server.server());
+  IResearchFeature iresearch(server.server(), _metrics);
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   iresearch.collectOptions(opts);
   auto* executeThreadsLimit =
@@ -1724,7 +1728,7 @@ TEST_F(IResearchFeatureTest, test_start) {
   using namespace arangodb::options;
 
   auto& functions = server.addFeatureUntracked<aql::AqlFunctionFeature>();
-  auto& iresearch = server.addFeatureUntracked<IResearchFeature>();
+  auto& iresearch = server.addFeatureUntracked<IResearchFeature>(_metrics);
   irs::Finally cleanup = [&functions]() noexcept { functions.unprepare(); };
 
   auto waitForNewStats = [&](std::tuple<size_t, size_t, size_t> oldStats,
@@ -1833,7 +1837,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
       nullptr, std::span<const std::type_index>{});
 
   auto& feature =
-      server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+      server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>(
+          _metrics);
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();  // register iresearch view type
@@ -1942,7 +1947,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
       nullptr, std::span<const std::type_index>{});
 
   auto& feature =
-      server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+      server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>(
+          _metrics);
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();  // register iresearch view type
@@ -2067,7 +2073,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
 
   std::atomic_bool deallocated = false;
   // declare above 'feature' to ensure proper destruction order
-  arangodb::iresearch::IResearchFeature feature(server.server());
+  arangodb::iresearch::IResearchFeature feature(server.server(), _metrics);
   feature.collectOptions(server.server().options());
   server.server()
       .options()
@@ -2121,7 +2127,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
 TEST_F(IResearchFeatureTest, test_async_single_run_task) {
   bool deallocated = false;
   // declare above 'feature' to ensure proper destruction order
-  arangodb::iresearch::IResearchFeature feature(server.server());
+  arangodb::iresearch::IResearchFeature feature(server.server(), _metrics);
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();
@@ -2148,7 +2154,7 @@ TEST_F(IResearchFeatureTest, test_async_single_run_task) {
 TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
   std::atomic_bool deallocated = false;
   // declare above 'feature' to ensure proper destruction order
-  arangodb::iresearch::IResearchFeature feature(server.server());
+  arangodb::iresearch::IResearchFeature feature(server.server(), _metrics);
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();
@@ -2210,7 +2216,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
   std::unique_lock lock{mutex};
 
   {
-    arangodb::iresearch::IResearchFeature feature(server.server());
+    arangodb::iresearch::IResearchFeature feature(server.server(), _metrics);
     feature.collectOptions(server.server().options());
     feature.validateOptions(server.server().options());
     feature.prepare();
@@ -2249,7 +2255,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
 TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   std::atomic_bool deallocated = false;
   // declare above 'feature' to ensure proper destruction order
-  arangodb::iresearch::IResearchFeature feature(server.server());
+  arangodb::iresearch::IResearchFeature feature(server.server(), _metrics);
   feature.collectOptions(server.server().options());
   server.server()
       .options()
