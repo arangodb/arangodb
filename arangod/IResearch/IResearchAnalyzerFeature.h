@@ -294,7 +294,7 @@ class IResearchAnalyzerFeature final
     DatabaseFeature& databaseFeature;
     EngineSelectorFeature& engineSelector;
     SystemDatabaseFeature& systemDatabase;
-    network::ConnectionPool* connectionPool;
+    NetworkFeature* networkFeature;
     ClusterFeature* clusterFeature;
     SchedulerFeature* schedulerFeature;
     aql::AqlFunctionFeature* aqlFunctionFeature;
@@ -614,7 +614,7 @@ class IResearchAnalyzerFeature final
   EngineSelectorFeature& _engineSelector;
   SystemDatabaseFeature& _systemDatabase;
   DatabaseFeature& _databaseFeature;
-  network::ConnectionPool* _connectionPool;
+  NetworkFeature* _networkFeature;
   SchedulerFeature* _schedulerFeature;
   aql::AqlFunctionFeature* _aqlFunctionFeature;
 };

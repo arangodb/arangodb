@@ -218,7 +218,7 @@ void ArangodServer::addFeatures(
           .databaseFeature = database,
           .engineSelector = engineSelectorFeature,
           .systemDatabase = systemDatabaseFeature,
-          .connectionPool = networkFeature.pool(),
+          .networkFeature = &networkFeature,
           .clusterFeature = &clusterFeature,
           .schedulerFeature = &scheduler,
           .aqlFunctionFeature = &aqlFunctionFeature,

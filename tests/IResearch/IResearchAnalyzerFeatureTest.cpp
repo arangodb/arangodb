@@ -3311,10 +3311,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
   auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
-  auto& analyzers = newServer.addFeature<
-      arangodb::iresearch::IResearchAnalyzerFeature>(
-      arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(
-          newServer));
   auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
@@ -3335,6 +3331,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   newServer.addFeature<arangodb::AqlFeature>();
+  auto& analyzers = newServer.addFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature>(
+      arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(
+          newServer));
 
   auto cleanup =
       arangodb::scopeGuard([&]() noexcept { dbfeature.unprepare(); });
@@ -4417,7 +4417,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
       newServer, {.databaseFeature = dbFeature,
                   .engineSelector = selector,
                   .systemDatabase = sysDatabase,
-                  .connectionPool = nullptr,
+                  .networkFeature = nullptr,
                   .clusterFeature = nullptr,
                   .schedulerFeature = nullptr,
                   .aqlFunctionFeature = nullptr});
@@ -4768,7 +4768,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
       newServer, {.databaseFeature = dbFeature,
                   .engineSelector = selector,
                   .systemDatabase = sysDatabase,
-                  .connectionPool = nullptr,
+                  .networkFeature = nullptr,
                   .clusterFeature = nullptr,
                   .schedulerFeature = nullptr,
                   .aqlFunctionFeature = nullptr});
@@ -4923,7 +4923,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
       newServer, {.databaseFeature = dbFeature,
                   .engineSelector = selector,
                   .systemDatabase = sysDatabase,
-                  .connectionPool = nullptr,
+                  .networkFeature = nullptr,
                   .clusterFeature = nullptr,
                   .schedulerFeature = nullptr,
                   .aqlFunctionFeature = nullptr});

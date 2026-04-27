@@ -1087,8 +1087,8 @@ IResearchAnalyzerFeature::Dependencies::fromServer(
       .databaseFeature = server.getFeature<DatabaseFeature>(),
       .engineSelector = server.getFeature<EngineSelectorFeature>(),
       .systemDatabase = server.getFeature<SystemDatabaseFeature>(),
-      .connectionPool = server.hasFeature<NetworkFeature>()
-                            ? server.getFeature<NetworkFeature>().pool()
+      .networkFeature = server.hasFeature<NetworkFeature>()
+                            ? &server.getFeature<NetworkFeature>()
                             : nullptr,
       .clusterFeature = server.hasFeature<ClusterFeature>()
                             ? &server.getFeature<ClusterFeature>()
@@ -1109,7 +1109,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
       _engineSelector(deps.engineSelector),
       _systemDatabase(deps.systemDatabase),
       _databaseFeature(deps.databaseFeature),
-      _connectionPool(deps.connectionPool),
+      _networkFeature(deps.networkFeature),
       _schedulerFeature(deps.schedulerFeature),
       _aqlFunctionFeature(deps.aqlFunctionFeature) {
   setOptional(true);
@@ -2286,8 +2286,9 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       }
       return {};
     };
-    auto const res = visitAnalyzers(*vocbase, visitor, operationOrigin,
-                                    _clusterFeature, _connectionPool);
+    auto const res =
+        visitAnalyzers(*vocbase, visitor, operationOrigin, _clusterFeature,
+                       _networkFeature ? _networkFeature->pool() : nullptr);
     if (!res.ok()) {
       if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
         // collection not found, cleanup any analyzers for 'database'

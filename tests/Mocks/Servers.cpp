@@ -238,6 +238,10 @@ static void SetupAqlPhase(MockServer& server) {
   server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(false, metrics);
   server.addFeature<TemporaryStorageFeature>(false);
+  server.addFeature<aql::AqlFunctionFeature>(true);
+  server.addFeature<aql::OptimizerRulesFeature>(true);
+  server.addFeature<aql::QueryInfoLoggerFeature>(true);
+  server.addFeature<AqlFeature>(true);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
       true,
@@ -249,11 +253,6 @@ static void SetupAqlPhase(MockServer& server) {
     feature.collectOptions(server.server().options());
     feature.validateOptions(server.server().options());
   }
-
-  server.addFeature<aql::AqlFunctionFeature>(true);
-  server.addFeature<aql::OptimizerRulesFeature>(true);
-  server.addFeature<aql::QueryInfoLoggerFeature>(true);
-  server.addFeature<AqlFeature>(true);
 
 #ifdef USE_ENTERPRISE
   server.addFeature<HotBackupFeature>(false);
