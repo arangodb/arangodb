@@ -43,6 +43,7 @@
 #include "Aql/QueryContext.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
@@ -102,8 +103,8 @@ bool areAllAttributesCovered(
     std::vector<std::vector<basics::AttributeName>> const& storedValues) {
   containers::FlatHashSet<aql::AttributeNamePath> filterAttributes;
   Ast::getReferencedAttributesRecursive(
-      filterExpression->node(), enumerateNearVectorNode->documentOutVariable(),
-      "", filterAttributes, plan->getAst()->query().resourceMonitor());
+      filterExpression->node(), enumerateNearVectorNode->outVariable(), "",
+      filterAttributes, plan->getAst()->query().resourceMonitor());
 
   for (auto const& attr : filterAttributes) {
     auto const matchesAttribute =
@@ -210,10 +211,6 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
           TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
           "filter node could not be moved into EnumerateNearVector node!");
     }
-    // We are handling filtering in EnumerateNearVectorNode
-    enumerateNearVectorNode->setFilterExpression(filterExpression.get());
-    modified = true;
-
     if (auto bestIndex = findBestVectorIndex(plan, filterExpression,
                                              enumerateNearVectorNode);
         bestIndex != nullptr) {
@@ -222,6 +219,39 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
       }
       enumerateNearVectorNode->setIsCoveredByStoredValues(true);
     }
+    // We are handling filtering in EnumerateNearVectorNode
+    enumerateNearVectorNode->setFilter(std::move(filterExpression));
+
+    // The use-vector-index rule unconditionally inserted a
+    // MaterializeRocksDBNode immediately after EnumerateNearVectorNode. With
+    // a filter pushed down, the executor produces the document itself, so
+    // the materializer becomes redundant. Walk up the parent chain looking
+    // for it and unlink it. Calculation nodes that may have been spliced in
+    // by other rules are skipped over.
+    ExecutionNode* materializer = enumerateNearVectorNode->getFirstParent();
+    while (materializer != nullptr &&
+           materializer->getType() == EN::CALCULATION) {
+      materializer = materializer->getFirstParent();
+    }
+    // Dropping the MaterializeNode in cluster mode currently confuses the
+    // SCATTER/GATHER placement done by scatterInClusterRule (the GatherNode
+    // loses its sort info, so multi-shard results no longer merge in
+    // distance order). Until that interaction is sorted out, only drop the
+    // materializer on single-server.
+    if (materializer != nullptr && materializer->getType() == EN::MATERIALIZE &&
+        !ServerState::instance()->isRunningInCluster()) {
+      plan->unlinkNode(materializer);
+      enumerateNearVectorNode->setStrategy(
+          EnumerateNearVectorNode::Strategy::kDocument);
+      // useVectorIndexRule excluded EnumerateNearVectorNode from
+      // scatter/gather expecting the MaterializeNode (also a
+      // CollectionAccessingNode) to host the SCATTER/GATHER pair. With the
+      // materializer gone, EnumerateNearVectorNode itself becomes the
+      // collection-accessing node, so the exclusion has to be reverted.
+      plan->includeInScatterGather(enumerateNearVectorNode);
+    }
+
+    modified = true;
   }
 
   opt->addPlan(std::move(plan), rule, modified);

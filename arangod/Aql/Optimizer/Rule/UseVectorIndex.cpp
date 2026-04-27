@@ -360,10 +360,7 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node
       auto const* documentVariable = enumerateCollectionNode->outVariable();
-
       auto const* distanceVariable = sortNode->elements()[0].var;
-      auto const* oldDocumentVariable = enumerateCollectionNode->outVariable();
-      auto const* documentIdVariable = oldDocumentVariable;
 
       auto limit = limitNode->limit();
       auto* inVariable = plan->getAst()->variables()->createTemporaryVariable();
@@ -375,15 +372,15 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           inVariable);
 
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
-          plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
-          documentIdVariable, distanceVariable, limit, sortField->ascending,
-          limitNode->offset(), std::move(searchParameters),
-          enumerateCollectionNode->collection(), index, nullptr, false);
+          plan.get(), plan->nextId(), inVariable, documentVariable,
+          distanceVariable, limit, sortField->ascending, limitNode->offset(),
+          std::move(searchParameters), enumerateCollectionNode->collection(),
+          index, nullptr, false);
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(
               plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
-              *documentIdVariable, *documentVariable, *documentVariable);
+              *documentVariable, *documentVariable, *documentVariable);
       plan->excludeFromScatterGather(enumerateNear);
 
       plan->replaceNode(enumerateCollectionNode, enumerateNear);
