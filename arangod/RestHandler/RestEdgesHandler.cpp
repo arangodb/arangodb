@@ -24,19 +24,14 @@
 #include "RestEdgesHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AstNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
-#include "Aql/Variable.h"
 #include "Basics/StringUtils.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Helpers.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -60,9 +55,6 @@ RestStatus RestEdgesHandler::execute() {
   switch (type) {
     case rest::RequestType::GET:
       readEdges();
-      break;
-    case rest::RequestType::POST:
-      readEdgesForMultipleVertices();
       break;
     default:
       generateNotImplemented("ILLEGAL " + EDGES_PATH);
@@ -233,111 +225,6 @@ bool RestEdgesHandler::readEdges() {
   // and generate a response
   generateResult(rest::ResponseCode::OK, std::move(buffer),
                  queryResult.context);
-
-  return true;
-}
-
-// Internal function to receive all edges for a list of vertices
-// Not publicly documented on purpose.
-// NOTE: It ONLY except _id strings. Nothing else
-bool RestEdgesHandler::readEdgesForMultipleVertices() {
-  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-
-  if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected POST " + EDGES_PATH +
-                      "/<collection-identifier>?direction=<direction>");
-    return false;
-  }
-
-  bool parseSuccess = false;
-  VPackSlice body = this->parseVPackBody(parseSuccess);
-
-  if (!parseSuccess) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected POST " + EDGES_PATH +
-                      "/<collection-identifier>?direction=<direction>");
-    // A body is required
-    return false;
-  }
-
-  if (!body.isArray()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "Expected an array of vertex _id's in body parameter");
-    return false;
-  }
-
-  std::string const& collectionName = suffixes[0];
-  if (!validateCollection(collectionName)) {
-    return false;
-  }
-
-  TRI_edge_direction_e direction;
-  if (!parseDirection(direction)) {
-    return false;
-  }
-
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder resultBuilder(buffer);
-  resultBuilder.openObject();
-  // build edges
-  resultBuilder.add("edges", VPackValue(VPackValueType::Array));
-
-  std::unordered_set<std::string> foundEdges;
-
-  // Check if dirty reads are allowed:
-  bool found = false;
-  std::string const& val =
-      _request->header(StaticStrings::AllowDirtyReads, found);
-  bool allowDirtyReads = false;
-  if (found && StringUtils::boolean(val)) {
-    // This will be used in `createTransaction` below, if that creates
-    // a new transaction. Otherwise, we use the default given by the
-    // existing transaction.
-    allowDirtyReads = true;
-  }
-
-  std::shared_ptr<transaction::Context> ctx;
-  for (VPackSlice it : VPackArrayIterator(body)) {
-    std::string startVertex = it.copyString();
-    auto queryResult = ::queryEdges(_vocbase, collectionName, direction,
-                                    startVertex, allowDirtyReads);
-
-    if (queryResult.result.fail()) {
-      if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
-          (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
-        generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
-        return false;
-      }
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          queryResult.result.errorNumber(),
-          StringUtils::concatT("Error executing edges query ",
-                               queryResult.result.errorMessage()));
-    }
-
-    VPackSlice edges = queryResult.data->slice();
-    for (VPackSlice edge : VPackArrayIterator(edges)) {
-      if (foundEdges
-              .emplace(transaction::helpers::extractKeyFromDocument(edge)
-                           .copyString())
-              .second) {
-        resultBuilder.add(edge);
-      }
-    }
-    ctx = queryResult.context;
-  }
-  resultBuilder.close();  // </edges>
-
-  resultBuilder.add(StaticStrings::Error, VPackValue(false));
-  resultBuilder.add(StaticStrings::Code, VPackValue(200));
-  resultBuilder.close();
-
-  // and generate a response
-  if (ctx) {
-    generateResult(rest::ResponseCode::OK, std::move(buffer), ctx);
-  } else {
-    generateResult(rest::ResponseCode::OK, std::move(buffer));
-  }
 
   return true;
 }

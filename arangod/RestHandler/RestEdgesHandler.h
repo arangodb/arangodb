@@ -25,18 +25,7 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-#include <velocypack/Builder.h>
-
 namespace arangodb {
-class LocalDocumentId;
-namespace transaction {
-class Methods;
-}
-
-namespace aql {
-struct AstNode;
-struct Variable;
-}  // namespace aql
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
@@ -54,22 +43,6 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool readEdges();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reads all edges in given direction for a list of vertices
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool readEdgesForMultipleVertices();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get all edges for a given vertex. Independent from the request
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool getEdgesForVertex(std::string const& id, DataSourceId cid,
-                         std::string const& collectionName,
-                         TRI_edge_direction_e direction,
-                         transaction::Methods& trx,
-                         std::function<void(LocalDocumentId)> const& cb);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Parse the direction parameter
