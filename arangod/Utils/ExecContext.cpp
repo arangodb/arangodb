@@ -241,7 +241,7 @@ Result ExecContext::canWriteUser(std::string_view user) const {
 
 /// @brief returns true for each user which can be read
 std::vector<bool> ExecContext::canReadUsers(
-    std::span<std::string_view const> users) const {
+    std::span<std::string_view> users) const {
   using namespace auth::perms;
   auto canRead = [this](auto&& user) {
     // FIXME: Here is a morally unnecessary copy:

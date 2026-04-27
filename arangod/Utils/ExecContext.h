@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Auth/AuthMode.h"
-#include "Auth/Common.h"
 #include "Auth/Rbac/Actions.h"
 #include "Auth/Permissions.h"
 #include "Basics/Result.h"
@@ -173,7 +172,7 @@ class ExecContext : public RequestContext {
   // TODO Should this return a std::vector<Result>?
   // MAX: I do not think so, it is used only once to filter the visible
   // users. All we need is the bool.
-  std::vector<bool> canReadUsers(std::span<std::string_view const> users) const;
+  std::vector<bool> canReadUsers(std::span<std::string_view> users) const;
 
   /// @brief returns true if the user can be modified, note that everybody
   // can modify themselves (if only to change the password).

@@ -131,7 +131,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
     VPackBuilder users = um->allUsers();
     VPackSlice usersArray = users.slice().get("result");
     TRI_ASSERT(usersArray.isArray());
-    std::vector<std::string_view const> userList;
+    std::vector<std::string_view> userList;
     userList.reserve(usersArray.length());
     for (auto const& u : VPackArrayIterator(usersArray)) {
       VPackSlice un = u.get("user");
