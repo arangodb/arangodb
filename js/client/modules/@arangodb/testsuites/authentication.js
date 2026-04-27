@@ -78,7 +78,7 @@ function authenticationClient (options) {
 
 const authTestExpectRC = [
   [401, 401, 401, 401, 401, 401, 401],
-  [404, 404, 200, 301, 301, 404, 404]
+  [404, 404, 200, 404, 404, 404, 404]
 ];
 
 const authTestUrls = [
