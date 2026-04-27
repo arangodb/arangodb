@@ -70,8 +70,9 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol,
       break;
 
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "unknown SSL protocol method");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "unknown or unsupported TLS protocol version");
   }
 
   asio_ns::ssl::context sslctx(meth);

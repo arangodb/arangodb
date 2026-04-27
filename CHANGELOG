@@ -1,8 +1,12 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* COR-429: Removed support for the `--ssl.protocol` startup option values 1, 2 and 3,
+* COR-429: Removed support for the `--tls.protocol` startup option values 1, 2 and 3,
   which stand for SSL v2, SSL v2/3, and SSL v3.
+
+* COR-442: Renamed the startup options of the `--ssl.*` group into `--tls.*`,
+  but still accept the old naming pattern as an alias to the new one.
+  Config files using `[ssl]` sections are remapped automatically as well.
 
 * COR-376: Removed startup option `--server.authentication-system-only`. It's
   now considered a legacy option, so it will be silently ignored on startup.
