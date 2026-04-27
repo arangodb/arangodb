@@ -28,7 +28,6 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "Indexes/IndexFactory.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -36,7 +35,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
@@ -81,6 +79,38 @@ DECLARE_HISTOGRAM(arangodb_vector_index_ingestion_duration,
 
 namespace arangodb::vector {
 
+namespace {
+
+// Post setValue onto the scheduler so continuations don't run on the
+// build manager thread (which could cause deadlocks).
+void resolveOnScheduler(Scheduler& scheduler,
+                        std::vector<futures::Promise<Result>>&& promises,
+                        Result const& result) {
+  for (auto& p : promises) {
+    scheduler.queue(RequestLane::CONTINUATION,
+                    [promise = std::move(p), result]() mutable {
+                      promise.setValue(result);
+                    });
+  }
+}
+
+// Move out and erase all promises registered under `id` in `map`. Caller
+// holds the owning mutex.
+std::vector<futures::Promise<Result>> extractWaiters(
+    std::unordered_map<IndexId::BaseType,
+                       std::vector<futures::Promise<Result>>>& map,
+    IndexId id) {
+  auto it = map.find(id.id());
+  if (it == map.end()) {
+    return {};
+  }
+  auto out = std::move(it->second);
+  map.erase(it);
+  return out;
+}
+
+}  // namespace
+
 VectorIndexBuildManager::VectorIndexBuildManager(
     DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
     metrics::MetricsFeature& metrics, Scheduler& scheduler)
@@ -118,38 +148,6 @@ futures::Future<Result> VectorIndexBuildManager::waitForIndexReady(
   }
   return future;
 }
-
-namespace {
-
-// Post setValue onto the scheduler so continuations don't run on the
-// build manager thread (which could cause deadlocks).
-void resolveOnScheduler(Scheduler& scheduler,
-                        std::vector<futures::Promise<Result>>&& promises,
-                        Result const& result) {
-  for (auto& p : promises) {
-    scheduler.queue(RequestLane::CONTINUATION,
-                    [promise = std::move(p), result]() mutable {
-                      promise.setValue(result);
-                    });
-  }
-}
-
-// Move out and erase all promises registered under `id` in `map`. Caller
-// holds the owning mutex.
-std::vector<futures::Promise<Result>> extractWaiters(
-    std::unordered_map<IndexId::BaseType,
-                       std::vector<futures::Promise<Result>>>& map,
-    IndexId id) {
-  auto it = map.find(id.id());
-  if (it == map.end()) {
-    return {};
-  }
-  auto out = std::move(it->second);
-  map.erase(it);
-  return out;
-}
-
-}  // namespace
 
 void VectorIndexBuildManager::fulfillBuildWaiters(IndexId indexId,
                                                   Result const& result) {
@@ -379,7 +377,7 @@ VectorIndexBuildManager::processVectorIndex(
       // already have vocbase, coll, and idx resolved.
       if (auto rit = pendingRetrains.find(vecIdx.id().id());
           rit != pendingRetrains.end() && !stopToken.stop_requested()) {
-        runRetrain(vocbase, coll, idx, stopToken);
+        runRetrain(coll, idx, stopToken);
         pendingRetrains.erase(rit);
       }
       return result;
@@ -484,45 +482,7 @@ void VectorIndexBuildManager::clearIndexError(
   _maintenance.clearIndexError(database, collection, shard, indexId);
 }
 
-namespace {
-
-/// Build the VPack definition for a fresh shadow vector index, copying
-/// everything from the old index's internal definition except its IndexId
-/// and objectId (which will be re-generated when the shadow is
-/// instantiated).
-velocypack::Builder buildShadowDefinition(RocksDBVectorIndex const& old) {
-  velocypack::Builder oldInfo;
-  old.toVelocyPack(oldInfo, Index::makeFlags(Index::Serialize::Internals));
-
-  velocypack::Builder shadow;
-  {
-    VPackObjectBuilder ob(&shadow);
-    for (auto pair : VPackObjectIterator(oldInfo.slice())) {
-      auto key = pair.key.stringView();
-      // Skip fields that must be regenerated or that describe transient
-      // state we don't want to carry over.
-      if (key == StaticStrings::IndexId || key == StaticStrings::ObjectId ||
-          key == StaticStrings::IndexTrainingState ||
-          key == StaticStrings::IndexResolvedNLists ||
-          key == StaticStrings::Error || key == StaticStrings::ErrorMessage ||
-          key == StaticStrings::ErrorNum) {
-        continue;
-      }
-      shadow.add(key, pair.value);
-    }
-    // IndexId is passed separately to the factory's instantiate() call;
-    // objectId is auto-generated inside RocksDBIndex when absent from
-    // the slice.
-    shadow.add(StaticStrings::IndexId,
-               VPackValue(std::to_string(Index::generateId().id())));
-  }
-  return shadow;
-}
-
-}  // namespace
-
-void VectorIndexBuildManager::runRetrain(TRI_vocbase_t& vocbase,
-                                         LogicalCollection& coll,
+void VectorIndexBuildManager::runRetrain(LogicalCollection& coll,
                                          std::shared_ptr<Index> const& oldIdx,
                                          std::stop_token const& stopToken) {
   TRI_ASSERT(oldIdx != nullptr);
@@ -546,16 +506,9 @@ void VectorIndexBuildManager::runRetrain(TRI_vocbase_t& vocbase,
     return;
   }
 
-  // Construct the shadow index. Its objectId is auto-generated inside
-  // RocksDBIndex's constructor because the slice does not carry one.
-  auto shadowDef = buildShadowDefinition(oldVec);
-
-  std::shared_ptr<Index> shadow;
+  std::shared_ptr<RocksDBVectorIndex> shadow;
   try {
-    auto& engine = vocbase.engine<RocksDBEngine>();
-    shadow = engine.indexFactory().prepareIndexFromSlice(
-        shadowDef.slice(), /*generateKey*/ false, coll,
-        /*isClusterConstructor*/ false);
+    shadow = oldVec.makeRetrainShadow();
   } catch (std::exception const& ex) {
     LOG_TOPIC("e177b", ERR, Logger::ENGINES)
         << "[shard=" << coll.name() << ", oldIndex=" << oldIndexId.id()
@@ -563,11 +516,10 @@ void VectorIndexBuildManager::runRetrain(TRI_vocbase_t& vocbase,
     return;
   }
   TRI_ASSERT(shadow != nullptr);
-  TRI_ASSERT(shadow->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   TRI_ASSERT(shadow->id() != oldIndexId);
 
   auto shadowRocks = std::static_pointer_cast<RocksDBIndex>(shadow);
-  auto& shadowVec = static_cast<RocksDBVectorIndex&>(*shadow);
+  auto& shadowVec = *shadow;
 
   // Insert the shadow into the collection's in-memory index set. No
   // Definitions CF write happens here — the shadow is only persisted at

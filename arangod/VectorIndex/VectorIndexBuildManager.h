@@ -140,8 +140,7 @@ class VectorIndexBuildManager {
       LogicalCollection& coll, std::shared_ptr<Index> const& idx,
       std::stop_token const& stopToken);
 
-  void runRetrain(TRI_vocbase_t& vocbase, LogicalCollection& coll,
-                  std::shared_ptr<Index> const& oldIdx,
+  void runRetrain(LogicalCollection& coll, std::shared_ptr<Index> const& oldIdx,
                   std::stop_token const& stopToken);
 
   // Resolve all pending build waiters registered for `indexId`.

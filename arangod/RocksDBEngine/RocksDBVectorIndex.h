@@ -145,6 +145,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   /// stale training state is not accidentally persisted.
   void resetTrainingState() noexcept;
 
+  /// @brief Construct a fresh, untrained sibling of this index for the
+  /// retrain workflow. The returned index keeps the same user-facing
+  /// definition (fields, params, storedValues, name) but carries a newly
+  /// generated IndexId, a fresh objectId (so its CF data lives at a
+  /// disjoint key range), no Faiss state, and a kUnusable training state.
+  std::shared_ptr<RocksDBVectorIndex> makeRetrainShadow() const;
+
  protected:
   ResultT<std::vector<float>> preModificationCheck(std::string_view operation,
                                                    velocypack::Slice doc) const;

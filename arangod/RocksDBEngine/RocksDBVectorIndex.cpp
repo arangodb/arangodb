@@ -48,6 +48,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
@@ -313,6 +314,43 @@ bool RocksDBVectorIndex::setTrainingState(
 void RocksDBVectorIndex::resetTrainingState() noexcept {
   _trainingState.exchange(VectorIndexTrainingState::kUnusable,
                           std::memory_order_acq_rel);
+}
+
+std::shared_ptr<RocksDBVectorIndex> RocksDBVectorIndex::makeRetrainShadow()
+    const {
+  // Serialize self with Internals so we capture every persistent field
+  // (params, storedValues, fields, name, unique/sparse flags, ...). The
+  // strip list below removes anything the shadow must regenerate or that
+  // would carry trained state across.
+  velocypack::Builder self;
+  toVelocyPack(self, makeFlags(Serialize::Internals));
+
+  velocypack::Builder shadowInfo;
+  {
+    VPackObjectBuilder ob(&shadowInfo);
+    for (auto const pair : VPackObjectIterator(self.slice())) {
+      auto const key = pair.key.stringView();
+      // - IndexId/ObjectId: regenerated so the shadow's CF range is disjoint
+      //   from this index's range.
+      // - IndexTrainingState/IndexResolvedNLists: transient; the shadow
+      //   starts kUnusable and will re-resolve nLists during training.
+      // - trainedData: legacy back-compat field. We must not carry the
+      //   parent's trained Faiss state into the shadow.
+      // - Error/ErrorMessage/ErrorNum: stale failure info from a prior
+      //   build attempt; the shadow has no history yet.
+      if (key == StaticStrings::IndexId || key == StaticStrings::ObjectId ||
+          key == StaticStrings::IndexTrainingState ||
+          key == StaticStrings::IndexResolvedNLists || key == "trainedData" ||
+          key == StaticStrings::Error || key == StaticStrings::ErrorMessage ||
+          key == StaticStrings::ErrorNum) {
+        continue;
+      }
+      shadowInfo.add(key, pair.value);
+    }
+  }
+
+  return std::make_shared<RocksDBVectorIndex>(generateId(), _collection,
+                                              shadowInfo.slice());
 }
 
 Result RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
