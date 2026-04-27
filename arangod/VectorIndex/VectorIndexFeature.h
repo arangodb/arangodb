@@ -29,7 +29,6 @@
 #include "Futures/Future.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "VectorIndex/VectorIndexBuildManager.h"
-#include "VectorIndex/VectorIndexFeatureOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
@@ -60,7 +59,6 @@ class VectorIndexFeature final
  private:
   bool shouldRunBuildManager() const;
 
-  VectorIndexFeatureOptions _options;
   std::optional<vector::VectorIndexBuildManager> _buildManager;
 };
 

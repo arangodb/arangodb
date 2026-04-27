@@ -17,6 +17,7 @@ add_library(arangoserver STATIC
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
+  Cluster/ClusterUpgradeOptionsProvider.cpp
   Cluster/CollectionInfoCurrent.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
@@ -66,6 +67,7 @@ add_library(arangoserver STATIC
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
+  GeneralServer/ServerSecurityOptionsProvider.cpp
   GeneralServer/SslServerFeature.cpp
   RestHandler/RestAccessTokenHandler.cpp
   RestHandler/RestAdminClusterHandler.cpp
@@ -114,8 +116,11 @@ add_library(arangoserver STATIC
   RestHandler/RestWalAccessHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
+  RestServer/BootstrapOptionsProvider.cpp
   RestServer/CheckVersionFeature.cpp
+  RestServer/CheckVersionOptionsProvider.cpp
   RestServer/CrashHandlerFeature.cpp
+  RestServer/CrashHandlerOptionsProvider.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
@@ -124,8 +129,10 @@ add_library(arangoserver STATIC
   RestServer/EndpointFeature.cpp
   RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
+  RestServer/FileDescriptorsOptionsProvider.cpp
   RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
+  RestServer/FortuneOptionsProvider.cpp
   RestServer/IOHeartbeatThread.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp

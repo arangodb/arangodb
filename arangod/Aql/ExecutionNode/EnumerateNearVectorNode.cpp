@@ -178,6 +178,15 @@ CostEstimate EnumerateNearVectorNode::estimateCost() const {
 
 void EnumerateNearVectorNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
+  if (_filterExpression != nullptr) {
+    Ast::getReferencedVariables(_filterExpression->node(), vars);
+    // the filter expression is evaluated inside the vector index search
+    // path, which reconstructs the document itself (either from the
+    // materialized doc downstream or from stored values). the filter's
+    // document variable is therefore not read from an input register, so
+    // remove it to keep the register planner honest.
+    vars.erase(_oldDocumentVariable);
+  }
 }
 
 std::vector<const Variable*> EnumerateNearVectorNode::getVariablesSetHere()

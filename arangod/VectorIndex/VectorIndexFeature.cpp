@@ -29,7 +29,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Parameters.h"
 #include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb {
@@ -83,9 +82,7 @@ void VectorIndexFeature::stop() {
   _buildManager->stop();
 }
 
-bool VectorIndexFeature::isVectorIndexEnabled() const {
-  return _options.useVectorIndex;
-}
+bool VectorIndexFeature::isVectorIndexEnabled() const { return true; }
 
 futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
   if (!_buildManager.has_value()) {
