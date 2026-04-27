@@ -47,17 +47,17 @@
 #include "IResearch/IResearchFeature.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "Containers/SmallUnorderedMap.h"
 
 #include <absl/strings/str_cat.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 /// @brief sort ORs for the same attribute so they are in ascending value
 /// order. this will only work if the condition is for a single attribute
 /// the usedIndexes vector may also be re-sorted
-bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
+bool sortOrs(Ast* ast, AstNode* root, Variable const* variable,
              std::vector<std::shared_ptr<Index>>& usedIndexes) {
   if (root == nullptr) {
     return true;
@@ -76,7 +76,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
     return false;
   }
 
-  typedef std::pair<aql::AstNode*, std::shared_ptr<Index>> ConditionData;
+  typedef std::pair<AstNode*, std::shared_ptr<Index>> ConditionData;
   containers::SmallVector<ConditionData*, 8> conditionData;
 
   auto sg = scopeGuard([&conditionData]() noexcept -> void {
@@ -85,17 +85,17 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
     }
   });
 
-  std::vector<aql::ConditionPart> parts;
+  std::vector<ConditionPart> parts;
   parts.reserve(n);
 
-  std::pair<aql::Variable const*, std::vector<basics::AttributeName>> result;
+  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
 
   for (size_t i = 0; i < n; ++i) {
     // sort the conditions of each AND
     AstNode* sub = root->getMemberUnchecked(i);
 
     TRI_ASSERT(sub != nullptr &&
-               sub->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+               sub->type == AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
     // cppcheck-suppress nullPointerRedundantCheck
     size_t const nAnd = sub->numMembers();
 
@@ -110,21 +110,21 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
       return false;
     }
 
-    if (operand->type == aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_NE ||
-        operand->type == aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_NIN) {
+    if (operand->type == AstNodeType::NODE_TYPE_OPERATOR_BINARY_NE ||
+        operand->type == AstNodeType::NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;
     }
 
     auto lhs = operand->getMember(0);
     auto rhs = operand->getMember(1);
 
-    if (lhs->type == aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (lhs->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS) {
       result.first = nullptr;
       result.second.clear();
 
       if (rhs->isConstant() && lhs->isAttributeAccessForVariable(result) &&
           result.first == variable &&
-          (operand->type != aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN ||
+          (operand->type != AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN ||
            rhs->isArray())) {
         // create the condition data struct on the heap
         auto data = std::make_unique<ConditionData>(sub, usedIndexes[i]);
@@ -134,12 +134,12 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
         auto p = data.release();
         // also add the pointer to the (non-owning) parts vector
         parts.emplace_back(result.first, result.second, operand,
-                           aql::AttributeSideType::ATTRIBUTE_LEFT, p);
+                           AttributeSideType::ATTRIBUTE_LEFT, p);
       }
     }
 
-    if (rhs->type == aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS ||
-        rhs->type == aql::AstNodeType::NODE_TYPE_EXPANSION) {
+    if (rhs->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS ||
+        rhs->type == AstNodeType::NODE_TYPE_EXPANSION) {
       result.first = nullptr;
       result.second.clear();
 
@@ -153,7 +153,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
         auto p = data.release();
         // also add the pointer to the (non-owning) parts vector
         parts.emplace_back(result.first, result.second, operand,
-                           aql::AttributeSideType::ATTRIBUTE_RIGHT, p);
+                           AttributeSideType::ATTRIBUTE_RIGHT, p);
       }
     }
   }
@@ -179,7 +179,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
   for (size_t i = 0; i < n; ++i) {
     auto& p = parts[i];
 
-    if (p.operatorType == aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
+    if (p.operatorType == AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
         p.valueNode->isArray()) {
       TRI_ASSERT(p.valueNode->isConstant());
 
@@ -190,7 +190,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
         auto mergedIn = ast->createNodeUnionizedArray(
             parts[previousIn].valueNode, p.valueNode);
 
-        aql::AstNode* clone = ast->clone(root->getMember(previousIn));
+        AstNode* clone = ast->clone(root->getMember(previousIn));
         root->changeMember(previousIn, clone);
         static_cast<ConditionData*>(parts[previousIn].data)->first = clone;
 
@@ -202,8 +202,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
         parts[previousIn].valueNode = mergedIn;
         {
           auto n1 = root->getMember(previousIn)->getMember(0);
-          TRI_ASSERT(n1->type ==
-                     aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN);
+          TRI_ASSERT(n1->type == AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN);
           TEMPORARILY_UNLOCK_NODE(n1);
           n1->changeMember(1, mergedIn);
         }
@@ -211,8 +210,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
         p.valueNode = emptyArray;
         {
           auto n2 = root->getMember(i)->getMember(0);
-          TRI_ASSERT(n2->type ==
-                     aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN);
+          TRI_ASSERT(n2->type == AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN);
           TEMPORARILY_UNLOCK_NODE(n2);
           n2->changeMember(1, emptyArray);
         }
@@ -225,54 +223,53 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
   }
 
   // now sort all conditions by variable name, attribute name, attribute value
-  std::sort(
-      parts.begin(), parts.end(),
-      [](aql::ConditionPart const& lhs, aql::ConditionPart const& rhs) -> bool {
-        // compare variable names first
-        auto res = lhs.variable->name.compare(rhs.variable->name);
+  std::sort(parts.begin(), parts.end(),
+            [](ConditionPart const& lhs, ConditionPart const& rhs) -> bool {
+              // compare variable names first
+              auto res = lhs.variable->name.compare(rhs.variable->name);
 
-        if (res != 0) {
-          return res < 0;
-        }
+              if (res != 0) {
+                return res < 0;
+              }
 
-        // compare attribute names next
-        res = lhs.attributeName.compare(rhs.attributeName);
+              // compare attribute names next
+              res = lhs.attributeName.compare(rhs.attributeName);
 
-        if (res != 0) {
-          return res < 0;
-        }
+              if (res != 0) {
+                return res < 0;
+              }
 
-        // compare attribute values next
-        auto ll = lhs.lowerBound();
-        auto lr = rhs.lowerBound();
+              // compare attribute values next
+              auto ll = lhs.lowerBound();
+              auto lr = rhs.lowerBound();
 
-        if (ll == nullptr && lr != nullptr) {
-          // left lower bound is not set but right
-          return true;
-        } else if (ll != nullptr && lr == nullptr) {
-          // left lower bound is set but not right
-          return false;
-        }
+              if (ll == nullptr && lr != nullptr) {
+                // left lower bound is not set but right
+                return true;
+              } else if (ll != nullptr && lr == nullptr) {
+                // left lower bound is set but not right
+                return false;
+              }
 
-        if (ll != nullptr && lr != nullptr) {
-          // both lower bounds are set
-          res = compareAstNodes(ll, lr, true);
+              if (ll != nullptr && lr != nullptr) {
+                // both lower bounds are set
+                res = compareAstNodes(ll, lr, true);
 
-          if (res != 0) {
-            return res < 0;
-          }
-        }
+                if (res != 0) {
+                  return res < 0;
+                }
+              }
 
-        if (lhs.isLowerInclusive() && !rhs.isLowerInclusive()) {
-          return true;
-        }
-        if (rhs.isLowerInclusive() && !lhs.isLowerInclusive()) {
-          return false;
-        }
+              if (lhs.isLowerInclusive() && !rhs.isLowerInclusive()) {
+                return true;
+              }
+              if (rhs.isLowerInclusive() && !lhs.isLowerInclusive()) {
+                return false;
+              }
 
-        // all things equal
-        return false;
-      });
+              // all things equal
+              return false;
+            });
 
   TRI_ASSERT(parts.size() == conditionData.size());
 
@@ -284,8 +281,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
 
   // and rebuild
   for (size_t i = 0; i < n; ++i) {
-    if (parts[i].operatorType ==
-            aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
+    if (parts[i].operatorType == AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
         parts[i].valueNode->isArray() &&
         parts[i].valueNode->numMembers() == 0) {
       // can optimize away empty IN array
@@ -323,11 +319,11 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
 
 std::pair<bool, bool> findIndexHandleForAndNode(
     transaction::Methods& trx,
-    std::vector<std::shared_ptr<Index>> const& indexes, aql::AstNode* node,
-    aql::Variable const* reference, aql::SortCondition const& sortCondition,
-    size_t itemsInCollection, aql::IndexHint const& hint,
+    std::vector<std::shared_ptr<Index>> const& indexes, AstNode* node,
+    Variable const* reference, SortCondition const& sortCondition,
+    size_t itemsInCollection, IndexHint const& hint,
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
-    aql::AstNode*& specializedCondition, bool& isSparse, bool failOnForcedHint,
+    AstNode*& specializedCondition, bool& isSparse, bool failOnForcedHint,
     ReadOwnWrites readOwnWrites) {
   if (hint.isDisabled()) {
     // usage of index disabled via index hint: disableIndex: true
@@ -559,7 +555,7 @@ void captureNonConstExpression(Ast* ast, VarInfoMap const& varInfo,
                                std::vector<size_t> selectedMembersFromRoot,
                                NonConstExpressionContainer& result) {
   // all new AstNodes are registered with the Ast in the Query
-  auto e = std::make_unique<aql::Expression>(ast, expression);
+  auto e = std::make_unique<Expression>(ast, expression);
 
   TRI_IF_FAILURE("IndexBlock::initialize") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -658,7 +654,7 @@ void captureArrayFilterArgumentExpressions(
             // never dive into attribute access
             return false;
           } else if (node->type == NODE_TYPE_FCALL) {
-            auto const* fn = static_cast<aql::Function*>(node->getData());
+            auto const* fn = static_cast<Function*>(node->getData());
             if (ADB_UNLIKELY(!fn || node->numMembers() != 1)) {
               // malformed node? Better abort here
               TRI_ASSERT(false);
@@ -704,7 +700,7 @@ void captureArrayFilterArgumentExpressions(
 }
 
 AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
-  if (node->type != aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
+  if (node->type != NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
     auto array = ast->createNodeArray();
     array->addMember(node);
@@ -836,7 +832,7 @@ void extractNonConstPartsOfLeafNode(
         return false;
       }
       TRI_ASSERT(lhs != nullptr);
-      auto fn = static_cast<aql::Function*>(lhs->getData());
+      auto fn = static_cast<Function*>(lhs->getData());
       TRI_ASSERT(fn != nullptr);
       return iresearch::isFilter(*fn);
     };
@@ -903,7 +899,7 @@ void extractNonConstPartsOfJunctionCondition(
 
 }  // namespace
 
-namespace arangodb::aql::utils {
+namespace utils {
 
 // find projection attributes for variable v, starting from node n
 // down to the root node of the plan/subquery.
@@ -917,7 +913,7 @@ bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
                      bool excludeStartNodeFilterCondition,
                      containers::FlatHashSet<AttributeNamePath>& attributes) {
-  using EN = aql::ExecutionNode;
+  using EN = ExecutionNode;
 
   VarSet vars;
 
@@ -993,7 +989,7 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           ExecutionNode::castTo<RemoveNode const*>(current);
       if (removeNode->inVariable() == v) {
         // FOR doc IN collection REMOVE doc IN ...
-        attributes.emplace(aql::AttributeNamePath(
+        attributes.emplace(AttributeNamePath(
             StaticStrings::KeyString,
             removeNode->plan()->getAst()->query().resourceMonitor()));
       } else {
@@ -1007,7 +1003,7 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       if (modificationNode->inKeyVariable() == v &&
           modificationNode->inDocVariable() != v) {
         // FOR doc IN collection UPDATE/REPLACE doc IN ...
-        attributes.emplace(aql::AttributeNamePath(
+        attributes.emplace(AttributeNamePath(
             StaticStrings::KeyString,
             modificationNode->plan()->getAst()->query().resourceMonitor()));
       } else {
@@ -1157,13 +1153,12 @@ Projections translateLMIndexVarsToProjections(
 ///        Returns false if no index could be found.
 
 bool getBestIndexHandleForFilterCondition(
-    transaction::Methods& trx, aql::Collection const& collection,
-    aql::AstNode* node, aql::Variable const* reference,
-    size_t itemsInCollection, aql::IndexHint const& hint,
+    transaction::Methods& trx, Collection const& collection, AstNode* node,
+    Variable const* reference, size_t itemsInCollection, IndexHint const& hint,
     std::shared_ptr<Index>& usedIndex, ReadOwnWrites readOwnWrites,
     bool onlyEdgeIndexes) {
   // We can only start after DNF transformation and only a single AND
-  TRI_ASSERT(node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+  TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
   if (node->numMembers() == 0) {
     // Well no index can serve no condition.
     return false;
@@ -1180,9 +1175,9 @@ bool getBestIndexHandleForFilterCondition(
         indexes.end());
   }
 
-  aql::SortCondition sortCondition;    // always empty here
-  aql::AstNode* specializedCondition;  // unused
-  bool isSparse;                       // unused
+  SortCondition sortCondition;    // always empty here
+  AstNode* specializedCondition;  // unused
+  bool isSparse;                  // unused
   std::vector<std::shared_ptr<Index>> usedIndexes;
   if (findIndexHandleForAndNode(trx, indexes, node, reference, sortCondition,
                                 itemsInCollection, hint, usedIndexes,
@@ -1200,14 +1195,13 @@ bool getBestIndexHandleForFilterCondition(
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
-    transaction::Methods& trx, aql::Collection const& coll, aql::Ast* ast,
-    aql::AstNode* root, aql::Variable const* reference,
-    aql::SortCondition const* sortCondition, size_t itemsInCollection,
-    aql::IndexHint const& hint,
+    transaction::Methods& trx, Collection const& coll, Ast* ast, AstNode* root,
+    Variable const* reference, SortCondition const* sortCondition,
+    size_t itemsInCollection, IndexHint const& hint,
     std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
     bool& isAllCoveredByIndex, ReadOwnWrites readOwnWrites) {
   // We can only start after DNF transformation
-  TRI_ASSERT(root->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
+  TRI_ASSERT(root->type == AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
   auto indexes = coll.indexes();
 
   // must edit root in place; TODO change so we can replace with copy
@@ -1227,7 +1221,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
         continue;
       }
       if (readOwnWrites == ReadOwnWrites::yes &&
-          index->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+          index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
         // inverted index does not support ReadOwnWrites
         continue;
       }
@@ -1261,7 +1255,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     // BTS-398: if there are multiple OR-ed conditions, fail only for forced
     // index hints if no index can be found for _any_ condition part.
     auto node = root->getMemberUnchecked(i);
-    aql::AstNode* specializedCondition = nullptr;
+    AstNode* specializedCondition = nullptr;
 
     bool failOnForcedHint =
         (hint.isForced() && i + 1 == n && usedIndexes.empty());
@@ -1308,10 +1302,10 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-bool getIndexForSortCondition(aql::Collection const& coll,
-                              aql::SortCondition const* sortCondition,
-                              aql::Variable const* reference,
-                              size_t itemsInIndex, aql::IndexHint const& hint,
+bool getIndexForSortCondition(Collection const& coll,
+                              SortCondition const* sortCondition,
+                              Variable const* reference, size_t itemsInIndex,
+                              IndexHint const& hint,
                               std::vector<std::shared_ptr<Index>>& usedIndexes,
                               size_t& coveredAttributes) {
   if (!hint.isDisabled()) {
@@ -1406,24 +1400,19 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
   return result;
 }
 
-arangodb::aql::Collection const* getCollection(
-    arangodb::aql::ExecutionNode const* node) {
-  using EN = arangodb::aql::ExecutionNode;
-  using arangodb::aql::ExecutionNode;
+Collection const* getCollection(ExecutionNode const* node) {
+  using EN = ExecutionNode;
 
   switch (node->getType()) {
     case EN::ENUMERATE_COLLECTION:
-      return ExecutionNode::castTo<
-                 arangodb::aql::EnumerateCollectionNode const*>(node)
+      return ExecutionNode::castTo<EnumerateCollectionNode const*>(node)
           ->collection();
     case EN::INDEX:
-      return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
-          ->collection();
+      return ExecutionNode::castTo<IndexNode const*>(node)->collection();
     case EN::TRAVERSAL:
     case EN::ENUMERATE_PATHS:
     case EN::SHORTEST_PATH:
-      return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
-          ->collection();
+      return ExecutionNode::castTo<GraphNode const*>(node)->collection();
 
     default:
       // note: modification nodes are not covered here yet
@@ -1432,4 +1421,5 @@ arangodb::aql::Collection const* getCollection(
   }
 }
 
-}  // namespace arangodb::aql::utils
+}  // namespace utils
+}  // namespace arangodb::aql

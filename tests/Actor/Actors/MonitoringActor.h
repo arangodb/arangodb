@@ -23,11 +23,11 @@
 #pragma once
 
 #include <chrono>
-#include <ostream>
+#include <iostream>
+#include <memory>
+#include <string>
 #include <string_view>
 #include <thread>
-#include <string>
-#include <memory>
 #include <variant>
 
 #include "Inspection/InspectorBase.h"
@@ -80,7 +80,7 @@ struct MonitoringHandler : HandlerBase<Runtime, MonitoringState> {
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<MonitoringState> {
-    fmt::print(stderr, "Monitoring actor: handles rest\n");
+    std::cerr << "Monitoring actor: handles rest\n";
     return std::move(this->state);
   }
 };

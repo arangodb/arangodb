@@ -23,18 +23,15 @@
 #pragma once
 
 #include <atomic>
-#include <iostream>
+#include <format>
 #include <memory>
 #include <optional>
 #include <source_location>
-#include <string>
-#include <thread>
+
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Containers/Concurrent/thread.h"
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/shared.h"
-#include "fmt/format.h"
-#include "fmt/std.h"
 
 namespace {
 // helper type for the visitor
@@ -62,7 +59,7 @@ struct PromiseId {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PromiseId& x) {
-  return f.object(x).fields(f.field("id", fmt::format("{}", x.id)));
+  return f.object(x).fields(f.field("id", std::format("{}", x.id)));
 }
 
 struct Requester : std::variant<basics::ThreadInfo, PromiseId> {

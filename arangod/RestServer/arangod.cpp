@@ -23,12 +23,14 @@
 
 #include "RestServer/arangod.h"
 
+#include <filesystem>
 #include <type_traits>
 
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
 #include "RestServer/CrashHandlerFeature.h"
 #include "RestServer/arangod_includes.h"
+#include "V8/V8SecurityFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -61,7 +63,7 @@ void ArangodServer::addFeatures(
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry) {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
-  auto& commFeature = addFeature<CommunicationFeaturePhase>();
+  auto& comm = addFeature<CommunicationFeaturePhase>();
   addFeature<AqlFeaturePhase>();
   addFeature<BasicFeaturePhaseServer>();
   addFeature<ClusterFeaturePhase>();
@@ -88,32 +90,45 @@ void ArangodServer::addFeatures(
   addFeature<VersionFeature>();
   addFeature<ActionFeature>();
   auto& agency = addFeature<AgencyFeature>();
-  addFeature<ApiRecordingFeature>(metrics, dataSourceRegistry);
+  addFeature<ApiRecordingFeature>(dataSourceRegistry, metrics);
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(dataSourceRegistry);
-  addFeature<activity_registry::Feature>();
+  addFeature<activities::Feature>(dataSourceRegistry);
   addFeature<AuthenticationFeature>();
-  addFeature<BootstrapFeature>();
+
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
 #endif
   addFeature<CacheOptionsFeature>();
   auto& cacheOptions = getFeature<CacheOptionsFeature>();
-  auto& cacheManager = addFeature<CacheManagerFeature>(cacheOptions);
+  auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
+  auto& cacheManager =
+      addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature);
   addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
-  addFeature<ClusterFeature>();
+  auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   addFeature<CrashHandlerFeature>(dumpManager);
   auto& database = addFeature<DatabaseFeature>();
-  addFeature<ClusterUpgradeFeature>(database);
+  auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
   addFeature<ConfigFeature>(std::string{binaryName});
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
+  auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
+  addFeature<V8PlatformFeature>();
+  addFeature<V8SecurityFeature>(AllowListStrictness::STRICT);
 #endif
   addFeature<CpuUsageFeature>();
   auto& databasePath = addFeature<DatabasePathFeature>();
   auto& dumpLimits = addFeature<DumpLimitsFeature>();
   addFeature<HttpEndpointProvider, EndpointFeature>();
-  addFeature<EngineSelectorFeature>();
+  auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
+  auto& engineSelectorFeature = addFeature<EngineSelectorFeature>();
+  addFeature<BootstrapFeature>(clusterFeature, engineSelectorFeature, database,
+                               &systemDatabaseFeature, &clusterUpgradeFeature
+#ifdef USE_V8
+                               ,
+                               &v8DealerFeature
+#endif
+  );
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
   auto& flush = addFeature<FlushFeature>(metrics);
@@ -131,7 +146,7 @@ void ArangodServer::addFeatures(
   addFeature<LockfileFeature>();
   addFeature<LogBufferFeature>(metrics);
   addFeature<LoggerFeature>(true);
-  addFeature<MaintenanceFeature>();
+  addFeature<MaintenanceFeature>(&clusterFeature);
   addFeature<MaxMapCountFeature>();
   addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
   addFeature<NonceFeature>();
@@ -139,7 +154,7 @@ void ArangodServer::addFeatures(
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
   addFeature<RandomFeature>();
-  addFeature<ReplicationFeature>(commFeature, metrics);
+  addFeature<ReplicationFeature>(comm, metrics);
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>();
@@ -155,7 +170,6 @@ void ArangodServer::addFeatures(
   addFeature<ServerIdFeature>();
   addFeature<ServerSecurityFeature>();
   addFeature<ShardingFeature>();
-  addFeature<SharedPRNGFeature>();
   addFeature<ShellColorsFeature>();
 #ifdef USE_V8
   addFeature<ShutdownFeature>(
@@ -166,25 +180,19 @@ void ArangodServer::addFeatures(
 #endif
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
-  addFeature<StatisticsFeature>();
+  addFeature<StatisticsFeature>(metrics);
   addFeature<StorageEngineFeature>();
-  addFeature<SystemDatabaseFeature>();
   addFeature<TempFeature>(std::string{binaryName});
   addFeature<TemporaryStorageFeature>();
   addFeature<TtlFeature>();
   addFeature<UpgradeFeature>(ret, kNonServerFeatures);
-#ifdef USE_V8
-  addFeature<V8DealerFeature>(metrics);
-  addFeature<V8PlatformFeature>();
-  addFeature<V8SecurityFeature>();
-#endif
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
-  auto& rocksdbCacheRefill =
-      addFeature<RocksDBIndexCacheRefillFeature>(database, metrics);
+  auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
+      database, &clusterFeature, metrics);
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(&agency);
   auto& rocksdbRecovery = addFeature<RocksDBRecoveryManager>();
 #ifdef TRI_HAVE_GETRLIMIT
@@ -204,8 +212,8 @@ void ArangodServer::addFeatures(
 #else
   addFeature<SslServerFeature>();
 #endif
-  addFeature<iresearch::IResearchAnalyzerFeature>();
-  addFeature<iresearch::IResearchFeature>();
+  addFeature<iresearch::IResearchAnalyzerFeature>(database);
+  addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>();
 
   addFeature<RocksDBEngine>(
@@ -311,9 +319,8 @@ int main(int argc, char* argv[]) {
     f();
   }
 
-  std::string workdir(basics::FileUtils::currentDirectory().result());
+  auto workdir = std::filesystem::current_path();
 
-  TRI_GET_ARGV(argc, argv);
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
   arangodb::restartAction = nullptr;
@@ -343,8 +350,8 @@ int main(int argc, char* argv[]) {
   // cases, we need outside help to get the process restarted.
   res = chdir(workdir.c_str());
   if (res != 0) {
-    std::cerr << "WARNING: could not change into directory '" << workdir << "'"
-              << std::endl;
+    std::cerr << "WARNING: could not change into directory '"
+              << workdir.string() << "'" << std::endl;
   }
   if (execvp(argv[0], argv) == -1) {
     std::cerr << "WARNING: could not execvp ourselves, restore will not work!"

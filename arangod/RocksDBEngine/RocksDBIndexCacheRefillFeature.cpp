@@ -54,11 +54,13 @@ DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
 
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
     application_features::ApplicationServer& server,
-    DatabaseFeature& databaseFeature, metrics::MetricsFeature& metrics)
+    DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+    metrics::MetricsFeature& metricsFeature)
     : application_features::ApplicationFeature{server, *this},
       _databaseFeature(databaseFeature),
-      _totalFullIndexRefills(
-          metrics.add(rocksdb_cache_full_index_refills_total{})),
+      _clusterFeature(clusterFeature),
+      _metricsFeature(metricsFeature),
+      _totalFullIndexRefills(addTotalFullIndexRefills(metricsFeature)),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
@@ -185,7 +187,7 @@ void RocksDBIndexCacheRefillFeature::start() {
   }
 
   _refillThread = std::make_unique<RocksDBIndexCacheRefillThread>(
-      server(), _options.maxCapacity);
+      _databaseFeature, _metricsFeature, _options.maxCapacity);
 
   if (!_refillThread->start()) {
     LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
@@ -250,7 +252,8 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // get names of all databases
-  for (auto const& database : methods::Databases::list(server(), "")) {
+  for (auto const& database :
+       methods::Databases::list(_databaseFeature, _clusterFeature, "")) {
     try {
       DatabaseGuard guard(_databaseFeature, database);
 
@@ -375,4 +378,9 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
   }
 
   return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
+}
+
+metrics::Counter& RocksDBIndexCacheRefillFeature::addTotalFullIndexRefills(
+    metrics::MetricsFeature& metrics) {
+  return metrics.add(rocksdb_cache_full_index_refills_total{});
 }

@@ -23,8 +23,6 @@
 
 #include <gtest/gtest.h>
 
-#include <fmt/core.h>
-
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/ActorModel.h"
 #include "Replication2/ModelChecker/Predicates.h"

@@ -23,6 +23,9 @@
 
 #include "EngineSelectorFeature.h"
 
+#include <filesystem>
+
+#include "EngineSelectorOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -35,7 +38,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
@@ -79,21 +81,8 @@ EngineSelectorFeature::EngineSelectorFeature(
 
 void EngineSelectorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption("--server.storage-engine",
-                  "The storage engine type "
-                  "(note that the MMFiles engine is unavailable since "
-                  "v3.7.0 and cannot be used anymore).",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_options.engineName, availableEngineNames()))
-      .setLongDescription(R"(ArangoDB's storage engine is based on RocksDB, see
-http://rocksdb.org. It is the only available engine from ArangoDB v3.7 onwards.
-
-The storage engine type needs to be the same for an entire deployment.
-Live switching of storage engines on already installed systems isn't supported.
-Configuring the wrong engine (not matching the previously used one) results
-in the server refusing to start. You may use `auto` to let ArangoDB choose the
-previously used one.)");
+  arangodb::engine_selector::EngineSelectorOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void EngineSelectorFeature::prepare() {
@@ -110,7 +99,7 @@ void EngineSelectorFeature::prepare() {
 
   // fail if engine value in file does not match command-line option
   if (!ServerState::instance()->isCoordinator() &&
-      basics::FileUtils::isRegularFile(_engineFilePath)) {
+      std::filesystem::is_regular_file(_engineFilePath)) {
     LOG_TOPIC("98b5c", DEBUG, Logger::STARTUP)
         << "looking for previously selected engine in file '" << _engineFilePath
         << "'";
@@ -171,7 +160,7 @@ void EngineSelectorFeature::prepare() {
              "engine.";
 
       if (!ServerState::instance()->isCoordinator() &&
-          !basics::FileUtils::isRegularFile(_engineFilePath) &&
+          !std::filesystem::is_regular_file(_engineFilePath) &&
           !_allowDeprecatedDeployments) {
         LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
             << "The " << _options.engineName
@@ -245,7 +234,7 @@ void EngineSelectorFeature::start() {
 
   // write engine File
   if (!ServerState::instance()->isCoordinator() &&
-      !basics::FileUtils::isRegularFile(_engineFilePath)) {
+      !std::filesystem::is_regular_file(_engineFilePath)) {
     try {
       basics::FileUtils::spit(_engineFilePath, _options.engineName, true);
     } catch (std::exception const& ex) {

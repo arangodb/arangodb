@@ -87,8 +87,9 @@ ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
 }
 
 ProcessMonitoringFeature::ProcessMonitoringFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    application_features::ApplicationServer& server,
+    V8ShellFeature& v8ShellFeature)
+    : ApplicationFeature{server, *this}, _V8ShellFeature{v8ShellFeature} {
   startsAfter<V8SecurityFeature>();
   _monitoredProcesses.reserve(10);
 }
@@ -134,6 +135,7 @@ void ProcessMonitorThread::run() {  // override
           // Its dead and gone - good
           _processMonitorFeature.moveMonitoringPIDToAttic(pid, status);
           triggerV8DeadlineNow(false, pid);
+          _processMonitorFeature.resetConnection();
         }
       });
       std::this_thread::sleep_for(kTimeoutMs);

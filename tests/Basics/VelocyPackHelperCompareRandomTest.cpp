@@ -22,11 +22,10 @@
 
 #include "gtest/gtest.h"
 
-#include <bitset>
 #include <cstring>
+#include <format>
 #include <thread>
 
-#include <fmt/core.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 
@@ -34,7 +33,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/Enumerate.h"
 #include "Random/RandomGenerator.h"
-#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 using namespace arangodb;
 using namespace arangodb::velocypack;
@@ -55,7 +53,7 @@ struct VPackHelperRandomTest : public testing::Test {
   // TODO randomize seed
   std::uint64_t const seed = 42;
   void SetUp() override {
-    RecordProperty("seed", fmt::format("{}", seed));
+    RecordProperty("seed", std::format("{}", seed));
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     RandomGenerator::seed(seed);
   }
@@ -247,7 +245,7 @@ auto to_string(VPackHelperRandomTest::NumberValueType type)
   }
 }
 auto to_string(VPackHelperRandomTest::Number const& number) -> std::string {
-  return fmt::format(
+  return std::format(
       "{{.type={}, .signum={}, .exponent={}, .significand={}, slice={}}}",
       to_string(number.type), number.signum, number.exponent,
       number.significand, number.slice().toString());
@@ -347,7 +345,7 @@ static auto compareAqlValue(VPackHelperRandomTest::Number const& left,
 TEST_F(VPackHelperRandomTest, test_vpackcmps) {
   auto lambda = [&](std::uint64_t seed) {
     RandomGenerator::seed(seed);
-    SCOPED_TRACE(fmt::format("seed={}", seed));
+    SCOPED_TRACE(std::format("seed={}", seed));
     constexpr auto num = 10000;
     auto numbers = std::multiset<Number>{};
     for (auto i = 0; i < num; ++i) {

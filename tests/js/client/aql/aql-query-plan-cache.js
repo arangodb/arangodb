@@ -709,6 +709,68 @@ function QueryPlanCacheTestSuite () {
       res = db._query(query, {}, options);
       assertTrue(res.hasOwnProperty("planCacheKey"));
     },
+
+    testPlanCacheWithClusterOneShardAndGraphTraversal : function () {
+      if (!isCluster) {
+        return;
+      }
+
+      const testDbName = "UnitTestsPlanCacheOneShard";
+      try { db._dropDatabase(testDbName); } catch (e) {}
+      db._createDatabase(testDbName, {sharding: "single", replicationFactor: 1});
+      db._useDatabase(testDbName);
+
+      const gn = "UnitTestsGraph";
+      const en = "UnitTestsEdge";
+      const vn = "UnitTestsVertex";
+      const dn = "UnitTestsDocs";
+
+      try {
+        db._create(dn);
+        graphs._create(gn, [graphs._relation(en, [vn], [vn])]);
+
+        for (let i = 0; i < 5; ++i) {
+          db[vn].insert({_key: "v" + i, value: i});
+          if (i > 0) {
+            db[en].insert({_from: vn + "/v" + (i - 1), _to: vn + "/v" + i, weight: i});
+          }
+        }
+        db[dn].insert({value: 1});
+        db[dn].insert({value: 2});
+        db[dn].insert({value: 3});
+
+        const query = `${uniqid()}
+          LET docs = (FOR d IN ${dn} FILTER d.value >= @minVal RETURN d)
+          LET traversal = (
+            FOR v, e IN 1..4 OUTBOUND @start GRAPH '${gn}'
+            RETURN {v, e}
+          )
+          RETURN {docs: LENGTH(docs), traversal: LENGTH(traversal)}`;
+        const options = {optimizePlanForCaching: true, usePlanCache: true};
+
+        let res = db._query(query, {start: vn + "/v0", minVal: 1}, options);
+        assertFalse(res.hasOwnProperty("planCacheKey"));
+        let result1 = res.toArray();
+        assertEqual(1, result1.length);
+        assertEqual(4, result1[0].traversal);
+        assertEqual(3, result1[0].docs);
+
+        res = db._query(query, {start: vn + "/v0", minVal: 1}, options);
+        assertTrue(res.hasOwnProperty("planCacheKey"));
+        let result2 = res.toArray();
+        assertEqual(JSON.stringify(result1), JSON.stringify(result2));
+
+        res = db._query(query, {start: vn + "/v0", minVal: 2}, options);
+        assertTrue(res.hasOwnProperty("planCacheKey"));
+        let result3 = res.toArray();
+        assertEqual(1, result3.length);
+        assertEqual(4, result3[0].traversal);
+        assertEqual(2, result3[0].docs);
+      } finally {
+        db._useDatabase("_system");
+        try { db._dropDatabase(testDbName); } catch (e) {}
+      }
+    },
   };
 }
 

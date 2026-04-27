@@ -66,23 +66,15 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellReplication (options) {
-  if (options.skipServerJS) {
-    return {
-      shell_replication: {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   let testCases = tu.scanTestPaths(testPaths.shell_replication, options);
 
   var opts = {
-    'replication': true
+    'replication': true,
+    'jwtSecret': 'helloreplication'
   };
   _.defaults(opts, options);
 
-  return new trs.runOnArangodRunner(opts, 'shell_replication').run(testCases);
+  return new trs.runLocalInArangoshRunner(opts, 'shell_replication').run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -212,7 +204,8 @@ function replicationStatic (options) {
     localOptions,
     'leader_static',
     {
-      'server.authentication': 'true'
+      'server.authentication': 'true',
+      'vector-index': 'true',
     }, true).run(testCases);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return ret;

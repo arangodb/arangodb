@@ -54,9 +54,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/ValueType.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
-
 namespace arangodb::aql {
 namespace {
 
@@ -723,7 +720,8 @@ std::string_view AstNode::getStringView() const noexcept {
       type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_COLLECTION ||
       type == NODE_TYPE_VIEW || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_FCALL_USER);
+      type == NODE_TYPE_FCALL_USER)
+      << getTypeString(type);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
   return std::string_view(getStringValue(), getStringLength());
 }
@@ -737,7 +735,7 @@ bool AstNode::isOnlyEqualityMatch() const {
 
   for (size_t i = 0; i < numMembers(); ++i) {
     auto op = getMemberUnchecked(i);
-    if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (op->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
       return false;
     }
   }
@@ -1297,7 +1295,7 @@ AstNode const* AstNode::castToNumber(Ast* ast) const {
         return this;
       case VALUE_TYPE_STRING: {
         bool failed;
-        double v = arangodb::aql::stringToNumber(
+        double v = stringToNumber(
             std::string(value.value._string, value.length), failed);
         if (failed) {
           return ast->createNodeValueInt(0);
@@ -2761,18 +2759,16 @@ void AstNode::setComputedValue(uint8_t* data) {
 }
 
 /// @brief append the AstNode to an output stream
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::aql::AstNode const* node) {
+std::ostream& operator<<(std::ostream& stream, AstNode const* node) {
   if (node != nullptr) {
-    stream << arangodb::aql::AstNode::toString(node);
+    stream << AstNode::toString(node);
   }
   return stream;
 }
 
 /// @brief append the AstNode to an output stream
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::aql::AstNode const& node) {
-  stream << arangodb::aql::AstNode::toString(&node);
+std::ostream& operator<<(std::ostream& stream, AstNode const& node) {
+  stream << AstNode::toString(&node);
   return stream;
 }
 

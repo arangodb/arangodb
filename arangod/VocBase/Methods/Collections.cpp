@@ -23,6 +23,8 @@
 
 #include "Collections.h"
 
+#include "Activities/RegistryGlobalVariable.h"
+#include "Activities/GenericActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryPlanCache.h"
@@ -593,8 +595,10 @@ Collections::create(         // create collection
       collections, ",",
       [](std::string* out, CreateCollectionBody c) { out->append(c.name); });
 
-  activity_registry::Activity activity("createCollections",
-                                       {{"collectionNames", collectionNames}});
+  auto createCollectionsActivity =
+      activities::make<activities::GenericActivity>(
+          "CreateCollections", activities::GenericActivityData{
+                                   {"collectionNames", collectionNames}});
 
   // Let's first check if we are allowed to create the collections
   ExecContext const& exec = options.context();

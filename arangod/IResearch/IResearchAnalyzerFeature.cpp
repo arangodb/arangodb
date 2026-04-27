@@ -1083,14 +1083,15 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
 }
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
-    application_features::ApplicationServer& server)
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature)
     : ApplicationFeature{server, *this},
       _clusterFeature(server.hasFeature<ClusterFeature>()
                           ? &server.getFeature<ClusterFeature>()
                           : nullptr),
       _engineSelector(server.getFeature<EngineSelectorFeature>()),
       _systemDatabase(server.getFeature<SystemDatabaseFeature>()),
-      _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()),
+      _databaseFeature(databaseFeature),
       _connectionPool(server.getFeature<NetworkFeature>().pool()) {
   setOptional(true);
 #ifdef USE_V8

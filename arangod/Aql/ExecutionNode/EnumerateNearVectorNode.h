@@ -28,7 +28,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
@@ -50,7 +50,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           Variable const* documentOutVariable,
                           Variable const* distanceOutVariable,
                           std::size_t limit, bool ascending, std::size_t offset,
-                          SearchParameters searchParameters,
+                          vector::SearchParameters searchParameters,
                           aql::Collection const* collection,
                           transaction::Methods::IndexHandle indexHandle,
                           std::unique_ptr<Expression> filterExpression,
@@ -78,6 +78,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
   Variable const* distanceOutVariable() const { return _distanceOutVariable; }
 
   transaction::Methods::IndexHandle const& index() const { return _index; }
+
+  void setIndex(transaction::Methods::IndexHandle indexHandle);
 
   bool isAscending() const noexcept;
 
@@ -110,13 +112,13 @@ class EnumerateNearVectorNode : public ExecutionNode,
   std::size_t _limit;
 
   // @brief specifies which order is set for enumerate
-  std::size_t _ascending;
+  bool _ascending;
 
   /// @brief contains the offset, this skips offset number of results
   std::size_t _offset;
 
   /// @brief contains search parameters used by faiss
-  SearchParameters _searchParameters;
+  vector::SearchParameters _searchParameters;
 
   /// @brief selected index for vector search
   /// guaranteed to always be a vector index

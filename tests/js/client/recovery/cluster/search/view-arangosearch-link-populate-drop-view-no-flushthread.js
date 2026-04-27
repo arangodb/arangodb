@@ -28,10 +28,11 @@ var db = require('@arangodb').db;
 var fs = require('fs');
 var internal = require('internal');
 var jsunity = require('jsunity');
+const IM  = global.instanceManager;
 
 if (runSetup === true) {
   'use strict';
-  global.instanceManager.debugClearFailAt();
+  IM.debugClearFailAt();
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
@@ -48,7 +49,7 @@ if (runSetup === true) {
   }
 
   internal.wal.flush(true, true);
-  global.instanceManager.debugSetFailAt("RocksDBBackgroundThread::run");
+  IM.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
   v.drop();
@@ -61,14 +62,11 @@ if (runSetup === true) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
-
 function recoverySuite () {
   'use strict';
   jsunity.jsUnity.attachAssertions();
 
   return {
-
-
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
@@ -76,7 +74,7 @@ function recoverySuite () {
     testIResearchLinkPopulateDropViewNoFlushThread: function () {
       var v = db._view('UnitTestsRecoveryView');
       assertNull(v);
-      let path = fs.join(fs.join(db._path(), 'databases'), 'database-' + db._id());
+      let path = fs.join(IM.arangods[0].dataDir, 'databases', 'database-' + db._id());
       assertEqual(0, fs.list(path).length);
     }
 

@@ -131,31 +131,42 @@ function makeDataWrapper (options) {
       ].forEach(testCount => {
         let moreargv = [];
         count += 1;
+        let whichRTA = `rta_${count}`;
         if (this.options.cluster) {
           if (count === 2) {
             let rc = ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
-            if (rc.status) {
+            if (!rc.status) {
               this.continueTesting = false;
-              return {
+              res.status = false;
+              res.failed += 1;
+              res[whichRTA] = {
                 'forceTerminate': true,
                 'message': `shards would not get in sync ${rc}`,
                 'failed': 1,
                 'status': false,
                 'duration': 0.0
               };
+              return;
             }
           }
           if (count === 2) {
             try {
+              if (this.options.oldSource !== undefined) {
+                print("switching binary set");
+                pu.switchBinarySet(1);
+              }
               this.instanceManager.upgradeCycleInstance();
             } catch(e) {
-              return {
+              res.status = false;
+              res.failed += 1;
+              res[whichRTA] = {
                 'forceTerminate': true,
                 'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
                 'failed': 1,
                 'status': false,
                 'duration': 0.0
               };
+              return;
             }
           }
           if (count === 3) {
@@ -170,13 +181,16 @@ function makeDataWrapper (options) {
               this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
             } catch(e) {
               this.continueTesting = false;
-              return {
+              res.status = false;
+              res.failed += 1;
+              res[whichRTA] = {
                 'forceTerminate': true,
                 'message': `resigning leadership failed by: ${e.message}\n${e.stack}`,
                 'failed': 1,
                 'status': false,
                 'duration': 0.0
               };
+              return;
             }
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
@@ -189,6 +203,7 @@ function makeDataWrapper (options) {
         let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
         let rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
+        res[whichRTA] = rc;
         if (!rc.status) {
           this.continueTesting = false;
           let rx = new RegExp(/\\n/g);
@@ -217,6 +232,7 @@ function makeDataWrapper (options) {
   SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
   let timeout = SetGlobalExecutionDeadlineTo(0.0);
+  options.cleanup = options.cleanup && localOptions.cleanup && rc.status;
   if (timeout) {
     return {
       failed: 1,
@@ -226,7 +242,6 @@ function makeDataWrapper (options) {
       message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(rc)}`,
     };
   }
-  options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }
 

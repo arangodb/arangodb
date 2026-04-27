@@ -32,8 +32,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/Events.h"
+#include "Ssl/jwt.h"
 
-#include <fuerte/jwt.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;

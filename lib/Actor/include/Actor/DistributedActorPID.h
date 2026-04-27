@@ -51,7 +51,7 @@ struct DistributedActorPID {
 
 // TODO - remove in favor of inspection::json()
 template<>
-struct fmt::formatter<arangodb::actor::DistributedActorPID>
+struct std::formatter<arangodb::actor::DistributedActorPID>
     : arangodb::inspection::inspection_formatter {};
 
 namespace std {

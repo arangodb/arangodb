@@ -33,6 +33,10 @@
 #include <memory>
 #include <mutex>
 
+namespace arangodb::metrics {
+class MetricsFeature;
+}  // namespace arangodb::metrics
+
 namespace arangodb::transaction {
 class Manager;
 

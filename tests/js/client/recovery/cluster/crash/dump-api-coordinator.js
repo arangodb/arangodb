@@ -47,7 +47,7 @@ if (runSetup === true) {
   }
   
   // Produce a crash on the coordinator (default target of debugTerminate)
-  IM.debugTerminate('CRASH-HANDLER-TEST-SEGFAULT');
+  IM.debugTerminate('CRASH-HANDLER-TEST-SEGFAULT', 11);
   
   return 0;
 }
@@ -93,6 +93,8 @@ function recoverySuite () {
                  'Crash dump should contain ApiRecording.json');
       assertTrue(contents.files.hasOwnProperty('AsyncRegistry.json'),
                  'Crash dump should contain AsyncRegistry.json');
+      assertTrue(contents.files.hasOwnProperty('Activities.json'),
+                 'Crash dump should contain Activities.json');
       assertTrue(contents.files.hasOwnProperty('backtrace.txt'),
                  'Crash dump should contain backtrace.txt');
       assertTrue(contents.files.hasOwnProperty('system_info.txt'),

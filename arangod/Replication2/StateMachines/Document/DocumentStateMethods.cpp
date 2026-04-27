@@ -90,7 +90,7 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     if (stateMachine == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
-          fmt::format("DocumentState {} not found", logId));
+          std::format("DocumentState {} not found", logId));
     }
 
     if (auto leader = stateMachine->getLeader(); leader != nullptr) {
@@ -101,7 +101,7 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED,
-          fmt::format("Failed to get DocumentState with id {}; this "
+          std::format("Failed to get DocumentState with id {}; this "
                       "is unconfigured.",
                       logId));
     }
@@ -124,14 +124,14 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     if (stateMachine == nullptr) {
       return ResultT<DocumentStateType>::error(
           TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
-          fmt::format("DocumentState {} not found", logId));
+          std::format("DocumentState {} not found", logId));
     }
 
     auto leader = stateMachine->getLeader();
     if (leader == nullptr) {
       return ResultT<DocumentStateType>::error(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
-          fmt::format("Failed to get leader of DocumentState with id {}; this "
+          std::format("Failed to get leader of DocumentState with id {}; this "
                       "is not a leader instance.",
                       logId));
     }

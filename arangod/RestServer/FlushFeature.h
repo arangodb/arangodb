@@ -38,11 +38,14 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace metrics {
+class MetricsFeature;
+}  // namespace metrics
 class FlushThread;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct FlushSubscription
-/// @brief subscription is intenteded to notify FlushFeature
+/// @brief subscription is intended to notify FlushFeature
 ///        on the WAL tick which can be safely released
 //////////////////////////////////////////////////////////////////////////////
 struct FlushSubscription {

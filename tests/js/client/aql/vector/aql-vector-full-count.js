@@ -27,21 +27,20 @@
 const internal = require("internal");
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const helper = require("@arangodb/aql-helper");
 const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
-const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
-
-const { versionHas } = require("@arangodb/test-helper");
+const {
+    insertDocsAndAssertIndex,
+} = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
+
 const dbName = "vectorDB";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -51,16 +50,19 @@ function VectorIndexFullCountTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 100;
-    const seed = 12132390894;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
+    const nLists = 10;
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards
             });
 
             let docs = [];
@@ -76,18 +78,20 @@ function VectorIndexFullCountTestSuite() {
                     vector,
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nLists,
+                        trainingIterations: 10,
+                        defaultNProbe: nLists,
+                    },
                 },
             });
         },
@@ -98,31 +102,24 @@ function VectorIndexFullCountTestSuite() {
         },
 
         testApproxL2WithFullCount: function() {
-            const query =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(@qp, d.vector) LIMIT 3 RETURN {k: d._key}";
+            const query = aql`
+              FOR d IN ${collection}
+              SORT APPROX_NEAR_L2(${randomPoint}, d.vector)
+              LIMIT 3 RETURN {k: d._key}`;
 
-            const bindVars = {
-                qp: randomPoint
-            };
             const options = {
                 fullCount: true,
             };
 
             const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                    options
-                })
+                ._createStatement(query, {}, options)
                 .explain().plan;
             const indexNodes = plan.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
             assertEqual(1, indexNodes.length);
 
-            const queryResults = db._query(query, bindVars, options);
+            const queryResults = db._query(query, {}, options);
             const results = queryResults.toArray();
             assertEqual(results.length, 3);
 
@@ -131,39 +128,32 @@ function VectorIndexFullCountTestSuite() {
         },
 
         testApproxL2SkippingWithFullCount: function() {
-            const queryWithSkip =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(@qp, d.vector) LIMIT 3, 5 RETURN {k: d._key}";
-            const queryWithoutSkip =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 8 RETURN {k: d._key}";
+            const queryWithSkip = aql`
+              FOR d IN ${collection}
+              SORT APPROX_NEAR_L2(${randomPoint}, d.vector)
+              LIMIT 3, 5 RETURN {k: d._key}`;
+            const queryWithoutSkip = aql`
+              FOR d IN ${collection}
+              SORT APPROX_NEAR_L2(d.vector, ${randomPoint})
+              LIMIT 8 RETURN {k: d._key}`;
 
-            const bindVars = {
-                qp: randomPoint
-            };
             const options = {
                 fullCount: true,
             };
 
             const planSkipped = db
-                ._createStatement({
-                    query: queryWithSkip,
-                    bindVars,
-                    options,
-                })
+                ._createStatement(queryWithSkip, {}, options)
                 .explain().plan;
             const indexNodes = planSkipped.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
             assertEqual(1, indexNodes.length);
 
-            const queryResultsWithSkip = db._query(queryWithSkip, bindVars, options);
+            const queryResultsWithSkip = db._query(queryWithSkip, {}, options);
             const resultsWithSkip = queryResultsWithSkip.toArray();
             const statsWithSkip = queryResultsWithSkip.getExtra().stats;
 
-            const queryResultsWithoutSkip = db._query(queryWithoutSkip, bindVars, options);
+            const queryResultsWithoutSkip = db._query(queryWithoutSkip, {}, options);
             const resultsWithoutSkip = queryResultsWithoutSkip.toArray();
             const statsWithoutSkip = queryResultsWithoutSkip.getExtra().stats;
 
@@ -239,21 +229,23 @@ function VectorIndexFullCountTestSuite() {
 /// The test suite with vector index not having enough
 // documents in single nList will not return true full count in collection but how much
 // it actually produced.
-// Check more details in EnumerateNearVectorExucutor file
+// Check more details in EnumerateNearVectorExecutor file
 function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 10;
-    const seed = 12132390894;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards
             });
 
             let docs = [];
@@ -269,18 +261,20 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                     vector
                 });
             }
-            collection.insert(docs);
 
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 10,
+                        trainingIterations: 10,
+                    },
                 },
             });
         },
@@ -291,38 +285,32 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
         },
 
         testApproxL2FullCountDoubleLoopMultipleNlists: function() {
-            const query = `
+            const query = aql`
                 FOR i in 0..3
-                    FOR d IN ${collection.name()}
-                    SORT APPROX_NEAR_L2(@qp, d.vector)
+                    FOR d IN ${collection}
+                    SORT APPROX_NEAR_L2(${randomPoint}, d.vector)
                 LIMIT 10
                 RETURN {k: d._key}
             `;
-            const bindVars = {
-                qp: randomPoint,
-            };
             const options = {
                 fullCount: true,
             };
 
             const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                    options
-                })
+                ._createStatement(query, {}, options)
                 .explain().plan;
             const indexNodes = plan.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
             assertEqual(1, indexNodes.length);
 
-            const queryResults = db._query(query, bindVars, options);
+            const queryResults = db._query(query, {}, options);
             const results = queryResults.toArray();
-            assertEqual(results.length, 4);
+            assertEqual(results.length, 10);
 
             const stats = queryResults.getExtra().stats;
-            assertEqual(stats.fullCount, 4);
+            // 4 outer iterations (0..3) * numberOfDocs inner docs
+            assertEqual(stats.fullCount, numberOfDocs * 4);
         },
     };
 }
@@ -331,16 +319,18 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 3;
-    const seed = 12132390894;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards
             });
 
             let docs = [];
@@ -356,18 +346,20 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                     vector
                 });
             }
-            collection.insert(docs);
 
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 1,
-                    trainingIterations: 10,
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
                 },
             });
         },
@@ -378,41 +370,130 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
         },
 
         testApproxL2FullCountDoubleLoopSingleNList: function() {
-            const query = `
+            const query = aql`
                 FOR i in 0..4
-                    FOR d IN ${collection.name()}
-                    SORT APPROX_NEAR_L2(@qp, d.vector)
+                    FOR d IN ${collection}
+                    SORT APPROX_NEAR_L2(${randomPoint}, d.vector)
                 LIMIT 10
                 RETURN {k: d._key}
             `;
-            // i=0    i=1    i=2    i=3    i=4
-            // 1,2,3, 1,2,3, 1,2,3, 1|,2,3 1,2,3
-            //                       ^ LIMIT 10
-            const bindVars = {
-                qp: randomPoint,
-            };
+            // 5 outer iterations (0..4) * numberOfDocs inner docs
             const options = {
                 fullCount: true,
             };
 
             const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                    options
-                })
+                ._createStatement(query, {}, options)
                 .explain().plan;
             const indexNodes = plan.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
             assertEqual(1, indexNodes.length);
 
-            const queryResults = db._query(query, bindVars, options);
+            const queryResults = db._query(query, {}, options);
             const results = queryResults.toArray();
             assertEqual(results.length, 10);
 
             const stats = queryResults.getExtra().stats;
-            assertEqual(stats.fullCount, 15);
+            assertEqual(stats.fullCount, numberOfDocs * 5);
+        },
+    };
+}
+
+// COR-128 Fetching more documents then the internal batching limit
+function VectorIndexLargeLimitTestSuite() {
+    let collection;
+    let randomPoint;
+    const largeLimitDimension = 128;
+    const largeLimitNumberOfDocs = 5000;
+    const nLists = 32;
+    const seed = generateSeed();
+
+    return {
+        setUpAll: function() {
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, {
+                numberOfShards
+            });
+
+            let gen = randomNumberGeneratorFloat(seed);
+            let docs = [];
+            for (let i = 0; i < largeLimitNumberOfDocs; ++i) {
+                const vector = Array.from({
+                    length: largeLimitDimension
+                }, () => gen());
+                if (i === 0) {
+                    randomPoint = vector;
+                }
+                docs.push({
+                    vector
+                });
+            }
+
+            insertDocsAndAssertIndex({
+                collection,
+                docs,
+                seed,
+                batchSize: 1000,
+                readyTimeoutSec: 120,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: largeLimitDimension,
+                        nLists: nLists,
+                    },
+                },
+            });
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testFetchLargeNumberOfDocsWithMaxNProbe: function() {
+            const limits = [1500, 3000, 4000, largeLimitNumberOfDocs];
+
+            const actualCollectionCount = collection.count();
+            assertEqual(actualCollectionCount, largeLimitNumberOfDocs,
+                `Collection count mismatch: actual=${actualCollectionCount} vs expected=${largeLimitNumberOfDocs}`);
+
+            for (const limit of limits) {
+                const query = aql`
+                  FOR d IN ${collection}
+                  SORT APPROX_NEAR_L2(d.vector, ${randomPoint},
+                    {nProbe: ${nLists}})
+                  LIMIT ${limit} RETURN d._key`;
+
+                const queryResults = db._query(query, {count: true}, {fullCount: true});
+                const results = queryResults.toArray();
+
+                const uniqueResults = new Set(results);
+                const stats = queryResults.getExtra().stats;
+
+                const diag = `limit=${limit}, results.length=${results.length}, ` +
+                    `unique=${uniqueResults.size}, count=${queryResults.count()}, ` +
+                    `fullCount=${stats.fullCount}, expectedFullCount=${largeLimitNumberOfDocs}, ` +
+                    `collectionCount=${actualCollectionCount}, nLists=${nLists}`;
+
+                assertEqual(limit, results.length,
+                    `Expected ${limit} results. ${diag}`);
+
+                assertEqual(limit, uniqueResults.size,
+                    `All ${limit} returned documents should be unique. ${diag}`);
+
+                assertEqual(queryResults.count(), limit,
+                    `Count mismatch. ${diag}`);
+
+                assertEqual(stats.fullCount, largeLimitNumberOfDocs,
+                    `FullCount mismatch. ${diag}`);
+            }
         },
     };
 }
@@ -420,5 +501,6 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
 jsunity.run(VectorIndexFullCountTestSuite);
 jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);
 jsunity.run(VectorIndexFullCountCollectionWithSmallAmountOfDocs);
+jsunity.run(VectorIndexLargeLimitTestSuite);
 
 return jsunity.done();

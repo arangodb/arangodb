@@ -30,6 +30,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
+#include "Aql/TypedAstNodes.h"
 #include "Basics/fasthash.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
@@ -775,26 +776,23 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
              : nullptr;
 }
 
-aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept {
-  if (!args || aql::NODE_TYPE_ARRAY != args->type) {
-    return nullptr;
-  }
-
-  size_t const size = args->numMembers();
+aql::Variable const* getSearchFuncRef(aql::ast::ArrayNode args) noexcept {
+  auto argv = args.getElements();
+  size_t const size = argv.size();
 
   if (size < 1) {
     return nullptr;  // invalid args
   }
 
   // 1st argument has to be reference to `ref`
-  auto const* arg0 = args->getMemberUnchecked(0);
+  auto const* arg0 = argv[0];
 
   if (!arg0 || aql::NODE_TYPE_REFERENCE != arg0->type) {
     return nullptr;
   }
 
-  for (size_t i = 1, size = args->numMembers(); i < size; ++i) {
-    auto const* arg = args->getMemberUnchecked(i);
+  for (size_t i = 1; i < size; ++i) {
+    auto const* arg = argv[i];
 
     if (!arg || !arg->isDeterministic()) {
       // we don't support non-deterministic arguments for scorers

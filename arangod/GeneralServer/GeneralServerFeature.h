@@ -34,6 +34,7 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/MetricsFeature.h"
+#include "Rest/ApiVersion.h"
 
 #include <cstdint>
 #include <memory>

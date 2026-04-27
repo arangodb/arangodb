@@ -1120,10 +1120,10 @@ version.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000)
       .setLongDescription(
-          R"(Note that format version 6 can only be read by RocksDB versions
->= 8.6.0. Thus switching to format version 6 will make the database files
-incompatible with ArangoDB versions with a lower RocksDB version in case of
-downgrading.)");
+          R"(Note that format version 6 can only be read by RocksDB
+versions >= 8.6.0. Thus switching to format version 6 will make the database
+files incompatible with ArangoDB versions with a lower RocksDB version in case
+of downgrading.)");
 
   options
       ->addOption("--rocksdb.optimize-filters-for-memory",
@@ -1307,8 +1307,8 @@ downgrading.)");
       .setIntroducedIn(31100)
       .setLongDescription(
           R"(The jemalloc-based memory allocator for the RocksDB block cache
-will also exclude the block cache contents from coredumps, potentially making generated
-coredumps a lot smaller.
+will also exclude the block cache contents from coredumps, potentially making
+generated coredumps a lot smaller.
 In order to use this option, the executable needs to be compiled with jemalloc
 support (which is the default on Linux).)");
 
@@ -1515,24 +1515,25 @@ limited number of edge collections/shards/indexes.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(R"(Enabling this option will make RocksDB's
-  compaction write the persistent index data for different mdi
-  indexes (also indexes from different collections/shards) into different
-  .sst files. Otherwise the persistent index data from different
-  collections/shards/indexes can be mixed and written into the same .sst files.
+      .setLongDescription(R"(Enabling this option makes RocksDB's
+compaction write the persistent index data for different `mdi`
+indexes (also indexes from different collections/shards) into different
+`.sst` files. Otherwise the persistent index data from different
+collections/shards/indexes can be mixed and written into the same `.sst` files.
 
-  Enabling this option usually has the benefit of making the RocksDB
-  compaction more efficient when a lot of different collections/shards/indexes
-  are written to in parallel.
-  The disavantage of enabling this option is that there can be more .sst
-  files than when the option is turned off, and the disk space used by
-  these .sst files can be higher than if there are fewer .sst files (this
-  is because there is some per-.sst file overhead).
-  In particular on deployments with many collections/shards/indexes
-  this can lead to a very high number of .sst files, with the potential
-  of outgrowing the maximum number of file descriptors the ArangoDB process
-  can open. Thus the option should only be enabled on deployments with a
-  limited number of edge collections/shards/indexes.)");
+Enabling this option usually has the benefit of making the RocksDB
+compaction more efficient when a lot of different collections/shards/indexes
+are written to in parallel.
+The disadvantage of enabling this option is that there can be more `.sst`
+files than when the option is turned off, and the disk space used by
+these `.sst` files can be higher than if there are fewer `.sst` files (this
+is because there is some per-`.sst` file overhead).
+
+In particular on deployments with many collections/shards/indexes
+this can lead to a very high number of `.sst` files, with the potential
+of outgrowing the maximum number of file descriptors the ArangoDB process
+can open. Thus the option should only be enabled on deployments with a
+limited number of edge collections/shards/indexes.)");
 
   options
       ->addOption("--rocksdb.partition-files-for-vector-index",

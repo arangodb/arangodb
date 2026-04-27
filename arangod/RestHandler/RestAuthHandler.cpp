@@ -32,8 +32,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/Events.h"
+#include "Ssl/jwt.h"
 
-#include <fuerte/jwt.h>
 #include <velocypack/Builder.h>
 
 #include <format>
@@ -204,8 +204,8 @@ std::string RestAuthHandler::generateJwt(
     std::string const& username, std::chrono::seconds expiryTime) const {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return fuerte::jwt::generateUserToken(af->tokenCache().jwtSecret(), username,
-                                        expiryTime);
+  return arangodb::rest::SslInterface::jwt::generateUserToken(
+      af->tokenCache().jwtSecret(), username, expiryTime);
 }
 
 RestStatus RestAuthHandler::badRequest() {

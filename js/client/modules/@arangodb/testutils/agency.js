@@ -759,11 +759,15 @@ class agencyMgr {
         print(Date() + " this agent is already dead: " + JSON.stringify(arangod.getStructure()));
       } else {
         print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
-        this.dumpAgent(arangod,  '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
+        try {
+          this.dumpAgent(arangod,  '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
 
-        this.dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState', dumpdir);
+          this.dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState', dumpdir);
 
-        this.dumpAgent(arangod, '/_api/agency/read', 'POST', 'agencyPlan', dumpdir);
+          this.dumpAgent(arangod, '/_api/agency/read', 'POST', 'agencyPlan', dumpdir);
+        } catch (ex) {
+          print(`${RED}${Date()} ignoring that we failed to dump the agent ${arangod.name}: ${ex}\n${ex.stack}${RESET}`);
+        }
       }
     });
     let zipfiles = [];
@@ -877,10 +881,14 @@ class agencyMgr {
     }
   }
   
-  detectAgencyAlive(httpAuthOptions) {
-    if (!this.options.agency ||
+  detectAgencyAlive(httpAuthOptions, force) {
+    if (force !== true) {
+      force = false;
+    }
+    if (!force && (
+      !this.options.agency ||
         !this.shouldBeCompleted() ||
-        this.moreIsAlreadyRunning()) {
+        this.moreIsAlreadyRunning())) {
       print("no agency check this time.");
       return;
     }

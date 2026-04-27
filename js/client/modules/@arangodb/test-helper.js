@@ -226,17 +226,37 @@ exports.getMetric = function (endpoint, name) {
   return getMetricName(text, name);
 };
 
-exports.eventuallyAssertEqual = function (fn, expectedValue, maxRetries = 60) {
-  let value;
-  for (let i = 0; i < maxRetries; ++i) {
-    value = fn();
-    if (value === expectedValue) {
+// Eventually assert a metric from a single server endpoint.
+// compareFn takes the metric value and returns true if the assertion should pass.
+exports.eventuallyAssertMetric = function(endpoint, metricName, compareFn, errorMessage, maxIterations = 200) {
+  let metricValue;
+  for (let i = 0; i < maxIterations; i++) {
+    internal.wait(0.1);
+    metricValue = exports.getMetric(endpoint, metricName);
+    if (compareFn(metricValue)) {
       break;
     }
-    internal.sleep(0.5);
   }
+  assertTrue(compareFn(metricValue), `${errorMessage}: got ${metricValue}`);
+  return metricValue;
+};
 
-  assertEqual(expectedValue, value, `eventuallyAssertEqual timed out after ${maxRetries * 0.5}s: expected ${expectedValue}, got ${value}`);
+// Eventually assert the sum of a metric across multiple servers.
+// compareFn takes the summed metric value and returns true if the assertion should pass.
+exports.eventuallyAssertMetricSum = function(servers, metricName, compareFn, errorMessage, maxIterations = 200) {
+  let metricValue;
+  for (let i = 0; i < maxIterations; i++) {
+    internal.wait(0.1);
+    metricValue = 0;
+    for (let server of servers) {
+      metricValue += exports.getMetric(server.endpoint, metricName);
+    }
+    if (compareFn(metricValue)) {
+      break;
+    }
+  }
+  assertTrue(compareFn(metricValue), `${errorMessage}: got ${metricValue}`);
+  return metricValue;
 };
 
 exports.getMetricSingle = function (name) {

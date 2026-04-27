@@ -23,6 +23,7 @@
 
 #include <gtest/gtest.h>
 
+#include <format>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -82,16 +83,16 @@ TEST_F(VPackInspectionTest, serialize_to_builder) {
 TEST_F(VPackInspectionTest, formatter) {
   auto d = Dummy{.i = 42, .d = 123.456, .b = true, .s = "cheese"};
 
-  auto def = fmt::format("My name is {}", d);
+  auto def = std::format("My name is {}", d);
   EXPECT_EQ(def,
             "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
 
-  auto notPretty = fmt::format("My name is {:u}", d);
+  auto notPretty = std::format("My name is {:u}", d);
   EXPECT_EQ(notPretty,
             "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
   EXPECT_EQ(def, notPretty);
 
-  auto pretty = fmt::format("My name is {:p}", d);
+  auto pretty = std::format("My name is {:p}", d);
   EXPECT_EQ(pretty,
             "My name is {\n  \"i\" : 42,\n  \"d\" : 123.456,\n  \"b\" : "
             "true,\n  \"s\" : \"cheese\"\n}");
@@ -99,7 +100,7 @@ TEST_F(VPackInspectionTest, formatter) {
 
 TEST_F(VPackInspectionTest, formatter_prints_serialization_error) {
   MyStringEnum val = static_cast<MyStringEnum>(42);
-  auto def = fmt::format("{}", val);
+  auto def = std::format("{}", val);
   ASSERT_EQ(def, R"({"error":"Unknown enum value 42"})");
 }
 
@@ -298,7 +299,7 @@ TEST(VPackWithStatus, statust_test_deserialize) {
 
   auto res = deserializeWithErrorT<ErrorTTest>(testSlice);
 
-  ASSERT_TRUE(res.ok()) << fmt::format("Something went wrong: {}",
+  ASSERT_TRUE(res.ok()) << std::format("Something went wrong: {}",
                                        res.error().error());
 
   EXPECT_EQ(res->s, "ReturnNode");
@@ -314,7 +315,7 @@ TEST(VPackWithStatus, statust_test_deserialize_fail) {
 
   auto res = deserializeWithErrorT<ErrorTTest>(testSlice);
 
-  ASSERT_FALSE(res.ok()) << fmt::format("Did not detect the error we exepct");
+  ASSERT_FALSE(res.ok()) << std::format("Did not detect the error we exepct");
 
   EXPECT_EQ(res.error().error(), "Found unexpected attribute 'fehler'");
 }

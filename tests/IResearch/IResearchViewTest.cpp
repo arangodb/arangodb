@@ -145,8 +145,8 @@ class IResearchViewTest
   IResearchViewTest() : server(false) {
     arangodb::tests::init();
 
-    server.addFeature<arangodb::FlushFeature>(
-        false, server.getFeature<arangodb::metrics::MetricsFeature>());
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
     expectUserManagerCalls();
 

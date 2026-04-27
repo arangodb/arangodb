@@ -89,8 +89,9 @@ using namespace arangodb::maintenance;
 //
 class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
  public:
-  TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as)
-      : arangodb::MaintenanceFeature(as) {
+  TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as,
+                         arangodb::ClusterFeature* clusterFeature = nullptr)
+      : arangodb::MaintenanceFeature(as, clusterFeature) {
     // force activation of the feature, even in agency/single-server mode
     // (the catch tests use single-server mode)
     _options.forceActivation = true;
@@ -103,6 +104,13 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
   }
 
   virtual ~TestMaintenanceFeature() = default;
+
+  void collectOptions(
+      std::shared_ptr<arangodb::options::ProgramOptions> options) override {
+    arangodb::MaintenanceFeature::collectOptions(options);
+    _options.maintenanceThreadsMax = 0;
+    _options.maintenanceThreadsSlowMax = 0;
+  }
 
   void validateOptions(
       std::shared_ptr<arangodb::options::ProgramOptions> options) override {}

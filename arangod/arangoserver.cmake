@@ -20,6 +20,7 @@ add_library(arangoserver STATIC
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
+  Cluster/ClusterUpgradeOptionsProvider.cpp
   Cluster/CollectionInfoCurrent.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
@@ -69,6 +70,7 @@ add_library(arangoserver STATIC
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
+  GeneralServer/ServerSecurityOptionsProvider.cpp
   GeneralServer/SslServerFeature.cpp
   RestHandler/RestAccessTokenHandler.cpp
   RestHandler/RestAdminClusterHandler.cpp
@@ -99,6 +101,7 @@ add_library(arangoserver STATIC
   RestHandler/RestOptionsBaseHandler.cpp
   RestHandler/RestOptionsDescriptionHandler.cpp
   RestHandler/RestOptionsHandler.cpp
+  RestHandler/RestPublicOptionsHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestQueryPlanCacheHandler.cpp
@@ -116,13 +119,17 @@ add_library(arangoserver STATIC
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
+  RestHandler/RestOpenApiHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
+  RestServer/BootstrapOptionsProvider.cpp
   RestServer/CheckVersionFeature.cpp
+  RestServer/CheckVersionOptionsProvider.cpp
   RestServer/CrashHandlerFeature.cpp
+  RestServer/CrashHandlerOptionsProvider.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
@@ -131,8 +138,10 @@ add_library(arangoserver STATIC
   RestServer/EndpointFeature.cpp
   RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
+  RestServer/FileDescriptorsOptionsProvider.cpp
   RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
+  RestServer/FortuneOptionsProvider.cpp
   RestServer/IOHeartbeatThread.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
@@ -154,7 +163,10 @@ add_library(arangoserver STATIC
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
-  RestServer/VectorIndexFeature.cpp
+  VectorIndex/VectorIndexFeature.cpp
+  VectorIndex/VectorIndexBuildManager.cpp
+  VectorIndex/VectorIndexOptionsProvider.cpp
+  VectorIndex/VectorIndexTrainingSampler.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   Sharding/ShardDistributionReporter.cpp
@@ -168,6 +180,7 @@ add_library(arangoserver STATIC
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
+  Statistics/StatisticsOptionsProvider.cpp
   Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp
@@ -206,7 +219,7 @@ if(USE_MAINTAINER_MODE)
 endif()
 
 target_sources(arangoserver PRIVATE
-RestHandler/RestCrashHandler.cpp)
+  RestHandler/RestCrashHandler.cpp)
 
 target_link_libraries(arangoserver
   arango_agency

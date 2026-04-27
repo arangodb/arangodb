@@ -27,7 +27,6 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
-#include <fmt/core.h>
 #include <Logger/LogMacros.h>
 
 namespace arangodb::replication2::replicated_log {

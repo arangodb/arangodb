@@ -709,7 +709,9 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
-  arangodb::iresearch::IResearchAnalyzerFeature analyzers(server.server());
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
+  arangodb::iresearch::IResearchAnalyzerFeature analyzers(server.server(),
+                                                          databaseFeature);
   analyzers.prepare();  // add static analyzers
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
   arangodb::iresearch::IResearchLinkMeta meta;

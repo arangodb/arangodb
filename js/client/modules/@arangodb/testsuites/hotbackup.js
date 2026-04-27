@@ -30,12 +30,12 @@ const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const hb = require("@arangodb/hotbackup");
 
-const { DumpRestoreHelper, getClusterStrings } = require('@arangodb/testutils/dump');
+const { persistenceToolkit, getClusterStrings } = require('@arangodb/testutils/persistence-common');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
+const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 const errors = require('internal').errors;
@@ -88,10 +88,10 @@ function hotBackup (options) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
-  if (!helper.startFirstInstance()) {
-      helper.destructor(false);
-    return helper.extractResults();
+  const PTK = new persistenceToolkit(options, options, addArgs, {}, options, options, which, function(){}, [], false);
+  if (!PTK.startFirstInstance()) {
+      PTK.destructor(false);
+    return PTK.extractResults();
   }
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
@@ -101,60 +101,60 @@ function hotBackup (options) {
   const dumpRecheck  = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpRecheck));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
   try {
-    if (!helper.runSetupSuite(setupFile) ||
-        !helper.runRtaMakedata() ||
-        !helper.dumpFrom('UnitTestsDumpSrc') ||
-        !helper.restartInstance() ||
-        !helper.restoreTo('UnitTestsDumpDst') ||
-        !helper.isAlive() ||
-        !helper.createHotBackup() ||
-        !helper.isAlive() ||
-        !helper.runTests(dumpModify,'UnitTestsDumpDst') ||
-        !helper.isAlive() ||
-        !helper.runTests(dumpMoveShard,'UnitTestsDumpDst') ||
-        !helper.isAlive() ||
-        !helper.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
-        !helper.isAlive() ||
-        !helper.restoreHotBackup() ||
-        !helper.runTests(dumpCheck, 'UnitTestsDumpDst')||
-        !helper.runRtaCheckData() ||
-        !helper.tearDown(tearDownFile)) {
-      helper.destructor(true);
-      return helper.extractResults();
+    if (!PTK.runSetupSuite(setupFile) ||
+        !PTK.runRtaMakedata() ||
+        !PTK.dumpFrom('UnitTestsDumpSrc') ||
+        !PTK.restartInstance() ||
+        !PTK.restoreTo('UnitTestsDumpDst') ||
+        !PTK.isAlive() ||
+        !PTK.createHotBackup() ||
+        !PTK.isAlive() ||
+        !PTK.runTests(dumpModify,'UnitTestsDumpDst') ||
+        !PTK.isAlive() ||
+        !PTK.runTests(dumpMoveShard,'UnitTestsDumpDst') ||
+        !PTK.isAlive() ||
+        !PTK.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
+        !PTK.isAlive() ||
+        !PTK.restoreHotBackup() ||
+        !PTK.runTests(dumpCheck, 'UnitTestsDumpDst')||
+        !PTK.runRtaCheckData() ||
+        !PTK.tearDown(tearDownFile)) {
+      PTK.destructor(true);
+      return PTK.extractResults();
     }
 
     if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
       const notCluster = getClusterStrings(options).notCluster;
       const restoreDir = tu.makePathUnix(tu.pathForTesting('client/dump/dump' + notCluster));
       const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
-      if (!helper.restoreOld(restoreDir) ||
-          !helper.testRestoreOld(oldTestFile)) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.restoreOld(restoreDir) ||
+          !PTK.testRestoreOld(oldTestFile)) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     }
 
     if (tstFiles.hasOwnProperty("foxxTest") && !options.skipServerJS) {
       const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
-      if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
-          !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
+          !PTK.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
+          !PTK.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
+          !PTK.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
+          !PTK.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
+          !PTK.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     }
   }
   catch (ex) {
     print("Caught exception during testrun: " + ex);
   }
-  helper.destructor(true);
-  if (helper.doCleanup) {
+  PTK.destructor(true);
+  if (PTK.doCleanup) {
     fs.removeDirectoryRecursive(keyDir, true);
   }
-  return helper.extractResults();
+  return PTK.extractResults();
 }
 
 function hotBackup_load_backend (options, which, args) {
@@ -182,15 +182,15 @@ function hotBackup_load_backend (options, which, args) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
-  if (!helper.startFirstInstance()) {
-    helper.destructor(false);
-    return helper.extractResults();
+  const PTK = new persistenceToolkit(options, options, addArgs, {}, options, options, which, function(){}, [], false);
+  if (!PTK.startFirstInstance()) {
+    PTK.destructor(false);
+    return PTK.extractResults();
   }
   function retryWaitRestore(testFn, args) {
     while(true) {
       try {
-        return helper.runTestFn(testFn, args, 'postRestore');
+        return PTK.runTestFn(testFn, args, 'postRestore');
       } catch (ex) {
         if (ex.errorNum === errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE.code) {
           sleep(2);
@@ -203,38 +203,41 @@ function hotBackup_load_backend (options, which, args) {
 
   try {
     if (
-        //!helper.runRtaMakedata() ||
-        !helper.isAlive() ||
-        !helper.runTestFn(args.preRestoreFn, args.args, 'preRestore') ||
-        !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume) ||
+        //!PTK.runRtaMakedata() ||
+        !PTK.isAlive() ||
+        !PTK.runTestFn(args.preRestoreFn, args.args, 'preRestore') ||
+        !PTK.spawnStressArangosh(args.noiseScript, which, args.noiseVolume, args.args) ||
         (function() { sleep(args.noiseDuration); return false; }()) ||
-        !helper.createHotBackup() ||
-        !helper.stopStressArangosh() ||
-        !helper.restoreHotBackup() ||
-        !helper.IM.waitForAllShardsInSync() ||
+        !PTK.createHotBackup() ||
+        !PTK.stopStressArangosh() ||
+        !PTK.restoreHotBackup() ||
+        !PTK.instanceManager.waitForAllShardsInSync() ||
         !retryWaitRestore(args.postRestoreFn, args.args)
-        //!helper.runRtaCheckData()
+        //!PTK.runRtaCheckData()
     ) {
-      helper.destructor(true);
-      return helper.extractResults();
+      PTK.destructor(true);
+      return PTK.extractResults();
     }
-
+  } catch (ex) {
+    print(`${RED}${Date()}Caught exception during testrun: ${ex}\n${ex.stack}${RESET}`);
+    PTK.results.failed += 1;
+    PTK.results['all'] = {
+      failed: true,
+      message: `caught exception during testrun: ${ex}\n${ex.stack}`
+    };
   }
-  catch (ex) {
-    print("Caught exception during testrun: " + ex);
-  }
-  helper.destructor(true);
-  if (helper.doCleanup) {
+  PTK.destructor(true);
+  if (PTK.doCleanup) {
     fs.removeDirectoryRecursive(keyDir, true);
   }
-  return helper.extractResults();
+  return PTK.extractResults();
 }
 
 function hotBackup_load_demo (options) {
 
   let which = "hot_backup_load_demo";
   return hotBackup_load_backend(options, which, {
-    noiseScript: "",
+    noiseScript: function() {print("hello world! Put your code to work with the system below");},
     noiseVolume: 1,
     noiseDuration: 60,
     preRestoreFn: function() {
@@ -380,6 +383,7 @@ function hotBackup_aql (options) {
   return hotBackup_load_backend(options, which, {
     noiseScript: function () {
       const errors = require('internal').errors;
+      db._useDatabase('test');
       while (true) {
         try {
           db._query("FOR i IN 1..1000 INSERT {thrd: @idx, i} INTO test_collection",

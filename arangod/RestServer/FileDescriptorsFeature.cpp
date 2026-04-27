@@ -23,6 +23,7 @@
 
 #include "FileDescriptorsFeature.h"
 
+#include "RestServer/FileDescriptorsOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -33,7 +34,6 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/EnvironmentFeature.h"
 
@@ -46,6 +46,7 @@
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <filesystem>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -74,28 +75,14 @@ FileDescriptorsFeature::FileDescriptorsFeature(ApplicationServer& server,
 
 void FileDescriptorsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption(
-          "--server.count-descriptors-interval",
-          "Controls the interval (in milliseconds) in which the number of open "
-          "file descriptors for the process is determined "
-          "(0 = disable counting).",
-          new UInt64Parameter(&_options.countDescriptorsInterval),
-          arangodb::options::makeFlags())
-      .setIntroducedIn(31100);
+  arangodb::file_descriptors::FileDescriptorsOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void FileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
-  constexpr uint64_t lowerBound = 10000;
-  if (_options.countDescriptorsInterval > 0 &&
-      _options.countDescriptorsInterval < lowerBound) {
-    LOG_TOPIC("c3011", WARN, Logger::SYSCALL)
-        << "too low value for `--server.count-descriptors-interval`. Should be "
-           "at least "
-        << lowerBound;
-    _options.countDescriptorsInterval = lowerBound;
-  }
+    std::shared_ptr<ProgramOptions> options) {
+  arangodb::file_descriptors::FileDescriptorsOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void FileDescriptorsFeature::prepare() {
@@ -116,7 +103,19 @@ uint64_t FileDescriptorsFeature::limit() const noexcept {
 
 void FileDescriptorsFeature::countOpenFiles() {
   try {
-    size_t numFiles = FileUtils::countFiles("/proc/self/fd");
+    std::filesystem::path fdPath{"/proc/self/fd"};
+    size_t numFiles = 0;
+
+    if (std::filesystem::exists(fdPath)) {
+      for (auto const& entry : std::filesystem::directory_iterator(fdPath)) {
+        // The intent is simply to increment numFiles for each entry in
+        // fdPath, not to inspect the entries themselves. Hence Ignore
+        // entry
+        (void)entry;  // explicitly ignore
+        ++numFiles;
+      }
+    }
+
     _fileDescriptorsCurrent.store(numFiles, std::memory_order_relaxed);
   } catch (std::exception const& ex) {
     LOG_TOPIC("bee41", DEBUG, Logger::SYSCALL)

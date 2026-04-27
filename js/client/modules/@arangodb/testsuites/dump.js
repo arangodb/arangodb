@@ -30,7 +30,7 @@
 const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const _ = require('lodash');
-const { DumpRestoreHelper, getClusterStrings } = require('@arangodb/testutils/dump');
+const { persistenceToolkit, getClusterStrings } = require('@arangodb/testutils/persistence-common');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -79,10 +79,10 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
                                      which, tstFiles, afterServerStart,
                                      rtaArgs, restartServer) {
   print(CYAN + which + ' tests...' + RESET);
-  const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer);
-  if (!helper.startFirstInstance()) {
-    helper.destructor(false);
-    return helper.extractResults();
+  const PTK = new persistenceToolkit(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer);
+  if (!PTK.startFirstInstance()) {
+    PTK.destructor(false);
+    return PTK.extractResults();
   }
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
@@ -93,40 +93,42 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
 
   try {
     if (firstRunOptions.hasOwnProperty("multipleDumps") && firstRunOptions.multipleDumps) {
-      if (!helper.runSetupSuite(setupFile) ||
-          !helper.runRtaMakedata() ||
-          !helper.dumpFrom('_system', true) ||
-          !helper.dumpFrom('UnitTestsDumpSrc', true) ||
-          !helper.dumpFromRta() ||
-          (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
-          !helper.runCleanupSuite(cleanupFile) ||
-          !helper.restartInstance() ||
-          !helper.restoreSrc() ||
-          !helper.restoreTo('_system', { separate: true }) ||
-          !helper.restoreRta() ||
-          !helper.runTests(testFile,'UnitTestsDumpDst') ||
-          !helper.runRtaCheckData() ||
-          !helper.tearDown(tearDownFile)) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.runSetupSuite(setupFile) ||
+          !PTK.runRtaMakedata() ||
+          !PTK.dumpFrom('_system', true) ||
+          !PTK.dumpFrom('UnitTestsDumpSrc', true) ||
+          !PTK.dumpFromRta() ||
+          (checkDumpFiles && !PTK.runCheckDumpFilesSuite(checkDumpFiles)) ||
+          !PTK.runCleanupSuite(cleanupFile) ||
+          !PTK.flipBinarySet() ||
+          !PTK.restartInstance() ||
+          !PTK.restoreSrc() ||
+          !PTK.restoreTo('_system', { separate: true }) ||
+          !PTK.restoreRta() ||
+          !PTK.runTests(testFile,'UnitTestsDumpDst') ||
+          !PTK.runRtaCheckData() ||
+          !PTK.tearDown(tearDownFile)) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     } else {
-      if (!helper.runSetupSuite(setupFile) ||
-          !helper.runRtaMakedata() ||
-          !helper.dumpSrc() ||
-          !helper.dumpFromRta() ||
-          !helper.dumpFrom('_system', false) ||
-          (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
-          !helper.runCleanupSuite(cleanupFile) ||
-          !helper.restartInstance() ||
-          !helper.restoreSrc() ||
-          !helper.restoreTo('_system', { separate: true, fromDir: 'dump' }) ||
-          !helper.restoreRta() ||
-          !helper.runRtaCheckData() ||
-          !helper.runTests(testFile,'UnitTestsDumpDst') ||
-          !helper.tearDown(tearDownFile)) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.runSetupSuite(setupFile) ||
+          !PTK.runRtaMakedata() ||
+          !PTK.dumpSrc() ||
+          !PTK.dumpFromRta() ||
+          !PTK.dumpFrom('_system', false) ||
+          (checkDumpFiles && !PTK.runCheckDumpFilesSuite(checkDumpFiles)) ||
+          !PTK.runCleanupSuite(cleanupFile) ||
+          !PTK.flipBinarySet() ||
+          !PTK.restartInstance() ||
+          !PTK.restoreSrc() ||
+          !PTK.restoreTo('_system', { separate: true, fromDir: 'dump' }) ||
+          !PTK.restoreRta() ||
+          !PTK.runRtaCheckData() ||
+          !PTK.runTests(testFile,'UnitTestsDumpDst') ||
+          !PTK.tearDown(tearDownFile)) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     }
 
@@ -134,35 +136,35 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
       const notCluster = getClusterStrings(secondRunOptions).notCluster;
       const restoreDir = tu.makePathUnix(tu.pathForTesting('client/dump/dump' + notCluster));
       const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
-      if (!helper.restoreOld(restoreDir) ||
-          !helper.testRestoreOld(oldTestFile)) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.restoreOld(restoreDir) ||
+          !PTK.testRestoreOld(oldTestFile)) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     }
 
     if (tstFiles.hasOwnProperty("foxxTest")) {
       const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
       if (secondRunOptions.hasOwnProperty("multipleDumps") && secondRunOptions.multipleDumps) {
-        helper.adjustRestoreToDump();
-        helper.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
+        PTK.adjustRestoreToDump();
+        PTK.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
       }
-      if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
-          !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
-        helper.destructor(true);
-        return helper.extractResults();
+      if (!PTK.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
+          !PTK.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
+          !PTK.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
+          !PTK.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
+          !PTK.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
+          !PTK.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+        PTK.destructor(true);
+        return PTK.extractResults();
       }
     }
   } catch (ex) {
     print("Caught exception during testrun: " + ex + ex.stack);
-    helper.destructor(false);
+    PTK.destructor(false);
   }
-  helper.destructor(true);
-  return helper.extractResults();
+  PTK.destructor(true);
+  return PTK.extractResults();
 }
 
 function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs) {

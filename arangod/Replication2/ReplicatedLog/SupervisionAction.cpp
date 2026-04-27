@@ -31,7 +31,6 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
-#include <fmt/core.h>
 #include <variant>
 
 using namespace arangodb::replication2::agency;

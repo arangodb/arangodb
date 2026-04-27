@@ -23,8 +23,8 @@
 
 #include "RocksDBDumpContext.h"
 
-#include "ActivityRegistry/activity.h"
-#include "ActivityRegistry/registry.h"
+#include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -45,6 +45,7 @@
 #include <velocypack/Slice.h>
 
 #include <algorithm>
+#include <unordered_map>
 #include <utility>
 
 using namespace arangodb;
@@ -215,10 +216,12 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
       _expires(TRI_microtime() + _options.ttl),
       _workItems(_options.parallelism),
       _channel(_options.prefetchCount),
-      _activity{"dump context",
-                {{"id", _id}, {"user", _user}, {"database", _database}}} {
-  auto guard = activity_registry::Registry::ScopedCurrentlyExecutingActivity(
-      _activity.id());
+      _activity{activities::make<activities::GenericActivity>(
+          "RocksDBDump",
+          activities::GenericActivityData{
+              {{"id", _id}, {"user", _user}, {"database", _database}}})} {
+  auto guard =
+      activities::Registry::ScopedCurrentlyExecutingActivity(_activity);
 
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
@@ -363,8 +366,9 @@ bool RocksDBDumpContext::applyFilter(
   });
 }
 
-activity_registry::ActivityId RocksDBDumpContext::activityId() const noexcept {
-  return _activity.id();
+activities::GenericActivity::HandleType RocksDBDumpContext::activity()
+    const noexcept {
+  return _activity;
 }
 
 std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(

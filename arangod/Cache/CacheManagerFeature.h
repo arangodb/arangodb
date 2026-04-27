@@ -27,6 +27,10 @@
 #include "Cache/CacheOptionsProvider.h"
 
 namespace arangodb {
+class CacheOptionsFeature;
+namespace application_features {
+class BasicFeaturePhaseServer;
+}
 struct CacheOptionsProvider;
 class CacheRebalancerThread;
 
@@ -40,7 +44,8 @@ class CacheManagerFeature final
   static constexpr std::string_view name() { return "CacheManager"; }
 
   explicit CacheManagerFeature(application_features::ApplicationServer& server,
-                               CacheOptionsProvider const& provider);
+                               CacheOptionsProvider const& provider,
+                               SharedPRNGFeature& sharedPRNGFeature);
   ~CacheManagerFeature();
 
   void start() override final;
@@ -58,6 +63,7 @@ class CacheManagerFeature final
   std::unique_ptr<CacheRebalancerThread> _rebalancer;
 
   CacheOptionsProvider const& _provider;
+  SharedPRNGFeature& _sharedPRNGFeature;
   CacheOptions _options;
 };
 

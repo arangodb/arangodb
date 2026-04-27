@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "ActivityRegistry/activity.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBDumpContext.h"
 #include "RestServer/DumpLimitsFeatureOptions.h"

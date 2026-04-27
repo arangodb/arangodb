@@ -23,6 +23,7 @@
 
 #include "WalManager.h"
 
+#include <fcntl.h>
 #include <filesystem>
 
 #include "Basics/Exceptions.h"

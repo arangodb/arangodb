@@ -46,4 +46,13 @@ Status statusFromString(std::string_view value);
 std::ostream& operator<<(std::ostream& stream,
                          arangodb::transaction::Status const& s);
 
+template<typename Inspector>
+auto inspect(Inspector& f, Status& s) {
+  return f.enumeration(s).values(Status::UNDEFINED, "undefined",  //
+                                 Status::CREATED, "created",      //
+                                 Status::RUNNING, "running",      //
+                                 Status::COMMITTED, "committed",  //
+                                 Status::ABORTED, "aborted");
+}
+
 }  // namespace arangodb::transaction

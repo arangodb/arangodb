@@ -26,8 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 
-namespace arangodb {
-namespace application_features {
+namespace arangodb::application_features {
 
 class AqlFeaturePhase : public ApplicationFeaturePhase {
  public:
@@ -36,5 +35,4 @@ class AqlFeaturePhase : public ApplicationFeaturePhase {
   explicit AqlFeaturePhase(application_features::ApplicationServer& server);
 };
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

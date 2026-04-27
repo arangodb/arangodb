@@ -53,7 +53,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "SystemMonitor/AsyncRegistry/Feature.h"
-#include "SystemMonitor/ActivityRegistry/Feature.h"
+#include "SystemMonitor/Activities/Feature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
@@ -156,7 +156,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"

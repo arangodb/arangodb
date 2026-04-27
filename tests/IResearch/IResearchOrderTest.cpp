@@ -47,9 +47,10 @@
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "RestServer/arangod.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -290,41 +291,41 @@ class IResearchOrderTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     selector.setEngineTesting(&engine);
     features.emplace_back(selector, false);
-    features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::QueryRegistryFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
-            selector,
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::metrics::ClusterMetricsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-                nullptr)),
-        false);
+    auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(server),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
+        selector,
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            nullptr));
+    features.emplace_back(metrics, false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(
-        server.addFeature<arangodb::QueryRegistryFeature>(
-            server.getFeature<arangodb::metrics::MetricsFeature>()),
-        false);
+        server.addFeature<arangodb::QueryRegistryFeature>(metrics), false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for IResearchFeature
     features.emplace_back(
         server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
+    features.emplace_back(
+        server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
+                          false);  // required for calculationVocbase
     features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
                           false);
     {
       auto& feature =
           features
               .emplace_back(
-                  server.addFeature<arangodb::iresearch::IResearchFeature>(),
+                  server.addFeature<arangodb::iresearch::IResearchFeature>(
+                      metrics),
                   true)
               .first;
       feature.validateOptions(server.options());
       feature.collectOptions(server.options());
     }
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);  // required for calculationVocbase
 
     for (auto& f : features) {
       f.first.prepare();

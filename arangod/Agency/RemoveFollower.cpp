@@ -32,8 +32,9 @@
 #include "Random/RandomGenerator.h"
 #include "Logger/LogMacros.h"
 
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+
+namespace arangodb::consensus {
 
 RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,
@@ -473,3 +474,5 @@ arangodb::Result RemoveFollower::abort(std::string const& reason) {
   TRI_ASSERT(false);  // cannot happen, since job moves directly to FINISHED
   return result;
 }
+
+}  // namespace arangodb::consensus

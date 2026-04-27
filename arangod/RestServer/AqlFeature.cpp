@@ -36,6 +36,7 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -62,6 +63,7 @@ AqlFeature::AqlFeature(ApplicationServer& server)
 #endif
 
   startsAfter<QueryRegistryFeature>();
+  startsAfter<TemporaryStorageFeature>();
 }
 
 AqlFeature::~AqlFeature() {

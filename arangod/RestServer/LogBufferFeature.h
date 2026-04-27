@@ -38,6 +38,9 @@ class ProgramOptions;
 }
 
 namespace arangodb {
+namespace metrics {
+class MetricsFeature;
+}  // namespace metrics
 
 struct LogBuffer {
   uint64_t _id;

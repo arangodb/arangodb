@@ -285,7 +285,8 @@ class IResearchAnalyzerFeature final
   }
 
   explicit IResearchAnalyzerFeature(
-      application_features::ApplicationServer& server);
+      application_features::ApplicationServer& server,
+      DatabaseFeature& databaseFeature);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions

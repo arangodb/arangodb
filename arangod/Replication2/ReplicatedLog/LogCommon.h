@@ -585,11 +585,11 @@ struct velocypack::Extractor<replication2::LogId> {
 }  // namespace arangodb
 
 template<>
-struct fmt::formatter<arangodb::replication2::LogId>
-    : fmt::formatter<arangodb::basics::Identifier> {};
+struct std::formatter<arangodb::replication2::LogId>
+    : std::formatter<arangodb::basics::Identifier> {};
 
 template<>
-struct fmt::formatter<arangodb::replication2::GlobalLogIdentifier>
+struct std::formatter<arangodb::replication2::GlobalLogIdentifier>
     : arangodb::inspection::inspection_formatter {};
 
 template<>

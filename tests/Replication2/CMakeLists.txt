@@ -67,8 +67,7 @@ target_link_libraries(arango_tests_replication2 PRIVATE
   arango
   arango_replication2
   arango_futures
-  velocypack
-  fmt)
+  velocypack)
 
 option(USE_SEPARATE_REPLICATION2_TESTS_BINARY
   "Write a separate binary 'arangodbtests_replication2', containing only the Replication 2.0 tests.")
@@ -88,8 +87,7 @@ target_link_libraries(arangodbtests_replication2 PRIVATE
   arango_cluster_engine
   arango_rocksdb
   arangoserver
-  boost_boost
-  fmt)
+  boost_boost)
 
 if (USE_V8)
   target_link_libraries(arangodbtests_replication2 PRIVATE arango_v8server)

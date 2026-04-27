@@ -2117,7 +2117,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
-  arangodb::iresearch::IResearchAnalyzerFeature analyzers(server.server());
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
+  arangodb::iresearch::IResearchAnalyzerFeature analyzers(server.server(),
+                                                          databaseFeature);
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"stringValue\": \"string\" \

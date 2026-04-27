@@ -66,9 +66,9 @@ auto to_string(SnapshotId snapshotId) -> std::string;
 }  // namespace arangodb::replication2::replicated_state::document
 
 template<>
-struct fmt::formatter<
+struct std::formatter<
     arangodb::replication2::replicated_state::document::SnapshotId>
-    : fmt::formatter<arangodb::basics::Identifier> {};
+    : std::formatter<arangodb::basics::Identifier> {};
 
 template<>
 struct std::hash<

@@ -33,6 +33,10 @@
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
+namespace metrics {
+class MetricsFeature;
+}  // namespace metrics
+
 class FileDescriptorsFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {

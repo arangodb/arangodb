@@ -27,7 +27,7 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
-const { getMetric, getDBServers, moveShard } = require("@arangodb/test-helper");
+const { getMetric, getDBServers, moveShard, eventuallyAssertMetricSum } = require("@arangodb/test-helper");
 let IM = global.instanceManager;
 
 const waitFactor = IM.options.isInstrumented ? 5 : 1;
@@ -188,22 +188,6 @@ function ClusterDBServerShardMetricsTestSuite() {
     getMetricsAndAssert(servers, expectedShardsNum, expectedShardsLeaderNum, expectedShardsOutOfSync, expectedShardsNotReplicated, expectedFollowersOutOfSync);
   };
 
-  // Helper function to eventually assert a single metric with a custom comparison function
-  // compareFn takes the metric value and returns true if the assertion should pass
-  const eventuallyAssertMetric = function(servers, metricName, compareFn, errorMessage) {
-    let metricValue;
-    for (let i = 0; i < 2000 * waitFactor; i++) {
-      internal.wait(0.1);
-      metricValue = getDBServerMetricSum(servers, metricName);
-      if (compareFn(metricValue)) {
-        break;
-      }
-    }
-    // Final assertion with error message
-    assertTrue(compareFn(metricValue), `${errorMessage}: got ${metricValue}`);
-    return metricValue;
-  };
-
   return {
     tearDown: function () {
       db._useDatabase("_system");
@@ -308,9 +292,9 @@ function ClusterDBServerShardMetricsTestSuite() {
       const onlineServers = dbServers.filter(server => server.id !== dbServerWithoutLeader.id);
       // The server we crashed had two followers, so we have 2 out of sync shards
       // also other system shards might also be out of sync
-      eventuallyAssertMetric(onlineServers, shardsOutOfSyncNumMetric,
+      eventuallyAssertMetricSum(onlineServers, shardsOutOfSyncNumMetric,
         (value) => value >= 2,
-        "Expected at least 2 shards out of sync");
+        "Expected at least 2 shards out of sync", 2000 * waitFactor);
       // One server is down, so we lose testCollShards shards (one replica per shard)
       const onlineShardCount = totalShardCount - testCollShards;
       getMetricsAndAssert(onlineServers, onlineShardCount, totalLeaderCount, null, 0);
@@ -435,7 +419,7 @@ server.suspend();
       // Insert some data to trigger replication
       db._query(`FOR i IN 0..10 INSERT {val: i} INTO ${collectionName}`);
 
-      eventuallyAssertMetric([dbServerLeader], shardsOutOfSyncNumMetric, (v) => v > 0, "shardsOutOfSyncNumMetric is not bigger then 0");
+      eventuallyAssertMetricSum([dbServerLeader], shardsOutOfSyncNumMetric, (v) => v > 0, "shardsOutOfSyncNumMetric is not bigger then 0", 2000 * waitFactor);
 
       // Stop leader
       dbServerLeader.suspend();
@@ -443,7 +427,7 @@ server.suspend();
       // Resume only original follower
       dbServerFollower.resume();
 
-      eventuallyAssertMetric([dbServerFollower], followersOutOfSyncNumMetric, (value) => value > 0, "Expecting followersOutOfSyncNumMetric > 0");
+      eventuallyAssertMetricSum([dbServerFollower], followersOutOfSyncNumMetric, (value) => value > 0, "Expecting followersOutOfSyncNumMetric > 0", 2000 * waitFactor);
 
       // Resume all down servers
       dbServerLeader.resume();

@@ -67,7 +67,7 @@
 #endif
 
 #include <absl/strings/str_cat.h>
-#include <fuerte/jwt.h>
+#include "Ssl/jwt.h"
 #include <velocypack/Iterator.h>
 
 #include <algorithm>
@@ -1497,7 +1497,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
         if (!username.empty()) {
           headers.try_emplace(
               StaticStrings::Authorization,
-              "bearer " + fuerte::jwt::generateUserToken(
+              "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
                               auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
@@ -1656,7 +1656,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
         if (!username.empty()) {
           headers.try_emplace(
               StaticStrings::Authorization,
-              "bearer " + fuerte::jwt::generateUserToken(
+              "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
                               auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,

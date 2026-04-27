@@ -94,7 +94,7 @@ class backupTestRunner extends trs.runInArangoshRunner {
     if (this.dumpPath !== undefined) {
       return dumpPath;
     }
-
+    let IM = this.instanceManager;
     this.instanceManager = new im.instanceManager(this.options.protocol,
                                                   this.options,
                                                   _.clone(tu.testServerAuthInfo),
@@ -163,8 +163,16 @@ class backupTestRunner extends trs.runInArangoshRunner {
         this.instanceManager.arangods[0].exitStatus = null;
         fs.removeDirectoryRecursive(this.instanceManager.arangods[0].dataDir);
         fs.makeDirectory(this.instanceManager.arangods[0].dataDir);
-        
+      } else {
+        print('Health check failed!');
+        path = {
+          state: false,
+          failed: 1,
+          shutdown: false,
+          message: "health check of dump server failed"
+        };
       }
+      this.instanceManager = IM;
       log('done.');
       print();
     }
@@ -248,15 +256,6 @@ const BackupNoAuthSysTests = (options) => {
 // //////////////////////////////////////////////////////////////////////////////
 
 const BackupNoAuthNoSysTests = (options) => {
-  if (options.skipServerJS) {
-    return {
-      BackupNoAuthSysTests : {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   log('Test dump without authentication, restore _system excl system collections');
   return new backupTestRunner(options,
                               'BackupNoAuthSysTests',
@@ -285,15 +284,6 @@ const BackupAuthSysTests = (options) => {
 // //////////////////////////////////////////////////////////////////////////////
 
 const BackupAuthNoSysTests = (options) => {
-  if (options.skipServerJS) {
-    return {
-      BackupAuthSysTests : {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   log('Test dump with authentication, restore _system excl system collections');
   return new backupTestRunner(options,
                               'BackupAuthNoSysTests',

@@ -51,8 +51,7 @@
 
 #include <velocypack/Builder.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 enum ConditionPartCompareResult {
@@ -457,12 +456,12 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
           for (size_t j = 0; j < n2; ++j) {
             auto w = other.valueNode->getMemberUnchecked(j);
 
-            ::CompareResult res =
+            CompareResult res =
                 ResultsTable[compareAstNodes(v, w, true) + 1][0][0];
 
-            if (res != ::CompareResult::OTHER_CONTAINED_IN_SELF &&
-                res != ::CompareResult::CONVERT_EQUAL &&
-                res != ::CompareResult::IMPOSSIBLE) {
+            if (res != CompareResult::OTHER_CONTAINED_IN_SELF &&
+                res != CompareResult::CONVERT_EQUAL &&
+                res != CompareResult::IMPOSSIBLE) {
               return false;
             }
           }
@@ -524,13 +523,12 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-  ::CompareResult res =
+  CompareResult res =
       ResultsTable[compareAstNodes(other.valueNode, valueNode, true) + 1]
                   [other.whichCompareOperation()][whichCompareOperation()];
 
-  if (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
-      res == ::CompareResult::CONVERT_EQUAL ||
-      res == ::CompareResult::IMPOSSIBLE) {
+  if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
+      res == CompareResult::CONVERT_EQUAL || res == CompareResult::IMPOSSIBLE) {
     return true;
   }
 
@@ -769,7 +767,7 @@ std::vector<std::vector<basics::AttributeName>> Condition::getConstAttributes(
     auto member = node->getMember(i);
 
     if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      ::clearAttributeAccess(parts);
+      clearAttributeAccess(parts);
 
       auto lhs = member->getMember(0);
       auto rhs = member->getMember(1);
@@ -823,7 +821,7 @@ Condition::getNonNullAttributes(Variable const* reference) const {
     if (member->type == NODE_TYPE_OPERATOR_BINARY_NE ||
         member->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         member->type == NODE_TYPE_OPERATOR_BINARY_LT) {
-      ::clearAttributeAccess(parts);
+      clearAttributeAccess(parts);
 
       AstNode const* lhs = member->getMember(0);
       AstNode const* rhs = member->getMember(1);
@@ -1024,11 +1022,11 @@ bool canInRangeBeRemoved(auto const* inRangeNode, auto const* otherAndNode,
               result, isFromTraverser) ||
           result.first != variable ||
           !basics::AttributeName::isIdentical(result.second, elem, false)) {
-        ::clearAttributeAccess(result);
+        clearAttributeAccess(result);
         isFieldCoveredByIndex = true;
         break;
       }
-      ::clearAttributeAccess(result);
+      clearAttributeAccess(result);
     }
 
     if (!isFieldCoveredByIndex) {
@@ -1049,9 +1047,11 @@ void Condition::collectOverlappingMembers(
     ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
     AstNode const* otherAndNode, containers::HashSet<size_t>& toRemove,
     Index const* index, /* may be nullptr */
-    bool isPathCondition) {
-  bool const isFromTraverser{index == nullptr};
+    bool isFromTraverser, bool isPathCondition) {
   bool const isSparse = (index != nullptr && index->sparse());
+
+  //  for expressions like arr[offset], arr[offset].field, etc.
+  bool allowIndexedAccessInArray{isFromTraverser || index != nullptr};
 
   std::pair<Variable const*, std::vector<basics::AttributeName>> result;
 
@@ -1063,7 +1063,7 @@ void Condition::collectOverlappingMembers(
 
     // We can enter here only if we have index node, therefore we know that we
     // are not dealing with the Traversal Node
-    if (isSparse && allowOps && !isFromTraverser &&
+    if (isSparse && allowOps && index && !isFromTraverser &&
         (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
          operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
       // look   for != null   and   > null
@@ -1074,10 +1074,11 @@ void Condition::collectOverlappingMembers(
       lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
       rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
 
-      ::clearAttributeAccess(result);
+      clearAttributeAccess(result);
 
       if (rhs->isNullValue() &&
-          lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+          lhs->isAttributeAccessForVariable(result,
+                                            allowIndexedAccessInArray) &&
           result.first == variable) {
         auto const mayRemoveIndexNonNullAttribute = [&] {
           if (auto ty = index->type();
@@ -1121,15 +1122,17 @@ void Condition::collectOverlappingMembers(
       rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
-        ::clearAttributeAccess(result);
+          (allowIndexedAccessInArray && lhs->type == NODE_TYPE_EXPANSION)) {
+        clearAttributeAccess(result);
 
-        if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+        if (lhs->isAttributeAccessForVariable(result,
+                                              allowIndexedAccessInArray) &&
             result.first == variable) {
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_LEFT, nullptr);
 
-          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
+          if (canRemove(plan, current, otherAndNode,
+                        allowIndexedAccessInArray)) {
             toRemove.emplace(i);
           }
         }
@@ -1137,14 +1140,16 @@ void Condition::collectOverlappingMembers(
 
       if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           rhs->type == NODE_TYPE_EXPANSION) {
-        ::clearAttributeAccess(result);
+        clearAttributeAccess(result);
 
-        if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+        if (rhs->isAttributeAccessForVariable(result,
+                                              allowIndexedAccessInArray) &&
             result.first == variable) {
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_RIGHT, nullptr);
 
-          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
+          if (canRemove(plan, current, otherAndNode,
+                        allowIndexedAccessInArray)) {
             toRemove.emplace(i);
           }
         }
@@ -1210,8 +1215,9 @@ AstNode* Condition::removeCondition(ExecutionPlan const* plan,
   TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
   containers::HashSet<size_t> toRemove;
+  bool isFromTraverser{index == nullptr};
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove,
-                            index, isPathCondition);
+                            index, isFromTraverser, isPathCondition);
 
   if (toRemove.empty()) {
     return _root;
@@ -1494,8 +1500,8 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
     // and do not have to discard sub-conditions anymore
     andNode->sortMembers([](AstNode const* lhs, AstNode const* rhs) noexcept {
       // try to re-order comparison operators
-      int l = ::operationWeight(lhs);
-      int r = ::operationWeight(rhs);
+      int l = operationWeight(lhs);
+      int r = operationWeight(rhs);
       if (l != r) {
         return l < r;
       }
@@ -1645,15 +1651,15 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 // enumerate over IN list
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
-                  ::CompareResult res =
+                  CompareResult res =
                       ResultsTable[compareAstNodes(value, other.valueNode,
                                                    true) +
                                    1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                                   [other.whichCompareOperation()];
 
                   bool const keep =
-                      (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
-                       res == ::CompareResult::CONVERT_EQUAL);
+                      (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
+                       res == CompareResult::CONVERT_EQUAL);
 
                   if (keep) {
                     inNode->addMember(value);
@@ -1678,14 +1684,14 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-            ::CompareResult res =
+            CompareResult res =
                 resultsTable[compareAstNodes(current.valueNode, other.valueNode,
                                              true) +
                              1][current.whichCompareOperation()]
                             [other.whichCompareOperation()];
 
             switch (res) {
-              case ::CompareResult::IMPOSSIBLE: {
+              case CompareResult::IMPOSSIBLE: {
                 // impossible condition
                 // j = positions.size();
                 // we remove this one, so fast forward the loops to their end:
@@ -1693,20 +1699,20 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 retry = true;
                 goto fastForwardToNextOrItem;
               }
-              case ::CompareResult::SELF_CONTAINED_IN_OTHER: {
+              case CompareResult::SELF_CONTAINED_IN_OTHER: {
                 TRI_ASSERT(!positions.empty());
                 andNode->removeMemberUncheckedUnordered(positions.at(l).first);
                 goto restartThisOrItem;
               }
-              case ::CompareResult::OTHER_CONTAINED_IN_SELF: {
+              case CompareResult::OTHER_CONTAINED_IN_SELF: {
                 TRI_ASSERT(j < positions.size());
                 andNode->removeMemberUncheckedUnordered(positions.at(j).first);
                 goto restartThisOrItem;
               }
-              case ::CompareResult::CONVERT_EQUAL: {  // both ok, now transform
-                                                      // to
-                                                      // a
-                                                      // == x (== y)
+              case CompareResult::CONVERT_EQUAL: {  // both ok, now transform
+                                                    // to
+                                                    // a
+                                                    // == x (== y)
                 TRI_ASSERT(!positions.empty());
                 TRI_ASSERT(j < positions.size());
                 TRI_ASSERT(positions.at(j).first >
@@ -1731,10 +1737,10 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 andNode->changeMember(positions.at(l).first, newNode);
                 goto restartThisOrItem;
               }
-              case ::CompareResult::DISJOINT: {
+              case CompareResult::DISJOINT: {
                 break;
               }
-              case ::CompareResult::UNKNOWN: {
+              case CompareResult::UNKNOWN: {
                 break;
               }
             }
@@ -1809,7 +1815,8 @@ void Condition::validateAst(AstNode const* node, int level) {
 
 /// @brief checks if the current condition is covered by the other
 bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
-                          aql::AstNode const* andNode, bool isFromTraverser) {
+                          aql::AstNode const* andNode,
+                          bool allowArrayExpansion) {
   TRI_ASSERT(andNode != nullptr);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
@@ -1839,15 +1846,15 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
       auto operand = andNode->getMemberUnchecked(i);
 
       if (operand->isComparisonOperator() ||
-          (isFromTraverser && operand->isArrayComparisonOperator())) {
+          (allowArrayExpansion && operand->isArrayComparisonOperator())) {
         auto lhs = operand->getMember(0);
         auto rhs = operand->getMember(1);
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-            (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
-          ::clearAttributeAccess(result);
+            (allowArrayExpansion && lhs->type == NODE_TYPE_EXPANSION)) {
+          clearAttributeAccess(result);
 
-          if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+          if (lhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
               result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
@@ -1871,9 +1878,9 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
 
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
             rhs->type == NODE_TYPE_EXPANSION) {
-          ::clearAttributeAccess(result);
+          clearAttributeAccess(result);
 
-          if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+          if (rhs->isAttributeAccessForVariable(result, allowArrayExpansion) &&
               result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
@@ -2074,7 +2081,7 @@ AstNode* Condition::transformNodePreorder(
   }
 
   // normalize any comparisons
-  return ::normalizeCompare(_ast, node);
+  return normalizeCompare(_ast, node);
 }
 
 /// @brief converts from negation normal to disjunctive normal form
@@ -2127,7 +2134,7 @@ AstNode* Condition::transformNodePostorder(
       //  a   c      b   c
       //
 
-      ::arangodb::containers::SmallVector<::PermutationState, 4> clauses;
+      containers::SmallVector<PermutationState, 4> clauses;
       clauses.reserve(n);
 
       size_t orMembers = 1;
@@ -2311,3 +2318,5 @@ bool Condition::isEmpty() const noexcept {
 }
 
 bool Condition::isSorted() const noexcept { return _isSorted; }
+
+}  // namespace arangodb::aql

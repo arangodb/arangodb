@@ -47,7 +47,7 @@
 #include "Utilities/NameValidator.h"
 
 #include <absl/strings/str_cat.h>
-#include <fuerte/jwt.h>
+#include "Ssl/jwt.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
@@ -513,7 +513,8 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   } else if (!_jwtSecret.empty()) {
     TRI_ASSERT(!_endpoints.empty());
     httpClient->params().setJwt(
-        fuerte::jwt::generateInternalToken(_jwtSecret, _endpoints[0]));
+        arangodb::rest::SslInterface::jwt::generateInternalToken(
+            _jwtSecret, _endpoints[0]));
   }
 
   return httpClient;

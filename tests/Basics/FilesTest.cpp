@@ -36,6 +36,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <filesystem>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -255,61 +256,98 @@ TEST_F(FilesTest, tst_filesize_non) {
 
 TEST_F(FilesTest, tst_absolute_paths) {
   std::string path;
+  std::error_code cwdEc;
+  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
+  if (cwdEc) {
+    throw std::filesystem::filesystem_error(
+        "cannot get current working directory", std::filesystem::path(), cwdEc);
+  }
+  std::string const cwd = cwdPath.string();
 
-  path = TRI_GetAbsolutePath("the-fox", "/tmp");
-  EXPECT_EQ(std::string("/tmp/the-fox"), path);
+  path = std::filesystem::absolute(std::filesystem::path(".") / "").string();
+  EXPECT_EQ(std::filesystem::path(cwd) / "./", path);
 
-  path = TRI_GetAbsolutePath("the-fox.lol", "/tmp");
-  EXPECT_EQ(std::string("/tmp/the-fox.lol"), path);
+  path = std::filesystem::absolute(std::filesystem::path("/home/tmp") / "")
+             .string();
+  EXPECT_EQ(std::string("/home/tmp/"), path);
 
-  path = TRI_GetAbsolutePath("the-fox.lol", "/tmp/the-fox");
-  EXPECT_EQ(std::string("/tmp/the-fox/the-fox.lol"), path);
+  path = std::filesystem::absolute(std::filesystem::path("") / "the-fox.lol")
+             .string();
+  EXPECT_EQ(std::string(std::filesystem::path(cwd) / "the-fox.lol"), path);
 
-  path = TRI_GetAbsolutePath("file", "/");
-  EXPECT_EQ(std::string("/file"), path);
+  path = std::filesystem::absolute(std::filesystem::path("/home/user") /
+                                   "docs/file.txt")
+             .string();
+  EXPECT_EQ(std::string("/home/user/docs/file.txt"), path);
 
-  path = TRI_GetAbsolutePath("./file", "/");
-  EXPECT_EQ(std::string("/./file"), path);
+  path = std::filesystem::absolute(std::filesystem::path("/home/user") /
+                                   "/var/log/syslog")
+             .string();
+  EXPECT_EQ(std::string("/var/log/syslog"), path);
 
-  path = TRI_GetAbsolutePath("/file", "/tmp");
-  EXPECT_EQ(std::string("/file"), path);
+  path = std::filesystem::absolute(std::filesystem::path("/var/log/syslog"))
+             .string();
+  EXPECT_EQ(std::string("/var/log/syslog"), path);
 
-  path = TRI_GetAbsolutePath("/file/to/file", "/tmp");
-  EXPECT_EQ(std::string("/file/to/file"), path);
+  path = std::filesystem::absolute(std::filesystem::path("syslog")).string();
+  EXPECT_EQ(std::filesystem::path(cwd) / "syslog", path);
 
-  path = TRI_GetAbsolutePath("file/to/file", "/tmp");
-  EXPECT_EQ(std::string("/tmp/file/to/file"), path);
+  path = std::filesystem::absolute(std::filesystem::path("Documents/file.txt"))
+             .string();
+  EXPECT_EQ(std::string(std::filesystem::path(cwd) / "Documents/file.txt"),
+            path);
 
-  path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
-  EXPECT_EQ(std::string("c:file/to/file"), path);
+  path = std::filesystem::absolute(std::filesystem::path("/tmp") /
+                                   "c:file/to/file")
+             .string();
+  // POSIX: no drive-letter semantics; "c:file" is a normal path segment under
+  // /tmp.
+  EXPECT_EQ(std::string("/tmp/c:file/to/file"), path);
 }
 
-TEST_F(FilesTest, tst_normalize) {
+TEST_F(FilesTest, tst_normalizepath) {
   std::string path;
 
+  path.clear();
+  TRI_NormalizePath(path);
+  EXPECT_TRUE(path.empty());
+
+  path = "no_separators_here";
+  TRI_NormalizePath(path);
+  EXPECT_EQ(std::string("no_separators_here"), path);
+
   path = "/foo/bar/baz";
-  FileUtils::normalizePath(path);
+  TRI_NormalizePath(path);
   EXPECT_EQ(std::string("/foo/bar/baz"), path);
 
-  path = "\\foo\\bar\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("\\foo\\bar\\baz"), path);
+  path = "//foo//bar";
+  TRI_NormalizePath(path);
+  EXPECT_EQ(std::string("//foo//bar"), path);
 
-  path = "/foo/bar\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("/foo/bar\\baz"), path);
+#if TRI_DIR_SEPARATOR_CHAR == '/'
+  // POSIX: only '/' is a separator; backslashes are left unchanged.
+  path = "C:\\Users\\John\\file.txt";
+  TRI_NormalizePath(path);
+  EXPECT_EQ(std::string("C:\\Users\\John\\file.txt"), path);
 
-  path = "/foo/bar/\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("/foo/bar/\\baz"), path);
+  path = "/foo\\bar/baz";
+  TRI_NormalizePath(path);
+  EXPECT_EQ(std::string("/foo\\bar/baz"), path);
 
-  path = "//foo\\/bar/\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("//foo\\/bar/\\baz"), path);
+  path = "C:\\Users\\John/Documents\\file.txt";
+  TRI_NormalizePath(path);
+  EXPECT_EQ(std::string("C:\\Users\\John/Documents\\file.txt"), path);
 
-  path = "\\\\foo\\/bar/\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("\\\\foo\\/bar/\\baz"), path);
+#else
+  // Windows: '/' and '\\' both become TRI_DIR_SEPARATOR_CHAR.
+  path = "C:/Users/John\\file.txt";
+  TRI_NormalizePath(path);
+  EXPECT_EQ(std::string("C:\\Users\\John\\file.txt"), path);
+
+  path = "foo/bar/baz";
+  TRI_NormalizePath(path);
+  EXPECT_EQ(std::string("foo\\bar\\baz"), path);
+#endif
 }
 
 TEST_F(FilesTest, tst_getfilename) {
@@ -474,28 +512,4 @@ TEST_F(FilesTest, tst_listfiles) {
 
   std::sort(found.begin(), found.end());
   EXPECT_EQ(names, found);
-}
-
-TEST_F(FilesTest, tst_countfiles) {
-  constexpr std::string_view content = "piffpaffpuff";
-
-  constexpr size_t n = 16;
-  // create subdirs
-  for (size_t i = 0; i < n; ++i) {
-    std::string name =
-        absl::StrCat(_directory, TRI_DIR_SEPARATOR_STR, "tmp-", ++counter);
-    long unused1;
-    std::string unused2;
-    auto res = TRI_CreateDirectory(name.c_str(), unused1, unused2);
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, res);
-  }
-  // create a few files on top
-  for (size_t i = 0; i < 5; ++i) {
-    std::string name =
-        absl::StrCat(_directory, TRI_DIR_SEPARATOR_STR, "tmp-", ++counter);
-    FileUtils::spit(name, content.data(), content.size(), false);
-  }
-
-  size_t found = FileUtils::countFiles(_directory);
-  EXPECT_EQ(n + 5, found);
 }

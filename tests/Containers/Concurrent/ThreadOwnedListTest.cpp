@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Containers/Concurrent/ThreadOwnedList.h"
 
+#include "Mocks/Death_Test.h"
+
 #include <gtest/gtest.h>
 #include <cstdint>
 #include <source_location>
@@ -97,8 +99,8 @@ TEST_F(ThreadOwnedListDeathTest, another_thread_cannot_add_a_promise) {
   auto registry = MyList::make();
 
   std::jthread([&]() {
-    EXPECT_DEATH(registry->add([]() { return NodeData{1}; }),
-                 "Assertion failed");
+    EXPECT_DEATH_CORE_FREE(registry->add([]() { return NodeData{1}; }),
+                           "Assertion failed");
   });
 }
 
@@ -221,8 +223,8 @@ TEST_F(ThreadOwnedListDeathTest,
   auto* promise = registry->add([]() { return NodeData{33}; });
 
   auto some_other_registry = MyList::make();
-  EXPECT_DEATH(some_other_registry->mark_for_deletion(promise),
-               "Assertion failed");
+  EXPECT_DEATH_CORE_FREE(some_other_registry->mark_for_deletion(promise),
+                         "Assertion failed");
 
   // correct clean up
   registry->mark_for_deletion(promise);
@@ -250,6 +252,7 @@ TEST_F(ThreadOwnedListDeathTest,
 
   auto registry = MyList::make();
 
-  std::jthread(
-      [&] { EXPECT_DEATH(registry->garbage_collect(), "Assertion failed"); });
+  std::jthread([&] {
+    EXPECT_DEATH_CORE_FREE(registry->garbage_collect(), "Assertion failed");
+  });
 }

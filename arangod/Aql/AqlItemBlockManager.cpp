@@ -28,9 +28,8 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
-using namespace arangodb::aql;
-
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+namespace arangodb::aql {
+using VelocyPackHelper = basics::VelocyPackHelper;
 
 /// @brief create the manager
 AqlItemBlockManager::AqlItemBlockManager(
@@ -229,3 +228,5 @@ uint32_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
   TRI_ASSERT(value < numBuckets);
   return value;
 }
+
+}  // namespace arangodb::aql

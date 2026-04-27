@@ -27,7 +27,7 @@ var internal = require('internal');
 var print = internal.print;
 var fs = require('fs');
 var console = require('console');
-var minimatch = require('minimatch');
+var { minimatch } = require('minimatch');
 
 var TOTAL = 0;
 var PASSED = 0;
@@ -264,7 +264,7 @@ function Run (testsuite) {
 
       tests.push(test);
     } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll' && key !== 'internal') {
-      console.error('unknown function: %s', key);
+      throw new Error(`function name ${key} not allowed here.`);
     }
   }
   if (tests.length === 0) {

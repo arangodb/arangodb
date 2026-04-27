@@ -222,7 +222,7 @@ TEST(ShardIDTest, canBeSerializedAsFlatHashMap) {
 
 TEST(ShardIDTest, canBeFMTFormatted) {
   ShardID shard{42};
-  EXPECT_EQ(fmt::format("{}", shard), "s42");
+  EXPECT_EQ(std::format("{}", shard), "s42");
 }
 
 TEST(ShardIDTest, canBeConcateatedWithStrings) {

@@ -115,7 +115,7 @@ auto IndexAggregateScanExecutor::skipRowsRange(
   if (not inputRange.hasDataRow()) {
     return std::make_tuple(inputRange.upstreamState(), Stats{}, 0, AqlCall{});
   }
-  TRI_ASSERT(inputRange.countDataRows() == 1) << fmt::format(
+  TRI_ASSERT(inputRange.countDataRows() == 1) << std::format(
       "IndexAggregateScanExecutor expects to be run just after a SingletonNode "
       "with one input row, but input range has {} rows",
       inputRange.countDataRows());
@@ -138,7 +138,7 @@ auto IndexAggregateScanExecutor::skipRowsRange(
     while (true) {
       // TODO one can improve this maybe by seeking forward
       hasMore = _iterator->next(_keySlices, docId, _projectionSlices);
-      LOG_AGG_SCAN << fmt::format("[SCAN] Found keys {} and projectsion {}",
+      LOG_AGG_SCAN << std::format("[SCAN] Found keys {} and projectsion {}",
                                   inspection::json(_keySlices),
                                   inspection::json(_projectionSlices));
 
@@ -176,7 +176,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     return std::make_tuple(inputRange.upstreamState(), Stats{}, AqlCall{});
   }
 
-  TRI_ASSERT(inputRange.countDataRows() == 1) << fmt::format(
+  TRI_ASSERT(inputRange.countDataRows() == 1) << std::format(
       "IndexAggregateScanExecutor expects to be run just after a SingletonNode "
       "with one input row, but input range has {} rows",
       inputRange.countDataRows());
@@ -210,7 +210,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       aggregate(_aggregatorInstances, _infos.aggregations, context);
 
       hasMore = _iterator->next(_keySlices, docId, _projectionSlices);
-      LOG_AGG_SCAN << fmt::format("[SCAN] Found keys {} and projections {}",
+      LOG_AGG_SCAN << std::format("[SCAN] Found keys {} and projections {}",
                                   inspection::json(_keySlices),
                                   inspection::json(_projectionSlices));
 

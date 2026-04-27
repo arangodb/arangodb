@@ -26,6 +26,7 @@
 #include "Containers/Concurrent/thread.h"
 #include "Basics/Thread.h"
 
+#include <format>
 #include <gtest/gtest.h>
 #include <optional>
 #include <source_location>
@@ -187,5 +188,5 @@ TEST_F(AsyncRegistryTest, inpection_works_on_after_thread_was_deleted) {
 
   // we just make sure that we can still inspect the promise (and it does not
   // crash the system), although the thread the promise was created on is gone
-  EXPECT_NE(fmt::format("{}", inspection::json(promise_snapshot)), "");
+  EXPECT_NE(std::format("{}", inspection::json(promise_snapshot)), "");
 }

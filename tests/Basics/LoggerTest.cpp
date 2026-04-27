@@ -32,9 +32,9 @@
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogMessage.h"
 #include "Logger/Logger.h"
-#include "fmt/format.h"
 
 #include <date/date.h>
+#include <format>
 
 #include <regex>
 #include <sstream>
@@ -368,7 +368,7 @@ TEST_F(LoggerTest, test_many_loggers_same_file) {
       for (size_t j = 0; j < iterations; ++j) {
         logger->logMessageGuarded(
             LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0,
-                       fmt::format("Thread {} Message {}\n", i, j), 0, true));
+                       std::format("Thread {} Message {}\n", i, j), 0, true));
       }
     });
   }

@@ -31,6 +31,7 @@ struct AuthenticationOptions {
   bool authenticationUnixSockets = true;
   bool authenticationSystemOnly = true;
   bool active = true;
+  std::string externalRBACservice = "";  // means deactivated RBAC
   double authenticationTimeout = 0.0;
   double sessionTimeout = static_cast<double>(1 * 3600);  // 1 hour in seconds
   double minimalJwtExpiryTime = 10.0;                     // 10 seconds
@@ -39,6 +40,7 @@ struct AuthenticationOptions {
   std::string jwtSecretProgramOption;
   std::string jwtSecretKeyfileProgramOption;
   std::string jwtSecretFolderProgramOption;
+  bool jwtSecretIsES256 = false;  // true if the active secret uses ES256
 
 #ifdef USE_ENTERPRISE
   /// verification only secrets
