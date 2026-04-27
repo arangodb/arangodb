@@ -5,6 +5,9 @@
   The MMF engine has been removed in 3.7 already, so there is only the rocksdb
   engine anymore, making this option pointless.
 
+* COR-452: Vector search filters may now reference variables from outside the FOR
+  loop (subquery results, LET bindings, bind parameters).
+
 * COR-444: Vector index training now draws a uniformly random training set
   via reservoir sampling (Algorithm L) over a full iteration of the
   collection, instead of keeping the first `nLists * 256` documents.
