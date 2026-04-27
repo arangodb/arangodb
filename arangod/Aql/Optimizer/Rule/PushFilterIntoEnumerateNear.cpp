@@ -233,7 +233,7 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
            materializer->getType() == EN::CALCULATION) {
       materializer = materializer->getFirstParent();
     }
-    // Dropping the MaterializeNode in cluster mode currently confuses the
+    // TODO: Dropping the MaterializeNode in cluster mode currently confuses the
     // SCATTER/GATHER placement done by scatterInClusterRule (the GatherNode
     // loses its sort info, so multi-shard results no longer merge in
     // distance order). Until that interaction is sorted out, only drop the
@@ -243,14 +243,113 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
       plan->unlinkNode(materializer);
       enumerateNearVectorNode->setStrategy(
           EnumerateNearVectorNode::Strategy::kDocument);
-      // useVectorIndexRule excluded EnumerateNearVectorNode from
-      // scatter/gather expecting the MaterializeNode (also a
-      // CollectionAccessingNode) to host the SCATTER/GATHER pair. With the
-      // materializer gone, EnumerateNearVectorNode itself becomes the
-      // collection-accessing node, so the exclusion has to be reverted.
-      plan->includeInScatterGather(enumerateNearVectorNode);
+      // TODO(cluster): useVectorIndexRule called
+      // plan->excludeFromScatterGather(enumerateNearVectorNode) so that
+      // scatterInClusterRule wraps the (un-excluded) MaterializeNode
+      // instead. Once the cluster path is reworked to drop the
+      // materializer, that exclusion needs to be reverted here.
     }
 
+    modified = true;
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+// Runs after optimizeProjectionsRule. For every EnumerateNearVectorNode
+// with a MaterializeRocksDBNode parent, transfer the projections the
+// projections rule assigned to the materializer over to the
+// EnumerateNearVectorNode and drop the materializer. Cluster mode is left
+// alone because scatterInClusterRule uses the materializer to host the
+// SCATTER/GATHER pair.
+void propagateProjectionsIntoEnumerateNear(Optimizer* opt,
+                                           std::unique_ptr<ExecutionPlan> plan,
+                                           OptimizerRule const& rule) {
+  LOG_RULE << "propagateProjectionsIntoEnumerateNear: entered, cluster="
+           << ServerState::instance()->isRunningInCluster();
+  if (ServerState::instance()->isRunningInCluster()) {
+    opt->addPlan(std::move(plan), rule, /*modified*/ false);
+    return;
+  }
+
+  bool modified{false};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, EN::ENUMERATE_NEAR_VECTORS, true);
+  for (ExecutionNode* node : nodes) {
+    auto* enumerateNearVectorNode =
+        ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
+
+    // The previous filter-pushdown pass may have already removed the
+    // materializer; in that case this node is in kDocument and there is
+    // nothing more to do.
+    if (enumerateNearVectorNode->strategy() !=
+        EnumerateNearVectorNode::Strategy::kPassThroughId) {
+      continue;
+    }
+
+    // Find the MaterializeRocksDBNode whose input doc-id variable IS this
+    // EnumerateNearVectorNode's outVariable. lateDocumentMaterializationRule
+    // may move the materializer past SORT / LIMIT / GATHER, and in
+    // nested-loop queries with a second vector enumerator the parent chain
+    // may also pass through *another* materializer that does not belong to
+    // us -- matching on the input variable disambiguates safely.
+    auto const* outVariable = enumerateNearVectorNode->outVariable();
+    containers::SmallVector<ExecutionNode*, 8> matCandidates;
+    plan->findNodesOfType(matCandidates, EN::MATERIALIZE, /*enterSubqueries*/
+                          true);
+    materialize::MaterializeRocksDBNode* matNode = nullptr;
+    for (auto* cand : matCandidates) {
+      auto* mat = dynamic_cast<materialize::MaterializeRocksDBNode*>(cand);
+      if (mat != nullptr && &mat->docIdVariable() == outVariable) {
+        matNode = mat;
+        break;
+      }
+    }
+    if (matNode == nullptr) {
+      continue;
+    }
+
+    // materializeIntoSeparateVariable may have rebound the materializer's
+    // outVariable to a fresh variable, with all downstream attribute
+    // references rewritten to read it. Adopt that variable as our own
+    // outVariable so dropping the materializer leaves no orphan reads.
+    // This is only safe when the EnumerateNearVectorNode does not have a
+    // pushed-down filter expression -- that filter binds the loaded doc
+    // to the original `oldDocVariable`, and rebinding would break the
+    // binding contract with RocksDBVectorIndex::readBatch. Filters are
+    // already handled by pushFilterIntoEnumerateNear, so this rule only
+    // sees the no-filter path; the assertion makes that explicit.
+    TRI_ASSERT(!enumerateNearVectorNode->hasFilter());
+    if (&matNode->docIdVariable() != &matNode->outVariable()) {
+      enumerateNearVectorNode->rebindOutVariable(&matNode->outVariable());
+    }
+
+    // Transfer the projections (with their already-assigned output
+    // variables) onto the EnumerateNearVectorNode. The executor will fill
+    // those registers from the document or storedValues.
+    enumerateNearVectorNode->setProjections(std::move(matNode->projections()));
+
+    // Choose strategy: if every projection is coverable by the index'
+    // storedValues, we can skip the document load entirely. Otherwise the
+    // executor produces the document and extracts projections from it.
+    auto const& projections = enumerateNearVectorNode->projections();
+    bool const coveredByStoredValues =
+        !projections.empty() &&
+        projections.usesCoveringIndex(enumerateNearVectorNode->index());
+
+    if (coveredByStoredValues && enumerateNearVectorNode->hasFilter() &&
+        enumerateNearVectorNode->isCoveredByStoredValues()) {
+      enumerateNearVectorNode->setStrategy(
+          EnumerateNearVectorNode::Strategy::kCovered);
+    } else {
+      enumerateNearVectorNode->setStrategy(
+          EnumerateNearVectorNode::Strategy::kDocument);
+    }
+
+    plan->unlinkNode(matNode);
+    // TODO(cluster): useVectorIndexRule excluded EnumerateNearVectorNode
+    // from scatter/gather. Once the cluster path can also drop the
+    // materializer that exclusion needs to be reverted here.
     modified = true;
   }
 
