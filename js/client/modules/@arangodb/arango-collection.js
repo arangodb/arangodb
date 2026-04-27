@@ -192,13 +192,24 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
     return v;
   });
 
-  // get the edges
-  let url = '/_api/edges/' + encodeURIComponent(this.name())
-    + (direction ? '?direction=' + encodeURIComponent(direction) : '');
+  const baseUrl = '/_api/edges/' + encodeURIComponent(this.name());
+  const dirParam = direction ? '&direction=' + encodeURIComponent(direction) : '';
+  const seen = new Set();
+  const edges = [];
 
-  let requestResult = this._database._connection.POST(this._prefixurl(url), vertex);
-  arangosh.checkRequestResult(requestResult);
-  return requestResult.edges;
+  for (const v of vertex) {
+    const url = baseUrl + '?vertex=' + encodeURIComponent(v) + dirParam;
+    const requestResult = this._database._connection.GET(this._prefixurl(url));
+    arangosh.checkRequestResult(requestResult);
+    for (const edge of requestResult.edges) {
+      if (!seen.has(edge._id)) {
+        seen.add(edge._id);
+        edges.push(edge);
+      }
+    }
+  }
+
+  return edges;
 };
 
 ArangoCollection.prototype.shards = function (details) {
