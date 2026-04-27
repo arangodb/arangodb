@@ -93,12 +93,12 @@ using namespace arangodb::rest;
 /// check ExecContext if system use
 static bool CanReadUser(std::string_view user) {
   auto const& exec = ExecContext::current();
-  return exec.canReadUser(user);
+  return exec.canReadUser(user).ok();
 }
 
 static bool CanWriteUser(std::string_view user) {
   auto const& exec = ExecContext::current();
-  return exec.canWriteUser(user);
+  return exec.canWriteUser(user).ok();
 }
 
 void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {

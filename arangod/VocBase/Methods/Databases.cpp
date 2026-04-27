@@ -161,7 +161,7 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
     // If the current user is empty (which happens if a Maintenance job
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
-    if (exec.canWriteUser(exec.user())) {
+    if (exec.canWriteUser(exec.user()).ok()) {
       res = um->updateUser(
           exec.user(),
           [&](auth::User& entry) {

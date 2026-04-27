@@ -123,7 +123,7 @@ Result ExecContext::canDropCollection(std::string_view db,
 Result ExecContext::canUseCollection(std::string_view db, std::string_view coll,
                                      CollectionAccessLevel level) const {
   using namespace auth::perms;
-  return can(UseCollection{.db{db}, .name{coll}});
+  return can(UseCollection{.db{db}, .name{coll}, .level = level});
 }
 
 Result ExecContext::canCreateIndex(std::string_view db,
@@ -149,7 +149,7 @@ Result ExecContext::canSeeView(std::string_view db,
 Result ExecContext::canCreateView(std::string_view db,
                                   std::string_view view) const {
   using namespace auth::perms;
-  return can(CreateView{.db{db}, .name{view}});
+  return can(CreateView{.db{db}, .name{view}, .linkedCollections{}});
 }
 
 Result ExecContext::canDropView(std::string_view db, std::string_view view,
@@ -209,9 +209,9 @@ Result ExecContext::canUseAnalyzer(std::string_view db,
 }
 
 /// @brief returns true if the user can be read
-bool ExecContext::canReadUser(std::string_view user) const {
+Result ExecContext::canReadUser(std::string_view user) const {
   using namespace auth::perms;
-  return can(ReadUser{.name{user}}).ok();
+  return can(ReadUser{.name{user}});
   // TODO
   // Pseudocode:
   // if superuser: true
@@ -220,14 +220,14 @@ bool ExecContext::canReadUser(std::string_view user) const {
   //   return AdminReadUser(user)
   // else:
   //   return RW(_system)
-  return true;
+  return {};
 }
 
 /// @brief returns true if the user can be modified, note that everybody
 /// can modify themselves (if only to change the password).
-bool ExecContext::canWriteUser(std::string_view user) const {
+Result ExecContext::canWriteUser(std::string_view user) const {
   using namespace auth::perms;
-  return can(WriteUser{.name{user}}).ok();
+  return can(WriteUser{.name{user}});
   // TODO
   // Pseudocode:
   // if superuser: true
@@ -236,7 +236,7 @@ bool ExecContext::canWriteUser(std::string_view user) const {
   //   return AdminWriteUser(user)
   // else:
   //   return RW(_system)
-  return true;
+  return {};
 }
 
 /// @brief returns true for each user which can be read
