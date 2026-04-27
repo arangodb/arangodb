@@ -15,6 +15,7 @@
       - permissions
       - paths_server
       - version
+      - shell_client_large
 
 # Single Server Replication Tests
 - replication_shell:
@@ -129,13 +130,6 @@
       parallelity: 2
       buckets: 2
       type: single
-
-- shell_client_large:
-    options:
-      priority: 250
-      parallelity: 2
-      type: single
-      size: medium
 
 - shell_client_transaction:
     options:
