@@ -441,7 +441,7 @@
 #       dumpAgencyOnError: true
 
 # Common Tests
-- import_export_aql_vector:
+- import_export_aql:
     options:
       parallelity: 5
       size: medium+
@@ -451,8 +451,14 @@
     suites:
       - importing
       - export
-      - shell_client_aql_vector
       - shell_api
+- shell_client_aql_vector:
+    options:
+      parallelity: 5
+      size: medium+
+      type: cluster
+    args:
+      dumpAgencyOnError: true
 
 - hot_backup:
     options:
