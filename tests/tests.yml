@@ -201,7 +201,7 @@
 
 - shell_client_aql:
     options:
-      buckets: 10
+      buckets: 5
       priority: 250
       type: single
     args:
@@ -210,7 +210,7 @@
 
 - shell_client_aql_large:
     options:
-      buckets: 5
+      buckets: 3
       priority: 250
       type: single
       suffix: _large
@@ -392,7 +392,7 @@
       priority: 1000
       size: small
       type: cluster
-      buckets: 6
+      buckets: 4
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
