@@ -412,6 +412,13 @@ struct OptimizerRule {
     // otherwise the projections handling of JoinNodes will be incorrect.
     optimizeProjectionsRule,
 
+    // After projections have been assigned to the MaterializeRocksDBNode
+    // that sits above an EnumerateNearVectorNode, hand them to the
+    // EnumerateNearVectorNode itself, choose a kDocument / kCovered
+    // strategy, and drop the now-redundant materializer. Must run after
+    // optimizeProjectionsRule so the projection variables exist.
+    propagateProjectionsIntoEnumerateNearRule,
+
     // final cleanup, after projections
     removeUnnecessaryCalculationsRule4,
 
@@ -476,6 +483,13 @@ struct OptimizerRule {
       useVectorIndexForSort < pushFilterIntoEnumerateNear,
       "useVectorIndexForSort sort enables pushFilterIntoEnumerateNear rule, "
       "otherwise the pushFilterIntoEnumerateNear can never trigger");
+
+  static_assert(useVectorIndexForSort <
+                    propagateProjectionsIntoEnumerateNearRule,
+                "useVectorIndexForSort sort enables "
+                "propagateProjectionsIntoEnumerateNearRule, "
+                "otherwise the propagateProjectionsIntoEnumerateNearRule can "
+                "never trigger");
 
   std::string_view name;
   RuleFunction func;

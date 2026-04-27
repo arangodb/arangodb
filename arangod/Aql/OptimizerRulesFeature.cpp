@@ -925,6 +925,16 @@ vector embeddings with vector similarity AQL functions.)");
 filtering by using `storedValues`. This rule is only enabled by the
 `use-vector-index` rule.)");
 
+  registerRule("propagate-projections-into-enumerate-near",
+               propagateProjectionsIntoEnumerateNear,
+               OptimizerRule::propagateProjectionsIntoEnumerateNearRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Move projections that the projections rule assigned to the
+MaterializeRocksDBNode above an EnumerateNearVectorNode onto the vector node
+itself, then drop the now-redundant MaterializeRocksDBNode. Single-server
+only -- in cluster mode the materializer is kept because the scatter/gather
+placement depends on it.)");
+
   registerRule(
       "immutable-search-condition", iresearch::immutableSearchCondition,
       OptimizerRule::immutableSearchConditionRule,
