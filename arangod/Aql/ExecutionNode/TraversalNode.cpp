@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/ConditionCoverage.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/GraphNode.h"
@@ -709,10 +710,9 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   auto generateExpression =
       [&](aql::AstNode* remainderCondition,
           aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
-    containers::HashSet<size_t> toRemove;
-    aql::Condition::collectOverlappingMembers(
+    auto toRemove = aql::collectOverlappingMembersForTraversal(
         _plan, options()->tmpVar(), remainderCondition, indexCondition,
-        toRemove, nullptr, true, false);
+        /*isPathCondition*/ false);
     size_t n = remainderCondition->numMembers();
 
     if (n != toRemove.size()) {
