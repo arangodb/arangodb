@@ -257,6 +257,89 @@ function VectorRetrainTestSuite () {
       }
     },
 
+    testRetrainPreservesStoredValuesDefinition: function () {
+      // Build a vector index that carries storedValues, then retrain. The
+      // shadow constructed by makeRetrainShadow() has to round-trip the
+      // full user-facing definition: fields, params, and storedValues.
+      const storedIdxName = "vec_with_stored";
+      const storedFields = ["name", "category", "value"];
+
+      // Add a few attributes to the existing docs so storedValues has
+      // real material to project.
+      db._query(aql`FOR d IN ${collection}
+        UPDATE d WITH { name: CONCAT("doc-", d._key),
+                        category: "all",
+                        value: LENGTH(d._key) }
+        IN ${collection}`);
+
+      collection.ensureIndex({
+        name: storedIdxName,
+        type: "vector",
+        fields: ["vector"],
+        inBackground: false,
+        sparse: true,
+        storedValues: storedFields,
+        params: {
+          metric: "l2",
+          dimension,
+          nLists,
+          trainingIterations: 5
+        }
+      });
+
+      assertTrue(
+        waitForAllVectorIndexesState(
+          collection, VectorIndexTrainingState.kReady, 120),
+        "Stored-values vector index did not reach ready state");
+
+      const preIdx = collection.indexes().find(i => i.name === storedIdxName);
+      assertTrue(preIdx !== undefined, "Pre-retrain stored-values index missing");
+      assertEqual(storedFields, preIdx.storedValues,
+        "Pre-retrain index must carry the requested storedValues");
+      assertTrue(preIdx.sparse,
+        "Pre-retrain index must carry the requested sparse flag");
+
+      collection.retrain(storedIdxName);
+
+      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
+      assertTrue(postIdx !== undefined,
+        "Stored-values retrain did not finish within timeout");
+      if (!isCluster) {
+        assertNotEqual(preIdx.id, postIdx.id,
+          "Retrain should produce a new IndexId on single server");
+      }
+
+      // The user-visible definition must round-trip the rebuild.
+      assertEqual(storedFields, postIdx.storedValues,
+        "Retrain must preserve storedValues across the swap");
+      assertEqual(preIdx.fields, postIdx.fields,
+        "Retrain must preserve indexed fields");
+      assertEqual(preIdx.type, postIdx.type);
+      assertEqual(preIdx.sparse, postIdx.sparse,
+        "Retrain must preserve the sparse flag");
+      assertEqual(preIdx.params.metric, postIdx.params.metric);
+      assertEqual(preIdx.params.dimension, postIdx.params.dimension);
+      assertEqual(preIdx.params.nLists, postIdx.params.nLists);
+
+      // And the stored-values cover-search path must still work — confirms
+      // the shadow's storedValues were wired into the new objectId's CF
+      // range, not just echoed in metadata.
+      const qp = collection.any().vector;
+      const projected = db._query(aql`FOR d IN ${collection}
+        SORT APPROX_NEAR_L2(d.vector, ${qp}, {nProbe: ${nLists}})
+        LIMIT 5
+        RETURN { name: d.name, category: d.category, value: d.value }`)
+        .toArray();
+      assertEqual(5, projected.length);
+      for (const row of projected) {
+        assertTrue(row.name !== undefined, "name must be projectable post-retrain");
+        assertTrue(row.category !== undefined, "category must be projectable post-retrain");
+        assertTrue(row.value !== undefined, "value must be projectable post-retrain");
+      }
+
+      collection.dropIndex(created.id);
+    },
+
     testRetrainShadowIsVisibleInIndexes: function () {
       if (isCluster || !IM.debugCanUseFailAt()) {
         // The shadow is a DBServer-local object; the coordinator's
