@@ -201,7 +201,6 @@
 
 - shell_client_aql:
     options:
-      buckets: 5
       priority: 250
       type: single
     args:
