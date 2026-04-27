@@ -695,8 +695,7 @@ inline std::string normalizedAnalyzerName(std::string_view database,
   return absl::StrCat(database, "::", analyzer);
 }
 
-bool analyzerInUse(application_features::ApplicationServer& server,
-                   std::string_view dbName,
+bool analyzerInUse(std::string_view dbName,
                    AnalyzerPool::ptr const& analyzerPtr,
                    DatabaseFeature& databaseFeature,
                    SystemDatabaseFeature& systemDatabase) {
@@ -768,8 +767,7 @@ bool analyzerInUse(application_features::ApplicationServer& server,
 }
 
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
-    application_features::ApplicationServer& server, std::string_view vocbase,
-    ClusterFeature* clusterFeature) {
+    std::string_view vocbase, ClusterFeature* clusterFeature) {
   if (ServerState::instance()->isCoordinator() && !vocbase.empty()) {
     TRI_ASSERT(clusterFeature && clusterFeature->isEnabled());
     auto& engine = clusterFeature->clusterInfo();
@@ -1082,17 +1080,38 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
   return {};
 }
 
+IResearchAnalyzerFeature::Dependencies
+IResearchAnalyzerFeature::Dependencies::fromServer(
+    application_features::ApplicationServer& server) {
+  return {
+      .databaseFeature = server.getFeature<DatabaseFeature>(),
+      .engineSelector = server.getFeature<EngineSelectorFeature>(),
+      .systemDatabase = server.getFeature<SystemDatabaseFeature>(),
+      .connectionPool = server.hasFeature<NetworkFeature>()
+                            ? server.getFeature<NetworkFeature>().pool()
+                            : nullptr,
+      .clusterFeature = server.hasFeature<ClusterFeature>()
+                            ? &server.getFeature<ClusterFeature>()
+                            : nullptr,
+      .schedulerFeature = server.hasFeature<SchedulerFeature>()
+                              ? &server.getFeature<SchedulerFeature>()
+                              : nullptr,
+      .aqlFunctionFeature = server.hasFeature<aql::AqlFunctionFeature>()
+                                ? &server.getFeature<aql::AqlFunctionFeature>()
+                                : nullptr,
+  };
+}
+
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
-    application_features::ApplicationServer& server,
-    DatabaseFeature& databaseFeature)
+    application_features::ApplicationServer& server, Dependencies deps)
     : ApplicationFeature{server, *this},
-      _clusterFeature(server.hasFeature<ClusterFeature>()
-                          ? &server.getFeature<ClusterFeature>()
-                          : nullptr),
-      _engineSelector(server.getFeature<EngineSelectorFeature>()),
-      _systemDatabase(server.getFeature<SystemDatabaseFeature>()),
-      _databaseFeature(databaseFeature),
-      _connectionPool(server.getFeature<NetworkFeature>().pool()) {
+      _clusterFeature(deps.clusterFeature),
+      _engineSelector(deps.engineSelector),
+      _systemDatabase(deps.systemDatabase),
+      _databaseFeature(deps.databaseFeature),
+      _connectionPool(deps.connectionPool),
+      _schedulerFeature(deps.schedulerFeature),
+      _aqlFunctionFeature(deps.aqlFunctionFeature) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
@@ -1370,8 +1389,8 @@ Result IResearchAnalyzerFeature::emplace(
     Features features /* = {} */) {
   auto const split = splitAnalyzerName(name);
 
-  auto transaction = createAnalyzerModificationTransaction(
-      server(), split.first, _clusterFeature);
+  auto transaction =
+      createAnalyzerModificationTransaction(split.first, _clusterFeature);
   if (transaction) {
     auto startRes = transaction->start();
     if (startRes.fail()) {
@@ -1482,8 +1501,8 @@ Result IResearchAnalyzerFeature::emplace(
 
 Result IResearchAnalyzerFeature::removeAllAnalyzers(
     TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin) {
-  auto analyzerModificationTrx = createAnalyzerModificationTransaction(
-      server(), vocbase.name(), _clusterFeature);
+  auto analyzerModificationTrx =
+      createAnalyzerModificationTransaction(vocbase.name(), _clusterFeature);
   if (analyzerModificationTrx) {
     auto startRes = analyzerModificationTrx->start();
     if (startRes.fail()) {
@@ -1589,8 +1608,8 @@ Result IResearchAnalyzerFeature::bulkEmplace(
     transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(dumpedAnalyzers.isArray());
   TRI_ASSERT(!dumpedAnalyzers.isEmptyArray());
-  auto transaction = createAnalyzerModificationTransaction(
-      server(), vocbase.name(), _clusterFeature);
+  auto transaction =
+      createAnalyzerModificationTransaction(vocbase.name(), _clusterFeature);
   if (transaction) {
     auto startRes = transaction->start();
     if (startRes.fail()) {
@@ -1971,15 +1990,6 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
     AnalyzersRevision::Revision buildingRevision,
     transaction::OperationOrigin operationOrigin) {
   if (ServerState::instance()->isCoordinator()) {
-    if (!server().hasFeature<DatabaseFeature>()) {
-      return {
-          TRI_ERROR_INTERNAL,
-          absl::StrCat(
-              "failure to find feature 'Database' while loading analyzers for "
-              "database '",
-              database, "'")};
-    }
-
     auto& engine = _engineSelector.engine();
     auto vocbase = _databaseFeature.useDatabase(database);
     if (!vocbase) {
@@ -2077,13 +2087,6 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
 Result IResearchAnalyzerFeature::loadAnalyzers(
     transaction::OperationOrigin operationOrigin,
     std::string_view database /*= std::string_view{}*/) {
-  if (!server().hasFeature<DatabaseFeature>()) {
-    return {TRI_ERROR_INTERNAL,
-            absl::StrCat("failure to find feature 'Database' while loading "
-                         "analyzers for database '",
-                         database, "'")};
-  }
-
   try {
     // '_analyzers'/'_lastLoad' can be asynchronously read
     WRITE_LOCKER(lock, _mutex);
@@ -2499,8 +2502,8 @@ void IResearchAnalyzerFeature::prepare() {
   _analyzers = getStaticAnalyzers();
 
   // register analyzer functions
-  if (server().hasFeature<aql::AqlFunctionFeature>()) {
-    addFunctions(server().getFeature<aql::AqlFunctionFeature>());
+  if (_aqlFunctionFeature) {
+    addFunctions(*_aqlFunctionFeature);
   }
 }
 
@@ -2620,7 +2623,7 @@ Result IResearchAnalyzerFeature::remove(
     }
 
     if (!force &&
-        analyzerInUse(server(), split.first, pool, _databaseFeature,
+        analyzerInUse(split.first, pool, _databaseFeature,
                       _systemDatabase)) {  // +1 for ref in '_analyzers'
       return {
           TRI_ERROR_ARANGO_CONFLICT,
@@ -2636,8 +2639,8 @@ Result IResearchAnalyzerFeature::remove(
       return {};
     }
 
-    auto analyzerModificationTrx = createAnalyzerModificationTransaction(
-        server(), split.first, _clusterFeature);
+    auto analyzerModificationTrx =
+        createAnalyzerModificationTransaction(split.first, _clusterFeature);
     if (analyzerModificationTrx) {
       auto startRes = analyzerModificationTrx->start();
       if (startRes.fail()) {
@@ -2784,9 +2787,7 @@ void IResearchAnalyzerFeature::start() {
     TRI_ASSERT(vocbase->name() == arangodb::StaticStrings::SystemDatabase);
   }
 #endif
-  if (server().hasFeature<ClusterFeature>() &&
-      server().hasFeature<SchedulerFeature>() &&  // Mostly for tests without
-                                                  // scheduler
+  if (_clusterFeature && _schedulerFeature &&
       ServerState::instance()->isCoordinator()) {
     queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
   }

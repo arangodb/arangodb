@@ -148,7 +148,8 @@ void ArangodServer::addFeatures(
   addFeature<LoggerFeature>(true);
   addFeature<MaintenanceFeature>(&clusterFeature);
   addFeature<MaxMapCountFeature>();
-  addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
+  auto& networkFeature =
+      addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
   addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
@@ -188,7 +189,7 @@ void ArangodServer::addFeatures(
   addFeature<UpgradeFeature>(ret, kNonServerFeatures);
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
-  addFeature<aql::AqlFunctionFeature>();
+  auto& aqlFunctionFeature = addFeature<aql::AqlFunctionFeature>();
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
@@ -212,7 +213,16 @@ void ArangodServer::addFeatures(
 #else
   addFeature<SslServerFeature>();
 #endif
-  addFeature<iresearch::IResearchAnalyzerFeature>(database);
+  addFeature<iresearch::IResearchAnalyzerFeature>(
+      iresearch::IResearchAnalyzerFeature::Dependencies{
+          .databaseFeature = database,
+          .engineSelector = engineSelectorFeature,
+          .systemDatabase = systemDatabaseFeature,
+          .connectionPool = networkFeature.pool(),
+          .clusterFeature = &clusterFeature,
+          .schedulerFeature = &scheduler,
+          .aqlFunctionFeature = &aqlFunctionFeature,
+      });
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>();
 

@@ -289,7 +289,8 @@ struct IResearchExpressionFilterTest
         true);  // required for IResearchAnalyzerFeature
     features.emplace_back(
         server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-            databaseFeature),
+            arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::
+                fromServer(server)),
         true);
 
     auto& feature =

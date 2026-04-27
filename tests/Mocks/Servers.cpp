@@ -235,13 +235,14 @@ static void SetupV8Phase(MockServer& server) {
 static void SetupAqlPhase(MockServer& server) {
   SetupV8Phase(server);
   auto& metrics = server.getFeature<metrics::MetricsFeature>();
-  auto& databaseFeature = server.getFeature<DatabaseFeature>();
   server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(false, metrics);
   server.addFeature<TemporaryStorageFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-      true, databaseFeature);
+      true,
+      arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(
+          server.server()));
   {
     auto& feature =
         server.addFeature<arangodb::iresearch::IResearchFeature>(true, metrics);

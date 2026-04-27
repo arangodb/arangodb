@@ -281,7 +281,8 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #else
   _server.addFeature<SslServerFeature>();
 #endif
-  _server.addFeature<iresearch::IResearchAnalyzerFeature>(database);
+  _server.addFeature<iresearch::IResearchAnalyzerFeature>(
+      iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(_server));
   _server.addFeature<iresearch::IResearchFeature>(metrics);
   _server.addFeature<ClusterEngine>();
 

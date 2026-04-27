@@ -61,7 +61,13 @@ class ApplicationServer;
 class ClusterFeature;
 class DatabaseFeature;
 class EngineSelectorFeature;
+class NetworkFeature;
+class SchedulerFeature;
 class SystemDatabaseFeature;
+
+namespace aql {
+class AqlFunctionFeature;
+}
 
 namespace network {
 class ConnectionPool;
@@ -284,9 +290,21 @@ class IResearchAnalyzerFeature final
     return "ArangoSearchAnalyzer";
   }
 
+  struct Dependencies {
+    DatabaseFeature& databaseFeature;
+    EngineSelectorFeature& engineSelector;
+    SystemDatabaseFeature& systemDatabase;
+    network::ConnectionPool* connectionPool;
+    ClusterFeature* clusterFeature;
+    SchedulerFeature* schedulerFeature;
+    aql::AqlFunctionFeature* aqlFunctionFeature;
+
+    static Dependencies fromServer(
+        application_features::ApplicationServer& server);
+  };
+
   explicit IResearchAnalyzerFeature(
-      application_features::ApplicationServer& server,
-      DatabaseFeature& databaseFeature);
+      application_features::ApplicationServer& server, Dependencies deps);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
@@ -597,6 +615,8 @@ class IResearchAnalyzerFeature final
   SystemDatabaseFeature& _systemDatabase;
   DatabaseFeature& _databaseFeature;
   network::ConnectionPool* _connectionPool;
+  SchedulerFeature* _schedulerFeature;
+  aql::AqlFunctionFeature* _aqlFunctionFeature;
 };
 
 }  // namespace iresearch
