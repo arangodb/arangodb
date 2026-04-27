@@ -212,7 +212,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<PrivilegeFeature>();
   _server.addFeature<QueryRegistryFeature>(metrics);
   _server.addFeature<RandomFeature>();
-  _server.addFeature<ReplicationFeature>(metrics, comm);
+  _server.addFeature<ReplicationFeature>(comm, metrics);
   _server.addFeature<ReplicatedLogFeature>();
   _server.addFeature<ReplicationMetricsFeature>(metrics);
   _server.addFeature<ReplicationTimeoutFeature>();
@@ -246,11 +246,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<TemporaryStorageFeature>();
   _server.addFeature<TtlFeature>();
   _server.addFeature<UpgradeFeature>(&result, kNonServerFeatures);
-#ifdef USE_V8
-  _server.addFeature<V8DealerFeature>(metrics);
-  _server.addFeature<V8PlatformFeature>();
-  _server.addFeature<V8SecurityFeature>();
-#endif
   _server.addFeature<transaction::ManagerFeature>(metrics);
   _server.addFeature<ViewTypesFeature>();
   _server.addFeature<aql::AqlFunctionFeature>();
@@ -266,7 +261,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
 #ifdef ARANGODB_HAVE_FORK
-  _server.addFeature<DaemonFeature>();
   _server.addFeature<SupervisorFeature>();
 #endif
 #ifdef USE_ENTERPRISE
@@ -276,16 +270,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();
 #endif
-#ifdef USE_ENTERPRISE
-  _server.addFeature<SslServerFeature, SslServerFeatureEE>();
-#else
-  _server.addFeature<SslServerFeature>();
-#endif
-  _server.addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies::fromServer(_server));
-  _server.addFeature<iresearch::IResearchFeature>(metrics);
-  _server.addFeature<ClusterEngine>();
-
   _server.addFeature<RocksDBEngine>(
       _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
       scheduler,
