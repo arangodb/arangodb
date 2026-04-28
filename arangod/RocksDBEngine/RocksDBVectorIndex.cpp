@@ -199,20 +199,15 @@ void RocksDBVectorIndex::toVelocyPack(
   }
 }
 
-std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
-RocksDBVectorIndex::readBatch(
-    std::vector<float>& inputs,
-    vector::SearchParameters const& searchParameters,
-    RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
-    std::shared_ptr<LogicalCollection> collection, std::size_t topK,
-    aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
-    aql::QueryContext& queryContext,
-    std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
-        filterVarsToRegs,
-    aql::Variable const* documentVariable, bool isCoveredByStoredValues) {
+vector::SearchResult RocksDBVectorIndex::readBatch(
+    vector::SearchConfig const& config, vector::SearchContext const& ctx) {
+  TRI_ASSERT(ctx.inputs != nullptr);
+  TRI_ASSERT(ctx.trx != nullptr);
+
+  auto& inputs = *ctx.inputs;
   TRI_ASSERT(inputs.size() == _definition.dimension)
-      << "Number of components does not match vector dimension, topK: " << topK
-      << ", dimension: " << _definition.dimension
+      << "Number of components does not match vector dimension, topK: "
+      << config.topK << ", dimension: " << _definition.dimension
       << ", inputs size: " << inputs.size();
 
   if (_definition.metric == vector::SimilarityMetric::kCosine) {
@@ -231,44 +226,50 @@ RocksDBVectorIndex::readBatch(
   TRI_ASSERT(_faissIndex != nullptr);
 
   // Trained: normal FAISS IVF search
-  std::vector<float> distances(topK);
-  std::vector<faiss::idx_t> labels(topK);
+  vector::SearchResult result;
+  result.distances.resize(config.topK);
+  result.labels.resize(config.topK);
 
-  // Used by the faiss iterator
+  // Used by the faiss iterator. When capture flags are set, point the
+  // context's capture sinks at the result's maps so the filter iterator
+  // populates them in place.
   auto faissSearchContext =
       std::invoke([&]() -> vector::RocksDBFaissSearchContext {
-        if (filterExpression == nullptr) {
-          return {trx};
+        if (config.filterExpression == nullptr) {
+          return {ctx.trx};
         }
+        TRI_ASSERT(ctx.queryContext != nullptr);
 
         vector::SearchParametersContext searchCtx;
-        searchCtx.trx = trx;
-        searchCtx.filterExpression = filterExpression;
-        if (inputRow != nullptr) {
-          searchCtx.inputRow = *inputRow;
+        searchCtx.trx = ctx.trx;
+        searchCtx.filterExpression = config.filterExpression;
+        if (ctx.inputRow != nullptr) {
+          searchCtx.inputRow = *ctx.inputRow;
         }
-        searchCtx.queryContext = &queryContext;
-        searchCtx.filterVarsToRegs = &filterVarsToRegs;
-        searchCtx.documentVariable = documentVariable;
-        searchCtx.isCoveredByStoredValues = isCoveredByStoredValues;
+        searchCtx.queryContext = ctx.queryContext;
+        searchCtx.filterVarsToRegs = &config.filterVarsToRegs;
+        searchCtx.documentVariable = config.documentVariable;
+        searchCtx.useStoredValuesIterator = config.useStoredValuesIterator;
+        searchCtx.capturedDocuments =
+            config.captureDocuments ? &result.capturedDocuments : nullptr;
         return searchCtx;
       });
 
   faiss::SearchParametersIVF searchParametersIvf;
   searchParametersIvf.nprobe =
-      searchParameters.nProbe.value_or(_definition.defaultNProbe);
+      config.searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
-  _faissIndex->search(1, inputs.data(), topK, distances.data(), labels.data(),
-                      &searchParametersIvf);
+  _faissIndex->search(1, inputs.data(), config.topK, result.distances.data(),
+                      result.labels.data(), &searchParametersIvf);
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
   if (_definition.metric == vector::SimilarityMetric::kL2) {
-    std::ranges::transform(distances, distances.begin(),
+    std::ranges::transform(result.distances, result.distances.begin(),
                            [](auto const& elem) { return std::sqrt(elem); });
   }
 
-  return {std::move(labels), std::move(distances)};
+  return result;
 }
 
 bool RocksDBVectorIndex::isVectorIndexReady() const noexcept {

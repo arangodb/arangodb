@@ -31,9 +31,12 @@
 #include "RocksDBValue.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 
+#include "Containers/NodeHashMap.h"
+
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/MetricType.h>
 #include <faiss/invlists/InvertedLists.h>
+#include <velocypack/Buffer.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/SliceContainer.h>
@@ -187,8 +190,20 @@ struct SearchParametersContext {
   aql::QueryContext* queryContext;
   std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
       filterVarsToRegs;
-  bool isCoveredByStoredValues;
+  // True iff the storedValues-only iterator should be used: the filter is
+  // expressible against storedValues AND projections are too, so the FAISS
+  // layer can skip loading documents entirely.
+  bool useStoredValuesIterator;
   aql::Variable const* documentVariable;
+
+  // Optional output map populated by the filter iterators when the filter
+  // expression passes. The iterator stores whatever VPack object it built
+  // for filter evaluation (full document for the non-covered iterator, or
+  // a partial doc reconstructed from storedValues for the covered one).
+  // Letting the executor reuse these bytes saves a duplicate RocksDB read.
+  // Owner is the caller (the executor); the iterator only inserts.
+  containers::NodeHashMap<LocalDocumentId, velocypack::Buffer<uint8_t>>*
+      capturedDocuments{nullptr};
 };
 
 // This is used to pass a different search context via RocksDBInvertedList it

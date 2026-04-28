@@ -25,11 +25,15 @@
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/Variable.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/LogicalCollection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 
 #include <cmath>
@@ -54,6 +58,23 @@ EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
     : _infos(infos),
       _trx(_infos.queryContext.newTrxContext()),
       _collection(_infos.collection) {}
+
+void EnumerateNearVectorsExecutor::writeProjections(velocypack::Slice docSlice,
+                                                    OutputAqlItemRow& output) {
+  if (_infos.projections.empty() || _infos.projectionVarsToRegs.empty()) {
+    return;
+  }
+  _infos.projections.produceFromDocument(
+      _projectionsBuilder, docSlice, &_trx,
+      [&](Variable const* variable, velocypack::Slice slice) {
+        if (slice.isNone()) {
+          slice = VPackSlice::nullSlice();
+        }
+        auto it = _infos.projectionVarsToRegs.find(variable->id);
+        TRI_ASSERT(it != _infos.projectionVarsToRegs.end());
+        output.moveValueInto(it->second, _inputRow, slice);
+      });
+}
 
 void EnumerateNearVectorsExecutor::fillInput(
     AqlItemBlockInputRange& inputRange) {
@@ -100,25 +121,70 @@ void EnumerateNearVectorsExecutor::searchResults() {
   auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());
   TRI_ASSERT(vectorIndex != nullptr);
 
-  RocksDBMethods* mthds =
-      RocksDBTransactionState::toMethods(&_trx, _collection->id());
-
-  std::tie(_labels, _distances) = vectorIndex->readBatch(
-      _inputRowConverted, _infos.searchParameters, mthds, &_trx,
-      _collection->getCollection(), _infos.getNumberOfResults(),
-      _infos.filterExpression, &_inputRow, _infos.queryContext,
-      _infos.getVarsToRegister(), _infos.documentVariable,
-      _infos.isCoveredByStoredValues);
+  // The configuration lives on the infos; we just hand the per-call
+  // execution context (current query vector, current input row, trx) to
+  // readBatch.
+  auto result = vectorIndex->readBatch(_infos.searchConfig,
+                                       vector::SearchContext{
+                                           .inputs = &_inputRowConverted,
+                                           .inputRow = &_inputRow,
+                                           .trx = &_trx,
+                                           .queryContext = &_infos.queryContext,
+                                       });
+  _labels = std::move(result.labels);
+  _distances = std::move(result.distances);
+  // Whatever the filter iterator captured (full doc or partial doc) is
+  // already keyed by LocalDocumentId, which is exactly how fillOutput will
+  // look it up -- adopt the map directly.
+  _documents = std::move(result.capturedDocuments);
   _currentProcessedResultCount = 0;
+
+  // Fallback path: when there is no filter and the strategy still wants
+  // documents, the iterator did not load any. Batch-fetch them here so
+  // fillOutput finds entries in `_documents` keyed by id.
+  if (_infos.strategy == EnumerateNearVectorNode::Strategy::kDocument &&
+      _infos.searchConfig.filterExpression == nullptr) {
+    std::vector<LocalDocumentId> tokensToFetch;
+    tokensToFetch.reserve(_labels.size());
+    for (auto const& label : _labels) {
+      if (label == -1) {
+        break;
+      }
+      tokensToFetch.emplace_back(static_cast<LocalDocumentId::BaseType>(label));
+    }
+
+    if (!tokensToFetch.empty()) {
+      auto const* physical = _collection->getCollection()->getPhysical();
+      TRI_ASSERT(physical != nullptr);
+      auto storeDoc = [&](Result lookupResult, LocalDocumentId id,
+                          aql::DocumentData&& /*data*/, VPackSlice doc) {
+        if (lookupResult.fail()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              lookupResult.errorNumber(),
+              basics::StringUtils::concatT(
+                  "failed to materialize document for vector search ",
+                  RevisionId(id).toString(), " (", id.id(),
+                  "): ", lookupResult.errorMessage()));
+        }
+        velocypack::Buffer<uint8_t> buf;
+        buf.append(doc.start(), doc.byteSize());
+        _documents.insert_or_assign(id, std::move(buf));
+        return true;
+      };
+      PhysicalCollection::LookupOptions opts{.countBytes = true};
+      physical->lookup(&_trx, std::span<LocalDocumentId>{tokensToFetch},
+                       storeDoc, opts);
+    }
+  }
+
   TRI_ASSERT(hasResults());
 
   auto validCount = std::count_if(_labels.begin(), _labels.end(),
                                   [](auto const& l) { return l != -1; });
-  LOG_TOPIC("f1a2b", WARN, Logger::ENGINES) << std::format(
+  LOG_TOPIC("f1a2b", DEBUG, Logger::ENGINES) << std::format(
       "EnumerateNearVectors::searchResults: requested={}, returned={}, "
       "validLabels={}, collectionCount={}",
-      _infos.getNumberOfResults(), _labels.size(), validCount,
-      _collectionCount);
+      _infos.searchConfig.topK, _labels.size(), validCount, _collectionCount);
 
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
@@ -134,9 +200,32 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
       _labels.resize(_currentProcessedResultCount);
       break;
     }
-    output.moveValueInto(
-        docOutId, _inputRow,
-        AqlValueHintUInt(_labels[_currentProcessedResultCount]));
+
+    switch (_infos.strategy) {
+      case EnumerateNearVectorNode::Strategy::kPassThroughId: {
+        TRI_ASSERT(docOutId != RegisterId::maxRegisterId);
+        output.moveValueInto(
+            docOutId, _inputRow,
+            AqlValueHintUInt(_labels[_currentProcessedResultCount]));
+        break;
+      }
+      case EnumerateNearVectorNode::Strategy::kDocument:
+      case EnumerateNearVectorNode::Strategy::kCovered: {
+        LocalDocumentId const id{static_cast<LocalDocumentId::BaseType>(
+            _labels[_currentProcessedResultCount])};
+        auto it = _documents.find(id);
+        TRI_ASSERT(it != _documents.end());
+        velocypack::Slice docSlice{it->second.data()};
+        // Only kDocument writes the doc register; kCovered emits only
+        // per-projection registers (the doc register isn't allocated).
+        if (docOutId != RegisterId::maxRegisterId) {
+          output.moveValueInto(docOutId, _inputRow, docSlice);
+        }
+        writeProjections(docSlice, output);
+        break;
+      }
+    }
+
     output.moveValueInto(
         distOutId, _inputRow,
         AqlValueHintDouble(_distances[_currentProcessedResultCount]));
@@ -233,7 +322,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
         "remainingRows={}, currentProcessed={}, nr={}, state={}, "
         "hasResults={}, call={}, colCount={}",
         skipped, remainingRows, _currentProcessedResultCount,
-        _infos.getNumberOfResults(), state(), hasResults(), to_string(call),
+        _infos.searchConfig.topK, state(), hasResults(), to_string(call),
         _collectionCount);
 
     auto upstreamCall = AqlCall{};

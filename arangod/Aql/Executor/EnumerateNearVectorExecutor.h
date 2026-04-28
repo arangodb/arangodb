@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -23,18 +23,24 @@
 
 #pragma once
 
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/Expression.h"
+#include "Aql/Projections.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/NodeHashMap.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <utility>
-#include <utils/empty.hpp>
+#include <vector>
+
+#include <velocypack/Builder.h>
 
 namespace arangodb::aql {
 
@@ -44,59 +50,23 @@ template<BlockPassthrough>
 class SingleRowFetcher;
 
 struct EnumerateNearVectorsExecutorInfos {
-  EnumerateNearVectorsExecutorInfos(
-      RegisterId inNmDocId, RegisterId outDocRegId, RegisterId outDistanceRegId,
-      transaction::Methods::IndexHandle index, QueryContext& queryContext,
-      aql::Collection const* collection, std::size_t topK, std::size_t offset,
-      vector::SearchParameters searchParameters, Expression* filterExpression,
-      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
-      bool isCoveredByStoredValues, Variable const* documentVariable)
-      : inputReg(inNmDocId),
-        outDocumentIdReg(outDocRegId),
-        outDistancesReg(outDistanceRegId),
-        index(std::move(index)),
-        queryContext(queryContext),
-        collection(collection),
-        topK(topK),
-        offset(offset),
-        searchParameters(searchParameters),
-        filterExpression(filterExpression),
-        filterVarsToRegs(std::move(filterVarsToRegs)),
-        isCoveredByStoredValues(isCoveredByStoredValues),
-        documentVariable(documentVariable) {}
+  // register layout
+  RegisterId inputReg;
+  RegisterId outDocumentIdReg;  // doc-id label, full doc, or unused (kCovered)
+  RegisterId outDistancesReg;
+  containers::FlatHashMap<VariableId, RegisterId> projectionVarsToRegs;
 
-  EnumerateNearVectorsExecutorInfos() = delete;
-  EnumerateNearVectorsExecutorInfos(EnumerateNearVectorsExecutorInfos&&) =
-      default;
-  EnumerateNearVectorsExecutorInfos(EnumerateNearVectorsExecutorInfos const&) =
-      delete;
-  ~EnumerateNearVectorsExecutorInfos() = default;
-
-  // total number of result per one query point
-  std::size_t getNumberOfResults() const noexcept { return topK + offset; }
-
-  std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegister()
-      const noexcept {
-    return filterVarsToRegs;
-  }
-
-  /// @brief register to store local document id
-  RegisterId const inputReg;
-  /// @brief register to store document ids
-  RegisterId const outDocumentIdReg;
-  /// @brief register to store distance
-  RegisterId const outDistancesReg;
-
+  // executor-bound state (held alive by the engine)
   transaction::Methods::IndexHandle index;
   QueryContext& queryContext;
   aql::Collection const* collection;
-  std::size_t topK;
-  std::size_t offset;
-  vector::SearchParameters searchParameters;
-  Expression* filterExpression;
-  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
-  bool isCoveredByStoredValues;
-  Variable const* documentVariable{nullptr};
+
+  // search configuration -- passed by reference straight to readBatch
+  vector::SearchConfig searchConfig;
+
+  // output strategy
+  Projections const& projections;
+  EnumerateNearVectorNode::Strategy strategy;
 };
 
 class EnumerateNearVectorsExecutor {
@@ -136,6 +106,11 @@ class EnumerateNearVectorsExecutor {
 
   void fillOutput(OutputAqlItemRow& output);
 
+  // Extract per-projection slices from `docSlice` and write them into the
+  // matching output registers. Shared by the kDocument and kCovered
+  // strategies, which only differ in where `docSlice` came from.
+  void writeProjections(velocypack::Slice docSlice, OutputAqlItemRow& output);
+
   bool hasResults() const noexcept;
 
   uint64_t skipOutput(AqlCall::Limit toSkip) noexcept;
@@ -150,6 +125,15 @@ class EnumerateNearVectorsExecutor {
 
   std::vector<float> _distances;
   std::vector<VectorIndexLabelId> _labels;
+  // Per-doc VPack bytes the executor reads in fillOutput, keyed by the
+  // surviving label. For kDocument the value is a full document; for
+  // kCovered it is the partial doc the FAISS iterator built from
+  // storedValues. Empty for kPassThroughId.
+  containers::NodeHashMap<LocalDocumentId, velocypack::Buffer<uint8_t>>
+      _documents;
+  // Scratch builder used when producing per-projection registers from the
+  // document slice.
+  velocypack::Builder _projectionsBuilder;
   std::size_t _currentProcessedResultCount{0};
   // needed to enable fullCount to work
   std::size_t _processedInputs{0};

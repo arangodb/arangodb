@@ -26,6 +26,7 @@
 #include <memory>
 #include <type_traits>
 
+#include "Containers/NodeHashMap.h"
 #include "RocksDBIndex.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -61,6 +62,54 @@ enum class VectorIndexTrainingState : std::uint8_t {
 
 std::string_view trainingStateToString(VectorIndexTrainingState state) noexcept;
 
+namespace vector {
+
+// Static configuration of a vector search. Owned by the executor's Infos
+// (set once at createBlock) and passed by reference to readBatch.
+struct SearchConfig {
+  SearchParameters searchParameters;
+  std::size_t topK;  // = LIMIT + OFFSET
+
+  // Optional pushed-down filter. Either all four are populated or none.
+  aql::Expression* filterExpression{nullptr};
+  std::vector<std::pair<aql::VariableId, aql::RegisterId>> filterVarsToRegs;
+  aql::Variable const* documentVariable{nullptr};
+
+  // True when both the filter and the projections are coverable by the
+  // index' storedValues, in which case the FAISS layer can use the
+  // storedValues-only iterator and skip loading documents entirely. When
+  // false (filter not covered, projections not covered, or no filter),
+  // the regular filter iterator runs and (when filter present) loads the
+  // full document for filter eval.
+  bool useStoredValuesIterator{false};
+
+  // When set (and a filter is present), the filter iterator hands the
+  // VPack object it built for filter eval back through SearchResult --
+  // either the full document (regular iterator) or the partial doc
+  // assembled from storedValues (storedValues iterator). The caller does
+  // not care which: both are objects suitable for projection extraction.
+  bool captureDocuments{false};
+};
+
+// Per-call execution context — what changes between readBatch invocations
+// for the same configured EnumerateNearVectorNode.
+struct SearchContext {
+  std::vector<float>* inputs;  // mutable: cosine renormalises in place
+  aql::InputAqlItemRow const* inputRow;
+  transaction::Methods* trx;
+  aql::QueryContext* queryContext;
+};
+
+struct SearchResult {
+  std::vector<VectorIndexLabelId> labels;
+  std::vector<float> distances;
+  // Empty unless captureDocuments was set in SearchConfig.
+  containers::NodeHashMap<LocalDocumentId, velocypack::Buffer<uint8_t>>
+      capturedDocuments;
+};
+
+}  // namespace vector
+
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
   RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
@@ -86,16 +135,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
-  std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
-      std::vector<float>& inputs,
-      vector::SearchParameters const& searchParameters,
-      RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
-      std::shared_ptr<LogicalCollection> collection, std::size_t topK,
-      aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
-      aql::QueryContext& queryContext,
-      std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
-          filterVarsToRegs,
-      aql::Variable const* documentVariable, bool isCovered);
+  vector::SearchResult readBatch(vector::SearchConfig const& config,
+                                 vector::SearchContext const& ctx);
 
   vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 

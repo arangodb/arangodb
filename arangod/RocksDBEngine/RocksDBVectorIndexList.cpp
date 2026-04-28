@@ -219,6 +219,15 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
           } else {
             _filteredIds.emplace_back(id, std::move(entry));
           }
+
+          // Hand the document we just loaded to the executor so it does not
+          // have to read it again post-readBatch.
+          if (auto* sink = _searchParametersContext.capturedDocuments;
+              sink != nullptr) {
+            velocypack::Buffer<uint8_t> buf;
+            buf.append(doc.start(), doc.byteSize());
+            sink->insert_or_assign(id, std::move(buf));
+          }
         }
 
         return true;
@@ -242,7 +251,7 @@ RocksDBInvertedListsFilteringStoredValuesIterator::
     : RocksDBInvertedListsFilteringIteratorBase(
           index, collection, searchParametersContext, listNumber, codeSize) {
   TRI_ASSERT(index->hasStoredValues() &&
-             searchParametersContext.isCoveredByStoredValues);
+             searchParametersContext.useStoredValuesIterator);
   skipOverFilteredDocuments();
 }
 
@@ -312,6 +321,16 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
     if (filterExpressionResult) {
       // We do not keep whole value but only the encoded part used by faiss
       _filteredIds.emplace_back(id, std::move(value.encodedValue));
+
+      // Capture the partial doc we already built for filter eval, so the
+      // executor can extract projections from it without a second pass.
+      if (auto* sink = _searchParametersContext.capturedDocuments;
+          sink != nullptr) {
+        velocypack::Buffer<uint8_t> buf;
+        auto slice = partialDocument.slice();
+        buf.append(slice.start(), slice.byteSize());
+        sink->insert_or_assign(id, std::move(buf));
+      }
     }
   }
   _filteredIdsIt = _filteredIds.begin();
@@ -337,8 +356,10 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
       overload{
           [&](SearchParametersContext& searchParametersContext)
               -> faiss::InvertedListsIterator* {
-            // Use stored values filtering iterator if it can optimize the query
-            if (searchParametersContext.isCoveredByStoredValues) {
+            // Use stored values filtering iterator when both the filter and
+            // the projections are coverable -- in that case the FAISS layer
+            // never needs to touch the underlying documents.
+            if (searchParametersContext.useStoredValuesIterator) {
               return new RocksDBInvertedListsFilteringStoredValuesIterator(
                   _index, _collection, searchParametersContext, listNumber,
                   this->code_size);

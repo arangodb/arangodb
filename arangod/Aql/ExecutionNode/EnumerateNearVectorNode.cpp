@@ -126,13 +126,13 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   writableOutputRegisters.emplace(outDistanceRegId);
 
   // per-projection output registers (set by the projections rule)
-  std::vector<std::pair<VariableId, RegisterId>> projectionVarsToRegs;
+  containers::FlatHashMap<VariableId, RegisterId> projectionVarsToRegs;
   for (size_t i = 0; i < _projections.size(); ++i) {
     auto const* var = _projections[i].variable;
     if (var != nullptr) {
       RegisterId regId = variableToRegisterId(var);
       writableOutputRegisters.emplace(regId);
-      projectionVarsToRegs.emplace_back(var->id, std::move(regId));
+      projectionVarsToRegs.try_emplace(var->id, regId);
     }
   }
 
@@ -149,12 +149,35 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     }
   }
 
-  auto executorInfos = EnumerateNearVectorsExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
-      engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
-      _searchParameters, filter(), std::move(filterVarsToRegs),
-      _isCoveredByStoredValues, _outVariable, _projections,
-      std::move(projectionVarsToRegs), _strategy);
+  // Capture is only meaningful when there is a filter (the iterator runs
+  // and has a doc to surface). For kPassThroughId there is nothing to
+  // extract from the doc, so we don't ask the iterator to copy bytes.
+  bool const captureDocuments =
+      hasFilter() && _strategy != Strategy::kPassThroughId;
+
+  EnumerateNearVectorsExecutorInfos executorInfos{
+      .inputReg = inNmDocIdRegId,
+      .outDocumentIdReg = outDocumentRegId,
+      .outDistancesReg = outDistanceRegId,
+      .projectionVarsToRegs = std::move(projectionVarsToRegs),
+      .index = _index,
+      .queryContext = engine.getQuery(),
+      .collection = _collectionAccess.collection(),
+      .searchConfig =
+          vector::SearchConfig{
+              .searchParameters = _searchParameters,
+              .topK = _limit + _offset,
+              .filterExpression = filter(),
+              .filterVarsToRegs = std::move(filterVarsToRegs),
+              .documentVariable = _outVariable,
+              // Pick the storedValues-only iterator only when *both* filter
+              // and projections are coverable -- that's exactly kCovered.
+              .useStoredValuesIterator = _strategy == Strategy::kCovered,
+              .captureDocuments = captureDocuments,
+          },
+      .projections = _projections,
+      .strategy = _strategy,
+  };
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
