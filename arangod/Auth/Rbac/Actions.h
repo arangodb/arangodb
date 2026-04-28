@@ -94,7 +94,6 @@ struct Category {
   struct AdminLicense {};
   struct AdminBackup {};
   struct AdminJobs {};
-  struct AdminTasks {};
   struct AdminReadReplicatedLog {};
   struct AdminWriteReplicatedLog {};
   struct AdminDump {
@@ -116,10 +115,9 @@ struct Category {
       AdminShutdown, AdminReadLogs, AdminSetLogLevel, AdminOptions,
       AdminSupervisionState, AdminRemoveServer, AdminClusterInfo,
       AdminMaintenance, AdminRebalance, AdminLicense, AdminBackup, AdminJobs,
-      AdminTasks, AdminReadReplicatedLog, AdminWriteReplicatedLog, AdminDump,
-      AdminRestore, AdminWalAccess, AdminReadAgency, AdminReadOnlyMode,
-      AdminFoxx, AdminReadAqlFunctions, AdminWriteAqlFunctions,
-      AdminQueryCache>;
+      AdminReadReplicatedLog, AdminWriteReplicatedLog, AdminDump, AdminRestore,
+      AdminWalAccess, AdminReadAgency, AdminReadOnlyMode, AdminFoxx,
+      AdminReadAqlFunctions, AdminWriteAqlFunctions, AdminQueryCache>;
 };
 
 }  // namespace arangodb::rbac

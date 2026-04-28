@@ -166,9 +166,6 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
           [](Category::AdminJobs const&) -> std::vector<AuthorizationQuery> {
             return {{"db:AdminJobs", ""}};
           },
-          [](Category::AdminTasks const&) -> std::vector<AuthorizationQuery> {
-            return {{"db:AdminTasks", ""}};
-          },
           [](Category::AdminReadReplicatedLog const&)
               -> std::vector<AuthorizationQuery> {
             return {{"db:AdminReadReplicatedLog", ""}};
