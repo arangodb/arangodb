@@ -80,7 +80,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           aql::Collection const* collection,
                           transaction::Methods::IndexHandle indexHandle,
                           std::unique_ptr<Expression> filterExpression,
-                          bool isCoveredByStoredValues);
+                          bool isCoveredByStoredValues,
+                          Strategy strategy = Strategy::kPassThroughId);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -113,9 +114,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
   }
 
   Strategy strategy() const noexcept { return _strategy; }
-  void setStrategy(Strategy s) noexcept { _strategy = s; }
 
-  Strategy chooseOptimalStrategy() const noexcept;
+  void recomputeStrategy() noexcept;
 
   void rebindOutVariable(Variable const* newOutVariable) noexcept {
     _outVariable = newOutVariable;

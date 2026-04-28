@@ -61,7 +61,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     std::size_t offset, vector::SearchParameters searchParameters,
     aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle,
-    std::unique_ptr<Expression> filterExpression, bool isCoveredByStoredValues)
+    std::unique_ptr<Expression> filterExpression, bool isCoveredByStoredValues,
+    Strategy strategy)
     : ExecutionNode(plan, id),
       DocumentProducingNode(outVariable),
       CollectionAccessingNode(collection),
@@ -72,7 +73,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _offset(offset),
       _searchParameters(std::move(searchParameters)),
       _index(std::move(indexHandle)),
-      _isCoveredByStoredValues(isCoveredByStoredValues) {
+      _isCoveredByStoredValues(isCoveredByStoredValues),
+      _strategy(strategy) {
   TRI_ASSERT(_index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
   TRI_ASSERT(filterExpression != nullptr || !_isCoveredByStoredValues);
   if (filterExpression != nullptr) {
@@ -195,8 +197,7 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _outVariable, _distanceOutVariable, _limit,
       _ascending, _offset, _searchParameters, collection(), _index,
-      std::move(filterExpression), _isCoveredByStoredValues);
-  c->setStrategy(_strategy);
+      std::move(filterExpression), _isCoveredByStoredValues, _strategy);
   c->_projections = _projections;
   c->_filterProjections = _filterProjections;
   CollectionAccessingNode::cloneInto(*c);
@@ -259,15 +260,13 @@ bool EnumerateNearVectorNode::isProduceResult() const {
   return true;
 }
 
-EnumerateNearVectorNode::Strategy
-EnumerateNearVectorNode::chooseOptimalStrategy() const noexcept {
+void EnumerateNearVectorNode::recomputeStrategy() noexcept {
   bool const projectionsCoveredByStoredValues =
       !_projections.empty() && _projections.usesCoveringIndex(_index);
   bool const filterCoveredOrAbsent = !hasFilter() || _isCoveredByStoredValues;
-  if (projectionsCoveredByStoredValues && filterCoveredOrAbsent) {
-    return Strategy::kCovered;
-  }
-  return Strategy::kDocument;
+  _strategy = (projectionsCoveredByStoredValues && filterCoveredOrAbsent)
+                  ? Strategy::kCovered
+                  : Strategy::kDocument;
 }
 
 std::string_view EnumerateNearVectorNode::strategyName(Strategy s) noexcept {
