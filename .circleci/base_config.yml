@@ -22,7 +22,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:20"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:21"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-809e7ff4f
@@ -334,7 +334,7 @@ commands:
       - when:
           condition:
             not:
-              equal: [ << parameters.sanitizer >>, ""]
+              equal: [<< parameters.sanitizer >>, ""]
           steps:
             - run:
                 name: Symbolizer server
@@ -364,6 +364,13 @@ commands:
               fi
               export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py:ignore_noninstrumented_modules=1"
               export SAN_MODE=tsan
+            fi
+
+            if [ "$SAN_MODE" != "" ]; then
+              # When running with sanitizer we have to LOWER the number of file descriptors!
+              # The sanitizer forks off a separate process to handle the symbolization of stack traces,
+              # and the fork operation iterates over all file descriptors, making this extremely expensive.
+              ulimit -n 65536
             fi
 
             # check if promtool is available and if so set the environment variable to enable the according tests
@@ -530,23 +537,32 @@ jobs:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: arangodb/large-amd64
     steps:
-      - checkout-arangodb:
-          with-submodules: false
-          destination: "/root/project"
       - run:
-          name: Build frontend
           command: |
-            cd js/apps/system/_admin/aardvark/APP/react
-            tar -xJf /node_modules.tar.xz
-            yarn install
-            yarn build
-      - persist_to_workspace:
-          root: .
-          paths: js/apps/system/_admin/aardvark/APP/react/build
-      - persist_workspace_to_s3:
-          root: .
-          paths: js/apps/system/_admin/aardvark/APP/react/build
-          archive: frontend.tar.gz
+            echo "building frontend"
+      - when:
+          # if we're building a docker image, the regular build does the frontend.
+          condition:
+            not:
+              << pipeline.parameters.create-docker-images >>
+          steps:
+            - checkout-arangodb:
+                with-submodules: false
+                destination: "/root/project"
+            - run:
+                name: Build frontend
+                command: |
+                  cd js/apps/system/_admin/aardvark/APP/react
+                  tar -xJf /node_modules.tar.xz
+                  yarn install
+                  yarn build
+            - persist_to_workspace:
+                root: .
+                paths: js/apps/system/_admin/aardvark/APP/react/build
+            - persist_workspace_to_s3:
+                root: .
+                paths: js/apps/system/_admin/aardvark/APP/react/build
+                archive: frontend.tar.gz
 
   compile-linux:
     parameters:
@@ -569,7 +585,7 @@ jobs:
         type: string
         default: ""
       arch:
-          type: string
+        type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
@@ -606,6 +622,7 @@ jobs:
             fi
 
             cmake --preset << parameters.preset >> \
+              -G Ninja \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
               -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
@@ -646,6 +663,10 @@ jobs:
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
                   tar -czf install.tar.gz -C install ./
+            - persist_to_workspace:
+                root: .
+                paths:
+                  - install.tar.gz
       - run:
           name: Size leaderboard
           command: |
@@ -656,7 +677,6 @@ jobs:
             find build/ -iname *.a -delete || true
             find build/ -iname *.o -delete || true
             find build/ -iname *.o.d -delete || true
-            rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
       - run:
           name: List build artifacts
           command: |
@@ -723,11 +743,11 @@ jobs:
   create-docker-image:
     parameters:
       resource-class:
-          type: string
+        type: string
       arch:
-          type: string
+        type: string
       tag:
-          type: string
+        type: string
     docker:
       - image: cimg/base:current
     resource_class: << parameters.resource-class >>
@@ -737,7 +757,7 @@ jobs:
       - aws-ecr/ecr_login:
           public_registry: true
       - setup_remote_docker:
-            docker_layer_caching: true
+          docker_layer_caching: true
       - attach_workspace:
           at: .
       - run:
@@ -1054,7 +1074,7 @@ workflows:
             - minimal-checkout
       - eslint:
           name: eslint
-          context: [ circleci-token ]
+          context: [circleci-token]
           requires:
             - minimal-checkout
-  # all other workflows are defined in generate_config.py
+# all other workflows are defined in generate_config.py

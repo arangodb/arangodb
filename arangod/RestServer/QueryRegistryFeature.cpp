@@ -313,8 +313,8 @@ to catch obvious issues with AQL queries early.
 If set to `false`, AQL queries that produce warnings are not aborted and return
 the warnings along with the query results.
 
-You can override the option for each individual AQL query via the
-`failOnWarning` attribute.)");
+You can override this setting for each individual AQL query via the
+`failOnWarning` query option.)");
 
   options
       ->addOption("--query.require-with",
@@ -414,11 +414,11 @@ queries.)");
       .setLongDescription(R"(Toggles the AQL query results cache behavior.
 The possible values are:
 
-- `off`: do not use query results cache
-- `on`: always use query results cache, except for queries that have their
-  `cache` attribute set to `false`
-- `demand`: use query results cache only for queries that have their `cache`
-  attribute set to `true`)");
+- `off`: Don't use the query results cache.
+- `on`: Always use the query results cache, except for queries that have their
+  `cache` query option set to `false`.
+- `demand`: Use the query results cache only for queries that have their `cache`
+  query option set to `true`.)");
 
   options
       ->addOption(
@@ -496,8 +496,8 @@ optimizer stop creating additional plans when it has already created enough
 plans.
 
 Note that this setting controls the default maximum number of plans to create.
-The value can still be adjusted on a per-query basis by setting the
-`maxNumberOfPlans` attribute for individual queries.)");
+You can still adjust the value on a per-query basis by setting the
+`maxNumberOfPlans` query option for individual queries.)");
 
   options
       ->addOption("--query.max-nodes-per-callstack",

@@ -23,22 +23,22 @@
 
 #include "CheckVersionFeature.h"
 
+#include "RestServer/CheckVersionOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
-#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/EnvironmentFeature.h"
+#include "Replication/ReplicationFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Version.h"
@@ -68,13 +68,8 @@ CheckVersionFeature::CheckVersionFeature(
 
 void CheckVersionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("check-version", "database.check-version");
-
-  options->addOption(
-      "--database.check-version", "Check the version of the database and exit.",
-      new BooleanParameter(&_options.checkVersion),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
+  arangodb::check_version::CheckVersionOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void CheckVersionFeature::validateOptions(

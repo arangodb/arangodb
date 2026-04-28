@@ -172,6 +172,7 @@ auto prepareRequest(ConnectionPool* pool, RestVerb type, std::string path,
 
   req->header.database = options.database;
   req->header.setMeta(std::move(headers));
+  req->header.apiVersion = options.apiVersion;
 
   if (!options.contentType.empty()) {
     req->header.contentType(options.contentType);

@@ -41,8 +41,8 @@ using namespace arangodb::rest;
 static void addApiVersions(VPackBuilder& result) {
   // Collect all supported versions and sort in descending order
   std::vector<uint32_t> versions;
-  for (size_t i = 0; i < ApiVersion::numSupportedApiVersions(); ++i) {
-    versions.push_back(ApiVersion::supportedApiVersions[i]);
+  for (size_t i = 0; i < api_version::numSupportedApiVersions(); ++i) {
+    versions.push_back(api_version::supportedApiVersions[i]);
   }
   std::sort(versions.begin(), versions.end(), std::greater<uint32_t>());
 
@@ -55,10 +55,11 @@ static void addApiVersions(VPackBuilder& result) {
 
   // Collect deprecated versions and sort in descending order
   std::vector<uint32_t> deprecatedVersions;
-  constexpr size_t numDeprecated = sizeof(ApiVersion::deprecatedApiVersions) /
-                                   sizeof(ApiVersion::deprecatedApiVersions[0]);
+  constexpr size_t numDeprecated =
+      sizeof(api_version::deprecatedApiVersions) /
+      sizeof(api_version::deprecatedApiVersions[0]);
   for (size_t i = 0; i < numDeprecated; ++i) {
-    deprecatedVersions.push_back(ApiVersion::deprecatedApiVersions[i]);
+    deprecatedVersions.push_back(api_version::deprecatedApiVersions[i]);
   }
   std::sort(deprecatedVersions.begin(), deprecatedVersions.end(),
             std::greater<uint32_t>());

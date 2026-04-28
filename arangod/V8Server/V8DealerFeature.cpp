@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <filesystem>
 #include "Actions/ActionFeature.h"
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
@@ -473,22 +474,20 @@ void V8DealerFeature::start() {
   // add all paths to allowlists
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
   TRI_ASSERT(!_options.startupDirectory.empty());
-  v8security.addToInternalAllowList(_options.startupDirectory,
-                                    FSAccessType::READ);
+  v8security.addToInternalReadAllowList(_options.startupDirectory);
 
   if (!_nodeModulesDirectory.empty()) {
-    v8security.addToInternalAllowList(_nodeModulesDirectory,
-                                      FSAccessType::READ);
+    v8security.addToInternalReadAllowList(_nodeModulesDirectory);
   }
   for (auto const& it : _options.moduleDirectories) {
     if (!it.empty()) {
-      v8security.addToInternalAllowList(it, FSAccessType::READ);
+      v8security.addToInternalReadAllowList(it);
     }
   }
 
   TRI_ASSERT(!_options.appPath.empty());
-  v8security.addToInternalAllowList(_options.appPath, FSAccessType::READ);
-  v8security.addToInternalAllowList(_options.appPath, FSAccessType::WRITE);
+  v8security.addToInternalReadAllowList(_options.appPath);
+  v8security.addToInternalWriteAllowList(_options.appPath);
   v8security.dumpAccessLists();
 
   _startupLoader.setDirectory(_options.startupDirectory);
@@ -669,10 +668,11 @@ void V8DealerFeature::copyInstallationFiles() {
         FATAL_ERROR_EXIT();
       }
     }
-    if (!FileUtils::createDirectory(copyJSPath, &res)) {
+    if (auto ec = std::error_code{};
+        !std::filesystem::create_directory(copyJSPath, ec)) {
       LOG_TOPIC("b8c79", FATAL, Logger::V8)
           << "Error creating JS installation path '" << copyJSPath
-          << "': " << TRI_errno_string(res);
+          << "': " << ec.message();
       FATAL_ERROR_EXIT();
     }
 
@@ -704,8 +704,8 @@ void V8DealerFeature::copyInstallationFiles() {
         return true;
       }
 
-      std::string normalized = filename;
-      FileUtils::normalizePath(normalized);
+      std::string const normalized =
+          std::filesystem::path(filename).make_preferred().string();
       if (normalized.ends_with(uiNodeModulesPath)) {
         // filter it out!
         return true;

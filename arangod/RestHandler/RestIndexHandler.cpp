@@ -32,6 +32,8 @@
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/Utils/VectorIndexShardStates.h"
 #include "Cluster/ServerState.h"
+#include "RocksDBEngine/RocksDBBuilderIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -66,8 +68,8 @@ namespace {
 // Returns the least-progressed training state across all shards.
 // The progression order is: unusable < training < ingesting < ready.
 // If states is empty, returns "unusable".
-std::string_view aggregateTrainingState(
-    containers::FlatHashMap<ShardID, VectorIndexShardState> const& states) {
+template<typename StatesMap>
+std::string_view aggregateTrainingState(StatesMap const& states) {
   if (states.empty()) {
     return StaticStrings::IndexTrainingStateUnusable;
   }
@@ -93,66 +95,88 @@ std::string_view aggregateTrainingState(
   }
 }
 
-// Enrich vector indexes in the given array with a top-level trainingState
-// and per-shard states from Current. Non-vector indexes are passed through
-// unchanged.
-VPackBuilder enrichVectorIndexes(
-    VPackSlice indexes,
+containers::FlatHashMap<ShardID, VectorIndexShardState>
+getShardStatesIfAvailable(
     std::shared_ptr<CollectionInfoCurrent> const& collCurrent,
-    std::shared_ptr<ShardMap const> const& shardIds, bool withShardDetails) {
+    std::shared_ptr<ShardMap const> const& shardIds, std::string_view bareId) {
+  if (!collCurrent || !shardIds) {
+    return {};
+  }
+  return getVectorIndexShardStates(*collCurrent, *shardIds, bareId);
+}
+
+// Enrich vector indexes with a top-level trainingState and per-shard details.
+template<typename ShardStateProvider>
+VPackBuilder enrichVectorIndexes(VPackSlice indexes,
+                                 ShardStateProvider const& getShardStates,
+                                 bool withShardDetails) {
   VPackBuilder result;
   {
     VPackArrayBuilder guard(&result);
-    for (auto pi : VPackArrayIterator(indexes)) {
-      auto typeSlice = pi.get("type");
-      if (typeSlice.isString() && typeSlice.stringView() == "vector" &&
-          collCurrent && shardIds) {
-        std::string_view iid = pi.get("id").stringView();
-        std::string_view bareId = iid;
-        if (auto pos = bareId.find('/'); pos != std::string::npos) {
-          bareId = bareId.substr(pos + 1);
+    for (auto indexSlice : VPackArrayIterator(indexes)) {
+      auto typeSlice = indexSlice.get("type");
+      if (!typeSlice.isString() || typeSlice.stringView() != "vector") {
+        result.add(indexSlice);
+        continue;
+      }
+
+      std::string_view iid = indexSlice.get("id").stringView();
+      std::string_view bareId = iid;
+      if (auto pos = bareId.find('/'); pos != std::string::npos) {
+        bareId = bareId.substr(pos + 1);
+      }
+
+      auto states = getShardStates(bareId);
+      if (states.empty()) {
+        result.add(indexSlice);
+        continue;
+      }
+
+      std::string_view aggregateState = aggregateTrainingState(states);
+
+      VPackObjectBuilder o(&result);
+      for (auto it : VPackObjectIterator(indexSlice)) {
+        auto key = it.key.stringView();
+        if (key == StaticStrings::IndexResolvedNLists ||
+            key == StaticStrings::IndexTrainingState ||
+            key == StaticStrings::ErrorMessage) {
+          continue;
         }
+        result.add(key, it.value);
+      }
+      result.add(StaticStrings::IndexTrainingState, VPackValue(aggregateState));
 
-        auto states =
-            getVectorIndexShardStates(*collCurrent, *shardIds, bareId);
-
-        std::string_view aggregateState = aggregateTrainingState(states);
-
-        VPackObjectBuilder o(&result);
-        result.add(VPackObjectIterator(pi, true));
-        result.add(StaticStrings::IndexTrainingState,
-                   VPackValue(aggregateState));
-
-        if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
-          // Collect the first non-empty shard error, if any.
-          std::string_view shardError;
-          for (auto const& [_, shardState] : states) {
-            if (!shardState.error.empty()) {
-              shardError = shardState.error;
-              break;
-            }
-          }
-          if (shardError.empty()) {
-            result.add(StaticStrings::ErrorMessage,
-                       VPackValue("not enough training data for vector index"));
-          } else {
-            result.add(StaticStrings::ErrorMessage, VPackValue(shardError));
-          }
-        }
-
-        if (withShardDetails) {
-          result.add(VPackValue("shards"));
-          VPackObjectBuilder shardsObj(&result);
-          for (auto const& [shardId, shardState] : states) {
-            result.add(VPackValue(static_cast<std::string>(shardId)));
-            VPackObjectBuilder shardEntry(&result);
-            result.add(StaticStrings::IndexTrainingState,
-                       VPackValue(shardState.trainingState));
-            result.add("error", VPackValue(shardState.error));
+      if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
+        std::string_view shardError;
+        for (auto const& [_, shardState] : states) {
+          if (!shardState.error.empty()) {
+            shardError = shardState.error;
+            break;
           }
         }
-      } else {
-        result.add(pi);
+        if (shardError.empty()) {
+          result.add(StaticStrings::ErrorMessage,
+                     VPackValue("not enough training data for vector index"));
+        } else {
+          result.add(StaticStrings::ErrorMessage, VPackValue(shardError));
+        }
+      }
+
+      if (withShardDetails) {
+        result.add(VPackValue("shards"));
+        VPackObjectBuilder shardsObj(&result);
+        for (auto const& [shardId, shardState] : states) {
+          result.add(VPackValue(shardId));
+          VPackObjectBuilder shardEntry(&result);
+          result.add(StaticStrings::IndexTrainingState,
+                     VPackValue(shardState.trainingState));
+          result.add("error", VPackValue(shardState.error));
+          TRI_ASSERT(shardState.trainingState !=
+                         StaticStrings::IndexTrainingStateReady ||
+                     shardState.resolvedNLists > 0);
+          result.add(StaticStrings::IndexResolvedNLists,
+                     VPackValue(shardState.resolvedNLists));
+        }
       }
     }
   }
@@ -259,9 +283,8 @@ async<void> RestIndexHandler::getIndexes() {
 
       TRI_ASSERT(indexes.slice().isArray());
 
+      VPackBuilder enriched;
       if (ServerState::instance()->isCoordinator()) {
-        // On a Coordinator, enrich vector indexes with per-shard
-        // training state from Current.
         auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
         std::shared_ptr<CollectionInfoCurrent> collCurrent;
         try {
@@ -271,22 +294,55 @@ async<void> RestIndexHandler::getIndexes() {
         }
         auto const shardIds = coll->shardIds();
 
-        auto enriched = enrichVectorIndexes(indexes.slice(), collCurrent,
-                                            shardIds, withHidden);
-
-        tmp.add("indexes", enriched.slice());
-        tmp.add("identifiers", VPackValue(VPackValueType::Object));
-        for (auto index : VPackArrayIterator(enriched.slice())) {
-          VPackSlice id = index.get("id");
-          tmp.add(id.stringView(), index);
-        }
+        enriched = enrichVectorIndexes(
+            indexes.slice(),
+            [&](std::string_view bareId) {
+              return getShardStatesIfAvailable(collCurrent, shardIds, bareId);
+            },
+            withHidden);
       } else {
-        tmp.add("indexes", indexes.slice());
-        tmp.add("identifiers", VPackValue(VPackValueType::Object));
-        for (auto index : VPackArrayIterator(indexes.slice())) {
-          VPackSlice id = index.get("id");
-          tmp.add(id.stringView(), index);
-        }
+        // This lambda fakes shard states for a non-cluster setup, where a
+        // single shard is just a collection
+        enriched = enrichVectorIndexes(
+            indexes.slice(),
+            [&](std::string_view bareId) {
+              std::unordered_map<std::string, VectorIndexShardState> states;
+              auto idx = coll->lookupIndex(
+                  IndexId{basics::StringUtils::uint64(bareId)});
+              if (idx != nullptr &&
+                  idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+                // During ingestion the real index is swapped for a
+                // RocksDBBuilderIndex; unwrap to reach vector-specific state.
+                Index const* raw = idx.get();
+                if (auto const* builder =
+                        dynamic_cast<RocksDBBuilderIndex const*>(raw)) {
+                  raw = &builder->wrapped();
+                }
+                auto const* vecIdx =
+                    dynamic_cast<RocksDBVectorIndex const*>(raw);
+                TRI_ASSERT(vecIdx != nullptr);
+                if (vecIdx == nullptr) [[unlikely]] {
+                  return states;
+                }
+                auto const ts = vecIdx->trainingState();
+                VectorIndexShardState state;
+                state.trainingState = std::string(trainingStateToString(ts));
+                if (ts == VectorIndexTrainingState::kUnusable) {
+                  state.error = "not enough training data for vector index";
+                }
+                state.resolvedNLists = vecIdx->resolvedNLists().value_or(0);
+                states.emplace(std::string(coll->name()), std::move(state));
+              }
+              return states;
+            },
+            withHidden);
+      }
+
+      tmp.add("indexes", enriched.slice());
+      tmp.add("identifiers", VPackValue(VPackValueType::Object));
+      for (auto index : VPackArrayIterator(enriched.slice())) {
+        VPackSlice id = index.get("id");
+        tmp.add(id.stringView(), index);
       }
     } else {
       // more complicated case: we need to also return all indexes that
@@ -358,8 +414,12 @@ async<void> RestIndexHandler::getIndexes() {
       }
 
       auto const shardIds = coll->shardIds();
-      auto enriched = enrichVectorIndexes(indexes.slice(), collCurrent,
-                                          shardIds, withHidden);
+      auto enriched = enrichVectorIndexes(
+          indexes.slice(),
+          [&](std::string_view bareId) {
+            return getShardStatesIfAvailable(collCurrent, shardIds, bareId);
+          },
+          withHidden);
 
       tmp.add(VPackValue("indexes"));
 
@@ -513,6 +573,8 @@ async<void> RestIndexHandler::getIndexes() {
               tmp.add(StaticStrings::IndexTrainingState,
                       VPackValue(shardState.trainingState));
               tmp.add("error", VPackValue(shardState.error));
+              tmp.add(StaticStrings::IndexResolvedNLists,
+                      VPackValue(shardState.resolvedNLists));
             }
           }
         }

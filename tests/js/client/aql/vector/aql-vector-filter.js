@@ -37,7 +37,7 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndEnsureIndex,
+    insertDocsAndAssertIndex,
     waitForAllVectorIndexesState,
     VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
@@ -155,10 +155,10 @@ function VectorIndexL2FilterTestSuite() {
                 });
             }
 
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2",
+                indexName: "vector_l2",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -169,13 +169,8 @@ function VectorIndexL2FilterTestSuite() {
                         trainingIterations: 10,
                         defaultNProbe: nProbeAndNlists,
                     },
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
@@ -575,6 +570,29 @@ function VectorIndexL2FilterTestSuite() {
             verifyResultsMatchFilter(results, (r) => r.outerKey !== undefined);
         },
 
+        testApproxL2WithFilterInOperator: function() {
+            const query = `
+            LET CATEGORIES = (FOR d IN ${collection.name()} RETURN DISTINCT d.category)
+            FOR d IN ${collection.name()}
+            FILTER d.category IN CATEGORIES
+            LET dist = APPROX_NEAR_L2(@qp, d.vector)
+            SORT dist LIMIT 5
+            RETURN d`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+            verifyVectorIndexUsed(plan);
+
+            const results = db._query(query, bindVars).toArray();
+
+            assertEqual(5, results.length);
+        },
+
         testApproxL2WithMultipleFilterClauses: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val >= 5
@@ -618,7 +636,7 @@ function VectorIndexL2FilterTestSuite() {
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
               FILTER dist < 0.5
               SORT dist LIMIT 5
-              RETURN d  `;
+              RETURN d`;
 
             const bindVars = {
                 qp: randomPoint
@@ -715,7 +733,7 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
             db._dropDatabase(dbName);
         },
 
-        testApproxL2FilterNotApplied: function() {
+        testApproxL2FilterDoubleLoop: function() {
             const query = `FOR d1 IN ${collection2.name()}
               FOR d2 IN ${collection1.name()}
               FILTER d2.val < 5 OR d1.val < 5
@@ -727,11 +745,15 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
                 qp: randomPoint
             };
 
-            assertQueryError(
-                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+            const plan = db._createStatement({
                 query,
-                bindVars,
-            );
+                bindVars
+            }).explain().plan;
+            verifyVectorIndexUsed(plan);
+
+            const results = db._query(query, bindVars).toArray();
+
+            assertEqual(5, results.length, 5);
         },
 
         testApproxL2FilterNotAppliedReversedLoop: function() {
@@ -797,10 +819,10 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
                     floatField: i + 0.5
                 });
             }
-            insertDocsAndEnsureIndex({
+            insertDocsAndAssertIndex({
                 collection, docs, seed,
-                ensureIndex: () => collection.ensureIndex({
-                    name: "vector_l2_stored_values",
+                indexName: "vector_l2_stored_values",
+                indexDef: {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -812,13 +834,8 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
                         defaultNProbe: nProbeAndNlists,
                     },
                     storedValues: ["val", "stringField", "boolField", "floatField"]
-                }),
+                },
             });
-
-            assertTrue(
-                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 60),
-                "Expected index to become ready with " + numberOfDocs + " docs"
-            );
         },
 
         tearDownAll: function() {
