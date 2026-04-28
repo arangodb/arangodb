@@ -121,9 +121,6 @@ void EnumerateNearVectorsExecutor::searchResults() {
   auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());
   TRI_ASSERT(vectorIndex != nullptr);
 
-  // The configuration lives on the infos; we just hand the per-call
-  // execution context (current query vector, current input row, trx) to
-  // readBatch.
   auto result = vectorIndex->readBatch(_infos.searchConfig,
                                        vector::SearchContext{
                                            .inputs = &_inputRowConverted,
@@ -133,15 +130,11 @@ void EnumerateNearVectorsExecutor::searchResults() {
                                        });
   _labels = std::move(result.labels);
   _distances = std::move(result.distances);
-  // Whatever the filter iterator captured (full doc or partial doc) is
-  // already keyed by LocalDocumentId, which is exactly how fillOutput will
-  // look it up -- adopt the map directly.
   _documents = std::move(result.capturedDocuments);
   _currentProcessedResultCount = 0;
 
-  // Fallback path: when there is no filter and the strategy still wants
-  // documents, the iterator did not load any. Batch-fetch them here so
-  // fillOutput finds entries in `_documents` keyed by id.
+  // No-filter kDocument: the simple iterator did not load docs, so
+  // batch-fetch them now.
   if (_infos.strategy == EnumerateNearVectorNode::Strategy::kDocument &&
       _infos.searchConfig.filterExpression == nullptr) {
     std::vector<LocalDocumentId> tokensToFetch;
@@ -216,8 +209,6 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
         auto it = _documents.find(id);
         TRI_ASSERT(it != _documents.end());
         velocypack::Slice docSlice{it->second.data()};
-        // Only kDocument writes the doc register; kCovered emits only
-        // per-projection registers (the doc register isn't allocated).
         if (docOutId != RegisterId::maxRegisterId) {
           output.moveValueInto(docOutId, _inputRow, docSlice);
         }

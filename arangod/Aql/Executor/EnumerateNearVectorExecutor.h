@@ -106,9 +106,6 @@ class EnumerateNearVectorsExecutor {
 
   void fillOutput(OutputAqlItemRow& output);
 
-  // Extract per-projection slices from `docSlice` and write them into the
-  // matching output registers. Shared by the kDocument and kCovered
-  // strategies, which only differ in where `docSlice` came from.
   void writeProjections(velocypack::Slice docSlice, OutputAqlItemRow& output);
 
   bool hasResults() const noexcept;
@@ -125,14 +122,10 @@ class EnumerateNearVectorsExecutor {
 
   std::vector<float> _distances;
   std::vector<VectorIndexLabelId> _labels;
-  // Per-doc VPack bytes the executor reads in fillOutput, keyed by the
-  // surviving label. For kDocument the value is a full document; for
-  // kCovered it is the partial doc the FAISS iterator built from
-  // storedValues. Empty for kPassThroughId.
+  // VPack object per surviving label: full doc for kDocument, partial doc
+  // (from storedValues) for kCovered, empty for kPassThroughId.
   containers::NodeHashMap<LocalDocumentId, velocypack::Buffer<uint8_t>>
       _documents;
-  // Scratch builder used when producing per-projection registers from the
-  // document slice.
   velocypack::Builder _projectionsBuilder;
   std::size_t _currentProcessedResultCount{0};
   // needed to enable fullCount to work
