@@ -359,7 +359,7 @@ void BenchFeature::start() {
       std::filesystem::exists(_jsonReportFile, existsEc)) {
     LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::BENCH)
         << "file already exists: '" << _jsonReportFile
-        << "' - won't overwrite it.";
+        << "' - won't overwrite it." << existsEc.message();
     FATAL_ERROR_EXIT();
   }
   ClientFeature& client =

@@ -156,8 +156,7 @@ void DatabasePathFeature::prepare() {
   }
 
   if (_options.requiredDirectoryState == "non-existing") {
-    std::error_code dirEc;
-    if (std::filesystem::is_directory(_options.directory, dirEc)) {
+    if (std::filesystem::is_directory(_options.directory)) {
       LOG_TOPIC("25452", FATAL, arangodb::Logger::STARTUP)
           << "database directory '" << _options.directory
           << "' already exists, but option "

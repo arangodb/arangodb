@@ -166,21 +166,51 @@ void InitDatabaseFeature::checkEmptyDatabase() {
   std::error_code dirEc;
   if (std::filesystem::exists(path, dirEc)) {
     if (!std::filesystem::is_directory(path, dirEc)) {
+      if (dirEc) {
+        message =
+            "error checking database path '" + path + "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
       message = "database path '" + path + "' is not a directory";
       code = EXIT_FAILURE;
       goto doexit;
     }
 
     if (std::filesystem::exists(serverFile, dirEc)) {
+      if (dirEc) {
+        message = "error checking database SERVER marker '" + serverFile +
+                  "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
       if (std::filesystem::is_directory(serverFile, dirEc)) {
         message = "database SERVER '" + serverFile + "' is not a file";
         code = EXIT_FAILURE;
         goto doexit;
       }
+      if (dirEc) {
+        message = "error checking database SERVER marker '" + serverFile +
+                  "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
     } else {
+      if (dirEc) {
+        message = "error checking database SERVER marker '" + serverFile +
+                  "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
       empty = true;
     }
   } else {
+    if (dirEc) {
+      message =
+          "error checking database path '" + path + "': " + dirEc.message();
+      code = TRI_EXIT_CODE_RESOLVING_FAILED;
+      goto doexit;
+    }
     empty = true;
   }
 

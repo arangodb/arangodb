@@ -653,7 +653,8 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
     std::error_code ec;
     if (!std::filesystem::exists(file, ec)) {
       LOG_TOPIC("4beec", ERR, arangodb::Logger::FIXME)
-          << "error: JavaScript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'"
+          << ec.message();
       ok = false;
       continue;
     }
@@ -794,7 +795,8 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
     std::error_code ec;
     if (!std::filesystem::exists(file, ec)) {
       LOG_TOPIC("51bdb", ERR, arangodb::Logger::FIXME)
-          << "error: JavaScript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'"
+          << ec.message();
       ok = false;
       continue;
     }

@@ -84,7 +84,8 @@ void TimeZoneFeature::prepareTimeZoneData(
     LOG_TOPIC("67bdc", FATAL, arangodb::Logger::STARTUP)
         << "failed to locate timezone data " << tz_path
         << ". please set the TZ_DATA environment variable to the "
-        << "tzdata directory in case you are running an unusual setup";
+        << "tzdata directory in case you are running an unusual setup"
+        << dirEc.message();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_TZDATA_INITIALIZATION_FAILED);
   }
 

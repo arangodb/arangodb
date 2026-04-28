@@ -356,7 +356,7 @@ void EnvironmentFeature::prepare() {
     std::error_code existsEc;
     if (!std::filesystem::exists(ipV6Filename, existsEc)) {
       LOG_TOPIC("0f48d", INFO, arangodb::Logger::COMMUNICATION)
-          << "IPv6 support seems to be disabled";
+          << "IPv6 support seems to be disabled" << existsEc.message();
     }
   } catch (...) {
     // file not found
@@ -510,6 +510,10 @@ void EnvironmentFeature::prepare() {
     } catch (...) {
       // file not found
     }
+  } else if (existsEc) {
+    LOG_TOPIC("c7d92", DEBUG, Logger::MEMORY)
+        << "unable to check for NUMA node '/sys/devices/system/node/node1': "
+        << existsEc.message();
   }
 
   // check kernel ASLR settings
