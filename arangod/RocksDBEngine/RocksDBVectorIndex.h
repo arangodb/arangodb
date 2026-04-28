@@ -75,21 +75,12 @@ struct SearchConfig {
   std::vector<std::pair<aql::VariableId, aql::RegisterId>> filterVarsToRegs;
   aql::Variable const* documentVariable{nullptr};
 
-  // True when the FAISS layer should use the storedValues-only filter
-  // iterator: the filter is expressible against storedValues AND no
-  // consumer of this readBatch call needs a full document. That covers
-  // (filter covered, projections covered) -- the executor produces
-  // projection registers from the captured partial doc -- and (filter
-  // covered, no projections) -- the executor passes labels through to a
-  // downstream materializer. When false, the regular filter iterator
-  // runs and loads the full document during filter eval.
+  // Use the storedValues-only filter iterator (filter covered by
+  // storedValues AND no consumer needs the full document).
   bool useStoredValuesIterator{false};
 
-  // When set (and a filter is present), the filter iterator hands the
-  // VPack object it built for filter eval back through SearchResult --
-  // either the full document (regular iterator) or the partial doc
-  // assembled from storedValues (storedValues iterator). The caller does
-  // not care which: both are objects suitable for projection extraction.
+  // Filter iterator hands the VPack object it built for filter eval back
+  // through SearchResult.capturedDocuments.
   bool captureDocuments{false};
 };
 
@@ -105,9 +96,8 @@ struct SearchContext {
 struct SearchResult {
   std::vector<VectorIndexLabelId> labels;
   std::vector<float> distances;
-  // Empty unless captureDocuments was set in SearchConfig.
   containers::NodeHashMap<LocalDocumentId, velocypack::Buffer<uint8_t>>
-      capturedDocuments;
+      capturedDocuments;  // empty unless captureDocuments was set
 };
 
 }  // namespace vector

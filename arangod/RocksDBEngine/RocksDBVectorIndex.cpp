@@ -236,7 +236,11 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   auto faissSearchContext =
       std::invoke([&]() -> vector::RocksDBFaissSearchContext {
         if (config.filterExpression == nullptr) {
-          return {ctx.trx};
+          vector::SimpleSearchContext simpleCtx;
+          simpleCtx.trx = ctx.trx;
+          simpleCtx.capturedDocuments =
+              config.captureDocuments ? &result.capturedDocuments : nullptr;
+          return simpleCtx;
         }
         TRI_ASSERT(ctx.queryContext != nullptr);
 
