@@ -25,7 +25,6 @@
 
 #include <filesystem>
 
-#include "EngineSelectorOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -45,44 +44,19 @@
 using namespace arangodb;
 using namespace arangodb::options;
 
-namespace {
-
-using EngineResolver =
-    StorageEngine& (*)(application_features::ApplicationServer&);
-
-struct EngineInfo {
-  EngineResolver resolver;
-  // whether or not the engine is deprecated
-  bool deprecated;
-  // whether or not new deployments with this engine are allowed
-  bool allowNewDeployments;
-};
-
-constexpr std::array<std::pair<std::string_view, EngineInfo>, 1> kEngines{
-    {{RocksDBEngine::kEngineName,
-      {[](application_features::ApplicationServer& server) -> StorageEngine& {
-         return server.getFeature<RocksDBEngine>();
-       },
-       false, true}}}};
-
-}  // namespace
-
 namespace arangodb {
 
 EngineSelectorFeature::EngineSelectorFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this},
-      _engine(nullptr),
-      _selected(false),
-      _allowDeprecatedDeployments(false) {
+    : ApplicationFeature{server, *this}, _engine(nullptr), _selected(false) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
 
 void EngineSelectorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  arangodb::engine_selector::EngineSelectorOptionsProvider provider;
-  provider.declareOptions(options, _options);
+  options->addObsoleteOption("--server.storage-engine",
+                             "The storage engine type", true);
 }
 
 void EngineSelectorFeature::prepare() {
@@ -106,17 +80,14 @@ void EngineSelectorFeature::prepare() {
     try {
       std::string content =
           basics::StringUtils::trim(basics::FileUtils::slurp(_engineFilePath));
-      if (content != _options.engineName && _options.engineName != "auto") {
+      if (content != RocksDBEngine::kEngineName) {
         LOG_TOPIC("cd6d8", FATAL, Logger::STARTUP)
-            << "content of 'ENGINE' file '" << _engineFilePath
-            << "' and command-line/configuration option value do not match: '"
-            << content << "' != '" << _options.engineName
-            << "'. please validate the command-line/configuration option value "
-               "of '--server.storage-engine' or use a different database "
-               "directory if the change is intentional";
+            << "'ENGINE' file '" << _engineFilePath
+            << " indicates storage engine '" << content
+            << "', but currently only '" << RocksDBEngine::kEngineName
+            << "' is supported.";
         FATAL_ERROR_EXIT();
       }
-      _options.engineName = content;
     } catch (std::exception const& ex) {
       LOG_TOPIC("23ec1", FATAL, Logger::STARTUP)
           << "unable to read content of 'ENGINE' file '" << _engineFilePath
@@ -127,104 +98,21 @@ void EngineSelectorFeature::prepare() {
     }
   }
 
-  if (_options.engineName == "auto") {
-    _options.engineName = defaultEngine();
-  }
-
-  TRI_ASSERT(_options.engineName != "auto");
-
-  auto const selected = std::find_if(
-      std::begin(kEngines), std::end(kEngines),
-      [this](auto& info) { return _options.engineName == info.first; });
-  if (selected == std::end(kEngines)) {
-    if (_options.engineName == "mmfiles") {
-      LOG_TOPIC("10eb6", FATAL, Logger::STARTUP)
-          << "the mmfiles storage engine is unavailable from version v3.7.0 "
-             "onwards";
-    } else {
-      // should not happen
-      LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
-          << "unable to determine storage engine '" << _options.engineName
-          << "'";
-    }
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_UNSUPPORTED_STORAGE_ENGINE);
-  }
-
-  if (selected->second.deprecated) {
-    if (!selected->second.allowNewDeployments) {
-      LOG_TOPIC("23562", ERR, arangodb::Logger::STARTUP)
-          << "The " << _options.engineName
-          << " storage engine is deprecated and unsupported and will be "
-             "removed in a future version. "
-          << "Please plan for a migration to a different ArangoDB storage "
-             "engine.";
-
-      if (!ServerState::instance()->isCoordinator() &&
-          !std::filesystem::is_regular_file(_engineFilePath) &&
-          !_allowDeprecatedDeployments) {
-        LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
-            << "The " << _options.engineName
-            << " storage engine cannot be used for new deployments.";
-        FATAL_ERROR_EXIT();
-      }
-    } else {
-      LOG_TOPIC("80866", WARN, arangodb::Logger::STARTUP)
-          << "The " << _options.engineName
-          << " storage engine is deprecated and will be removed in a future "
-             "version. "
-          << "Please plan for a migration to a different ArangoDB storage "
-             "engine.";
-    }
-  }
-
   if (ServerState::instance()->isCoordinator()) {
     ClusterEngine& ce = server().getFeature<ClusterEngine>();
     _engine = &ce;
 
-    for (auto& engine : kEngines) {
-      StorageEngine& e = engine.second.resolver(server());
-      // turn off all other storage engines
-      LOG_TOPIC("001b6", TRACE, Logger::STARTUP)
-          << "disabling storage engine " << engine.first;
-      e.disable();
-      if (engine.first == _options.engineName) {
-        LOG_TOPIC("4a3fc", DEBUG, Logger::STARTUP)
-            << "using storage engine " << engine.first;
-        ce.setActualEngine(&e);
-      }
-    }
-
+    StorageEngine& e = server().getFeature<RocksDBEngine>();
+    LOG_TOPIC("001b6", TRACE, Logger::STARTUP) << "disabling storage engine";
+    e.disable();
+    ce.setActualEngine(&e);
   } else {
-    // deactivate all engines but the selected one
-    for (auto& engine : kEngines) {
-      StorageEngine& e = engine.second.resolver(server());
-
-      if (engine.first == _options.engineName) {
-        // this is the selected engine
-        LOG_TOPIC("144fe", DEBUG, Logger::STARTUP)
-            << "using storage engine '" << engine.first << "'";
-        e.enable();
-
-        // register storage engine
-        TRI_ASSERT(_engine == nullptr);
-        _engine = &e;
-      } else {
-        // turn off all other storage engines
-        LOG_TOPIC("14a9e", TRACE, Logger::STARTUP)
-            << "disabling storage engine '" << engine.first << "'";
-        e.disable();
-      }
-    }
+    StorageEngine& e = server().getFeature<RocksDBEngine>();
+    e.enable();
+    _engine = &e;
   }
 
-  if (_engine == nullptr) {
-    LOG_TOPIC("9cb11", FATAL, Logger::STARTUP)
-        << "unable to figure out storage engine from selection '"
-        << _options.engineName
-        << "'. please use the '--server.storage-engine' option to select an "
-           "existing storage engine";
-    FATAL_ERROR_EXIT();
-  }
+  TRI_ASSERT(_engine != nullptr);
 
   _selected.store(true);
 }
@@ -236,7 +124,8 @@ void EngineSelectorFeature::start() {
   if (!ServerState::instance()->isCoordinator() &&
       !std::filesystem::is_regular_file(_engineFilePath)) {
     try {
-      basics::FileUtils::spit(_engineFilePath, _options.engineName, true);
+      basics::FileUtils::spit(_engineFilePath, std::string{defaultEngine()},
+                              true);
     } catch (std::exception const& ex) {
       LOG_TOPIC("4ff0f", FATAL, Logger::STARTUP)
           << "unable to write 'ENGINE' file '" << _engineFilePath
@@ -263,15 +152,6 @@ void EngineSelectorFeature::unprepare() {
     }
 #endif
   }
-}
-
-// return the names of all available storage engines
-std::unordered_set<std::string> EngineSelectorFeature::availableEngineNames() {
-  std::unordered_set<std::string> result{"auto"};
-  for (auto const& it : kEngines) {
-    result.emplace(it.first);
-  }
-  return result;
 }
 
 StorageEngine& EngineSelectorFeature::engine() {
