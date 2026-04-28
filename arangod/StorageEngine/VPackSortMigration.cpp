@@ -29,7 +29,6 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
@@ -45,6 +44,7 @@ namespace arangodb {
 
 // On dbservers, agents and single servers:
 Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
+  TRI_ASSERT(vocbase.engine().typeName() == RocksDBEngine::kEngineName);
   auto& engine = vocbase.engine<RocksDBEngine>();
   auto* db = engine.db();
 
@@ -170,6 +170,7 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
 Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
   result.clear();
 
+  TRI_ASSERT(vocbase.engine().typeName() == RocksDBEngine::kEngineName);
   auto& engine = vocbase.engine<RocksDBEngine>();
   Result res = engine.writeSortingFile(
       arangodb::basics::VelocyPackHelper::SortingMethod::Correct);
@@ -186,6 +187,7 @@ Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
 }
 
 Result statusVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
+  TRI_ASSERT(vocbase.engine().typeName() == RocksDBEngine::kEngineName);
   auto& engine = vocbase.engine<RocksDBEngine>();
   auto sortingFileMethod = engine.readSortingFile();
   {
