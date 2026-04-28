@@ -88,7 +88,7 @@ if [ "$1" = 'arangod' ]; then
         echo "Initializing database...Hang on..."
         echo "PARAMETERS: "
         echo "$@"
-        $NUMACTL arangod "$@" --config /tmp/arangod.conf \
+        $NUMACTL "$@" --config /tmp/arangod.conf \
                 --server.endpoint tcp://127.0.0.1:$ARANGO_INIT_PORT \
                 --server.authentication false \
 		--log.file /tmp/init-log \
