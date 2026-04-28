@@ -37,7 +37,6 @@
 #include "Futures/Utilities.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Metrics/Counter.h"
-#include "Metrics/Types.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -1259,84 +1258,6 @@ futures::Future<OperationResult> countOnCoordinator(
     fut.wait();
   }
   return std::move(fut).thenValue(std::move(cb));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the metrics from DBServers
-////////////////////////////////////////////////////////////////////////////////
-
-futures::Future<metrics::RawDBServers> metricsOnLeader(
-    NetworkFeature& network, ClusterFeature& cluster) {
-  LOG_TOPIC("badf0", TRACE, Logger::CLUSTER) << "Start collect metrics";
-  auto* pool = network.pool();
-  auto serverIds = cluster.clusterInfo().getCurrentDBServers();
-
-  std::vector<Future<network::Response>> futures;
-  futures.reserve(serverIds.size());
-  for (auto const& id : serverIds) {
-    network::Headers headers;
-    headers.emplace(StaticStrings::Accept,
-                    StaticStrings::MimeTypeJsonNoEncoding);
-    futures.push_back(network::sendRequest(
-        pool, "server:" + id, fuerte::RestVerb::Get, "/_admin/metrics", {},
-        network::RequestOptions{}.param("type", metrics::kDBJson),
-        std::move(headers)));
-  }
-  return collectAll(futures).then(
-      [](Try<std::vector<Try<network::Response>>>&& responses) {
-        TRI_ASSERT(responses.hasValue());  // collectAll always return value
-        metrics::RawDBServers metrics;
-        metrics.reserve(responses->size());
-        for (auto& response : *responses) {
-          if (!response.hasValue() || !response->hasResponse() ||
-              response->fail()) {
-            continue;  // Shit happens, just ignore it
-          }
-          auto payload = response->response().stealPayload();
-          if (!payload) {
-            TRI_ASSERT(false);
-            continue;
-          }
-          velocypack::Slice slice{payload->data()};
-          if (!slice.isArray()) {
-            continue;  // some like 503
-          }
-          if (auto const size = slice.length(); size % 3 != 0) {
-            TRI_ASSERT(false);
-            continue;
-          }
-          metrics.push_back(std::move(payload));
-        }
-        return metrics;
-      });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the metrics from leader Coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-futures::Future<metrics::LeaderResponse> metricsFromLeader(
-    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
-    std::string serverId, uint64_t rebootId, uint64_t version) {
-  LOG_TOPIC("badf1", TRACE, Logger::CLUSTER) << "Start receive metrics";
-  auto* pool = network.pool();
-  network::Headers headers;
-  headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
-  auto options = network::RequestOptions{}
-                     .param("type", metrics::kCDJson)
-                     // cppcheck-suppress accessMoved
-                     .param("MetricsServerId", std::move(serverId))
-                     .param("MetricsRebootId", std::to_string(rebootId))
-                     .param("MetricsVersion", std::to_string(version));
-  auto future = network::sendRequest(
-      pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
-      "/_admin/metrics", {}, std::move(options), std::move(headers));
-  return std::move(future).then([](Try<network::Response>&& response) {
-    if (!response.hasValue() || !response->hasResponse() || response->fail()) {
-      return metrics::LeaderResponse{};
-    }
-    return response->response().stealPayload();
-  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

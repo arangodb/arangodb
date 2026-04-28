@@ -24,28 +24,17 @@
 #pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
-#include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
 #include "Indexes/IndexIterator.h"
 #include "Futures/Future.h"
-#include "Network/types.h"
-#include "Metrics/Parse.h"
-#include "Rest/CommonDefines.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/MethodsApi.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/TransactionId.h"
-#include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
 
-#include <map>
-#include <memory>
 #include <string>
-#include <string_view>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 namespace arangodb {
 
@@ -114,21 +103,6 @@ futures::Future<OperationResult> figuresOnCoordinator(
 futures::Future<OperationResult> countOnCoordinator(
     transaction::Methods& trx, std::string const& collname,
     OperationOptions const& options, arangodb::transaction::MethodsApi api);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the metrics from DBServers
-////////////////////////////////////////////////////////////////////////////////
-
-futures::Future<metrics::RawDBServers> metricsOnLeader(NetworkFeature& network,
-                                                       ClusterFeature& cluster);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the metrics from leader Coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-futures::Future<metrics::LeaderResponse> metricsFromLeader(
-    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
-    std::string serverId, uint64_t rebootId, uint64_t version);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers
