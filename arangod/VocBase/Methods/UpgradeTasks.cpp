@@ -624,12 +624,7 @@ std::optional<velocypack::Builder> rewriteIndexTypesInArray(
   return out;
 }
 
-Result convertHashSkiplistInDefinitionsColumnFamily(TRI_vocbase_t& vocbase) {
-  auto& selectorFeature = vocbase.server().getFeature<EngineSelectorFeature>();
-  if (!selectorFeature.isRocksDB()) {
-    return {};
-  }
-  auto& engine = selectorFeature.engine<RocksDBEngine>();
+Result convertHashSkiplistInDefinitionsColumnFamily(RocksDBEngine& engine) {
   rocksdb::TransactionDB* db = engine.db();
   auto* cf = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Definitions);
@@ -788,7 +783,7 @@ Result UpgradeTasks::migrateHashSkiplistToPersistent(
     auto& clusterFeature = vocbase.server().getFeature<ClusterFeature>();
     return convertHashSkiplistIndexesInPlanCoordinator(vocbase, clusterFeature);
   }
-  return convertHashSkiplistInDefinitionsColumnFamily(vocbase);
+  return convertHashSkiplistInDefinitionsColumnFamily(vocbase.engine<RocksDBEngine>());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
