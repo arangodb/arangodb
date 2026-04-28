@@ -265,6 +265,8 @@ You can start the build container as follows in a Bash-like terminal:
     cd arangodb
     docker run -it -v $(pwd):/root/project -p 3000:3000 arangodb/ubuntubuildarangodb-devel:3
 
+SELinux enabled distribitons need `:z` added to the to the volume path: `-v $(pwd):/root/project:z`
+
 In PowerShell, use `${pwd}` instead of `$(pwd)`.
 
 In the fish shell of the container, run the following commands for a release-like
@@ -311,7 +313,7 @@ For building the ArangoDB Starter (`arangodb` executable), see the
 
 ### Building Locally
 
-Recommended for Debian-based Linux. First, install dependencies:
+Debian-based Linux is recommended. Dependencies:
 - `clang-19`
 - `libomp-19-dev`
 - `liblapack-dev`
@@ -319,6 +321,11 @@ Recommended for Debian-based Linux. First, install dependencies:
 - `cmake` (at least 3.21)
 - `libssl-dev`
 - `libstdc++-14-dev`
+
+Dependencies for a Fedora-based distribution:
+```
+dnf install clang-19 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel
+```
 
 After installing, follow the general build steps above.
 

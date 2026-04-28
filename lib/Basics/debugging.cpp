@@ -102,8 +102,8 @@ void TRI_TerminateDebugging(std::string_view message) {
     std::terminate();
   } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
     // intentionally crashes the program!
-    // If we instead try to dereference a nullptr, macOS might do SIGABRT
-    raise(SIGSEGV);
+    volatile int* p = nullptr;
+    *p = 42;
   } else if (message == "CRASH-HANDLER-TEST-ASSERT") {
     int a = 1;
     // intentionally crashes the program!

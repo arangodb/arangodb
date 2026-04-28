@@ -52,18 +52,20 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 using namespace arangodb::basics;
+
+namespace arangodb {
 
 DECLARE_GAUGE(arangodb_agency_log_size_bytes, uint64_t,
               "Agency replicated log size [bytes]");
 DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
               "Current number of entries in agency client id lookup table");
+
+namespace consensus {
 
 /// Constructor:
 State::State(metrics::MetricsFeature& metrics)
@@ -1494,9 +1496,8 @@ bool State::removeObsolete(index_t cind) {
 }
 
 /// Persist a compaction snapshot
-bool State::persistCompactionSnapshot(index_t cind,
-                                      arangodb::consensus::term_t term,
-                                      arangodb::consensus::Store& snapshot) {
+bool State::persistCompactionSnapshot(index_t cind, term_t term,
+                                      Store& snapshot) {
   TRI_IF_FAILURE("State::persistCompactionSnapshot") { return true; }
 
   if (checkCollection("compact")) {
@@ -1974,3 +1975,39 @@ void State::toVelocyPack(velocypack::Builder& builder) const {
   char const* key = keySlice.getString(keyLength);
   return index_t(arangodb::basics::StringUtils::uint64(key, keyLength));
 }
+
+ResultT<State::AppendEntriesPayload> State::buildAppendEntriesPayload(
+    index_t lastConfirmed, size_t maxEntries) {
+  // Disk I/O under _logLock is acceptable: snapshot sends are rare because
+  // a follower has to fall behind the leader's compaction horizon first.
+  std::lock_guard mutexLocker{_logLock};
+
+  if (_log.empty()) {
+    return Result{TRI_ERROR_INTERNAL, "agency log is empty"};
+  }
+
+  AppendEntriesPayload payload;
+  index_t fetchStart = lastConfirmed;
+
+  if (lastConfirmed < _cur) {
+    AppendEntriesPayload::SnapshotInfo info;
+    if (!loadLastCompactedSnapshot(info.store, info.index, info.term) ||
+        info.index == 0 || info.term == 0) {
+      return Result{TRI_ERROR_INTERNAL, "could not load compacted snapshot"};
+    }
+    fetchStart = info.index - 1;
+    payload.snapshot.emplace(std::move(info));
+  }
+
+  auto const [startBound, endBound] =
+      determineLogBounds(fetchStart, fetchStart + maxEntries);
+  payload.entries.reserve(endBound - startBound);
+  for (size_t i = startBound; i < endBound; ++i) {
+    TRI_ASSERT(i < _log.size());
+    payload.entries.push_back(_log[i]);
+  }
+  return payload;
+}
+
+}  // namespace consensus
+}  // namespace arangodb

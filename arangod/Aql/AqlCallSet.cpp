@@ -23,16 +23,14 @@
 
 #include "AqlCallSet.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
-auto aql::operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
+auto operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
     -> std::ostream& {
   return out << callPair.dependency << " => " << callPair.call;
 }
 
-auto aql::operator<<(std::ostream& out, AqlCallSet const& callSet)
-    -> std::ostream& {
+auto operator<<(std::ostream& out, AqlCallSet const& callSet) -> std::ostream& {
   out << "[";
   auto first = true;
   for (auto const& it : callSet.calls) {
@@ -51,3 +49,5 @@ auto aql::operator<<(std::ostream& out, AqlCallSet const& callSet)
 auto AqlCallSet::empty() const noexcept -> bool { return calls.empty(); }
 
 auto AqlCallSet::size() const noexcept -> size_t { return calls.size(); }
+
+}  // namespace arangodb::aql

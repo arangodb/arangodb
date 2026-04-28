@@ -39,8 +39,7 @@
 #include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 /// @brief create a collection wrapper
 Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
@@ -282,3 +281,5 @@ void Collection::checkCollection() const {
                      ": ", _name));
   }
 }
+
+}  // namespace arangodb::aql

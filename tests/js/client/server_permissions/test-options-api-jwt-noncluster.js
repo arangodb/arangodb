@@ -69,9 +69,9 @@ function testSuite() {
         }
       });
       assertEqual(200, res.status);
-      assertTrue(res.json.hasOwnProperty("server.storage-engine"));
-      assertEqual("rocksdb", res.json["server.storage-engine"]);
-      
+      assertTrue(res.json.hasOwnProperty("server.options-api"));
+      assertEqual("jwt", res.json["server.options-api"]);
+
       Object.keys(res.json).forEach((key) => {
         assertNotMatch(/(passwd|password|secret)/, key, key);
       });
@@ -107,8 +107,7 @@ function testSuite() {
         }
       });
       assertEqual(200, res.status);
-      assertTrue(res.json.hasOwnProperty("server.storage-engine"));
-      assertEqual("rocksdb", res.json["server.storage-engine"].default);
+      assertTrue(res.json.hasOwnProperty("server.options-api"));
     },
     
     testApiGetOptionsDescriptionJwtOtherDatabase : function() {

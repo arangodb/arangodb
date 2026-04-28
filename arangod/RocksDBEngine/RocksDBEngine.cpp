@@ -71,7 +71,7 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
@@ -1044,10 +1044,11 @@ void RocksDBEngine::start() {
       TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
     }
   } else {
-    auto errorMsg = TRI_ERROR_NO_ERROR;
-    if (!basics::FileUtils::createDirectory(_idxPath, &errorMsg)) {
+    auto ec = std::error_code{};
+    std::ignore = std::filesystem::create_directory(_idxPath, ec);
+    if (ec) {
       LOG_TOPIC("6d10f", FATAL, Logger::ENGINES)
-          << "Cannot create tmp-idx-creation directory: " << TRI_last_error();
+          << "Cannot create tmp-idx-creation directory: " << ec.message();
       FATAL_ERROR_EXIT();
     }
   }

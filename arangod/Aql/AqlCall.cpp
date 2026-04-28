@@ -38,8 +38,7 @@
 #include <iostream>
 #include <string_view>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {
@@ -285,7 +284,7 @@ auto AqlCall::requestLessDataThan(AqlCall const& other) const noexcept -> bool {
   return needsFullCount() == other.needsFullCount();
 }
 
-auto aql::operator<<(std::ostream& out, AqlCall::LimitPrinter const& printer)
+auto operator<<(std::ostream& out, AqlCall::LimitPrinter const& printer)
     -> std::ostream& {
   return std::visit(
       overload{[&out](size_t const& i) -> std::ostream& { return out << i; },
@@ -295,7 +294,7 @@ auto aql::operator<<(std::ostream& out, AqlCall::LimitPrinter const& printer)
       printer._limit);
 }
 
-auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
+auto operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
   return out << "{ skip: " << call.getOffset()
              << ", softLimit: " << AqlCall::LimitPrinter(call.softLimit)
              << ", hardLimit: " << AqlCall::LimitPrinter(call.hardLimit)
@@ -303,6 +302,6 @@ auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
              << ", skipCount: " << call.getSkipCount() << " }";
 }
 
-auto aql::to_string(AqlCall const& call) -> std::string {
-  return call.toString();
-}
+auto to_string(AqlCall const& call) -> std::string { return call.toString(); }
+
+}  // namespace arangodb::aql
