@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PushFilterIntoEnumerateNear.h"
+#include <memory>
 
 #include "Aql/Ast.h"
 #include "Aql/AstHelper.h"
@@ -29,6 +30,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
@@ -39,8 +41,10 @@
 #include "Aql/Optimizer/Utils/VectorIndexHelpers.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/QueryContext.h"
+#include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb::aql {
 
@@ -51,10 +55,13 @@ using EN = ExecutionNode;
 #define LOG_RULE LOG_RULE_IF(true)
 
 std::unique_ptr<Expression> tryRemoveFilterNode(
-    auto* maybeFilterNode, auto& plan,
-    auto const* enumerateNearVectorOutputDocument) {
+    ExecutionNode* filterExecutionNode,
+    std::unique_ptr<ExecutionPlan> const& plan,
+    Variable const* distanceOutVariable) {
+  TRI_ASSERT(filterExecutionNode != nullptr &&
+             filterExecutionNode->getType() == EN::FILTER);
   auto const* filterNode =
-      ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
+      ExecutionNode::castTo<FilterNode const*>(filterExecutionNode);
   auto const* filterInVar = filterNode->inVariable();
 
   // Find the calculation node that populates the filter variable
@@ -67,24 +74,23 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
   auto const* calculationNode =
       ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
 
-  // Check that all variables used in filterExpression can be handled in
-  // EnumerateNearVector node
-  VarSet calculationVars;
   auto filterExpression = calculationNode->expression()->clone(plan->getAst());
-  filterExpression->variables(calculationVars);
 
-  for (auto const* calcVar : calculationVars) {
-    if (calcVar->type() != Variable::Type::Regular) {
-      continue;
-    }
-    if (calcVar != enumerateNearVectorOutputDocument) {
-      return nullptr;
-    }
+  // TODO this will be resolved in the ticket COR-461
+  VarSet filterVars;
+  filterExpression->variables(filterVars);
+  if (filterVars.contains(distanceOutVariable)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+        "filter on the distance variable cannot be pushed into the vector "
+        "search; the distance is produced by the search itself");
   }
 
   // CalculationNode will be removed by the subsequent rule if it is not
-  // referenced by any other node
-  plan->unlinkNode(maybeFilterNode);
+  // referenced by any other node. EnumerateNearVectorNode advertises the
+  // filter's variables through getVariablesUsedHere, so the register planner
+  // keeps them alive up to this node.
+  plan->unlinkNode(filterExecutionNode);
 
   return filterExpression;
 }
@@ -198,7 +204,7 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
     // If there is a FilterNode it comes with CalculationNode, we remove it
     // and handle it in EnumerateNearVectorNode
     std::unique_ptr<Expression> filterExpression = tryRemoveFilterNode(
-        filterNode, plan, enumerateNearVectorNode->documentOutVariable());
+        filterNode, plan, enumerateNearVectorNode->distanceOutVariable());
     if (!filterExpression) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
