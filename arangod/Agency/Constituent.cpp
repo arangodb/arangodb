@@ -48,10 +48,10 @@
 #include <iomanip>
 #include <thread>
 
-using namespace arangodb::consensus;
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
-using namespace arangodb;
+
+namespace arangodb::consensus {
 
 DECLARE_GAUGE(arangodb_agency_term, uint64_t, "Agency's term");
 
@@ -835,3 +835,5 @@ void Constituent::notifyHeartbeatSent(std::string const& followerId) {
   std::lock_guard guard{_heartBeatMutex};
   _lastHeartbeatSent[followerId] = now;
 }
+
+}  // namespace arangodb::consensus

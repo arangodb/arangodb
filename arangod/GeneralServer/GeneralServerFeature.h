@@ -47,10 +47,6 @@ class RestServerThread;
 class GeneralServerFeature final
     : public application_features::ApplicationFeature {
  public:
-  // API Version Configuration - use the centralized ApiVersion struct
-  // See Rest/ApiVersion.h for configuration details
-  using ApiVersion = arangodb::ApiVersion;
-
   static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
   explicit GeneralServerFeature(application_features::ApplicationServer& server,

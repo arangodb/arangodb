@@ -47,8 +47,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/SharedSlice.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 // Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
 constexpr double kFastPathLockTimeout = 2.0;
@@ -344,3 +343,5 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
     return res;
   });
 }
+
+}  // namespace arangodb::aql

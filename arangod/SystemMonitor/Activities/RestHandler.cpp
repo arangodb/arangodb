@@ -61,7 +61,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   }
 
   switch (_request->requestedApiVersion()) {
-    case ApiVersion::experimentalApiVersion: {
+    case api_version::experimentalApiVersion: {
       VPackBuilder builder;
       builder.openObject();
       builder.add("activities", _feature.getData().slice());

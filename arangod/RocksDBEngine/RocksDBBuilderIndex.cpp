@@ -23,14 +23,13 @@
 
 #include "RocksDBBuilderIndex.h"
 
+#include "Indexes/Index.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/files.h"
-#include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
@@ -54,7 +53,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "RocksDBVectorIndex.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -347,13 +345,18 @@ static Result fillIndex(
       RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
-  if (ridx.type() == arangodb::Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+  TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
+
+  if (ridx.type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    auto& vecIdx = static_cast<RocksDBVectorIndex&>(ridx);
     it->Seek(bounds.start());
-    return dynamic_cast<RocksDBVectorIndex&>(ridx).ingestVectors(rootDB,
-                                                                 std::move(it));
+    res = vector::ingestVectors(vecIdx, rootDB, std::move(it));
+    if (res.ok()) {
+      res = trx.commit();
+    }
+    return res;
   }
 
-  TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 #ifdef USE_ENTERPRISE
   if (arangodb::rocksutils::rocksDBEndianness == RocksDBEndianness::Little &&
       numThreads > 1) {
@@ -377,9 +380,13 @@ static Result fillIndex(
   return res;
 }
 
-void RocksDBBuilderIndex::beforeCreate() {
+Result RocksDBBuilderIndex::beforeCreate() {
   RocksDBIndex* internal = _wrapped.get();
-  TRI_ASSERT(_wrapped.get() != nullptr);
+  TRI_ASSERT(internal != nullptr);
+  if (_wrapped->type() != TRI_IDX_TYPE_VECTOR_INDEX) {
+    return {};
+  }
+
   rocksdb::Snapshot const* snap = nullptr;
 
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
@@ -397,7 +404,6 @@ void RocksDBBuilderIndex::beforeCreate() {
   rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
   RocksDBBatchedMethods methods(&batch, memoryTracker);
 
-  // From fillIndex
   auto const mode =
       snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
   LogicalCollection const& coll = internal->collection();
@@ -427,7 +433,7 @@ void RocksDBBuilderIndex::beforeCreate() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, docCF));
 
   it->Seek(bounds.start());
-  _wrapped->prepareIndex(std::move(it), upper, &methods);
+  return _wrapped->prepareIndex(std::move(it), upper, &methods);
 }
 
 Result RocksDBBuilderIndex::fillIndexForeground(

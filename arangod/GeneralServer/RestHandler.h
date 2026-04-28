@@ -23,8 +23,7 @@
 
 #pragma once
 
-#include "Activities/Activity.h"
-#include "Activities/GenericActivity.h"
+#include "GeneralServer/RestHandlerActivity.h"
 #include "Async/SuspensionCounter.h"
 #include "Async/async.h"
 #include "Basics/ResultT.h"
@@ -281,7 +280,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::atomic<bool> _canceled;
 
-  std::shared_ptr<activities::GenericActivity> _activity;
+  arangodb::rest::RestHandlerActivity::HandleType _activity;
 };
 
 }  // namespace rest

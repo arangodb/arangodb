@@ -25,11 +25,10 @@
 
 #include <iostream>
 
-using namespace arangodb;
-using namespace arangodb::cluster;
-using namespace arangodb::cluster::paths;
+namespace arangodb::cluster::paths {
 
-std::ostream& arangodb::cluster::paths::operator<<(std::ostream& stream,
-                                                   Path const& path) {
+std::ostream& operator<<(std::ostream& stream, Path const& path) {
   return path.toStream(stream);
 }
+
+}  // namespace arangodb::cluster::paths

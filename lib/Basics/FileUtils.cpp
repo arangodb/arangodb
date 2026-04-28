@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -98,66 +99,36 @@ StatResultType statResultType(std::string const& path) {
 
 void processFiles(std::string const& directory,
                   std::function<void(std::string const&)> const& cb) {
-  DIR* d = opendir(directory.c_str());
-
-  if (d == nullptr) {
+  std::filesystem::path const dir{directory};
+  std::error_code ec;
+  std::filesystem::directory_iterator iter(dir, ec);
+  if (ec) {
     auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
     auto message = arangodb::basics::StringUtils::concatT(
         "failed to enumerate files in directory '", directory,
-        "': ", TRI_last_error());
+        "': ", ec.message());
     THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
   }
-
-  auto guard = arangodb::scopeGuard([&]() noexcept { closedir(d); });
-
-  std::string rcs;
-  dirent* de = readdir(d);
-
-  while (de != nullptr) {
-    // stringify filename (convert to std::string). we take this performance
-    // hit because we will need to strlen anyway and need to pass it to a
-    // function that will likely use its stringified value anyway
-    rcs.assign(de->d_name);
-
-    if (rcs != "." && rcs != "..") {
-      // run callback function
-      cb(rcs);
+  std::filesystem::directory_iterator const end;
+  while (iter != end) {
+    std::string const name = iter->path().filename().string();
+    if (name != "." && name != "..") {
+      cb(name);
     }
-
-    // advance to next entry
-    de = readdir(d);
+    iter.increment(ec);
+    if (ec) {
+      auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      auto message = arangodb::basics::StringUtils::concatT(
+          "failed to enumerate files in directory '", directory,
+          "': ", ec.message());
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
+    }
   }
 }
 
 }  // namespace
 
 namespace arangodb::basics::FileUtils {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes trailing path separators from path
-///
-/// path will be modified in-place
-////////////////////////////////////////////////////////////////////////////////
-
-std::string removeTrailingSeparator(std::string const& name) {
-  size_t endpos = name.find_last_not_of(TRI_DIR_SEPARATOR_CHAR);
-  if (endpos != std::string::npos) {
-    return name.substr(0, endpos + 1);
-  }
-
-  return name;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalizes path
-///
-/// path will be modified in-place
-////////////////////////////////////////////////////////////////////////////////
-
-void normalizePath(std::string& name) {
-  std::replace(name.begin(), name.end(), '/', TRI_DIR_SEPARATOR_CHAR);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a filename
@@ -170,7 +141,8 @@ std::string buildFilename(char const* path, char const* name) {
   std::string result(path);
 
   if (!result.empty()) {
-    result = removeTrailingSeparator(result);
+    std::filesystem::path sourcepath{result};
+    result = sourcepath.lexically_normal().string();
     if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
       result += TRI_DIR_SEPARATOR_CHAR;
     }
@@ -183,16 +155,16 @@ std::string buildFilename(char const* path, char const* name) {
   } else {
     result.append(name);
   }
-  normalizePath(result);  // in place
 
-  return result;
+  return std::filesystem::path(result).make_preferred().string();
 }
 
 std::string buildFilename(std::string const& path, std::string const& name) {
   std::string result(path);
 
   if (!result.empty()) {
-    result = removeTrailingSeparator(result);
+    std::filesystem::path sourcepath{result};
+    result = sourcepath.lexically_normal().string();
     if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
       result += TRI_DIR_SEPARATOR_CHAR;
     }
@@ -205,9 +177,8 @@ std::string buildFilename(std::string const& path, std::string const& name) {
   } else {
     result.append(name);
   }
-  normalizePath(result);  // in place
 
-  return result;
+  return std::filesystem::path(result).make_preferred().string();
 }
 
 static void throwFileReadError(std::string const& filename) {
@@ -365,37 +336,6 @@ ErrorCode remove(std::string const& fileName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-bool createDirectory(std::string const& name, ErrorCode* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = TRI_ERROR_NO_ERROR;
-  }
-
-  return createDirectory(name, 0777, errorNumber);
-}
-
-bool createDirectory(std::string const& name, int mask,
-                     ErrorCode* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = TRI_ERROR_NO_ERROR;
-  }
-
-  auto result = TRI_MKDIR(name.c_str(), static_cast<mode_t>(mask));
-
-  if (result != 0) {
-    int res = errno;
-    if (res == EEXIST && isDirectory(name)) {
-      result = 0;
-    } else {
-      auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      if (errorNumber != nullptr) {
-        *errorNumber = errorCode;
-      }
-    }
-  }
-
-  return result == 0;
-}
-
 /// @brief will not copy files/directories for which the filter function
 /// returns true (now wrapper for version below with TRI_copy_recursive_e
 /// filter)
@@ -551,39 +491,12 @@ std::vector<std::string> listFiles(std::string const& directory) {
   return result;
 }
 
-size_t countFiles(std::string const& directory) {
-  size_t result = 0;
-
-  ::processFiles(directory,
-                 [&result](std::string const& filename) { ++result; });
-
-  return result;
-}
-
 bool isDirectory(std::string const& path) {
   return ::statResultType(path) == ::StatResultType::Directory;
 }
 
-bool isSymbolicLink(std::string const& path) {
-  return ::statResultType(path) == ::StatResultType::SymLink;
-}
-
-bool isRegularFile(std::string const& path) {
-  return ::statResultType(path) == ::StatResultType::File;
-}
-
 bool exists(std::string const& path) {
   return ::statResultType(path) != ::StatResultType::Error;
-}
-
-off_t size(std::string const& path) {
-  int64_t result = TRI_SizeFile(path.c_str());
-
-  if (result < 0) {
-    return (off_t)0;
-  }
-
-  return (off_t)result;
 }
 
 std::string stripExtension(std::string const& path,
@@ -601,59 +514,16 @@ std::string stripExtension(std::string const& path,
   return path;
 }
 
-FileResult changeDirectory(std::string const& path) {
-  int res = TRI_CHDIR(path.c_str());
-
-  if (res == 0) {
-    return FileResult();
-  } else {
-    return FileResult(errno);
-  }
-}
-
-FileResultString currentDirectory() {
-  size_t len = 1000;
-  std::unique_ptr<char[]> current(new char[len]);
-
-  while (TRI_GETCWD(current.get(), (int)len) == nullptr) {
-    if (errno == ERANGE) {
-      len += 1000;
-      current.reset(new char[len]);
-    } else {
-      return FileResultString(errno, ".");
-    }
-  }
-
-  std::string result = current.get();
-
-  return FileResultString(result);
-}
-
 std::string homeDirectory() { return TRI_HomeDirectory(); }
 
 std::string configDirectory(char const* binaryPath) {
   std::string dir = TRI_LocateConfigDirectory(binaryPath);
 
   if (dir.empty()) {
-    return currentDirectory().result();
+    return std::filesystem::current_path();
   }
 
   return dir;
-}
-
-std::string dirname(std::string const& name) { return TRI_Dirname(name); }
-
-void makePathAbsolute(std::string& path) {
-  std::string cwd = FileUtils::currentDirectory().result();
-
-  if (path.empty()) {
-    path = cwd;
-  } else {
-    std::string p = TRI_GetAbsolutePath(path, cwd);
-    if (!p.empty()) {
-      path = p;
-    }
-  }
 }
 
 namespace {
@@ -705,6 +575,13 @@ std::string slurpProgramInternal(std::string const& program,
 }
 
 }  // namespace
+
+auto absolutePath(std::filesystem::path path) -> std::filesystem::path {
+  if (path.empty()) {
+    return std::filesystem::current_path();
+  }
+  return std::filesystem::absolute(path);
+}
 
 std::string slurpProgram(std::string const& program) {
   std::vector<std::string> moreArgs{std::string("version")};

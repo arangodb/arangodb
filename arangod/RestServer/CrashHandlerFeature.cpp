@@ -25,8 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/CrashHandlerOptionsProvider.h"
 #include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb::options;
@@ -53,14 +52,8 @@ void CrashHandlerFeature::start() {
 
 void CrashHandlerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--crash-handler.enable-dumps",
-      "Enable crash dump logging to write crash information to disk.",
-      new BooleanParameter(&_options.enabled),
-      options::makeDefaultFlags(
-          options::Flags::DefaultNoComponents, options::Flags::OnCoordinator,
-          options::Flags::OnDBServer, options::Flags::OnAgent,
-          options::Flags::OnSingle));
+  arangodb::crash_handler::CrashHandlerOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 std::shared_ptr<crash_handler::DumpManager>

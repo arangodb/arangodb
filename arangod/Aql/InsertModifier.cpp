@@ -31,10 +31,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
-
+namespace arangodb::aql {
 ModifierOperationType InsertModifierCompletion::accumulate(
     ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
@@ -54,3 +52,5 @@ futures::Future<OperationResult> InsertModifierCompletion::transact(
     transaction::Methods& trx, VPackSlice const& data) {
   return trx.insertAsync(_infos._aqlCollection->name(), data, _infos._options);
 }
+
+}  // namespace arangodb::aql

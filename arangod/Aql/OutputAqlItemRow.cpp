@@ -45,8 +45,7 @@ The following conditions need to hold true, we need to add c++ tests for this.
 
 #include <iostream>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 OutputAqlItemRow::OutputAqlItemRow(SharedAqlItemBlockPtr block,
                                    RegIdSet const& outputRegisters,
@@ -128,7 +127,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
   if constexpr (std::is_same_v<V, AqlValueGuard>) {
     block().setValue(_baseIndex, registerId, value->value());
     value->steal();
-  } else if constexpr (std::is_same_v<V, aql::DocumentData>) {
+  } else if constexpr (std::is_same_v<V, DocumentData>) {
     block().emplaceValue(_baseIndex, registerId.value(), *value);
   } else {
     block().emplaceValue(_baseIndex, registerId.value(), value);
@@ -593,10 +592,8 @@ template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard*>(
     AqlValueGuard* guard);
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice slice);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, aql::DocumentData*>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    aql::DocumentData*);
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, DocumentData*>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, DocumentData*);
 
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintBool>(
@@ -625,7 +622,7 @@ OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintEmptyObject>(
     RegisterId registerId, InputAqlItemRow const& sourceRow,
     AqlValueHintEmptyObject);
 
-auto aql::operator<<(std::ostream& out, OutputAqlItemRow const& output)
+auto operator<<(std::ostream& out, OutputAqlItemRow const& output)
     -> std::ostream& {
   return out << "{ OutputAqlItemRow " << static_cast<void const*>(&output)
              << ", blockNumRows: " << output.blockNumRows()
@@ -633,3 +630,5 @@ auto aql::operator<<(std::ostream& out, OutputAqlItemRow const& output)
              << ", isFull: " << output.isFull()
              << ", call: " << output.getClientCall() << " }";
 }
+
+}  // namespace arangodb::aql

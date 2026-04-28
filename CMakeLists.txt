@@ -73,7 +73,7 @@ set(ARANGODB_VERSION_MINOR "12")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if(NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "9")
+  set(ARANGODB_VERSION_PATCH "10")
   set(ARANGODB_VERSION_RELEASE_TYPE "devel")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -470,6 +470,13 @@ endif()
 # argument is passed
 find_program(MAKE make gmake)
 
+include(ProcessorCount)
+ProcessorCount(NPROC)
+if(NPROC EQUAL 0)
+  set(NPROC 1)
+endif()
+set(MAKE_JOBS "-j${NPROC}" CACHE STRING "Parallel job flag for external project make invocations")
+
 find_program(
   CHMOD_EXECUTABLE chmod
   PATHS "/bin/" "/usr/bin/"
@@ -508,7 +515,7 @@ set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base librar
 include(CheckCompilerVersion)
 
 CheckCompilerVersion(
-  16.0 # Clang
+  19.0 # Clang
 )
 
 if(CMAKE_COMPILER_IS_CLANG)

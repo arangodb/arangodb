@@ -34,6 +34,7 @@ const rp = require('@arangodb/testutils/result-processing');
 const pm = require('@arangodb/testutils/portmanager');
 const yaml = require('js-yaml');
 const internal = require('internal');
+const {versionHas} = require("@arangodb/test-helper");
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const ArangoError = require('@arangodb').ArangoError;
@@ -381,7 +382,7 @@ class instance {
       default_args['javascript.startup-options-allowlist'] = ".*";
     }
     this.args = _.defaults(this.args, default_args);
-    if (this.options.extremeVerbosity) {
+    if (this.options.extremeVerbosity && versionHas('maintainer-mode') ) {
       this.args['dump-env'] = true;
     }
 
@@ -1164,7 +1165,6 @@ class instance {
         this.serverCrashedLocal = true;
         counters.shutdownSuccess = false;
       }
-      crashUtils.stopProcdump(this.options, this);
     } else {
       if (!this.isAgent()) {
         counters.nonAgenciesCount--;
@@ -1172,7 +1172,6 @@ class instance {
       if (!this.options.noStartStopLogs) {
         print(Date() + ' Server "' + this.name + '" shutdown: Success: pid', this.pid);
       }
-      crashUtils.stopProcdump(this.options, this);
       return false;
     }
   }
@@ -1470,6 +1469,55 @@ class instance {
     }
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
   }
+
+  toThisInstance(callback) {
+    let handle = arango.getConnectionHandle();
+    this.connect();
+    let reconnected = false;
+    let ret;
+    try {
+      ret = callback();
+    } finally {
+      reconnected = arango.connectHandle(handle);
+    }
+    if (!reconnected) {
+      throw new Error(`failed to restore connection to ${handle}`);
+    }
+    return ret;
+  }
+
+  getRawMetric(tags) {
+    return this.toThisInstance(() => {
+      return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
+    });
+  }
+
+  getAllMetric(tags) {
+    let res = this.getRawMetric(tags);
+    if (res.code !== 200) {
+      throw "error fetching metric";
+    }
+    return res.body;
+  }
+
+  getMetricName(text, name) {
+    let re = new RegExp("^" + name);
+    let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+    if (!matches.length) {
+      throw "Metric " + name + " not found";
+    }
+    let res = 0; // Sum up values from all matches
+    for(let i = 0; i < matches.length; i+= 1) {
+      res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+    }
+    return res;
+  }
+
+  getMetric(name) {
+    let text = this.getAllMetric('');
+    return this.getMetricName(text, name);
+  }
+  
   debugGetFailurePoints() {
     this.connect();
     let haveFailAt = arango.GET("/_admin/debug/failat") === true;
@@ -1579,7 +1627,15 @@ class instance {
     return reply.parsedBody === true;
   }
 
-  checkDebugTerminated(waitForExit) {
+  removeCoredump() {
+    if (crashUtils.locateCoreDump(this.options, this) && fs.exists(this.options.coreDirectory)) {
+      print(`${Date()} ${this.name}: deleting coredump for PID ${this.pid} ${this.options.coreDirectory}`);
+      fs.remove(this.options.coreDirectory);
+    } else {
+      print(`${Date()} ${this.name}: no coredump for PID ${this.pid} found`);
+    }
+  }
+  checkDebugTerminated(waitForExit, signal_to_expect) {
     let res = statusExternal(this.pid, waitForExit);
     if (res.status === 'NOT-FOUND') {
       print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
@@ -1590,46 +1646,59 @@ class instance {
     if (!running) {
       // the test may have abortet by itself already, using SIG_ARBRT or SIG_KILL.
       this.exitStatus = res;
-      this.pid = null;
-      if (res.hasOwnProperty('signal') &&
-          (res.signal !== 6)&&(res.signal !== 9)) {
-        throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+      if (res.hasOwnProperty('signal')) {
+        if (signal_to_expect !== undefined) {
+          if (res.signal !== signal_to_expect) {
+            this.pid = null;
+            throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)} !== ${signal_to_expect}`);
+          }
+          if (signal_to_expect === 11) {
+            this.removeCoredump();
+          }
+          this.pid = null;
+          return true;
+        } else if ((res.signal !== 6) && (res.signal !== 9)) {
+          this.pid = null;
+          throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+        }
       }
+      this.pid = null;
       return true;
     }
     return false;
   }
-  debugTerminate(msg) {
+  debugTerminate(msg, signal_to_expect) {
     if (this.pid === null) {
       return;
     }
-    if (!this.checkDebugTerminated(false)){
+    if (!this.checkDebugTerminated(false, signal_to_expect)){
       let reply;
       try {
         this.connect();
         const body = {
           message: msg
         };
+        arango.timeout(this.options.httpTimeout / 4);
         reply = arango.PUT_RAW('/_admin/debug/crash', body);
       } catch(ex) {
         if (ex instanceof ArangoError && (
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
             (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
-          print(`Terminated instance ${this.name} - ${ex}`);
-          return this.checkDebugTerminated(true);
+          print(`Terminated instance ${this.name} - ${ex.message} ${signal_to_expect}`);
+          return this.checkDebugTerminated(true, signal_to_expect);
         }
-        throw new Error(`Failed to crash ${this.name}: ${ex}`);
+        throw new Error(`Failed to crash ${this.name}: ${ex.message}`);
       }
       if (reply.code !== 200) {
         if (reply === undefined) {
           reply = { parsedBody: "thrown during connect"};
         }
-        throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
+        throw new Error(`Failed to crash ${this.name}: ${JSON.stringify(reply)}`);
       }
     }
     let count = 0;
     while (count < 10) {
-      if (this.checkDebugTerminated(false)) {
+      if (this.checkDebugTerminated(false, signal_to_expect)) {
         return;
       }
       count += 1;

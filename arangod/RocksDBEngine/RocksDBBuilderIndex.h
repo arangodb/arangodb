@@ -143,9 +143,11 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   }
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
-  /// @brief prepares the index for the creation process, e.g. if we need to
-  /// train index before any insertion
-  void beforeCreate();
+  RocksDBIndex const& wrapped() const noexcept { return *_wrapped; }
+
+  /// @brief Validates existing documents before the index is persisted.
+  /// Creates a snapshot and iterator, then delegates to _wrapped->prepareIndex.
+  Result beforeCreate();
 
   /// @brief assumes an exclusive lock on the collection
   Result fillIndexForeground(

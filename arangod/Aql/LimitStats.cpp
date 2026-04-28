@@ -23,8 +23,7 @@
 
 #include "LimitStats.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 LimitStats::LimitStats(LimitStats&& other) noexcept
     : _fullCount(other._fullCount) {
@@ -48,13 +47,13 @@ auto LimitStats::getFullCount() const noexcept -> std::size_t {
   return _fullCount;
 }
 
-auto aql::operator+=(ExecutionStats& executionStats,
-                     LimitStats const& limitStats) noexcept -> ExecutionStats& {
+auto operator+=(ExecutionStats& executionStats,
+                LimitStats const& limitStats) noexcept -> ExecutionStats& {
   executionStats.fullCount += limitStats.getFullCount();
   return executionStats;
 }
 
-auto aql::operator==(LimitStats const& left, LimitStats const& right) noexcept
+auto operator==(LimitStats const& left, LimitStats const& right) noexcept
     -> bool {
   // cppcheck-suppress *
   static_assert(
@@ -62,3 +61,5 @@ auto aql::operator==(LimitStats const& left, LimitStats const& right) noexcept
       "When adding members to LimitStats, remember to update operator==!");
   return left.getFullCount() == right.getFullCount();
 }
+
+}  // namespace arangodb::aql
