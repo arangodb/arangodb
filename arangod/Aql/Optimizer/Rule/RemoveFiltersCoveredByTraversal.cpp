@@ -26,6 +26,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
+#include "Aql/ConditionCoverage.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
@@ -38,6 +39,29 @@
 
 namespace arangodb::aql {
 using EN = ExecutionNode;
+
+AstNode* removeTraversalCondition(Condition& cond, ExecutionPlan const* plan,
+                                  Variable const* variable,
+                                  AstNode const* other, bool isPathCondition) {
+  AstNode* root = cond.root();
+  if (root == nullptr || other == nullptr) {
+    return root;
+  }
+
+  AstNode const* andNode = nullptr;
+  AstNode const* conditionAndNode = nullptr;
+  if (!extractSingleAndNodes(root, other, andNode, conditionAndNode)) {
+    return root;
+  }
+
+  auto toRemove = collectOverlappingMembersForTraversal(
+      plan, variable, andNode, conditionAndNode, isPathCondition);
+  if (toRemove.empty()) {
+    return root;
+  }
+
+  return rebuildConditionWithoutMembers(plan->getAst(), andNode, toRemove);
+}
 
 // remove filter nodes already covered by a traversal
 void removeFiltersCoveredByTraversal(Optimizer* opt,
@@ -106,8 +130,8 @@ void removeFiltersCoveredByTraversal(Optimizer* opt,
               return false;
             }
 
-            auto newNode = condition.removeTraversalCondition(
-                plan.get(), outVariable, traversalCondition->root(),
+            auto newNode = removeTraversalCondition(
+                condition, plan.get(), outVariable, traversalCondition->root(),
                 isPathCondition);
             if (newNode == nullptr) {
               // no condition left...

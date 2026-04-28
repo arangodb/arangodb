@@ -7,7 +7,6 @@ target_include_directories(arango_health PRIVATE
 
 add_library(arango_storage_engine STATIC
   EngineSelectorFeature.cpp
-  EngineSelectorOptionsProvider.cpp
   HotBackup.cpp
   PhysicalCollection.cpp
   TransactionCollection.cpp

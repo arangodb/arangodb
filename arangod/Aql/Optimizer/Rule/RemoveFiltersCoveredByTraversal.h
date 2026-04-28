@@ -27,12 +27,19 @@
 #include "Aql/ExecutionPlan.h"
 
 namespace arangodb::aql {
+class Condition;
 class Optimizer;
+struct Variable;
+struct AstNode;
 
 /// @brief removes filter nodes already covered by the traversal and removes
 /// unused variables
 void removeFiltersCoveredByTraversal(Optimizer* opt,
                                      std::unique_ptr<ExecutionPlan> plan,
                                      OptimizerRule const&);
+
+AstNode* removeTraversalCondition(Condition& cond, ExecutionPlan const* plan,
+                                  Variable const* variable,
+                                  AstNode const* other, bool isPathCondition);
 
 }  // namespace arangodb::aql
