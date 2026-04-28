@@ -1355,24 +1355,66 @@ class instanceManager {
     return count < 500;
   }
 
-  stopServerWaitFailed(urlIDOrShortName) {
+  stopServer(urlIDOrShortName) {
+    if (urlIDOrShortName === undefined) {
+      return;
+    }
     this.arangods.forEach(arangod => {
       if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
         return;
       }
       arangod.suspend();
     });
-    this.agencyMgr.waitFor(() => { this.agencyMgr.serverFailed(urlIDOrShortName); });
   }
-  continueServerWaitOk(urlIDOrShortName) {
+  waitForServerFailed(serverId) {
+    if (serverId === undefined) {
+      return;
+    }
+    this.agencyMgr.waitFor(() => this.agencyMgr.serverFailed(serverId) );
+  }
+  stopServerWaitFailed(serverId) {
+    this.stopServer(serverId);
+    this.waitForServerFailed(serverId);
+  }
+
+  continueServer(urlIDOrShortName) {
+    if (urlIDOrShortName === undefined) {
+      return;
+    }
     this.arangods.forEach(arangod => {
-      if (urlIDOrShortName !== undefined && !arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
+      if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
         return;
       }
       arangod.resume();
     });
-    this.agencyMgr.waitFor(() => { this.agencyMgr.serverHealthy(urlIDOrShortName); });
   }
+  waitForServerOk(serverId) {
+    if (serverId === undefined) {
+      return;
+    }
+    this.agencyMgr.waitFor(() => this.agencyMgr.serverHealthy(serverId) );
+  }
+  continueServerWaitOk(serverId) {
+    this.continueServer(serverId);
+    this.waitForServerOk(serverId);
+  }
+
+  continueAllDBServersWaitOk() {
+    this.arangods.forEach(arangod => {
+      arangod.resume();
+    });
+    const allIds = this.arangods
+      .filter(arangod => arangod.isRole(instanceRole.dbServer))
+      .map(arangod => arangod.id);
+    this.agencyMgr.waitFor(() => {
+      let result = true;
+      for (const id of allIds) {
+        result = result && this.agencyMgr.serverHealthy(id);
+      }
+      return result;
+    });
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////
