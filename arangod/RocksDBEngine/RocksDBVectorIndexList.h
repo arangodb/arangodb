@@ -66,14 +66,14 @@ inline faiss::MetricType metricToFaissMetric(
 // filter iterator, partial doc reconstructed from storedValues otherwise) so
 // the executor can reuse those bytes instead of re-reading RocksDB. Owner is
 // the caller (the executor); the iterator only inserts.
-struct SearchContext {
+struct IteratorContext {
   transaction::Methods* trx;
   containers::NodeHashMap<LocalDocumentId, velocypack::Buffer<uint8_t>>*
       capturedDocuments{nullptr};
 };
 
 // Adds the filter-evaluation state used by the filtering iterator paths.
-struct SearchFilterContext : SearchContext {
+struct IteratorFilterContext : IteratorContext {
   aql::Expression* filterExpression;
   std::optional<aql::InputAqlItemRow> inputRow;
   aql::QueryContext* queryContext;
@@ -195,7 +195,7 @@ template<VectorIndexStoredValuesStrategy Strategy>
 struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
                                LogicalCollection* collection,
-                               SearchContext const& ctx,
+                               IteratorContext const& ctx,
                                std::size_t listNumber, std::size_t codeSize);
 
   void next() override;
@@ -207,18 +207,18 @@ struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
   std::conditional_t<Strategy::hasStoredValues, RocksDBVectorIndexEntryValue,
                      std::vector<uint8_t>>
       _currentEntry;
-  SearchContext const& _ctx;
+  IteratorContext const& _ctx;
 };
 
-using RocksDBFaissSearchContext =
-    std::variant<SearchFilterContext, SearchContext>;
+using RocksDBFaissIteratorContext =
+    std::variant<IteratorFilterContext, IteratorContext>;
 
 /// Base iterator for filtering iterators
 struct RocksDBInvertedListsFilteringIteratorBase
     : public RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsFilteringIteratorBase(
       RocksDBVectorIndex* index, LogicalCollection* collection,
-      SearchFilterContext& searchFilterContext, std::size_t listNumber,
+      IteratorFilterContext& filterContext, std::size_t listNumber,
       std::size_t codeSize);
 
   [[nodiscard]] bool is_available() const override;
@@ -235,7 +235,7 @@ struct RocksDBInvertedListsFilteringIteratorBase
   // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
   constexpr static auto kBatchSize{1000};
 
-  SearchFilterContext& _searchFilterContext;
+  IteratorFilterContext& _filterContext;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
@@ -251,10 +251,11 @@ struct RocksDBInvertedListsFilteringIteratorBase
 template<VectorIndexStoredValuesStrategy Strategy>
 struct RocksDBInvertedListsFilteringIterator final
     : public RocksDBInvertedListsFilteringIteratorBase {
-  RocksDBInvertedListsFilteringIterator(
-      RocksDBVectorIndex* index, LogicalCollection* collection,
-      SearchFilterContext& searchFilterContext, std::size_t listNumber,
-      std::size_t codeSize);
+  RocksDBInvertedListsFilteringIterator(RocksDBVectorIndex* index,
+                                        LogicalCollection* collection,
+                                        IteratorFilterContext& filterContext,
+                                        std::size_t listNumber,
+                                        std::size_t codeSize);
 
   [[nodiscard]] bool searchFilteredIds() override;
 };
@@ -267,7 +268,7 @@ struct RocksDBInvertedListsFilteringStoredValuesIterator final
     : public RocksDBInvertedListsFilteringIteratorBase {
   RocksDBInvertedListsFilteringStoredValuesIterator(
       RocksDBVectorIndex* index, LogicalCollection* collection,
-      SearchFilterContext& searchFilterContext, std::size_t listNumber,
+      IteratorFilterContext& filterContext, std::size_t listNumber,
       std::size_t codeSize);
 
   [[nodiscard]] bool searchFilteredIds() override;
