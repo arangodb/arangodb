@@ -241,8 +241,7 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
     if (materializer != nullptr && materializer->getType() == EN::MATERIALIZE &&
         !ServerState::instance()->isRunningInCluster()) {
       plan->unlinkNode(materializer);
-      enumerateNearVectorNode->setStrategy(
-          EnumerateNearVectorNode::Strategy::kDocument);
+      enumerateNearVectorNode->recomputeStrategy();
       // TODO(cluster): useVectorIndexRule called
       // plan->excludeFromScatterGather(enumerateNearVectorNode) so that
       // scatterInClusterRule wraps the (un-excluded) MaterializeNode
@@ -325,23 +324,7 @@ void propagateProjectionsIntoEnumerateNear(Optimizer* opt,
     // those registers from the document or storedValues.
     enumerateNearVectorNode->setProjections(std::move(matNode->projections()));
 
-    // Choose strategy: if every projection is coverable by the index'
-    // storedValues, we can skip the document load entirely. Otherwise the
-    // executor produces the document and extracts projections from it.
-    auto const& projections = enumerateNearVectorNode->projections();
-    bool const projectionsCoveredByStoredValues =
-        !projections.empty() &&
-        projections.usesCoveringIndex(enumerateNearVectorNode->index());
-
-    if (projectionsCoveredByStoredValues &&
-        enumerateNearVectorNode->hasFilter() &&
-        enumerateNearVectorNode->isCoveredByStoredValues()) {
-      enumerateNearVectorNode->setStrategy(
-          EnumerateNearVectorNode::Strategy::kCovered);
-    } else {
-      enumerateNearVectorNode->setStrategy(
-          EnumerateNearVectorNode::Strategy::kDocument);
-    }
+    enumerateNearVectorNode->recomputeStrategy();
 
     plan->unlinkNode(matNode);
     // TODO(cluster): useVectorIndexRule excluded EnumerateNearVectorNode
