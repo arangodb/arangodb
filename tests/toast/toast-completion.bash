@@ -1,5 +1,5 @@
 # Toast CLI — shell function and bash completion
-# Setup: /path/to/tests/elixir/toast/toast --setup-completion
+# Setup: /path/to/tests/toast/toast --setup-completion
 
 # Guard: silently no-op if this file's directory no longer exists
 # (e.g., repo was moved or deleted after setup)
@@ -13,7 +13,7 @@ toast() {
     echo "toast: not inside a git repository" >&2
     return 1
   }
-  local toast_script="$repo_root/tests/elixir/toast/toast"
+  local toast_script="$repo_root/tests/toast/toast"
   if [[ ! -x "$toast_script" ]]; then
     echo "toast: script not found at $toast_script" >&2
     return 1
@@ -36,7 +36,7 @@ fi
 _toast_suites_dir() {
   local repo_root
   repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 1
-  echo "$repo_root/tests/elixir/toast/suites"
+  echo "$repo_root/tests/toast/suites"
 }
 
 _toast_complete_suites() {
@@ -77,7 +77,7 @@ _toast_complete_run() {
 
   # Options that expect a value — don't offer further completions for numeric ones
   case "$prev" in
-    --build-dir|--base-dir|--result-dir)
+    -b|--build-dir|--base-dir|--result-dir)
       compopt -o dirnames; COMPREPLY=(); return ;;
     --sanitizer)
       COMPREPLY=( $(compgen -W "tsan alubsan" -- "$cur") ); return ;;
@@ -86,7 +86,7 @@ _toast_complete_run() {
     --global-timeout|--test-timeout|--startup-timeout|--shutdown-timeout|\
     --timeout-factor|--memory-budget|--timeout|--max-failures|\
     --cluster-agents|--cluster-dbservers|--cluster-coordinators|\
-    --replication-factor|--test|--include|-i|--exclude|-e|--only)
+    --replication-factor|--test|--test-buckets|--include|-i|--exclude|-e|--only)
       return ;;
   esac
 
@@ -98,8 +98,8 @@ _toast_complete_run() {
       --timeout-factor --memory-budget
       --keep-data --sanitizer --attach-debugger --rr --http2
       --cluster-agents --cluster-dbservers --cluster-coordinators
-      --replication-factor
-      --test --no-agency-dump --ci --help
+      --replication-factor --test-buckets
+      --test --no-agency-dump --ci --force-all-tiers --help
       --include --exclude --only --trace
       --timeout --max-failures
       --color --no-color --no-compile --no-start
@@ -129,7 +129,7 @@ _toast_complete_analyze() {
   for (( i=analyze_idx+1; i < cword; i++ )); do
     case "${words[i]}" in
       -*) continue ;;
-      issues|detail|details|info|perf|help)
+      issues|detail|details|info|perf|weights|help)
         subcmd="${words[i]}"
         break ;;
       *) break ;;
@@ -165,6 +165,9 @@ _toast_complete_analyze() {
       perf)
         opts="$opts --top --module"
         ;;
+      weights)
+        opts="$opts --module"
+        ;;
     esac
     COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
     return
@@ -172,7 +175,7 @@ _toast_complete_analyze() {
 
   # If no subcommand yet, complete subcommand names
   if [[ -z "$subcmd" ]]; then
-    COMPREPLY=( $(compgen -W "issues detail details info perf help" -- "$cur") )
+    COMPREPLY=( $(compgen -W "issues detail details info perf weights help" -- "$cur") )
     return
   fi
 
