@@ -401,30 +401,15 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         .FromMaybe(false);
   }
 
-  // TODO I think we either need to drop IsAdminUser completely, or
-  //      at least when using RBAC - it's nonsensical there.
-  //      We need to check whether this is publicly documented,
-  //      and whether it's used (e.g. in the UI).
-  //      But using the AdminFoxx admin action is most probably the
-  //      wrong change here.
-  //      Either way, we should stop relying on checking
-  //      isAuthEnabled(), and just do one sensibly semantic call to
-  //      ExecContext.
+  // This is a simplification of what we had before the introduction
+  // of RBAC. However, the API will be removed in 4.0 anyway and this
+  // particular field was not used anywhere. Therefore we now simply
+  // return if we are superuser or not.
   TRI_GET_GLOBAL_STRING(IsAdminUser);
-  if (request->authenticated()) {
-    if (user.empty() ||
-        ExecContext::current()
-            .canUseAdminAction(arangodb::rbac::Category::AdminFoxx{})
-            .ok()) {
-      req->Set(context, IsAdminUser, v8::True(isolate)).FromMaybe(false);
-    } else {
-      req->Set(context, IsAdminUser, v8::False(isolate)).FromMaybe(false);
-    }
+  if (ExecContext::current().isSuperuser()) {
+    req->Set(context, IsAdminUser, v8::True(isolate)).FromMaybe(false);
   } else {
-    req->Set(context, IsAdminUser,
-             ExecContext::current().isAuthEnabled() ? v8::False(isolate)
-                                                    : v8::True(isolate))
-        .FromMaybe(false);
+    req->Set(context, IsAdminUser, v8::False(isolate)).FromMaybe(false);
   }
 
   // create database attribute

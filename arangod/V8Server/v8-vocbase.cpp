@@ -193,9 +193,7 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //      in the request. As ExecContext is currently being refactored
   //      / rewritten, I'm leaving this for later.
   //      We can add a simple test any time, then change it.
-  if (execContext.isAuthEnabled()) {
-    user = execContext.user();
-  }
+  user = execContext.user();
   mgr->toVelocyPack(builder, vocbase.name(), user, fanout, /*details*/ false);
 
   builder.close();
@@ -229,10 +227,8 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
-  // TODO Replace the check with a `canCompact` call or so, then drop
-  //      the calls to isAuthEnabled and isSuperuser.
   auto const& execContext = ExecContext::current();
-  if (execContext.isAuthEnabled() && !execContext.isSuperuser()) {
+  if (!execContext.isSuperuser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1364,9 +1360,7 @@ static void JS_QueryPlanCachePlans(
   auto filter = [&vocbase](aql::QueryPlanCache::Key const& key,
                            aql::QueryPlanCache::Value const& value) -> bool {
     auto const& execContext = ExecContext::current();
-    // TODO Replace the check with a semantic method call, then drop
-    //      the calls to isAuthEnabled and isSuperuser.
-    if (execContext.isAuthEnabled() && !execContext.isSuperuser()) {
+    if (!execContext.isSuperuser()) {
       // check if non-superusers have at least read permissions on all
       // collections/views used in the query
       for (auto const& dataSource : value.dataSources) {

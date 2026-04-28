@@ -61,13 +61,6 @@ class ExecContext : public RequestContext {
  public:
   ~ExecContext() override = default;
 
-  /// shortcut helper to check the AuthenticationFeature
-  [[deprecated(
-      "This should be an internal information and unnecessary for permission "
-      "checks. Use an existing, or add a new, method with appropriate "
-      "semantics instead.")]] [[nodiscard]] bool
-  isAuthEnabled() const;
-
   /// Should always contain a reference to current user context
   static ExecContext const& current();
   /// Note that this intentionally returns CURRENT, even if it is a nullptr:
@@ -79,9 +72,16 @@ class ExecContext : public RequestContext {
   static ExecContext const& superuser();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
-  [[nodiscard]] [[deprecated("Use proper permission checks instead")]] bool
-  isSuperuser() const noexcept {
-    return _authMode.isSuperuser();
+  [[nodiscard]] bool isSuperuser() const noexcept {
+    // This will report `true` if authentication is disabled!
+    return _authMode.isSuperuser() || _authMode.isDisabled();
+  }
+
+  [[nodiscard]] bool isSuperuserConsideringReadOnly() const noexcept {
+    // This will report `true` if authentication is disabled!
+    // FIXME: But it will return `false` if the deployment is in read-only mode.
+    // We will see if we actually need this API call.
+    return _authMode.isSuperuser() || _authMode.isDisabled();
   }
 
   /// @brief tells you if this execution was canceled

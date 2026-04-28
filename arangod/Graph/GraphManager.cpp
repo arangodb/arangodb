@@ -1092,14 +1092,8 @@ Result GraphManager::checkDropGraphPermissions(
 
   // TODO Consolidate the subsequent permission checks: We don't want
   //      to make dozens of separate calls (and possibly HTTP requests
-  //      with RBAC).
+  //      with RBAC). This is a slow operation anyway, so why optimize?
   auto const& execContext = ExecContext::current();
-  if (!execContext.isAuthEnabled()) {
-    LOG_TOPIC("56c2f", DEBUG, Logger::GRAPHS)
-        << logprefix << "Permissions are turned off.";
-    return TRI_ERROR_NO_ERROR;
-  }
-
   for (auto const& col :
        boost::join(followersToBeRemoved, leadersToBeRemoved)) {
     // We need RW to drop a collection.

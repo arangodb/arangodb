@@ -59,17 +59,6 @@ std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
 ExecContext::ExecContext(ConstructorToken, AuthMode authMode)
     : _authMode(std::move(authMode)) {}
 
-bool ExecContext::isAuthEnabled() const {
-  /// TODO Note there's a subtle change in the behavior by checking
-  ///      _authMode instead of the AuthenticationFeature:
-  ///     When authentication is disabled, but the request comes with
-  ///     a valid JWT superuser token, this now returns true.
-  ///     I'd like to get rid of this method completely; but if that
-  ///     doesn't work out, we have to a) check that this doesn't
-  ///     break any caller, and b) we should change the name.
-  return !_authMode.isDisabled();
-}
-
 Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {
   using namespace auth::perms;
   return can(Admin{.action{action}});
