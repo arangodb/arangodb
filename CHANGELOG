@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-468: Removed POST method to endpoint _api/edges/{collection}, which was used by Aardvark.
+
 * COR-442: Renamed the startup options of the `--ssl.*` group into `--tls.*`,
   but still accept the old naming pattern as an alias to the new one.
   Config files using `[ssl]` sections are remapped automatically as well.
