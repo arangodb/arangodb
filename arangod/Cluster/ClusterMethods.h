@@ -179,26 +179,6 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     transaction::Methods& trx, std::string const& collname,
     OperationOptions const& options, transaction::MethodsApi api);
 
-/// @brief flush Wal on all DBservers
-Result flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
-                              bool flushColumnFamilies);
-
-/// @brief recalculate collection count on all DBServers
-Result recalculateCountsOnAllDBServers(ClusterFeature&, std::string_view dbname,
-                                       std::string_view collname);
-
-/// @brief compact the database on all DB servers
-Result compactOnAllDBServers(ClusterFeature&, bool changeLevel,
-                             bool compactBottomMostLevel);
-
-/// @brief compact the data of a single collection on all DB servers
-Result compactOnAllDBServers(ClusterFeature&, std::string const& dbname,
-                             std::string const& collname);
-
-/// @brief get the engine stats from all DB servers
-arangodb::Result getEngineStatsFromDBServers(ClusterFeature&,
-                                             VPackBuilder& report);
-
 class ClusterMethods {
  public:
   // wrapper Class for static functions.

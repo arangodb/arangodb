@@ -1,4 +1,5 @@
 add_library(arango_cluster_methods STATIC
+  ClusterAdminOperations.cpp
   ClusterHotBackup.cpp
   ClusterMethods.cpp
   ClusterCollectionMethods.cpp
