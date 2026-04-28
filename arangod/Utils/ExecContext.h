@@ -77,13 +77,6 @@ class ExecContext : public RequestContext {
     return _authMode.isSuperuser() || _authMode.isDisabled();
   }
 
-  [[nodiscard]] bool isSuperuserConsideringReadOnly() const noexcept {
-    // This will report `true` if authentication is disabled!
-    // FIXME: But it will return `false` if the deployment is in read-only mode.
-    // We will see if we actually need this API call.
-    return _authMode.isSuperuser() || _authMode.isDisabled();
-  }
-
   /// @brief tells you if this execution was canceled
   // TODO I think it's strange to to have this in ExecContext. It's implemented
   //      in the VocbaseContext.
