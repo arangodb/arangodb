@@ -1399,6 +1399,16 @@ bool AstNode::isTrue() const {
       // ! false => true
       return true;
     }
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+    if (numMembers() == 2) {
+      AstNode const* rhs = getMember(1);
+      if (rhs != nullptr && rhs->type == NODE_TYPE_ARRAY &&
+          rhs->numMembers() == 0) {
+        // x NOT IN [] is always true; x IN [] is always false
+        return (type == NODE_TYPE_OPERATOR_BINARY_NIN);
+      }
+    }
   }
 
   return false;
@@ -1442,6 +1452,16 @@ bool AstNode::isFalse() const {
     if (getMember(0)->isTrue()) {
       // ! true => false
       return true;
+    }
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+    if (numMembers() == 2) {
+      AstNode const* rhs = getMember(1);
+      if (rhs != nullptr && rhs->type == NODE_TYPE_ARRAY &&
+          rhs->numMembers() == 0) {
+        // x IN [] is always false; x NOT IN [] is always true
+        return (type == NODE_TYPE_OPERATOR_BINARY_IN);
+      }
     }
   }
 
