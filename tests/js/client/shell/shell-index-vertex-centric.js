@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
+/*global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,10 +27,7 @@
 
 const jsunity = require("jsunity");
 const internal = require("internal");
-const errors = internal.errors;
 const cn = "UnitTestEdgeCollection";
-const testHelper = require("@arangodb/test-helper").Helper;
-const arangodb = require('@arangodb');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: index creation
@@ -54,9 +51,8 @@ function vertexCentricIndexSuite() {
 
     testCreateDefault : () => {
       let before = collection.indexes();
-      let idx = collection.ensureVertexCentricIndex("label", {direction: "outbound"});
+      let idx = collection.ensureIndex({ type: "persistent", fields: ["_from", "label"] });
 
-      // creation
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
@@ -65,42 +61,12 @@ function vertexCentricIndexSuite() {
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
-
-      // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label"] });
-      assertFalse(idx2.isNewlyCreated);
-
-      let after2 = collection.indexes();
-      assertEqual(after.length, after2.length);
-    },
-
-    testCreatePersistent : () => {
-      let before = collection.indexes();
-      let idx = collection.ensureVertexCentricIndex("label", {type: "persistent", direction: "outbound"});
-
-      // creation
-      let after = collection.indexes();
-      assertEqual(before.length + 1, after.length);
-
-      assertEqual("persistent", idx.type);
-      assertEqual(["_from", "label"], idx.fields);
-      assertFalse(idx.unique);
-      assertFalse(idx.sparse);
-      assertTrue(idx.isNewlyCreated);
-
-      // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({type: "persistent", fields:["_from", "label"]});
-      assertFalse(idx2.isNewlyCreated);
-
-      let after2 = collection.indexes();
-      assertEqual(after.length, after2.length);
     },
 
     testCreateMultiFields : () => {
       let before = collection.indexes();
-      let idx = collection.ensureVertexCentricIndex("label", "type", {direction: "outbound"});
+      let idx = collection.ensureIndex({ type: "persistent", fields: ["_from", "label", "type"] });
 
-      // creation
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
@@ -109,42 +75,12 @@ function vertexCentricIndexSuite() {
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
-
-      // is identical to hash [_from, label, type]
-      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label", "type"] });
-      assertFalse(idx2.isNewlyCreated);
-
-      let after2 = collection.indexes();
-      assertEqual(after.length, after2.length);
-    },
-
-    testCreateOnlyOptions : () => {
-      let before = collection.indexes();
-      let idx = collection.ensureVertexCentricIndex({fields: ["label", "type"], direction: "outbound"});
-
-      // creation
-      let after = collection.indexes();
-      assertEqual(before.length + 1, after.length);
-
-      assertEqual("persistent", idx.type);
-      assertEqual(["_from", "label", "type"], idx.fields);
-      assertFalse(idx.unique);
-      assertFalse(idx.sparse);
-      assertTrue(idx.isNewlyCreated);
-
-      // is identical to hash [_from, label, type]
-      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label", "type"] });
-      assertFalse(idx2.isNewlyCreated);
-
-      let after2 = collection.indexes();
-      assertEqual(after.length, after2.length);
     },
 
     testCreateInbound : () => {
       let before = collection.indexes();
-      let idx = collection.ensureVertexCentricIndex("label", {direction: "inbound"});
+      let idx = collection.ensureIndex({ type: "persistent", fields: ["_to", "label"] });
 
-      // creation
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
@@ -153,75 +89,7 @@ function vertexCentricIndexSuite() {
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
-
-      // is identical to hash [_to, label]
-      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_to", "label"] });
-      assertFalse(idx2.isNewlyCreated);
-
-      let after2 = collection.indexes();
-      assertEqual(after.length, after2.length);
     },
-
-    testCreateWrongTyping : () => {
-      let before = collection.indexes();
-      let idx = collection.ensureVertexCentricIndex("label", {direction: "oUtBoUnD"});
-
-      // creation
-      let after = collection.indexes();
-      assertEqual(before.length + 1, after.length);
-
-      assertEqual("persistent", idx.type);
-      assertEqual(["_from", "label"], idx.fields);
-      assertFalse(idx.unique);
-      assertFalse(idx.sparse);
-      assertTrue(idx.isNewlyCreated);
-
-      // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label"] });
-      assertFalse(idx2.isNewlyCreated);
-
-      let after2 = collection.indexes();
-      assertEqual(after.length, after2.length);
-    },
- 
-    testErrorDirection : () => {
-      let before = collection.indexes();
-      try {
-        let idx = collection.ensureVertexCentricIndex("label", {direction: "any"});
-        fail();
-      } catch (e) {
-        assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
-      }
-      // Nothing happend
-      let after = collection.indexes();
-      assertEqual(before.length, after.length);
-    },
-
-    testErrorType : () => {
-      let before = collection.indexes();
-      try {
-        let idx = collection.ensureVertexCentricIndex("label", {direction: "outbound", type: "circus"});
-        fail();
-      } catch (e) {
-        assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
-      }
-      // Nothing happend
-      let after = collection.indexes();
-      assertEqual(before.length, after.length);
-    },
- 
-    testErrorFields : () => {
-      let before = collection.indexes();
-      try {
-        let idx = collection.ensureVertexCentricIndex({direction: "outbound"});
-        fail();
-      } catch (e) {
-        assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
-      }
-      // Nothing happend
-      let after = collection.indexes();
-      assertEqual(before.length, after.length);
-    }
   };
 }
 
