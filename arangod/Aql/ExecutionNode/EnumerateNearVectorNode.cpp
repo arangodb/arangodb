@@ -170,9 +170,16 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
               .filterExpression = filter(),
               .filterVarsToRegs = std::move(filterVarsToRegs),
               .documentVariable = _outVariable,
-              // Pick the storedValues-only iterator only when *both* filter
-              // and projections are coverable -- that's exactly kCovered.
-              .useStoredValuesIterator = _strategy == Strategy::kCovered,
+              // Use the storedValues-only iterator whenever the filter is
+              // expressible against storedValues AND the executor does not
+              // need a full document. That covers kCovered (filter+proj
+              // both covered) and the no-projections / pass-through case
+              // (filter covered, downstream materializer will load the
+              // doc). For kDocument we need the regular filter iterator,
+              // which loads the full document during filter eval.
+              .useStoredValuesIterator = hasFilter() &&
+                                         _isCoveredByStoredValues &&
+                                         _strategy != Strategy::kDocument,
               .captureDocuments = captureDocuments,
           },
       .projections = _projections,

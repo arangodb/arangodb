@@ -288,11 +288,7 @@ void propagateProjectionsIntoEnumerateNear(Optimizer* opt,
     }
 
     // Find the MaterializeRocksDBNode whose input doc-id variable IS this
-    // EnumerateNearVectorNode's outVariable. lateDocumentMaterializationRule
-    // may move the materializer past SORT / LIMIT / GATHER, and in
-    // nested-loop queries with a second vector enumerator the parent chain
-    // may also pass through *another* materializer that does not belong to
-    // us -- matching on the input variable disambiguates safely.
+    // EnumerateNearVectorNode's outVariable.
     auto const* outVariable = enumerateNearVectorNode->outVariable();
     containers::SmallVector<ExecutionNode*, 8> matCandidates;
     plan->findNodesOfType(matCandidates, EN::MATERIALIZE, /*enterSubqueries*/
@@ -333,11 +329,12 @@ void propagateProjectionsIntoEnumerateNear(Optimizer* opt,
     // storedValues, we can skip the document load entirely. Otherwise the
     // executor produces the document and extracts projections from it.
     auto const& projections = enumerateNearVectorNode->projections();
-    bool const coveredByStoredValues =
+    bool const projectionsCoveredByStoredValues =
         !projections.empty() &&
         projections.usesCoveringIndex(enumerateNearVectorNode->index());
 
-    if (coveredByStoredValues && enumerateNearVectorNode->hasFilter() &&
+    if (projectionsCoveredByStoredValues &&
+        enumerateNearVectorNode->hasFilter() &&
         enumerateNearVectorNode->isCoveredByStoredValues()) {
       enumerateNearVectorNode->setStrategy(
           EnumerateNearVectorNode::Strategy::kCovered);

@@ -75,12 +75,14 @@ struct SearchConfig {
   std::vector<std::pair<aql::VariableId, aql::RegisterId>> filterVarsToRegs;
   aql::Variable const* documentVariable{nullptr};
 
-  // True when both the filter and the projections are coverable by the
-  // index' storedValues, in which case the FAISS layer can use the
-  // storedValues-only iterator and skip loading documents entirely. When
-  // false (filter not covered, projections not covered, or no filter),
-  // the regular filter iterator runs and (when filter present) loads the
-  // full document for filter eval.
+  // True when the FAISS layer should use the storedValues-only filter
+  // iterator: the filter is expressible against storedValues AND no
+  // consumer of this readBatch call needs a full document. That covers
+  // (filter covered, projections covered) -- the executor produces
+  // projection registers from the captured partial doc -- and (filter
+  // covered, no projections) -- the executor passes labels through to a
+  // downstream materializer. When false, the regular filter iterator
+  // runs and loads the full document during filter eval.
   bool useStoredValuesIterator{false};
 
   // When set (and a filter is present), the filter iterator hands the

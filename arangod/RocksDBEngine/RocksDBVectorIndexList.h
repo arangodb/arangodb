@@ -26,12 +26,11 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Containers/NodeHashMap.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "RocksDBIndex.h"
 #include "RocksDBValue.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-
-#include "Containers/NodeHashMap.h"
 
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/MetricType.h>
