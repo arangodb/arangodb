@@ -192,9 +192,6 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
               -> std::vector<AuthorizationQuery> {
             return {{"db:AdminReadOnlyMode", ""}};
           },
-          [](Category::AdminFoxx const&) -> std::vector<AuthorizationQuery> {
-            return {{"db:AdminFoxx", ""}};
-          },
           [](Category::AdminReadAqlFunctions const&)
               -> std::vector<AuthorizationQuery> {
             return {{"db:AdminReadAqlFunctions", ""}};

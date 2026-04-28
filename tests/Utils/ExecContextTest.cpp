@@ -80,8 +80,6 @@ TEST(ExecContextTest, construction_with_jwt_and_roles) {
   EXPECT_EQ(ctx.user(), "jwtuser");
   EXPECT_TRUE(ctx.canUseDatabase("_system", DatabaseAccessLevel::Write).ok());
   EXPECT_TRUE(ctx.canUseDatabase("testdb", DatabaseAccessLevel::Read));
-  EXPECT_TRUE(
-      ctx.canUseAdminAction(arangodb::rbac::Category::AdminFoxx{}).ok());
   EXPECT_TRUE(ctx.hasJwtToken());
   EXPECT_EQ(ctx.jwtToken(), jwtToken);
 
@@ -193,7 +191,6 @@ TEST(ExecContextTest, superuser_singleton) {
 
   EXPECT_TRUE(su.isSuperuser());
   // EXPECT_FALSE(su.isReadOnly());
-  EXPECT_TRUE(su.canUseAdminAction(arangodb::rbac::Category::AdminFoxx{}).ok());
 }
 
 TEST(ExecContextTest, superuser_as_shared_returns_same_object) {
