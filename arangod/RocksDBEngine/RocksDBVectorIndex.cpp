@@ -234,9 +234,9 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   // context's capture sinks at the result's maps so the filter iterator
   // populates them in place.
   auto faissSearchContext =
-      std::invoke([&]() -> vector::RocksDBFaissSearchContext {
+      std::invoke([&]() -> vector::RocksDBFaissIteratorContext {
         if (config.filterExpression == nullptr) {
-          vector::SimpleSearchContext simpleCtx;
+          vector::IteratorContext simpleCtx;
           simpleCtx.trx = ctx.trx;
           simpleCtx.capturedDocuments =
               config.captureDocuments ? &result.capturedDocuments : nullptr;
@@ -244,7 +244,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
         }
         TRI_ASSERT(ctx.queryContext != nullptr);
 
-        vector::SearchParametersContext searchCtx;
+        vector::IteratorFilterContext searchCtx;
         searchCtx.trx = ctx.trx;
         searchCtx.filterExpression = config.filterExpression;
         if (ctx.inputRow != nullptr) {

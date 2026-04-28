@@ -67,9 +67,10 @@ RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(
 template<VectorIndexStoredValuesStrategy Strategy>
 RocksDBInvertedListsIterator<Strategy>::RocksDBInvertedListsIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,
-    transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
-    : RocksDBInvertedListsIteratorBase(index, collection, trx, listNumber,
-                                       codeSize) {}
+    IteratorContext const& ctx, std::size_t listNumber, std::size_t codeSize)
+    : RocksDBInvertedListsIteratorBase(index, collection, ctx.trx, listNumber,
+                                       codeSize),
+      _ctx(ctx) {}
 
 template<VectorIndexStoredValuesStrategy Strategy>
 void RocksDBInvertedListsIterator<Strategy>::next() {
@@ -89,6 +90,30 @@ RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
     TRI_ASSERT(_currentEntry.encodedValue.size() == _codeSize)
         << "The encoded size is: " << _currentEntry.encodedValue.size()
         << " should be: " << _codeSize;
+
+    // Captures every entry FAISS visits, not just topK; the executor
+    // filters to survivors after FAISS returns.
+    if (auto* sink = _ctx.capturedDocuments; sink != nullptr) {
+      auto storedValuesSlice = _currentEntry.storedValues.slice();
+      if (storedValuesSlice.isArray() &&
+          storedValuesSlice.length() == _index->storedValues().size()) {
+        velocypack::Builder partialDocument;
+        {
+          velocypack::ObjectBuilder guard(&partialDocument);
+          auto const& storedValues = _index->storedValues();
+          for (size_t i = 0; i < storedValues.size(); ++i) {
+            std::string fieldString;
+            TRI_AttributeNamesToString(storedValues[i], fieldString);
+            partialDocument.add(fieldString, storedValuesSlice.at(i));
+          }
+        }
+        velocypack::Buffer<uint8_t> buf;
+        auto slice = partialDocument.slice();
+        buf.append(slice.start(), slice.byteSize());
+        sink->insert_or_assign(docId, std::move(buf));
+      }
+    }
+
     return {static_cast<faiss::idx_t>(docId.id()),
             _currentEntry.encodedValue.data()};
   } else {
@@ -107,12 +132,12 @@ template struct RocksDBInvertedListsIterator<WithStoredValuesStrategy>;
 RocksDBInvertedListsFilteringIteratorBase::
     RocksDBInvertedListsFilteringIteratorBase(
         RocksDBVectorIndex* index, LogicalCollection* collection,
-        SearchParametersContext& searchParametersContext,
-        std::size_t listNumber, std::size_t codeSize)
+        IteratorFilterContext& filterContext, std::size_t listNumber,
+        std::size_t codeSize)
     : RocksDBInvertedListsIteratorBase(
-          index, collection, searchParametersContext.trx, listNumber, codeSize),
-      _searchParametersContext(searchParametersContext) {
-  TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
+          index, collection, filterContext.trx, listNumber, codeSize),
+      _filterContext(filterContext) {
+  TRI_ASSERT(filterContext.filterExpression != nullptr);
 }
 
 [[nodiscard]] bool RocksDBInvertedListsFilteringIteratorBase::is_available()
@@ -149,10 +174,10 @@ template<VectorIndexStoredValuesStrategy Strategy>
 RocksDBInvertedListsFilteringIterator<Strategy>::
     RocksDBInvertedListsFilteringIterator(
         RocksDBVectorIndex* index, LogicalCollection* collection,
-        SearchParametersContext& searchParametersContext,
-        std::size_t listNumber, std::size_t codeSize)
+        IteratorFilterContext& filterContext, std::size_t listNumber,
+        std::size_t codeSize)
     : RocksDBInvertedListsFilteringIteratorBase(
-          index, collection, searchParametersContext, listNumber, codeSize) {
+          index, collection, filterContext, listNumber, codeSize) {
   skipOverFilteredDocuments();
 }
 
@@ -180,7 +205,7 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
   // Multiget all those documents in a batch
   _filteredIds.clear();
   _collection->getPhysical()->lookup(
-      _searchParametersContext.trx, ids,
+      _filterContext.trx, ids,
       [&](Result result, LocalDocumentId id, aql::DocumentData&& /*data */,
           VPackSlice doc) {
         if (result.fail()) {
@@ -195,15 +220,14 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
         }
 
         aql::GenericDocumentExpressionContext ctx(
-            *_searchParametersContext.trx,
-            *_searchParametersContext.queryContext, _aqlFunctionsInternalCache,
-            *_searchParametersContext.filterVarsToRegs,
-            *_searchParametersContext.inputRow,
-            _searchParametersContext.documentVariable);
+            *_filterContext.trx, *_filterContext.queryContext,
+            _aqlFunctionsInternalCache, *_filterContext.filterVarsToRegs,
+            *_filterContext.inputRow,
+            _filterContext.documentVariable);
         ctx.setCurrentDocument(doc);
         bool mustDestroy{false};  // will get filled by execution
-        aql::AqlValue a = _searchParametersContext.filterExpression->execute(
-            &ctx, mustDestroy);
+        aql::AqlValue a =
+            _filterContext.filterExpression->execute(&ctx, mustDestroy);
         aql::AqlValueGuard guard(a, mustDestroy);
         auto const filterExpressionResult = a.toBoolean();
         if (filterExpressionResult) {
@@ -222,7 +246,7 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
 
           // Hand the document we just loaded to the executor so it does not
           // have to read it again post-readBatch.
-          if (auto* sink = _searchParametersContext.capturedDocuments;
+          if (auto* sink = _filterContext.capturedDocuments;
               sink != nullptr) {
             velocypack::Buffer<uint8_t> buf;
             buf.append(doc.start(), doc.byteSize());
@@ -246,12 +270,12 @@ template struct RocksDBInvertedListsFilteringIterator<WithStoredValuesStrategy>;
 RocksDBInvertedListsFilteringStoredValuesIterator::
     RocksDBInvertedListsFilteringStoredValuesIterator(
         RocksDBVectorIndex* index, LogicalCollection* collection,
-        SearchParametersContext& searchParametersContext,
-        std::size_t listNumber, std::size_t codeSize)
+        IteratorFilterContext& filterContext, std::size_t listNumber,
+        std::size_t codeSize)
     : RocksDBInvertedListsFilteringIteratorBase(
-          index, collection, searchParametersContext, listNumber, codeSize) {
+          index, collection, filterContext, listNumber, codeSize) {
   TRI_ASSERT(index->hasStoredValues() &&
-             searchParametersContext.useStoredValuesIterator);
+             filterContext.useStoredValuesIterator);
   skipOverFilteredDocuments();
 }
 
@@ -307,15 +331,14 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
 
     // Create expression context for filtering using stored values
     aql::GenericDocumentExpressionContext ctx(
-        *_searchParametersContext.trx, *_searchParametersContext.queryContext,
-        _aqlFunctionsInternalCache, *_searchParametersContext.filterVarsToRegs,
-        *_searchParametersContext.inputRow,
-        _searchParametersContext.documentVariable);
+        *_filterContext.trx, *_filterContext.queryContext,
+        _aqlFunctionsInternalCache, *_filterContext.filterVarsToRegs,
+        *_filterContext.inputRow, _filterContext.documentVariable);
     ctx.setCurrentDocument(partialDocument.slice());
 
     bool mustDestroy{false};
     aql::AqlValue a =
-        _searchParametersContext.filterExpression->execute(&ctx, mustDestroy);
+        _filterContext.filterExpression->execute(&ctx, mustDestroy);
     aql::AqlValueGuard guard(a, mustDestroy);
     auto const filterExpressionResult = a.toBoolean();
     if (filterExpressionResult) {
@@ -324,7 +347,7 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
 
       // Capture the partial doc we already built for filter eval, so the
       // executor can extract projections from it without a second pass.
-      if (auto* sink = _searchParametersContext.capturedDocuments;
+      if (auto* sink = _filterContext.capturedDocuments;
           sink != nullptr) {
         velocypack::Buffer<uint8_t> buf;
         auto slice = partialDocument.slice();
@@ -349,19 +372,19 @@ RocksDBInvertedLists::RocksDBInvertedLists(RocksDBVectorIndex* index,
 
 faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
     std::size_t listNumber, void* context) const {
-  auto* iteratorContext = static_cast<RocksDBFaissSearchContext*>(context);
+  auto* iteratorContext = static_cast<RocksDBFaissIteratorContext*>(context);
   TRI_ASSERT(iteratorContext != nullptr);
 
   return std::visit(
       overload{
-          [&](SearchParametersContext& searchParametersContext)
+          [&](IteratorFilterContext& filterContext)
               -> faiss::InvertedListsIterator* {
             // Use stored values filtering iterator when both the filter and
             // the projections are coverable -- in that case the FAISS layer
             // never needs to touch the underlying documents.
-            if (searchParametersContext.useStoredValuesIterator) {
+            if (filterContext.useStoredValuesIterator) {
               return new RocksDBInvertedListsFilteringStoredValuesIterator(
-                  _index, _collection, searchParametersContext, listNumber,
+                  _index, _collection, filterContext, listNumber,
                   this->code_size);
             }
 
@@ -370,24 +393,23 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
             if (_index->hasStoredValues()) {
               return new RocksDBInvertedListsFilteringIterator<
                   WithStoredValuesStrategy>(_index, _collection,
-                                            searchParametersContext, listNumber,
+                                            filterContext, listNumber,
                                             this->code_size);
             } else {
               return new RocksDBInvertedListsFilteringIterator<
                   NoStoredValuesStrategy>(_index, _collection,
-                                          searchParametersContext, listNumber,
+                                          filterContext, listNumber,
                                           this->code_size);
             }
           },
-          [&](transaction::Methods* trx) -> faiss::InvertedListsIterator* {
-            // Choose the simple iterator based on whether index has stored
-            // values
+          [&](IteratorContext const& simpleCtx)
+              -> faiss::InvertedListsIterator* {
             if (_index->hasStoredValues()) {
               return new RocksDBInvertedListsIterator<WithStoredValuesStrategy>(
-                  _index, _collection, trx, listNumber, this->code_size);
+                  _index, _collection, simpleCtx, listNumber, this->code_size);
             } else {
               return new RocksDBInvertedListsIterator<NoStoredValuesStrategy>(
-                  _index, _collection, trx, listNumber, this->code_size);
+                  _index, _collection, simpleCtx, listNumber, this->code_size);
             }
           },
       },
