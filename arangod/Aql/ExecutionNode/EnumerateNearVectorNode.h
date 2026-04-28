@@ -115,11 +115,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
   Strategy strategy() const noexcept { return _strategy; }
   void setStrategy(Strategy s) noexcept { _strategy = s; }
 
-  // Rebind the AQL doc variable. Used by propagateProjectionsIntoEnumerateNear
-  // when materializeIntoSeparateVariable moved downstream attribute
-  // references onto a fresh variable: dropping the materializer requires
-  // us to adopt that fresh variable as our outVariable so downstream
-  // readers stay satisfied.
+  Strategy chooseOptimalStrategy() const noexcept;
+
   void rebindOutVariable(Variable const* newOutVariable) noexcept {
     _outVariable = newOutVariable;
   }

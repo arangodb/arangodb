@@ -149,11 +149,9 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     }
   }
 
-  // Capture is only meaningful when there is a filter (the iterator runs
-  // and has a doc to surface). For kPassThroughId there is nothing to
-  // extract from the doc, so we don't ask the iterator to copy bytes.
   bool const captureDocuments =
-      hasFilter() && _strategy != Strategy::kPassThroughId;
+      (hasFilter() && _strategy == Strategy::kDocument) ||
+      _strategy == Strategy::kCovered;
 
   EnumerateNearVectorsExecutorInfos executorInfos{
       .inputReg = inNmDocIdRegId,
@@ -170,13 +168,6 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
               .filterExpression = filter(),
               .filterVarsToRegs = std::move(filterVarsToRegs),
               .documentVariable = _outVariable,
-              // Use the storedValues-only iterator whenever the filter is
-              // expressible against storedValues AND the executor does not
-              // need a full document. That covers kCovered (filter+proj
-              // both covered) and the no-projections / pass-through case
-              // (filter covered, downstream materializer will load the
-              // doc). For kDocument we need the regular filter iterator,
-              // which loads the full document during filter eval.
               .useStoredValuesIterator = hasFilter() &&
                                          _isCoveredByStoredValues &&
                                          _strategy != Strategy::kDocument,
@@ -266,6 +257,17 @@ bool EnumerateNearVectorNode::isProduceResult() const {
   // The vector index always produces a result (either the doc, projection
   // values, or a doc-id label for downstream materialization).
   return true;
+}
+
+EnumerateNearVectorNode::Strategy
+EnumerateNearVectorNode::chooseOptimalStrategy() const noexcept {
+  bool const projectionsCoveredByStoredValues =
+      !_projections.empty() && _projections.usesCoveringIndex(_index);
+  bool const filterCoveredOrAbsent = !hasFilter() || _isCoveredByStoredValues;
+  if (projectionsCoveredByStoredValues && filterCoveredOrAbsent) {
+    return Strategy::kCovered;
+  }
+  return Strategy::kDocument;
 }
 
 std::string_view EnumerateNearVectorNode::strategyName(Strategy s) noexcept {
