@@ -8,15 +8,13 @@ include(UpdateModule)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
-# Set in current scope so 3rdParty subdirectories see these; then export to parent.
+# LZ4 include path is used by 3rdParty/rocksdb in this directory scope.
+# LZ4_ROOT is needed in the project root scope by lib/iresearch/cmake/FindLz4.cmake.
 set(LZ4_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/lz4)
 set(LZ4_INCLUDE_DIR ${LZ4_ROOT}/lib)
-set(SNOWBALL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/snowball)
-set(UNWIND_ROOT "invalid")
 set(LZ4_ROOT ${LZ4_ROOT} PARENT_SCOPE)
-set(LZ4_INCLUDE_DIR ${LZ4_INCLUDE_DIR} PARENT_SCOPE)
-set(SNOWBALL_ROOT ${SNOWBALL_ROOT} PARENT_SCOPE)
-set(UNWIND_ROOT ${UNWIND_ROOT} PARENT_SCOPE)
+# IResearch (FindSnowball) reads this from the project root scope.
+set(SNOWBALL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/snowball PARENT_SCOPE)
 
 ################################################################################
 ## gtest
@@ -60,9 +58,7 @@ function (add_snappy)
   add_subdirectory(${SNAPPY_SOURCE_DIR})
 endfunction ()
 add_snappy()
-# Ensure current scope has values so later 3rdParty subdirs see them; then export.
-set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}")
-set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}")
+# add_snappy() set SNAPPY_* in this directory; export to project root (e.g. arangod/RocksDBEngine).
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
 set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
 
@@ -73,9 +69,6 @@ set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
 if (USE_LIBUNWIND)
   add_subdirectory(libunwind)
   include_directories(SYSTEM "${LIBUNWIND_HOME}/include")
-  # Current scope so later 3rdParty subdirs see these; then export.
-  set(LIBUNWIND_HOME "${LIBUNWIND_HOME}")
-  set(LIBUNWIND_LIB "${LIBUNWIND_LIB}")
   set(LIBUNWIND_HOME "${LIBUNWIND_HOME}" PARENT_SCOPE)
   set(LIBUNWIND_LIB "${LIBUNWIND_LIB}" PARENT_SCOPE)
 endif ()
@@ -88,12 +81,9 @@ if (USE_JEMALLOC)
   add_subdirectory(jemalloc)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
-  # Current scope so later 3rdParty subdirs see these; then export.
-  set(JEMALLOC_HOME "${JEMALLOC_HOME}")
   set(SYS_LIBS ${SYS_LIBS} jemalloc)
-  set(JEMALLOC_LIB "${JEMALLOC_LIB}")
-  set(JEMALLOC_HOME "${JEMALLOC_HOME}" PARENT_SCOPE)
   set(SYS_LIBS ${SYS_LIBS} PARENT_SCOPE)
+  set(JEMALLOC_HOME "${JEMALLOC_HOME}" PARENT_SCOPE)
   set(JEMALLOC_LIB "${JEMALLOC_LIB}" PARENT_SCOPE)
   if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
     add_dependencies(jemalloc_build libunwind_build)
@@ -112,17 +102,12 @@ set(V8_VERSION
   "${PROJECT_NAME}: Version"
   FORCE
 )
-set(V8_VERSION ${V8_VERSION})
-set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 set(V8_SUB_DIR "v8")
 add_subdirectory(v8-build)
 add_library(v8_interface INTERFACE)
 target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
 
-# Current scope so later 3rdParty subdirs see these; then export.
-set(ICU_DT "${ICU_DT}")
-set(ICU_DT_DEST "${ICU_DT_DEST}")
-set(V8_INTERNAL_INCLUDE_DIR "${V8_INTERNAL_INCLUDE_DIR}")
+# v8-build/CMakeLists.txt already set these in this directory; expose to project root.
 set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
 set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
 set(V8_INTERNAL_INCLUDE_DIR "${V8_INTERNAL_INCLUDE_DIR}" PARENT_SCOPE)
@@ -132,12 +117,7 @@ set(V8_INTERNAL_INCLUDE_DIR "${V8_INTERNAL_INCLUDE_DIR}" PARENT_SCOPE)
 ################################################################################
 
 add_subdirectory(icu-legacy)
-# Current scope so later 3rdParty subdirs see these; then export.
-set(ICU64_LIBS "${ICU64_LIBS}")
-set(ICU64_INCLUDE_DIR "${ICU64_INCLUDE_DIR}")
-set(ICU64_LIBRARY_DIR "${ICU64_LIBRARY_DIR}")
-set(ICU_DT_LEGACY "${ICU_DT_LEGACY}")
-set(ICU_DT_LEGACY_DEST "${ICU_DT_LEGACY_DEST}")
+# icu-legacy/CMakeLists.txt already set these in this directory; expose to project root.
 set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
 set(ICU64_INCLUDE_DIR "${ICU64_INCLUDE_DIR}" PARENT_SCOPE)
 set(ICU64_LIBRARY_DIR "${ICU64_LIBRARY_DIR}" PARENT_SCOPE)
@@ -165,8 +145,6 @@ add_subdirectory(s2geometry)
 ################################################################################
 
 add_subdirectory(boost)
-# Current scope so later 3rdParty subdirs see these; then export.
-set(BOOST_VERSION ${BOOST_VERSION})
 set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 add_library(boost-static IMPORTED STATIC)
@@ -175,7 +153,7 @@ set_target_properties(boost-static PROPERTIES
   IMPORTED_LOCATION "boost_system;boost_thread"
 )
 
-# Explicitly set in current scope (so 3rdParty subdirs see it); then export.
+# Local targets use this; project root and lib/iresearch need it in parent scope too.
 set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
 set(Boost_INCLUDE_DIRS "${Boost_INCLUDE_DIRS}" PARENT_SCOPE)
 
@@ -260,8 +238,7 @@ target_include_directories(linenoise-ng SYSTEM PUBLIC
 ## LINK_DIRECTORIES
 ################################################################################
 
-# Ensure current scope has it (from list(APPEND) above) so 3rdParty subdirs see it; then export.
-set(LINK_DIRECTORIES "${LINK_DIRECTORIES}")
+# v8-build and other subdirs appended here; v8 also reads from project root (e.g. V8_LINK_DIRECTORIES).
 set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 
 ################################################################################
@@ -299,8 +276,6 @@ LIST(APPEND TZ_DATA_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/version"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/windowsZones.xml")
 
-# Current scope already has TZ_DATA_FILES from LIST(APPEND); ensure export and visibility.
-set(TZ_DATA_FILES ${TZ_DATA_FILES})
 set(TZ_DATA_FILES ${TZ_DATA_FILES} PARENT_SCOPE)
 
 add_custom_target(tzdata)
@@ -424,7 +399,6 @@ target_include_directories(
 ### frozen library
 ################################################################################
 
-# Current scope so 3rdParty subdirs see it; then export.
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include)
 set(FROZEN_INCLUDE_DIR ${FROZEN_INCLUDE_DIR} PARENT_SCOPE)
 
@@ -432,7 +406,6 @@ set(FROZEN_INCLUDE_DIR ${FROZEN_INCLUDE_DIR} PARENT_SCOPE)
 ### function2 library
 ################################################################################
 
-# Current scope so 3rdParty subdirs see it; then export.
 set(FUNCTION2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/function2")
 set(FUNCTION2_INCLUDE_DIR "${FUNCTION2_INCLUDE_DIR}" PARENT_SCOPE)
 
