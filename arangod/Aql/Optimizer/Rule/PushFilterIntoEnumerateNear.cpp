@@ -212,6 +212,10 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
           TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
           "filter node could not be moved into EnumerateNearVector node!");
     }
+
+    // Try finding better index with storedValues covering filtering
+    // TODO(jbajic) we should optiomize the we find best index covering both
+    // projection and filtering
     if (auto bestIndex = findBestVectorIndex(plan, filterExpression,
                                              enumerateNearVectorNode);
         bestIndex != nullptr) {
@@ -232,9 +236,7 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
     // The use-vector-index rule unconditionally inserted a
     // MaterializeRocksDBNode immediately after EnumerateNearVectorNode. With
     // a filter pushed down, the executor produces the document itself, so
-    // the materializer becomes redundant. Walk up the parent chain looking
-    // for it and unlink it. Calculation nodes that may have been spliced in
-    // by other rules are skipped over.
+    // the materializer becomes redundant.
     ExecutionNode* materializer = enumerateNearVectorNode->getFirstParent();
     while (materializer != nullptr &&
            materializer->getType() == EN::CALCULATION) {
