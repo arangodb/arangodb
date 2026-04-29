@@ -87,6 +87,52 @@ std::string_view trainingStateToString(
   }
 }
 
+namespace {
+
+// Translate the high-level SearchStrategy into the concrete iterator
+// context. The capture sink is only wired when the iterator can supply
+// per-survivor data of the shape the executor needs.
+vector::RocksDBFaissIteratorContext makeFaissIteratorContext(
+    vector::VectorSearchConfig const& config,
+    containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+        captureSink) {
+  using vector::CaptureShape;
+  using vector::FilterMode;
+  using vector::ProjectionMode;
+
+  if (config.strategy.filter == FilterMode::kNone) {
+    vector::IteratorContext simpleCtx;
+    simpleCtx.trx = config.trx;
+    simpleCtx.capturedDocuments = captureSink;
+    return simpleCtx;
+  }
+  TRI_ASSERT(config.queryContext != nullptr);
+  TRI_ASSERT(config.filterExpression != nullptr);
+
+  vector::IteratorFilterContext searchCtx;
+  searchCtx.trx = config.trx;
+  searchCtx.filterExpression = config.filterExpression;
+  if (config.inputRow != nullptr) {
+    searchCtx.inputRow = *config.inputRow;
+  }
+  searchCtx.queryContext = config.queryContext;
+  searchCtx.filterVarsToRegs = &config.filterVarsToRegs;
+  searchCtx.documentVariable = config.documentVariable;
+  searchCtx.useStoredValuesIterator =
+      (config.strategy.filter == FilterMode::kStoredValues);
+  searchCtx.capturedDocuments = captureSink;
+  // Scenario 6: filter loaded the doc, projections need the doc -> stash
+  // the doc itself. Scenario 8: filter loaded the doc but projections are
+  // covered -> stash only the storedValues array (cheaper).
+  searchCtx.captureShape =
+      (config.strategy.projection == ProjectionMode::kDocument)
+          ? CaptureShape::kFullDocument
+          : CaptureShape::kStoredValues;
+  return searchCtx;
+}
+
+}  // namespace
+
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                        arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, coll, info,
@@ -230,13 +276,6 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   result.distances.resize(config.topK);
   result.labels.resize(config.topK);
 
-  // Translate the high-level SearchStrategy into the concrete iterator
-  // context. The capture sink is only wired when the iterator can supply
-  // per-survivor data of the shape the executor needs:
-  //   projection == kStoredValues : any iterator (each holds storedValues
-  //                                 alongside the encoded vector).
-  //   projection == kDocument     : only IVFT (loads doc for filter eval).
-  // Otherwise the executor post-fetches the docs it needs by label.
   using vector::FilterMode;
   using vector::ProjectionMode;
   bool const captureNeeded =
@@ -244,39 +283,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
       (config.strategy.projection == ProjectionMode::kDocument &&
        config.strategy.filter == FilterMode::kDocument);
   auto* captureSink = captureNeeded ? &result.capturedDocuments : nullptr;
-
-  auto faissSearchContext =
-      std::invoke([&]() -> vector::RocksDBFaissIteratorContext {
-        if (config.strategy.filter == FilterMode::kNone) {
-          vector::IteratorContext simpleCtx;
-          simpleCtx.trx = config.trx;
-          simpleCtx.capturedDocuments = captureSink;
-          return simpleCtx;
-        }
-        TRI_ASSERT(config.queryContext != nullptr);
-        TRI_ASSERT(config.filterExpression != nullptr);
-
-        vector::IteratorFilterContext searchCtx;
-        searchCtx.trx = config.trx;
-        searchCtx.filterExpression = config.filterExpression;
-        if (config.inputRow != nullptr) {
-          searchCtx.inputRow = *config.inputRow;
-        }
-        searchCtx.queryContext = config.queryContext;
-        searchCtx.filterVarsToRegs = &config.filterVarsToRegs;
-        searchCtx.documentVariable = config.documentVariable;
-        searchCtx.useStoredValuesIterator =
-            (config.strategy.filter == FilterMode::kStoredValues);
-        searchCtx.capturedDocuments = captureSink;
-        // Row 6: filter loaded the doc, projections need the doc -> stash
-        // the doc itself. Row 8: filter loaded the doc but projections are
-        // covered -> stash only the storedValues array (cheaper).
-        searchCtx.captureShape =
-            (config.strategy.projection == ProjectionMode::kDocument)
-                ? vector::CaptureShape::kFullDocument
-                : vector::CaptureShape::kStoredValues;
-        return searchCtx;
-      });
+  auto faissSearchContext = makeFaissIteratorContext(config, captureSink);
 
   faiss::SearchParametersIVF searchParametersIvf;
   searchParametersIvf.nprobe =
