@@ -29,6 +29,7 @@
 #include "Aql/Optimizer.h"
 #include "Assertions/Assert.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb::aql {
 

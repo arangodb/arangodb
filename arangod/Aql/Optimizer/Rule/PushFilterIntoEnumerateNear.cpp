@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PushFilterIntoEnumerateNear.h"
+
 #include <memory>
 
 #include "Aql/Ast.h"
@@ -45,7 +46,7 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "VocBase/vocbase.h"
+#include "VectorIndex/VectorSearchConfiguration.h"
 
 namespace arangodb::aql {
 

@@ -34,7 +34,6 @@
 #include "Basics/overload.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
-#include "VectorIndex/VectorSearchConfiguration.h"
 
 namespace arangodb::vector {
 

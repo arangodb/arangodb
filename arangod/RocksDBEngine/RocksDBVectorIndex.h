@@ -29,6 +29,7 @@
 #include "Containers/NodeHashMap.h"
 #include "RocksDBIndex.h"
 #include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/VectorSearchConfiguration.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "Transaction/Methods.h"
