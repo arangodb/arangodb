@@ -52,6 +52,7 @@ class DB;
 }  // namespace rocksdb
 
 namespace arangodb {
+namespace vector {
 
 using VectorIndexLabelId = faiss::idx_t;
 
@@ -64,15 +65,13 @@ enum class VectorIndexTrainingState : std::uint8_t {
 
 std::string_view trainingStateToString(VectorIndexTrainingState state) noexcept;
 
-namespace vector {
-
 // SearchStrategy is defined in VectorIndex/VectorIndexDefinition.h so the
 // AQL layer (EnumerateNearVectorNode) and the storage layer can both use
 // it without crossing layering boundaries.
 
 // Static configuration of a vector search. Owned by the executor's Infos
 // (set once at createBlock) and passed by reference to readBatch.
-struct SearchConfig {
+struct FaissSearchConfig {
   SearchParameters searchParameters;
   std::size_t topK;  // = LIMIT + OFFSET
 
@@ -134,7 +133,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
-  vector::SearchResult readBatch(vector::SearchConfig const& config,
+  vector::SearchResult readBatch(vector::FaissSearchConfig const& config,
                                  vector::SearchContext const& ctx);
 
   vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
@@ -150,8 +149,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::optional<std::size_t> resolvedNLists() const noexcept {
     if (auto const state = _trainingState.load();
-        state == VectorIndexTrainingState::kIngesting ||
-        state == VectorIndexTrainingState::kReady) {
+        state == vector::VectorIndexTrainingState::kIngesting ||
+        state == vector::VectorIndexTrainingState::kReady) {
       return _faissIndex->nlist;
     }
     return std::nullopt;
@@ -177,10 +176,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) override;
 
-  bool setTrainingState(VectorIndexTrainingState expected,
-                        VectorIndexTrainingState desired) noexcept;
+  bool setTrainingState(vector::VectorIndexTrainingState expected,
+                        vector::VectorIndexTrainingState desired) noexcept;
 
-  VectorIndexTrainingState trainingState() const noexcept {
+  vector::VectorIndexTrainingState trainingState() const noexcept {
     return _trainingState.load(std::memory_order_acquire);
   }
 
@@ -209,8 +208,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   StoredValues const _storedValues;
 
   std::size_t _trainingThreshold{0};
-  std::atomic<VectorIndexTrainingState> _trainingState{
-      VectorIndexTrainingState::kUnusable};
+  std::atomic<vector::VectorIndexTrainingState> _trainingState{
+      vector::VectorIndexTrainingState::kUnusable};
 };
 
 }  // namespace arangodb

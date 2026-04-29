@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Projections.h"
 #include "Aql/QueryContext.h"
@@ -62,7 +61,7 @@ struct EnumerateNearVectorsExecutorInfos {
   aql::Collection const* collection;
 
   // search configuration -- passed by reference straight to readBatch
-  vector::SearchConfig searchConfig;
+  vector::FaissSearchConfig searchConfig;
 
   // output strategy
   Projections projections;
@@ -124,7 +123,7 @@ class EnumerateNearVectorsExecutor {
   ExecutorState _state{ExecutorState::HASMORE};
 
   std::vector<float> _distances;
-  std::vector<VectorIndexLabelId> _labels;
+  std::vector<vector::VectorIndexLabelId> _labels;
   // VPack per surviving label: full doc Object for kDocument, storedValues
   // array for kCovered, empty for kPassThroughId.
   containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice> _documents;
