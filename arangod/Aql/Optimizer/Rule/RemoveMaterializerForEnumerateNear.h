@@ -28,14 +28,21 @@
 namespace arangodb::aql {
 class Optimizer;
 
-// Runs after optimizeProjectionsRule. Migrates the projections that
-// optimizeProjectionsRule assigned to the MaterializeRocksDBNode parent of
-// each EnumerateNearVectorNode onto the EnumerateNearVectorNode itself,
-// chooses a kCovered/kDocument strategy, and drops the now-redundant
-// materializer. Single-server only for now -- cluster mode keeps the
-// materializer because scatterInClusterRule's exclude logic relies on it.
-void propagateProjectionsIntoEnumerateNear(Optimizer*,
-                                           std::unique_ptr<ExecutionPlan>,
-                                           OptimizerRule const&);
+// Drops the MaterializeRocksDBNode that useVectorIndexRule placed after
+// each EnumerateNearVectorNode whenever the vector node can produce
+// equivalent output on its own. Two ways that can happen:
+//   1. The materializer's projections are entirely covered by the current
+//      vector index' storedValues -- transfer the projections to the vector
+//      node and let it produce them directly (kCovered).
+//   2. A pushed-down filter already forces the iterator to load the doc
+//      (FilterMode::kDocument) -- transfer the projections, capture the
+//      doc the iterator loaded, and let the executor project from it
+//      (kDocument).
+// Otherwise the materializer is left in place and the vector node stays
+// in kPassThroughId. Cluster mode keeps the materializer always because
+// scatterInClusterRule needs it as the SCATTER/GATHER anchor.
+void removeMaterializerForEnumerateNear(Optimizer*,
+                                        std::unique_ptr<ExecutionPlan>,
+                                        OptimizerRule const&);
 
 }  // namespace arangodb::aql

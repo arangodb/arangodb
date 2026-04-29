@@ -54,7 +54,7 @@
 #include "Aql/Optimizer/Rule/ScatterViewInCluster.h"
 #include "Aql/Optimizer/Rule/ParallelizeGather.h"
 #include "Aql/Optimizer/Rule/PropagateConstantAttributes.h"
-#include "Aql/Optimizer/Rule/PropagateProjectionsIntoEnumerateNear.h"
+#include "Aql/Optimizer/Rule/RemoveMaterializerForEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
 #include "Aql/Optimizer/Rule/PushFilterIntoEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
@@ -926,15 +926,16 @@ vector embeddings with vector similarity AQL functions.)");
 filtering by using `storedValues`. This rule is only enabled by the
 `use-vector-index` rule.)");
 
-  registerRule("propagate-projections-into-enumerate-near",
-               propagateProjectionsIntoEnumerateNear,
-               OptimizerRule::propagateProjectionsIntoEnumerateNearRule,
+  registerRule("remove-materializer-for-enumerate-near",
+               removeMaterializerForEnumerateNear,
+               OptimizerRule::removeMaterializerForEnumerateNearRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Move projections that the projections rule assigned to the
-MaterializeRocksDBNode above an EnumerateNearVectorNode onto the vector node
-itself, then drop the now-redundant MaterializeRocksDBNode. Single-server
-only -- in cluster mode the materializer is kept because the scatter/gather
-placement depends on it.)");
+               R"(Drop the MaterializeRocksDBNode placed after an
+EnumerateNearVectorNode whenever the vector node can produce equivalent output
+on its own -- either projections are covered by the index storedValues, or a
+pushed-down filter has already loaded the document. Otherwise the materializer
+stays. Single-server only; cluster mode keeps the materializer for scatter/
+gather placement.)");
 
   registerRule(
       "immutable-search-condition", iresearch::immutableSearchCondition,

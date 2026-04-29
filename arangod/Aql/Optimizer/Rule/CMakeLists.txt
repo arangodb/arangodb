@@ -29,11 +29,11 @@ target_sources(arango_aql PRIVATE
   OptimizeTraversals.cpp
   ParallelizeGather.cpp
   PropagateConstantAttributes.cpp
-  PropagateProjectionsIntoEnumerateNear.cpp
   PushDownLateMaterialization.cpp
   PushFilterIntoEnumerateNear.cpp
   PushLimitIntoIndex.cpp
   RemoveCollectVariables.cpp
+  RemoveMaterializerForEnumerateNear.cpp
   RemoveDataModificationOutVariables.cpp
   RemoveFiltersCoveredByIndex.cpp
   RemoveFiltersCoveredByTraversal.cpp
