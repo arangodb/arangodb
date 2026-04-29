@@ -54,6 +54,7 @@
 #include "Aql/Optimizer/Rule/ScatterViewInCluster.h"
 #include "Aql/Optimizer/Rule/ParallelizeGather.h"
 #include "Aql/Optimizer/Rule/PropagateConstantAttributes.h"
+#include "Aql/Optimizer/Rule/PropagateProjectionsIntoEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
 #include "Aql/Optimizer/Rule/PushFilterIntoEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
