@@ -44,7 +44,6 @@
 #include "Aql/QueryContext.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "VectorIndex/VectorSearchConfiguration.h"
 
@@ -228,33 +227,8 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
       // the iterator must load the full doc to evaluate it.
       enumerateNearVectorNode->setFilterMode(vector::FilterMode::kDocument);
     }
-    // We are handling filtering in EnumerateNearVectorNode
-    enumerateNearVectorNode->setFilter(std::move(filterExpression));
 
-    // The use-vector-index rule unconditionally inserted a
-    // MaterializeRocksDBNode immediately after EnumerateNearVectorNode. With
-    // a filter pushed down, the executor produces the document itself, so
-    // the materializer becomes redundant.
-    ExecutionNode* materializer = enumerateNearVectorNode->getFirstParent();
-    while (materializer != nullptr &&
-           materializer->getType() == EN::CALCULATION) {
-      materializer = materializer->getFirstParent();
-    }
-    // TODO: Dropping the MaterializeNode in cluster mode currently confuses the
-    // SCATTER/GATHER placement done by scatterInClusterRule (the GatherNode
-    // loses its sort info, so multi-shard results no longer merge in
-    // distance order). Until that interaction is sorted out, only drop the
-    // materializer on single-server.
-    if (materializer != nullptr && materializer->getType() == EN::MATERIALIZE &&
-        !ServerState::instance()->isRunningInCluster()) {
-      plan->unlinkNode(materializer);
-      enumerateNearVectorNode->pickProjectionMode();
-      // TODO(cluster): useVectorIndexRule called
-      // plan->excludeFromScatterGather(enumerateNearVectorNode) so that
-      // scatterInClusterRule wraps the (un-excluded) MaterializeNode
-      // instead. Once the cluster path is reworked to drop the
-      // materializer, that exclusion needs to be reverted here.
-    }
+    enumerateNearVectorNode->setFilter(std::move(filterExpression));
 
     modified = true;
   }

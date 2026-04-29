@@ -23,6 +23,7 @@
 
 #include "RemoveMaterializerForEnumerateNear.h"
 
+#include "Aql/Collection.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
