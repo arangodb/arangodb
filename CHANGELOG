@@ -1,8 +1,8 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
-* COR-466: Map `IN []` to false and `NOT IN []` to true when they're inside
-  `FILTER` nodes, enabling optimization rules to be applied on them.
+* COR-466: Map `IN []` to false inside `FILTER` nodes, enabling optimization rules
+  to be applied on them.
 
 * COR-439: Make --server.storage-engine option obsolete
   The MMF engine has been removed in 3.7 already, so there is only the rocksdb
