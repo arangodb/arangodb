@@ -37,10 +37,10 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <utility>
 #include <vector>
 
 #include <velocypack/Builder.h>
+#include <velocypack/SharedSlice.h>
 
 namespace arangodb::aql {
 
@@ -65,7 +65,7 @@ struct EnumerateNearVectorsExecutorInfos {
   vector::SearchConfig searchConfig;
 
   // output strategy
-  Projections const& projections;
+  Projections projections;
   EnumerateNearVectorNode::Strategy strategy;
 };
 
@@ -106,7 +106,10 @@ class EnumerateNearVectorsExecutor {
 
   void fillOutput(OutputAqlItemRow& output);
 
-  void writeProjections(velocypack::Slice docSlice, OutputAqlItemRow& output);
+  void writeProjectionsFromDocument(velocypack::Slice docSlice,
+                                    OutputAqlItemRow& output);
+  void writeProjectionsFromStoredValues(velocypack::Slice storedValuesSlice,
+                                        OutputAqlItemRow& output);
 
   bool hasResults() const noexcept;
 
@@ -122,10 +125,9 @@ class EnumerateNearVectorsExecutor {
 
   std::vector<float> _distances;
   std::vector<VectorIndexLabelId> _labels;
-  // VPack object per surviving label: full doc for kDocument, partial doc
-  // (from storedValues) for kCovered, empty for kPassThroughId.
-  containers::NodeHashMap<LocalDocumentId, velocypack::Buffer<uint8_t>>
-      _documents;
+  // VPack per surviving label: full doc Object for kDocument, storedValues
+  // array for kCovered, empty for kPassThroughId.
+  containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice> _documents;
   velocypack::Builder _projectionsBuilder;
   std::size_t _currentProcessedResultCount{0};
   // needed to enable fullCount to work
