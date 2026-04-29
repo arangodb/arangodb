@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string_view>
 
 #include "Inspection/Status.h"
 
@@ -69,5 +70,29 @@ struct SearchStrategy {
   FilterMode filter{FilterMode::kNone};
   ProjectionSource projection{ProjectionSource::kNone};
 };
+
+inline std::string_view filterModeName(
+    SearchStrategy::FilterMode m) noexcept {
+  switch (m) {
+    case SearchStrategy::FilterMode::kNone:
+      return "none";
+    case SearchStrategy::FilterMode::kStoredValues:
+      return "storedValues";
+    case SearchStrategy::FilterMode::kDocument:
+      return "document";
+  }
+  return "none";
+}
+
+inline SearchStrategy::FilterMode parseFilterMode(
+    std::string_view name) noexcept {
+  if (name == "storedValues") {
+    return SearchStrategy::FilterMode::kStoredValues;
+  }
+  if (name == "document") {
+    return SearchStrategy::FilterMode::kDocument;
+  }
+  return SearchStrategy::FilterMode::kNone;
+}
 
 }  // namespace arangodb::vector
