@@ -149,7 +149,7 @@ defmodule ToastTest.JS.ModuleBuilderTest do
     end
   end
 
-  describe "build_modules/2" do
+  describe "build_modules/3" do
     test "creates a module for each JS file" do
       suite = @fake_suite
       files = ["/tmp/test_a.js", "/tmp/test_b.js"]
@@ -162,6 +162,18 @@ defmodule ToastTest.JS.ModuleBuilderTest do
       js_files = Enum.map(modules, & &1.__toast_js_file__())
       assert "/tmp/test_a.js" in js_files
       assert "/tmp/test_b.js" in js_files
+    end
+
+    test "applies per-file weights from weights map" do
+      suite = @fake_suite
+      files = ["/tmp/test_light.js", "/tmp/test_heavy.js"]
+
+      modules =
+        ModuleBuilder.build_modules(suite, files, weights: %{"test_heavy.js" => 10})
+
+      weights = Map.new(modules, fn mod -> {mod.__toast_js_file__(), mod.__toast_weight__()} end)
+      assert weights["/tmp/test_light.js"] == 1
+      assert weights["/tmp/test_heavy.js"] == 10
     end
   end
 end

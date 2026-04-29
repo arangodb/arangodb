@@ -50,7 +50,12 @@ defmodule ToastTest.JS.ModuleBuilder do
 
   @spec build_modules(module(), [String.t()], keyword()) :: [module()]
   def build_modules(suite_module, js_files, opts \\ []) do
-    Enum.map(js_files, &build_module(suite_module, &1, opts))
+    weights = Keyword.get(opts, :weights, %{})
+
+    Enum.map(js_files, fn js_file ->
+      weight = Map.get(weights, Path.basename(js_file), 1)
+      build_module(suite_module, js_file, weight: weight)
+    end)
   end
 
   @spec build_module(module(), String.t(), keyword()) :: module()

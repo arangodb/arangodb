@@ -81,4 +81,25 @@ defmodule ToastTest.JavascriptSuiteTest do
 
     assert NoArgsJsSuite.__toast_js_extra_args__() == %{}
   end
+
+  test "stores weights via __toast_js_weights__/0" do
+    defmodule WeightedJsSuite do
+      use ToastTest.JavascriptSuite,
+        paths: ["p"],
+        weights: %{"heavy-test.js" => 10, "light-test.js" => 2}
+    end
+
+    assert WeightedJsSuite.__toast_js_weights__() == %{
+             "heavy-test.js" => 10,
+             "light-test.js" => 2
+           }
+  end
+
+  test "weights default to empty map" do
+    defmodule NoWeightsJsSuite do
+      use ToastTest.JavascriptSuite, paths: ["p"]
+    end
+
+    assert NoWeightsJsSuite.__toast_js_weights__() == %{}
+  end
 end

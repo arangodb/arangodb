@@ -262,7 +262,11 @@ defmodule Mix.Tasks.Toast do
         []
 
       _ ->
-        js_modules = ToastTest.JS.ModuleBuilder.build_modules(suite_module, js_files)
+        js_modules =
+          ToastTest.JS.ModuleBuilder.build_modules(suite_module, js_files,
+            weights: suite_module.__toast_js_weights__()
+          )
+
         suite_opts = Helpers.build_suite_opts(js_modules, [], test_filter)
         suite_name = Path.basename(suite_dir)
         [{suite_module, js_modules, suite_opts, suite_name}]
