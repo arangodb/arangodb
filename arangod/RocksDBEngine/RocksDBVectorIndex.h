@@ -52,7 +52,6 @@ class DB;
 }  // namespace rocksdb
 
 namespace arangodb {
-namespace vector {
 
 using VectorIndexLabelId = faiss::idx_t;
 
@@ -64,6 +63,8 @@ enum class VectorIndexTrainingState : std::uint8_t {
 };
 
 std::string_view trainingStateToString(VectorIndexTrainingState state) noexcept;
+
+namespace vector {
 
 // Configuration of a vector search. The static fields are filled by
 // EnumerateNearVectorNode::createBlock; the per-call fields are set by
@@ -142,8 +143,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::optional<std::size_t> resolvedNLists() const noexcept {
     if (auto const state = _trainingState.load();
-        state == vector::VectorIndexTrainingState::kIngesting ||
-        state == vector::VectorIndexTrainingState::kReady) {
+        state == VectorIndexTrainingState::kIngesting ||
+        state == VectorIndexTrainingState::kReady) {
       return _faissIndex->nlist;
     }
     return std::nullopt;
@@ -169,10 +170,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) override;
 
-  bool setTrainingState(vector::VectorIndexTrainingState expected,
-                        vector::VectorIndexTrainingState desired) noexcept;
+  bool setTrainingState(VectorIndexTrainingState expected,
+                        VectorIndexTrainingState desired) noexcept;
 
-  vector::VectorIndexTrainingState trainingState() const noexcept {
+  VectorIndexTrainingState trainingState() const noexcept {
     return _trainingState.load(std::memory_order_acquire);
   }
 
@@ -201,8 +202,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   StoredValues const _storedValues;
 
   std::size_t _trainingThreshold{0};
-  std::atomic<vector::VectorIndexTrainingState> _trainingState{
-      vector::VectorIndexTrainingState::kUnusable};
+  std::atomic<VectorIndexTrainingState> _trainingState{
+      VectorIndexTrainingState::kUnusable};
 };
 
 }  // namespace arangodb

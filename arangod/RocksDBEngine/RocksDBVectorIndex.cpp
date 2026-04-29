@@ -73,7 +73,6 @@ static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
   LOG_TOPIC((lid), level, topic)            \
       << "[shard=" << _collection.name() << ", index=" << _iid.id() << "] "
 
-namespace vector {
 std::string_view trainingStateToString(
     VectorIndexTrainingState const state) noexcept {
   switch (state) {
@@ -87,7 +86,6 @@ std::string_view trainingStateToString(
       return StaticStrings::IndexTrainingStateReady;
   }
 }
-}  // namespace vector
 
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                        arangodb::velocypack::Slice info)
@@ -116,8 +114,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
 
-    setTrainingState(vector::VectorIndexTrainingState::kUnusable,
-                     vector::VectorIndexTrainingState::kReady);
+    setTrainingState(VectorIndexTrainingState::kUnusable,
+                     VectorIndexTrainingState::kReady);
   }
 
   _trainingThreshold = std::visit(
@@ -190,8 +188,8 @@ void RocksDBVectorIndex::toVelocyPack(
 
   auto const trainingState = _trainingState.load();
   builder.add(StaticStrings::IndexTrainingState,
-              VPackValue(vector::trainingStateToString(trainingState)));
-  if (trainingState == vector::VectorIndexTrainingState::kUnusable) {
+              VPackValue(trainingStateToString(trainingState)));
+  if (trainingState == VectorIndexTrainingState::kUnusable) {
     builder.add(StaticStrings::ErrorMessage,
                 VPackValue("not enough training data for vector index"));
   }
@@ -217,13 +215,13 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   }
 
   if (auto const state = _trainingState.load();
-      state != vector::VectorIndexTrainingState::kReady) {
+      state != VectorIndexTrainingState::kReady) {
     // This should never happen — the optimizer should not use
     // EnumerateNearVectorNode when the vector index is not ready.
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
         std::format("vector index is in state '{}', expected 'ready'",
-                    vector::trainingStateToString(state)));
+                    trainingStateToString(state)));
   }
   TRI_ASSERT(_faissIndex != nullptr);
 
@@ -299,7 +297,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
 
 bool RocksDBVectorIndex::isVectorIndexReady() const noexcept {
   return _trainingState.load(std::memory_order_acquire) ==
-         vector::VectorIndexTrainingState::kReady;
+         VectorIndexTrainingState::kReady;
 }
 
 Result RocksDBVectorIndex::readDocumentVectorData(
@@ -321,15 +319,15 @@ void RocksDBVectorIndex::applyTrainingResult(
 }
 
 bool RocksDBVectorIndex::setTrainingState(
-    vector::VectorIndexTrainingState expected,
-    vector::VectorIndexTrainingState desired) noexcept {
+    VectorIndexTrainingState expected,
+    VectorIndexTrainingState desired) noexcept {
   if (!_trainingState.compare_exchange_strong(expected, desired,
                                               std::memory_order_acq_rel,
                                               std::memory_order_acquire)) {
     LOG_TOPIC("e167b", WARN, Logger::ENGINES)
         << "Training state CAS failed: desired "
-        << vector::trainingStateToString(desired) << ", actual "
-        << vector::trainingStateToString(expected);
+        << trainingStateToString(desired) << ", actual "
+        << trainingStateToString(expected);
     return false;
   }
 
@@ -337,7 +335,7 @@ bool RocksDBVectorIndex::setTrainingState(
 }
 
 void RocksDBVectorIndex::resetTrainingState() noexcept {
-  _trainingState.exchange(vector::VectorIndexTrainingState::kUnusable,
+  _trainingState.exchange(VectorIndexTrainingState::kUnusable,
                           std::memory_order_acq_rel);
 }
 
@@ -388,8 +386,8 @@ ResultT<std::vector<float>> RocksDBVectorIndex::preModificationCheck(
   }
 
   if (auto const state = _trainingState.load(std::memory_order_acquire);
-      state == vector::VectorIndexTrainingState::kUnusable ||
-      state == vector::VectorIndexTrainingState::kTraining) {
+      state == VectorIndexTrainingState::kUnusable ||
+      state == VectorIndexTrainingState::kTraining) {
     LOG_TOPIC("d1e0a", DEBUG, Logger::ENGINES) << std::format(
         "vector index {} not yet trained, skipping {}", _iid.id(), operation);
 

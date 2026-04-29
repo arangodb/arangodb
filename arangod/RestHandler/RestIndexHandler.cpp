@@ -326,9 +326,8 @@ async<void> RestIndexHandler::getIndexes() {
                 }
                 auto const ts = vecIdx->trainingState();
                 VectorIndexShardState state;
-                state.trainingState =
-                    std::string(vector::trainingStateToString(ts));
-                if (ts == vector::VectorIndexTrainingState::kUnusable) {
+                state.trainingState = std::string(trainingStateToString(ts));
+                if (ts == VectorIndexTrainingState::kUnusable) {
                   state.error = "not enough training data for vector index";
                 }
                 state.resolvedNLists = vecIdx->resolvedNLists().value_or(0);

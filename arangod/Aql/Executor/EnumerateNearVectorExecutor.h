@@ -123,7 +123,7 @@ class EnumerateNearVectorsExecutor {
   ExecutorState _state{ExecutorState::HASMORE};
 
   std::vector<float> _distances;
-  std::vector<vector::VectorIndexLabelId> _labels;
+  std::vector<VectorIndexLabelId> _labels;
   // VPack per surviving label: full doc Object for kDocument, storedValues
   // array for kCovered, empty for kPassThroughId.
   containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice> _documents;
