@@ -89,9 +89,6 @@ RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
       Strategy::extractVectorIndexEntry(_it->key(), _it->value(), _codeSize);
   _currentEntry = std::move(entry);
 
-  // Return pointer to encoded data (location differs based on strategy).
-  // storedValues capture is deferred to on_heap_changed -- we only pay the
-  // VPack-build cost for entries that actually enter the topK heap.
   if constexpr (Strategy::hasStoredValues) {
     TRI_ASSERT(_currentEntry.encodedValue.size() == _codeSize)
         << "The encoded size is: " << _currentEntry.encodedValue.size()
@@ -108,20 +105,17 @@ RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
 
 template<VectorIndexStoredValuesStrategy Strategy>
 void RocksDBInvertedListsIterator<Strategy>::on_heap_changed(
-    faiss::idx_t new_id, faiss::idx_t evicted_id) {
+    faiss::idx_t newId, faiss::idx_t evictedId) {
   if constexpr (Strategy::hasStoredValues) {
     auto* sink = _ctx.capturedDocuments;
     TRI_ASSERT(sink != nullptr);
 
     // FAISS pre-fills the heap with sentinel ids (-1); skip those evictions.
-    if (evicted_id >= 0) {
-      sink->erase(LocalDocumentId{static_cast<uint64_t>(evicted_id)});
+    if (evictedId >= 0) {
+      sink->erase(LocalDocumentId{static_cast<uint64_t>(evictedId)});
     }
 
-    // Refcount-bump: _currentEntry.storedValues already owns the array bytes
-    // we want to surface. The executor reads positions out of it via
-    // produceFromIndex, so no Object materialisation is needed here.
-    sink->insert_or_assign(LocalDocumentId{static_cast<uint64_t>(new_id)},
+    sink->insert_or_assign(LocalDocumentId{static_cast<uint64_t>(newId)},
                            _currentEntry.storedValues);
   }
 }
@@ -241,9 +235,8 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
               _codeSize);
 
           auto* sink = _filterContext.capturedDocuments;
-          // Row 8: storedValues cover projections, so capture only the
-          // storedValues array (refcount-bump, no copy). Available only
-          // for the with-storedValues strategy.
+          // Scenario 8: storedValues cover projections, so capture only the
+          // storedValues array
           if constexpr (Strategy::hasStoredValues) {
             if (sink != nullptr &&
                 _filterContext.captureShape == CaptureShape::kStoredValues) {
@@ -254,9 +247,8 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
             _filteredIds.emplace_back(id, std::move(entry));
           }
 
-          // Row 6: projections need the full doc, so hand the bytes we
-          // just loaded to the executor. doc points into RocksDB-owned
-          // memory whose lifetime ends with this callback, so we copy.
+          // Scenario 6: projections need the full doc, so hand the bytes we
+          // just loaded to the executor
           if (sink != nullptr &&
               _filterContext.captureShape == CaptureShape::kFullDocument) {
             velocypack::Buffer<uint8_t> buf;
