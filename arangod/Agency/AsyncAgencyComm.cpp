@@ -519,6 +519,27 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
                           std::move(body));
 }
 
+futures::Future<std::vector<std::pair<ServerID, AsyncAgencyComm::Endpoint>>>
+AsyncAgencyComm::getAgencies() {
+  return sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config", 60.0s,
+                          AsyncAgencyComm::RequestType::READ,
+                          VPackBuffer<uint8_t>())
+      .thenValue([](AsyncAgencyCommResult&& result) {
+        if (result.fail() || result.statusCode() != fuerte::StatusOK) {
+          THROW_ARANGO_EXCEPTION(result.asResult());
+        }
+
+        std::vector<std::pair<ServerID, Endpoint>> endpoints;
+
+        for (auto member : VPackObjectIterator(result.slice().get(
+                 std::vector<std::string>{"configuration", "pool"}))) {
+          endpoints.emplace_back(std::make_pair(member.key.copyString(),
+                                                member.value.copyString()));
+        }
+        return endpoints;
+      });
+}
+
 void AsyncAgencyCommManager::addEndpoint(std::string const& endpoint) {
   std::unique_lock<std::mutex> guard(_lock);
   _endpoints.push_back(endpoint);

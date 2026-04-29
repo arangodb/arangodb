@@ -2263,49 +2263,23 @@ async<void> RestAdminClusterHandler::handleHealth() {
   // TODO handle timeout parameter
 
   // query the agency config
-  auto fConfig =
-      AsyncAgencyComm()
-          .sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config", 60.0s,
-                            AsyncAgencyComm::RequestType::READ,
-                            VPackBuffer<uint8_t>())
-          .thenValue([this](AsyncAgencyCommResult&& result) {
-            // this lambda has to capture self since collect returns early on
-            // an exception and the RestHandler might be freed too early
-            // otherwise
+  auto agencies = co_await AsyncAgencyComm().getAgencies();
+  // connect to all the agencies and ask for their engine and version
+  std::vector<futures::Future<::agentConfigHealthResult>> fs;
+  auto* pool = server().getFeature<NetworkFeature>().pool();
+  for (auto const& [id, endpoint] : agencies) {
+    auto future =
+        network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
+                             "/_api/agency/config", VPackBuffer<uint8_t>())
+            .then([endpoint = std::move(endpoint), id = std::move(id)](
+                      futures::Try<network::Response>&& resp) mutable {
+              return futures::makeFuture(::agentConfigHealthResult{
+                  std::move(endpoint), std::move(id), std::move(resp)});
+            });
 
-            if (result.fail() || result.statusCode() != fuerte::StatusOK) {
-              THROW_ARANGO_EXCEPTION(result.asResult());
-            }
-
-            // now connect to all the members and ask for their engine and
-            // version
-            std::vector<futures::Future<::agentConfigHealthResult>> fs;
-
-            auto* pool = server().getFeature<NetworkFeature>().pool();
-            for (auto member : VPackObjectIterator(result.slice().get(
-                     std::vector<std::string>{"configuration", "pool"}))) {
-              std::string endpoint = member.value.copyString();
-              std::string memberName = member.key.copyString();
-
-              auto future =
-                  network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
-                                       "/_api/agency/config",
-                                       VPackBuffer<uint8_t>())
-                      .then(
-                          [endpoint = std::move(endpoint),
-                           memberName = std::move(memberName)](
-                              futures::Try<network::Response>&& resp) mutable {
-                            return futures::makeFuture(
-                                ::agentConfigHealthResult{std::move(endpoint),
-                                                          std::move(memberName),
-                                                          std::move(resp)});
-                          });
-
-              fs.emplace_back(std::move(future));
-            }
-
-            return futures::collectAll(fs);
-          });
+    fs.emplace_back(std::move(future));
+  }
+  auto fConfig = futures::collectAll(fs);
 
   // query information from the store
   auto rootPath = arangodb::cluster::paths::root()->arango();

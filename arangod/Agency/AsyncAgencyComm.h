@@ -28,6 +28,7 @@
 #include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
 #include "Basics/debugging.h"
+#include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 #include "Network/Utils.h"
@@ -298,6 +299,9 @@ class AsyncAgencyComm final {
                                               network::Timeout timeout,
                                               RequestType type,
                                               uint64_t index) const;
+
+  using Endpoint = std::string;
+  futures::Future<std::vector<std::pair<ServerID, Endpoint>>> getAgencies();
 
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
