@@ -498,4 +498,9 @@ StoredValues const& RocksDBVectorIndex::storedValues() const {
   return _storedValues;
 }
 
+std::vector<std::vector<basics::AttributeName>> const&
+RocksDBVectorIndex::coveredFields() const {
+  return _storedValues;
+}
+
 }  // namespace arangodb

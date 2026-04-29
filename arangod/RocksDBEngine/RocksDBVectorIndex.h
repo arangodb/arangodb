@@ -168,6 +168,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   StoredValues const& storedValues() const override;
 
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const override;
+
   Result prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                       rocksdb::Slice upper, RocksDBMethods* methods) override;
 
