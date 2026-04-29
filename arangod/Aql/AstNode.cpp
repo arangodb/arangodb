@@ -1444,12 +1444,11 @@ bool AstNode::isFalse() const {
       return true;
     }
   } else if (type == NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (numMembers() == 2) {
-      AstNode const* rhs = getMember(1);
-      if (rhs != nullptr && rhs->type == NODE_TYPE_ARRAY &&
-          rhs->numMembers() == 0) {
-        return true;
-      }
+    TRI_ASSERT(numMembers() == 2);
+    AstNode const* rhs = getMemberUnchecked(1);
+    TRI_ASSERT(rhs != nullptr);
+    if (rhs->type == NODE_TYPE_ARRAY && rhs->numMembers() == 0) {
+      return true;
     }
   }
 

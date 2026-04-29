@@ -175,13 +175,13 @@ function optimizerRuleTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for empty-array IN/NOT IN constant folding
+/// @brief test suite for empty-array IN constant folding
 ////////////////////////////////////////////////////////////////////////////////
 
 function emptyArrayFilterSuite() {
   const cn = 'UnitTestsEmptyArrayFilter';
-  const ruleName = 'remove-unnecessary-filters';
-  const paramEnabled = { optimizer: { rules: ['-all', '+' + ruleName] } };
+  // pre-existing AST-level folding: works with all rules disabled
+  const paramNoRules = { optimizer: { rules: ['-all'] } };
 
   return {
     setUpAll: function () {
@@ -201,7 +201,7 @@ function emptyArrayFilterSuite() {
     // x IN [] is always false — handled at plan construction, produces NoResultsNode
     testInEmptyArrayDirectAlwaysFalse: function () {
       const q = `FOR doc IN ${cn} FILTER doc.value IN [] RETURN doc`;
-      const explain = db._createStatement({query: q, bindVars: {}, options: paramEnabled}).explain();
+      const explain = db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain();
       const nodeTypes = helper.getCompactPlan(explain).map(n => n.type);
       assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
       assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
@@ -211,7 +211,7 @@ function emptyArrayFilterSuite() {
     // via a LET variable — same folding applies
     testInEmptyArrayViaLet: function () {
       const q = `FOR i IN 1..10 LET x = i IN [] FILTER x RETURN i`;
-      const explain = db._createStatement({query: q, bindVars: {}, options: paramEnabled}).explain();
+      const explain = db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain();
       const nodeTypes = helper.getCompactPlan(explain).map(n => n.type);
       assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
       assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
@@ -221,7 +221,7 @@ function emptyArrayFilterSuite() {
     // NOT (x IN []) — NOT of always-false is always true, filter removed
     testNotOfInEmptyArrayAlwaysTrue: function () {
       const q = `FOR doc IN ${cn} FILTER NOT (doc.value IN []) RETURN doc`;
-      const explain = db._createStatement({query: q, bindVars: {}, options: paramEnabled}).explain();
+      const explain = db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain();
       const nodeTypes = helper.getCompactPlan(explain).map(n => n.type);
       assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
       assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
@@ -231,7 +231,7 @@ function emptyArrayFilterSuite() {
     // x IN [] AND y > 0 — AND with always-false left member is always false
     testInEmptyArrayInAndAlwaysFalse: function () {
       const q = `FOR doc IN ${cn} FILTER doc.value IN [] AND doc.value > 0 RETURN doc`;
-      const explain = db._createStatement({query: q, bindVars: {}, options: paramEnabled}).explain();
+      const explain = db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain();
       const nodeTypes = helper.getCompactPlan(explain).map(n => n.type);
       assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
       assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
@@ -241,7 +241,7 @@ function emptyArrayFilterSuite() {
     // y > 0 AND x IN [] — AND with always-false right member is always false
     testInEmptyArrayAsSecondAndOperandAlwaysFalse: function () {
       const q = `FOR doc IN ${cn} FILTER doc.value > 0 AND doc.value IN [] RETURN doc`;
-      const explain = db._createStatement({query: q, bindVars: {}, options: paramEnabled}).explain();
+      const explain = db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain();
       const nodeTypes = helper.getCompactPlan(explain).map(n => n.type);
       assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
       assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
@@ -251,7 +251,7 @@ function emptyArrayFilterSuite() {
     // non-empty IN must not be folded to false
     testNonEmptyArrayInNotFolded: function () {
       const q = `FOR doc IN ${cn} FILTER doc.value IN [0, 1] RETURN doc`;
-      const explain = db._createStatement({query: q, bindVars: {}, options: paramEnabled}).explain();
+      const explain = db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain();
       const nodeTypes = helper.getCompactPlan(explain).map(n => n.type);
       assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
       assertEqual(2, db._query(q).toArray().length);
@@ -266,6 +266,39 @@ function emptyArrayFilterSuite() {
       assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
       assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
       assertEqual([], db._query(q, {}, paramWithAny).toArray());
+    },
+
+    // without replace-any-eq-with-in, remove-unnecessary-filters-2 alone cannot fold [] ANY == x
+    testAnyEqEmptyArrayWithoutReplaceRule: function () {
+      const opts = { optimizer: { rules: ['-all', '+remove-unnecessary-filters-2'] } };
+      const q = `FOR doc IN ${cn} FILTER [] ANY == doc.value RETURN doc`;
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}, options: opts}).explain()
+      ).map(n => n.type);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('FilterNode') !== -1, nodeTypes);
+    },
+
+    // NOOPT(x) IN [] bypasses AST folding (non-deterministic LHS) but isFalse()
+    // still recognizes it at plan construction — NoResultsNode with zero rules
+    testNoOptInEmptyArrayProducesNoResults: function () {
+      const q = `FOR doc IN ${cn} FILTER NOOPT(doc.value) IN [] RETURN doc`;
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+      ).map(n => n.type);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
+      assertEqual([], db._query(q, {}, paramNoRules).toArray());
+    },
+
+    // [] ANY == x with default optimizer — real-world scenario
+    testAnyEqEmptyArrayDefaultOptimizer: function () {
+      const q = `FOR doc IN ${cn} FILTER [] ANY == doc.value RETURN doc`;
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}}).explain()
+      ).map(n => n.type);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
+      assertEqual([], db._query(q).toArray());
     },
 
   };
