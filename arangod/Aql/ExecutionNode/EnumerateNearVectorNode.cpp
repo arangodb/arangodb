@@ -270,14 +270,6 @@ bool EnumerateNearVectorNode::isProduceResult() const {
   return true;
 }
 
-void EnumerateNearVectorNode::pickProjectionMode() noexcept {
-  bool const projectionsCoveredByStoredValues =
-      !_projections.empty() && _projections.usesCoveringIndex(_index);
-  _projectionMode = projectionsCoveredByStoredValues
-                        ? vector::ProjectionMode::kCovered
-                        : vector::ProjectionMode::kDocument;
-}
-
 void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
                                              unsigned int flags) const {
   // outVariable, projections, filter, filterProjections, count, etc.

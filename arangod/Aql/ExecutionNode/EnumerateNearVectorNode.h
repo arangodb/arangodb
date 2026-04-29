@@ -88,7 +88,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
     return _projectionMode;
   }
 
-  void pickProjectionMode() noexcept;
+  void setProjectionMode(vector::ProjectionMode mode) noexcept {
+    _projectionMode = mode;
+  }
 
   void rebindOutVariable(Variable const* newOutVariable) noexcept {
     _outVariable = newOutVariable;
