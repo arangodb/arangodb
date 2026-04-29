@@ -1441,17 +1441,27 @@ function processQuery(query, explain, planIndex) {
         let filter = '';
         if (node.hasOwnProperty("filterExpression") && JSON.stringify(node.filterExpression) !== "") {
           filter = keyword(' FILTER ') + buildExpression(node.filterExpression) + '   ' + annotation('/* early pruning */');
-          if (node.hasOwnProperty("isCoveredByStoredValues") && node.isCoveredByStoredValues) {
+          if (node.filterMode === "storedValues") {
             filter += annotation(" /* covered by storedValues */");
+          } else if (node.filterMode === "document") {
+            filter += annotation(" /* loads document */");
           }
         }
+
+        let projectionAnnotation = '';
+        if (node.projectionMode === "covering") {
+          projectionAnnotation = ', projections via storedValues';
+        } else if (node.projectionMode === "document") {
+          projectionAnnotation = ', projections via document';
+        }
+        const enumAnnotation = annotation('/* vector index' + projectionAnnotation + projections(node, 'projections', 'projections') + ' */');
 
         // Register the index used for near vector search
         if (node.hasOwnProperty('index')) {
           iterateIndexes(node.index, 0, node, types, variableName(node.inVariable));
         }
 
-        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters + filter;
+        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters + '   ' + enumAnnotation + filter;
       }
       case 'EnumerateViewNode':
         var condition = '';
