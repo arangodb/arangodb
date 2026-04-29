@@ -225,6 +225,16 @@ defmodule Mix.Tasks.Toast do
   end
 
   defp prepare_suite(suite_module, suite_dir, file_filters, test_filter) do
+    if js_suite?(suite_module) do
+      prepare_js_suite(suite_module, suite_dir, file_filters, test_filter)
+    else
+      prepare_exunit_suite(suite_module, suite_dir, file_filters, test_filter)
+    end
+  end
+
+  defp js_suite?(suite_module), do: function_exported?(suite_module, :__toast_js_paths__, 0)
+
+  defp prepare_exunit_suite(suite_module, suite_dir, file_filters, test_filter) do
     {helpers, test_files} = Helpers.discover_suite_files(suite_dir)
     compile_helpers(helpers)
 
@@ -234,6 +244,50 @@ defmodule Mix.Tasks.Toast do
     case test_files do
       [] -> []
       _ -> build_suite_entry(suite_module, suite_dir, test_files, line_filters, test_filter)
+    end
+  end
+
+  defp prepare_js_suite(suite_module, suite_dir, file_filters, test_filter) do
+    build_dir = Application.get_env(:toast, :build_dir)
+    {:ok, repo_root} = Toast.Utils.Filesystem.find_repository_root(build_dir)
+    js_paths = suite_module.__toast_js_paths__()
+
+    js_files =
+      js_paths
+      |> Enum.flat_map(&discover_js_files(Path.expand(&1, repo_root)))
+      |> filter_js_files(file_filters, suite_dir)
+
+    case js_files do
+      [] ->
+        []
+
+      _ ->
+        js_modules = ToastTest.JS.ModuleBuilder.build_modules(suite_module, js_files)
+        suite_opts = Helpers.build_suite_opts(js_modules, [], test_filter)
+        suite_name = Path.basename(suite_dir)
+        [{suite_module, js_modules, suite_opts, suite_name}]
+    end
+  end
+
+  defp discover_js_files(dir) do
+    dir
+    |> Path.join("*.js")
+    |> Path.wildcard()
+    |> Enum.sort()
+  end
+
+  defp filter_js_files(js_files, filters, _suite_dir) when map_size(filters) == 0, do: js_files
+
+  defp filter_js_files(js_files, filters, suite_dir) do
+    suite_name = Path.basename(suite_dir)
+
+    case Map.get(filters, suite_name) do
+      nil ->
+        js_files
+
+      file_specs ->
+        {file_names, _line_filters} = Helpers.parse_file_specs(file_specs)
+        Enum.filter(js_files, &(Path.basename(&1) in file_names))
     end
   end
 

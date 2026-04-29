@@ -74,6 +74,64 @@ defmodule ToastTest.Runner.TestExecution do
   end
 
   defp run_module(config, module) do
+    if js_module?(module) do
+      run_js_module(config, module)
+    else
+      run_exunit_module(config, module)
+    end
+  end
+
+  defp js_module?(module), do: function_exported?(module, :__toast_js_file__, 0)
+
+  defp run_js_module(config, module) do
+    test_module = Compat.get_test_metadata(module)
+
+    case TestFilter.filter(config.filters, test_module.tests) do
+      {[], excluded_or_skipped} ->
+        emit_module_with_state(config.manager, module, fn test ->
+          Enum.find(excluded_or_skipped, fn t -> t.name == test.name end) || test
+        end)
+
+      _ ->
+        execute_js_module(config, module)
+    end
+  end
+
+  defp execute_js_module(config, module) do
+    executor =
+      Application.get_env(:toast, :js_executor, ToastTest.JS.ArangoshExecutor)
+
+    suite_module = module.__toast_suite__()
+    deployment = ToastTest.DeploymentRegistry.get(suite_module)
+    endpoint = Toast.Deployment.default_endpoint(deployment)
+
+    build_dir = Application.fetch_env!(:toast, :build_dir)
+    {:ok, repo_root} = Toast.Utils.Filesystem.find_repository_root(build_dir)
+    arangosh = Path.expand(Path.join([build_dir, "bin", "arangosh"]))
+
+    {base_timeout, _source} = Timeout.get_timeout(config, %{})
+
+    extra_args =
+      if function_exported?(suite_module, :__toast_js_extra_args__, 0),
+        do: suite_module.__toast_js_extra_args__(),
+        else: %{}
+
+    executor_opts = [
+      endpoint: endpoint,
+      deployment: deployment,
+      arangosh: arangosh,
+      repo_root: repo_root,
+      timeout: base_timeout,
+      extra_args: extra_args
+    ]
+
+    ToastTest.JS.TestRunner.run_module(config.manager, module,
+      executor: executor,
+      executor_opts: executor_opts
+    )
+  end
+
+  defp run_exunit_module(config, module) do
     test_module = Compat.get_test_metadata(module)
     EventStore.notify(%{event: :module_started, module: module})
     Compat.module_started(config.manager, test_module)

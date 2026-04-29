@@ -1,0 +1,167 @@
+################################################################################
+## DISCLAIMER
+##
+## Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+## Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+##
+## Licensed under the Business Source License 1.1 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+## Copyright holder is ArangoDB GmbH, Cologne, Germany
+################################################################################
+
+defmodule ToastTest.JS.ModuleBuilderTest do
+  use ExUnit.Case, async: true
+
+  alias ToastTest.JS.ModuleBuilder
+
+  # A bare module atom — ModuleBuilder only stores it, doesn't call into it.
+  @fake_suite ToastTest.JS.ModuleBuilderTest.FakeSuite
+
+  describe "derive_module_name/2" do
+    test "simple filename" do
+      assert ModuleBuilder.derive_module_name(Smoke.Suite, "test_version.js") ==
+               Smoke.JS.VersionTest
+    end
+
+    test "filename with underscores" do
+      assert ModuleBuilder.derive_module_name(Smoke.Suite, "test_aql_queries.js") ==
+               Smoke.JS.AqlQueriesTest
+    end
+
+    test "filename with hyphens" do
+      assert ModuleBuilder.derive_module_name(Smoke.Suite, "test_aql-join.js") ==
+               Smoke.JS.AqlJoinTest
+    end
+
+    test "suite with deep namespace" do
+      assert ModuleBuilder.derive_module_name(Shell.Client.Aql.Suite, "test_optimizer.js") ==
+               Shell.Client.Aql.JS.OptimizerTest
+    end
+  end
+
+  describe "build_module/3" do
+    test "creates a module with expected functions" do
+      suite = @fake_suite
+      js_file = "/tmp/test_example.js"
+
+      module = ModuleBuilder.build_module(suite, js_file)
+
+      assert function_exported?(module, :__ex_unit__, 0)
+      assert function_exported?(module, :__toast_suite__, 0)
+      assert function_exported?(module, :__toast_js_file__, 0)
+      assert function_exported?(module, :__toast_weight__, 0)
+    end
+
+    test "__toast_suite__ returns the suite module" do
+      suite = @fake_suite
+      js_file = "/tmp/test_foo.js"
+
+      module = ModuleBuilder.build_module(suite, js_file)
+
+      assert module.__toast_suite__() == suite
+    end
+
+    test "__toast_js_file__ returns the JS file path" do
+      suite = @fake_suite
+      js_file = "/tmp/test_bar.js"
+
+      module = ModuleBuilder.build_module(suite, js_file)
+
+      assert module.__toast_js_file__() == js_file
+    end
+
+    test "__toast_weight__ defaults to 1" do
+      module = ModuleBuilder.build_module(@fake_suite, "/tmp/test_w.js")
+
+      assert module.__toast_weight__() == 1
+    end
+
+    test "__ex_unit__ returns valid TestModule struct" do
+      suite = @fake_suite
+      js_file = "/tmp/test_meta.js"
+
+      module = ModuleBuilder.build_module(suite, js_file)
+      test_module = module.__ex_unit__()
+
+      assert %ExUnit.TestModule{} = test_module
+      assert test_module.name == module
+      assert test_module.file == js_file
+      assert test_module.setup_all? == false
+      assert test_module.tags.async == false
+    end
+
+    test "__ex_unit__ includes a placeholder test" do
+      module =
+        ModuleBuilder.build_module(@fake_suite, "/tmp/test_placeholder.js")
+
+      test_module = module.__ex_unit__()
+
+      assert [%ExUnit.Test{} = test] = test_module.tests
+      assert test.module == module
+      assert test.tags.test_type == :test
+    end
+
+    test "build_module with custom weight" do
+      module =
+        ModuleBuilder.build_module(@fake_suite, "/tmp/test_heavy.js", weight: 5)
+
+      assert module.__toast_weight__() == 5
+    end
+  end
+
+  describe "tags_from_filename/1" do
+    test "cluster-only file" do
+      assert ModuleBuilder.tags_from_filename("aql-join-cluster.js") == %{cluster_only: true}
+    end
+
+    test "noncluster file does not get cluster_only" do
+      tags = ModuleBuilder.tags_from_filename("aql-join-noncluster.js")
+      assert tags == %{single_only: true}
+      refute Map.has_key?(tags, :cluster_only)
+    end
+
+    test "multiple tags" do
+      tags = ModuleBuilder.tags_from_filename("aql-nightly-cluster.js")
+      assert tags == %{cluster_only: true, nightly: true}
+    end
+
+    test "no matching segments" do
+      assert ModuleBuilder.tags_from_filename("aql-parse.js") == %{}
+    end
+
+    test "failure points tag" do
+      assert ModuleBuilder.tags_from_filename("aql-crash-fp.js") == %{failure_points: true}
+    end
+
+    test "sanitizer and nondeterministic" do
+      tags = ModuleBuilder.tags_from_filename("test-noasan-nondeterministic.js")
+      assert tags == %{noasan: true, nondeterministic: true}
+    end
+  end
+
+  describe "build_modules/2" do
+    test "creates a module for each JS file" do
+      suite = @fake_suite
+      files = ["/tmp/test_a.js", "/tmp/test_b.js"]
+
+      modules = ModuleBuilder.build_modules(suite, files)
+
+      assert length(modules) == 2
+      assert Enum.all?(modules, &function_exported?(&1, :__toast_js_file__, 0))
+
+      js_files = Enum.map(modules, & &1.__toast_js_file__())
+      assert "/tmp/test_a.js" in js_files
+      assert "/tmp/test_b.js" in js_files
+    end
+  end
+end
