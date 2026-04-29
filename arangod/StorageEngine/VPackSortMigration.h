@@ -29,7 +29,9 @@ namespace arangodb {
 class RocksDBEngine;
 
 // On dbservers, agents and single servers:
-Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
+Result analyzeVPackIndexSorting(RocksDBEngine& engine,
+                                DatabaseFeature& databaseFeature,
+                                VPackBuilder& result);
 Result migrateVPackIndexSorting(RocksDBEngine& engine, VPackBuilder& result);
 Result statusVPackIndexSorting(RocksDBEngine& engine, VPackBuilder& result);
 

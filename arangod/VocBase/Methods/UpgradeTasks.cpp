@@ -783,7 +783,12 @@ Result UpgradeTasks::migrateHashSkiplistToPersistent(
     auto& clusterFeature = vocbase.server().getFeature<ClusterFeature>();
     return convertHashSkiplistIndexesInPlanCoordinator(vocbase, clusterFeature);
   }
-  return convertHashSkiplistInDefinitionsColumnFamily(vocbase.engine<RocksDBEngine>());
+  auto& storageEngine = vocbase.engine();
+  if (storageEngine.typeName() != RocksDBEngine::kEngineName) {
+    return {};
+  }
+  return convertHashSkiplistInDefinitionsColumnFamily(
+      static_cast<RocksDBEngine&>(storageEngine));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

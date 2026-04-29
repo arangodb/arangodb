@@ -43,19 +43,12 @@
 namespace arangodb {
 
 // On dbservers, agents and single servers:
-Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
-  auto& storageEngine = vocbase.engine();
-  if (storageEngine.typeName() != RocksDBEngine::kEngineName) {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                  "VPack sorting migration is unnecessary for storage engines "
-                  "other than RocksDB");
-  }
-  auto& engine = static_cast<RocksDBEngine&>(storageEngine);
+Result analyzeVPackIndexSorting(RocksDBEngine& engine,
+                                DatabaseFeature& databaseFeature,
+                                VPackBuilder& result) {
   auto* db = engine.db();
 
   using IndexType = arangodb::Index::IndexType;
-  DatabaseFeature& databaseFeature =
-      vocbase.server().getFeature<DatabaseFeature>();
   auto newComparator = RocksDBVPackComparator<
       arangodb::basics::VelocyPackHelper::SortingMethod::Correct>();
 

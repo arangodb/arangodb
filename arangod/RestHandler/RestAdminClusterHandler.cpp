@@ -3011,7 +3011,9 @@ async<void> RestAdminClusterHandler::handleVPackSortMigration(
 
       if (request()->requestType() == rest::RequestType::GET) {
         if (subCommand == VPackSortMigrationCheck) {
-          res = ::analyzeVPackIndexSorting(_vocbase, result);
+          res = ::analyzeVPackIndexSorting(
+              rocksDBEngine, _vocbase.server().getFeature<DatabaseFeature>(),
+              result);
         } else {
           res = ::statusVPackIndexSorting(rocksDBEngine, result);
         }
