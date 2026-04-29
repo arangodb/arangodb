@@ -36,10 +36,9 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
+#include "RestServer/BootstrapOptionsProvider.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Upgrade.h"
@@ -109,10 +108,8 @@ ClusterUpgradeFeature* BootstrapFeature::clusterUpgradeFeature() {
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--hund", "Make ArangoDB bark on startup.",
-      new BooleanParameter(&_options.bark),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  arangodb::bootstrap::BootstrapOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 // Local Helper functions

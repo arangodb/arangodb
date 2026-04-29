@@ -73,6 +73,12 @@ unsigned long RandomDevice::seed() {
   return (unsigned long)(dev + tid + now);
 }
 
+std::uint64_t RandomDevice::seed64() {
+  std::random_device rd;
+  return (static_cast<std::uint64_t>(rd()) << 32) |
+         static_cast<std::uint64_t>(rd());
+}
+
 int32_t RandomDevice::interval(int32_t left, int32_t right) {
   return random(left, right);
 }

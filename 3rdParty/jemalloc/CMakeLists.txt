@@ -81,9 +81,11 @@ if (LINUX OR DARWIN)
         ${JEMALLOC_PROF}
         ${JEMALLOC_CHECKS}
     BUILD_COMMAND
-      $(MAKE) build_lib_static
+      ${MAKE} ${MAKE_JOBS} build_lib_static
+    BUILD_BYPRODUCTS
+      ${JEMALLOC_LIB}
     INSTALL_COMMAND
-      $(MAKE) install_include
+      ${MAKE} ${MAKE_JOBS} install_include
         && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
         && ${CMAKE_COMMAND} -E copy ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
     STEP_TARGETS

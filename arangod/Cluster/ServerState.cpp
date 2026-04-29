@@ -24,6 +24,7 @@
 #include "ServerState.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <iomanip>
 #include <regex>
 #include <unordered_map>
@@ -620,8 +621,16 @@ bool ServerState::hasPersistedId() {
 bool ServerState::writePersistedId(std::string const& id) {
   std::string uuidFilename = getUuidFilename();
   // try to create underlying directory
-  auto error = TRI_ERROR_NO_ERROR;
-  FileUtils::createDirectory(FileUtils::dirname(uuidFilename), &error);
+
+  auto ec = std::error_code{};
+  std::ignore = std::filesystem::create_directory(
+      std::filesystem::path(uuidFilename).parent_path(), ec);
+  if (ec) {
+    LOG_TOPIC("f2f71", FATAL, arangodb::Logger::FIXME)
+        << "Cannot create UUID directory '" << uuidFilename
+        << "': " << ec.message();
+    FATAL_ERROR_EXIT();
+  }
 
   try {
     arangodb::basics::FileUtils::spit(uuidFilename, id, true);

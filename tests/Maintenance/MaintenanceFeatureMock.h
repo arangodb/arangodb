@@ -104,6 +104,13 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
 
   virtual ~TestMaintenanceFeature() = default;
 
+  void collectOptions(
+      std::shared_ptr<arangodb::options::ProgramOptions> options) override {
+    arangodb::MaintenanceFeature::collectOptions(options);
+    _options.maintenanceThreadsMax = 0;
+    _options.maintenanceThreadsSlowMax = 0;
+  }
+
   void validateOptions(
       std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
 

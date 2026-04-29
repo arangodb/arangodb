@@ -29,12 +29,19 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const internal = require("internal");
 const fs = require("fs");
+const IM  = global.instanceManager;
 const db = arangodb.db;
 const isCluster = internal.isCluster();
-const isServer = require('@arangodb').isServer;
 
 function DropDatabase() {
-  let path = fs.join(db._path(), 'databases');
+  let getAllSubPathCounts = function() {
+    let count = 0;
+    IM.arangods.forEach(arangod => {
+      let path = fs.join(arangod.dataDir, 'databases');
+      count += fs.list(path).length;
+    });
+    return count;
+  };
   let was = 0;
 
   function dirmaker(n, needDrop) {
@@ -45,9 +52,11 @@ function DropDatabase() {
       db._create("c", {numberOfShards: 3});
       db._createView("v", "arangosearch", {});
       db.v.properties({links: {c: {includeAllFields: true}}});
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        db.c.insert({Hallo: i});
+        docs.push({Hallo: i});
       }
+      db.c.save(docs);
       db._query(`FOR d IN v OPTIONS { waitForSync:true } LIMIT 1 RETURN 1`);
       if (needDrop) {
         db.v.properties({links: {c: null}});
@@ -62,19 +71,17 @@ function DropDatabase() {
 
   return {
     setUpAll: function () {
-      was = fs.list(path).length;
+      was = getAllSubPathCounts();
     },
 
     tearDown: function () {
       for (let i = 0; i < 20; ++i) {
-        let now = fs.list(path).length;
+        let now = getAllSubPathCounts();
         if (was === now) {
           return;
         }
         internal.sleep(0.5);
       }
-      print(path);
-      print(fs.list(path));
       assertTrue(false);
     },
 
@@ -91,10 +98,6 @@ function DropDatabase() {
   };
 }
 
-if (!isCluster && isServer) {
-  jsunity.run(DropDatabase);
-} else {
-  // TODO(MBkkt) Add test for cluster, we need to know path to dbserver
-}
+jsunity.run(DropDatabase);
 
 return jsunity.done();

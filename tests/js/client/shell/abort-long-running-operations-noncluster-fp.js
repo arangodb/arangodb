@@ -147,7 +147,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
   };
 
   let suite = {
-    setup: function() {
+    setUp: function() {
       clients = [];
     },
     tearDown: function () {

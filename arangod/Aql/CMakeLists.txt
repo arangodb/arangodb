@@ -32,6 +32,8 @@ add_library(arango_aql STATIC
   CollectionAccess.cpp
   Collections.cpp
   Condition.cpp
+  ConditionPart.cpp
+  ConditionCoverage.cpp
   ConditionFinder.cpp
   ConstFetcher.cpp
   CostEstimate.cpp
@@ -69,7 +71,6 @@ add_library(arango_aql STATIC
   NonConstExpression.cpp
   NonConstExpressionContainer.cpp
   Optimizer.cpp
-  OptimizerRules.cpp
   OptimizerRulesFeature.cpp
   OptimizerRulesOptionsProvider.cpp
   OptimizerUtils.cpp

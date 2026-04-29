@@ -47,6 +47,7 @@
 #include "VocBase/ticks.h"
 
 #include <rocksdb/comparator.h>
+#include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -257,6 +258,12 @@ void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
     destroyCache();
     setupCache();
   }
+}
+
+Result RocksDBIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> /*it*/,
+                                  rocksdb::Slice /*upper*/,
+                                  RocksDBMethods* /*methods*/) {
+  return {};
 }
 
 /// performs a preflight check for an insert operation, not carrying out any

@@ -783,10 +783,14 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                   Index::Serialize::Maintenance);
   }
 
-  auto filter = [indexFlags, forPersistence, showInProgress](
-                    Index const* idx, decltype(Index::makeFlags())& flags) {
+  auto const filter = [indexFlags, forPersistence, forMaintance,
+                       showInProgress](Index const* idx,
+                                       decltype(Index::makeFlags())& flags) {
     if ((forPersistence || !idx->isHidden()) &&
-        (showInProgress || !idx->inProgress())) {
+        (showInProgress || !idx->inProgress() ||
+         // We do this since we need trainingState of the vector index in agency
+         // so we can report it to the end user
+         (forMaintance && idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX))) {
       flags = indexFlags;
       return true;
     }

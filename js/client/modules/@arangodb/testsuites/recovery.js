@@ -42,6 +42,7 @@ const inst = require('@arangodb/testutils/instance');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const _ = require('lodash');
 const { isEnterprise, versionHas } = require("@arangodb/test-helper");
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 
 const toArgv = internal.toArgv;
 const ArangoError = require('@arangodb').ArangoError;
@@ -307,6 +308,7 @@ function _recovery (options, recoveryTests) {
         continue;
       }
       ////////////////////////////////////////////////////////////////////////
+      SetGlobalExecutionDeadlineTo(params.options.oneTestTimeout / 4);
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;

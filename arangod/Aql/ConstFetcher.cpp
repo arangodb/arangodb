@@ -33,8 +33,7 @@
 
 #include <algorithm>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 
@@ -258,3 +257,5 @@ auto ConstFetcher::canUseFullBlock(
   // If we get here, the ranges covers the full block
   return true;
 }
+
+}  // namespace arangodb::aql

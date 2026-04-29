@@ -30,7 +30,6 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const aql = arangodb.aql;
 const ERRORS = arangodb.errors;
-const isServer = typeof arango === 'undefined';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -668,7 +667,7 @@ function StatementSuite () {
       });
       let result = st.execute();
       // batchSize is ignored in arangod
-      assertEqual(isServer, result.getExtra().hasOwnProperty("stats"));
+      assertEqual(false, result.getExtra().hasOwnProperty("stats"));
       assertTrue(result.hasNext());
       while (result.hasNext()) {
         result.next();

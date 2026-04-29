@@ -29,7 +29,7 @@
 
 #include <velocypack/Iterator.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 constexpr const char expressionKey[] = "expression";
 constexpr const char indexPathKey[] = "indexPath";
@@ -38,7 +38,7 @@ constexpr const char varMappingKey[] = "varMapping";
 constexpr const char hasV8ExpressionKey[] = "hasV8Expression";
 
 void NonConstExpressionContainer::toVelocyPack(
-    arangodb::velocypack::Builder& builder) const {
+    velocypack::Builder& builder) const {
   VPackObjectBuilder containerObject(&builder);
   builder.add(VPackValue(expressionsKey));
   {
@@ -81,7 +81,7 @@ NonConstExpressionContainer NonConstExpressionContainer::clone(Ast* ast) const {
 }
 
 NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(
-    Ast* ast, arangodb::velocypack::Slice slice) {
+    Ast* ast, velocypack::Slice slice) {
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.hasKey(expressionsKey));
   TRI_ASSERT(slice.hasKey(varMappingKey));
@@ -133,3 +133,5 @@ NonConstExpressionContainer::NonConstExpressionContainer(
     : _expressions(std::move(expressions)),
       _varToRegisterMapping(std::move(varToRegisterMapping)),
       _hasV8Expression(hasV8Expression) {}
+
+}  // namespace arangodb::aql

@@ -30,8 +30,7 @@
 
 #include <velocypack/Builder.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 Collections::Collections(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
@@ -128,3 +127,5 @@ void Collections::visit(
     }
   }
 }
+
+}  // namespace arangodb::aql
