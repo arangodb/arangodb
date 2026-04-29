@@ -280,8 +280,8 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     };
     skipOverCalculationNodes();
 
-    // We tolerate post filtering
-    // For now we can handle only a single FILTER statement
+    // We detect filtering but do not handle it in this rule but in the
+    // pushFilterIntoEnumerateNear
     if (currentNode != nullptr && currentNode->getType() == EN::FILTER) {
       currentNode = currentNode->getFirstParent();
       triggerFilterOptimization = true;
@@ -305,7 +305,7 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
     auto const* limitNode =
         ExecutionNode::castTo<LimitNode const*>(maybeLimitNode);
-    // Offset cannot be handled, and there must be a limit which means topK
+    // And there must be a limit which means topK
     if (limitNode->limit() == 0) {
       LOG_RULE << "Limit not set";
       continue;
@@ -375,7 +375,7 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           plan.get(), plan->nextId(), inVariable, documentVariable,
           distanceVariable, limit, sortField->ascending, limitNode->offset(),
           std::move(searchParameters), enumerateCollectionNode->collection(),
-          index, nullptr, false);
+          index, nullptr, vector::SearchStrategy::FilterMode::kNone);
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(
