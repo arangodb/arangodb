@@ -485,10 +485,17 @@ struct OptimizerRule {
       "useVectorIndexForSort sort enables pushFilterIntoEnumerateNear rule, "
       "otherwise the pushFilterIntoEnumerateNear can never trigger");
 
-  static_assert(useVectorIndexForSort < removeMaterializerForEnumerateNearRule,
-                "useVectorIndexForSort enables "
-                "removeMaterializerForEnumerateNearRule, "
-                "otherwise it can never trigger");
+  static_assert(
+      useVectorIndexForSort < removeMaterializerForEnumerateNearRule,
+      "removeMaterializerForEnumerateNearRule must run after "
+      "useVectorIndexForSort, since it relies on the presence of "
+      "EnumerateNearVectorNode which is added by useVectorIndexForSort");
+
+  static_assert(
+      pushFilterIntoEnumerateNear < removeMaterializerForEnumerateNearRule,
+      "removeMaterializerForEnumerateNearRule must run after "
+      "pushFilterIntoEnumerateNear, since the filter mode must already be "
+      "decided as it takes precedence over projections");
 
   std::string_view name;
   RuleFunction func;
