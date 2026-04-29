@@ -43,6 +43,7 @@
 #include <faiss/IndexIVF.h>
 #include <rocksdb/iterator.h>
 #include <velocypack/Builder.h>
+#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
@@ -64,24 +65,44 @@ std::string_view trainingStateToString(VectorIndexTrainingState state) noexcept;
 
 namespace vector {
 
+// What the search must produce, from the caller's point of view. The
+// storage layer maps this to a concrete iterator + capture shape (see the
+// table in RocksDBVectorIndexList.h); callers do not name iterator types.
+struct SearchStrategy {
+  // How the filter, if any, gets evaluated by the iterator.
+  enum class FilterMode : std::uint8_t {
+    kNone,          // no filter pushed down
+    kStoredValues,  // filter expressible against storedValues only
+    kDocument,      // filter requires the full document
+  };
+
+  // What the executor needs, per surviving entry, to satisfy projections.
+  enum class ProjectionSource : std::uint8_t {
+    kNone,          // no projections (executor only emits labels/distances)
+    kStoredValues,  // serve from a captured storedValues array
+    kDocument,      // serve from a captured (or post-fetched) full document
+  };
+
+  FilterMode filter{FilterMode::kNone};
+  ProjectionSource projection{ProjectionSource::kNone};
+};
+
 // Static configuration of a vector search. Owned by the executor's Infos
 // (set once at createBlock) and passed by reference to readBatch.
 struct SearchConfig {
   SearchParameters searchParameters;
   std::size_t topK;  // = LIMIT + OFFSET
 
-  // Optional pushed-down filter. Either all four are populated or none.
+  // Optional pushed-down filter. When SearchStrategy::filter != kNone,
+  // these must be populated.
   aql::Expression* filterExpression{nullptr};
   std::vector<std::pair<aql::VariableId, aql::RegisterId>> filterVarsToRegs;
   aql::Variable const* documentVariable{nullptr};
 
-  // Use the storedValues-only filter iterator (filter covered by
-  // storedValues AND no consumer needs the full document).
-  bool useStoredValuesIterator{false};
-
-  // Filter iterator hands the VPack object it built for filter eval back
-  // through SearchResult.capturedDocuments.
-  bool captureDocuments{false};
+  // Selects the iterator family and capture behaviour at the storage
+  // layer. Set by EnumerateNearVectorNode::createBlock based on the
+  // node's filter / projection coverage analysis.
+  SearchStrategy strategy;
 };
 
 // Per-call execution context — what changes between readBatch invocations
@@ -96,8 +117,11 @@ struct SearchContext {
 struct SearchResult {
   std::vector<VectorIndexLabelId> labels;
   std::vector<float> distances;
-  containers::NodeHashMap<LocalDocumentId, velocypack::Buffer<uint8_t>>
-      capturedDocuments;  // empty unless captureDocuments was set
+  // Per-survivor VPack: a storedValues array (when strategy.projection ==
+  // kStoredValues) or a full document Object (kDocument). Empty unless
+  // strategy.projection != kNone.
+  containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>
+      capturedDocuments;
 };
 
 }  // namespace vector
