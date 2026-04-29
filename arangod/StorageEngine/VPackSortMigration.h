@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,11 +26,12 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+class RocksDBEngine;
 
 // On dbservers, agents and single servers:
 Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
-Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
-Result statusVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
+Result migrateVPackIndexSorting(RocksDBEngine& engine, VPackBuilder& result);
+Result statusVPackIndexSorting(RocksDBEngine& engine, VPackBuilder& result);
 
 // On coordinators:
 async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
