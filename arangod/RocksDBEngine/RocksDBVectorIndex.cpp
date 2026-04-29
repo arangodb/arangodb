@@ -202,11 +202,11 @@ void RocksDBVectorIndex::toVelocyPack(
 }
 
 vector::SearchResult RocksDBVectorIndex::readBatch(
-    vector::FaissSearchConfig const& config, vector::SearchContext const& ctx) {
-  TRI_ASSERT(ctx.inputs != nullptr);
-  TRI_ASSERT(ctx.trx != nullptr);
+    vector::VectorSearchConfig const& config) {
+  TRI_ASSERT(config.inputs != nullptr);
+  TRI_ASSERT(config.trx != nullptr);
 
-  auto& inputs = *ctx.inputs;
+  auto& inputs = *config.inputs;
   TRI_ASSERT(inputs.size() == _definition.dimension)
       << "Number of components does not match vector dimension, topK: "
       << config.topK << ", dimension: " << _definition.dimension
@@ -251,20 +251,20 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
       std::invoke([&]() -> vector::RocksDBFaissIteratorContext {
         if (config.strategy.filter == FilterMode::kNone) {
           vector::IteratorContext simpleCtx;
-          simpleCtx.trx = ctx.trx;
+          simpleCtx.trx = config.trx;
           simpleCtx.capturedDocuments = captureSink;
           return simpleCtx;
         }
-        TRI_ASSERT(ctx.queryContext != nullptr);
+        TRI_ASSERT(config.queryContext != nullptr);
         TRI_ASSERT(config.filterExpression != nullptr);
 
         vector::IteratorFilterContext searchCtx;
-        searchCtx.trx = ctx.trx;
+        searchCtx.trx = config.trx;
         searchCtx.filterExpression = config.filterExpression;
-        if (ctx.inputRow != nullptr) {
-          searchCtx.inputRow = *ctx.inputRow;
+        if (config.inputRow != nullptr) {
+          searchCtx.inputRow = *config.inputRow;
         }
-        searchCtx.queryContext = ctx.queryContext;
+        searchCtx.queryContext = config.queryContext;
         searchCtx.filterVarsToRegs = &config.filterVarsToRegs;
         searchCtx.documentVariable = config.documentVariable;
         searchCtx.useStoredValuesIterator =

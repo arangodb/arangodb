@@ -175,7 +175,7 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
       .queryContext = engine.getQuery(),
       .collection = _collectionAccess.collection(),
       .searchConfig =
-          vector::FaissSearchConfig{
+          vector::VectorSearchConfig{
               .searchParameters = _searchParameters,
               .topK = _limit + _offset,
               .filterExpression = filter(),

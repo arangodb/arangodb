@@ -65,13 +65,10 @@ enum class VectorIndexTrainingState : std::uint8_t {
 
 std::string_view trainingStateToString(VectorIndexTrainingState state) noexcept;
 
-// SearchStrategy is defined in VectorIndex/VectorIndexDefinition.h so the
-// AQL layer (EnumerateNearVectorNode) and the storage layer can both use
-// it without crossing layering boundaries.
-
-// Static configuration of a vector search. Owned by the executor's Infos
-// (set once at createBlock) and passed by reference to readBatch.
-struct FaissSearchConfig {
+// Configuration of a vector search. The static fields are filled by
+// EnumerateNearVectorNode::createBlock; the per-call fields are set by
+// the executor before each readBatch invocation.
+struct VectorSearchConfig {
   SearchParameters searchParameters;
   std::size_t topK;  // = LIMIT + OFFSET
 
@@ -82,18 +79,15 @@ struct FaissSearchConfig {
   aql::Variable const* documentVariable{nullptr};
 
   // Selects the iterator family and capture behaviour at the storage
-  // layer. Set by EnumerateNearVectorNode::createBlock based on the
-  // node's filter / projection coverage analysis.
+  // layer. Set based on the node's filter / projection coverage analysis.
   SearchStrategy strategy;
-};
 
-// Per-call execution context — what changes between readBatch invocations
-// for the same configured EnumerateNearVectorNode.
-struct SearchContext {
-  std::vector<float>* inputs;  // mutable: cosine renormalises in place
-  aql::InputAqlItemRow const* inputRow;
-  transaction::Methods* trx;
-  aql::QueryContext* queryContext;
+  // Per-call state. Pointers into executor-owned storage; updated before
+  // each readBatch.
+  std::vector<float>* inputs{nullptr};  // mutable: cosine renormalises in place
+  aql::InputAqlItemRow const* inputRow{nullptr};
+  transaction::Methods* trx{nullptr};
+  aql::QueryContext* queryContext{nullptr};
 };
 
 struct SearchResult {
@@ -133,8 +127,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
-  vector::SearchResult readBatch(vector::FaissSearchConfig const& config,
-                                 vector::SearchContext const& ctx);
+  vector::SearchResult readBatch(vector::VectorSearchConfig const& config);
 
   vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 

@@ -61,7 +61,7 @@ struct EnumerateNearVectorsExecutorInfos {
   aql::Collection const* collection;
 
   // search configuration -- passed by reference straight to readBatch
-  vector::FaissSearchConfig searchConfig;
+  vector::VectorSearchConfig searchConfig;
 
   // output strategy
   Projections projections;
