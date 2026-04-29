@@ -49,7 +49,6 @@ struct Databases {
   static std::vector<std::string> list(DatabaseFeature& databaseFeature,
                                        ClusterFeature* clusterFeature,
                                        std::string const& user = "");
-  static Result info(TRI_vocbase_t* vocbase, velocypack::Builder& result);
   static Result create(application_features::ApplicationServer& server,
                        ExecContext const& context, std::string const& dbName,
                        velocypack::Slice users, velocypack::Slice options);

@@ -1456,8 +1456,6 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   _dataSourceByUuid.clear();
 }
 
-std::string TRI_vocbase_t::path() const { return _engine.databasePath(); }
-
 bool TRI_vocbase_t::isOneShard() const {
   return _info.sharding() == StaticStrings::ShardingSingle;
 }
@@ -1483,11 +1481,6 @@ void TRI_vocbase_t::addReplicationApplier() {
 void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
   VPackObjectBuilder b(&result);
   _info.toVelocyPack(result);
-  if (ServerState::instance()->isCoordinator()) {
-    result.add("path", VPackValue(path()));
-  } else {
-    result.add("path", VPackValue("none"));
-  }
 }
 
 void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {

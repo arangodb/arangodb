@@ -70,7 +70,6 @@ function dealing_with_database_information_methodsSuite () {
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
       assertEqual(doc.parsedBody["result"]["name"], "_system", doc);
-      assertEqual(typeof doc.parsedBody["result"]["path"], 'string');
       assertTrue(doc.parsedBody["result"]["isSystem"]);
     }
   };
@@ -301,14 +300,12 @@ function dealing_with_database_manipulation_methodsSuite () {
       doc = arango.GET_RAW(api + "/current");
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody['result']["name"], "_system");
-      assertEqual(typeof doc.parsedBody['result']["path"], 'string');
       assertTrue(doc.parsedBody['result']["isSystem"]);
 
       //  retrieve information about new database;
       doc = arango.GET_RAW(`/_db/${name}${api}/current`);
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody['result']["name"], name);
-      assertEqual(typeof doc.parsedBody['result']["path"], 'string');
       assertFalse(doc.parsedBody['result']["isSystem"]);
 
       doc = arango.DELETE_RAW(api + `/${name}`);
@@ -337,7 +334,6 @@ function dealing_with_database_manipulation_methodsSuite () {
       doc = arango.GET_RAW(`/_db/${name}${api}/current`);
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody['result']["name"], name);
-      assertEqual(typeof doc.parsedBody['result']["path"], 'string');
       assertFalse(doc.parsedBody['result']["isSystem"]);
 
       //  retrieve information about user "admin";
@@ -379,7 +375,6 @@ function dealing_with_database_manipulation_methodsSuite () {
       doc = arango.GET_RAW(`/_db/${name}${api}/current`);
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody["result"]["name"], name);
-      assertEqual(typeof doc.parsedBody["result"]["path"], 'string');
       assertFalse(doc.parsedBody["result"]["isSystem"]);
 
       //  retrieve information about user "admin";
@@ -430,7 +425,6 @@ function dealing_with_database_manipulation_methodsSuite () {
       doc = arango.GET_RAW(`/_db/${name}${api}/current`);
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody["result"]["name"], name);
-      assertEqual(typeof doc.parsedBody["result"]["path"], 'string');
       assertFalse(doc.parsedBody["result"]["isSystem"]);
 
       doc = arango.DELETE_RAW(api + `/${name}`);
