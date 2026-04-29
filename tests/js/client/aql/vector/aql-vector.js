@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, print */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,25 +29,25 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const helper = require("@arangodb/aql-helper");
 const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
-    randomInteger,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
     createVectorGenerator,
     DistanceFunctions,
-} = require("@arangodb/testutils/vector-generator");
+    insertDocsAndAssertIndex,
+    waitForAllVectorIndexesState,
+    VectorIndexTrainingState,
+} = require("@arangodb/testutils/vector-index-common");
 
-const {
-    versionHas
-} = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -57,8 +57,9 @@ function VectorIndexL2TestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 500;
-    const seed = randomInteger();
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
 
@@ -73,30 +74,31 @@ function VectorIndexL2TestSuite() {
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             // Generate vectors with minimum distance separation using the utility
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            collection.insert(vectorData.docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
+            insertDocsAndAssertIndex({
+                collection, docs: vectorData.docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 10,
+                        trainingIterations: 10,
+                    },
                 },
             });
         },
@@ -432,20 +434,20 @@ function VectorIndexL2TestSuite() {
         testApproxL2Subquery: function() {
             const queries = [aql`
         FOR docOuter IN ${collection}
-        FILTER docOuter.nonVector < 10 
+        FILTER docOuter.nonVector < 10
         LET neighbours = (FOR docInner IN ${collection}
           LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
-          SORT dist 
-          LIMIT 5 
+          SORT dist
+          LIMIT 5
           RETURN { key: docInner._key, dist })
         RETURN { key: docOuter._key, neighbours }
         `, aql`
         FOR docOuter IN ${collection}
-        FILTER docOuter.nonVector < 10 
+        FILTER docOuter.nonVector < 10
         LET neighbours = (FOR docInner IN ${collection}
           LET dist = APPROX_NEAR_L2(docOuter.vector, docInner.vector)
-          SORT dist 
-          LIMIT 5 
+          SORT dist
+          LIMIT 5
           RETURN { key: docInner._key, dist })
         RETURN { key: docOuter._key, neighbours }
         `];
@@ -470,7 +472,7 @@ function VectorIndexL2TestSuite() {
         testApproxL2SubqueryWithSkipping: function() {
             const queryWithSkip = aql`
             FOR docOuter IN ${collection}
-            FILTER docOuter.nonVector < 10 
+            FILTER docOuter.nonVector < 10
             SORT docOuter.nonVector
             LET neighbours = (FOR docInner IN ${collection}
               LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
@@ -481,7 +483,7 @@ function VectorIndexL2TestSuite() {
 
             const queryWithoutSkip = aql`
               FOR docOuter IN ${collection}
-              FILTER docOuter.nonVector < 10 
+              FILTER docOuter.nonVector < 10
               SORT docOuter.nonVector
               LET neighbours = (FOR docInner IN ${collection}
                 LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
@@ -526,8 +528,9 @@ function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 1000;
-    const seed = randomInteger();
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
 
@@ -543,28 +546,29 @@ function VectorIndexCosineTestSuite() {
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             // Generate vectors with minimum distance separation using the utility
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            collection.insert(vectorData.docs);
-
-            collection.ensureIndex({
-                name: "vector_cosine",
-                type: "vector",
-                fields: ["vector"],
-                params: {
-                    metric: "cosine",
-                    dimension: dimension,
-                    nLists: 10
+            insertDocsAndAssertIndex({
+                collection, docs: vectorData.docs, seed,
+                indexName: "vector_cosine",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    params: {
+                        metric: "cosine",
+                        dimension: dimension,
+                        nLists: 10
+                    },
                 },
             });
         },
@@ -704,8 +708,9 @@ function VectorIndexInnerProductTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 1000;
-    const seed = randomInteger();
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
 
@@ -721,28 +726,29 @@ function VectorIndexInnerProductTestSuite() {
 
     return {
         setUpAll: function() {
-            print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             // Generate vectors with minimum distance separation using the utility
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            collection.insert(vectorData.docs);
-
-            collection.ensureIndex({
-                name: "vector_inner_product",
-                type: "vector",
-                fields: ["vector"],
-                params: {
-                    metric: "innerProduct",
-                    dimension: dimension,
-                    nLists: 10
+            insertDocsAndAssertIndex({
+                collection, docs: vectorData.docs, seed,
+                indexName: "vector_inner_product",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    params: {
+                        metric: "innerProduct",
+                        dimension: dimension,
+                        nLists: 10
+                    },
                 },
             });
         },
@@ -858,17 +864,18 @@ function MultipleVectorIndexesOnField() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 1000;
-    const seed = randomInteger();
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
 
     return {
         setUp: function() {
-            print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
@@ -917,6 +924,11 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+
+            assertTrue(
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
+                "Expected all vector indexes to become ready"
+            );
 
             const query =
                 "FOR d IN " +
@@ -967,6 +979,11 @@ function MultipleVectorIndexesOnField() {
                 },
             });
 
+            assertTrue(
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
+                "Expected all vector indexes to become ready"
+            );
+
             const query =
                 "FOR d IN " +
                 collection.name() +
@@ -992,7 +1009,6 @@ function MultipleVectorIndexesOnField() {
             assertEqual(5, results.length);
         },
 
-        // Test is mostly to see behavior
         testApproxL2WhenMultipleIndexesOnDifferentFields: function() {
             collection.ensureIndex({
                 name: "field_l2",
@@ -1014,6 +1030,11 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+
+            assertTrue(
+                waitForAllVectorIndexesState(collection, VectorIndexTrainingState.kReady, 120),
+                "Expected all vector indexes to become ready"
+            );
 
             const queries = [{
                 query: "FOR d IN " +
@@ -1058,6 +1079,7 @@ function MultipleVectorIndexesOnField() {
 jsunity.run(VectorIndexL2TestSuite);
 jsunity.run(VectorIndexCosineTestSuite);
 jsunity.run(VectorIndexInnerProductTestSuite);
+
 jsunity.run(MultipleVectorIndexesOnField);
 
 return jsunity.done();

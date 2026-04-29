@@ -146,8 +146,8 @@ commands:
 
             cd "$ROOT"
 
-            tar -cjf "$TAR" $PATHS
-            ls -l "$TAR"
+            tar -czf "$TAR" $PATHS
+            du -sh "$TAR"
             aws configure set profile.anon.s3.multipart_threshold 5GB
             aws s3 cp --no-sign-request --profile anon \
               "$TAR" \
@@ -168,7 +168,6 @@ commands:
             set -eo pipefail
             set -x
 
-            AT="<< parameters.at >>"
             ARCHIVE="<< parameters.archive >>"
 
             if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
@@ -177,15 +176,19 @@ commands:
             fi
 
             mkdir -p /tmp/circleci-workspace
-            TAR="/tmp/circleci-workspace/${ARCHIVE}"
+            # TAR="/tmp/circleci-workspace/${ARCHIVE}"
 
-            cd "$AT"
+            cd "<< parameters.at >>"
 
             aws configure set profile.anon.s3.multipart_threshold 5GB
+            # aws s3 cp --no-sign-request --profile anon \
+            #   "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/${ARCHIVE}" \
+            #   "$TAR"
+            # tar --zstd -xf "$TAR"
+
             aws s3 cp --no-sign-request --profile anon \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/workspaces/${CIRCLE_WORKFLOW_WORKSPACE_ID}/${ARCHIVE}" \
-              "$TAR"
-            tar -xjf "$TAR"
+              - | tar -xzf -
 
   checkout-arangodb:
     parameters:
@@ -313,7 +316,7 @@ commands:
           steps:
             - attach_workspace_from_s3:
                 at: .
-                archive: binaries.tar.bz2
+                archive: binaries.tar.gz
       - run:
           name: Log processes
           command: |
@@ -359,6 +362,13 @@ commands:
               fi
               export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py:ignore_noninstrumented_modules=1"
               export SAN_MODE=tsan
+            fi
+
+            if [ "$SAN_MODE" != "" ]; then
+              # When running with sanitizer we have to LOWER the number of file descriptors!
+              # The sanitizer forks off a separate process to handle the symbolization of stack traces,
+              # and the fork operation iterates over all file descriptors, making this extremely expensive.
+              ulimit -n 65536
             fi
 
             # check if promtool is available and if so set the environment variable to enable the according tests
@@ -570,6 +580,7 @@ jobs:
             fi
 
             cmake --preset << parameters.preset >> \
+              -G Ninja \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
               -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
@@ -608,7 +619,6 @@ jobs:
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
                   tar -czf install.tar.gz -C install ./
-                  echo done
             - persist_to_workspace:
                 root: .
                 paths:
@@ -659,7 +669,7 @@ jobs:
                   - lsan_arangodb_suppressions.txt
             - persist_workspace_to_s3:
                 root: .
-                archive: cppcheck.tar.bz2
+                archive: cppcheck.tar.gz
                 paths: |
                   CMakePresets.json
                   build/3rdParty/snowball/libstemmer/
@@ -668,7 +678,7 @@ jobs:
             - persist_workspace_to_s3:
                 # not there? install.tar.gz
                 root: .
-                archive: binaries.tar.bz2
+                archive: binaries.tar.gz
                 paths: |
                   VERSIONS
                   ARANGO-VERSION
@@ -873,7 +883,7 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace_from_s3:
           at: /root/workspace/
-          archive: cppcheck.tar.bz2
+          archive: cppcheck.tar.gz
       - run:
           name: Print workspace size
           command: |

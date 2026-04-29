@@ -38,8 +38,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 
@@ -50,8 +49,8 @@ static AqlValue const emptyAqlValue;
 
 /// @brief extract a boolean parameter from an array
 bool functions::getBooleanParameter(
-    aql::functions::VPackFunctionParametersView parameters,
-    size_t startParameter, bool defaultValue) {
+    functions::VPackFunctionParametersView parameters, size_t startParameter,
+    bool defaultValue) {
   size_t const n = parameters.size();
 
   if (startParameter >= n) {
@@ -62,17 +61,17 @@ bool functions::getBooleanParameter(
 }
 
 AqlValue const& functions::extractFunctionParameterValue(
-    aql::functions::VPackFunctionParametersView parameters, size_t position) {
+    functions::VPackFunctionParametersView parameters, size_t position) {
   if (position >= parameters.size()) {
     // parameter out of range
-    return ::emptyAqlValue;
+    return emptyAqlValue;
   }
   return parameters[position];
 }
 
 std::string_view functions::getFunctionName(AstNode const& node) noexcept {
-  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
-  auto const* impl = static_cast<aql::Function*>(node.getData());
+  TRI_ASSERT(NODE_TYPE_FCALL == node.type);
+  auto const* impl = static_cast<Function*>(node.getData());
   TRI_ASSERT(impl != nullptr);
   return impl->name;
 }
@@ -124,9 +123,8 @@ void functions::registerError(ExpressionContext* expressionContext,
 /// @brief register usage of an invalid function argument
 void functions::registerInvalidArgumentWarning(
     ExpressionContext* expressionContext, std::string_view functionName) {
-  aql::functions::registerWarning(
-      expressionContext, functionName,
-      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  functions::registerWarning(expressionContext, functionName,
+                             TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
 /// @brief convert a number value into an AqlValue
@@ -147,9 +145,9 @@ AqlValue functions::numberValue(double value, bool nullify) {
 /// @brief extra a collection name from an AqlValue
 std::string functions::extractCollectionName(
     transaction::Methods* trx,
-    aql::functions::VPackFunctionParametersView parameters, size_t position) {
+    functions::VPackFunctionParametersView parameters, size_t position) {
   AqlValue const& value =
-      aql::functions::extractFunctionParameterValue(parameters, position);
+      functions::extractFunctionParameterValue(parameters, position);
 
   std::string identifier;
 
@@ -196,15 +194,13 @@ void functions::appendAsString(velocypack::Options const& vopts, T& buffer,
   functions::stringify(&vopts, buffer, slice);
 }
 
-template void functions::appendAsString<arangodb::velocypack::StringSink>(
-    velocypack::Options const& vopts, arangodb::velocypack::StringSink& buffer,
+template void functions::appendAsString<velocypack::StringSink>(
+    velocypack::Options const& vopts, velocypack::StringSink& buffer,
     AqlValue const& value);
 
-template void
-functions::appendAsString<arangodb::velocypack::SizeConstrainedStringSink>(
+template void functions::appendAsString<velocypack::SizeConstrainedStringSink>(
     velocypack::Options const& vopts,
-    arangodb::velocypack::SizeConstrainedStringSink& buffer,
-    AqlValue const& value);
+    velocypack::SizeConstrainedStringSink& buffer, AqlValue const& value);
 
 /// @brief append the VelocyPack value to a string buffer
 template<typename T>
@@ -230,12 +226,12 @@ void functions::stringify(VPackOptions const* vopts, T& buffer,
   dumper.dump(slice);
 }
 
-template void functions::stringify<arangodb::velocypack::StringSink>(
-    velocypack::Options const* vopts, arangodb::velocypack::StringSink& buffer,
-    arangodb::velocypack::Slice slice);
+template void functions::stringify<velocypack::StringSink>(
+    velocypack::Options const* vopts, velocypack::StringSink& buffer,
+    velocypack::Slice slice);
 
-template void
-functions::stringify<arangodb::velocypack::SizeConstrainedStringSink>(
+template void functions::stringify<velocypack::SizeConstrainedStringSink>(
     velocypack::Options const* vopts,
-    arangodb::velocypack::SizeConstrainedStringSink& buffer,
-    arangodb::velocypack::Slice slice);
+    velocypack::SizeConstrainedStringSink& buffer, velocypack::Slice slice);
+
+}  // namespace arangodb::aql

@@ -386,8 +386,8 @@ void NetworkFeature::collectOptions(
       .setLongDescription(
           R"(Automatically compress outgoing HTTP requests in cluster-internal
 traffic with the deflate, gzip or lz4 compression format.
-Compression will only happen if the size of the uncompressed request body exceeds
-the threshold value controlled by this startup option,
+Compression will only happen if the size of the uncompressed request body
+exceeds the threshold value controlled by this startup option,
 and if the request body size after compression is less than the original
 request body size.
 Using the value 0 disables the automatic compression.")");

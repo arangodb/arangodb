@@ -13,4 +13,5 @@ target_sources(arango_cluster_methods PRIVATE
     ShardDistribution.cpp
     ShardID.cpp
     TargetCollectionAgencyWriter.cpp
+    VectorIndexShardStates.cpp
 )

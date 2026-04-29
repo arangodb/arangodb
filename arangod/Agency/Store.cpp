@@ -37,12 +37,22 @@
 #include <ctime>
 #include <string_view>
 
-using namespace arangodb::consensus;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
+namespace arangodb::consensus {
 /// Ctor with name
 Store::Store(std::string const& name) : _node(Node::create()) {}
+
+Store::Store(Store const& other) {
+  std::lock_guard otherLock{other._storeLock};
+  _node = other._node;
+}
+
+Store::Store(Store&& other) {
+  std::lock_guard otherLock{other._storeLock};
+  _node = std::move(other._node);
+}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -755,3 +765,5 @@ void Store::registerPrefixTrigger(std::string const& prefix,
 std::vector<std::string> Store::split(std::string_view str) {
   return Node::split(str);
 }
+
+}  // namespace arangodb::consensus

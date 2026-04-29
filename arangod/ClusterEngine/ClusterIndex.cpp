@@ -26,12 +26,15 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
+#include "Cluster/Utils/VectorIndexShardStates.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
@@ -507,7 +510,47 @@ Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
   return Index::StreamSupportResult::makeUnsupported();
 }
 
-UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {
+bool ClusterIndex::isVectorIndexReady() const noexcept {
+  if (_indexType != TRI_IDX_TYPE_VECTOR_INDEX) {
+    return false;
+  }
+  try {
+    auto& ci = _collection.vocbase()
+                   .server()
+                   .getFeature<ClusterFeature>()
+                   .clusterInfo();
+    auto collCurrent =
+        ci.getCollectionCurrent(_collection.vocbase().name(),
+                                std::to_string(_collection.planId().id()));
+    auto shardIds = _collection.shardIds();
+    if (!collCurrent || !shardIds) {
+      return false;
+    }
+
+    auto const bareIndexId = std::to_string(_iid.id());
+    auto states =
+        getVectorIndexShardStates(*collCurrent, *shardIds, bareIndexId);
+
+    for (auto const& [shardId, shardState] : states) {
+      if (shardState.trainingState != StaticStrings::IndexTrainingStateReady) {
+        LOG_TOPIC("a7f2c", DEBUG, Logger::CLUSTER)
+            << "ClusterIndex::isVectorIndexReady() shard=" << shardId
+            << " trainingState=" << shardState.trainingState;
+        return false;
+      }
+    }
+    return true;
+  } catch (...) {
+    // Data not available here, lets be optimistic and send the request anyway,
+    // if not ready DB servers will reject
+    LOG_TOPIC("b3c7a", WARN, Logger::CLUSTER)
+        << "failed to determine vector index readiness, assuming ready";
+    return true;
+  }
+}
+
+vector::UserVectorIndexDefinition const&
+ClusterIndex::getVectorIndexDefinition() {
   TRI_ASSERT(_vectorIndexDefinition != nullptr);
   if (!_vectorIndexDefinition) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

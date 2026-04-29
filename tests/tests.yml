@@ -14,6 +14,8 @@
       - permissions
       - paths_server
       - version
+      - shell_client_large
+      - legacy
 
 # Single Server Replication Tests
 - replication_shell:
@@ -58,7 +60,7 @@
       extraArgs:log.level: replication=trace
 
 
-- authentication_audit_endpoints_import_export_agency:
+- authentication_audit_endpoints_import_export_agency_fuerte:
     options:
       type: single
     suites:
@@ -129,13 +131,6 @@
       buckets: 2
       type: single
 
-- shell_client_large:
-    options:
-      priority: 250
-      parallelity: 2
-      type: single
-      size: medium
-
 - shell_client_transaction:
     options:
       priority: 750
@@ -200,7 +195,6 @@
 
 - shell_client_aql:
     options:
-      buckets: 10
       priority: 250
       type: single
     args:
@@ -209,7 +203,6 @@
 
 - shell_client_aql_large:
     options:
-      buckets: 5
       priority: 250
       type: single
       suffix: _large
@@ -244,6 +237,8 @@
           args:
             cluster: true
             suffix: cluster
+            encryptionAtRest: true
+            ssl: true
       - rta_makedata:
           args:
             cluster: true
@@ -346,7 +341,7 @@
     options:
       priority: 1200
       size: medium
-      buckets: 4
+      buckets: 2
       type: cluster
     args:
       dumpAgencyOnError: true
@@ -385,7 +380,7 @@
       priority: 1000
       size: small
       type: cluster
-      buckets: 6
+      buckets: 4
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
@@ -434,7 +429,7 @@
 #       dumpAgencyOnError: true
 
 # Common Tests
-- import_export_aql_vector:
+- import_export_aql:
     options:
       parallelity: 5
       size: medium+
@@ -444,8 +439,14 @@
     suites:
       - importing
       - export
-      - shell_client_aql_vector
       - shell_api
+- shell_client_aql_vector:
+    options:
+      parallelity: 5
+      size: medium+
+      type: cluster
+    args:
+      dumpAgencyOnError: true
 
 - hot_backup:
     options:

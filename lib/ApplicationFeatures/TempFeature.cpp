@@ -60,8 +60,7 @@ void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> /*options*/) {
     // replace $PID in basepath with current process id
     _options.path = basics::StringUtils::replace(
         _options.path, "$PID", std::to_string(Thread::currentProcessId()));
-
-    basics::FileUtils::makePathAbsolute(_options.path);
+    std::filesystem::absolute(_options.path).string();
   }
 }
 

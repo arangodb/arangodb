@@ -48,7 +48,7 @@ struct EnumerateNearVectorsExecutorInfos {
       RegisterId inNmDocId, RegisterId outDocRegId, RegisterId outDistanceRegId,
       transaction::Methods::IndexHandle index, QueryContext& queryContext,
       aql::Collection const* collection, std::size_t topK, std::size_t offset,
-      SearchParameters searchParameters, Expression* filterExpression,
+      vector::SearchParameters searchParameters, Expression* filterExpression,
       std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
       bool isCoveredByStoredValues, Variable const* documentVariable)
       : inputReg(inNmDocId),
@@ -92,7 +92,7 @@ struct EnumerateNearVectorsExecutorInfos {
   aql::Collection const* collection;
   std::size_t topK;
   std::size_t offset;
-  SearchParameters searchParameters;
+  vector::SearchParameters searchParameters;
   Expression* filterExpression;
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
   bool isCoveredByStoredValues;
@@ -153,6 +153,7 @@ class EnumerateNearVectorsExecutor {
   std::size_t _currentProcessedResultCount{0};
   // needed to enable fullCount to work
   std::size_t _processedInputs{0};
+  bool _reportedCurrentRowForFullCount{false};
   std::size_t _collectionCount{
       _collection->count(&_trx, transaction::CountType::kNormal)};
 };
