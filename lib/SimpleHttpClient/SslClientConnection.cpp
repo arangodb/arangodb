@@ -249,6 +249,10 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 
     case SSL_UNKNOWN:
     default:
+      // The actual protocol version used will be negotiated to the highest
+      // version mutually supported by the client and the server. The supported
+      // protocols are TLSv1.2 and TLSv1.3. Applications should use these
+      // methods, and avoid the version-specific methods described below.
       meth = TLS_method();
       break;
   }
