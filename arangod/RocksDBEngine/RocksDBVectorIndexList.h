@@ -234,6 +234,8 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
 
   [[nodiscard]] virtual bool is_available() const override;
 
+  void on_heap_changed(faiss::idx_t new_id, faiss::idx_t evicted_id) final;
+
  protected:
   RocksDBKey _rocksdbKey;
   arangodb::RocksDBVectorIndex* _index{nullptr};
@@ -242,6 +244,13 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
   std::size_t _codeSize;
 
   std::unique_ptr<rocksdb::Iterator> _it;
+
+  // When capture is wanted, derived classes wire _sink in their ctor and
+  // refresh _currentCaptureData from get_id_and_codes; on_heap_changed
+  // pushes it into the sink when the entry survives the topK heap.
+  containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>* _sink{
+      nullptr};
+  velocypack::SharedSlice _currentCaptureData;
 };
 
 // Simple iterator without filtering
@@ -257,15 +266,11 @@ struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
-  // Captures storedValues for entries that actually enter the topK heap
-  void on_heap_changed(faiss::idx_t new_id, faiss::idx_t evicted_id) override;
-
  private:
   // Storage varies based on strategy
   std::conditional_t<Strategy::hasStoredValues, RocksDBVectorIndexEntryValue,
                      std::vector<uint8_t>>
       _currentEntry;
-  IteratorContext const& _ctx;
 };
 
 using RocksDBFaissIteratorContext =
@@ -290,18 +295,22 @@ struct RocksDBInvertedListsFilteringIteratorBase
  protected:
   void skipOverFilteredDocuments();
 
-  // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
+  // Batch size to reduce random RocksDB accesses.
   constexpr static auto kBatchSize{1000};
+
+  // captureData is empty when no sink is wired; otherwise it is moved into
+  // the sink by on_heap_changed if the entry survives the topK heap.
+  struct FilteredEntry {
+    LocalDocumentId id;
+    std::vector<uint8_t> codes;
+    velocypack::SharedSlice captureData;
+  };
 
   IteratorFilterContext& _filterContext;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
-  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
-
-  // Current element from the _filteredIds, which is the current state of this
-  // iterator
-  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
-      _filteredIdsIt{_filteredIds.end()};
+  std::vector<FilteredEntry> _filteredIds;
+  std::vector<FilteredEntry>::iterator _filteredIdsIt{_filteredIds.end()};
 };
 
 // Materializes document for every record
