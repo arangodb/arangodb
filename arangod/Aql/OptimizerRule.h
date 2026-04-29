@@ -210,6 +210,11 @@ struct OptimizerRule {
     // enables this one and works only with EnumerateNearVector nodes
     pushFilterIntoEnumerateNear,
 
+    // Drop the MaterializeRocksDBNode placed after each
+    // EnumerateNearVectorNode when a pushed-down filter already forces
+    // the iterator to load the doc itself
+    removeMaterializerForEnumerateNearRule,
+
     useIndexesRule,
 
     // try to remove filters covered by index ranges
@@ -411,14 +416,6 @@ struct OptimizerRule {
     // individual registers. must be executed after the joinIndexNodesRule,
     // otherwise the projections handling of JoinNodes will be incorrect.
     optimizeProjectionsRule,
-
-    // Drop the MaterializeRocksDBNode placed after each
-    // EnumerateNearVectorNode whenever the vector node can produce
-    // equivalent output on its own (storedValues cover projections, or a
-    // pushed filter already loads the doc). Must run after
-    // optimizeProjectionsRule so the projection variables exist on the
-    // materializer.
-    removeMaterializerForEnumerateNearRule,
 
     // final cleanup, after projections
     removeUnnecessaryCalculationsRule4,
