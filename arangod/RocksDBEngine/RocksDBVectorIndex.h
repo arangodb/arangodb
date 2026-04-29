@@ -65,27 +65,9 @@ std::string_view trainingStateToString(VectorIndexTrainingState state) noexcept;
 
 namespace vector {
 
-// What the search must produce, from the caller's point of view. The
-// storage layer maps this to a concrete iterator + capture shape (see the
-// table in RocksDBVectorIndexList.h); callers do not name iterator types.
-struct SearchStrategy {
-  // How the filter, if any, gets evaluated by the iterator.
-  enum class FilterMode : std::uint8_t {
-    kNone,          // no filter pushed down
-    kStoredValues,  // filter expressible against storedValues only
-    kDocument,      // filter requires the full document
-  };
-
-  // What the executor needs, per surviving entry, to satisfy projections.
-  enum class ProjectionSource : std::uint8_t {
-    kNone,          // no projections (executor only emits labels/distances)
-    kStoredValues,  // serve from a captured storedValues array
-    kDocument,      // serve from a captured (or post-fetched) full document
-  };
-
-  FilterMode filter{FilterMode::kNone};
-  ProjectionSource projection{ProjectionSource::kNone};
-};
+// SearchStrategy is defined in VectorIndex/VectorIndexDefinition.h so the
+// AQL layer (EnumerateNearVectorNode) and the storage layer can both use
+// it without crossing layering boundaries.
 
 // Static configuration of a vector search. Owned by the executor's Infos
 // (set once at createBlock) and passed by reference to readBatch.

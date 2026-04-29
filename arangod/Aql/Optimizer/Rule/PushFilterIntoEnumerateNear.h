@@ -31,14 +31,4 @@ class Optimizer;
 void pushFilterIntoEnumerateNear(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                  OptimizerRule const&);
 
-// Runs after optimizeProjectionsRule. Migrates the projections that
-// optimizeProjectionsRule assigned to the MaterializeRocksDBNode parent of
-// each EnumerateNearVectorNode onto the EnumerateNearVectorNode itself,
-// chooses a kCovered/kDocument strategy, and drops the now-redundant
-// materializer. Single-server only for now -- cluster mode keeps the
-// materializer because scatterInClusterRule's exclude logic relies on it.
-void propagateProjectionsIntoEnumerateNear(Optimizer*,
-                                           std::unique_ptr<ExecutionPlan>,
-                                           OptimizerRule const&);
-
 }  // namespace arangodb::aql
