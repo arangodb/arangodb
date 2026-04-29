@@ -152,46 +152,10 @@ void EnumerateNearVectorsExecutor::searchResults() {
   _documents = std::move(result.capturedDocuments);
   _currentProcessedResultCount = 0;
 
-  // The executor needs full docs (kDocument: writes the doc register
-  // and/or feeds projections) but only IVFT actually loads them during
-  // search. For IVT (no filter) and IVFST (filter expressible against
-  // storedValues), the captured map is empty, so we batch-fetch the
-  // surviving docs by label here.
-  if (_infos.projectionMode == vector::ProjectionMode::kDocument &&
-      _infos.searchConfig.strategy.filter != vector::FilterMode::kDocument) {
-    std::vector<LocalDocumentId> tokensToFetch;
-    tokensToFetch.reserve(_labels.size());
-    for (auto const& label : _labels) {
-      if (label == -1) {
-        break;
-      }
-      tokensToFetch.emplace_back(static_cast<LocalDocumentId::BaseType>(label));
-    }
-
-    if (!tokensToFetch.empty()) {
-      auto const* physical = _collection->getCollection()->getPhysical();
-      TRI_ASSERT(physical != nullptr);
-      auto storeDoc = [&](Result lookupResult, LocalDocumentId id,
-                          aql::DocumentData&& /*data*/, VPackSlice doc) {
-        if (lookupResult.fail()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              lookupResult.errorNumber(),
-              basics::StringUtils::concatT(
-                  "failed to materialize document for vector search ",
-                  RevisionId(id).toString(), " (", id.id(),
-                  "): ", lookupResult.errorMessage()));
-        }
-        velocypack::Buffer<uint8_t> buf;
-        buf.append(doc.start(), doc.byteSize());
-        _documents.insert_or_assign(id,
-                                    velocypack::SharedSlice{std::move(buf)});
-        return true;
-      };
-      PhysicalCollection::LookupOptions opts{.countBytes = true};
-      physical->lookup(&_trx, std::span<LocalDocumentId>{tokensToFetch},
-                       storeDoc, opts);
-    }
-  }
+  // kDocument is reachable only when a pushed-down filter forced the
+  // iterator to load the doc, so the captured map is already populated.
+  // The other "we need a doc downstream" cases keep the materializer in
+  // place and don't reach the executor in kDocument mode.
 
   TRI_ASSERT(hasResults());
 
