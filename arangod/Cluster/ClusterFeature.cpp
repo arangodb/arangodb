@@ -338,7 +338,7 @@ as these collections' shards leader. All collections created this way are
 eligible for specific AQL query optimizations that can improve query performance
 and provide advanced transactional guarantees.
 
-**Warning**: Use the same value on all Coordinators and all DBServers!)");
+**Warning**: Use the same value on all Coordinators and all DB-Servers!)");
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
@@ -467,7 +467,7 @@ let a coordinator which cannot send a heartbeat to the agency for the specified 
 shut down. This is necessary to prevent that a coordinator survives longer than the
 agency supervision has patience before it removes the coordinator from the agency
 meta data. Without this it would be possible that a coordinator is still running
-transactions and committing them, which could, for example, render hotbackups
+transactions and committing them, which could, for example, render Hot Backups
 inconsistent.)")
       .setIntroducedIn(31204);
 }
@@ -805,14 +805,14 @@ void ClusterFeature::start() {
 #endif
     while (true) {
       LOG_TOPIC("d4db4", INFO, arangodb::Logger::CLUSTER)
-          << "Waiting for DBservers to show up...";
+          << "Waiting for DB-Servers to show up...";
 
       _clusterInfo->loadCurrentDBServers();
       std::vector<ServerID> DBServers = _clusterInfo->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
           (DBServers.size() > 1 || TRI_microtime() - start > waitTime)) {
         LOG_TOPIC("22f55", INFO, arangodb::Logger::CLUSTER)
-            << "Found " << DBServers.size() << " DBservers.";
+            << "Found " << DBServers.size() << " DB-Servers.";
         break;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));

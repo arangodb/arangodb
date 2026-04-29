@@ -40,12 +40,14 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
 class DatabaseFeature;
 class LogicalCollection;
 class MaintenanceFeature;
 class RocksDBVectorIndex;
 class Scheduler;
+}  // namespace arangodb
+
+namespace arangodb::vector {
 
 /// Single background thread that periodically scans for untrained vector
 /// indexes and builds them one at a time. The same thread scans and builds.
@@ -73,14 +75,14 @@ class VectorIndexBuildManager {
 
   struct FailedBuildInfo {
     std::chrono::steady_clock::time_point failedAt;
-    std::int64_t documentCount;
+    std::uint64_t documentCount;
   };
 
   using FailedBuildsMap = std::unordered_map<std::uint64_t, FailedBuildInfo>;
 
   static bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
                               std::uint64_t objectId,
-                              std::int64_t currentDocCount);
+                              std::uint64_t currentDocCount);
 
   void run(std::stop_token stopToken);
 
@@ -114,4 +116,4 @@ class VectorIndexBuildManager {
       _waiters;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::vector

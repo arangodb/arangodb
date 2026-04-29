@@ -31,8 +31,7 @@
 
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
-using namespace aql;
+namespace arangodb::aql {
 
 AqlValueMaterializer::AqlValueMaterializer(velocypack::Options const* options)
     : options(options), materialized(), hasCopied(false) {}
@@ -102,3 +101,5 @@ velocypack::Slice AqlValueMaterializer::slice(AqlValue const& value) {
   materialized = value.materialize(options, hasCopied);
   return materialized.slice();
 }
+
+}  // namespace arangodb::aql

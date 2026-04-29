@@ -31,9 +31,10 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace arangodb {
 using application_features::ApplicationServer;
 
 RestActionHandler::RestActionHandler(ApplicationServer& server,
@@ -118,3 +119,5 @@ async<Result> RestActionHandler::checkUserCanAccess() const {
 
   co_return co_await RestHandler::checkUserCanAccess();
 }
+
+}  // namespace arangodb

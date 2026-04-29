@@ -27,8 +27,7 @@
 #include <algorithm>
 #include <numeric>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(MainQueryState state,
                                                std::size_t skipped)
@@ -36,9 +35,10 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(MainQueryState state,
   TRI_ASSERT(!hasDataRow());
 }
 
-AqlItemBlockInputRange::AqlItemBlockInputRange(
-    MainQueryState state, std::size_t skipped,
-    arangodb::aql::SharedAqlItemBlockPtr block, std::size_t index) noexcept
+AqlItemBlockInputRange::AqlItemBlockInputRange(MainQueryState state,
+                                               std::size_t skipped,
+                                               SharedAqlItemBlockPtr block,
+                                               std::size_t index) noexcept
     : _block{std::move(block)},
       _rowIndex{index},
       _finalState(state),
@@ -128,7 +128,7 @@ bool AqlItemBlockInputRange::isShadowRowAtIndex(
   return _block->isShadowRow(index);
 }
 
-arangodb::aql::ShadowAqlItemRow AqlItemBlockInputRange::peekShadowRow() const {
+ShadowAqlItemRow AqlItemBlockInputRange::peekShadowRow() const {
   if (hasShadowRow()) {
     return ShadowAqlItemRow{_block, _rowIndex};
   }
@@ -282,3 +282,5 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
     -> MainQueryState {
   return _finalState;
 }
+
+}  // namespace arangodb::aql

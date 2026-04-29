@@ -32,8 +32,7 @@
 // it might be reimplemented soon to have the above features, Focus now is on
 // the API we want to use.
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 AqlCallStack::AqlCallStack(AqlCallStack::Empty) {}
 
@@ -262,3 +261,5 @@ AqlCallStack::AqlCallStack(std::initializer_list<AqlCallList> calls)
 #endif
 }
 #endif
+
+}  // namespace arangodb::aql

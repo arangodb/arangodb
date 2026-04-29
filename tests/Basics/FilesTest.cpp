@@ -256,7 +256,13 @@ TEST_F(FilesTest, tst_filesize_non) {
 
 TEST_F(FilesTest, tst_absolute_paths) {
   std::string path;
-  std::string cwd = FileUtils::currentDirectory().result();
+  std::error_code cwdEc;
+  std::filesystem::path const cwdPath = std::filesystem::current_path(cwdEc);
+  if (cwdEc) {
+    throw std::filesystem::filesystem_error(
+        "cannot get current working directory", std::filesystem::path(), cwdEc);
+  }
+  std::string const cwd = cwdPath.string();
 
   path = std::filesystem::absolute(std::filesystem::path(".") / "").string();
   EXPECT_EQ(std::filesystem::path(cwd) / "./", path);
@@ -342,34 +348,6 @@ TEST_F(FilesTest, tst_normalizepath) {
   TRI_NormalizePath(path);
   EXPECT_EQ(std::string("foo\\bar\\baz"), path);
 #endif
-}
-
-TEST_F(FilesTest, tst_normalize) {
-  std::string path;
-
-  path = "/foo/bar/baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("/foo/bar/baz"), path);
-
-  path = "\\foo\\bar\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("\\foo\\bar\\baz"), path);
-
-  path = "/foo/bar\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("/foo/bar\\baz"), path);
-
-  path = "/foo/bar/\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("/foo/bar/\\baz"), path);
-
-  path = "//foo\\/bar/\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("//foo\\/bar/\\baz"), path);
-
-  path = "\\\\foo\\/bar/\\baz";
-  FileUtils::normalizePath(path);
-  EXPECT_EQ(std::string("\\\\foo\\/bar/\\baz"), path);
 }
 
 TEST_F(FilesTest, tst_getfilename) {
@@ -534,28 +512,4 @@ TEST_F(FilesTest, tst_listfiles) {
 
   std::sort(found.begin(), found.end());
   EXPECT_EQ(names, found);
-}
-
-TEST_F(FilesTest, tst_countfiles) {
-  constexpr std::string_view content = "piffpaffpuff";
-
-  constexpr size_t n = 16;
-  // create subdirs
-  for (size_t i = 0; i < n; ++i) {
-    std::string name =
-        absl::StrCat(_directory, TRI_DIR_SEPARATOR_STR, "tmp-", ++counter);
-    long unused1;
-    std::string unused2;
-    auto res = TRI_CreateDirectory(name.c_str(), unused1, unused2);
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, res);
-  }
-  // create a few files on top
-  for (size_t i = 0; i < 5; ++i) {
-    std::string name =
-        absl::StrCat(_directory, TRI_DIR_SEPARATOR_STR, "tmp-", ++counter);
-    FileUtils::spit(name, content.data(), content.size(), false);
-  }
-
-  size_t found = FileUtils::countFiles(_directory);
-  EXPECT_EQ(n + 5, found);
 }

@@ -1,9 +1,65 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Upgraded FAISS to v1.14.1.
 
-3.12.9-devel (2026-04-02)
--------------------------
+* COR-439: Make --server.storage-engine option obsolete
+  The MMF engine has been removed in 3.7 already, so there is only the rocksdb
+  engine anymore, making this option pointless.
+
+* COR-452: Vector search filters may now reference variables from outside the FOR
+  loop (subquery results, LET bindings, bind parameters).
+
+* COR-444: Vector index training now draws a uniformly random training set
+  via reservoir sampling (Algorithm L) over a full iteration of the
+  collection, instead of keeping the first `nLists * 256` documents.
+
+* COR-411: Introduced optimizer rule `replace-any-eq-with-in` that maps filter
+  nodes of the form FILTER [exp1] ANY == exp2 into FILTER exp2 IN [exp1] to
+  make them visible to downstream optimizer rules, including use-indexes,
+  optimize-traversals, and sort-in-values.
+
+* COR-435: Fix a TOCTOU race in the Agency leader's sendAppendEntriesRPC that
+  could crash a follower agent. The leader read log entries and the compaction
+  snapshot in two non-atomic operations; compaction could advance the snapshot
+  between those reads, causing an inconsistent payload to be sent. The fix
+  loads the snapshot and the matching log entries under a single lock so that
+  no compaction can interleave between the two reads.
+
+* COR-415: Fix vector index catch-up phase to use the proper
+  `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that
+  WAL entries written during training are correctly ingested, preventing
+  missed documents after index creation.
+
+* Rebuilt included rclone v1.65.2 with go1.25.9 and non-vulnerable dependencies.
+
+* Updated ArangoDB Starter to v0.19.21.
+
+* Upgraded OpenSSL to 3.5.6.
+
+* The vector index API now exposes a `resolvedNLists` field that shows the
+  actual nLists value used by the trained index. When using a fixed `nLists`
+  value, `resolvedNLists` will match it. When using the scalable nLists
+  specification, `resolvedNLists` shows the value that was computed from
+  the document count at training time. The value is available per shard in
+  the `shards` detail returned by `collection.getIndexes(true, true)`. On
+  single-server the collection name is used as the shard key.
+
+* COR-231: Vector index `nLists` now supports a tiered scaling specification
+  alongside fixed integer values. The scaling spec uses
+  `{ "multiplier": M, "minNLists": N, "tiers": [...] }` to compute nLists
+  based on document count per shard at training time: tiers provide fixed
+  values for large collections, while smaller collections use
+  `max(minNLists, multiplier * sqrt(docCount))`.
+  Factory string are not supported in scaling mode.
+
+
+3.12.9 (2026-04-03)
+-------------------
+
+* Bump lodash from 4.17.21 to 4.18.1.
+
+* Bump @xmldom/xmldom from 0.8.10 to 0.8.12.
 
 * Fix vector index creation response containing a stale errorMessage after
   training succeeds when the index was created with `inBackground: false`.
@@ -18,34 +74,36 @@
 
 * Updated timezone database as of 31.03.2026.
 
-* COR-374: Fix assertion failure during vector index creation in cluster when a transient
-  shard error is followed by success, due to stale error message not being cleared.
+* COR-374: Fix assertion failure during vector index creation in cluster when a
+  transient shard error is followed by success, due to stale error message not
+  being cleared.
 
 * Fix vector index creation in cluster producing duplicate indexes when
   `storedValues` differs between definitions (e.g., one with and one without
   `storedValues`). The comparison now correctly ignores `storedValues`.
 
-* Fix vector index creation in cluster when inBackground is false reports the error
-  that there is insufficient data in collection.
+* Fix vector index creation in cluster when inBackground is false reports the
+  error that there is insufficient data in collection.
 
 * Vector index creation with `inBackground: false` now blocks until training
   completes and returns the current `trainingState` in the response.
 
 * Lowered the vector index training threshold from
-  `nLists * max_points_per_centroid` to `nLists`, allowing vector indexes
-  to be trained with fewer documents in the collection.
+  `nLists * max_points_per_centroid` to `nLists`, allowing vector indexes to be
+  trained with fewer documents in the collection.
 
-* COR-255: Fixed vector index not being properly trained on follower shards
-  when replicationFactor is increased. Followers now automatically train and
-  populate vector indexes from local documents after initial sync.
+* COR-255: Fixed vector index not being properly trained on follower shards when
+  replicationFactor is increased. Followers now automatically train and populate
+  vector indexes from local documents after initial sync.
   Vector index training now happens in the background; index creation returns
-  immediately and queries return error 1555 (`ERROR_QUERY_VECTOR_INDEX_NOT_READY`)
-  until training completes.
+  immediately and queries return error 1555
+  (`ERROR_QUERY_VECTOR_INDEX_NOT_READY`) until training completes.
   The REST index API (`GET /_api/index`) now includes per-shard training state
   for vector indexes in cluster deployments.
   Added four new vector index metrics: `arangodb_vector_index_unusable`,
-  `arangodb_vector_index_training_ongoing`, `arangodb_vector_index_training_duration`,
-  and `arangodb_vector_index_ingestion_duration`.
+  `arangodb_vector_index_training_ongoing`,
+  `arangodb_vector_index_training_duration`, and
+  `arangodb_vector_index_ingestion_duration`.
 
 * Make defaults for JavaScript security options stricter: Use a default deny
   policy for the following options:
@@ -62,33 +120,33 @@
 
 * Fixed a bug in arangosh that made it quit when entering `global`.
 
-* COR-324, github issue #21782: Added information to query extra output
-  about parallelism achieved in SEARCH queries.
+* COR-324, github issue #21782: Added information to query extra output about
+  parallelism achieved in SEARCH queries.
 
-* COR-328: Fixed incomplete results in vector search queries when LIMIT exceeded the
-  internal batch size.
+* COR-328: Fixed incomplete results in vector search queries when LIMIT exceeded
+  the internal batch size.
 
 * COR-123: The push-filter-into-enumerate-near optimizer rule now considers all
-  compatible vector indexes on a collection to find if one whose storedValues cover
-  the filter expression.
+  compatible vector indexes on a collection to find if one whose storedValues
+  cover the filter expression.
 
-* COR-267, github issue #21944: Fixed a bug in the handling of post filters
-  with array expansion operators and inverted indexes.
+* COR-267, github issue #21944: Fixed a bug in the handling of post filters with
+  array expansion operators and inverted indexes.
 
 * COR-286: Fixed a crash when executing AQL queries with `usePlanCache: true` on
-  cluster-one-shard databases containing graph traversals. When a cached
-  plan was restored, the `_appliedRules` metadata (including
-  `cluster-one-shard`) was not deserialized, causing the coordinator to
-  incorrectly attempt distributed execution on a plan optimized for a
-  single DB server. Additionally, graph nodes lost their
-  `LocalGraphNode` type during cache round-trip.
+  cluster-one-shard databases containing graph traversals. When a cached plan
+  was restored, the `_appliedRules` metadata (including `cluster-one-shard`)
+  was not deserialized, causing the coordinator to incorrectly attempt
+  distributed execution on a plan optimized for a single DB server.
+  Additionally, graph nodes lost their `LocalGraphNode` type during cache
+  round-trip.
 
-* Fixed a bug in arangodump that prevented the `--local-network-threads`
-  startup option from accepting the specified value and potentially
-  overwriting the `--dbserver-worker-threads` setting.
+* Fixed a bug in arangodump that prevented the `--local-network-threads` startup
+  option from accepting the specified value and potentially overwriting the
+  `--dbserver-worker-threads` setting.
 
-* COR-271: If a query uses an OR condition that affects multiple indexes
-  the covering index optimisation is now applied.
+* COR-271: If a query uses an OR condition that affects multiple indexes the
+  covering index optimisation is now applied.
 
 * COR-168: Fixed the projections and filterProjections that were being cleared
   up when an IndexNode had multiple indexes because of an OR operand in a query.

@@ -143,6 +143,8 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   }
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
+  RocksDBIndex const& wrapped() const noexcept { return *_wrapped; }
+
   /// @brief Validates existing documents before the index is persisted.
   /// Creates a snapshot and iterator, then delegates to _wrapped->prepareIndex.
   Result beforeCreate();

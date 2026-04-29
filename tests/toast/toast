@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+
+COMPLETION_FILE="$SCRIPT_DIR/toast-completion.bash"
+BASHRC="$HOME/.bashrc"
+SOURCE_MARKER="# toast completion"
+
+usage() {
+  cat <<'EOF'
+Usage: toast <command> [options] [args...]
+
+Commands:
+  run          Run test suites        toast run [options] [suites...]
+  analyze      Analyze test results   toast analyze [subcommand] [options]
+
+Setup:
+  --setup-completion    Add toast shell function and completion to ~/.bashrc
+
+Run 'toast <command> --help' for command-specific help.
+EOF
+}
+
+setup_completion() {
+  if ! [[ -f "$COMPLETION_FILE" ]]; then
+    echo "error: completion file not found at $COMPLETION_FILE" >&2
+    exit 1
+  fi
+
+  local source_line="source \"$COMPLETION_FILE\" $SOURCE_MARKER"
+
+  if grep -qF "$SOURCE_MARKER" "$BASHRC" 2>/dev/null; then
+    # Update existing line (path may have changed from a different clone)
+    local escaped_line
+    escaped_line=$(printf '%s\n' "$source_line" | sed 's/[&/\]/\\&/g')
+    sed -i "/$SOURCE_MARKER/c\\$escaped_line" "$BASHRC"
+    echo "Updated existing toast completion in $BASHRC"
+  else
+    printf '\n%s\n' "$source_line" >> "$BASHRC"
+    echo "Added toast completion to $BASHRC"
+  fi
+
+  echo "Restart your shell or run:  source $BASHRC"
+}
+
+case "${1:-}" in
+  run)
+    shift
+    cd "$SCRIPT_DIR" && exec mix toast "$@"
+    ;;
+  analyze)
+    shift
+    cd "$SCRIPT_DIR" && exec mix toast.analyze "$@"
+    ;;
+  --setup-completion)
+    setup_completion
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac

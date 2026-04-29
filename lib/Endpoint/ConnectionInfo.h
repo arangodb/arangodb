@@ -67,4 +67,15 @@ struct ConnectionInfo {
   Endpoint::EncryptionType encryptionType;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, ConnectionInfo& x) {
+  return f.object(x).fields(f.field("serverAddress", x.serverAddress),  //
+                            f.field("serverPort", x.serverPort),        //
+                            f.field("clientAddress", x.clientAddress),  //
+                            f.field("clientPort", x.clientPort),        //
+                            f.field("endpoint", x.endpoint),            //
+                            f.field("endpointType", x.endpointType),    //
+                            f.field("encryptionType", x.encryptionType));
+}
+
 }  // namespace arangodb
