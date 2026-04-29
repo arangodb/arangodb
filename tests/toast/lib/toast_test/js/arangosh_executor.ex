@@ -145,6 +145,7 @@ defmodule ToastTest.JS.ArangoshExecutor do
       end)
 
     %{
+      protocol: endpoint_to_protocol(endpoint),
       rootDir: work_dir,
       endpoint: endpoint,
       url: endpoint_to_url(endpoint),
@@ -267,6 +268,12 @@ defmodule ToastTest.JS.ArangoshExecutor do
   defp endpoint_to_url("tcp://" <> rest), do: "http://#{rest}"
   defp endpoint_to_url("ssl://" <> rest), do: "https://#{rest}"
   defp endpoint_to_url(other), do: other
+
+  defp endpoint_to_protocol("tcp://" <> _), do: "tcp"
+  defp endpoint_to_protocol("ssl://" <> _), do: "ssl"
+  defp endpoint_to_protocol("http://" <> _), do: "tcp"
+  defp endpoint_to_protocol("https://" <> _), do: "ssl"
+  defp endpoint_to_protocol(_), do: "tcp"
 
   defp role_to_string(:single), do: "single"
   defp role_to_string(:coordinator), do: "coordinator"

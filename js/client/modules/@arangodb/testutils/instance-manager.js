@@ -225,6 +225,36 @@ class instanceManager {
       }
     });
   }
+  // Initializes an instanceManager from deployment info provided by an
+  // external test runner (e.g., Toast) that already manages the server
+  // lifecycle. The struct must contain:
+  //   { protocol, endpoint, url, rootDir,
+  //     arangods: [{ id, instanceRole, endpoint, url, port }] }
+  static fromDeploymentInfo(struct) {
+    let protocol = struct.protocol || 'tcp';
+    let mgr = new instanceManager(protocol, {dummy: true}, {}, '', struct.rootDir || fs.getTempPath());
+    mgr.rootDir = struct.rootDir || mgr.rootDir;
+    mgr.endpoint = struct.endpoint;
+    mgr.url = struct.url;
+    mgr.endpoints = [];
+    mgr.urls = [];
+
+    (struct.arangods || []).forEach(srv => {
+      let arangod = new inst.instance(mgr.options, srv.instanceRole, {}, {}, {}, protocol, '', '', mgr.agencyMgr, mgr.tmpDir);
+      arangod.id = srv.id;
+      arangod.instanceRole = srv.instanceRole;
+      arangod.endpoint = srv.endpoint;
+      arangod.url = srv.url;
+      arangod.port = srv.port;
+      arangod.name = srv.instanceRole + ' - ' + srv.port;
+      arangod.upAndRunning = true;
+      mgr.arangods.push(arangod);
+      mgr.endpoints.push(srv.endpoint);
+      mgr.urls.push(srv.url);
+    });
+
+    return mgr;
+  }
   dumpSUT(moreText) {
     const tableColumnHeaders = [
         "role", "port", "pid", "serverID", "handle", "data directory"
