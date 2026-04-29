@@ -31,8 +31,6 @@
 
 namespace arangodb::vector {
 
-// Per-query knobs for a vector index search. Carried on the query plan and
-// passed to the storage layer at execution time.
 struct SearchParameters {
   std::optional<std::int64_t> nProbe;
 
@@ -49,49 +47,65 @@ struct SearchParameters {
   }
 };
 
-// What the search must produce, from the caller's point of view. The
-// storage layer maps this to a concrete iterator + capture shape (see the
-// table in RocksDBVectorIndexList.h); callers do not name iterator types.
-struct SearchStrategy {
-  // How the filter, if any, gets evaluated by the iterator.
-  enum class FilterMode : std::uint8_t {
-    kNone,          // no filter pushed down
-    kStoredValues,  // filter expressible against storedValues only
-    kDocument,      // filter requires the full document
-  };
-
-  // What the executor needs, per surviving entry, to satisfy projections.
-  enum class ProjectionSource : std::uint8_t {
-    kNone,          // no projections (executor only emits labels/distances)
-    kStoredValues,  // serve from a captured storedValues array
-    kDocument,      // serve from a captured (or post-fetched) full document
-  };
-
-  FilterMode filter{FilterMode::kNone};
-  ProjectionSource projection{ProjectionSource::kNone};
+enum class FilterMode : std::uint8_t {
+  kNone,
+  kStoredValues,
+  kDocument,
 };
 
-inline std::string_view filterModeName(SearchStrategy::FilterMode m) noexcept {
+enum class ProjectionMode : std::uint8_t {
+  kPassThroughId,
+  kCovered,
+  kDocument,
+};
+
+struct SearchStrategy {
+  FilterMode filter{FilterMode::kNone};
+  ProjectionMode projection{ProjectionMode::kPassThroughId};
+};
+
+inline std::string_view filterModeName(FilterMode m) noexcept {
   switch (m) {
-    case SearchStrategy::FilterMode::kNone:
+    case FilterMode::kNone:
       return "none";
-    case SearchStrategy::FilterMode::kStoredValues:
+    case FilterMode::kStoredValues:
       return "storedValues";
-    case SearchStrategy::FilterMode::kDocument:
+    case FilterMode::kDocument:
       return "document";
   }
   return "none";
 }
 
-inline SearchStrategy::FilterMode parseFilterMode(
-    std::string_view name) noexcept {
+inline FilterMode parseFilterMode(std::string_view name) noexcept {
   if (name == "storedValues") {
-    return SearchStrategy::FilterMode::kStoredValues;
+    return FilterMode::kStoredValues;
   }
   if (name == "document") {
-    return SearchStrategy::FilterMode::kDocument;
+    return FilterMode::kDocument;
   }
-  return SearchStrategy::FilterMode::kNone;
+  return FilterMode::kNone;
+}
+
+inline std::string_view projectionModeName(ProjectionMode m) noexcept {
+  switch (m) {
+    case ProjectionMode::kPassThroughId:
+      return "pass-through-id";
+    case ProjectionMode::kCovered:
+      return "covering";
+    case ProjectionMode::kDocument:
+      return "document";
+  }
+  return "pass-through-id";
+}
+
+inline ProjectionMode parseProjectionMode(std::string_view name) noexcept {
+  if (name == "covering") {
+    return ProjectionMode::kCovered;
+  }
+  if (name == "document") {
+    return ProjectionMode::kDocument;
+  }
+  return ProjectionMode::kPassThroughId;
 }
 
 }  // namespace arangodb::vector

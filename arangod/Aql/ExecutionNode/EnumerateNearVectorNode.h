@@ -31,7 +31,6 @@
 #include "Transaction/Methods.h"
 
 #include <memory>
-#include <string_view>
 
 namespace arangodb::aql {
 class ExecutionBlock;
@@ -45,31 +44,6 @@ class EnumerateNearVectorNode : public ExecutionNode,
                                 public DocumentProducingNode,
                                 public CollectionAccessingNode {
  public:
-  // How the executor produces output rows.
-  //
-  // The same `_outVariable` register may carry different payloads depending
-  // on the strategy: a uint64 doc-id label that the downstream materializer
-  // resolves (kPassThroughId), the full document slice (kDocument), or
-  // nothing at all (kCovered, when only per-projection registers are
-  // populated from the index' storedValues).
-  enum class Strategy : std::uint8_t {
-    // EnumerateNearVectorNode emits a uint64 label for the AQL doc variable.
-    // A downstream MaterializeRocksDBNode resolves the label into the actual
-    // document. This is the initial state right after useVectorIndexRule.
-    kPassThroughId,
-
-    // The vector index storedValues cover all projections (and the filter,
-    // if any). Per-projection registers are filled directly from the
-    // storedValues entry; no document register is written.
-    kCovered,
-
-    // The executor writes the full document into `_outVariable`'s register.
-    // Per-projection registers (if assigned by the projections rule) are
-    // filled from the same loaded document. Used when the filter forces a
-    // document load anyway, or when projections need the document.
-    kDocument,
-  };
-
   EnumerateNearVectorNode(
       ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
       Variable const* outVariable, Variable const* distanceOutVariable,
@@ -78,9 +52,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
       aql::Collection const* collection,
       transaction::Methods::IndexHandle indexHandle,
       std::unique_ptr<Expression> filterExpression = nullptr,
-      vector::SearchStrategy::FilterMode filterMode =
-          vector::SearchStrategy::FilterMode::kNone,
-      Strategy strategy = Strategy::kPassThroughId);
+      vector::FilterMode filterMode = vector::FilterMode::kNone,
+      vector::ProjectionMode projectionMode =
+          vector::ProjectionMode::kPassThroughId);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -107,20 +81,18 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   bool isAscending() const noexcept;
 
-  void setFilterMode(vector::SearchStrategy::FilterMode mode) noexcept;
-  vector::SearchStrategy::FilterMode filterMode() const noexcept {
-    return _filterMode;
+  void setFilterMode(vector::FilterMode mode) noexcept;
+  vector::FilterMode filterMode() const noexcept { return _filterMode; }
+
+  vector::ProjectionMode projectionMode() const noexcept {
+    return _projectionMode;
   }
 
-  Strategy strategy() const noexcept { return _strategy; }
-
-  void recomputeStrategy() noexcept;
+  void pickProjectionMode() noexcept;
 
   void rebindOutVariable(Variable const* newOutVariable) noexcept {
     _outVariable = newOutVariable;
   }
-
-  static std::string_view strategyName(Strategy s) noexcept;
 
   bool isProduceResult() const override;
 
@@ -157,14 +129,14 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// guaranteed to always be a vector index
   transaction::Methods::IndexHandle _index;
 
-  /// @brief how the pushed-down filter (if any) gets evaluated. Set by
-  /// the optimizer once it has analysed filter coverage against the
-  /// index's storedValues; consumed by createBlock to build the
-  /// SearchStrategy for the storage layer.
-  vector::SearchStrategy::FilterMode _filterMode{
-      vector::SearchStrategy::FilterMode::kNone};
+  /// @brief how the pushed-down filter, if any, gets evaluated. Set by
+  /// PushFilterIntoEnumerateNear once filter coverage has been analysed.
+  vector::FilterMode _filterMode{vector::FilterMode::kNone};
 
-  /// @brief output strategy chosen for this node
-  Strategy _strategy{Strategy::kPassThroughId};
+  /// @brief how the executor produces output rows. Set by
+  /// PropagateProjectionsIntoEnumerateNear (and bumped by PushFilter when it
+  /// drops the materializer).
+  vector::ProjectionMode _projectionMode{
+      vector::ProjectionMode::kPassThroughId};
 };
 }  // namespace arangodb::aql

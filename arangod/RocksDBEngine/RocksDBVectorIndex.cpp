@@ -237,11 +237,11 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   //                                 alongside the encoded vector).
   //   projection == kDocument     : only IVFT (loads doc for filter eval).
   // Otherwise the executor post-fetches the docs it needs by label.
-  using FilterMode = vector::SearchStrategy::FilterMode;
-  using ProjectionSource = vector::SearchStrategy::ProjectionSource;
+  using vector::FilterMode;
+  using vector::ProjectionMode;
   bool const captureNeeded =
-      config.strategy.projection == ProjectionSource::kStoredValues ||
-      (config.strategy.projection == ProjectionSource::kDocument &&
+      config.strategy.projection == ProjectionMode::kCovered ||
+      (config.strategy.projection == ProjectionMode::kDocument &&
        config.strategy.filter == FilterMode::kDocument);
   auto* captureSink = captureNeeded ? &result.capturedDocuments : nullptr;
 
@@ -272,7 +272,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
         // the doc itself. Row 8: filter loaded the doc but projections are
         // covered -> stash only the storedValues array (cheaper).
         searchCtx.captureShape =
-            (config.strategy.projection == ProjectionSource::kDocument)
+            (config.strategy.projection == ProjectionMode::kDocument)
                 ? vector::CaptureShape::kFullDocument
                 : vector::CaptureShape::kStoredValues;
         return searchCtx;

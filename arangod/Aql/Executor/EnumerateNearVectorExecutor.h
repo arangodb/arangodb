@@ -66,7 +66,7 @@ struct EnumerateNearVectorsExecutorInfos {
 
   // output strategy
   Projections projections;
-  EnumerateNearVectorNode::Strategy strategy;
+  vector::ProjectionMode projectionMode;
 };
 
 class EnumerateNearVectorsExecutor {

@@ -50,7 +50,7 @@ static constexpr std::string_view kLimit{"limit"};
 static constexpr std::string_view kOffset{"offset"};
 static constexpr std::string_view kFilterMode{"filterMode"};
 static constexpr std::string_view kSearchParameters{"searchParameters"};
-static constexpr std::string_view kStrategy{"strategy"};
+static constexpr std::string_view kProjectionMode{"projectionMode"};
 }  // namespace
 
 EnumerateNearVectorNode::EnumerateNearVectorNode(
@@ -60,8 +60,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     std::size_t offset, vector::SearchParameters searchParameters,
     aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle,
-    std::unique_ptr<Expression> filterExpression,
-    vector::SearchStrategy::FilterMode filterMode, Strategy strategy)
+    std::unique_ptr<Expression> filterExpression, vector::FilterMode filterMode,
+    vector::ProjectionMode projectionMode)
     : ExecutionNode(plan, id),
       DocumentProducingNode(outVariable),
       CollectionAccessingNode(collection),
@@ -73,11 +73,11 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _searchParameters(std::move(searchParameters)),
       _index(std::move(indexHandle)),
       _filterMode(filterMode),
-      _strategy(strategy) {
+      _projectionMode(projectionMode) {
   TRI_ASSERT(_index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
   // FilterMode != kNone means a filter is pushed down -> filterExpression
   // must be present. kNone means no filter pushed.
-  TRI_ASSERT((_filterMode == vector::SearchStrategy::FilterMode::kNone) ==
+  TRI_ASSERT((_filterMode == vector::FilterMode::kNone) ==
              (filterExpression == nullptr));
   if (filterExpression != nullptr) {
     DocumentProducingNode::setFilter(std::move(filterExpression));
@@ -121,7 +121,7 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
   // The doc-variable register is written for everything except kCovered.
   RegisterId outDocumentRegId = RegisterId::maxRegisterId;
-  if (_strategy != Strategy::kCovered) {
+  if (_projectionMode != vector::ProjectionMode::kCovered) {
     outDocumentRegId = variableToRegisterId(_outVariable);
     writableOutputRegisters.emplace(outDocumentRegId);
   }
@@ -153,36 +153,15 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     }
   }
 
-  // Describe what the search must produce. The storage layer maps this to
-  // a concrete iterator + capture shape (see the table in
-  // RocksDBVectorIndexList.h); this node does not name iterator types.
-  vector::SearchStrategy searchStrategy;
-  searchStrategy.filter = _filterMode;
-  switch (_strategy) {
-    case Strategy::kPassThroughId:
-      searchStrategy.projection =
-          vector::SearchStrategy::ProjectionSource::kNone;
-      break;
-    case Strategy::kCovered:
-      searchStrategy.projection =
-          vector::SearchStrategy::ProjectionSource::kStoredValues;
-      break;
-    case Strategy::kDocument:
-      // The executor needs the doc whenever strategy is kDocument -- it
-      // always writes the doc register and (if non-empty) drives projections
-      // off the doc. Projection-list emptiness does not change that.
-      searchStrategy.projection =
-          vector::SearchStrategy::ProjectionSource::kDocument;
-      break;
-  }
+  vector::SearchStrategy searchStrategy{.filter = _filterMode,
+                                        .projection = _projectionMode};
 
-  // For kCovered, the executor calls produceFromIndex against the captured
-  // storedValues arrays, which requires each projection to know its position
-  // within those arrays. Index::covers populates that, and setCoveringContext
-  // wires the index identity through. Done on a copy so the node's own
-  // projections list (used by other code paths) is left untouched.
+  // produceFromIndex needs each projection's coveringIndexPosition set
+  // against the index's storedValues. Do it on a copy so the node's own
+  // projections list is left untouched.
   Projections projections = _projections;
-  if (_strategy == Strategy::kCovered && !projections.empty()) {
+  if (_projectionMode == vector::ProjectionMode::kCovered &&
+      !projections.empty()) {
     [[maybe_unused]] bool const ok = _index->covers(projections);
     TRI_ASSERT(ok);
     projections.setCoveringContext(_collectionAccess.collection()->id(),
@@ -207,7 +186,7 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
               .strategy = searchStrategy,
           },
       .projections = std::move(projections),
-      .strategy = _strategy,
+      .projectionMode = _projectionMode,
   };
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
@@ -228,7 +207,7 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _outVariable, _distanceOutVariable, _limit,
       _ascending, _offset, _searchParameters, collection(), _index,
-      std::move(filterExpression), _filterMode, _strategy);
+      std::move(filterExpression), _filterMode, _projectionMode);
   c->_projections = _projections;
   c->_filterProjections = _filterProjections;
   CollectionAccessingNode::cloneInto(*c);
@@ -273,7 +252,7 @@ std::vector<const Variable*> EnumerateNearVectorNode::getVariablesSetHere()
     const {
   std::vector<Variable const*> result;
   result.reserve(2 + _projections.size());
-  if (_strategy != Strategy::kCovered) {
+  if (_projectionMode != vector::ProjectionMode::kCovered) {
     result.push_back(_outVariable);
   }
   result.push_back(_distanceOutVariable);
@@ -291,28 +270,12 @@ bool EnumerateNearVectorNode::isProduceResult() const {
   return true;
 }
 
-void EnumerateNearVectorNode::recomputeStrategy() noexcept {
-  // kCovered means downstream consumes only projection registers, so the
-  // executor can skip writing the doc register. That holds whenever
-  // projections cover everything downstream needs from the doc -- which is
-  // exactly what `usesCoveringIndex` reports. Whether the filter happens to
-  // load the doc internally for its own evaluation (row 8) is unrelated:
-  // the iterator drops it after filter eval if it's not also captured.
+void EnumerateNearVectorNode::pickProjectionMode() noexcept {
   bool const projectionsCoveredByStoredValues =
       !_projections.empty() && _projections.usesCoveringIndex(_index);
-  _strategy = projectionsCoveredByStoredValues ? Strategy::kCovered
-                                               : Strategy::kDocument;
-}
-
-std::string_view EnumerateNearVectorNode::strategyName(Strategy s) noexcept {
-  switch (s) {
-    case Strategy::kPassThroughId:
-      return "pass-through-id";
-    case Strategy::kCovered:
-      return "covering";
-    case Strategy::kDocument:
-      return "document";
-  }
+  _projectionMode = projectionsCoveredByStoredValues
+                        ? vector::ProjectionMode::kCovered
+                        : vector::ProjectionMode::kDocument;
 }
 
 void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
@@ -329,7 +292,8 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
   builder.add(kFilterMode, VPackValue(vector::filterModeName(_filterMode)));
-  builder.add(kStrategy, VPackValue(strategyName(_strategy)));
+  builder.add(kProjectionMode,
+              VPackValue(vector::projectionModeName(_projectionMode)));
 
   builder.add(VPackValue(kSearchParameters));
   builder.add(velocypack::serialize(_searchParameters));
@@ -354,7 +318,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _filterMode(std::invoke([&] {
         auto slice = base.get(kFilterMode);
         return slice.isString() ? vector::parseFilterMode(slice.stringView())
-                                : vector::SearchStrategy::FilterMode::kNone;
+                                : vector::FilterMode::kNone;
       })) {
   std::string iid = base.get("index").get("id").copyString();
 
@@ -367,15 +331,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
 
   _index = collection()->indexByIdentifier(iid);
 
-  if (auto strategySlice = base.get(kStrategy); strategySlice.isString()) {
-    auto const name = strategySlice.stringView();
-    if (name == "covering") {
-      _strategy = Strategy::kCovered;
-    } else if (name == "document") {
-      _strategy = Strategy::kDocument;
-    } else {
-      _strategy = Strategy::kPassThroughId;
-    }
+  if (auto slice = base.get(kProjectionMode); slice.isString()) {
+    _projectionMode = vector::parseProjectionMode(slice.stringView());
   }
 }
 
@@ -397,8 +354,7 @@ void EnumerateNearVectorNode::setIndex(
   _index = std::move(indexHandle);
 }
 
-void EnumerateNearVectorNode::setFilterMode(
-    vector::SearchStrategy::FilterMode mode) noexcept {
+void EnumerateNearVectorNode::setFilterMode(vector::FilterMode mode) noexcept {
   _filterMode = mode;
 }
 

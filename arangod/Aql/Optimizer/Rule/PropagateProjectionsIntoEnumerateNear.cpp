@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -30,6 +30,7 @@
 #include "Assertions/Assert.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "VectorIndex/VectorSearchConfiguration.h"
 
 namespace arangodb::aql {
 
@@ -65,8 +66,8 @@ void propagateProjectionsIntoEnumerateNear(Optimizer* opt,
     // The previous filter-pushdown pass may have already removed the
     // materializer; in that case this node is in kDocument and there is
     // nothing more to do.
-    if (enumerateNearVectorNode->strategy() !=
-        EnumerateNearVectorNode::Strategy::kPassThroughId) {
+    if (enumerateNearVectorNode->projectionMode() !=
+        vector::ProjectionMode::kPassThroughId) {
       continue;
     }
 
@@ -108,7 +109,7 @@ void propagateProjectionsIntoEnumerateNear(Optimizer* opt,
     // those registers from the document or storedValues.
     enumerateNearVectorNode->setProjections(std::move(matNode->projections()));
 
-    enumerateNearVectorNode->recomputeStrategy();
+    enumerateNearVectorNode->pickProjectionMode();
 
     plan->unlinkNode(matNode);
     // TODO(cluster): useVectorIndexRule excluded EnumerateNearVectorNode

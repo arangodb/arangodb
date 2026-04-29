@@ -222,13 +222,11 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
       if (bestIndex != enumerateNearVectorNode->index()) {
         enumerateNearVectorNode->setIndex(std::move(bestIndex));
       }
-      enumerateNearVectorNode->setFilterMode(
-          vector::SearchStrategy::FilterMode::kStoredValues);
+      enumerateNearVectorNode->setFilterMode(vector::FilterMode::kStoredValues);
     } else {
       // Filter pushed down but no index storedValues cover its attributes:
       // the iterator must load the full doc to evaluate it.
-      enumerateNearVectorNode->setFilterMode(
-          vector::SearchStrategy::FilterMode::kDocument);
+      enumerateNearVectorNode->setFilterMode(vector::FilterMode::kDocument);
     }
     // We are handling filtering in EnumerateNearVectorNode
     enumerateNearVectorNode->setFilter(std::move(filterExpression));
@@ -250,7 +248,7 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
     if (materializer != nullptr && materializer->getType() == EN::MATERIALIZE &&
         !ServerState::instance()->isRunningInCluster()) {
       plan->unlinkNode(materializer);
-      enumerateNearVectorNode->recomputeStrategy();
+      enumerateNearVectorNode->pickProjectionMode();
       // TODO(cluster): useVectorIndexRule called
       // plan->excludeFromScatterGather(enumerateNearVectorNode) so that
       // scatterInClusterRule wraps the (un-excluded) MaterializeNode

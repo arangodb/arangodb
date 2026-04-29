@@ -157,9 +157,8 @@ void EnumerateNearVectorsExecutor::searchResults() {
   // search. For IVT (no filter) and IVFST (filter expressible against
   // storedValues), the captured map is empty, so we batch-fetch the
   // surviving docs by label here.
-  if (_infos.strategy == EnumerateNearVectorNode::Strategy::kDocument &&
-      _infos.searchConfig.strategy.filter !=
-          vector::SearchStrategy::FilterMode::kDocument) {
+  if (_infos.projectionMode == vector::ProjectionMode::kDocument &&
+      _infos.searchConfig.strategy.filter != vector::FilterMode::kDocument) {
     std::vector<LocalDocumentId> tokensToFetch;
     tokensToFetch.reserve(_labels.size());
     for (auto const& label : _labels) {
@@ -218,15 +217,15 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
       break;
     }
 
-    switch (_infos.strategy) {
-      case EnumerateNearVectorNode::Strategy::kPassThroughId: {
+    switch (_infos.projectionMode) {
+      case vector::ProjectionMode::kPassThroughId: {
         TRI_ASSERT(docOutId != RegisterId::maxRegisterId);
         output.moveValueInto(
             docOutId, _inputRow,
             AqlValueHintUInt(_labels[_currentProcessedResultCount]));
         break;
       }
-      case EnumerateNearVectorNode::Strategy::kDocument: {
+      case vector::ProjectionMode::kDocument: {
         LocalDocumentId const id{static_cast<LocalDocumentId::BaseType>(
             _labels[_currentProcessedResultCount])};
         auto it = _documents.find(id);
@@ -238,7 +237,7 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
         writeProjectionsFromDocument(docSlice, output);
         break;
       }
-      case EnumerateNearVectorNode::Strategy::kCovered: {
+      case vector::ProjectionMode::kCovered: {
         // No doc register for kCovered (createBlock leaves docOutId unset);
         // projections come positionally out of the storedValues array.
         TRI_ASSERT(docOutId == RegisterId::maxRegisterId);
