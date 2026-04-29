@@ -58,6 +58,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "StorageEngine/VPackSortMigration.h"
@@ -1730,7 +1731,9 @@ async<void> RestAdminClusterHandler::setDBServerMaintenance(
     auto result = co_await sendTransaction();
     if (result.ok() && result.statusCode() == 200) {
       VPackBuilder builder;
-      { VPackObjectBuilder obj(&builder); }
+      {
+        VPackObjectBuilder obj(&builder);
+      }
       generateOk(rest::ResponseCode::OK, builder);
       co_await waitForDBServerMaintenance(serverId, isMaintenanceMode);
     } else {
@@ -3030,14 +3033,23 @@ async<void> RestAdminClusterHandler::handleVPackSortMigration(
   VPackBuilder result;
   Result res;
   if (!ServerState::instance()->isCoordinator()) {
-    if (request()->requestType() == rest::RequestType::GET) {
-      if (subCommand == VPackSortMigrationCheck) {
-        res = ::analyzeVPackIndexSorting(_vocbase, result);
-      } else {
-        res = ::statusVPackIndexSorting(_vocbase, result);
+    auto& storageEngine = _vocbase.engine();
+    if (storageEngine.typeName() != RocksDBEngine::kEngineName) {
+      res = Result(TRI_ERROR_NOT_IMPLEMENTED,
+                   "VPack sorting migration is unnecessary for storage engines "
+                   "other than RocksDB");
+    } else {
+      auto& rocksDBEngine = static_cast<RocksDBEngine&>(storageEngine);
+
+      if (request()->requestType() == rest::RequestType::GET) {
+        if (subCommand == VPackSortMigrationCheck) {
+          res = ::analyzeVPackIndexSorting(_vocbase, result);
+        } else {
+          res = ::statusVPackIndexSorting(rocksDBEngine, result);
+        }
+      } else {  // PUT
+        res = ::migrateVPackIndexSorting(rocksDBEngine, result);
       }
-    } else {  // PUT
-      res = ::migrateVPackIndexSorting(_vocbase, result);
     }
   } else {
     // Coordinators from here:

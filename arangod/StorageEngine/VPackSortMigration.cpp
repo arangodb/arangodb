@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -44,8 +44,13 @@ namespace arangodb {
 
 // On dbservers, agents and single servers:
 Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
-  TRI_ASSERT(vocbase.engine().typeName() == RocksDBEngine::kEngineName);
-  auto& engine = vocbase.engine<RocksDBEngine>();
+  auto& storageEngine = vocbase.engine();
+  if (storageEngine.typeName() != RocksDBEngine::kEngineName) {
+    return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                  "VPack sorting migration is unnecessary for storage engines "
+                  "other than RocksDB");
+  }
+  auto& engine = static_cast<RocksDBEngine&>(storageEngine);
   auto* db = engine.db();
 
   using IndexType = arangodb::Index::IndexType;
@@ -167,11 +172,9 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
   return {};
 }
 
-Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
+Result migrateVPackIndexSorting(RocksDBEngine& engine, VPackBuilder& result) {
   result.clear();
 
-  TRI_ASSERT(vocbase.engine().typeName() == RocksDBEngine::kEngineName);
-  auto& engine = vocbase.engine<RocksDBEngine>();
   Result res = engine.writeSortingFile(
       arangodb::basics::VelocyPackHelper::SortingMethod::Correct);
 
@@ -186,9 +189,7 @@ Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
   return res;
 }
 
-Result statusVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
-  TRI_ASSERT(vocbase.engine().typeName() == RocksDBEngine::kEngineName);
-  auto& engine = vocbase.engine<RocksDBEngine>();
+Result statusVPackIndexSorting(RocksDBEngine& engine, VPackBuilder& result) {
   auto sortingFileMethod = engine.readSortingFile();
   {
     VPackObjectBuilder guard(&result);
