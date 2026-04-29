@@ -170,10 +170,11 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
           vector::SearchStrategy::ProjectionSource::kStoredValues;
       break;
     case Strategy::kDocument:
+      // The executor needs the doc whenever strategy is kDocument -- it
+      // always writes the doc register and (if non-empty) drives projections
+      // off the doc. Projection-list emptiness does not change that.
       searchStrategy.projection =
-          _projections.empty()
-              ? vector::SearchStrategy::ProjectionSource::kNone
-              : vector::SearchStrategy::ProjectionSource::kDocument;
+          vector::SearchStrategy::ProjectionSource::kDocument;
       break;
   }
 
@@ -293,12 +294,16 @@ bool EnumerateNearVectorNode::isProduceResult() const {
 }
 
 void EnumerateNearVectorNode::recomputeStrategy() noexcept {
+  // kCovered means downstream consumes only projection registers, so the
+  // executor can skip writing the doc register. That holds whenever
+  // projections cover everything downstream needs from the doc -- which is
+  // exactly what `usesCoveringIndex` reports. Whether the filter happens to
+  // load the doc internally for its own evaluation (row 8) is unrelated:
+  // the iterator drops it after filter eval if it's not also captured.
   bool const projectionsCoveredByStoredValues =
       !_projections.empty() && _projections.usesCoveringIndex(_index);
-  bool const filterCoveredOrAbsent = !hasFilter() || _isCoveredByStoredValues;
-  _strategy = (projectionsCoveredByStoredValues && filterCoveredOrAbsent)
-                  ? Strategy::kCovered
-                  : Strategy::kDocument;
+  _strategy = projectionsCoveredByStoredValues ? Strategy::kCovered
+                                               : Strategy::kDocument;
 }
 
 std::string_view EnumerateNearVectorNode::strategyName(Strategy s) noexcept {

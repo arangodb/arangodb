@@ -240,21 +240,25 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
                   idsToValue[id].size()),
               _codeSize);
 
+          auto* sink = _filterContext.capturedDocuments;
+          // Row 8: storedValues cover projections, so capture only the
+          // storedValues array (refcount-bump, no copy). Available only
+          // for the with-storedValues strategy.
           if constexpr (Strategy::hasStoredValues) {
+            if (sink != nullptr &&
+                _filterContext.captureShape == CaptureShape::kStoredValues) {
+              sink->insert_or_assign(id, entry.storedValues);
+            }
             _filteredIds.emplace_back(id, std::move(entry.encodedValue));
           } else {
             _filteredIds.emplace_back(id, std::move(entry));
           }
 
-          // Hand the document we just loaded to the executor so it does not
-          // have to read it again post-readBatch. doc points into RocksDB-
-          // owned memory whose lifetime ends with this callback, so we copy.
-          //
-          // TODO(row 8): when storedValues cover the projection list (scP),
-          // capturing the storedValues array is enough -- we're only loading
-          // the doc here for the filter. Plumb scP through IteratorContext
-          // and switch the capture shape; saves bytes vs full doc.
-          if (auto* sink = _filterContext.capturedDocuments; sink != nullptr) {
+          // Row 6: projections need the full doc, so hand the bytes we
+          // just loaded to the executor. doc points into RocksDB-owned
+          // memory whose lifetime ends with this callback, so we copy.
+          if (sink != nullptr &&
+              _filterContext.captureShape == CaptureShape::kFullDocument) {
             velocypack::Buffer<uint8_t> buf;
             buf.append(doc.start(), doc.byteSize());
             sink->insert_or_assign(id, velocypack::SharedSlice{std::move(buf)});

@@ -92,12 +92,10 @@ inline faiss::MetricType metricToFaissMetric(
 //                                                projections (scP=F means
 //                                                we don't have the data
 //                                                here anyway)
-//   T  |   T    |  F  |  T  | IVFT + on_heap   | full document
-//                                                TODO: capture only the
-//                                                storedValues array here
-//                                                (scP=T means it's enough
-//                                                for projections); saves
-//                                                bytes vs full doc.
+//   T  |   T    |  F  |  T  | IVFT + on_heap   | storedValues array
+//                                                (filter loaded the doc but
+//                                                projections cover, so we
+//                                                only stash the array)
 //   T  |   T    |  T  |  T  | IVFST + on_heap  | storedValues array
 //
 // Threading note: this code assumes single-threaded execution within one
@@ -120,6 +118,14 @@ struct IteratorContext {
       capturedDocuments{nullptr};
 };
 
+// What the filtering iterator should put into capturedDocuments. Only
+// meaningful when capturedDocuments is non-null. IVFT supports both
+// shapes; IVFST only supports kStoredValues.
+enum class CaptureShape : std::uint8_t {
+  kStoredValues,  // raw storedValues array from the index entry
+  kFullDocument,  // full document Object loaded for filter eval (IVFT only)
+};
+
 // Adds the filter-evaluation state used by the filtering iterator paths.
 struct IteratorFilterContext : IteratorContext {
   aql::Expression* filterExpression;
@@ -132,6 +138,7 @@ struct IteratorFilterContext : IteratorContext {
   // layer can skip loading documents entirely.
   bool useStoredValuesIterator;
   aql::Variable const* documentVariable;
+  CaptureShape captureShape{CaptureShape::kStoredValues};
 };
 
 ////////////////////////////////////////////////////////////////////////////////

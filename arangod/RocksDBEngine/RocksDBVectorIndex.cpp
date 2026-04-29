@@ -268,6 +268,13 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
         searchCtx.useStoredValuesIterator =
             (config.strategy.filter == FilterMode::kStoredValues);
         searchCtx.capturedDocuments = captureSink;
+        // Row 6: filter loaded the doc, projections need the doc -> stash
+        // the doc itself. Row 8: filter loaded the doc but projections are
+        // covered -> stash only the storedValues array (cheaper).
+        searchCtx.captureShape =
+            (config.strategy.projection == ProjectionSource::kDocument)
+                ? vector::CaptureShape::kFullDocument
+                : vector::CaptureShape::kStoredValues;
         return searchCtx;
       });
 
