@@ -28,6 +28,7 @@
 #include "Aql/Variable.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
+#include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
@@ -59,13 +60,31 @@ EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
       _trx(_infos.queryContext.newTrxContext()),
       _collection(_infos.collection) {}
 
-void EnumerateNearVectorsExecutor::writeProjections(velocypack::Slice docSlice,
-                                                    OutputAqlItemRow& output) {
+void EnumerateNearVectorsExecutor::writeProjectionsFromDocument(
+    velocypack::Slice docSlice, OutputAqlItemRow& output) {
   if (_infos.projections.empty() || _infos.projectionVarsToRegs.empty()) {
     return;
   }
   _infos.projections.produceFromDocument(
       _projectionsBuilder, docSlice, &_trx,
+      [&](Variable const* variable, velocypack::Slice slice) {
+        if (slice.isNone()) {
+          slice = VPackSlice::nullSlice();
+        }
+        auto it = _infos.projectionVarsToRegs.find(variable->id);
+        TRI_ASSERT(it != _infos.projectionVarsToRegs.end());
+        output.moveValueInto(it->second, _inputRow, slice);
+      });
+}
+
+void EnumerateNearVectorsExecutor::writeProjectionsFromStoredValues(
+    velocypack::Slice storedValuesSlice, OutputAqlItemRow& output) {
+  if (_infos.projections.empty() || _infos.projectionVarsToRegs.empty()) {
+    return;
+  }
+  IndexIterator::SliceCoveringData covering{storedValuesSlice};
+  _infos.projections.produceFromIndex(
+      _projectionsBuilder, covering, &_trx,
       [&](Variable const* variable, velocypack::Slice slice) {
         if (slice.isNone()) {
           slice = VPackSlice::nullSlice();
@@ -133,10 +152,14 @@ void EnumerateNearVectorsExecutor::searchResults() {
   _documents = std::move(result.capturedDocuments);
   _currentProcessedResultCount = 0;
 
-  // No-filter kDocument: the simple iterator did not load docs, so
-  // batch-fetch them now.
+  // The executor needs full docs (kDocument: writes the doc register
+  // and/or feeds projections) but only IVFT actually loads them during
+  // search. For IVT (no filter) and IVFST (filter expressible against
+  // storedValues), the captured map is empty, so we batch-fetch the
+  // surviving docs by label here.
   if (_infos.strategy == EnumerateNearVectorNode::Strategy::kDocument &&
-      _infos.searchConfig.filterExpression == nullptr) {
+      _infos.searchConfig.strategy.filter !=
+          vector::SearchStrategy::FilterMode::kDocument) {
     std::vector<LocalDocumentId> tokensToFetch;
     tokensToFetch.reserve(_labels.size());
     for (auto const& label : _labels) {
@@ -161,7 +184,8 @@ void EnumerateNearVectorsExecutor::searchResults() {
         }
         velocypack::Buffer<uint8_t> buf;
         buf.append(doc.start(), doc.byteSize());
-        _documents.insert_or_assign(id, std::move(buf));
+        _documents.insert_or_assign(id,
+                                    velocypack::SharedSlice{std::move(buf)});
         return true;
       };
       PhysicalCollection::LookupOptions opts{.countBytes = true};
@@ -202,17 +226,27 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
             AqlValueHintUInt(_labels[_currentProcessedResultCount]));
         break;
       }
-      case EnumerateNearVectorNode::Strategy::kDocument:
-      case EnumerateNearVectorNode::Strategy::kCovered: {
+      case EnumerateNearVectorNode::Strategy::kDocument: {
         LocalDocumentId const id{static_cast<LocalDocumentId::BaseType>(
             _labels[_currentProcessedResultCount])};
         auto it = _documents.find(id);
         TRI_ASSERT(it != _documents.end());
-        velocypack::Slice docSlice{it->second.data()};
+        velocypack::Slice docSlice = it->second.slice();
         if (docOutId != RegisterId::maxRegisterId) {
           output.moveValueInto(docOutId, _inputRow, docSlice);
         }
-        writeProjections(docSlice, output);
+        writeProjectionsFromDocument(docSlice, output);
+        break;
+      }
+      case EnumerateNearVectorNode::Strategy::kCovered: {
+        // No doc register for kCovered (createBlock leaves docOutId unset);
+        // projections come positionally out of the storedValues array.
+        TRI_ASSERT(docOutId == RegisterId::maxRegisterId);
+        LocalDocumentId const id{static_cast<LocalDocumentId::BaseType>(
+            _labels[_currentProcessedResultCount])};
+        auto it = _documents.find(id);
+        TRI_ASSERT(it != _documents.end());
+        writeProjectionsFromStoredValues(it->second.slice(), output);
         break;
       }
     }
