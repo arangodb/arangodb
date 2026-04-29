@@ -180,7 +180,6 @@ function optimizerRuleTestSuite () {
 
 function emptyArrayFilterSuite() {
   const cn = 'UnitTestsEmptyArrayFilter';
-  // pre-existing AST-level folding: works with all rules disabled
   const paramNoRules = { optimizer: { rules: ['-all'] } };
 
   return {
@@ -279,8 +278,7 @@ function emptyArrayFilterSuite() {
       assertTrue(nodeTypes.indexOf('FilterNode') !== -1, nodeTypes);
     },
 
-    // NOOPT(x) IN [] bypasses AST folding (non-deterministic LHS) but isFalse()
-    // still recognizes it at plan construction — NoResultsNode with zero rules
+    // NOOPT(x) IN [] bypasses AST folding (non-deterministic LHS), but is gonna be folded with the isFalse extension for IN []
     testNoOptInEmptyArrayProducesNoResults: function () {
       const q = `FOR doc IN ${cn} FILTER NOOPT(doc.value) IN [] RETURN doc`;
       const nodeTypes = helper.getCompactPlan(
