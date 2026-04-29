@@ -249,6 +249,9 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
     vector::VectorSearchConfig const& config) {
   TRI_ASSERT(config.inputs != nullptr);
   TRI_ASSERT(config.trx != nullptr);
+  // The on_heap_changed are not thread safe unless this is true
+  ADB_PROD_ASSERT(_faissIndex->parallel_mode == 0)
+      << "FAISS parallel_mode must be 0; got " << _faissIndex->parallel_mode;
 
   auto& inputs = *config.inputs;
   TRI_ASSERT(inputs.size() == _definition.dimension)
