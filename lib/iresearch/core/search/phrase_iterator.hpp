@@ -115,25 +115,30 @@ class FixedPhraseFrequency {
       const position::value_t base_position = lead.value();
 
       bool match = true;
+      position::value_t prev_abs = base_position;
+      auto prev_it = std::begin(pos_);
 
-      for (auto it = std::begin(pos_) + 1; it != end; ++it) {
+      for (auto it = std::begin(pos_) + 1; it != end; ++prev_it, ++it) {
         position& pos = it->first;
-        const auto term_position = base_position + it->second;
-        if (!pos_limits::valid(term_position)) {
+        const auto delta = it->second - prev_it->second;
+        const auto min_pos = prev_abs + 1;
+        const auto max_pos = prev_abs + delta;
+        if (!pos_limits::valid(min_pos) || !pos_limits::valid(max_pos)) {
           return phrase_freq;
         }
-        const auto sought = pos.seek(term_position);
+        const auto sought = pos.seek(min_pos);
 
         if (pos_limits::eof(sought)) {
           // exhausted
           return phrase_freq;
-        } else if (sought != term_position) {
-          // sought too far from the lead
+        } else if (sought > max_pos) {
+          // next occurrence of this term is past the allowed window
           match = false;
 
           lead.seek(sought - it->second);
           break;
         }
+        prev_abs = sought;
       }
 
       if (match) {
@@ -242,7 +247,9 @@ class VariadicPhraseFrequency {
   friend class PhrasePosition<VariadicPhraseFrequency>;
 
   struct SubMatchContext {
-    position::value_t term_position{pos_limits::eof()};
+    position::value_t min_pos{pos_limits::eof()};
+    position::value_t max_pos{pos_limits::eof()};
+    position::value_t matched_pos{pos_limits::eof()};
     position::value_t min_sought{pos_limits::eof()};
     const uint32_t* end{};  // end match offset
     score_t boost{};
@@ -265,10 +272,10 @@ class VariadicPhraseFrequency {
     auto& match = *reinterpret_cast<SubMatchContext*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
-    const auto sought = p->seek(match.term_position);
+    const auto sought = p->seek(match.min_pos);
     if (pos_limits::eof(sought)) {
       return true;
-    } else if (sought != match.term_position) {
+    } else if (sought > match.max_pos) {
       if (sought < match.min_sought) {
         match.min_sought = sought;
       }
@@ -286,6 +293,7 @@ class VariadicPhraseFrequency {
     }
 
     match.match = true;
+    match.matched_pos = sought;
     return false;
   }
 
@@ -305,9 +313,14 @@ class VariadicPhraseFrequency {
         match.boost = lead_adapter.boost;
       }
 
-      for (auto it = std::begin(self.pos_) + 1; it != end; ++it) {
-        match.term_position = base_position + it->second;
-        if (!pos_limits::valid(match.term_position)) {
+      position::value_t prev_abs = base_position;
+      auto prev_it = std::begin(self.pos_);
+
+      for (auto it = std::begin(self.pos_) + 1; it != end; ++prev_it, ++it) {
+        match.min_pos = prev_abs + 1;
+        match.max_pos = prev_abs + (it->second - prev_it->second);
+        if (!pos_limits::valid(match.min_pos) ||
+            !pos_limits::valid(match.max_pos)) {
           return false;  // invalid for all
         }
 
@@ -324,6 +337,7 @@ class VariadicPhraseFrequency {
 
           return true;  // eof for all
         }
+        prev_abs = match.matched_pos;
       }
 
       if (match.match) {
@@ -413,7 +427,9 @@ class VariadicPhraseFrequencyOverlapped {
 
  private:
   struct SubMatchContext {
-    position::value_t term_position{pos_limits::eof()};
+    position::value_t min_pos{pos_limits::eof()};
+    position::value_t max_pos{pos_limits::eof()};
+    position::value_t matched_pos{pos_limits::eof()};
     position::value_t min_sought{pos_limits::eof()};
     score_t boost{};
     uint32_t freq{};
@@ -424,10 +440,10 @@ class VariadicPhraseFrequencyOverlapped {
     auto& match = *reinterpret_cast<SubMatchContext*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
-    const auto sought = p->seek(match.term_position);
+    const auto sought = p->seek(match.min_pos);
     if (pos_limits::eof(sought)) {
       return true;
-    } else if (sought != match.term_position) {
+    } else if (sought > match.max_pos) {
       if (sought < match.min_sought) {
         match.min_sought = sought;
       }
@@ -435,6 +451,9 @@ class VariadicPhraseFrequencyOverlapped {
     }
 
     ++match.freq;
+    if (pos_limits::eof(match.matched_pos) || sought < match.matched_pos) {
+      match.matched_pos = sought;
+    }
     if constexpr (VolatileBoost) {
       match.boost += it_adapter.boost;
     }
@@ -462,13 +481,19 @@ class VariadicPhraseFrequencyOverlapped {
         match_boost = 0.f;
       }
 
-      for (auto it = std::begin(self.pos_) + 1; it != end; ++it) {
-        match.term_position = base_position + it->second;
-        if (!pos_limits::valid(match.term_position)) {
+      position::value_t prev_abs = base_position;
+      auto prev_it = std::begin(self.pos_);
+
+      for (auto it = std::begin(self.pos_) + 1; it != end; ++prev_it, ++it) {
+        match.min_pos = prev_abs + 1;
+        match.max_pos = prev_abs + (it->second - prev_it->second);
+        if (!pos_limits::valid(match.min_pos) ||
+            !pos_limits::valid(match.max_pos)) {
           return false;  // invalid for all
         }
 
         match.freq = 0;
+        match.matched_pos = pos_limits::eof();
         if constexpr (VolatileBoost) {
           match.boost = 0.f;
         }
@@ -499,6 +524,7 @@ class VariadicPhraseFrequencyOverlapped {
         if constexpr (VolatileBoost) {
           match_boost += match.boost / match.freq;
         }
+        prev_abs = match.matched_pos;
       }
 
       if (match_freq) {

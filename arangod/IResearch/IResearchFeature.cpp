@@ -592,6 +592,8 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   // cannot be used in analyzers!
   addFunction(functions, {"PHRASE", ".,.|.+", flagsNoAnalyzer, &dummyFunc});
 
+  addFunction(functions, {"PHRASE_EX", ".,.|.+", flagsNoAnalyzer, &dummyFunc});
+
   // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &minMatchFunc});
 

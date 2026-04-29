@@ -223,6 +223,7 @@ using ConversionHandler = Result (*)(char const* funcName, irs::boolean_filter*,
 /// Appends value tokens to a phrase filter
 void appendTerms(irs::by_phrase& filter, std::string_view value,
                  irs::analysis::analyzer& stream, size_t firstOffset) {
+  LOG_DEVEL << "KKDBG: appendTerms: (" << value << ")";
   // reset stream
   stream.reset(value);
 
@@ -233,6 +234,7 @@ void appendTerms(irs::by_phrase& filter, std::string_view value,
 
   // add tokens
   for (auto* options = filter.mutable_options(); stream.next();) {
+    LOG_DEVEL << "KKDBG: appendTerms: token (" << std::string(reinterpret_cast<const char *>(token->value.data()), token->value.size()) << ")";
     options->push_back<irs::by_term_options>(firstOffset)
         .term.assign(token->value);
 
@@ -3201,6 +3203,8 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
                          size_t valueArgsEnd, irs::analysis::analyzer* analyzer,
                          size_t offset, bool allowDefaultOffset,
                          bool isInArray) {
+
+  // LOG_DEVEL << "KKDBG: processPhraseArgs: phrase: " << phrase->field();
   std::string_view value;
   bool expectingOffset = false;
   for (size_t idx = valueArgsBegin; idx < valueArgsEnd; ++idx) {
@@ -3291,6 +3295,7 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
 
     if (phrase) {
       TRI_ASSERT(analyzer);
+      LOG_DEVEL << "KKDBG: processPhraseArgs: value: " << value;
       appendTerms(*phrase, value, *analyzer, offset);
     }
     offset = 0;
@@ -3313,6 +3318,8 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
 // term3] is equal to: [term1, 0, term2, 2, term3] PHRASE(<attribute>, <value>
 // [, <offset>, <value>, ...] [, <analyzer>]) PHRASE(<attribute>, '[' <value> [,
 // <offset>, <value>, ...] ']' [,<analyzer>])
+// Numeric offset N between consecutive terms means: the next term may appear after
+// 0..N skipped tokens (inclusive), not exactly N skipped tokens.
 Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
                       FilterContext const& filterCtx,
                       aql::AstNode const& args) {
@@ -4002,6 +4009,7 @@ frozen::map<std::string_view, ConversionHandler,
             14> constexpr kFCallSystemConversionHandlers{
     // filter functions
     {"PHRASE", fromFuncPhrase},
+    {"PHRASE_EX", fromFuncPhrase},
     {"STARTS_WITH", fromFuncStartsWith},
     {"EXISTS", fromFuncExists},
     {"MIN_MATCH", fromFuncMinMatch},
