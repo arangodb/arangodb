@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterAdminOperations.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
