@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/Optimizer.h"
+#include "Aql/Projections.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "VectorIndex/VectorSearchConfiguration.h"
@@ -72,45 +73,29 @@ void removeMaterializerForEnumerateNear(Optimizer* opt,
     if (matNode == nullptr) {
       continue;
     }
-
     auto const& index = vectorNode->index();
 
-    // Try the covered path: copy projections so coverage analysis (which
-    // mutates coveringIndexPosition) doesn't touch the materializer's
-    // originals if the answer turns out to be "not covered".
+    // Coverage analysis mutates the projections
     auto candidateProjections = matNode->projections();
-    bool const covered = !candidateProjections.empty() &&
-                         index->covers(candidateProjections);
+    bool const indexCoversProjections =
+        !candidateProjections.empty() && index->covers(candidateProjections);
 
-    auto const filterMode = vectorNode->filterMode();
     bool const filterLoadsDocument =
-        filterMode == vector::FilterMode::kDocument;
+        vectorNode->filterMode() == vector::FilterMode::kDocument;
 
-    if (!covered && !filterLoadsDocument) {
-      // Neither optimization applies -- materializer stays.
-      continue;
-    }
-
-    // Some materializeIntoSeparateVariable rewrite may have rebound the
-    // materializer's outVariable; adopt it so dropping leaves no orphan
-    // reads. Skip when a filter is pushed: that filter binds the loaded
-    // doc to the original variable, and rebinding would break the
-    // binding contract with RocksDBVectorIndex::readBatch.
-    if (!vectorNode->hasFilter() &&
-        &matNode->docIdVariable() != &matNode->outVariable()) {
-      vectorNode->rebindOutVariable(&matNode->outVariable());
-    }
-
-    if (covered) {
-      candidateProjections.setCoveringContext(
-          vectorNode->collection()->id(), index);
+    if (indexCoversProjections) {
+      candidateProjections.setCoveringContext(vectorNode->collection()->id(),
+                                              index);
       vectorNode->setProjections(std::move(candidateProjections));
       vectorNode->setProjectionMode(vector::ProjectionMode::kCovered);
-    } else {
-      // filterLoadsDocument: iterator loads the doc anyway; the executor
-      // captures it and projects by name.
+    } else if (filterLoadsDocument) {
+      // iterator already loads the doc for filter eval -- capture it for
+      // the executor and project by name from it.
       vectorNode->setProjections(std::move(matNode->projections()));
       vectorNode->setProjectionMode(vector::ProjectionMode::kDocument);
+    } else {
+      // Neither optimization win applies; the materializer must stay.
+      continue;
     }
 
     plan->unlinkNode(matNode);
