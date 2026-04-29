@@ -152,10 +152,6 @@ void EnumerateNearVectorsExecutor::searchResults() {
   _documents = std::move(result.capturedDocuments);
   _currentProcessedResultCount = 0;
 
-  // kDocument is reachable only when a pushed-down filter forced the
-  // iterator to load the doc, so the captured map is already populated.
-  // The other "we need a doc downstream" cases keep the materializer in
-  // place and don't reach the executor in kDocument mode.
 
   TRI_ASSERT(hasResults());
 
