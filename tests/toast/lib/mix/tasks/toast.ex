@@ -255,6 +255,7 @@ defmodule Mix.Tasks.Toast do
     js_files =
       js_paths
       |> Enum.flat_map(&discover_js_files(Path.expand(&1, repo_root)))
+      |> Enum.map(&Path.relative_to(&1, repo_root))
       |> filter_js_files(file_filters, suite_dir)
 
     case js_files do
