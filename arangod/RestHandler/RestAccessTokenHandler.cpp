@@ -92,7 +92,7 @@ async<Result> RestAccessTokenHandler::checkUserCanAccess() const {
     co_return Result{};
   }
 
-  co_return Result{TRI_ERROR_FORBIDDEN};
+  co_return Result{TRI_ERROR_FORBIDDEN, "Not authenticated."};
 }
 
 RestStatus RestAccessTokenHandler::showAccessTokens(auth::UserManager* um,

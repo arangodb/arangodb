@@ -29,6 +29,7 @@
 #include "Auth/TokenCache.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -724,7 +725,12 @@ async<Result> RestHandler::checkUserCanAccess() const {
     }
   }
 
-  co_return canAccess ? Result() : Result(TRI_ERROR_HTTP_UNAUTHORIZED);
+  co_return canAccess
+      ? Result()
+      : (userAuthenticated
+             ? Result(TRI_ERROR_HTTP_UNAUTHORIZED,
+                      "No read access to database.")
+             : Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated."));
 }
 
 async<void> RestHandler::handleSpecialAccessChecks() {
@@ -739,7 +745,7 @@ async<void> RestHandler::handleSpecialAccessChecks() {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
     generateError(ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
-                  "not authorized to execute this request");
+                  authzResult.errorMessage());
   }
 }
 

@@ -88,8 +88,9 @@ async<Result> RestStatusHandler::checkUserCanAccess() const {
   auto mode = ServerState::instance()->mode();
   if (mode == ServerState::Mode::STARTUP ||
       mode == ServerState::Mode::MAINTENANCE) {
-    co_return request()->authenticated() ? Result{}
-                                         : Result{TRI_ERROR_HTTP_UNAUTHORIZED};
+    co_return request()->authenticated()
+        ? Result{}
+        : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
   }
 
   co_return co_await RestBaseHandler::checkUserCanAccess();
