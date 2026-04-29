@@ -173,9 +173,7 @@ function activitiesOfAllServersSuite() {
 
     testGetsActivitiesForAllServers: function () {
       if (internal.isCluster()) {
-        // TODO should actually also include Agencies
         const servers = Object.entries(arango.GET("/_admin/cluster/health").Health)
-          .filter(([serverId, properties]) => properties.Role != "Agent")
           .map(([serverId, properties]) => serverId)
           .sort();
         assertTrue(servers.length > 0);

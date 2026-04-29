@@ -26,6 +26,10 @@
 #include "SystemMonitor/Activities/Feature.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+namespace arangodb {
+class ClusterFeature;
+class NetworkFeature;
+}  // namespace arangodb
 namespace arangodb::activities {
 
 struct Output {
@@ -63,6 +67,8 @@ class RestHandler : public arangodb::RestVocbaseBaseHandler {
   futures::Future<futures::Unit> executeAsync() override;
 
   Feature& _feature;
+  ClusterFeature& _clusterFeature;
+  NetworkFeature& _networkFeature;
 };
 
 }  // namespace arangodb::activities

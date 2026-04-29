@@ -21,7 +21,10 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "RestHandler.h"
+#include <openssl/x509v3.h>
+#include <ranges>
 
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterInfo.h"
@@ -42,9 +45,54 @@ using namespace arangodb::containers;
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
-      _feature(server.getFeature<Feature>()) {}
+      _feature(server.getFeature<Feature>()),
+      _clusterFeature(server.getFeature<ClusterFeature>()),
+      _networkFeature(server.getFeature<NetworkFeature>()) {}
 
 namespace {
+template<typename R>
+requires std::ranges::input_range<R> &&
+    std::convertible_to<std::ranges::range_reference_t<R>, std::string_view>
+auto getActivitiesFromServers(
+    R&& servers,
+    // containers::FlatHashMap<ServerID, std::string> const& servers,
+    std::vector<std::pair<ServerID, std::string>> agencies,
+    NetworkFeature& networkFeature, std::string const& path)
+    -> async<
+        std::vector<std::pair<ServerID, futures::Try<network::Response>>>> {
+  auto* pool = networkFeature.pool();
+  if (pool == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  network::RequestOptions options;
+  options.timeout = network::Timeout(30.0);
+  options.apiVersion = api_version::ApiVersion::Experimental;
+
+  std::vector<network::FutureRes> requests;
+  std::vector<ServerID> serverIds;
+
+  for (auto const& serverId : servers) {
+    serverIds.emplace_back(serverId);
+    requests.emplace_back(network::sendRequestRetry(
+        pool, "server:" + serverId, fuerte::RestVerb::Get, path,
+        VPackBuffer<uint8_t>{}, options));
+  }
+  for (auto const& [agencyId, endpoint] : agencies) {
+    serverIds.emplace_back(agencyId);
+    requests.emplace_back(
+        network::sendRequestRetry(pool, endpoint, fuerte::RestVerb::Get, path,
+                                  VPackBuffer<uint8_t>{}, options));
+  }
+  auto responses = co_await futures::collectAll(requests);
+  std::vector<std::pair<ServerID, futures::Try<network::Response>>> result;
+  auto responseCount = 0;
+  for (auto&& response : responses) {
+    result.emplace_back(
+        std::make_pair(serverIds[responseCount], std::move(response)));
+    responseCount++;
+  }
+  co_return result;
+}
 
 auto serializeOneServer(VPackBuilder& builder,
                         futures::Try<network::Response>&& responseFuture)
@@ -127,36 +175,13 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  // get all servers
-  // request health endpoint, server ids are
-  //   check RestAdminClusterHandler.cpp::2268 (handleHealth())
-  //   "Health": {
-  //     "CRDN-6ce91996-a7a5-42f9-b6ab-6a00620db6b1": { ..., "Role":
-  //     "Coordinator", ...}
-  auto servers =
-      server().getFeature<ClusterFeature>().clusterInfo().getServers();
+  auto servers = _clusterFeature.clusterInfo().getServers();
   auto myId = ServerState::instance()->getId();
   servers.erase(myId);
-
-  auto* pool = server().getFeature<NetworkFeature>().pool();
-  if (pool == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-  network::RequestOptions options;
-  options.timeout = network::Timeout(30.0);
-  options.database = _request->databaseName();
-  options.parameters = _request->parameters();
-  options.apiVersion = api_version::ApiVersion::Experimental;
-
-  std::vector<network::FutureRes> requests;
-  std::vector<ServerID> serverIds;
-  for (auto const& [serverId, _] : servers) {
-    serverIds.emplace_back(serverId);
-    requests.emplace_back(network::sendRequestRetry(
-        pool, "server:" + serverId, fuerte::RestVerb::Get, _request->prefix(),
-        VPackBuffer<uint8_t>{}, options));
-  }
-  auto responses = co_await futures::collectAll(requests);
+  auto agencies = co_await AsyncAgencyComm().getAgencies();
+  auto activities_per_server =
+      co_await getActivitiesFromServers(servers | std::views::keys, agencies,
+                                        _networkFeature, _request->prefix());
 
   switch (_request->requestedApiVersion()) {
     case api_version::experimentalApiVersion: {
@@ -170,11 +195,9 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
       auto myActivities = _feature.getData();
       velocypack::serialize(builder, myActivities);
 
-      auto responseCount = 0;
-      for (auto& responseFuture : responses) {
-        builder.add(VPackValue(serverIds[responseCount]));
+      for (auto& [serverId, responseFuture] : activities_per_server) {
+        builder.add(VPackValue(serverId));
         serializeOneServer(builder, std::move(responseFuture));
-        responseCount++;
       }
       builder.close();
       builder.close();
