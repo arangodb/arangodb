@@ -27,8 +27,9 @@
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -39,7 +40,6 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-collection.h"
-#include "V8Server/v8-externals.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <v8.h>

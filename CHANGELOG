@@ -4,6 +4,8 @@
 * COR-466: Map `IN []` to false inside `FILTER` nodes, enabling optimization rules
   to be applied on them.
 
+* Upgraded FAISS to v1.14.1.
+
 * COR-439: Make --server.storage-engine option obsolete
   The MMF engine has been removed in 3.7 already, so there is only the rocksdb
   engine anymore, making this option pointless.
