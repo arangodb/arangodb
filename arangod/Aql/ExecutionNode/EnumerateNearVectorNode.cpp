@@ -48,8 +48,7 @@ static constexpr std::string_view kInVariableName{"inVariable"};
 static constexpr std::string_view kDistanceOutVariable{"distanceOutVariable"};
 static constexpr std::string_view kLimit{"limit"};
 static constexpr std::string_view kOffset{"offset"};
-static constexpr std::string_view kIsCoveredByStoredValues{
-    "isCoveredByStoredValues"};
+static constexpr std::string_view kFilterMode{"filterMode"};
 static constexpr std::string_view kSearchParameters{"searchParameters"};
 static constexpr std::string_view kStrategy{"strategy"};
 }  // namespace
@@ -61,8 +60,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     std::size_t offset, vector::SearchParameters searchParameters,
     aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle,
-    std::unique_ptr<Expression> filterExpression, bool isCoveredByStoredValues,
-    Strategy strategy)
+    std::unique_ptr<Expression> filterExpression,
+    vector::SearchStrategy::FilterMode filterMode, Strategy strategy)
     : ExecutionNode(plan, id),
       DocumentProducingNode(outVariable),
       CollectionAccessingNode(collection),
@@ -73,10 +72,13 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _offset(offset),
       _searchParameters(std::move(searchParameters)),
       _index(std::move(indexHandle)),
-      _isCoveredByStoredValues(isCoveredByStoredValues),
+      _filterMode(filterMode),
       _strategy(strategy) {
   TRI_ASSERT(_index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
-  TRI_ASSERT(filterExpression != nullptr || !_isCoveredByStoredValues);
+  // FilterMode != kNone means a filter is pushed down -> filterExpression
+  // must be present. kNone means no filter pushed.
+  TRI_ASSERT((_filterMode == vector::SearchStrategy::FilterMode::kNone) ==
+             (filterExpression == nullptr));
   if (filterExpression != nullptr) {
     DocumentProducingNode::setFilter(std::move(filterExpression));
   }
@@ -155,11 +157,7 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   // a concrete iterator + capture shape (see the table in
   // RocksDBVectorIndexList.h); this node does not name iterator types.
   vector::SearchStrategy searchStrategy;
-  searchStrategy.filter =
-      !hasFilter() ? vector::SearchStrategy::FilterMode::kNone
-      : _isCoveredByStoredValues
-          ? vector::SearchStrategy::FilterMode::kStoredValues
-          : vector::SearchStrategy::FilterMode::kDocument;
+  searchStrategy.filter = _filterMode;
   switch (_strategy) {
     case Strategy::kPassThroughId:
       searchStrategy.projection =
@@ -230,7 +228,7 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _outVariable, _distanceOutVariable, _limit,
       _ascending, _offset, _searchParameters, collection(), _index,
-      std::move(filterExpression), _isCoveredByStoredValues, _strategy);
+      std::move(filterExpression), _filterMode, _strategy);
   c->_projections = _projections;
   c->_filterProjections = _filterProjections;
   CollectionAccessingNode::cloneInto(*c);
@@ -330,7 +328,7 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
-  builder.add(kIsCoveredByStoredValues, VPackValue(_isCoveredByStoredValues));
+  builder.add(kFilterMode, VPackValue(vector::filterModeName(_filterMode)));
   builder.add(kStrategy, VPackValue(strategyName(_strategy)));
 
   builder.add(VPackValue(kSearchParameters));
@@ -353,7 +351,11 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
           Variable::varFromVPack(plan->getAst(), base, kDistanceOutVariable)),
       _limit(base.get(kLimit).getNumericValue<std::size_t>()),
       _offset(base.get(kOffset).getNumericValue<std::size_t>()),
-      _isCoveredByStoredValues(base.get(kIsCoveredByStoredValues).getBool()) {
+      _filterMode(std::invoke([&] {
+        auto slice = base.get(kFilterMode);
+        return slice.isString() ? vector::parseFilterMode(slice.stringView())
+                                : vector::SearchStrategy::FilterMode::kNone;
+      })) {
   std::string iid = base.get("index").get("id").copyString();
 
   if (auto const res = velocypack::deserializeWithStatus(
@@ -395,9 +397,9 @@ void EnumerateNearVectorNode::setIndex(
   _index = std::move(indexHandle);
 }
 
-void EnumerateNearVectorNode::setIsCoveredByStoredValues(
-    bool isCoveredByStoredValues) noexcept {
-  _isCoveredByStoredValues = isCoveredByStoredValues;
+void EnumerateNearVectorNode::setFilterMode(
+    vector::SearchStrategy::FilterMode mode) noexcept {
+  _filterMode = mode;
 }
 
 }  // namespace arangodb::aql

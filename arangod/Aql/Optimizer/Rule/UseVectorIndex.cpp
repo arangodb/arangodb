@@ -375,7 +375,7 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           plan.get(), plan->nextId(), inVariable, documentVariable,
           distanceVariable, limit, sortField->ascending, limitNode->offset(),
           std::move(searchParameters), enumerateCollectionNode->collection(),
-          index, nullptr, vector::SearchStrategy::FilterMode::kNone);
+          index);
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(

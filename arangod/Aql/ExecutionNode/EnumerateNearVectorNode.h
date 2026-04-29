@@ -27,10 +27,9 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/VectorSearchConfiguration.h"
 #include "Transaction/Methods.h"
 
-#include <atomic>
 #include <memory>
 #include <string_view>
 
@@ -71,17 +70,17 @@ class EnumerateNearVectorNode : public ExecutionNode,
     kDocument,
   };
 
-  EnumerateNearVectorNode(ExecutionPlan* plan, ExecutionNodeId id,
-                          Variable const* inVariable,
-                          Variable const* outVariable,
-                          Variable const* distanceOutVariable,
-                          std::size_t limit, bool ascending, std::size_t offset,
-                          vector::SearchParameters searchParameters,
-                          aql::Collection const* collection,
-                          transaction::Methods::IndexHandle indexHandle,
-                          std::unique_ptr<Expression> filterExpression,
-                          bool isCoveredByStoredValues,
-                          Strategy strategy = Strategy::kPassThroughId);
+  EnumerateNearVectorNode(
+      ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
+      Variable const* outVariable, Variable const* distanceOutVariable,
+      std::size_t limit, bool ascending, std::size_t offset,
+      vector::SearchParameters searchParameters,
+      aql::Collection const* collection,
+      transaction::Methods::IndexHandle indexHandle,
+      std::unique_ptr<Expression> filterExpression = nullptr,
+      vector::SearchStrategy::FilterMode filterMode =
+          vector::SearchStrategy::FilterMode::kNone,
+      Strategy strategy = Strategy::kPassThroughId);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -108,9 +107,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   bool isAscending() const noexcept;
 
-  void setIsCoveredByStoredValues(bool isCoveredByStoredValues) noexcept;
-  bool isCoveredByStoredValues() const noexcept {
-    return _isCoveredByStoredValues;
+  void setFilterMode(vector::SearchStrategy::FilterMode mode) noexcept;
+  vector::SearchStrategy::FilterMode filterMode() const noexcept {
+    return _filterMode;
   }
 
   Strategy strategy() const noexcept { return _strategy; }
@@ -158,9 +157,12 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// guaranteed to always be a vector index
   transaction::Methods::IndexHandle _index;
 
-  /// @brief indicates if the filter expression is fully covered by stored
-  /// values
-  bool _isCoveredByStoredValues;
+  /// @brief how the pushed-down filter (if any) gets evaluated. Set by
+  /// the optimizer once it has analysed filter coverage against the
+  /// index's storedValues; consumed by createBlock to build the
+  /// SearchStrategy for the storage layer.
+  vector::SearchStrategy::FilterMode _filterMode{
+      vector::SearchStrategy::FilterMode::kNone};
 
   /// @brief output strategy chosen for this node
   Strategy _strategy{Strategy::kPassThroughId};
