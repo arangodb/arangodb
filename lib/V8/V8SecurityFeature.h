@@ -24,12 +24,15 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <regex>
 #include <string>
 #include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "Basics/DenyAllow.h"
+#include "Basics/AllowedPaths.h"
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeatureOptions.h"
 
@@ -50,13 +53,19 @@ enum class FSAccessType { READ, WRITE };
 class TempFeature;
 class V8PlatformFeature;
 
+enum class AllowListStrictness {
+  STRICT,    // if an allowlist is empty, default to deny
+  NONSTRICT  // if an allowlist is empty, default to allow
+};
+
 class V8SecurityFeature final
     : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "V8Security"; }
 
-  explicit V8SecurityFeature(application_features::ApplicationServer& server)
-      : ApplicationFeature{server, *this} {
+  explicit V8SecurityFeature(application_features::ApplicationServer& server,
+                             AllowListStrictness strictness)
+      : ApplicationFeature{server, *this}, _strictness(strictness) {
     setOptional(false);
     startsAfter<TempFeature>();
     startsAfter<V8PlatformFeature>();
@@ -65,7 +74,6 @@ class V8SecurityFeature final
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
   void dumpAccessLists() const;
 
   /// @brief tests if in the current security context it is allowed to
@@ -110,18 +118,11 @@ class V8SecurityFeature final
   bool isInternalContext(v8::Isolate* isolate) const;
   bool isAdminScriptContext(v8::Isolate* isolate) const;
 
-  void addToInternalAllowList(std::string const& item, FSAccessType);
+  void addToInternalReadAllowList(std::filesystem::path item);
+  void addToInternalWriteAllowList(std::filesystem::path item);
 
  private:
   V8SecurityFeatureOptions _options;
-
-  std::string _readAllowList;
-  std::unordered_set<std::string> _readAllowListSet;
-  std::regex _readAllowListRegex;
-
-  std::string _writeAllowList;
-  std::unordered_set<std::string> _writeAllowListSet;
-  std::regex _writeAllowListRegex;
 
   // All the following options have allow lists and deny lists.
   // The allow list will take precedence over the deny list
@@ -129,27 +130,16 @@ class V8SecurityFeature final
   // an logical OR to the final expression. That in turn
   // will be compiled into an std::regex.
 
-  std::string _startupOptionsAllowList;
-  std::regex _startupOptionsAllowListRegex;
-  std::string _startupOptionsDenyList;
-  std::regex _startupOptionsDenyListRegex;
+  AllowedPaths _internalReadAllow;
+  AllowedPaths _internalWriteAllow;
 
-  /// @brief regular expression string for forbidden IP address/host names
-  /// to connect to via JS_Download/internal.download
-  std::string _endpointsAllowList;
-  std::regex _endpointsAllowListRegex;
-  std::string _endpointsDenyList;
-  std::regex _endpointsDenyListRegex;
+  AllowListStrictness _strictness;
 
-  /// @brief regular expression string for environment variables filtering
-  std::string _environmentVariablesAllowList;
-  std::regex _environmentVariablesAllowListRegex;
-  std::string _environmentVariablesDenyList;
-  std::regex _environmentVariablesDenyListRegex;
+  DenyAllow _startupOptions;
+  DenyAllow _endpoints;
+  DenyAllow _environmentVariables;
 
-  /// @brief variables for file access
-  std::string _filesAllowList;
-  std::regex _filesAllowListRegex;
+  DenyAllow _files;
 };
 
 }  // namespace arangodb

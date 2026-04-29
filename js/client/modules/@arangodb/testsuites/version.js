@@ -46,10 +46,6 @@ function version(options) {
   const dataDir = fs.join(fs.getTempPath(), 'version');
 
   const args = ['-c', 'none', dataDir];
-  if (options.storageEngine !== undefined) {
-    args.push('--server.storage-engine');
-    args.push(options.storageEngine);
-  }
   args.push('--database.auto-upgrade');
   args.push('false');
   args.push('--database.upgrade-check');

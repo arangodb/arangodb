@@ -46,11 +46,10 @@
 #include <boost/algorithm/string/find_iterator.hpp>
 #include <boost/algorithm/string/finder.hpp>
 
-using namespace arangodb::consensus;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
-using namespace arangodb;
 
+namespace arangodb::consensus {
 /// @brief Split strings by forward slashes, omitting empty strings,
 /// and ignoring multiple subsequent forward slashes
 std::vector<std::string> Node::split(std::string_view str) {
@@ -1009,9 +1008,10 @@ NodePtr consensus::Node::allocateNode(Args&&... args) {
 
 // Create an explicit instantiation for VPackString using the Node
 // AccountingAllocator
-using AllocatorType =
-    typename arangodb::consensus::Node::allocator_type::rebind<uint8_t>::type;
+using AllocatorType = typename Node::allocator_type::rebind<uint8_t>::type;
+
+}  // namespace arangodb::consensus
 
 namespace arangodb::velocypack {
-INSTANTIATE_TYPE(BasicString<AllocatorType>, Slice)
+INSTANTIATE_TYPE(BasicString<arangodb::consensus::AllocatorType>, Slice)
 }

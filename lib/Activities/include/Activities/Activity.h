@@ -23,6 +23,7 @@
 
 #include "Activities/ActivityId.h"
 #include "Activities/ActivityHandle.h"
+#include "Activities/ActivityCreated.h"
 #include "Activities/ActivityType.h"
 
 #include <velocypack/Builder.h>
@@ -36,7 +37,8 @@ struct Activity : std::enable_shared_from_this<Activity> {
   Activity(ActivityId id, ActivityHandle parent, ActivityType type)
       : _id(std::move(id)),
         _parent(std::move(parent)),
-        _type(std::move(type)) {}
+        _type(std::move(type)),
+        _created(std::chrono::system_clock::now()) {}
   virtual ~Activity() = default;
 
   auto id() const noexcept -> ActivityId { return _id; };
@@ -49,6 +51,7 @@ struct Activity : std::enable_shared_from_this<Activity> {
     }
   }
   auto type() const noexcept -> ActivityType { return _type; }
+  auto created() const noexcept -> ActivityCreated { return _created; }
 
   virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status = 0;
 
@@ -56,6 +59,7 @@ struct Activity : std::enable_shared_from_this<Activity> {
   ActivityId _id;
   ActivityHandle _parent;
   ActivityType _type;
+  ActivityCreated _created;
 };
 
 }  // namespace arangodb::activities

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cstddef>
+#include <filesystem>
 #include <map>
 #include <sstream>
 
@@ -143,9 +144,9 @@ bool IniFileParser::parseContent(std::string const& filename,
 
       _seen.insert(include);
 
-      if (!basics::FileUtils::isRegularFile(include)) {
-        auto dn = basics::FileUtils::dirname(filename);
-        include = basics::FileUtils::buildFilename(dn, include);
+      if (!std::filesystem::is_regular_file(include)) {
+        include = basics::FileUtils::buildFilename(
+            std::filesystem::path(filename).parent_path().string(), include);
       }
 
       LOG_TOPIC("36d6b", DEBUG, Logger::CONFIG)

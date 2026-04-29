@@ -38,7 +38,7 @@ CATEGORYNAMES = ["Health", "AQL", "Transactions", "Pregel",
                  "Statistics", "Replication", "Disk", "Errors",
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",
                  "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb",
-                 "License", "ArangoSearch"]
+                 "License", "ArangoSearch", "VectorIndex"]
 
 NODE_TYPES = ["coordinator", "dbserver", "agent", "single"]
 

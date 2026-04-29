@@ -4648,7 +4648,7 @@ Ast::collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const {
 
       // Found a traversal, shortest path, path search that uses
       // edge collection syntax
-      if (match->type == arangodb::aql::NODE_TYPE_COLLECTION_LIST) {
+      if (match->type == NODE_TYPE_COLLECTION_LIST) {
         for (size_t i = 0; i < match->numMembers(); ++i) {
           auto const* member = match->getMemberUnchecked(i);
           auto collectionName = edgeCollectionNodeGetName(member);

@@ -39,8 +39,9 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/LogicalCollection.h"
 
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+
+namespace arangodb::consensus {
 
 CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,
@@ -621,3 +622,5 @@ arangodb::Result CleanOutServer::abort(std::string const& reason) {
 
   return result;
 }
+
+}  // namespace arangodb::consensus

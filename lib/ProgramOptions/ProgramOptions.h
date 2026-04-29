@@ -33,10 +33,6 @@
 #include <unordered_set>
 #include <vector>
 
-namespace aragndob::velocypack {
-class Builder;
-}
-
 namespace arangodb::options {
 struct Option;
 struct Parameter;
