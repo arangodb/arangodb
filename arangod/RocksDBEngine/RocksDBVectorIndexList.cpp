@@ -70,7 +70,11 @@ RocksDBInvertedListsIterator<Strategy>::RocksDBInvertedListsIterator(
     IteratorContext const& ctx, std::size_t listNumber, std::size_t codeSize)
     : RocksDBInvertedListsIteratorBase(index, collection, ctx.trx, listNumber,
                                        codeSize),
-      _ctx(ctx) {}
+      _ctx(ctx) {
+  if constexpr (Strategy::hasStoredValues) {
+    has_search_callbacks_ = (_ctx.capturedDocuments != nullptr);
+  }
+}
 
 template<VectorIndexStoredValuesStrategy Strategy>
 void RocksDBInvertedListsIterator<Strategy>::next() {
@@ -85,35 +89,13 @@ RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
       Strategy::extractVectorIndexEntry(_it->key(), _it->value(), _codeSize);
   _currentEntry = std::move(entry);
 
-  // Return pointer to encoded data (location differs based on strategy)
+  // Return pointer to encoded data (location differs based on strategy).
+  // storedValues capture is deferred to on_heap_changed -- we only pay the
+  // VPack-build cost for entries that actually enter the topK heap.
   if constexpr (Strategy::hasStoredValues) {
     TRI_ASSERT(_currentEntry.encodedValue.size() == _codeSize)
         << "The encoded size is: " << _currentEntry.encodedValue.size()
         << " should be: " << _codeSize;
-
-    // Captures every entry FAISS visits, not just topK; the executor
-    // filters to survivors after FAISS returns.
-    if (auto* sink = _ctx.capturedDocuments; sink != nullptr) {
-      auto storedValuesSlice = _currentEntry.storedValues.slice();
-      if (storedValuesSlice.isArray() &&
-          storedValuesSlice.length() == _index->storedValues().size()) {
-        velocypack::Builder partialDocument;
-        {
-          velocypack::ObjectBuilder guard(&partialDocument);
-          auto const& storedValues = _index->storedValues();
-          for (size_t i = 0; i < storedValues.size(); ++i) {
-            std::string fieldString;
-            TRI_AttributeNamesToString(storedValues[i], fieldString);
-            partialDocument.add(fieldString, storedValuesSlice.at(i));
-          }
-        }
-        velocypack::Buffer<uint8_t> buf;
-        auto slice = partialDocument.slice();
-        buf.append(slice.start(), slice.byteSize());
-        sink->insert_or_assign(docId, std::move(buf));
-      }
-    }
-
     return {static_cast<faiss::idx_t>(docId.id()),
             _currentEntry.encodedValue.data()};
   } else {
@@ -121,6 +103,26 @@ RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
         << "The encoded size is: " << _currentEntry.size()
         << " should be: " << _codeSize;
     return {static_cast<faiss::idx_t>(docId.id()), _currentEntry.data()};
+  }
+}
+
+template<VectorIndexStoredValuesStrategy Strategy>
+void RocksDBInvertedListsIterator<Strategy>::on_heap_changed(
+    faiss::idx_t new_id, faiss::idx_t evicted_id) {
+  if constexpr (Strategy::hasStoredValues) {
+    auto* sink = _ctx.capturedDocuments;
+    TRI_ASSERT(sink != nullptr);
+
+    // FAISS pre-fills the heap with sentinel ids (-1); skip those evictions.
+    if (evicted_id >= 0) {
+      sink->erase(LocalDocumentId{static_cast<uint64_t>(evicted_id)});
+    }
+
+    // Refcount-bump: _currentEntry.storedValues already owns the array bytes
+    // we want to surface. The executor reads positions out of it via
+    // produceFromIndex, so no Object materialisation is needed here.
+    sink->insert_or_assign(LocalDocumentId{static_cast<uint64_t>(new_id)},
+                           _currentEntry.storedValues);
   }
 }
 
@@ -134,8 +136,8 @@ RocksDBInvertedListsFilteringIteratorBase::
         RocksDBVectorIndex* index, LogicalCollection* collection,
         IteratorFilterContext& filterContext, std::size_t listNumber,
         std::size_t codeSize)
-    : RocksDBInvertedListsIteratorBase(
-          index, collection, filterContext.trx, listNumber, codeSize),
+    : RocksDBInvertedListsIteratorBase(index, collection, filterContext.trx,
+                                       listNumber, codeSize),
       _filterContext(filterContext) {
   TRI_ASSERT(filterContext.filterExpression != nullptr);
 }
@@ -172,10 +174,11 @@ void RocksDBInvertedListsFilteringIteratorBase::next() {
 /// RocksDBInvertedListsFilteringIterator
 template<VectorIndexStoredValuesStrategy Strategy>
 RocksDBInvertedListsFilteringIterator<Strategy>::
-    RocksDBInvertedListsFilteringIterator(
-        RocksDBVectorIndex* index, LogicalCollection* collection,
-        IteratorFilterContext& filterContext, std::size_t listNumber,
-        std::size_t codeSize)
+    RocksDBInvertedListsFilteringIterator(RocksDBVectorIndex* index,
+                                          LogicalCollection* collection,
+                                          IteratorFilterContext& filterContext,
+                                          std::size_t listNumber,
+                                          std::size_t codeSize)
     : RocksDBInvertedListsFilteringIteratorBase(
           index, collection, filterContext, listNumber, codeSize) {
   skipOverFilteredDocuments();
@@ -222,8 +225,7 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
         aql::GenericDocumentExpressionContext ctx(
             *_filterContext.trx, *_filterContext.queryContext,
             _aqlFunctionsInternalCache, *_filterContext.filterVarsToRegs,
-            *_filterContext.inputRow,
-            _filterContext.documentVariable);
+            *_filterContext.inputRow, _filterContext.documentVariable);
         ctx.setCurrentDocument(doc);
         bool mustDestroy{false};  // will get filled by execution
         aql::AqlValue a =
@@ -245,12 +247,17 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
           }
 
           // Hand the document we just loaded to the executor so it does not
-          // have to read it again post-readBatch.
-          if (auto* sink = _filterContext.capturedDocuments;
-              sink != nullptr) {
+          // have to read it again post-readBatch. doc points into RocksDB-
+          // owned memory whose lifetime ends with this callback, so we copy.
+          //
+          // TODO(row 8): when storedValues cover the projection list (scP),
+          // capturing the storedValues array is enough -- we're only loading
+          // the doc here for the filter. Plumb scP through IteratorContext
+          // and switch the capture shape; saves bytes vs full doc.
+          if (auto* sink = _filterContext.capturedDocuments; sink != nullptr) {
             velocypack::Buffer<uint8_t> buf;
             buf.append(doc.start(), doc.byteSize());
-            sink->insert_or_assign(id, std::move(buf));
+            sink->insert_or_assign(id, velocypack::SharedSlice{std::move(buf)});
           }
         }
 
@@ -274,8 +281,7 @@ RocksDBInvertedListsFilteringStoredValuesIterator::
         std::size_t codeSize)
     : RocksDBInvertedListsFilteringIteratorBase(
           index, collection, filterContext, listNumber, codeSize) {
-  TRI_ASSERT(index->hasStoredValues() &&
-             filterContext.useStoredValuesIterator);
+  TRI_ASSERT(index->hasStoredValues() && filterContext.useStoredValuesIterator);
   skipOverFilteredDocuments();
 }
 
@@ -345,14 +351,12 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
       // We do not keep whole value but only the encoded part used by faiss
       _filteredIds.emplace_back(id, std::move(value.encodedValue));
 
-      // Capture the partial doc we already built for filter eval, so the
-      // executor can extract projections from it without a second pass.
-      if (auto* sink = _filterContext.capturedDocuments;
-          sink != nullptr) {
-        velocypack::Buffer<uint8_t> buf;
-        auto slice = partialDocument.slice();
-        buf.append(slice.start(), slice.byteSize());
-        sink->insert_or_assign(id, std::move(buf));
+      // Refcount-bump the raw storedValues array onto the capture sink. The
+      // executor reads positions out of it via produceFromIndex, so the
+      // partial-doc Object we built above (used only for filter eval) does
+      // not need to be persisted.
+      if (auto* sink = _filterContext.capturedDocuments; sink != nullptr) {
+        sink->insert_or_assign(id, value.storedValues);
       }
     }
   }
@@ -392,14 +396,12 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
             // values
             if (_index->hasStoredValues()) {
               return new RocksDBInvertedListsFilteringIterator<
-                  WithStoredValuesStrategy>(_index, _collection,
-                                            filterContext, listNumber,
-                                            this->code_size);
+                  WithStoredValuesStrategy>(_index, _collection, filterContext,
+                                            listNumber, this->code_size);
             } else {
               return new RocksDBInvertedListsFilteringIterator<
-                  NoStoredValuesStrategy>(_index, _collection,
-                                          filterContext, listNumber,
-                                          this->code_size);
+                  NoStoredValuesStrategy>(_index, _collection, filterContext,
+                                          listNumber, this->code_size);
             }
           },
           [&](IteratorContext const& simpleCtx)
