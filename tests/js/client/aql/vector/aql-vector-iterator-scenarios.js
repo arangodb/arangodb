@@ -68,6 +68,16 @@ const verifyDistancesAscending = function(results) {
 //
 // The collection has storedValues = ["val", "category"]. `extra` is NOT in
 // storedValues, so it forces scF=F or scP=F when used.
+//
+// NOTE: S3, S8, S9 currently fail. They assert the design behaviour
+// (projectionMode=="covering", MaterializeNode dropped) but the optimizer
+// rule `removeMaterializerForEnumerateNearRule` runs before
+// `optimizeProjectionsRule` populates the materializer's projection list,
+// so it never sees them as covered. Fixing the rule ordering broke
+// register planning across the board (OptimizeProjections rewires
+// downstream variable references in a way unlinking can't undo), so a
+// proper fix needs more work. These tests intentionally remain red until
+// that is addressed.
 function VectorIndexIteratorScenariosTestSuite() {
     let collection;
     let randomPoint;
@@ -174,12 +184,10 @@ function VectorIndexIteratorScenariosTestSuite() {
             verifyDistancesAscending(results);
         },
 
-        // S3: no filter, projections that storedValues could cover. The
-        // optimizer does not currently elevate the vector node to "covering"
-        // in this case (removeMaterializerForEnumerateNearRule runs before
-        // optimizeProjectionsRule has populated MaterializeNode's projection
-        // list, so it cannot test for index coverage), so the projections
-        // are produced by a downstream MaterializeNode instead.
+        // S3: no filter, projections covered by storedValues. The vector
+        // node should produce projections directly from the captured
+        // storedValues array; the unconditional MaterializeNode should be
+        // dropped.
         testS3_noFilter_projectionsCovered: function() {
             const query = `FOR d IN ${collection.name()}
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
@@ -189,9 +197,9 @@ function VectorIndexIteratorScenariosTestSuite() {
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
             assertEqual("none", node.filterMode);
-            assertEqual("pass-through-id", node.projectionMode);
+            assertEqual("covering", node.projectionMode);
             if (!isCluster) {
-                assertTrue(hasMaterializeNode(plan));
+                assertFalse(hasMaterializeNode(plan), "MaterializeNode should be dropped when storedValues cover projections");
             }
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
@@ -269,9 +277,9 @@ function VectorIndexIteratorScenariosTestSuite() {
             verifyDistancesAscending(results);
         },
 
-        // S8: filter not covered (loads doc), projections that storedValues
-        // could cover. The optimizer takes the kDocument fallback (filter
-        // already loaded the doc), not the "covering" path -- see S3 note.
+        // S8: filter not covered (loads doc), projections covered by
+        // storedValues. The cheaper capture is the storedValues array (not
+        // the full doc), so projectionMode should be "covering".
         testS8_filterNotCovered_projectionsCovered: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.extra < 200
@@ -282,17 +290,17 @@ function VectorIndexIteratorScenariosTestSuite() {
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
             assertEqual("document", node.filterMode);
-            assertEqual("document", node.projectionMode);
+            assertEqual("covering", node.projectionMode);
             if (!isCluster) {
-                assertFalse(hasMaterializeNode(plan), "filter already loaded the doc");
+                assertFalse(hasMaterializeNode(plan), "covered projections; no Materialize needed");
             }
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5);
             verifyDistancesAscending(results);
         },
 
-        // S9: filter covered, projections that storedValues could cover.
-        // Optimizer keeps the materializer -- see S3 note.
+        // S9: filter covered, projections covered (the all-storedValues
+        // path -- IVFST + on_heap capture). No document load anywhere.
         testS9_filterCovered_projectionsCovered: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val < 200
@@ -303,9 +311,9 @@ function VectorIndexIteratorScenariosTestSuite() {
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
             assertEqual("storedValues", node.filterMode);
-            assertEqual("pass-through-id", node.projectionMode);
+            assertEqual("covering", node.projectionMode);
             if (!isCluster) {
-                assertTrue(hasMaterializeNode(plan));
+                assertFalse(hasMaterializeNode(plan), "all stored; no doc load");
             }
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5);
