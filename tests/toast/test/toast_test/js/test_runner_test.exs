@@ -39,7 +39,9 @@ defmodule ToastTest.JS.TestRunnerTest do
              duration_ms: 100,
              message: nil,
              file: nil,
-             line: nil
+             line: nil,
+             started_at: nil,
+             finished_at: nil
            },
            %{
              name: "testBar",
@@ -47,7 +49,9 @@ defmodule ToastTest.JS.TestRunnerTest do
              duration_ms: 200,
              message: nil,
              file: nil,
-             line: nil
+             line: nil,
+             started_at: nil,
+             finished_at: nil
            }
          ]
        }}
@@ -68,7 +72,9 @@ defmodule ToastTest.JS.TestRunnerTest do
              duration_ms: 50,
              message: nil,
              file: nil,
-             line: nil
+             line: nil,
+             started_at: nil,
+             finished_at: nil
            },
            %{
              name: "testBad",
@@ -76,7 +82,9 @@ defmodule ToastTest.JS.TestRunnerTest do
              duration_ms: 75,
              message: "assertion failed",
              file: "test_thing.js",
-             line: 42
+             line: 42,
+             started_at: nil,
+             finished_at: nil
            }
          ]
        }}

@@ -48,7 +48,9 @@ defmodule ToastTest.JS.ResultMapper do
       tags: %{
         file: result.file || js_file,
         line: result.line,
-        test_type: :test
+        test_type: :test,
+        started_at: result.started_at,
+        finished_at: result.finished_at
       }
     }
   end

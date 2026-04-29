@@ -248,7 +248,9 @@ defmodule ToastTest.JS.ArangoshExecutor do
       duration_ms: result["duration"] || 0,
       message: result["message"],
       file: js_file,
-      line: nil
+      line: nil,
+      started_at: parse_iso8601(result["startedAt"]),
+      finished_at: parse_iso8601(result["finishedAt"])
     }
   end
 
@@ -271,6 +273,15 @@ defmodule ToastTest.JS.ArangoshExecutor do
   defp role_to_string(:dbserver), do: "dbserver"
   defp role_to_string(:agent), do: "agent"
   defp role_to_string(other), do: to_string(other)
+
+  defp parse_iso8601(nil), do: nil
+
+  defp parse_iso8601(str) when is_binary(str) do
+    case DateTime.from_iso8601(str) do
+      {:ok, dt, _offset} -> dt
+      _ -> nil
+    end
+  end
 
   defp create_work_dir do
     dir = Path.join(System.tmp_dir!(), "toast-js-#{:erlang.unique_integer([:positive])}")

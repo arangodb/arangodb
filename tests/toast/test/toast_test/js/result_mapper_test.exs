@@ -30,7 +30,16 @@ defmodule ToastTest.JS.ResultMapperTest do
     test "maps passing test" do
       result = %{
         tests: [
-          %{name: "testFoo", status: :pass, duration_ms: 100, message: nil, file: nil, line: nil}
+          %{
+            name: "testFoo",
+            status: :pass,
+            duration_ms: 100,
+            message: nil,
+            file: nil,
+            line: nil,
+            started_at: nil,
+            finished_at: nil
+          }
         ]
       }
 
@@ -53,7 +62,9 @@ defmodule ToastTest.JS.ResultMapperTest do
             duration_ms: 50,
             message: "Expected 3, got 2",
             file: "test_aql.js",
-            line: 42
+            line: 42,
+            started_at: nil,
+            finished_at: nil
           }
         ]
       }
@@ -76,7 +87,9 @@ defmodule ToastTest.JS.ResultMapperTest do
             duration_ms: 0,
             message: "not supported",
             file: nil,
-            line: nil
+            line: nil,
+            started_at: nil,
+            finished_at: nil
           }
         ]
       }
@@ -95,7 +108,9 @@ defmodule ToastTest.JS.ResultMapperTest do
             duration_ms: 10,
             message: "segfault",
             file: nil,
-            line: nil
+            line: nil,
+            started_at: nil,
+            finished_at: nil
           }
         ]
       }
@@ -109,9 +124,36 @@ defmodule ToastTest.JS.ResultMapperTest do
     test "maps multiple tests" do
       result = %{
         tests: [
-          %{name: "testA", status: :pass, duration_ms: 10, message: nil, file: nil, line: nil},
-          %{name: "testB", status: :fail, duration_ms: 20, message: "boom", file: nil, line: nil},
-          %{name: "testC", status: :skip, duration_ms: 0, message: nil, file: nil, line: nil}
+          %{
+            name: "testA",
+            status: :pass,
+            duration_ms: 10,
+            message: nil,
+            file: nil,
+            line: nil,
+            started_at: nil,
+            finished_at: nil
+          },
+          %{
+            name: "testB",
+            status: :fail,
+            duration_ms: 20,
+            message: "boom",
+            file: nil,
+            line: nil,
+            started_at: nil,
+            finished_at: nil
+          },
+          %{
+            name: "testC",
+            status: :skip,
+            duration_ms: 0,
+            message: nil,
+            file: nil,
+            line: nil,
+            started_at: nil,
+            finished_at: nil
+          }
         ]
       }
 
@@ -134,7 +176,16 @@ defmodule ToastTest.JS.ResultMapperTest do
     test "nil message on skip defaults to 'skipped'" do
       result = %{
         tests: [
-          %{name: "testX", status: :skip, duration_ms: 0, message: nil, file: nil, line: nil}
+          %{
+            name: "testX",
+            status: :skip,
+            duration_ms: 0,
+            message: nil,
+            file: nil,
+            line: nil,
+            started_at: nil,
+            finished_at: nil
+          }
         ]
       }
 
@@ -146,7 +197,16 @@ defmodule ToastTest.JS.ResultMapperTest do
     test "test tags include js file path when file not in result" do
       result = %{
         tests: [
-          %{name: "testA", status: :pass, duration_ms: 0, message: nil, file: nil, line: nil}
+          %{
+            name: "testA",
+            status: :pass,
+            duration_ms: 0,
+            message: nil,
+            file: nil,
+            line: nil,
+            started_at: nil,
+            finished_at: nil
+          }
         ]
       }
 

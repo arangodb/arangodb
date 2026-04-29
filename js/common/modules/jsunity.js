@@ -75,6 +75,7 @@ jsUnity.results.pass = function (index, testName) {
 
   RESULTS[testName].status = true;
   RESULTS[testName].duration = (ENDTEST - STARTTEST);
+  RESULTS[testName].finishedAt = new Date().toISOString();
 
   print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [     PASSED ] ' +
        testName + internal.COLORS.COLOR_RESET +
@@ -110,6 +111,7 @@ jsUnity.results.fail = function (index, testName, message) {
 
   RESULTS[testName].status = false;
   RESULTS[testName].message = message;
+  RESULTS[testName].finishedAt = new Date().toISOString();
 
   RESULTS[testName].duration = (ENDTEST - STARTTEST);
   if (RESULTS[testName].duration < 0) {
@@ -168,6 +170,7 @@ jsUnity.results.beginSetUp = function(index, testName) {
          (jsUnity.env.getDate() - STARTTEST) + 'ms)' + internal.COLORS.COLOR_RESET);
   }
   RESULTS[testName] = {};
+  RESULTS[testName].startedAt = new Date().toISOString();
   SETUPS = jsUnity.env.getDate();
   print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN + ' [ RUN        ] ' + testName + internal.COLORS.COLOR_RESET);
 };

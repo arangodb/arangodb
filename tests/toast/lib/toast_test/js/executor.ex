@@ -33,7 +33,9 @@ defmodule ToastTest.JS.Executor do
           duration_ms: non_neg_integer(),
           message: String.t() | nil,
           file: String.t() | nil,
-          line: non_neg_integer() | nil
+          line: non_neg_integer() | nil,
+          started_at: DateTime.t() | nil,
+          finished_at: DateTime.t() | nil
         }
 
   @type result :: %{tests: [test_result()]}
