@@ -90,6 +90,15 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
 
   def format_scope(%{scope: scope}), do: Issues.format_scope(scope) || ":suite"
 
+  def format_type(issue) do
+    type = issue.type |> Atom.to_string()
+
+    case format_server(issue) do
+      s when s in ["", "\u2014"] -> type
+      server -> "#{type} (#{server})"
+    end
+  end
+
   def format_server(%{type: :crash, detail: %{server: server}}), do: server
   def format_server(%{type: :sanitizer_report, detail: %{server: server}}), do: server
 
