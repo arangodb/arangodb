@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,6 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Lars Maier
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -127,13 +128,10 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// guaranteed to always be a vector index
   transaction::Methods::IndexHandle _index;
 
-  /// @brief how the pushed-down filter, if any, gets evaluated. Set by
-  /// PushFilterIntoEnumerateNear once filter coverage has been analysed.
+  /// @brief how to handle filterEpxression
   vector::FilterMode _filterMode{vector::FilterMode::kNone};
 
-  /// @brief how the executor produces output rows. Set by
-  /// PropagateProjectionsIntoEnumerateNear (and bumped by PushFilter when it
-  /// drops the materializer).
+  /// @brief how to handle projections
   vector::ProjectionMode _projectionMode{
       vector::ProjectionMode::kPassThroughId};
 };

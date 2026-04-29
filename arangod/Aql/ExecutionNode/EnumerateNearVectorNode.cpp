@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -103,8 +103,6 @@ EnumerateNearVectorNode::extractFilterVarsToRegs() const {
   for (auto const& var : inVars) {
     TRI_ASSERT(var != nullptr);
     if (var->id == _outVariable->id) {
-      // the doc variable is bound by the index code when it loads the
-      // document or storedValues; it is not read from a register.
       continue;
     }
     auto regId = variableToRegisterId(var);
