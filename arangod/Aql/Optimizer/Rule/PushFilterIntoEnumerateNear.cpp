@@ -96,6 +96,10 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
   return filterExpression;
 }
 
+// TODO: replace with index->covers(projections) once the storedValues
+// filter iterator (RocksDBVectorIndexList::searchFilteredIds) reconstructs
+// a nested VPack object instead of using flattened keys -- only then is
+// Index::covers's prefix-match semantics safe here.
 bool areAllAttributesCovered(
     std::unique_ptr<ExecutionPlan> const& plan,
     std::unique_ptr<Expression> const& filterExpression,
