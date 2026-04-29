@@ -34,28 +34,13 @@
 #include "Basics/overload.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
+#include "VectorIndex/VectorSearchConfiguration.h"
 
 namespace arangodb::vector {
 
 // Number of training iterations, in faiss it is 25 by default
 static constexpr std::uint64_t kdefaultTrainingIterations{25};
 static constexpr std::uint64_t kdefaultNProbe{1};
-
-struct SearchParameters {
-  std::optional<std::int64_t> nProbe;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, SearchParameters& x) {
-    return f.object(x).fields(
-        f.field("nProbe", x.nProbe)
-            .invariant([](auto value) -> inspection::Status {
-              if (value.has_value() && *value < 1) {
-                return {"nProbe must be 1 or greater!"};
-              }
-              return inspection::Status::Success{};
-            }));
-  }
-};
 
 /// @brief Similarity metrics for vector index.
 enum class SimilarityMetric : std::uint8_t {
