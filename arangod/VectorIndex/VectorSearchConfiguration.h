@@ -71,8 +71,7 @@ struct SearchStrategy {
   ProjectionSource projection{ProjectionSource::kNone};
 };
 
-inline std::string_view filterModeName(
-    SearchStrategy::FilterMode m) noexcept {
+inline std::string_view filterModeName(SearchStrategy::FilterMode m) noexcept {
   switch (m) {
     case SearchStrategy::FilterMode::kNone:
       return "none";

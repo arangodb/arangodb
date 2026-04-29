@@ -71,6 +71,7 @@ inline bool isCompatibleVectorIndex(std::shared_ptr<Index> const& candidate,
       currentIndex->getVectorIndexDefinition().metric) {
     return false;
   }
+  // TODO(jbajic): This is probably redundant?
   if (!checkAscendingMatchesMetric(candidate, ascending)) {
     return false;
   }
