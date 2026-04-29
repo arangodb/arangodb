@@ -34,9 +34,7 @@ target_compile_definitions(read_index PRIVATE
 # ------------------------------------------------------------------------------
 target_include_directories(read_index PRIVATE
     ../../lib/iresearch/core
-    ../../lib/iresearch/external/simdcomp/include
     ../../3rdParty/abseil-cpp
-    ../../3rdParty/lz4/lib
 )
 
 target_include_directories(read_index SYSTEM PRIVATE
@@ -86,8 +84,6 @@ target_link_libraries(read_index PRIVATE
     # end whole-archive
     -Wl,--no-whole-archive
 
-    scorer-bm25-s
-    scorer-tfidf-s
     lz4
     simdcomp-static
 
@@ -110,6 +106,8 @@ target_link_libraries(read_index PRIVATE
     absl_debugging_internal
     absl_demangle_internal
 
+    scorer-bm25-s
+    scorer-tfidf-s
+
     velocypack
 )
-
