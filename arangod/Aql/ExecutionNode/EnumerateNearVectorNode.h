@@ -92,10 +92,6 @@ class EnumerateNearVectorNode : public ExecutionNode,
     _projectionMode = mode;
   }
 
-  void rebindOutVariable(Variable const* newOutVariable) noexcept {
-    _outVariable = newOutVariable;
-  }
-
   bool isProduceResult() const override;
 
  protected:
