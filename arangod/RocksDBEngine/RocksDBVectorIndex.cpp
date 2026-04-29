@@ -230,19 +230,31 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   result.distances.resize(config.topK);
   result.labels.resize(config.topK);
 
-  // Used by the faiss iterator. When capture flags are set, point the
-  // context's capture sinks at the result's maps so the filter iterator
-  // populates them in place.
+  // Translate the high-level SearchStrategy into the concrete iterator
+  // context. The capture sink is only wired when the iterator can supply
+  // per-survivor data of the shape the executor needs:
+  //   projection == kStoredValues : any iterator (each holds storedValues
+  //                                 alongside the encoded vector).
+  //   projection == kDocument     : only IVFT (loads doc for filter eval).
+  // Otherwise the executor post-fetches the docs it needs by label.
+  using FilterMode = vector::SearchStrategy::FilterMode;
+  using ProjectionSource = vector::SearchStrategy::ProjectionSource;
+  bool const captureNeeded =
+      config.strategy.projection == ProjectionSource::kStoredValues ||
+      (config.strategy.projection == ProjectionSource::kDocument &&
+       config.strategy.filter == FilterMode::kDocument);
+  auto* captureSink = captureNeeded ? &result.capturedDocuments : nullptr;
+
   auto faissSearchContext =
       std::invoke([&]() -> vector::RocksDBFaissIteratorContext {
-        if (config.filterExpression == nullptr) {
+        if (config.strategy.filter == FilterMode::kNone) {
           vector::IteratorContext simpleCtx;
           simpleCtx.trx = ctx.trx;
-          simpleCtx.capturedDocuments =
-              config.captureDocuments ? &result.capturedDocuments : nullptr;
+          simpleCtx.capturedDocuments = captureSink;
           return simpleCtx;
         }
         TRI_ASSERT(ctx.queryContext != nullptr);
+        TRI_ASSERT(config.filterExpression != nullptr);
 
         vector::IteratorFilterContext searchCtx;
         searchCtx.trx = ctx.trx;
@@ -253,9 +265,9 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
         searchCtx.queryContext = ctx.queryContext;
         searchCtx.filterVarsToRegs = &config.filterVarsToRegs;
         searchCtx.documentVariable = config.documentVariable;
-        searchCtx.useStoredValuesIterator = config.useStoredValuesIterator;
-        searchCtx.capturedDocuments =
-            config.captureDocuments ? &result.capturedDocuments : nullptr;
+        searchCtx.useStoredValuesIterator =
+            (config.strategy.filter == FilterMode::kStoredValues);
+        searchCtx.capturedDocuments = captureSink;
         return searchCtx;
       });
 

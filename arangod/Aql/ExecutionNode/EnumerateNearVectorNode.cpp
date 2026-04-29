@@ -151,9 +151,44 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     }
   }
 
-  bool const captureDocuments =
-      (hasFilter() && _strategy == Strategy::kDocument) ||
-      _strategy == Strategy::kCovered;
+  // Describe what the search must produce. The storage layer maps this to
+  // a concrete iterator + capture shape (see the table in
+  // RocksDBVectorIndexList.h); this node does not name iterator types.
+  vector::SearchStrategy searchStrategy;
+  searchStrategy.filter =
+      !hasFilter() ? vector::SearchStrategy::FilterMode::kNone
+      : _isCoveredByStoredValues
+          ? vector::SearchStrategy::FilterMode::kStoredValues
+          : vector::SearchStrategy::FilterMode::kDocument;
+  switch (_strategy) {
+    case Strategy::kPassThroughId:
+      searchStrategy.projection =
+          vector::SearchStrategy::ProjectionSource::kNone;
+      break;
+    case Strategy::kCovered:
+      searchStrategy.projection =
+          vector::SearchStrategy::ProjectionSource::kStoredValues;
+      break;
+    case Strategy::kDocument:
+      searchStrategy.projection =
+          _projections.empty()
+              ? vector::SearchStrategy::ProjectionSource::kNone
+              : vector::SearchStrategy::ProjectionSource::kDocument;
+      break;
+  }
+
+  // For kCovered, the executor calls produceFromIndex against the captured
+  // storedValues arrays, which requires each projection to know its position
+  // within those arrays. Index::covers populates that, and setCoveringContext
+  // wires the index identity through. Done on a copy so the node's own
+  // projections list (used by other code paths) is left untouched.
+  Projections projections = _projections;
+  if (_strategy == Strategy::kCovered && !projections.empty()) {
+    [[maybe_unused]] bool const ok = _index->covers(projections);
+    TRI_ASSERT(ok);
+    projections.setCoveringContext(_collectionAccess.collection()->id(),
+                                   _index);
+  }
 
   EnumerateNearVectorsExecutorInfos executorInfos{
       .inputReg = inNmDocIdRegId,
@@ -170,12 +205,9 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
               .filterExpression = filter(),
               .filterVarsToRegs = std::move(filterVarsToRegs),
               .documentVariable = _outVariable,
-              .useStoredValuesIterator = hasFilter() &&
-                                         _isCoveredByStoredValues &&
-                                         _strategy != Strategy::kDocument,
-              .captureDocuments = captureDocuments,
+              .strategy = searchStrategy,
           },
-      .projections = _projections,
+      .projections = std::move(projections),
       .strategy = _strategy,
   };
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
