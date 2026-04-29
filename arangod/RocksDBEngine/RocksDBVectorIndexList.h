@@ -59,16 +59,64 @@ inline faiss::MetricType metricToFaissMetric(
   }
 }
 
+// =====================================================================
+// Iterator selection table
+// =====================================================================
+//
+// The vector index search path picks one of three iterators based
+// on (a) whether a filter is pushed down, (b) whether the index storedValues
+// cover the filter expression (scF), and (c) whether they cover the
+// projection list (scP). Iterators:
+//
+//   IVT   = RocksDBInvertedListsIterator                (no filter)
+//   IVFT  = RocksDBInvertedListsFilteringIterator       (filter; loads doc)
+//   IVFST = RocksDBInvertedListsFilteringStoredValuesIterator
+//                                                       (filter; uses
+//                                                        storedValues only)
+//
+//   "+ on_heap" = capture per-survivor data via on_heap_changed so the
+//                 executor can serve projections without re-reading RocksDB.
+//                 The captured shape depends on the row.
+//
+// Proj | Filter | scF | scP | Iterator         | Capture
+// ---- | ------ | --- | --- | ---------------- | --------------------
+//   F  |   F    |  -  |  -  | IVT              | none
+//   T  |   F    |  -  |  F  | IVT              | none -- batch-fetch
+//                                                docs post-search
+//   T  |   F    |  -  |  T  | IVT + on_heap    | storedValues array
+//   F  |   T    |  F  |  -  | IVFT             | none
+//   F  |   T    |  T  |  -  | IVFST            | none
+//   T  |   T    |  F  |  F  | IVFT + on_heap   | full document
+//   T  |   T    |  T  |  F  | IVFST            | none -- downstream
+//                                                MaterializeNode handles
+//                                                projections (scP=F means
+//                                                we don't have the data
+//                                                here anyway)
+//   T  |   T    |  F  |  T  | IVFT + on_heap   | full document
+//                                                TODO: capture only the
+//                                                storedValues array here
+//                                                (scP=T means it's enough
+//                                                for projections); saves
+//                                                bytes vs full doc.
+//   T  |   T    |  T  |  T  | IVFST + on_heap  | storedValues array
+//
+// Threading note: this code assumes single-threaded execution within one
+// search call. FAISS's default parallel_mode (0) parallelises over query
+// vectors, and we always pass n=1, so all iterators for one search run on
+// the same thread. capturedDocuments is therefore unsynchronised. If
+// parallel_mode is ever changed to 1 or 2, or n>1 with a shared sink, this
+// needs revisiting.
+// =====================================================================
+
 // Common per-search context shared by every iterator path.
 //
-// `capturedDocuments` is an optional output sink: when non-null, an iterator
-// stores whatever VPack object it built (full document for the non-covered
-// filter iterator, partial doc reconstructed from storedValues otherwise) so
-// the executor can reuse those bytes instead of re-reading RocksDB. Owner is
-// the caller (the executor); the iterator only inserts.
+// `capturedDocuments` is an optional output sink: when non-null, the iterator
+// stashes a SharedSlice per surviving entry so the executor can serve
+// projections without re-reading RocksDB. Shape depends on which iterator
+// runs -- see the selection table above.
 struct IteratorContext {
   transaction::Methods* trx;
-  containers::NodeHashMap<LocalDocumentId, velocypack::Buffer<uint8_t>>*
+  containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
       capturedDocuments{nullptr};
 };
 
@@ -201,6 +249,9 @@ struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
   void next() override;
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
+
+  // Captures storedValues for entries that actually enter the topK heap
+  void on_heap_changed(faiss::idx_t new_id, faiss::idx_t evicted_id) override;
 
  private:
   // Storage varies based on strategy
