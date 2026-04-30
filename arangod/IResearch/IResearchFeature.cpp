@@ -325,7 +325,6 @@ Result upgradeArangoSearchLinkCollectionName(
       !vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
     return {};  // not applicable for other ServerState roles
   }
-  auto& selector = vocbase.server().getFeature<EngineSelectorFeature>();
   auto& clusterInfo =
       vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   // persist collection names in links
@@ -379,8 +378,8 @@ Result upgradeArangoSearchLinkCollectionName(
             LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
                 << "Setting collection name '" << clusterCollectionName
                 << "' for link " << id;
-            if (selector.engineName() == RocksDBEngine::kEngineName) {
-              auto& engine = selector.engine<RocksDBEngine>();
+            if (vocbase.engine().typeName() == RocksDBEngine::kEngineName) {
+              auto& engine = static_cast<RocksDBEngine&>(vocbase.engine());
               auto builder = collection->toVelocyPackIgnore(
                   {"path", "statusString"},
                   LogicalDataSource::Serialization::PersistenceWithInProgress);
@@ -396,13 +395,13 @@ Result upgradeArangoSearchLinkCollectionName(
               }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               // for unit tests just ignore write to storage
-            } else if (selector.engineName() != "Mock") {
+            } else if (vocbase.engine().typeName() != "Mock") {
 #else
             } else {
 #endif
               TRI_ASSERT(false);
               LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
-                  << "Unsupported engine '" << selector.engineName()
+                  << "Unsupported engine '" << vocbase.engine().typeName()
                   << "' for link upgrade task";
             }
           }

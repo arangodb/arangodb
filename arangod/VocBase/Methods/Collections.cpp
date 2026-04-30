@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -866,18 +866,7 @@ void Collections::applySystemCollectionProperties(
   // This implements some stunt to figure out if we are in a mock environment.
   // If that is the case we may not have all System collections.
   // So we better not enforce distributeShardsLike.
-  bool isMock = false;
-  if (vocbase.server().hasFeature<EngineSelectorFeature>()) {
-    StorageEngine& engine =
-        vocbase.server().getFeature<EngineSelectorFeature>().engine();
-
-    isMock = (engine.typeName() == "Mock");
-  } else {
-    // We do not even have a full server, can only be a mock.
-    isMock = true;
-  }
-
-  if (isMock) {
+  if (vocbase.engine().typeName() == "Mock") {
     designatedLeaderName = col.name;
   }
 #endif
