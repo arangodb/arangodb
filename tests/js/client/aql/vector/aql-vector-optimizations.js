@@ -46,7 +46,8 @@ const verifyResultsMatchFilter = function(results, filterFn, message) {
     }
 };
 
-const verifyDistancesAscending = function(results) {
+const verifyTopK = function(results, k) {
+    assertEqual(k, results.length);
     for (let j = 1; j < results.length; ++j) {
         assertTrue(results[j - 1].dist <= results[j].dist, `Distances not ascending: ${JSON.stringify(results)}`);
     }
@@ -138,180 +139,173 @@ function VectorIndexIteratorScenariosTestSuite() {
             db._dropDatabase(dbName);
         },
 
-        // S1: no filter, no projections (RETURN d).
         testS1_noFilter_noProjections: function() {
             const query = `FOR d IN ${collection.name()}
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5 RETURN d`;
+              SORT dist LIMIT 10 RETURN d`;
+
             const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
+
             assertEqual("none", node.filterMode);
             assertEqual("pass-through-id", node.projectionMode);
-            if (!isCluster) {
-                assertTrue(hasMaterializeNode(plan), "MaterializeNode should load the doc");
-            }
+            assertTrue(hasMaterializeNode(plan), "MaterializeNode needed to load the doc");
+
             const results = db._query(query, bindVars).toArray();
-            assertEqual(5, results.length);
+            assertEqual(10, results.length);
         },
 
-        // S2: no filter, projections requiring fields outside storedValues.
         testS2_noFilter_projectionsNotCovered: function() {
             const query = `FOR d IN ${collection.name()}
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5
+              SORT dist LIMIT 10
               RETURN {key: d._key, extra: d.extra, dist}`;
+
             const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
+
             assertEqual("none", node.filterMode);
             assertEqual("pass-through-id", node.projectionMode);
-            if (!isCluster) {
-                assertTrue(hasMaterializeNode(plan), "MaterializeNode needed for non-covered projections");
-            }
+            assertTrue(hasMaterializeNode(plan), "MaterializeNode needed for non-covered projections");
+
             const results = db._query(query, bindVars).toArray();
-            assertEqual(5, results.length);
-            verifyDistancesAscending(results);
+            verifyTopK(results, 10);
         },
 
-        // S3: no filter, projections covered by storedValues. The vector
-        // node should produce projections directly from the captured
-        // storedValues array; the unconditional MaterializeNode should be
-        // dropped.
         testS3_noFilter_projectionsCovered: function() {
             const query = `FOR d IN ${collection.name()}
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5
-              RETURN {val: d.val, category: d.category, dist}`;
-            const bindVars = {qp: randomPoint};
+              SORT dist LIMIT 10
+              RETURN {val: d.val, category: d.category, dist}`
 
+            const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
 
             assertEqual("none", node.filterMode);
             assertEqual("covering", node.projectionMode);
-            if (!isCluster) {
-                assertFalse(hasMaterializeNode(plan), "MaterializeNode should be dropped when storedValues cover projections");
-            }
+            assertFalse(hasMaterializeNode(plan), "MaterializeNode should be dropped when storedValues cover projections");
 
             const results = db._query(query, bindVars).toArray();
-            assertEqual(5, results.length);
-            verifyDistancesAscending(results);
+            verifyTopK(results, 10);
         },
 
-        // S4: filter not covered (extra), no projections.
         testS4_filterNotCovered_noProjections: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.extra < 100
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5 RETURN d`;
+              SORT dist LIMIT 10 RETURN d`;
+
             const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
+
             assertEqual("document", node.filterMode);
+            assertEqual("document", node.projectionMode);
+            assertFalse(hasMaterializeNode(plan), "filter already loaded the doc");
+
             const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5);
+            assertEqual(10, results.length);
             verifyResultsMatchFilter(results, r => r.extra < 100);
         },
 
-        // S5: filter covered by storedValues, no projections.
         testS5_filterCovered_noProjections: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val < 100
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5 RETURN d`;
+              SORT dist LIMIT 10 RETURN d`;
+
             const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
+
             assertEqual("storedValues", node.filterMode);
+            assertEqual("pass-through-id", node.projectionMode);
+            assertTrue(hasMaterializeNode(plan), "MaterializeNode needed to load the doc");
+
             const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5);
+            assertEqual(10, results.length);
             verifyResultsMatchFilter(results, r => r.val < 100);
         },
 
-        // S6: filter not covered, projections not covered.
         testS6_filterNotCovered_projectionsNotCovered: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.extra < 200
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5
+              SORT dist LIMIT 10
               RETURN {key: d._key, extra: d.extra, dist}`;
+
             const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
+
             assertEqual("document", node.filterMode);
             assertEqual("document", node.projectionMode);
-            if (!isCluster) {
-                assertFalse(hasMaterializeNode(plan), "filter already loaded the doc");
-            }
+            assertFalse(hasMaterializeNode(plan), "filter already loaded the doc");
+
             const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5);
+            verifyTopK(results, 10);
             verifyResultsMatchFilter(results, r => r.extra < 200);
-            verifyDistancesAscending(results);
         },
 
-        // S7: filter covered, projections not covered.
         testS7_filterCovered_projectionsNotCovered: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val < 200
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5
+              SORT dist LIMIT 10
               RETURN {key: d._key, extra: d.extra, dist}`;
+
             const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
+
             assertEqual("storedValues", node.filterMode);
             assertEqual("pass-through-id", node.projectionMode);
-            if (!isCluster) {
-                assertTrue(hasMaterializeNode(plan), "Materialize handles projections");
-            }
+            assertTrue(hasMaterializeNode(plan), "Materialize handles projections");
+
             const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5);
-            verifyDistancesAscending(results);
+            verifyTopK(results, 10);
         },
 
-        // S8: filter not covered (loads doc), projections covered by
-        // storedValues. The cheaper capture is the storedValues array (not
-        // the full doc), so projectionMode should be "covering".
         testS8_filterNotCovered_projectionsCovered: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.extra < 200
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5
+              SORT dist LIMIT 10
               RETURN {val: d.val, category: d.category, dist}`;
+
             const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
+
             assertEqual("document", node.filterMode);
             assertEqual("covering", node.projectionMode);
-            if (!isCluster) {
-                assertFalse(hasMaterializeNode(plan), "covered projections; no Materialize needed");
-            }
+            assertFalse(hasMaterializeNode(plan), "covered projections; no Materialize needed");
+
             const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5);
-            verifyDistancesAscending(results);
+            verifyTopK(results, 10);
         },
 
-        // S9: filter covered, projections covered (the all-storedValues
-        // path -- IVFST + on_heap capture). No document load anywhere.
         testS9_filterCovered_projectionsCovered: function() {
             const query = `FOR d IN ${collection.name()}
               FILTER d.val < 200
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
-              SORT dist LIMIT 5
+              SORT dist LIMIT 10
               RETURN {val: d.val, category: d.category, dist}`;
+
             const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
+
             assertEqual("storedValues", node.filterMode);
             assertEqual("covering", node.projectionMode);
-            if (!isCluster) {
-                assertFalse(hasMaterializeNode(plan), "all stored; no doc load");
-            }
+            assertFalse(hasMaterializeNode(plan), "all stored; no doc load");
+
             const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5);
+            verifyTopK(results, 10);
             verifyResultsMatchFilter(results, r => r.val < 200);
-            verifyDistancesAscending(results);
         },
     };
 }
