@@ -51,7 +51,7 @@ namespace arangodb::aql {
 
 using EN = ExecutionNode;
 
-#define LOG_RULE_ENABLED false
+#define LOG_RULE_ENABLED true
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
@@ -159,16 +159,16 @@ std::shared_ptr<Index> findBestVectorIndex(
     if (!isCompatibleVectorIndex(candidate, currentIndex, ascending)) {
       continue;
     }
-    auto const& storedValues = candidate->storedValues();
+    auto const& storedValues = candidate->coveredFields();
     if (storedValues.empty()) {
       LOG_RULE << "Index " << candidate->name()
-               << " has no storedValues, skipping";
+               << " has no coveredFields, skipping";
       continue;
     }
     if (!areAllAttributesCovered(plan, filterExpression,
                                  enumerateNearVectorNode, storedValues)) {
       LOG_RULE << "Index " << candidate->name()
-               << " storedValues don't cover filter";
+               << " coveredFields don't cover filter";
       continue;
     }
     return candidate;
@@ -223,7 +223,7 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
           "filter node could not be moved into EnumerateNearVector node!");
     }
 
-    // Try finding better index with storedValues covering filtering
+    // Try finding better index with coveredFields covering filtering
     // TODO(jbajic) we should optiomize the we find best index covering both
     // projection and filtering
     if (auto bestIndex = findBestVectorIndex(plan, filterExpression,
@@ -234,7 +234,7 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
       }
       enumerateNearVectorNode->setFilterMode(vector::FilterMode::kStoredValues);
     } else {
-      // Filter pushed down but no index storedValues cover its attributes:
+      // Filter pushed down but no index coveredFields cover its attributes:
       // the iterator must load the full doc to evaluate it.
       enumerateNearVectorNode->setFilterMode(vector::FilterMode::kDocument);
     }
