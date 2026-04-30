@@ -178,7 +178,7 @@ function VectorIndexIteratorScenariosTestSuite() {
             const query = `FOR d IN ${collection.name()}
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
               SORT dist LIMIT 10
-              RETURN {val: d.val, category: d.category, dist}`
+              RETURN {val: d.val, category: d.category, dist}`;
 
             const bindVars = {qp: randomPoint};
             const plan = explainPlan(query, bindVars);
