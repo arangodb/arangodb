@@ -49,6 +49,8 @@ struct AstNode;
 class AttributeNamePath;
 struct Collection;
 class ExecutionNode;
+class ExecutionPlan;
+class Projections;
 class IndexHint;
 class SortCondition;
 struct Variable;
@@ -70,6 +72,20 @@ bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
                      bool excludeStartNodeFilterCondition,
                      containers::FlatHashSet<AttributeNamePath>& attributes);
+
+// Allocate a fresh temporary variable for each projection that doesn't have
+// one yet, and rewrite every reference to `searchVariable.attr` in the plan
+// into a direct read of that variable. After this returns, the producer node
+// `self` is responsible for filling the projection variables. Used by the
+// optimizer rules that turn `doc.attr` accesses into output registers
+// (optimizeProjections, removeMaterializerForEnumerateNear).
+// The `index` parameter is forwarded to ExecutionNode::replaceAttributeAccess
+// so callers like JoinNode can target a specific input slot; pass 0 for
+// single-source nodes.
+void rewriteProjectionAttributeAccesses(ExecutionPlan& plan,
+                                        ExecutionNode* self,
+                                        Variable const* searchVariable,
+                                        Projections& projections, size_t index);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the contents of  root  may be modified by this function if

@@ -87,11 +87,17 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
         "search; the distance is produced by the search itself");
   }
 
-  // CalculationNode will be removed by the subsequent rule if it is not
-  // referenced by any other node. EnumerateNearVectorNode advertises the
-  // filter's variables through getVariablesUsedHere, so the register planner
-  // keeps them alive up to this node.
   plan->unlinkNode(filterExecutionNode);
+
+  // The vector node carries a clone of the filter expression, so the
+  // calc node that produced the FilterNode's input variable becomes
+  // orphaned. Drop it now if no node still reads its output variable;
+  // otherwise removeMaterializerForEnumerateNear would still see its
+  // attribute accesses on the doc and miscount projections.
+  plan->findVarUsage();
+  if (!maybeCalculationNode->isVarUsedLater(filterInVar)) {
+    plan->unlinkNode(const_cast<ExecutionNode*>(maybeCalculationNode));
+  }
 
   return filterExpression;
 }

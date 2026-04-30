@@ -23,13 +23,17 @@
 
 #include "RemoveMaterializerForEnumerateNear.h"
 
+#include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
+#include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "VectorIndex/VectorSearchConfiguration.h"
 
@@ -53,6 +57,31 @@ materialize::MaterializeRocksDBNode* findMaterializerFor(
   return nullptr;
 }
 
+// Discover which attributes of the materialized doc are read downstream
+// and turn them into a Projections value. Returns an empty Projections if
+// no projection rewrite is feasible (e.g. the doc itself is consumed).
+Projections collectProjections(materialize::MaterializeRocksDBNode& matNode) {
+  // UseVectorIndex creates the materializer with the same variable for
+  // docId, outVariable, and oldOutVariable, so findProjections would
+  // bail on matNode itself (its getVariablesUsedHere returns the doc-id
+  // which is also our search variable). Skip past matNode and search
+  // its parent and further downstream consumers.
+  auto* start = matNode.getFirstParent();
+  if (start == nullptr) {
+    return Projections{};
+  }
+
+  containers::FlatHashSet<AttributeNamePath> attributes;
+  bool const projectable = utils::findProjections(
+      start, &matNode.outVariable(), /*expectedAttribute*/ "",
+      /*excludeStartNodeFilterCondition*/ false, attributes);
+  if (!projectable || attributes.empty() ||
+      attributes.size() > matNode.maxProjections()) {
+    return Projections{};
+  }
+  return Projections(std::move(attributes));
+}
+
 }  // namespace
 
 void removeMaterializerForEnumerateNear(Optimizer* opt,
@@ -68,35 +97,37 @@ void removeMaterializerForEnumerateNear(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::ENUMERATE_NEAR_VECTORS, /*enterSub*/ true);
   for (ExecutionNode* node : nodes) {
     auto* vectorNode = ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
-
     auto* matNode = findMaterializerFor(*plan, *vectorNode);
     if (matNode == nullptr) {
       continue;
     }
+
+    // Pull the projection list straight off the downstream calc nodes.
+    // optimizeProjectionsRule does the same thing for MaterializeNode but
+    // runs after us, so we replicate the work to make our coverage check
+    // meaningful.
+    auto projections = collectProjections(*matNode);
     auto const& index = vectorNode->index();
-
-    // Coverage analysis mutates the projections
-    auto candidateProjections = matNode->projections();
     bool const indexCoversProjections =
-        !candidateProjections.empty() && index->covers(candidateProjections);
-
+        !projections.empty() && index->covers(projections);
     bool const filterLoadsDocument =
         vectorNode->filterMode() == vector::FilterMode::kDocument;
 
     if (indexCoversProjections) {
-      candidateProjections.setCoveringContext(vectorNode->collection()->id(),
-                                              index);
-      vectorNode->setProjections(std::move(candidateProjections));
-      vectorNode->setProjectionMode(vector::ProjectionMode::kCovered);
-    } else if (filterLoadsDocument) {
-      // iterator already loads the doc for filter eval -- capture it for
-      // the executor and project by name from it.
-      vectorNode->setProjections(std::move(matNode->projections()));
-      vectorNode->setProjectionMode(vector::ProjectionMode::kDocument);
-    } else {
-      // Neither optimization win applies; the materializer must stay.
+      projections.setCoveringContext(vectorNode->collection()->id(), index);
+    } else if (!filterLoadsDocument) {
+      // Neither optimisation win applies; the materializer must stay.
       continue;
     }
+
+    if (!projections.empty()) {
+      utils::rewriteProjectionAttributeAccesses(
+          *plan, matNode, &matNode->outVariable(), projections, /*index*/ 0);
+      vectorNode->setProjections(std::move(projections));
+    }
+    vectorNode->setProjectionMode(indexCoversProjections
+                                      ? vector::ProjectionMode::kCovered
+                                      : vector::ProjectionMode::kDocument);
 
     plan->unlinkNode(matNode);
     modified = true;
