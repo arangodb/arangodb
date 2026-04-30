@@ -185,9 +185,6 @@ function VectorIndexIteratorScenariosTestSuite() {
               RETURN {val: d.val, category: d.category, dist}`;
             const bindVars = {qp: randomPoint};
 
-            print(`Run expain`);
-            db._explain(query, bindVars);
-            print(`Explain ran`);
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
 
