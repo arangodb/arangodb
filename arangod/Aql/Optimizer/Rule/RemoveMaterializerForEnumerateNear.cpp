@@ -87,11 +87,6 @@ Projections collectProjections(materialize::MaterializeRocksDBNode& matNode) {
 void removeMaterializerForEnumerateNear(Optimizer* opt,
                                         std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
-  if (ServerState::instance()->isRunningInCluster()) {
-    opt->addPlan(std::move(plan), rule, /*modified*/ false);
-    return;
-  }
-
   bool modified{false};
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::ENUMERATE_NEAR_VECTORS, /*enterSub*/ true);
