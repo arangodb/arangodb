@@ -31,7 +31,6 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
-#include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
@@ -90,6 +89,7 @@ void removeMaterializerForEnumerateNear(Optimizer* opt,
   bool modified{false};
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::ENUMERATE_NEAR_VECTORS, /*enterSub*/ true);
+
   for (ExecutionNode* node : nodes) {
     auto* vectorNode = ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
     auto* matNode = findMaterializerFor(*plan, *vectorNode);
@@ -102,14 +102,15 @@ void removeMaterializerForEnumerateNear(Optimizer* opt,
     // runs after us, so we replicate the work to make our coverage check
     // meaningful.
     auto projections = collectProjections(*matNode);
-    auto const& index = vectorNode->index();
-    bool const indexCoversProjections =
-        !projections.empty() && index->covers(projections);
+    bool indexCoversProjections =
+        !projections.empty() && vectorNode->index()->covers(projections);
+
     bool const filterLoadsDocument =
         vectorNode->filterMode() == vector::FilterMode::kDocument;
 
     if (indexCoversProjections) {
-      projections.setCoveringContext(vectorNode->collection()->id(), index);
+      projections.setCoveringContext(vectorNode->collection()->id(),
+                                     vectorNode->index());
     } else if (!filterLoadsDocument) {
       // Neither optimisation win applies; the materializer must stay.
       continue;
