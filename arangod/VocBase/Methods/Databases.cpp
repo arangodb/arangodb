@@ -43,7 +43,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Sharding/ShardingInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utilities/NameValidator.h"
@@ -345,8 +344,9 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 }
 
 Result Databases::create(application_features::ApplicationServer& server,
-                         ExecContext const& exec, std::string const& dbName,
-                         velocypack::Slice users, velocypack::Slice options) {
+                         RocksDBEngine& rocksdbEngine, ExecContext const& exec,
+                         std::string const& dbName, velocypack::Slice users,
+                         velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
     Result res;
 
@@ -403,9 +403,7 @@ Result Databases::create(application_features::ApplicationServer& server,
         return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
       }
 
-      auto& selector = server.getFeature<EngineSelectorFeature>();
-      auto& engine = selector.engine<RocksDBEngine>();
-      if (engine.syncThread() == nullptr) {
+      if (rocksdbEngine.syncThread() == nullptr) {
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
                       "Automatic syncing must be enabled for replication "
                       "version 2. Please make sure the --rocksdb.sync-interval "
