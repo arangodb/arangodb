@@ -123,8 +123,6 @@ class ClusterIndex : public Index {
 
   bool isVectorIndexReady() const noexcept override;
 
-  StoredValues const& storedValues() const override;
-
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
@@ -138,7 +136,5 @@ class ClusterIndex : public Index {
   std::vector<std::vector<basics::AttributeName>> _coveredFields;
   // Only used in TRI_IDX_TYPE_MDI_PREFIXED_INDEX
   std::vector<std::vector<basics::AttributeName>> _prefixFields;
-  // Only used in TRI_IDX_TYPE_VECTOR_INDEX
-  StoredValues _storedValues;
 };
 }  // namespace arangodb
