@@ -520,93 +520,12 @@ void readIndexData(const std::string& indexPath) {
   }
 }
 
-void readAllIndexData(const std::string& indexPath) {
-
-    // 1. Open the directory
-    irs::FSDirectory dir(indexPath);
-
-    // 2. Open the DirectoryReader (contains all segments)
-    auto reader = irs::DirectoryReader(dir);
-
-    cout << "Index: segmentsCount=" << reader.size()
-              << " docsCount=" << reader.docs_count()
-              << " liveDocsCount=" << reader.live_docs_count() << endl;
-    
-    // 3. Iterate over all segments
-    for (size_t seg_idx = 0; auto& segment : reader) {
-        DocPkMap const pk_by_doc = loadArangoPkByIresearchDoc(segment);
-        cout << "Segment id=" << seg_idx
-                  << " Segment name=" << segment.Meta().name
-                  << " docsCount=" << segment.docs_count()
-                  << " liveDocsCount=" << segment.live_docs_count() << endl;
-        cout << "  Doc ids in postings are 1..liveDocs per segment (repeat in "
-                "each segment). Format S<seg>/d<id>.\n"
-             << "  @_PK column rows loaded=" << pk_by_doc.size() << endl;
-        printSegmentLocalDocTable(seg_idx, pk_by_doc, segment);
-
-        // ========== READING FIELDS (Inverted Index) ==========
-        for (auto fields = segment.fields(); fields->next();) {
-            auto& field = fields->value();
-
-            auto& meta = field.meta();
-            std::string_view const storage_name{meta.name};
-            ArangoFieldTypeInfo const detected = detectArangoFieldType(storage_name);
-            printArangoFieldHeader(storage_name, detected);
-            cout << "  Field termsCount=" << field.size()
-                 << " docsCount=" << field.docs_count() << endl;
-
-            // Iterate over all terms in this field
-            auto termItr = field.iterator(irs::SeekMode::NORMAL);
-
-            while (termItr->next()) {
-                termItr->read();  // Load term metadata
-                printTermLine(*termItr, detected.kind);
-                printTermPostings(meta, *termItr, seg_idx, &pk_by_doc);
-            }
-        }
-
-        // ========== READING COLUMNS (Stored Values) ==========
-        for (auto columns = segment.columns(); columns->next();) {
-            auto& columnInfo = columns->value();
-            
-            cout << "  Column: id=" << columnInfo.id()
-                      << " name=" << columnInfo.name() << endl;
-            
-            // Get column reader and iterate over values
-            auto* columnReader = segment.column(columnInfo.id());
-            if (columnReader) {
-                auto it = columnReader->iterator(irs::ColumnHint::kNormal);
-                auto* payload = irs::get<irs::payload>(*it);
-                
-                while (it->next()) {
-                    cout << "      doc=" << it->value()
-                              << " value=(" << irs::ViewCast<char>(payload->value) 
-                              << ")" << endl;
-                }
-            }
-        }
-        
-        // ========== READING LIVE DOCUMENTS ==========
-        auto docsItr = segment.docs_iterator();
-        cout << "  Live document IDs: ";
-        while (docsItr->next()) {
-            cout << docsItr->value() << " ";
-        }
-        cout << endl;
-        ++seg_idx;
-    }
-}
-
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         cout << "index path missing" << endl;
         return 0;
     }
 
-    if (argc == 3)
-        readAllIndexData(argv[1]);
-    else
-        readIndexData(argv[1]);
-
+    readIndexData(argv[1]);
     return 0;
 }
