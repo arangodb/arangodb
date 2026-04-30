@@ -77,7 +77,8 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
 
   auto filterExpression = calculationNode->expression()->clone(plan->getAst());
 
-  // TODO this will be resolved in the ticket COR-461
+  // TODO this will be resolved in the ticket COR-461 Allow vector search to
+  // filter on distance
   VarSet filterVars;
   filterExpression->variables(filterVars);
   if (filterVars.contains(distanceOutVariable)) {
