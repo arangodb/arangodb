@@ -1461,7 +1461,7 @@ function processQuery(query, explain, planIndex) {
           iterateIndexes(node.index, 0, node, types, variableName(node.inVariable));
         }
 
-        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters + '   ' + enumAnnotation + filter;
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters + '   ' + enumAnnotation + filter;
       }
       case 'EnumerateViewNode':
         var condition = '';
