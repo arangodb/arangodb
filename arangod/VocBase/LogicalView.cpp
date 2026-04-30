@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -366,15 +366,14 @@ Result drop(LogicalView const& view) noexcept {
 
 Result properties(LogicalView const& view, bool safe) noexcept {
   auto& vocbase = view.vocbase();
-  auto& server = vocbase.server();
-  if (!server.hasFeature<EngineSelectorFeature>()) {
+  auto& engine = vocbase.engine();
+  if (engine.typeName().empty()) {
     return {
         TRI_ERROR_INTERNAL,
         "failed to find storage engine while updating definition of view '" +
             view.name() + "' in database '" + vocbase.name() + "'"};
   }
   return safeCall([&]() -> Result {
-    auto& engine = vocbase.engine();
     if (engine.inRecovery()) {
       return {};
     }
