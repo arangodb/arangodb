@@ -47,14 +47,9 @@ namespace {
 // empty Projections if no projection rewrite is feasible (e.g. the doc itself
 // is consumed).
 Projections collectProjections(EnumerateNearVectorNode& vectorNode) {
-  auto* start = vectorNode.getFirstParent();
-  if (start == nullptr) {
-    return Projections{};
-  }
-
   containers::FlatHashSet<AttributeNamePath> attributes;
   bool const projectable = utils::findProjections(
-      start, vectorNode.outVariable(), /*expectedAttribute*/ "",
+      &vectorNode, vectorNode.outVariable(), /*expectedAttribute*/ "",
       /*excludeStartNodeFilterCondition*/ false, attributes);
   if (!projectable || attributes.empty() ||
       attributes.size() > vectorNode.maxProjections()) {
