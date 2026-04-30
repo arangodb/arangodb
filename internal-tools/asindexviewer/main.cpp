@@ -358,13 +358,6 @@ void printTermLine(irs::term_iterator const& term,
     cout << "      term_meta: docs_with_term=" << tm->docs_count
          << "  position_total=" << tm->freq
          << "  (freq = sum of within-doc occurrences across all postings)\n";
-    auto const* v10 = static_cast<irs::version10::term_meta const*>(tm);
-    cout << "      format10_pointers: doc_file@" << v10->doc_start
-         << "  pos_file@" << v10->pos_start
-         << "  pos_span_end=" << formatPostingPtr(v10->pos_end)
-         << "  pay_file@" << v10->pay_start
-         << "  e_union_u64=" << v10->e_skip_start
-         << "  (skip_start | singleton_doc_id per segment layout)\n";
   } else {
     cout << "      term_meta: (not exposed on this iterator)\n";
   }
@@ -397,21 +390,6 @@ void printTermPostings(irs::field_meta const& meta,
   irs::IndexFeatures const ff = meta.index_features;
   bool const field_has_pos =
       (ff & irs::IndexFeatures::POS) != irs::IndexFeatures::NONE;
-
-  {
-    auto doc_ids = term.postings(irs::IndexFeatures::NONE);
-    cout << "      postings_doc_refs (segment-local; format S<seg>/d<id>):";
-    bool any = false;
-    while (doc_ids->next()) {
-      cout << ' ';
-      printSegmentLocalDocId(segment_index, doc_ids->value(), pk_by_doc);
-      any = true;
-    }
-    if (!any) {
-      cout << " (none)";
-    }
-    cout << "\n";
-  }
 
   if (!field_has_pos) {
     cout << "      positions: (not stored — field has no IndexFeatures::POS)\n";

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(read_index LANGUAGES CXX)
+project(asindexviewer LANGUAGES CXX)
 
 # ------------------------------------------------------------------------------
 # Compiler setup
@@ -14,15 +14,15 @@ set(CMAKE_CXX_COMPILER clang++-19)
 # ------------------------------------------------------------------------------
 # Executable
 # ------------------------------------------------------------------------------
-add_executable(read_index
-    read_index.cpp
+add_executable(asindexviewer
+    main.cpp
     util.cpp
 )
 
 # ------------------------------------------------------------------------------
 # Compile definitions
 # ------------------------------------------------------------------------------
-target_compile_definitions(read_index PRIVATE
+target_compile_definitions(asindexviewer PRIVATE
     BOOST_TEXT_DISABLE_CONCEPTS
     UNICODE
     _UNICODE
@@ -32,12 +32,12 @@ target_compile_definitions(read_index PRIVATE
 # ------------------------------------------------------------------------------
 # Include directories
 # ------------------------------------------------------------------------------
-target_include_directories(read_index PRIVATE
+target_include_directories(asindexviewer PRIVATE
     ../../lib/iresearch/core
     ../../3rdParty/abseil-cpp
 )
 
-target_include_directories(read_index SYSTEM PRIVATE
+target_include_directories(asindexviewer SYSTEM PRIVATE
     ../../3rdParty/iresearch/external
     ../../3rdParty/boost/1.78.0
     ../../3rdParty/iresearch/external/frozen/include
@@ -49,7 +49,7 @@ target_include_directories(read_index SYSTEM PRIVATE
 # ------------------------------------------------------------------------------
 # Compile options
 # ------------------------------------------------------------------------------
-target_compile_options(read_index PRIVATE
+target_compile_options(asindexviewer PRIVATE
     -O2
     -g
     -msse4.2
@@ -60,21 +60,21 @@ target_compile_options(read_index PRIVATE
 # ------------------------------------------------------------------------------
 # Link directories
 # ------------------------------------------------------------------------------
-target_link_directories(read_index PRIVATE
+target_link_directories(asindexviewer PRIVATE
     ../../build/bin
 )
 
 # ------------------------------------------------------------------------------
 # Linker options (whole-archive handling)
 # ------------------------------------------------------------------------------
-target_link_options(read_index PRIVATE
+target_link_options(asindexviewer PRIVATE
     -Wl,--whole-archive
 )
 
 # ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
-target_link_libraries(read_index PRIVATE
+target_link_libraries(asindexviewer PRIVATE
     iresearch-s
     format-1_0-s
     absl_crc32c
