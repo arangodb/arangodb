@@ -33,7 +33,6 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"

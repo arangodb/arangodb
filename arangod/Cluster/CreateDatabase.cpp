@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -34,6 +34,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Methods/Databases.h"
@@ -90,7 +91,8 @@ bool CreateDatabase::first() {
 
     // Assertion in constructor makes sure that we have DATABASE.
     auto& server = _feature.server();
-    res = Databases::create(server, ExecContext::current(),
+    auto& rocksdbEngine = server.getFeature<RocksDBEngine>();
+    res = Databases::create(server, rocksdbEngine, ExecContext::current(),
                             _description.get(DATABASE), users, properties());
     result(res);
     if (res.fail() && res.isNot(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {

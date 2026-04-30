@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -44,9 +44,9 @@
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Hints.h"
 #include "Utils/CollectionGuard.h"
@@ -351,8 +351,10 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
       }
     }
 
+    auto& server = _state.applier._server;
+    auto& rocksdbEngine = server.getFeature<RocksDBEngine>();
     VPackSlice users = VPackSlice::emptyArraySlice();
-    Result res = methods::Databases::create(_state.applier._server,
+    Result res = methods::Databases::create(server, rocksdbEngine,
                                             ExecContext::current(), name, users,
                                             VPackSlice::emptyObjectSlice());
 

@@ -52,7 +52,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
