@@ -1439,8 +1439,8 @@ function processQuery(query, explain, planIndex) {
         }
 
         let filter = '';
-        if (node.hasOwnProperty("filterExpression") && JSON.stringify(node.filterExpression) !== "") {
-          filter = keyword(' FILTER ') + buildExpression(node.filterExpression) + '   ' + annotation('/* early pruning */');
+        if (node.filter) {
+          filter = keyword(' FILTER ') + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
           if (node.filterMode === "storedValues") {
             filter += annotation(" /* covered by storedValues */");
           } else if (node.filterMode === "document") {
