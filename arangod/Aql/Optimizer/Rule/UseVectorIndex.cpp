@@ -32,7 +32,6 @@
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
-#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
@@ -377,15 +376,8 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           std::move(searchParameters), enumerateCollectionNode->collection(),
           index);
 
-      auto* materializer =
-          plan->createNode<materialize::MaterializeRocksDBNode>(
-              plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
-              *documentVariable, *documentVariable, *documentVariable);
-      plan->excludeFromScatterGather(enumerateNear);
-
       plan->replaceNode(enumerateCollectionNode, enumerateNear);
       plan->insertBefore(enumerateNear, queryPointCalculationNode);
-      plan->insertAfter(enumerateNear, materializer);
 
       // we don't need this sort node at all, because we produce sorted output
       plan->unlinkNode(sortNode);

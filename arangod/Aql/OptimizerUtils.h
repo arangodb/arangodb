@@ -78,7 +78,7 @@ bool findProjections(ExecutionNode* n, Variable const* v,
 // into a direct read of that variable. After this returns, the producer node
 // `self` is responsible for filling the projection variables. Used by the
 // optimizer rules that turn `doc.attr` accesses into output registers
-// (optimizeProjections, removeMaterializerForEnumerateNear).
+// (optimizeProjections, materializeForEnumerateNear).
 // The `index` parameter is forwarded to ExecutionNode::replaceAttributeAccess
 // so callers like JoinNode can target a specific input slot; pass 0 for
 // single-source nodes.

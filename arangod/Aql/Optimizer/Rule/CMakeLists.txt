@@ -17,6 +17,7 @@ target_sources(arango_aql PRIVATE
   JoinIndexNodes.cpp
   LateDocumentMaterialization.cpp
   LateDocumentMaterializationArangoSearch.cpp
+  MaterializeForEnumerateNear.cpp
   MaterializeIntoSeparateVariable.cpp
   MoveCalculationsDown.cpp
   MoveCalculationsUp.cpp
@@ -33,7 +34,6 @@ target_sources(arango_aql PRIVATE
   PushFilterIntoEnumerateNear.cpp
   PushLimitIntoIndex.cpp
   RemoveCollectVariables.cpp
-  RemoveMaterializerForEnumerateNear.cpp
   RemoveDataModificationOutVariables.cpp
   RemoveFiltersCoveredByIndex.cpp
   RemoveFiltersCoveredByTraversal.cpp

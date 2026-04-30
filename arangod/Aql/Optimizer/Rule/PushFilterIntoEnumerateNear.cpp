@@ -92,9 +92,7 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
 
   // The vector node carries a clone of the filter expression, so the
   // calc node that produced the FilterNode's input variable becomes
-  // orphaned. Drop it now if no node still reads its output variable;
-  // otherwise removeMaterializerForEnumerateNear would still see its
-  // attribute accesses on the doc and miscount projections.
+  // orphaned
   plan->findVarUsage();
   if (!maybeCalculationNode->isVarUsedLater(filterInVar)) {
     plan->unlinkNode(const_cast<ExecutionNode*>(maybeCalculationNode));

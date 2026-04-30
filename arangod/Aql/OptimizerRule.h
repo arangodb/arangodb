@@ -210,10 +210,11 @@ struct OptimizerRule {
     // enables this one and works only with EnumerateNearVector nodes
     pushFilterIntoEnumerateNear,
 
-    // Drop the MaterializeRocksDBNode placed after each
-    // EnumerateNearVectorNode when a pushed-down filter already forces
-    // the iterator to load the doc itself
-    removeMaterializerForEnumerateNearRule,
+    // Decide how each EnumerateNearVectorNode emits its document. Either
+    // serve projections directly (storedValues coverage), serve from a doc
+    // already loaded by a pushed-down filter, or insert a
+    // MaterializeRocksDBNode after the vector node.
+    materializeForEnumerateNearRule,
 
     useIndexesRule,
 
@@ -483,14 +484,14 @@ struct OptimizerRule {
       "otherwise the pushFilterIntoEnumerateNear can never trigger");
 
   static_assert(
-      useVectorIndexForSort < removeMaterializerForEnumerateNearRule,
-      "removeMaterializerForEnumerateNearRule must run after "
+      useVectorIndexForSort < materializeForEnumerateNearRule,
+      "materializeForEnumerateNearRule must run after "
       "useVectorIndexForSort, since it relies on the presence of "
       "EnumerateNearVectorNode which is added by useVectorIndexForSort");
 
   static_assert(
-      pushFilterIntoEnumerateNear < removeMaterializerForEnumerateNearRule,
-      "removeMaterializerForEnumerateNearRule must run after "
+      pushFilterIntoEnumerateNear < materializeForEnumerateNearRule,
+      "materializeForEnumerateNearRule must run after "
       "pushFilterIntoEnumerateNear, since the filter mode must already be "
       "decided as it takes precedence over projections");
 

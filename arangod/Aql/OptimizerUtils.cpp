@@ -901,7 +901,7 @@ void extractNonConstPartsOfJunctionCondition(
 
 // Walks the plan and rewrites attribute accesses on `searchVariable` into
 // direct register reads on `replaceVariable`. Used by both
-// optimizeProjections and removeMaterializerForEnumerateNear.
+// optimizeProjections and materializeForEnumerateNear.
 class AttributeAccessReplacer final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
