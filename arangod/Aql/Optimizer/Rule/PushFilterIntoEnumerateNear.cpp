@@ -90,9 +90,8 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
 
   plan->unlinkNode(filterExecutionNode);
 
-  // The vector node carries a clone of the filter expression, so the
-  // calc node that produced the FilterNode's input variable becomes
-  // orphaned
+  // Since we are handling filter node lets remove correcponding calculation
+  // node if it is not used later on
   plan->findVarUsage();
   if (!maybeCalculationNode->isVarUsedLater(filterInVar)) {
     plan->unlinkNode(const_cast<ExecutionNode*>(maybeCalculationNode));
@@ -101,10 +100,7 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
   return filterExpression;
 }
 
-// TODO: replace with index->covers(projections) once the storedValues
-// filter iterator (RocksDBVectorIndexList::searchFilteredIds) reconstructs
-// a nested VPack object instead of using flattened keys -- only then is
-// Index::covers's prefix-match semantics safe here.
+// TODO(jbajic): fix this, it does not handle nested values in filtering
 bool areAllAttributesCovered(
     std::unique_ptr<ExecutionPlan> const& plan,
     std::unique_ptr<Expression> const& filterExpression,

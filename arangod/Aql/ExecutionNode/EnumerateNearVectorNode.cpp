@@ -344,8 +344,4 @@ void EnumerateNearVectorNode::setIndex(
   _index = std::move(indexHandle);
 }
 
-void EnumerateNearVectorNode::setFilterMode(vector::FilterMode mode) noexcept {
-  _filterMode = mode;
-}
-
 }  // namespace arangodb::aql

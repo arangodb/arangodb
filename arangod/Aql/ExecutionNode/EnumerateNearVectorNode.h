@@ -82,8 +82,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   bool isAscending() const noexcept;
 
-  void setFilterMode(vector::FilterMode mode) noexcept;
   vector::FilterMode filterMode() const noexcept { return _filterMode; }
+
+  void setFilterMode(vector::FilterMode mode) noexcept { _filterMode = mode; }
 
   vector::ProjectionMode projectionMode() const noexcept {
     return _projectionMode;
