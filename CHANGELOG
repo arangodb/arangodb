@@ -1,8 +1,9 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
-* COR-466: Map `IN []` to false inside `FILTER` nodes, enabling optimization rules
-  to be applied on them.
+* COR-466: Recognize `x IN []` and `[] ANY == x` as always false in `FILTER` nodes,
+  replacing the filter with a `NoResultsNode` to avoid unnecessary collection scans.
+  Also recognize `x NOT IN []` as always true, removing the unnecessary filter.
 
 * Upgraded FAISS to v1.14.1.
 

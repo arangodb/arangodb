@@ -67,9 +67,9 @@ void removeUnnecessaryFiltersRule(Optimizer* opt,
       modified = true;
     } else if (root->isFalse() &&
                rule.level == OptimizerRule::removeUnnecessaryFiltersRule2) {
-      // catches any expression that is statically false; in practice only
-      // x IN [] produced by replaceAnyEqWithInRule (level 124) reaches here,
-      // since other false expressions are folded earlier at plan construction
+      // direct false expressions are caught earlier at plan construction;
+      // what reaches here are variable-referred ones (e.g. LET y = [] ANY == x
+      // FILTER y) where fromNodeFilter skips isFalse() for variable references
       auto noRes = plan->createNode<NoResultsNode>(plan.get(), plan->nextId());
       plan->replaceNode(n, noRes);
       modified = true;

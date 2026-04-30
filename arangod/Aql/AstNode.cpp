@@ -1399,6 +1399,14 @@ bool AstNode::isTrue() const {
       // ! false => true
       return true;
     }
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+    // x NOT IN [] is always true (no elements to exclude)
+    TRI_ASSERT(numMembers() == 2);
+    AstNode const* rhs = getMemberUnchecked(1);
+    TRI_ASSERT(rhs != nullptr);
+    if (rhs->type == NODE_TYPE_ARRAY && rhs->numMembers() == 0) {
+      return true;
+    }
   }
 
   return false;
@@ -1444,10 +1452,22 @@ bool AstNode::isFalse() const {
       return true;
     }
   } else if (type == NODE_TYPE_OPERATOR_BINARY_IN) {
+    // x IN [] is always false (no elements to match)
     TRI_ASSERT(numMembers() == 2);
     AstNode const* rhs = getMemberUnchecked(1);
     TRI_ASSERT(rhs != nullptr);
     if (rhs->type == NODE_TYPE_ARRAY && rhs->numMembers() == 0) {
+      return true;
+    }
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ) {
+    // [] ANY == x is always false (no elements to match)
+    TRI_ASSERT(numMembers() == 3);
+    AstNode const* lhs = getMemberUnchecked(0);
+    AstNode const* quantifier = getMemberUnchecked(2);
+    TRI_ASSERT(lhs != nullptr && quantifier != nullptr);
+    if (lhs->type == NODE_TYPE_ARRAY && lhs->numMembers() == 0 &&
+        static_cast<Quantifier::Type>(quantifier->getIntValue(true)) ==
+            Quantifier::Type::kAny) {
       return true;
     }
   }

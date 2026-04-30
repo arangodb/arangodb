@@ -256,29 +256,44 @@ function emptyArrayFilterSuite() {
       assertEqual(2, db._query(q).toArray().length);
     },
 
-    // [] ANY == x rewrites to x IN [] via replace-any-eq-with-in, which then folds to NoResultsNode
-    testAnyEqEmptyArrayChainedOptimization: function () {
-      const paramWithAny = { optimizer: { rules: ['-all', '+remove-unnecessary-filters-2', '+replace-any-eq-with-in'] } };
+    // [] ANY == x (direct FILTER): folded at AST optimization time, no rules needed
+    testAnyEqEmptyArrayDirectFoldedAtAstLevel: function () {
       const q = `FOR doc IN ${cn} FILTER [] ANY == doc.value RETURN doc`;
-      const explain = db._createStatement({query: q, bindVars: {}, options: paramWithAny}).explain();
-      const nodeTypes = helper.getCompactPlan(explain).map(n => n.type);
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+      ).map(n => n.type);
       assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
       assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
-      assertEqual([], db._query(q, {}, paramWithAny).toArray());
+      assertEqual([], db._query(q, {}, paramNoRules).toArray());
     },
 
-    // without replace-any-eq-with-in, remove-unnecessary-filters-2 alone cannot fold [] ANY == x
-    testAnyEqEmptyArrayWithoutReplaceRule: function () {
+    // LET y = [] ANY == x FILTER y: fromNodeFilter sees a reference and skips isFalse();
+    // remove-unnecessary-filters-2 calls isFalse(BINARY_ARRAY_EQ) on the original expression
+    testAnyEqEmptyArrayViaLetFoldedByRule: function () {
       const opts = { optimizer: { rules: ['-all', '+remove-unnecessary-filters-2'] } };
-      const q = `FOR doc IN ${cn} FILTER [] ANY == doc.value RETURN doc`;
+      const q = `FOR doc IN ${cn} LET y = ([] ANY == doc.value) FILTER y RETURN doc`;
       const nodeTypes = helper.getCompactPlan(
         db._createStatement({query: q, bindVars: {}, options: opts}).explain()
       ).map(n => n.type);
-      assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
-      assertTrue(nodeTypes.indexOf('FilterNode') !== -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
+      assertEqual([], db._query(q, {}, opts).toArray());
     },
 
-    // NOOPT(x) IN [] bypasses AST folding (non-deterministic LHS), but is gonna be folded with the isFalse extension for IN []
+    // LET y = [] ANY == x FILTER y with full rule chain: replace-any-eq-with-in rewrites
+    // to y IN [], then remove-unnecessary-filters-2 folds via isFalse(BINARY_IN)
+    testAnyEqEmptyArrayViaLetChainedOptimization: function () {
+      const opts = { optimizer: { rules: ['-all', '+remove-unnecessary-filters-2', '+replace-any-eq-with-in'] } };
+      const q = `FOR doc IN ${cn} LET y = ([] ANY == doc.value) FILTER y RETURN doc`;
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}, options: opts}).explain()
+      ).map(n => n.type);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
+      assertEqual([], db._query(q, {}, opts).toArray());
+    },
+
+    // NOOPT makes lhs non-deterministic, skipping AST folding; isFalse(BINARY_IN) catches it at plan construction
     testNoOptInEmptyArrayProducesNoResults: function () {
       const q = `FOR doc IN ${cn} FILTER NOOPT(doc.value) IN [] RETURN doc`;
       const nodeTypes = helper.getCompactPlan(
@@ -296,7 +311,50 @@ function emptyArrayFilterSuite() {
         db._createStatement({query: q, bindVars: {}}).explain()
       ).map(n => n.type);
       assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
       assertEqual([], db._query(q).toArray());
+    },
+
+    // NOT ([] ANY == x) — NOT of always-false is always true, filter removed
+    testNotOfAnyEqEmptyArrayAlwaysTrue: function () {
+      const q = `FOR doc IN ${cn} FILTER NOT ([] ANY == doc.value) RETURN doc`;
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+      ).map(n => n.type);
+      assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
+      assertEqual(5, db._query(q, {}, paramNoRules).toArray().length);
+    },
+
+    // NOOPT makes lhs non-deterministic, skipping AST folding; isTrue(BINARY_NIN) catches it at plan construction
+    testNoOptNotInEmptyArrayAlwaysTrue: function () {
+      const q = `FOR doc IN ${cn} FILTER NOOPT(doc.value) NOT IN [] RETURN doc`;
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+      ).map(n => n.type);
+      assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
+      assertEqual(5, db._query(q, {}, paramNoRules).toArray().length);
+    },
+
+    // [1,2,3] ANY == x — non-empty array must NOT be folded to false
+    testNonEmptyAnyEqNotFolded: function () {
+      const q = `FOR doc IN ${cn} FILTER [0, 1, 2] ANY == doc.value RETURN doc`;
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+      ).map(n => n.type);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
+      assertEqual(3, db._query(q).toArray().length);
+    },
+
+    // [] ALL == x — vacuously true, must NOT be folded to false
+    testAllEqEmptyArrayNotFolded: function () {
+      const q = `FOR doc IN ${cn} FILTER [] ALL == doc.value RETURN doc`;
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+      ).map(n => n.type);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
+      assertEqual(5, db._query(q).toArray().length);
     },
 
   };
