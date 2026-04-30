@@ -1,6 +1,10 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-320: Vector search now supports projections, allowing covered queries
+  to skip the document materialization step. Adds optimizer rule
+  `remove-materializer-for-enumerate-near`.
+
 * Upgraded FAISS to v1.14.1.
 
 * COR-439: Make --server.storage-engine option obsolete
