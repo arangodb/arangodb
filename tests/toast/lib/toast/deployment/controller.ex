@@ -453,12 +453,21 @@ defmodule Toast.Deployment.Controller do
   end
 
   defp do_kill_server(server_id, acc) do
-    server_control(acc, server_id, :running,
-      action: &ServerLifecycle.kill_server/1,
-      state: [operational_state: :killed, expecting_exit: true],
-      event: :server_killed,
-      event_extra: fn server -> %{pid: server.pid} end
-    )
+    if is_map_key(acc.expected_crashes, server_id) do
+      {:error,
+       {:conflict,
+        "kill_server conflicts with a pending expect_crash for #{server_id}. " <>
+          "kill_server is an external kill that suppresses crash notifications, " <>
+          "so verify_crash would never complete. Use kill_server without " <>
+          "expect_crash, or trigger the crash from within the server (e.g., via a failure point)."}}
+    else
+      server_control(acc, server_id, :running,
+        action: &ServerLifecycle.kill_server/1,
+        state: [operational_state: :killed, expecting_exit: true],
+        event: :server_killed,
+        event_extra: fn server -> %{pid: server.pid} end
+      )
+    end
   end
 
   defp do_pause_server(server_id, acc) do
@@ -690,9 +699,27 @@ defmodule Toast.Deployment.Controller do
         {:reply, {:error, :no_expectation}, state}
 
       %CrashExpectation{crash_info: nil} = entry ->
-        verify_timer = Process.send_after(self(), {:verify_crash_timeout, server_id}, timeout)
-        entry = %{entry | waiter: {from, verify_timer}}
-        {:noreply, %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}}
+        server = Map.get(state.servers, server_id)
+
+        if server && server.operational_state == :killed do
+          Process.cancel_timer(entry.timer)
+
+          {:reply,
+           {:error,
+            {:killed_externally,
+             "Server #{server_id} was killed via kill_server, which suppresses crash " <>
+               "notifications. verify_crash only works with server-initiated crashes " <>
+               "(e.g., triggered by a failure point)."}},
+           %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}}
+        else
+          verify_timer =
+            Process.send_after(self(), {:verify_crash_timeout, server_id}, timeout)
+
+          entry = %{entry | waiter: {from, verify_timer}}
+
+          {:noreply,
+           %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}}
+        end
 
       %CrashExpectation{crash_info: crash_info, timer: timer} ->
         Process.cancel_timer(timer)
