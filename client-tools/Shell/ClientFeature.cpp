@@ -239,13 +239,6 @@ Using the value 0 disables the automatic request compression.")");
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_sslProtocol == SslProtocol::SSL_V2) {
-    LOG_TOPIC("64f4f", FATAL, arangodb::Logger::SSL)
-        << "SSLv2 is not supported any longer because of security "
-           "vulnerabilities in this protocol";
-    FATAL_ERROR_EXIT();
-  }
-
   if (_endpoints.size() > _maxNumEndpoints) {
     // this is the case if we have more endpoints than allowed.
     // in versions before 3.9, it was allowed to specify `--server.endpoint`

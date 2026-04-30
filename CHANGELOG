@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-429: Removed support for the `--tls.protocol` startup option values 1, 2 and 3,
+  which stand for SSL v2, SSL v2/3, and SSL v3.
+
 * COR-420: Removed `statistics` log topic. The remaining log messages were
   migrated to the `general` log topic.
 
