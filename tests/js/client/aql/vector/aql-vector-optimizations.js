@@ -184,13 +184,19 @@ function VectorIndexIteratorScenariosTestSuite() {
               SORT dist LIMIT 5
               RETURN {val: d.val, category: d.category, dist}`;
             const bindVars = {qp: randomPoint};
+
+            print(`Run expain`);
+            db._explain(query, bindVars);
+            print(`Explain ran`);
             const plan = explainPlan(query, bindVars);
             const node = indexNode(plan);
+
             assertEqual("none", node.filterMode);
             assertEqual("covering", node.projectionMode);
             if (!isCluster) {
                 assertFalse(hasMaterializeNode(plan), "MaterializeNode should be dropped when storedValues cover projections");
             }
+
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
             verifyDistancesAscending(results);
