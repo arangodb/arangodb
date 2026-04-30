@@ -68,16 +68,6 @@ const verifyDistancesAscending = function(results) {
 //
 // The collection has storedValues = ["val", "category"]. `extra` is NOT in
 // storedValues, so it forces scF=F or scP=F when used.
-//
-// NOTE: S3, S8, S9 currently fail. They assert the design behaviour
-// (projectionMode=="covering", MaterializeNode dropped) but the optimizer
-// rule `removeMaterializerForEnumerateNearRule` runs before
-// `optimizeProjectionsRule` populates the materializer's projection list,
-// so it never sees them as covered. Fixing the rule ordering broke
-// register planning across the board (OptimizeProjections rewires
-// downstream variable references in a way unlinking can't undo), so a
-// proper fix needs more work. These tests intentionally remain red until
-// that is addressed.
 function VectorIndexIteratorScenariosTestSuite() {
     let collection;
     let randomPoint;
