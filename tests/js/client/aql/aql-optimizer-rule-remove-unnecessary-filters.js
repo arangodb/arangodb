@@ -337,6 +337,21 @@ function emptyArrayFilterSuite() {
       assertEqual(5, db._query(q, {}, paramNoRules).toArray().length);
     },
 
+    // non-empty ALL/NONE must NOT be folded
+    testNonEmptyAllNoneNotFolded: function () {
+      const queries = [
+        `FOR doc IN ${cn} FILTER [0, 1] ALL == doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [0, 1] NONE == doc.value RETURN doc`,
+      ];
+      queries.forEach(function(q) {
+        const nodeTypes = helper.getCompactPlan(
+          db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+        ).map(n => n.type);
+        assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, q);
+        assertTrue(nodeTypes.indexOf('FilterNode') !== -1, q);
+      });
+    },
+
     // [1,2,3] ANY == x — non-empty array must NOT be folded to false
     testNonEmptyAnyEqNotFolded: function () {
       const q = `FOR doc IN ${cn} FILTER [0, 1, 2] ANY == doc.value RETURN doc`;
@@ -347,14 +362,46 @@ function emptyArrayFilterSuite() {
       assertEqual(3, db._query(q).toArray().length);
     },
 
-    // [] ALL == x — vacuously true, must NOT be folded to false
-    testAllEqEmptyArrayNotFolded: function () {
-      const q = `FOR doc IN ${cn} FILTER [] ALL == doc.value RETURN doc`;
-      const nodeTypes = helper.getCompactPlan(
-        db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
-      ).map(n => n.type);
-      assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
-      assertEqual(5, db._query(q).toArray().length);
+    // [] ANY <op> x — always false for any operator (ANY needs at least one element)
+    testAnyEmptyArrayOtherOpsAlwaysFalse: function () {
+      const queries = [
+        `FOR doc IN ${cn} FILTER [] ANY != doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ANY > doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ANY < doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ANY >= doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ANY <= doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ANY IN doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ANY NOT IN doc.value RETURN doc`,
+      ];
+      queries.forEach(function(q) {
+        const nodeTypes = helper.getCompactPlan(
+          db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+        ).map(n => n.type);
+        assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, q);
+        assertTrue(nodeTypes.indexOf('FilterNode') === -1, q);
+        assertEqual([], db._query(q, {}, paramNoRules).toArray(), q);
+      });
+    },
+
+    // [] ALL <op> x and [] NONE <op> x — vacuously true, filter removed
+    testAllNoneEmptyArrayAlwaysTrue: function () {
+      const queries = [
+        `FOR doc IN ${cn} FILTER [] ALL == doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ALL != doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ALL > doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ALL IN doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] NONE == doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] NONE > doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] NONE IN doc.value RETURN doc`,
+      ];
+      queries.forEach(function(q) {
+        const nodeTypes = helper.getCompactPlan(
+          db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+        ).map(n => n.type);
+        assertTrue(nodeTypes.indexOf('FilterNode') === -1, q);
+        assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, q);
+        assertEqual(5, db._query(q, {}, paramNoRules).toArray().length, q);
+      });
     },
 
   };
