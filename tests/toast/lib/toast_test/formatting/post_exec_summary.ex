@@ -36,15 +36,15 @@ defmodule ToastTest.Formatting.PostExecSummary do
     issues
     |> Issues.resolve_coredumps(index)
     |> Enum.map(&Issues.attach_test_location(&1, result.modules))
-    |> print_issues(result)
+    |> print_issues()
 
     print_warnings(warnings)
     :ok
   end
 
-  defp print_issues([], _result), do: :ok
+  defp print_issues([]), do: :ok
 
-  defp print_issues(issues, _result) do
+  defp print_issues(issues) do
     colors = IO.ANSI.enabled?()
     grouped = Enum.group_by(issues, & &1.type)
 
@@ -178,7 +178,9 @@ defmodule ToastTest.Formatting.PostExecSummary do
     "#{Issues.format_scope(scope)} (#{loc})"
   end
 
-  defp format_scope_with_location(%{scope: scope}), do: Issues.format_scope(scope)
+  defp format_scope_with_location(%{scope: scope}) do
+    Issues.format_scope(scope)
+  end
 
   defp print_indented(text, prefix) do
     text

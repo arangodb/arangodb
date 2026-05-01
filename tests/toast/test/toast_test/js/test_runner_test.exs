@@ -119,27 +119,29 @@ defmodule ToastTest.JS.TestRunnerTest do
   describe "run_module/3" do
     test "emits events for passing tests", ctx do
       module = build_js_module("Pass")
+      js_key = String.to_atom(module.__toast_js_file__())
 
       TestRunner.run_module(ctx.manager, module, executor: PassingExecutor)
 
       Compat.suite_finished(ctx.manager, %{async: nil, load: nil, run: 0})
       test_data = ToastTest.ResultCollector.get_data(ctx.collector_pid)
 
-      assert test_data.modules[module]
-      tests = test_data.modules[module].tests
+      assert test_data.modules[js_key]
+      tests = test_data.modules[js_key].tests
       assert length(tests) == 2
       assert Enum.all?(tests, &(&1.outcome == :passed))
     end
 
     test "emits events for failing tests", ctx do
       module = build_js_module("Fail")
+      js_key = String.to_atom(module.__toast_js_file__())
 
       TestRunner.run_module(ctx.manager, module, executor: FailingExecutor)
 
       Compat.suite_finished(ctx.manager, %{async: nil, load: nil, run: 0})
       test_data = ToastTest.ResultCollector.get_data(ctx.collector_pid)
 
-      tests = test_data.modules[module].tests
+      tests = test_data.modules[js_key].tests
       outcomes = Enum.map(tests, & &1.outcome)
       assert :passed in outcomes
       assert :failed in outcomes
@@ -147,13 +149,14 @@ defmodule ToastTest.JS.TestRunnerTest do
 
     test "handles executor error by failing the module", ctx do
       module = build_js_module("Error")
+      js_key = String.to_atom(module.__toast_js_file__())
 
       TestRunner.run_module(ctx.manager, module, executor: ErrorExecutor)
 
       Compat.suite_finished(ctx.manager, %{async: nil, load: nil, run: 0})
       test_data = ToastTest.ResultCollector.get_data(ctx.collector_pid)
 
-      tests = test_data.modules[module].tests
+      tests = test_data.modules[js_key].tests
       assert length(tests) == 1
       assert [%{outcome: :failed}] = tests
     end

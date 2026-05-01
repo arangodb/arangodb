@@ -70,7 +70,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       SuiteResult.write_junit_xml(result, dir)
 
       xml = read_xml!(dir, "smoke.xml")
-      assert xml =~ ~r/<testsuite\s[^>]*name="Elixir.FakeModule"/
+      assert xml =~ ~r/<testsuite\s[^>]*name="FakeModule"/
     end)
   end
 
@@ -133,7 +133,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       xml = read_xml!(dir, "smoke.xml")
       # Synthetic testcase inside the module's testsuite
       assert xml =~
-               ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*>.*<testcase[^>]*name="crash \(srv-1\)"[^>]*>.*<error message="crash">.*Coredump:.*core\.1234.*<\/error>.*<\/testcase>.*<\/testsuite>/s
+               ~r/<testsuite[^>]*name="FakeModule"[^>]*>.*<testcase[^>]*name="crash \(srv-1\)"[^>]*>.*<error message="crash">.*Coredump:.*core\.1234.*<\/error>.*<\/testcase>.*<\/testsuite>/s
     end)
   end
 
@@ -391,7 +391,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       xml = read_xml!(dir, "smoke.xml")
 
       assert xml =~
-               ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*>.*<testcase[^>]*name="sanitizer report \(srv-2\)"[^>]*>.*<error message="sanitizer report">.*TSAN data race.*<\/error>.*<\/testcase>.*<\/testsuite>/s
+               ~r/<testsuite[^>]*name="FakeModule"[^>]*>.*<testcase[^>]*name="sanitizer report \(srv-2\)"[^>]*>.*<error message="sanitizer report">.*TSAN data race.*<\/error>.*<\/testcase>.*<\/testsuite>/s
     end)
   end
 
@@ -461,7 +461,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
       xml = read_xml!(dir, "smoke.xml")
 
       assert xml =~
-               ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*>.*<testcase[^>]*name="timeout"[^>]*>.*<error message="timeout">.*setup exceeded limit.*<\/error>.*<\/testcase>.*<\/testsuite>/s
+               ~r/<testsuite[^>]*name="FakeModule"[^>]*>.*<testcase[^>]*name="timeout"[^>]*>.*<error message="timeout">.*setup exceeded limit.*<\/error>.*<\/testcase>.*<\/testsuite>/s
 
       assert xml =~ "core.mod"
     end)
@@ -714,7 +714,7 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
 
       # Module-level: synthetic <testcase> inside <testsuite>
       assert xml =~
-               ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*>.*<testcase[^>]*name="sanitizer report \(srv-1\)"[^>]*>.*module-level sanitizer.*<\/testsuite>/s
+               ~r/<testsuite[^>]*name="FakeModule"[^>]*>.*<testcase[^>]*name="sanitizer report \(srv-1\)"[^>]*>.*module-level sanitizer.*<\/testsuite>/s
 
       # Suite-level: synthetic <testcase> in _infrastructure_ testsuite
       assert xml =~
@@ -1032,9 +1032,9 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
 
       xml = read_xml!(dir, "smoke.xml")
       # 2 real tests + 2 synthetic = 4
-      assert xml =~ ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*tests="4"/
+      assert xml =~ ~r/<testsuite[^>]*name="FakeModule"[^>]*tests="4"/
       # 2 synthetic errors
-      assert xml =~ ~r/<testsuite[^>]*name="Elixir.FakeModule"[^>]*errors="2"/
+      assert xml =~ ~r/<testsuite[^>]*name="FakeModule"[^>]*errors="2"/
     end)
   end
 

@@ -32,21 +32,22 @@ defmodule ToastTest.JS.TestRunner do
   @spec run_module(Compat.event_manager(), module(), keyword()) :: :ok
   def run_module(manager, module, opts \\ []) do
     js_file = module.__toast_js_file__()
+    js_module = String.to_atom(js_file)
     executor = Keyword.fetch!(opts, :executor)
     executor_opts = Keyword.get(opts, :executor_opts, [])
 
-    placeholder_module = module.__ex_unit__()
+    placeholder_module = %{module.__ex_unit__() | name: js_module}
     EventStore.notify(%{event: :module_started, module: module})
     Compat.module_started(manager, placeholder_module)
 
     tests =
       case executor.run(js_file, executor_opts) do
         {:ok, result} ->
-          {_test_module, tests} = ResultMapper.map_results(result, module, js_file)
+          {_test_module, tests} = ResultMapper.map_results(result, js_module, js_file)
           tests
 
         {:error, reason} ->
-          [build_error_test(module, js_file, reason)]
+          [build_error_test(js_module, js_file, reason)]
       end
 
     for test <- tests do
@@ -60,10 +61,10 @@ defmodule ToastTest.JS.TestRunner do
     :ok
   end
 
-  defp build_error_test(module, js_file, reason) do
+  defp build_error_test(js_module, js_file, reason) do
     %ExUnit.Test{
       name: :"test js_execution",
-      module: module,
+      module: js_module,
       state:
         {:failed,
          [{:error, RuntimeError.exception("JS executor failed: #{inspect(reason)}"), []}]},

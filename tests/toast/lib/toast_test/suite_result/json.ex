@@ -56,7 +56,7 @@ defmodule ToastTest.SuiteResult.JSON do
 
   defp encode_test(test) do
     %{
-      "module" => Atom.to_string(test.module),
+      "module" => ToastTest.Formatting.display_module_name(test.module),
       "name" => Atom.to_string(test.name),
       "outcome" => Atom.to_string(test.outcome),
       "duration_us" => test.duration_us

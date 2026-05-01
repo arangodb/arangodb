@@ -126,19 +126,20 @@ defmodule ToastTest.Formatting.Issues do
   end
 
   def format_scope(:suite), do: nil
-  def format_scope({:module, mod}), do: inspect(mod)
+
+  def format_scope({:module, mod}) do
+    ToastTest.Formatting.display_module_name(mod)
+  end
 
   def format_scope({:test, mod, name}) do
-    "#{inspect(mod)} > \"#{ToastTest.Formatting.display_test_name(name)}\""
+    "#{ToastTest.Formatting.display_module_name(mod)} > \"#{ToastTest.Formatting.display_test_name(name)}\""
   end
 
   def attach_test_location(%{scope: {:test, mod, name}} = issue, modules) do
     with %{^mod => %{tests: tests}} <- modules,
-         %{tags: %{file: file} = tags} when is_binary(file) <-
+         %{tags: %{file: file, line: line}} when is_binary(file) and is_integer(line) <-
            Enum.find(tests, &(&1.name == name)) do
-      rel = Path.relative_to_cwd(file)
-      location = if is_integer(tags[:line]), do: "#{rel}:#{tags.line}", else: rel
-      Map.put(issue, :test_location, location)
+      Map.put(issue, :test_location, "#{Path.relative_to_cwd(file)}:#{line}")
     else
       _ -> issue
     end

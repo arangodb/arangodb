@@ -29,6 +29,6 @@ defmodule Smoke.VersionTest do
   end
 
   test "endpoint is accessible via raw HTTP", %{endpoint: endpoint} do
-    assert {:ok, %{status: 200}} = Req.get(endpoint <> "/_api/version", retry: false)
+    assert {:ok, %{status: 201}} = Req.get(endpoint <> "/_api/version", retry: false)
   end
 end
