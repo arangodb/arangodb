@@ -40,7 +40,7 @@
 #include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Parser.h"
+#include "Aql/Parser/Parser.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryActivity.h"
 #include "Aql/QueryCache.h"
