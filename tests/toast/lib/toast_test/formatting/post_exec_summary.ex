@@ -36,15 +36,15 @@ defmodule ToastTest.Formatting.PostExecSummary do
     issues
     |> Issues.resolve_coredumps(index)
     |> Enum.map(&Issues.attach_test_location(&1, result.modules))
-    |> print_issues()
+    |> print_issues(result)
 
     print_warnings(warnings)
     :ok
   end
 
-  defp print_issues([]), do: :ok
+  defp print_issues([], _result), do: :ok
 
-  defp print_issues(issues) do
+  defp print_issues(issues, result) do
     colors = IO.ANSI.enabled?()
     grouped = Enum.group_by(issues, & &1.type)
 
@@ -53,6 +53,28 @@ defmodule ToastTest.Formatting.PostExecSummary do
     |> Enum.each(fn type ->
       issues_of_type = Map.fetch!(grouped, type)
       print_section(type, issues_of_type, colors)
+      if type == :crash, do: print_crash_footer(result, colors)
+    end)
+  end
+
+  defp print_crash_footer(result, colors) do
+    count = invalidated_count(result)
+
+    if count > 0 do
+      IO.puts(
+        "\n  " <>
+          colorize(
+            "#{count} subsequent #{Toast.Utils.pluralize(count, "test")} invalidated by crash",
+            :yellow,
+            colors
+          )
+      )
+    end
+  end
+
+  defp invalidated_count(%SuiteResult{modules: modules}) do
+    Enum.reduce(modules, 0, fn {_mod, %{tests: tests}}, acc ->
+      acc + Enum.count(tests, &(&1.outcome == :invalidated))
     end)
   end
 

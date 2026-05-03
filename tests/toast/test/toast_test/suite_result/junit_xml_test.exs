@@ -345,6 +345,37 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
     end)
   end
 
+  test "invalidated tests have skipped elements with crash message" do
+    modules = %{
+      InvalidatedModule => %{
+        started_at: mod_started_at(),
+        finished_at: mod_finished_at(),
+        setup_finished_at: nil,
+        teardown_started_at: nil,
+        tests: [
+          %{
+            name: :"test invalidated",
+            outcome: :invalidated,
+            duration_us: 0,
+            started_at: test1_started_at(),
+            finished_at: test1_finished_at(),
+            tags: %{}
+          }
+        ]
+      }
+    }
+
+    with_tmp_dir(fn dir ->
+      test_data = build_test_data(%{modules: modules})
+      result = SuiteResult.build(test_data, [])
+      SuiteResult.write_junit_xml(result, dir)
+
+      xml = read_xml!(dir, "smoke.xml")
+      assert xml =~ ~r/<testsuites[^>]*skipped="1"/
+      assert xml =~ ~r/<skipped message="invalidated by prior server crash"/
+    end)
+  end
+
   # --- Issue type x scope matrix ---
 
   test "suite-scoped crash appears as synthetic testcase in _infrastructure_ testsuite" do

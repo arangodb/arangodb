@@ -31,7 +31,9 @@ defmodule ToastTest.Runner.PostExecution do
   @spec run(Toast.Deployment.t() | nil, map(), ToastTest.Config.t()) :: SuiteResult.t()
   def run(nil, test_data, _test_config) do
     snapshot = EventStore.snapshot()
+
     crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
+    test_data = ToastTest.Attribution.Invalidation.apply(test_data, crash_events)
 
     {issues, _coredump_reports} =
       ToastTest.Attribution.run(test_data, %{}, crash_events,
@@ -90,6 +92,7 @@ defmodule ToastTest.Runner.PostExecution do
       |> Enum.map(&ResultBuilder.to_crash_event/1)
       |> ToastTest.Attribution.resolve_crash_timestamps(artifacts)
 
+    test_data = ToastTest.Attribution.Invalidation.apply(test_data, crash_events)
 
     {issues, coredump_reports} =
       ToastTest.Attribution.run(test_data, artifacts, crash_events,
