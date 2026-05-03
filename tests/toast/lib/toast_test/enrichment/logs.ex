@@ -95,12 +95,25 @@ defmodule ToastTest.Enrichment.Logs do
   defp maybe_put_atom(entry, key, value), do: Map.put(entry, key, String.to_atom(value))
 
   @doc """
+  Return the timestamp (Unix microseconds) of the first crash log entry,
+  or `nil` if the log file has no crash block at its end.
+  """
+  @spec extract_crash_timestamp(Path.t()) :: Toast.timestamp() | nil
+  def extract_crash_timestamp(path) do
+    case extract_crash_lines(path) do
+      [%{time: time} | _] -> time
+      [] -> nil
+    end
+  end
+
+  @doc """
   Return the last contiguous block of crash-topic log entries.
 
-  Reads the file backwards to efficiently find the most recent crash output,
-  ignoring earlier crashes (e.g. from resilience tests with expected crashes).
+  Reads the file backwards to efficiently find the most recent crash output.
+  Only returns entries when the crash block is at the very end of the log
+  (the crash handler writes these as the last thing before the process dies).
 
-  Returns `[]` if the file does not exist or contains no crash entries.
+  Returns `[]` if the file does not exist or contains no crash entries at the end.
   """
   @spec extract_crash_lines(Path.t()) :: [map()]
   def extract_crash_lines(path) do
@@ -147,13 +160,18 @@ defmodule ToastTest.Enrichment.Logs do
   defp process_lines_reverse([], acc), do: {:continue, acc}
 
   defp process_lines_reverse([line | rest], []) do
-    if crash_entry?(line) do
-      case parse_line(line) do
-        {:ok, entry} -> process_lines_reverse(rest, [entry])
-        :error -> process_lines_reverse(rest, [])
-      end
-    else
-      process_lines_reverse(rest, [])
+    cond do
+      line == "" ->
+        process_lines_reverse(rest, [])
+
+      crash_entry?(line) ->
+        case parse_line(line) do
+          {:ok, entry} -> process_lines_reverse(rest, [entry])
+          :error -> {:done, []}
+        end
+
+      true ->
+        {:done, []}
     end
   end
 
