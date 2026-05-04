@@ -4,10 +4,9 @@
 
 #include "Aql/ExecutionPlan.h"
 
-namespace arangodb::aql
-{
+namespace arangodb::aql {
 class Optimizer;
 void upgradeScatterToDistributeRule(Optimizer* opt,
                                     std::unique_ptr<ExecutionPlan> plan,
                                     OptimizerRule const& rule);
-} // namespace arangodb::aql
+}  // namespace arangodb::aql

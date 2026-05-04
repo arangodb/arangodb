@@ -518,14 +518,15 @@ void QuerySnippet::serializeIntoBuilder(
             ExecutionNode::castTo<DistributeNode*>(_globalScatter);
         TRI_ASSERT(dist != nullptr);
 
-        // This dance with registers is needed when we use the DistributeNode for read access.
-        // The upgrade-scatter-to-distribute
+        // This dance with registers is needed when we use the DistributeNode
+        // for read access. The upgrade-scatter-to-distribute
         auto const var = dist->getVariable();
         if (!dist->getVarsUsedLater().contains(var)) {
           auto reg = dist->getRegisterPlan()->variableToRegisterId(var);
           auto globalRegsToClear = dist->getRegsToClear();
           auto globalRegsToKeepStack = dist->getRegsToKeepStack();
-          // TODO(listunov): is this right ? Should I be adding this to all sets?
+          // TODO(listunov): is this right ? Should I be adding this to all
+          // sets?
           for (auto& regSet : globalRegsToKeepStack) {
             regSet.insert(reg);
           }
