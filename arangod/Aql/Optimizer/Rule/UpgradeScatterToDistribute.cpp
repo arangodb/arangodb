@@ -1,20 +1,20 @@
 // TODO(listunov): disclaimer
 
+#include "UpgradeScatterToDistribute.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
-#include "Aql/QueryContext.h"
+#include "Aql/OptimizerRule.h"
 
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"

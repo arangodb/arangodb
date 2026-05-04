@@ -641,6 +641,14 @@ void insertDistributeInputCalculation(ExecutionPlan& plan) {
         };
         break;
       }
+    case ExecutionNode::INDEX:
+    case ExecutionNode::ENUMERATE_COLLECTION: {
+      // This is probably coming from upgradeScatterToDistributeRule, we
+      // already have a calculation node, no need to do anything here.
+      plan.clearVarUsageComputed();
+      plan.findVarUsage();
+      continue;
+    }
       default: {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(
