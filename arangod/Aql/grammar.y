@@ -2342,8 +2342,8 @@ array_element:
     expression {
       parser->pushArrayElement($1);
     }
-  |   expression T_ELLIPSIS {
-      auto x = parser->ast()->createNodeArraySplice($1);
+  |   T_ELLIPSIS expression {
+      auto x = parser->ast()->createNodeArraySplice($2);
       parser->pushArrayElement(x);
     }
   ;
