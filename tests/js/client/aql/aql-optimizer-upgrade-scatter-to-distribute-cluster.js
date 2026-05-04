@@ -5,7 +5,6 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
-const explainer = require("@arangodb/aql/explainer");
 
 function optimizerUpgradeScatterToDistributeSuite() {
 
@@ -108,7 +107,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
       let plan = db._createStatement({query: query}).explain().plan;
       assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
-
 
     test_NoAttributeAccess_Upgrade: function() {
       let query =
