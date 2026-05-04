@@ -67,9 +67,8 @@ void removeUnnecessaryFiltersRule(Optimizer* opt,
       modified = true;
     } else if (root->isFalse() &&
                rule.level == OptimizerRule::removeUnnecessaryFiltersRule2) {
-      // direct false expressions are caught earlier at plan construction;
-      // what reaches here are variable-referred ones (e.g. LET y = [] ANY == x
-      // FILTER y) where fromNodeFilter skips isFalse() for variable references
+      // direct false is caught at plan construction; variable refs (LET y = ...
+      // FILTER y) reach here
       auto noRes = plan->createNode<NoResultsNode>(plan.get(), plan->nextId());
       plan->replaceNode(n, noRes);
       modified = true;

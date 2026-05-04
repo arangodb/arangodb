@@ -3,7 +3,7 @@
 
 * COR-466: Added constant folding empty array comparisons in `FILTER` nodes, allowing filter optimizations:
   `x IN []`, `[] ANY <op> x` are false. `x NOT IN []`, `[] ALL <op> x` and `[] NONE <op> x` are true, where
-  `<op>` is `==`, `!=`, `<`, `<=`, `>` or `>=`.
+  `<op>` is `==`, `!=`, `<`, `<=`, `>`, `>=`, `IN` or `NOT IN`.
 
 * Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
   dependencies.

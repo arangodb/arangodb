@@ -253,6 +253,7 @@ function emptyArrayFilterSuite() {
       const explain = db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain();
       const nodeTypes = helper.getCompactPlan(explain).map(n => n.type);
       assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('FilterNode') !== -1, nodeTypes);
       assertEqual(2, db._query(q).toArray().length);
     },
 
@@ -267,8 +268,7 @@ function emptyArrayFilterSuite() {
       assertEqual([], db._query(q, {}, paramNoRules).toArray());
     },
 
-    // LET y = [] ANY == x FILTER y: fromNodeFilter sees a reference and skips isFalse();
-    // remove-unnecessary-filters-2 calls isFalse(BINARY_ARRAY_EQ) on the original expression
+    // via LET — variable ref bypasses plan construction fold; rule catches it
     testAnyEqEmptyArrayViaLetFoldedByRule: function () {
       const opts = { optimizer: { rules: ['-all', '+remove-unnecessary-filters-2'] } };
       const q = `FOR doc IN ${cn} LET y = ([] ANY == doc.value) FILTER y RETURN doc`;
@@ -280,8 +280,7 @@ function emptyArrayFilterSuite() {
       assertEqual([], db._query(q, {}, opts).toArray());
     },
 
-    // LET y = [] ANY == x FILTER y with full rule chain: replace-any-eq-with-in rewrites
-    // to y IN [], then remove-unnecessary-filters-2 folds via isFalse(BINARY_IN)
+    // same via LET, with replace-any-eq-with-in also enabled — rewrite chain, same result
     testAnyEqEmptyArrayViaLetChainedOptimization: function () {
       const opts = { optimizer: { rules: ['-all', '+remove-unnecessary-filters-2', '+replace-any-eq-with-in'] } };
       const q = `FOR doc IN ${cn} LET y = ([] ANY == doc.value) FILTER y RETURN doc`;
@@ -293,7 +292,7 @@ function emptyArrayFilterSuite() {
       assertEqual([], db._query(q, {}, opts).toArray());
     },
 
-    // NOOPT makes lhs non-deterministic, skipping AST folding; isFalse(BINARY_IN) catches it at plan construction
+    // NOOPT prevents AST folding; plan construction still catches it
     testNoOptInEmptyArrayProducesNoResults: function () {
       const q = `FOR doc IN ${cn} FILTER NOOPT(doc.value) IN [] RETURN doc`;
       const nodeTypes = helper.getCompactPlan(
@@ -326,7 +325,7 @@ function emptyArrayFilterSuite() {
       assertEqual(5, db._query(q, {}, paramNoRules).toArray().length);
     },
 
-    // NOOPT makes lhs non-deterministic, skipping AST folding; isTrue(BINARY_NIN) catches it at plan construction
+    // NOOPT prevents AST folding; plan construction still catches it
     testNoOptNotInEmptyArrayAlwaysTrue: function () {
       const q = `FOR doc IN ${cn} FILTER NOOPT(doc.value) NOT IN [] RETURN doc`;
       const nodeTypes = helper.getCompactPlan(
@@ -339,30 +338,36 @@ function emptyArrayFilterSuite() {
 
     // non-empty ALL/NONE must NOT be folded
     testNonEmptyAllNoneNotFolded: function () {
-      const queries = [
-        `FOR doc IN ${cn} FILTER [0, 1] ALL == doc.value RETURN doc`,
-        `FOR doc IN ${cn} FILTER [0, 1] NONE == doc.value RETURN doc`,
+      // [0,1] ALL == x: impossible (no single value equals both), returns nothing
+      // [0,1] NONE == x: docs where value ∉ {0,1}, so values 2,3,4 → 3 results
+      const cases = [
+        { q: `FOR doc IN ${cn} FILTER [0, 1] ALL == doc.value RETURN doc`, expected: 0 },
+        { q: `FOR doc IN ${cn} FILTER [0, 1] NONE == doc.value RETURN doc`, expected: 3 },
       ];
-      queries.forEach(function(q) {
+      cases.forEach(function({ q, expected }) {
         const nodeTypes = helper.getCompactPlan(
           db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
         ).map(n => n.type);
         assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, q);
         assertTrue(nodeTypes.indexOf('FilterNode') !== -1, q);
+        assertEqual(expected, db._query(q, {}, paramNoRules).toArray().length, q);
       });
     },
 
-    // [1,2,3] ANY == x — non-empty array must NOT be folded to false
+    // [0,1,2] ANY == x — non-empty array must NOT be folded to false
     testNonEmptyAnyEqNotFolded: function () {
       const q = `FOR doc IN ${cn} FILTER [0, 1, 2] ANY == doc.value RETURN doc`;
       const nodeTypes = helper.getCompactPlan(
         db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
       ).map(n => n.type);
       assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('FilterNode') !== -1, nodeTypes);
       assertEqual(3, db._query(q).toArray().length);
     },
 
     // [] ANY <op> x — always false for any operator (ANY needs at least one element)
+    // For IN/NOT IN, doc.value is an integer, not an array — semantically unusual,
+    // but the filter is eliminated before execution so the rhs type is irrelevant.
     testAnyEmptyArrayOtherOpsAlwaysFalse: function () {
       const queries = [
         `FOR doc IN ${cn} FILTER [] ANY != doc.value RETURN doc`,
@@ -380,6 +385,23 @@ function emptyArrayFilterSuite() {
         assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, q);
         assertTrue(nodeTypes.indexOf('FilterNode') === -1, q);
         assertEqual([], db._query(q, {}, paramNoRules).toArray(), q);
+      });
+    },
+
+    // via LET — remove-unnecessary-filters calls isTrue() and unlinks the filter
+    testAllNoneEmptyArrayViaLetAlwaysTrue: function () {
+      const opts = { optimizer: { rules: ['-all', '+remove-unnecessary-filters'] } };
+      const queries = [
+        `FOR doc IN ${cn} LET y = ([] ALL == doc.value) FILTER y RETURN doc`,
+        `FOR doc IN ${cn} LET y = ([] NONE == doc.value) FILTER y RETURN doc`,
+      ];
+      queries.forEach(function(q) {
+        const nodeTypes = helper.getCompactPlan(
+          db._createStatement({query: q, bindVars: {}, options: opts}).explain()
+        ).map(n => n.type);
+        assertTrue(nodeTypes.indexOf('FilterNode') === -1, q);
+        assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, q);
+        assertEqual(5, db._query(q, {}, opts).toArray().length, q);
       });
     },
 
