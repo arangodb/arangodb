@@ -181,27 +181,13 @@ void replaceScatterWithDistribute(arangodb::aql::ExecutionPlan& plan,
                                                 std::move(expr), shardInputVar);
 
   LOG_RULE << "Create DistributeNode for collection: " << coll->name()
-    << " with TargetNodeId: " << targetNodeId;
+           << " with TargetNodeId: " << targetNodeId;
   auto* distribution = plan.createNode<DistributeNode>(
       &plan, plan.nextId(), ScatterNode::ScatterType::SHARD, coll,
       shardInputVar, targetNodeId);
 
   plan.replaceNode(scatter, distribution);
   plan.insertBefore(distribution, calc);
-
-  // This is a hack to prevent the temp-var to be discarded too early.
-  // In the case where a collection has >1 shard on a single DB-Server, so basically numShards > numDBServer,
-  // we do an internal, hidden scatter/distribute, if this temp-var is then already killed because
-  // the register planer discarded it already, the internal nodes do not work and return nothing.
-  auto varRefNode = plan.getAst()->createNodeReference(shardInputVar);
-  AstNode* arrayNode = ast->createNodeArray();
-  arrayNode->addMember(varRefNode);
-  AstNode* noOptFCallNode = ast->createNodeFunctionCall("NOOPT", arrayNode, false);
-  auto exprRef = std::make_unique<Expression>(ast, noOptFCallNode);
-  Variable* refOutVar = plan.getAst()->variables()->createTemporaryVariable();
-  auto* calcRef = plan.createNode<CalculationNode>(&plan, plan.nextId(),
-                                       std::move(exprRef), refOutVar);
-  plan.insertAfter(distribution->getFirstParent(), calcRef);
 }
 
 namespace arangodb::aql {
