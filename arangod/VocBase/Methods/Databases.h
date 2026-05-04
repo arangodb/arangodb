@@ -40,7 +40,7 @@ class ApplicationServer;
 class DatabaseFeature;
 class ClusterFeature;
 struct OperationOptions;
-class RocksDBEngine;
+class StorageEngine;
 namespace methods {
 
 struct Databases {
@@ -52,7 +52,7 @@ struct Databases {
                                        std::string const& user = "");
   static Result info(TRI_vocbase_t* vocbase, velocypack::Builder& result);
   static Result create(application_features::ApplicationServer& server,
-                       RocksDBEngine& rocksdbEngine, ExecContext const& context,
+                       StorageEngine& engine, ExecContext const& context,
                        std::string const& dbName, velocypack::Slice users,
                        velocypack::Slice options);
   static Result drop(ExecContext const& context, TRI_vocbase_t* systemVocbase,

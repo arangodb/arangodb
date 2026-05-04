@@ -355,7 +355,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 }
 
 Result Databases::create(application_features::ApplicationServer& server,
-                         RocksDBEngine& rocksdbEngine, ExecContext const& exec,
+                         StorageEngine& engine, ExecContext const& exec,
                          std::string const& dbName, velocypack::Slice users,
                          velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
@@ -414,7 +414,8 @@ Result Databases::create(application_features::ApplicationServer& server,
         return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
       }
 
-      if (rocksdbEngine.syncThread() == nullptr) {
+      if (auto* rocksdb = dynamic_cast<RocksDBEngine*>(&engine);
+          rocksdb && rocksdb->syncThread() == nullptr) {
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
                       "Automatic syncing must be enabled for replication "
                       "version 2. Please make sure the --rocksdb.sync-interval "
