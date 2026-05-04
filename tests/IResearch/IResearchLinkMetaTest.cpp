@@ -224,7 +224,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
 
   // with active vocbase
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
     EXPECT_TRUE(
@@ -279,7 +279,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     std::unordered_set<std::string> expectedOverrides = {"default", "all",
                                                          "some", "none"};
     std::unordered_set<std::string> expectedAnalyzers = {"empty", "identity"};
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
     EXPECT_TRUE(
@@ -440,7 +440,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
     std::unordered_set<std::string> expectedOverrides = {"default", "all",
                                                          "some", "none"};
     std::unordered_set<std::string> expectedAnalyzers = {"empty", "identity"};
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
     EXPECT_TRUE(
@@ -631,7 +631,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
   // with active vocbase (not fullAnalyzerDefinition)
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     arangodb::iresearch::IResearchLinkMeta meta;
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -660,7 +660,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
   // with active vocbase (with fullAnalyzerDefinition)
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     arangodb::iresearch::IResearchLinkMeta meta;
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -1070,7 +1070,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
                                                               "some", "none"};
     std::unordered_set<std::string_view> expectedAnalyzers = {"::empty",
                                                               "identity"};
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
 
@@ -1189,7 +1189,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
              VPackParser::fromJson("{\"args\":\"en\"}")->slice().toString()},
             {"identity", VPackSlice::emptyObjectSlice().toString()},
         };
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
 
@@ -1574,7 +1574,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskNone) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   // missing analyzer (name only)
   {
@@ -2612,7 +2612,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 // https://github.com/arangodb/backlog/issues/581
 // (ArangoSearch view doesn't validate uniqueness of analyzers)
 TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto& analyzers =
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -2760,7 +2760,7 @@ class IResearchLinkMetaTestNoSystem
 };
 
 TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   ASSERT_EQ(nullptr,
             server.getFeature<arangodb::SystemDatabaseFeature>().use());
@@ -3735,7 +3735,7 @@ TEST_F(IResearchLinkMetaTest, test_collectioNameComparison) {
 
 #ifdef USE_ENTERPRISE
 TEST_F(IResearchLinkMetaTest, test_withNested) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   arangodb::iresearch::IResearchLinkMeta meta;
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({
@@ -3982,7 +3982,7 @@ TEST_F(IResearchLinkMetaTest, test_withNested) {
     "analyzers": [ "identity" ]
   })");
 
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   std::string errorField;
   ASSERT_FALSE(
       meta.init(server.server(), json->slice(), errorField, vocbase.name()));
@@ -3993,7 +3993,7 @@ TEST_F(IResearchLinkMetaTest, test_withNested) {
 #ifdef USE_ENTERPRISE
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitions) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4036,7 +4036,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitions) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsGlobalCache) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4080,7 +4080,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsGlobalCache) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4234,7 +4234,7 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4365,7 +4365,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4441,7 +4441,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4515,7 +4515,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4588,7 +4588,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_withSmartSort) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   auto json = VPackParser::fromJson(
       R"({

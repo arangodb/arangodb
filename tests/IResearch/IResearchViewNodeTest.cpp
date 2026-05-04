@@ -128,7 +128,7 @@ struct MockQuery final : arangodb::aql::Query {
 }  // namespace
 
 TEST_F(IResearchViewNodeTest, constructSortedView) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ "
@@ -286,7 +286,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
 }
 
 TEST_F(IResearchViewNodeTest, construct) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -897,7 +897,7 @@ TEST_F(IResearchViewNodeTest, construct) {
 }
 
 TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -1973,7 +1973,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
 //}
 
 TEST_F(IResearchViewNodeTest, clone) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -2433,7 +2433,7 @@ TEST_F(IResearchViewNodeTest, clone) {
 }
 
 TEST_F(IResearchViewNodeTest, serialize) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -3019,7 +3019,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
 }
 
 TEST_F(IResearchViewNodeTest, serializeSortedView) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"primarySort\" : "
@@ -3297,7 +3297,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 }
 
 TEST_F(IResearchViewNodeTest, collections) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
   std::shared_ptr<arangodb::LogicalCollection> collection0;
   std::shared_ptr<arangodb::LogicalCollection> collection1;
@@ -3389,7 +3389,7 @@ TEST_F(IResearchViewNodeTest, collections) {
 }
 
 TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -3534,7 +3534,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 //}
 
 TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice(), false);
@@ -3592,7 +3592,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
 }
 
 TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server(), "testVocbase", 1));
+  TRI_vocbase_t vocbase(testDBInfo(server.server(), "testVocbase", 1), server.engine());
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice(), false);

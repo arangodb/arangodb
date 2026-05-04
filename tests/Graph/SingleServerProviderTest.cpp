@@ -88,7 +88,7 @@ class SingleServerProviderTest : public ::testing::Test {
     // Setup code for each provider type
     s = std::make_unique<GraphTestSetup>();
     singleServer =
-        std::make_unique<MockGraphDatabase>(s->server, "testVocbase");
+        std::make_unique<MockGraphDatabase>(s->server, s->engine, "testVocbase");
     singleServer->addGraph(graph);
 
     // We now have collections "v" and "e"
