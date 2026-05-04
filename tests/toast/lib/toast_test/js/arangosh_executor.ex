@@ -51,13 +51,7 @@ defmodule ToastTest.JS.ArangoshExecutor do
     suiteName message setUpAllDuration teardownAllDuration
   ))
 
-  @test_metadata_set MapSet.new(~w(
-    duration status failed total totalSetUp totalTearDown
-    suiteName message setUpAllDuration teardownAllDuration
-    setUpDuration tearDownDuration
-  ))
-
-  @needs_escape ~r/[^a-zA-Z0-9_.\/:-]/
+  @test_metadata_set MapSet.union(@metadata_set, MapSet.new(~w(setUpDuration tearDownDuration)))
 
   @impl true
   def run(js_file, opts) do
@@ -76,8 +70,10 @@ defmodule ToastTest.JS.ArangoshExecutor do
       args = build_args(repo_root, endpoint, js_file, extra_args, test_filter, timeout)
 
       case execute(arangosh, args, instance_info, repo_root, timeout) do
-        {:ok, _exit_code} ->
-          read_results(work_dir, js_file)
+        {:ok, exit_code} ->
+          with {:error, reason} <- read_results(work_dir, js_file) do
+            {:error, "#{reason} (arangosh exited with code #{exit_code})"}
+          end
 
         {:error, reason} ->
           {:error, reason}
@@ -92,42 +88,26 @@ defmodule ToastTest.JS.ArangoshExecutor do
     enterprise_js_dir = Path.join(repo_root, "enterprise/js")
     config_file = Path.join([repo_root, "etc", "testing", "arangosh.conf"])
 
-    base = [
-      "--configuration",
-      config_file,
-      "--javascript.startup-directory",
-      js_dir,
-      "--console.colors",
-      "true",
-      "--server.endpoint",
-      url_to_endpoint(endpoint),
-      "--javascript.unit-tests",
-      js_file,
-      "--log.level",
-      "warning",
-      "--javascript.execution-deadline",
-      Integer.to_string(div(timeout, 1000)),
-      "--server.authentication",
-      "false"
-    ]
-
     base =
-      if File.dir?(enterprise_js_dir) do
-        base ++ ["--javascript.module-directory", enterprise_js_dir]
-      else
-        base
-      end
+      [
+        {"--configuration", config_file},
+        {"--javascript.startup-directory", js_dir},
+        {"--console.colors", "true"},
+        {"--server.endpoint", url_to_endpoint(endpoint)},
+        {"--javascript.unit-tests", js_file},
+        {"--log.level", "warning"},
+        {"--javascript.execution-deadline", Integer.to_string(div(timeout, 1000))},
+        {"--server.authentication", "false"},
+        if(File.dir?(enterprise_js_dir),
+          do: {"--javascript.module-directory", enterprise_js_dir}
+        ),
+        if(test_filter, do: {"--javascript.unit-test-filter", test_filter})
+      ]
+      |> Toast.Utils.compact()
 
-    base =
-      if test_filter do
-        base ++ ["--javascript.unit-test-filter", test_filter]
-      else
-        base
-      end
+    extra = Enum.map(extra_args, fn {k, v} -> {"--#{k}", to_string(v)} end)
 
-    extra = Enum.flat_map(extra_args, fn {k, v} -> ["--#{k}", to_string(v)] end)
-
-    base ++ extra
+    Toast.Utils.flatten_opts(base ++ extra)
   end
 
   defp build_instance_info(deployment, endpoint, work_dir) do
@@ -137,7 +117,7 @@ defmodule ToastTest.JS.ArangoshExecutor do
       |> Enum.map(fn srv ->
         %{
           id: srv.id,
-          instanceRole: role_to_string(srv.role),
+          instanceRole: to_string(srv.role),
           endpoint: srv.endpoint,
           url: endpoint_to_url(srv.endpoint),
           port: srv.port
@@ -155,61 +135,71 @@ defmodule ToastTest.JS.ArangoshExecutor do
 
   defp execute(arangosh, args, instance_info, cwd, timeout) do
     env = [{"INSTANCEINFO", Jason.encode!(instance_info)}]
+    cmd = [to_charlist(arangosh) | Enum.map(args, &to_charlist/1)]
 
-    command_str = Enum.join([shell_escape(arangosh) | Enum.map(args, &shell_escape/1)], " ")
-    Logger.debug("Running arangosh: #{command_str}")
+    Logger.debug(fn -> "Running arangosh: #{Enum.join([arangosh | args], " ")}" end)
 
-    script_bin = System.find_executable("script") || "script"
+    exec_opts = [
+      :stdout,
+      :stderr,
+      :monitor,
+      :pty,
+      {:cd, to_charlist(cwd)},
+      {:env, Enum.map(env, fn {k, v} -> {to_charlist(k), to_charlist(v)} end)}
+    ]
 
-    port =
-      Port.open({:spawn_executable, script_bin}, [
-        :binary,
-        :exit_status,
-        :stderr_to_stdout,
-        {:args, ["-qfec", command_str, "/dev/null"]},
-        {:env, Enum.map(env, fn {k, v} -> {String.to_charlist(k), String.to_charlist(v)} end)},
-        {:cd, String.to_charlist(cwd)}
-      ])
+    case :exec.run(cmd, exec_opts) do
+      {:ok, _exec_pid, os_pid} ->
+        deadline = System.monotonic_time(:millisecond) + timeout
+        await_exit(os_pid, deadline, timeout)
 
-    deadline = System.monotonic_time(:millisecond) + timeout
-    await_exit(port, deadline, timeout)
+      {:error, reason} ->
+        {:error, "Failed to start arangosh: #{inspect(reason)}"}
+    end
   end
 
-  defp shell_escape(arg) do
-    if arg =~ @needs_escape do
-      "'" <> String.replace(arg, "'", "'\\''") <> "'"
+  defp await_exit(os_pid, deadline, timeout) do
+    remaining = deadline - System.monotonic_time(:millisecond)
+
+    if remaining <= 0 do
+      :exec.kill(os_pid, :sigkill)
+      {:error, "arangosh timed out after #{timeout}ms"}
     else
-      arg
+      # :pty merges stderr into stdout for terminal color support
+      receive do
+        {:stdout, ^os_pid, data} ->
+          IO.write(data)
+          await_exit(os_pid, deadline, timeout)
+
+        {:DOWN, ^os_pid, :process, _exec_pid, status} ->
+          exit_code = decode_exit_status(status)
+          Logger.debug("arangosh exited with status #{exit_code}")
+          {:ok, exit_code}
+      after
+        remaining ->
+          :exec.kill(os_pid, :sigkill)
+          {:error, "arangosh timed out after #{timeout}ms"}
+      end
     end
   end
 
-  defp await_exit(port, deadline, timeout) do
-    remaining = max(deadline - System.monotonic_time(:millisecond), 0)
+  defp decode_exit_status(:normal), do: 0
 
-    receive do
-      {^port, {:data, data}} ->
-        IO.write(data)
-        await_exit(port, deadline, timeout)
-
-      {^port, {:exit_status, status}} ->
-        Logger.debug("arangosh exited with status #{status}")
-        {:ok, status}
-    after
-      remaining ->
-        Port.close(port)
-        {:error, "arangosh timed out after #{timeout}ms"}
+  defp decode_exit_status({:exit_status, status}) do
+    case :exec.status(status) do
+      {:status, code} -> code
+      {:signal, _sig, _core} -> 128
     end
   end
+
+  defp decode_exit_status(_other), do: 1
 
   defp read_results(work_dir, js_file) do
     result_file = Path.join(work_dir, "testresult.json")
 
     case File.read(result_file) do
-      {:ok, content} ->
-        parse_results(content, js_file)
-
-      {:error, reason} ->
-        {:error, "Failed to read testresult.json: #{inspect(reason)}"}
+      {:ok, content} -> parse_results(content, js_file)
+      {:error, reason} -> {:error, "Failed to read testresult.json: #{inspect(reason)}"}
     end
   end
 
@@ -233,8 +223,9 @@ defmodule ToastTest.JS.ArangoshExecutor do
     |> Enum.flat_map(fn
       {_file_key, file_result} when is_map(file_result) ->
         file_result
-        |> Enum.reject(fn {key, _} -> MapSet.member?(@test_metadata_set, key) end)
-        |> Enum.filter(fn {_key, val} -> is_map(val) end)
+        |> Enum.filter(fn {key, val} ->
+          is_map(val) and not MapSet.member?(@test_metadata_set, key)
+        end)
         |> Enum.map(fn {name, result} -> parse_test_result(name, result, js_file) end)
 
       {_key, _non_map} ->
@@ -256,7 +247,6 @@ defmodule ToastTest.JS.ArangoshExecutor do
   end
 
   defp map_status(%{"status" => true}), do: :pass
-  defp map_status(%{"status" => false, "message" => msg}) when is_binary(msg), do: :fail
   defp map_status(%{"status" => false}), do: :fail
   defp map_status(%{"skipped" => true}), do: :skip
   defp map_status(_), do: :error
@@ -274,12 +264,6 @@ defmodule ToastTest.JS.ArangoshExecutor do
   defp endpoint_to_protocol("http://" <> _), do: "tcp"
   defp endpoint_to_protocol("https://" <> _), do: "ssl"
   defp endpoint_to_protocol(_), do: "tcp"
-
-  defp role_to_string(:single), do: "single"
-  defp role_to_string(:coordinator), do: "coordinator"
-  defp role_to_string(:dbserver), do: "dbserver"
-  defp role_to_string(:agent), do: "agent"
-  defp role_to_string(other), do: to_string(other)
 
   defp parse_iso8601(nil), do: nil
 

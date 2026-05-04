@@ -30,6 +30,10 @@ defmodule Toast.Utils do
   @spec compact_join([term()], String.t()) :: String.t()
   def compact_join(list, joiner \\ ""), do: list |> compact() |> Enum.join(joiner)
 
+  @doc "Flatten a list of `{key, value}` tuples into a flat list."
+  @spec flatten_opts([{String.t(), String.t()}]) :: [String.t()]
+  def flatten_opts(opts), do: Enum.flat_map(opts, &Tuple.to_list/1)
+
   @doc "Put `key`/`value` into `map` only when `value` is non-nil."
   @spec maybe_put(map(), term(), term()) :: map()
   def maybe_put(map, _key, nil), do: map
