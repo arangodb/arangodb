@@ -21,8 +21,7 @@
 
 #include "Logger/LogMacros.h"
 
-#define LOG_RULE \
-  LOG_DEVEL_IF(false) << "UpgradeScatterToDistribute: "
+#define LOG_RULE LOG_DEVEL_IF(false) << "UpgradeScatterToDistribute: "
 
 struct DistributeNodeDependency {
   std::unordered_map<std::string_view, arangodb::aql::AstNode const*>
