@@ -1407,6 +1407,19 @@ bool AstNode::isTrue() const {
     if (rhs->type == NODE_TYPE_ARRAY && rhs->numMembers() == 0) {
       return true;
     }
+  } else if (type >= NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
+             type <= NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+    // [] ALL <op> x and [] NONE <op> x are vacuously true (empty array)
+    TRI_ASSERT(numMembers() == 3);
+    AstNode const* lhs = getMemberUnchecked(0);
+    AstNode const* quantifier = getMemberUnchecked(2);
+    TRI_ASSERT(lhs != nullptr && quantifier != nullptr);
+    if (lhs->type == NODE_TYPE_ARRAY && lhs->numMembers() == 0) {
+      auto q = static_cast<Quantifier::Type>(quantifier->getIntValue(true));
+      if (q == Quantifier::Type::kAll || q == Quantifier::Type::kNone) {
+        return true;
+      }
+    }
   }
 
   return false;
@@ -1459,8 +1472,9 @@ bool AstNode::isFalse() const {
     if (rhs->type == NODE_TYPE_ARRAY && rhs->numMembers() == 0) {
       return true;
     }
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ) {
-    // [] ANY == x is always false (no elements to match)
+  } else if (type >= NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
+             type <= NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+    // [] ANY <op> x is always false — ANY requires at least one element
     TRI_ASSERT(numMembers() == 3);
     AstNode const* lhs = getMemberUnchecked(0);
     AstNode const* quantifier = getMemberUnchecked(2);
