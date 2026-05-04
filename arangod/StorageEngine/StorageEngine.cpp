@@ -68,9 +68,9 @@ std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
   DatabaseFeature& databaseFeature =
       info.server().getFeature<DatabaseFeature>();
-  return std::make_unique<TRI_vocbase_t>(std::move(info), databaseFeature.engine(),
-                                         databaseFeature.versionTracker(),
-                                         databaseFeature.extendedNames());
+  return std::make_unique<TRI_vocbase_t>(
+      std::move(info), databaseFeature.engine(),
+      databaseFeature.versionTracker(), databaseFeature.extendedNames());
 }
 
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
