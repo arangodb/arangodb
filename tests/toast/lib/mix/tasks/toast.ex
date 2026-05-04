@@ -264,7 +264,7 @@ defmodule Mix.Tasks.Toast do
 
       _ ->
         js_modules =
-          ToastTest.JS.ModuleBuilder.build_modules(suite_module, js_files,
+          ToastTest.Runner.JS.ModuleBuilder.build_modules(suite_module, js_files,
             weights: suite_module.__toast_js_weights__()
           )
 

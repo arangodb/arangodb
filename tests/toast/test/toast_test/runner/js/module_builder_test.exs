@@ -19,13 +19,13 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.JS.ModuleBuilderTest do
+defmodule ToastTest.Runner.JS.ModuleBuilderTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.JS.ModuleBuilder
+  alias ToastTest.Runner.JS.ModuleBuilder
 
   # A bare module atom — ModuleBuilder only stores it, doesn't call into it.
-  @fake_suite ToastTest.JS.ModuleBuilderTest.FakeSuite
+  @fake_suite ToastTest.Runner.JS.ModuleBuilderTest.FakeSuite
 
   describe "derive_module_name/2" do
     test "simple filename" do

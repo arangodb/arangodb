@@ -19,24 +19,16 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.JS.ResultMapper do
-  @moduledoc "Maps JSON results from JS test execution to ExUnit.Test/TestModule structs."
+defmodule ToastTest.Runner.JS.ResultMapper do
+  @moduledoc "Maps JSON results from JS test execution to ExUnit.Test structs."
 
-  @spec map_results(ToastTest.JS.Executor.result(), module(), String.t()) ::
-          {ExUnit.TestModule.t(), [ExUnit.Test.t()]}
+  alias ToastTest.Runner.FailureFormatter
+
+  @spec map_results(ToastTest.Runner.JS.Executor.result(), module(), String.t()) :: [
+          ExUnit.Test.t()
+        ]
   def map_results(%{tests: test_results}, module_name, js_file) do
-    tests = Enum.map(test_results, &map_test(&1, module_name, js_file))
-
-    test_module = %ExUnit.TestModule{
-      file: js_file,
-      name: module_name,
-      setup_all?: false,
-      state: nil,
-      tags: %{file: js_file, async: false, js_test: true},
-      tests: tests
-    }
-
-    {test_module, tests}
+    Enum.map(test_results, &map_test(&1, module_name, js_file))
   end
 
   defp map_test(result, module_name, js_file) do
@@ -60,6 +52,6 @@ defmodule ToastTest.JS.ResultMapper do
   defp map_state(:skip, message), do: {:skipped, message}
 
   defp map_state(status, message) when status in [:fail, :error] do
-    {:failed, [{:error, RuntimeError.exception(message || "unknown error"), []}]}
+    FailureFormatter.failed(:error, RuntimeError.exception(message || "unknown error"), [])
   end
 end

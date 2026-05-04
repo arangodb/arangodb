@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.JS.Executor do
+defmodule ToastTest.Runner.JS.Executor do
   @moduledoc """
   Behaviour for executing JavaScript test files via arangosh.
 

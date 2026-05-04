@@ -99,7 +99,7 @@ defmodule ToastTest.Runner.TestExecution do
 
   defp execute_js_module(config, module) do
     executor =
-      Application.get_env(:toast, :js_executor, ToastTest.JS.ArangoshExecutor)
+      Application.get_env(:toast, :js_executor, ToastTest.Runner.JS.ArangoshExecutor)
 
     suite_module = module.__toast_suite__()
     deployment = ToastTest.DeploymentRegistry.get(suite_module)
@@ -125,7 +125,7 @@ defmodule ToastTest.Runner.TestExecution do
       extra_args: extra_args
     ]
 
-    ToastTest.JS.TestRunner.run_module(config.manager, module,
+    ToastTest.Runner.JS.TestRunner.run_module(config.manager, module,
       executor: executor,
       executor_opts: executor_opts
     )

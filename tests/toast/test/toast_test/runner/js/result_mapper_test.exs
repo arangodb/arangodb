@@ -19,10 +19,10 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.JS.ResultMapperTest do
+defmodule ToastTest.Runner.JS.ResultMapperTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.JS.ResultMapper
+  alias ToastTest.Runner.JS.ResultMapper
 
   @module_name :"Elixir.Fake.JS.SomeTest"
 
@@ -43,10 +43,7 @@ defmodule ToastTest.JS.ResultMapperTest do
         ]
       }
 
-      {test_module, tests} = ResultMapper.map_results(result, @module_name, "some_test.js")
-
-      assert %ExUnit.TestModule{name: @module_name} = test_module
-      assert [%ExUnit.Test{} = test] = tests
+      [%ExUnit.Test{} = test] = ResultMapper.map_results(result, @module_name, "some_test.js")
       assert test.name == :"test testFoo"
       assert test.module == @module_name
       assert test.state == nil
@@ -69,7 +66,7 @@ defmodule ToastTest.JS.ResultMapperTest do
         ]
       }
 
-      {_test_module, [test]} = ResultMapper.map_results(result, @module_name, "some_test.js")
+      [test] = ResultMapper.map_results(result, @module_name, "some_test.js")
 
       assert {:failed, [{:error, exception, _stack}]} = test.state
       assert Exception.message(exception) =~ "Expected 3, got 2"
@@ -94,7 +91,7 @@ defmodule ToastTest.JS.ResultMapperTest do
         ]
       }
 
-      {_test_module, [test]} = ResultMapper.map_results(result, @module_name, "some_test.js")
+      [test] = ResultMapper.map_results(result, @module_name, "some_test.js")
 
       assert {:skipped, "not supported"} = test.state
     end
@@ -115,7 +112,7 @@ defmodule ToastTest.JS.ResultMapperTest do
         ]
       }
 
-      {_test_module, [test]} = ResultMapper.map_results(result, @module_name, "some_test.js")
+      [test] = ResultMapper.map_results(result, @module_name, "some_test.js")
 
       assert {:failed, [{:error, exception, _stack}]} = test.state
       assert Exception.message(exception) =~ "segfault"
@@ -157,20 +154,16 @@ defmodule ToastTest.JS.ResultMapperTest do
         ]
       }
 
-      {test_module, tests} = ResultMapper.map_results(result, @module_name, "some_test.js")
+      tests = ResultMapper.map_results(result, @module_name, "some_test.js")
 
       assert length(tests) == 3
-      assert test_module.tests == tests
       assert [nil, {:failed, _}, {:skipped, _}] = Enum.map(tests, & &1.state)
     end
 
     test "empty test list" do
       result = %{tests: []}
 
-      {test_module, tests} = ResultMapper.map_results(result, @module_name, "some_test.js")
-
-      assert tests == []
-      assert test_module.tests == []
+      assert [] = ResultMapper.map_results(result, @module_name, "some_test.js")
     end
 
     test "nil message on skip defaults to 'skipped'" do
@@ -189,7 +182,7 @@ defmodule ToastTest.JS.ResultMapperTest do
         ]
       }
 
-      {_test_module, [test]} = ResultMapper.map_results(result, @module_name, "some_test.js")
+      [test] = ResultMapper.map_results(result, @module_name, "some_test.js")
 
       assert {:skipped, "skipped"} = test.state
     end
@@ -210,7 +203,7 @@ defmodule ToastTest.JS.ResultMapperTest do
         ]
       }
 
-      {_test_module, [test]} = ResultMapper.map_results(result, @module_name, "some_test.js")
+      [test] = ResultMapper.map_results(result, @module_name, "some_test.js")
 
       assert test.tags.file == "some_test.js"
     end

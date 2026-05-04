@@ -19,14 +19,14 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.JS.TestRunnerTest do
+defmodule ToastTest.Runner.JS.TestRunnerTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.JS.{ModuleBuilder, TestRunner}
+  alias ToastTest.Runner.JS.{ModuleBuilder, TestRunner}
   alias ToastTest.ExUnitCompat, as: Compat
 
   defmodule PassingExecutor do
-    @behaviour ToastTest.JS.Executor
+    @behaviour ToastTest.Runner.JS.Executor
 
     @impl true
     def run(_js_file, _opts) do
@@ -59,7 +59,7 @@ defmodule ToastTest.JS.TestRunnerTest do
   end
 
   defmodule FailingExecutor do
-    @behaviour ToastTest.JS.Executor
+    @behaviour ToastTest.Runner.JS.Executor
 
     @impl true
     def run(_js_file, _opts) do
@@ -92,7 +92,7 @@ defmodule ToastTest.JS.TestRunnerTest do
   end
 
   defmodule ErrorExecutor do
-    @behaviour ToastTest.JS.Executor
+    @behaviour ToastTest.Runner.JS.Executor
 
     @impl true
     def run(_js_file, _opts) do
@@ -112,7 +112,7 @@ defmodule ToastTest.JS.TestRunnerTest do
 
   defp build_js_module(suite_name_suffix) do
     # Each test needs a unique suite to get a unique module name.
-    suite = Module.concat([ToastTest.JS.TestRunnerTest, "Suite#{suite_name_suffix}"])
+    suite = Module.concat([ToastTest.Runner.JS.TestRunnerTest, "Suite#{suite_name_suffix}"])
     ModuleBuilder.build_module(suite, "/tmp/test_example_#{suite_name_suffix}.js")
   end
 

@@ -19,13 +19,14 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.JS.TestRunner do
+defmodule ToastTest.Runner.JS.TestRunner do
   @moduledoc """
   Runs a JavaScript test module by delegating to an `Executor` implementation,
   then emitting ExUnit-compatible events through the event pipeline.
   """
 
-  alias ToastTest.JS.ResultMapper
+  alias ToastTest.Runner.FailureFormatter
+  alias ToastTest.Runner.JS.ResultMapper
   alias ToastTest.ExUnitCompat, as: Compat
   alias ToastTest.EventStore
 
@@ -43,8 +44,7 @@ defmodule ToastTest.JS.TestRunner do
     tests =
       case executor.run(js_file, executor_opts) do
         {:ok, result} ->
-          {_test_module, tests} = ResultMapper.map_results(result, js_module, js_file)
-          tests
+          ResultMapper.map_results(result, js_module, js_file)
 
         {:error, reason} ->
           [build_error_test(js_module, js_file, reason)]
@@ -66,8 +66,11 @@ defmodule ToastTest.JS.TestRunner do
       name: :"test js_execution",
       module: js_module,
       state:
-        {:failed,
-         [{:error, RuntimeError.exception("JS executor failed: #{inspect(reason)}"), []}]},
+        FailureFormatter.failed(
+          :error,
+          RuntimeError.exception("JS executor failed: #{inspect(reason)}"),
+          []
+        ),
       time: 0,
       tags: %{file: js_file, line: 0, test_type: :test}
     }

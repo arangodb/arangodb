@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.JS.ModuleBuilder do
+defmodule ToastTest.Runner.JS.ModuleBuilder do
   @moduledoc """
   Generates Elixir modules from JavaScript test file paths.
 
