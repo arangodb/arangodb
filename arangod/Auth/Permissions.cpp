@@ -73,4 +73,15 @@ auto to_string(AnalyzerAccessLevel level) -> std::string_view {
   }
 }
 
+auto to_string(GraphAccessLevel level) -> std::string_view {
+  switch (level) {
+    case GraphAccessLevel::None:
+      return "none";
+    case GraphAccessLevel::Read:
+      return "read";
+    case GraphAccessLevel::Modify:
+      return "modify";
+  }
+}
+
 }  // namespace arangodb

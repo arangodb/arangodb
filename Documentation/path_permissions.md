@@ -250,6 +250,11 @@ return a `Result`, so that a decline can return the actual reason
  - `canDropAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
  - `canUseAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
 
+ - `canSeeGraph(std::string_view db, std::string_view graph) -> Result`
+ - `canCreateGraph(std::string_view db, std::string_view graph, std::span<std::string_view> collectionNamesToCreate, std::span<std::string_view> collectionNamesToRead) -> Result`
+ - `canDropGraph(std::string_view db, std::string_view graph, std::span<std::string_view> collectionNames) -> Result`
+ - `canUseGraph(std::string_view db, std::string_view graph, GraphAccessLevel const level) -> Result`
+ 
  - `canReadUser(std::string_view user) -> Result`
  - `canWriteUser(std::string_view user) -> Result`
  - `canReadUsers(std::span<std::string_view const> -> std::vector<bool>`
@@ -267,6 +272,7 @@ user cannot see a collection (say) and cannot read it, then the error
 when trying to access it should be "NOTFOUND", to not give away the
 information that the collection exists! This must be considered in the
 central implementation of these methods.
+
 
 ### Implementation details for the abstract methods for RBAC disabled
 
@@ -374,6 +380,31 @@ central implementation of these methods.
    assume RO access for database is already checked. Check nothing else without RBAC.
   
    If the user is not allowed to see the analyzer, this must return NOT_FOUND!
+  
+ - `canSeeGraph(std::string_view db, std::string_view graph) -> Result`
+
+   This is just checking if we have read access to the database, since
+   this automatically implies read access to the `_graphs` collection.
+  
+ - `canCreateGraph(std::string_view db, std::string_view graph, std::span<std::string_view> collectionNamesToCreate, std::span<std::string_view> collectionNamesToRead) -> Result`
+
+   This is checking if we have write access to the database (since we need write access
+   to the `_graphs` collection). Furthermore, it checks if we are able to
+   create the collections in the list `collectionNamesToCreate` and to read the collections
+   in the list `collectionNamesToRead`.
+  
+ - `canDropGraph(std::string_view db, std::string_view graph, std::span<std::string_view> collectionNames) -> Result`
+
+   This is checking if we have write access to the database (since we need write access
+   to the `_graphs` collection). Furthermore, it checks if we are able to
+   drop the collections in the list `collectionNames`.
+  
+ - `canUseGraph(std::string_view db, std::string_view graph, GraphAccessLevel const level) -> Result`
+ 
+   Currently, this is just checking if we have read access to the database, since
+   this automatically implies read access to the `_graphs` collection. For
+   CollectionAccessLevel::WriteMeta (needed to change the graph), we need write
+   access to the database.
   
  - `canReadUser(std::string_view user) -> Result`
 
@@ -506,6 +537,34 @@ central implementation of these methods.
 
    If the user is not allowed to see the analyzer, this must return NOT_FOUND!
   
+ - `canSeeGraph(std::string_view db, std::string_view graph) -> Result`
+
+   This checks if we have `db:ReadGraph` for the resource
+   `db:graph:<dbname>:<graphname>`. The access to the `_graphs` collection
+   is then implicit.
+  
+ - `canCreateGraph(std::string_view db, std::string_view graph, std::span<std::string_view> collectionNamesToCreate, std::span<std::string_view> collectionNamesToRead) -> Result`
+
+   This is checking if we have create access to the graph,
+   that is, we have `db:CreateGraph` With the resource
+   `db:graph:<dbname>:<graphname>`. Furthermore, it checks if we are
+   able to create the collections in the list `collectionNamesToCreate`
+   and read the collections in the list `collectionNamesToRead`..
+  
+ - `canDropGraph(std::string_view db, std::string_view graph, std::span<std::string_view> collectionNames) -> Result`
+
+   This is checking if we have drop access to the graph,
+   that is, we have `db:DropGraph` with the resource
+   `db:graph:<dbname>:<graphname>`. Furthermore, it checks if we are
+   able to drop the collections in the list `collectionNames`.
+  
+ - `canUseGraph(std::string_view db, std::string_view graph, GraphAccessLevel const level) -> Result`
+ 
+   This is checking if we have `db:ReadGraph` and `db:WriteGraph`
+   respectively on the resource `db:graph:<dbname>:<graphname>`. For
+   `CollectionAccessLevel::Read` we only need `db:ReadGraph`, for
+   `CollectionAccessLevel:WriteMeta` we need both.
+
  - `canReadUser(std::string_view user) -> Result`
 
    check RBAC action `db:ReadUser`
@@ -781,27 +840,27 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    |    | GET    | `/_api/engine`                                               | RestEngineHandler          | canUseHard(MonitoringInternal)           | AdminMonitoringInternal, HARD       |                                          |                        |
 | X  |    |    | GET    | `/_api/engine/stats`                                         | RestEngineHandler          | canUseHard(MonitoringInternal)           | AdminMonitoringInternal, HARD       |                                          |                        |
 | X  |    |    | POST   | `/_api/explain`                                              | RestExplainHandler         | canUseCollection(Read) (via trx)         | AUTHEN, COLL RO via trx             |                                          |                        |
-| X  |    |    | GET    | `/_api/gharial`                                              | RestGraphHandler           | canUseCollection(_graphs, RO)            | _graphs COLL RO via trx             |                                          |                        |
-| X  |    |    | POST   | `/_api/gharial`                                              | RestGraphHandler           | canUseColl(_graphs, RWDATA)+COLL RO      | _graphs RW + COLL RO for all colls  |                                          |                        |
-| X  |    |    | GET    | `/_api/gharial/{graph}`                                      | RestGraphHandler           | canUseColl(_graphs, RO)                  | _graphs RO                          |                                          |                        |
-| X  |    |    | DELETE | `/_api/gharial/{graph}`                                      | RestGraphHandler           | canDropColl(needed), canUseColl(_graphs) | _graphs RWDATA                      |                                          |                        |
-| X  |    |    | GET    | `/_api/gharial/{graph}/edge`                                 | RestGraphHandler           | canUseColl(_graphs, RO)                  | _graphs RO                          |                                          |                        |
-| X  |    |    | POST   | `/_api/gharial/{graph}/edge`                                 | RestGraphHandler           | canUseColl(_graphs, RWDATA), canCreate() | _graphs RWDATA, canCreate for colls |                                          |                        |
-| X  |    |    | GET    | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | canUseColl(eColl, RO)                    | COLL RO                             |                                          |                        |
-| X  |    |    | POST   | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | canUseColl(_graphs, RWDATA), canCreate() | _graphs RWDATA, canCreate for colls |                                          |                        |
-| X  |    |    | PUT    | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | canUseColl(_graphs, RWDATA), canCreate() | _graphs RWDATA, canCreate for colls |                                          |                        |
-| X  |    |    | DELETE | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | canUseColl(_graphs, RWDATA), canDrop()   | _graphs RWDATA, canDrop for colls   |                                          |                        |
-| X  |    |    | PUT    | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | canUseColl(eColl, RWDATA)                | COLL RWDATA                         |                                          |                        |
-| X  |    |    | PATCH  | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | canUseColl(eColl, RWDATA)                | COLL RWDATA                         |                                          |                        |
-| X  |    |    | DELETE | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | canUseColl(eColl, RWDATA)                | COLL RWDATA                         |                                          |                        |
-| X  |    |    | GET    | `/_api/gharial/{graph}/vertex`                               | RestGraphHandler           | canUseColl(_graphs, RO)                  | _graphs RO                          |                                          |                        |
-| X  |    |    | POST   | `/_api/gharial/{graph}/vertex`                               | RestGraphHandler           | canUseColl(_graphs, RWDATA)              | _graphs RWDATA, canCreate for colls |                                          |                        |
-| X  |    |    | GET    | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseColl(vcoll, RO)                    | COLL RO                             |                                          |                        |
-| X  |    |    | POST   | `/_api/gharial/{graph}/vertex/{collection}`                  | RestGraphHandler           | canUseColl(_graphs, RWDATA), COLL RW     | _graphs RWDATA, canCreate for colls |                                          |                        |
-| X  |    |    | DELETE | `/_api/gharial/{graph}/vertex/{collection}`                  | RestGraphHandler           | canUseColl(_graphs, RWDATA), COLL RW     | _graphs RWDATA, canDrop for colls   |                                          |                        |
-| X  |    |    | PUT    | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseColl(vColl, RWDATA)                | COLL RWDATA                         |                                          |                        |
-| X  |    |    | PATCH  | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseColl(vColl, RWDATA)                | COLL RWDATA                         |                                          |                        |
-| X  |    |    | DELETE | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseColl(vColl, RWDATA)                | COLL RWDATA                         |                                          |                        |
+| X  |    |    | GET    | `/_api/gharial`                                              | RestGraphHandler           | canSeeGraph: only list those             | canSeeGraph see (6)                 |                                          |                        |
+| X  |    |    | POST   | `/_api/gharial`                                              | RestGraphHandler           | canCreateGraph                           | canCreateGraph + coll checks        |                                          |                        |
+| X  |    |    | GET    | `/_api/gharial/{graph}`                                      | RestGraphHandler           | canUseGraph(RO)                          | canUseGraph(RO)                     |                                          |                        |
+| X  |    |    | DELETE | `/_api/gharial/{graph}`                                      | RestGraphHandler           | canDropGraph                             | canDropGraph + canDropColl(...)     |                                          |                        |
+| X  |    |    | GET    | `/_api/gharial/{graph}/edge`                                 | RestGraphHandler           | canUseGraph(RO)                          | canUseGraph(RO)                     |                                          |                        |
+| X  |    |    | POST   | `/_api/gharial/{graph}/edge`                                 | RestGraphHandler           | canUseGraph(RW)                          | canUseGraph(RW)                     |                                          |                        |
+| X  |    |    | GET    | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | canUseGraph(RO)                          | canUseGraph(RO)                     |                                          |                        |
+| X  |    |    | POST   | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | canUseGraph(RO) + canUseColl(RWDATA)     | canUseGraph(RO) + COLL RWDATA       |                                          |                        |
+| X  |    |    | PUT    | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | canUseGraph(RW)                          | canUseGraph(RW)                     |                                          |                        |
+| X  |    |    | DELETE | `/_api/gharial/{graph}/edge/{definition}`                    | RestGraphHandler           | canUseGraph(RW)                          | canUseGraph(RW)                     |                                          |                        |
+| X  |    |    | PUT    | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | canUseGraph(RO) + canUseColl(RWDATA)     | canUseGraph(RO) + COLL RWDATA       |                                          |                        |
+| X  |    |    | PATCH  | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | canUseGraph(RO) + canUseColl(RWDATA)     | canUseGraph(RO) + COLL RWDATA       |                                          |                        |
+| X  |    |    | DELETE | `/_api/gharial/{graph}/edge/{definition}/{key}`              | RestGraphHandler           | canUseGraph(RO) + canUseColl(RWDATA)     | canUseGraph(RO) + COLL RWDATA       |                                          |                        |
+| X  |    |    | GET    | `/_api/gharial/{graph}/vertex`                               | RestGraphHandler           | canUseGraph(RO)                          | canUseGraph(RO)                     |                                          |                        |
+| X  |    |    | POST   | `/_api/gharial/{graph}/vertex`                               | RestGraphHandler           | canUseGraph(RW)                          | canUseGraph(RW)                     |                                          |                        |
+| X  |    |    | GET    | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseGraph(RO)                          | canUseGraph(RO)                     |                                          |                        |
+| X  |    |    | POST   | `/_api/gharial/{graph}/vertex/{collection}`                  | RestGraphHandler           | canUseGraph(RO) + canUseColl(RWDATA)     | canUseGraph(RO) + COLL RWDATA       |                                          |                        |
+| X  |    |    | DELETE | `/_api/gharial/{graph}/vertex/{collection}`                  | RestGraphHandler           | canUseGraph(RW)                          | canUseGraph(RW)                     |                                          |                        |
+| X  |    |    | PUT    | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseGraph(RO) + canUseColl(RWDATA)     | canUseGraph(RO) + COLL RWDATA       |                                          |                        |
+| X  |    |    | PATCH  | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseGraph(RO) + canUseColl(RWDATA)     | canUseGraph(RO) + COLL RWDATA       |                                          |                        |
+| X  |    |    | DELETE | `/_api/gharial/{graph}/vertex/{collection}/{key}`            | RestGraphHandler           | canUseGraph(RO) + canUseColl(RWDATA)     | canUseGraph(RO) + COLL RWDATA       |                                          |                        |
 | X  |    |    | GET    | `/_api/index`                                                | RestIndexHandler           | canUseColl(Read)                         | COLL RO                             |                                          |                        |
 | X  |    |    | GET    | `/_api/index/selectivity`                                    | RestIndexHandler           | canUseColl(Read) (via trx)               | COLL RO                             |                                          |                        |
 | X  |    |    | POST   | `/_api/index`                                                | RestIndexHandler           | canCreateIndex(coll)                     | COLL RWMETA                         |                                          |                        |
@@ -960,6 +1019,7 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    |    | JS     | `JS_UpdateConfigData`                                        | v8-users.cpp               | canWriteUser()                           | canWriteUser                        |                                          |                        |
 | X  |    |    | JS     | `JS_GetConfigData`                                           | v8-users.cpp               | canReaduser()                            | canReadUser                         |                                          |                        |
 | X  |    |    | CPP    | `Databases::grantCurrentUser` (creation of database)         | Databases.Cpp              | canWriteUser()                           | canWriteUser                        |                                          |                        |
+| X  |    |    | JS     | `JS_GetGraphKeys`                                            | v8-general-graph.cpp       | canSeeGraph                              | canSeeGraph, list only visible      |                                          |                        |
 
 
 (1) For `arangorestore`, if `--overwrite=true` or the collection needs to be created, then we need canCreateColl,
@@ -973,6 +1033,28 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 
 (5) For `GET /_api/query-plan-cache` only those entries are returned, for which the user has read access to all occurring collections
 
+(6) For graphs, the regulate authorization as follows:
+     - to create, we check `canCreateGraph`, which gets the list of collections
+       which need to be created and a list of collections which we need to be
+       able to read. Without RBAC, this needs write access to the db
+       (to modify _graphs) and this implies being able to create the collections.
+       With RBAC enabled, this needs `db:CreateGraph` and `db:CreateCollection`
+       for those collections needed and `db:ReadCollection` for those which we
+       need to be able to read.
+     - to drop, we check `canDropGraph`, which gets the list of collections
+       which need to be dropped. Without RBAC, this needs write access to the db
+       (to modify _graphs) and this implies being able to drop the collections.
+       With RBAC enabled, this needs `db:DropGraph` and `db:DropCollection`
+       for those collections needed.
+     - to list the graph, we check `canSeeGraph`, which checks `db:ReadGraph`
+       with RBAC and read access to the db without RBAC (to read `_graphs`).
+     - to see properties and use a graph, we check `canUseGraph(RO)`, which checks
+       `db:ReadGraph` with RBAC and read access to the db without RBAC
+       (to read `_graphs`).
+     - modify a graph definition, we check `canUseGraph(RWMeta)`, which checks
+       `db:WriteGraph` with RBAC and write access to the db without RBAC
+       (to modify `_graphs`).
+            
 Rules:
  - internal use of system collections allowed without check
  - read access to system collections can be regulated by RBAC if switched on

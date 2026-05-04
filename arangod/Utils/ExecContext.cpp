@@ -26,7 +26,6 @@
 #include "Basics/Result.h"
 
 #include <ranges>
-#include <variant>
 
 using namespace arangodb;
 
@@ -195,6 +194,36 @@ Result ExecContext::canUseAnalyzer(std::string_view db,
                                    AnalyzerAccessLevel level) const {
   using namespace auth::perms;
   return can(UseAnalyzer{.db{db}, .name{analyzer}, .level = level});
+}
+
+Result ExecContext::canSeeGraph(std::string_view db,
+                                std::string_view graph) const {
+  using namespace auth::perms;
+  return can(SeeGraph{.db{db}, .name{graph}});
+}
+
+Result ExecContext::canCreateGraph(
+    std::string_view db, std::string_view graph,
+    std::span<std::string> collectionNamesToCreate,
+    std::span<std::string> collectionNamesToRead) const {
+  using namespace auth::perms;
+  return can(CreateGraph{.db{db},
+                         .name{graph},
+                         .collectionNamesToCreate{collectionNamesToCreate},
+                         .collectionNamesToRead{collectionNamesToRead}});
+}
+
+Result ExecContext::canDropGraph(std::string_view db, std::string_view graph,
+                                 std::span<std::string> collectionNames) const {
+  using namespace auth::perms;
+  return can(
+      DropGraph{.db{db}, .name{graph}, .collectionNames{collectionNames}});
+}
+
+Result ExecContext::canUseGraph(std::string_view db, std::string_view graph,
+                                GraphAccessLevel const level) const {
+  using namespace auth::perms;
+  return can(UseGraph{.db{db}, .name{graph}, .level = level});
 }
 
 /// @brief returns true if the user can be read

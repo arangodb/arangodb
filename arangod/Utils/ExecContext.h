@@ -142,6 +142,15 @@ class ExecContext : public RequestContext {
   Result canUseView(std::string_view db, std::string_view view,
                     ViewAccessLevel level) const;
 
+  Result canSeeGraph(std::string_view db, std::string_view graph) const;
+  Result canCreateGraph(std::string_view db, std::string_view graph,
+                        std::span<std::string> collectionNamesToCreate,
+                        std::span<std::string> collectionNamesToRead) const;
+  Result canDropGraph(std::string_view db, std::string_view graph,
+                      std::span<std::string> collectionNames) const;
+  Result canUseGraph(std::string_view db, std::string_view graph,
+                     GraphAccessLevel const level) const;
+
   // TODO These are not yet in path_permissions.md!
   // TODO We should need only the second, but it's additional work
   //      to refactor the code in that way.

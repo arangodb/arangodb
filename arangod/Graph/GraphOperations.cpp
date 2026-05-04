@@ -71,6 +71,12 @@ void GraphOperations::checkForUsedEdgeCollections(
   }
 }
 
+Result GraphOperations::checkCanModifyGraphStructure() const {
+  auto& exec = ExecContext::current();
+  return exec.canUseGraph(_vocbase.name(), _graph.name(),
+                          GraphAccessLevel::Modify);
+}
+
 futures::Future<OperationResult> GraphOperations::changeEdgeDefinitionForGraph(
     Graph& graph, EdgeDefinition const& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
@@ -103,6 +109,12 @@ futures::Future<OperationResult> GraphOperations::eraseEdgeDefinition(
     bool dropCollection) {
   OperationOptions options(ExecContext::current());
   options.waitForSync = waitForSync;
+
+  // Check permission:
+  auto r = checkCanModifyGraphStructure();
+  if (r.fail()) {
+    co_return OperationResult(r, options);
+  }
 
   // check if edgeCollection is available
   Result res = checkEdgeCollectionAvailability(edgeDefinitionName);
@@ -237,6 +249,13 @@ futures::Future<OperationResult> GraphOperations::editEdgeDefinition(
     bool waitForSync, std::string const& edgeDefinitionName) {
   TRI_ASSERT(definitionOptions.isObject());
   OperationOptions options(ExecContext::current());
+
+  // Check permission:
+  auto r = checkCanModifyGraphStructure();
+  if (r.fail()) {
+    co_return OperationResult(r, options);
+  }
+
   auto maybeEdgeDef = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
   if (!maybeEdgeDef) {
     co_return OperationResult{std::move(maybeEdgeDef).result(), options};
@@ -322,6 +341,13 @@ futures::Future<OperationResult> GraphOperations::addOrphanCollection(
 
   OperationOptions options(ExecContext::current());
   options.waitForSync = waitForSync;
+
+  // Check permission:
+  auto r = checkCanModifyGraphStructure();
+  if (r.fail()) {
+    co_return OperationResult(r, options);
+  }
+
   OperationResult result(Result(), options);
 
   VPackSlice editOptions = document.get(StaticStrings::GraphOptions);
@@ -473,6 +499,12 @@ futures::Future<OperationResult> GraphOperations::eraseOrphanCollection(
     co_return OperationResult{TRI_ERROR_FORBIDDEN, options};
   }
 
+  // Check permission:
+  auto r = checkCanModifyGraphStructure();
+  if (r.fail()) {
+    co_return OperationResult(r, options);
+  }
+
   res = _graph.removeOrphanCollection(collectionName);
   if (res.fail()) {
     co_return OperationResult(res, options);
@@ -538,6 +570,13 @@ futures::Future<OperationResult> GraphOperations::addEdgeDefinition(
     bool waitForSync) {
   TRI_ASSERT(definitionOptions.isObject());
   OperationOptions options(ExecContext::current());
+
+  // Check permission:
+  auto r = checkCanModifyGraphStructure();
+  if (r.fail()) {
+    co_return OperationResult(r, options);
+  }
+
   ResultT<EdgeDefinition const*> defRes =
       _graph.addEdgeDefinition(edgeDefinitionSlice);
   if (defRes.fail()) {
