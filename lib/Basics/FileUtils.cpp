@@ -128,48 +128,42 @@ namespace arangodb::basics::FileUtils {
 std::string buildFilename(char const* path, char const* name) {
   TRI_ASSERT(path != nullptr);
   TRI_ASSERT(name != nullptr);
-
-  std::string result(path);
-
-  if (!result.empty()) {
-    std::filesystem::path sourcepath{result};
-    result = sourcepath.lexically_normal().string();
-    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
-      result += TRI_DIR_SEPARATOR_CHAR;
-    }
-  }
-
-  if (!result.empty() && *name == TRI_DIR_SEPARATOR_CHAR) {
-    // skip initial forward slash in name to avoid having two forward slashes in
-    // result
-    result.append(name + 1);
-  } else {
-    result.append(name);
-  }
-
-  return std::filesystem::path(result).make_preferred().string();
+  return buildFilename(std::string(path), std::string(name));
 }
-
+/*
 std::string buildFilename(std::string const& path, std::string const& name) {
-  std::string result(path);
+  if (path.empty()) {
+    return std::filesystem::path(name).make_preferred().string();
+  }
+  std::filesystem::path const base =
+      std::filesystem::path(path).lexically_normal();
+  std::string const baseStr = base.string();
 
-  if (!result.empty()) {
-    std::filesystem::path sourcepath{result};
-    result = sourcepath.lexically_normal().string();
-    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
-      result += TRI_DIR_SEPARATOR_CHAR;
+  std::string nameToJoin = name;
+  if (!nameToJoin.empty() && nameToJoin.front() == TRI_DIR_SEPARATOR_CHAR) {
+    nameToJoin.erase(0, 1);
+  }
+  if (nameToJoin.empty()) {
+    std::string out = baseStr;
+    if (out.size() != 1 || out[0] != TRI_DIR_SEPARATOR_CHAR) {
+      out += TRI_DIR_SEPARATOR_CHAR;
     }
+    return std::filesystem::path(out).make_preferred().string();
+  }
+  return (base / nameToJoin).make_preferred().string();
+}
+*/
+std::string buildFilename(std::string const& path, std::string const& name) {
+  std::filesystem::path base(path);
+
+  // If name starts with a separator, strip it so it's treated as relative
+  std::string nameToJoin = name;
+  if (!nameToJoin.empty() && nameToJoin.front() == TRI_DIR_SEPARATOR_CHAR) {
+    nameToJoin.erase(0, 1);
   }
 
-  if (!result.empty() && !name.empty() && name[0] == TRI_DIR_SEPARATOR_CHAR) {
-    // skip initial forward slash in name to avoid having two forward slashes in
-    // result
-    result.append(name.c_str() + 1, name.size() - 1);
-  } else {
-    result.append(name);
-  }
-
-  return std::filesystem::path(result).make_preferred().string();
+  std::filesystem::path result = (base / nameToJoin).lexically_normal();
+  return result.make_preferred().string();
 }
 
 static void throwFileReadError(std::string const& filename) {
