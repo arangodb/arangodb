@@ -514,9 +514,30 @@ void QuerySnippet::serializeIntoBuilder(
       nodeAliases.try_emplace(internalScatter->id(), reservedId);
 
       if (_globalScatter->getType() == ExecutionNode::DISTRIBUTE) {
-        DistributeNode const* dist =
-            ExecutionNode::castTo<DistributeNode const*>(_globalScatter);
+        DistributeNode* dist =
+            ExecutionNode::castTo<DistributeNode*>(_globalScatter);
         TRI_ASSERT(dist != nullptr);
+
+        // This dance with registers is needed when we use the DistributeNode for read access.
+        // The upgrade-scatter-to-distribute
+        auto const var = dist->getVariable();
+        if (!dist->getVarsUsedLater().contains(var)) {
+          auto reg = dist->getRegisterPlan()->variableToRegisterId(var);
+          auto globalRegsToClear = dist->getRegsToClear();
+          auto globalRegsToKeepStack = dist->getRegsToKeepStack();
+          // TODO(listunov): is this right ? Should I be adding this to all sets?
+          for (auto& regSet : globalRegsToKeepStack) {
+            regSet.insert(reg);
+          }
+          globalRegsToClear.erase(reg);
+          dist->setRegsToClear(globalRegsToClear);
+          dist->setRegsToKeep(globalRegsToKeepStack);
+
+          auto internalRegsToClear = internalScatter->getRegsToClear();
+          internalRegsToClear.insert(reg);
+          internalScatter->setRegsToClear(internalRegsToClear);
+        }
+
         auto distCollection = dist->collection();
         TRI_ASSERT(distCollection != nullptr);
 
