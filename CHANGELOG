@@ -5,6 +5,9 @@
   `x IN []`, `[] ANY <op> x` are false. `x NOT IN []`, `[] ALL <op> x` and `[] NONE <op> x` are true, where
   `<op>` is `==`, `!=`, `<`, `<=`, `>` or `>=`.
 
+* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
+  dependencies.
+
 * Upgraded FAISS to v1.14.1.
 
 * COR-439: Make --server.storage-engine option obsolete
@@ -34,8 +37,6 @@
   `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that
   WAL entries written during training are correctly ingested, preventing
   missed documents after index creation.
-
-* Rebuilt included rclone v1.65.2 with go1.25.9 and non-vulnerable dependencies.
 
 * Updated ArangoDB Starter to v0.19.21.
 
