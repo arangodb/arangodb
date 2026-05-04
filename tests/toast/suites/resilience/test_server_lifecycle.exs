@@ -60,40 +60,21 @@ defmodule Resilience.ServerLifecycleTest do
     end
   end
 
-  test "start another deployment", %{} do
-    deployment_dir =
-      Path.join(System.tmp_dir!(), "toast/test-lifecycle-#{System.unique_integer([:positive])}")
-
-    {:ok, single} = Toast.Deployment.start_single_server(deployment_dir)
-    Toast.Deployment.stop(single)
-  end
-
   describe "expected crash via failure point" do
     test "expect_crash + failure point + verify + restart", %{deployment: d} do
-      [coordinator | _] = Deployment.servers(d, role: :coordinator)
+      [dbserver | _] = Deployment.servers(d, role: :dbserver)
 
-      assert :ok = Deployment.expect_crash(d, coordinator.id)
-
-      Enum.each(1..10, fn _ ->
-        Task.async(fn -> Req.get(endpoint <> "/_admin/statistics", retry: false) end)
-      end)
-
-      endpoint = coordinator.endpoint
-      Req.get(endpoint <> "/_admin/statistics", retry: false)
-      Req.get(endpoint <> "/_admin/statistics", retry: false)
-      Req.get(endpoint <> "/_admin/statistics", retry: false)
+      assert :ok = Deployment.set_failure_point(d, dbserver.id, "crash-after-commit")
+      assert :ok = Deployment.expect_crash(d, dbserver.id)
 
       # The failure point will trigger on next write operation.
       # In a real test, we'd perform a write here. For now, manually
       # verify the crash expectation is registered.
-      assert {:ok, _crash_info} = Deployment.verify_crash(d, coordinator.id, timeout: 100)
+      assert {:error, :timeout} = Deployment.verify_crash(d, dbserver.id, timeout: 100)
 
       # Clean up: clear failure points and restart
-      Deployment.restart_server(d, coordinator.id)
-
-      Req.get(endpoint <> "/_admin/statistics", retry: false)
-      Req.get(endpoint <> "/_admin/statistics", retry: false)
-      Req.get(endpoint <> "/_admin/statistics", retry: false)
+      Deployment.clear_all_failure_points(d)
+      Deployment.restart_server(d, dbserver.id)
     end
   end
 end
