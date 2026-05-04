@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -414,9 +414,10 @@ void DatabaseFeature::validateOptions(
 }
 
 void DatabaseFeature::initCalculationVocbase() {
+  auto& df = *this;
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server()), versionTracker(), extendedNames(),
-      /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()), df.engine(), versionTracker(),
+      extendedNames(), /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {

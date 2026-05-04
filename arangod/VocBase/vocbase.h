@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -123,7 +123,8 @@ inline constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
-  explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info);
+  explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
+                         arangodb::StorageEngine& engine);
 
   // note: isInternal=true is currently only used for the special internal
   // vocbase object that is used to execute IResearchAqlAnalyzer computations,
@@ -133,6 +134,7 @@ struct TRI_vocbase_t {
   // internal vocbase object, which does not use the MetricsFeature, because
   // it can outlive the entire ApplicationServer stack.
   TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
+                arangodb::StorageEngine& engine,
                 arangodb::VersionTracker& versionTracker, bool extendedNames,
                 bool isInternal = false);
   TEST_VIRTUAL ~TRI_vocbase_t();
@@ -207,7 +209,8 @@ struct TRI_vocbase_t {
 
   template<typename As>
   As& engine() const noexcept
-      requires(std::derived_from<As, arangodb::StorageEngine>) {
+    requires(std::derived_from<As, arangodb::StorageEngine>)
+  {
     return static_cast<As&>(_engine);
   }
 
