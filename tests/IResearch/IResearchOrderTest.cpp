@@ -124,8 +124,7 @@ REGISTER_SCORER_JSON(dummy_scorer, dummy_scorer::make);
 void assertOrder(
     arangodb::application_features::ApplicationServer& server,
     arangodb::StorageEngine& engine, bool parseOk, bool execOk,
-    std::string const& queryString,
-    std::span<irs::Scorer::ptr const> expected,
+    std::string const& queryString, std::span<irs::Scorer::ptr const> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -394,7 +393,8 @@ TEST_F(IResearchOrderTest, test_FCall) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT undefined(d) RETURN d";
 
-    assertOrderParseFail(server, engine, query, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN);
+    assertOrderParseFail(server, engine, query,
+                         TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN);
   }
 }
 

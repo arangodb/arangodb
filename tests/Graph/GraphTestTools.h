@@ -88,7 +88,8 @@ struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
   VersionTracker versionTracker;
 
-  MockGraphDatabase(ArangodServer& server, StorageEngine& engine, std::string name)
+  MockGraphDatabase(ArangodServer& server, StorageEngine& engine,
+                    std::string name)
       : vocbase(createInfo(server, name, 1), engine, versionTracker, true) {}
 
   ~MockGraphDatabase() {}
@@ -125,9 +126,9 @@ struct MockGraphDatabase {
   }
 
   struct EdgeDef {
-    EdgeDef(size_t from, size_t to) : _from(from), _to(to){};
+    EdgeDef(size_t from, size_t to) : _from(from), _to(to) {};
     EdgeDef(size_t from, size_t to, double weight)
-        : _from(from), _to(to), _weight(weight){};
+        : _from(from), _to(to), _weight(weight) {};
     size_t _from;
     size_t _to;
     std::optional<double> _weight;

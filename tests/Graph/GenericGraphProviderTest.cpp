@@ -90,8 +90,8 @@ class GraphProviderTest : public ::testing::Test {
     // Setup code for each provider type
     if constexpr (std::is_same_v<ProviderType, MockGraphProvider>) {
       s = std::make_unique<GraphTestSetup>();
-      singleServer =
-          std::make_unique<MockGraphDatabase>(s->server, s->engine, "testVocbase");
+      singleServer = std::make_unique<MockGraphDatabase>(s->server, s->engine,
+                                                         "testVocbase");
       singleServer->addGraph(graph);
 
       // We now have collections "v" and "e"
@@ -106,8 +106,8 @@ class GraphProviderTest : public ::testing::Test {
     if constexpr (std::is_same_v<ProviderType, SingleServerProvider<
                                                    SingleServerProviderStep>>) {
       s = std::make_unique<GraphTestSetup>();
-      singleServer =
-          std::make_unique<MockGraphDatabase>(s->server, s->engine, "testVocbase");
+      singleServer = std::make_unique<MockGraphDatabase>(s->server, s->engine,
+                                                         "testVocbase");
       singleServer->addGraph(graph);
 
       // We now have collections "v" and "e"

@@ -87,8 +87,8 @@ class SingleServerProviderTest : public ::testing::Test {
       -> arangodb::graph::SingleServerProvider<SingleServerProviderStep> {
     // Setup code for each provider type
     s = std::make_unique<GraphTestSetup>();
-    singleServer =
-        std::make_unique<MockGraphDatabase>(s->server, s->engine, "testVocbase");
+    singleServer = std::make_unique<MockGraphDatabase>(s->server, s->engine,
+                                                       "testVocbase");
     singleServer->addGraph(graph);
 
     // We now have collections "v" and "e"

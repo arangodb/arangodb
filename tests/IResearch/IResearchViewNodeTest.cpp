@@ -3596,7 +3596,8 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
 }
 
 TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server(), "testVocbase", 1), server.engine());
+  TRI_vocbase_t vocbase(testDBInfo(server.server(), "testVocbase", 1),
+                        server.engine());
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice(), false);

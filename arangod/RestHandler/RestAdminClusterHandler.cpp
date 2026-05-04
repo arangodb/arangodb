@@ -1731,9 +1731,7 @@ async<void> RestAdminClusterHandler::setDBServerMaintenance(
     auto result = co_await sendTransaction();
     if (result.ok() && result.statusCode() == 200) {
       VPackBuilder builder;
-      {
-        VPackObjectBuilder obj(&builder);
-      }
+      { VPackObjectBuilder obj(&builder); }
       generateOk(rest::ResponseCode::OK, builder);
       co_await waitForDBServerMaintenance(serverId, isMaintenanceMode);
     } else {

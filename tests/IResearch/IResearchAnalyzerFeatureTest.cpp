@@ -1704,7 +1704,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
-  TRI_vocbase_t active(testDBInfo(server.server(), "active", 2), server.engine());
+  TRI_vocbase_t active(testDBInfo(server.server(), "active", 2),
+                       server.engine());
   TRI_vocbase_t system(systemDBInfo(server.server()), server.engine());
 
   // normalize 'identity' (with prefix)

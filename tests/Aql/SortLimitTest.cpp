@@ -84,8 +84,8 @@ class SortLimitTest
     arangodb::RandomGenerator::initialize(
         arangodb::RandomGenerator::RandomType::MERSENNE);
 
-    vocbase = std::make_unique<TRI_vocbase_t>(
-        testDBInfo(server.server()), server.engine());
+    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server.server()),
+                                              server.engine());
 
     CreateCollection();
   }
