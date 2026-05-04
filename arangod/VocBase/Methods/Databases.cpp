@@ -261,7 +261,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
   CreateDatabaseInfo tempInfo = info;
-  TRI_vocbase_t vocbase(std::move(tempInfo), databaseFeature.versionTracker(),
+  TRI_vocbase_t vocbase(std::move(tempInfo), databaseFeature.engine(), databaseFeature.versionTracker(),
                         databaseFeature.extendedNames());
 
   // Now create *all* system collections for the database,
