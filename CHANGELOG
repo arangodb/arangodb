@@ -1,6 +1,15 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Update node modules:
+ - lodash to 4.18.0
+ - minimatch to 3.1.4
+ - js-yaml to 3.14.2
+ - qs to 6.14.2
+ - brace-expansion to 1.1.13
+ - ajv to 8.18.0
+ - @xmldom/xmldom@0.8.13
+
 * Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
   dependencies.
 
