@@ -763,7 +763,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
 
     std::array expected{dummy_scorer::make(std::string_view{})};
 
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
   }
 
   // function string scorer arg (expecting string)
@@ -779,7 +779,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
       EXPECT_TRUE((std::string_view("[\"abc\"]") == args));
       return true;
     };
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
   }
 
   // function string scorer arg (expecting jSON)
@@ -799,7 +799,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
       attempt++;
       return valid == (args == "[\"abc\"]");
     };
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
     EXPECT_TRUE((valid));
     EXPECT_TRUE(1 == attempt);
   }
@@ -822,7 +822,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
           (std::string_view("[\"{\\\"abc\\\": \\\"def\\\"}\"]") == args));
       return true;
     };
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
     EXPECT_TRUE(1 == attempt);
   }
 
@@ -845,7 +845,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
       valid = std::string_view("[\"{\\\"abc\\\": \\\"def\\\"}\"]") == args;
       return valid;
     };
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
     EXPECT_TRUE((valid));
     EXPECT_TRUE(1 == attempt);
   }
@@ -867,7 +867,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
       EXPECT_TRUE((std::string_view("[{\"abc\":\"def\"}]") == args));
       return true;
     };
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
     EXPECT_TRUE(1 == attempt);
   }
 
@@ -887,7 +887,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
       EXPECT_TRUE((std::string_view("[\"abc\",\"def\"]") == args));
       return true;
     };
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
     EXPECT_TRUE(1 == attempt);
   }
 
@@ -908,7 +908,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
                        "[\"abc\",\"{\\\"def\\\": \\\"ghi\\\"}\"]") == args));
       return true;
     };
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
     EXPECT_TRUE(1 == attempt);
   }
 
@@ -928,7 +928,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
       EXPECT_TRUE((std::string_view("[\"abc\",{\"def\":\"ghi\"}]") == args));
       return true;
     };
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
     EXPECT_TRUE(1 == attempt);
   }
 
@@ -937,7 +937,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d) ASC RETURN d";
     std::array expected{dummy_scorer::make(std::string_view{})};
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
   }
 
   // function DESC
@@ -945,7 +945,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC RETURN d";
     std::array expected{dummy_scorer::make(std::string_view{})};
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
   }
 
   // invalid function (no 1st parameter output variable reference)
@@ -953,7 +953,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf() RETURN d";
 
-    assertOrderFail(server, query);
+    assertOrderFail(server, engine, query);
   }
 
   // invalid function (not an iResearch function)
@@ -961,7 +961,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::invalid(d) DESC RETURN d";
 
-    assertOrderFail(server, query);
+    assertOrderFail(server, engine, query);
   }
 }
 #endif
@@ -1018,7 +1018,7 @@ TEST_F(IResearchOrderTest, test_order) {
         irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
                           std::string_view{})};
 
-    assertOrderSuccess(server, query, expected);
+    assertOrderSuccess(server, engine, query, expected);
   }
 
   // invalid field
@@ -1029,7 +1029,7 @@ TEST_F(IResearchOrderTest, test_order) {
     std::string query =
         "LET a=1 FOR d IN collection FILTER '1' SORT a RETURN d";
 
-    assertOrderFail(server, query, &ctx);
+    assertOrderFail(server, engine, query, &ctx);
   }
 }
 #endif
