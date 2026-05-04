@@ -36,6 +36,7 @@ install(
   DIRECTORY ${ARANGODB_SOURCE_DIR}/js/node
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   REGEX "^.*/ansi_up"                                      EXCLUDE
+  REGEX "^.*/eslint"
   REGEX "^.*/node-netstat"                                 EXCLUDE
   REGEX "^.*/parse-prometheus-text-format"                 EXCLUDE
   REGEX "^.*/@xmldom"                                      EXCLUDE
