@@ -84,6 +84,7 @@
 #include "Aql/Optimizer/Rule/SubstituteClusterMultipleDocumentOperations.h"
 #include "Aql/Optimizer/Rule/SubstituteClusterSingleDocumentOperations.h"
 #include "Aql/Optimizer/Rule/UndistributeRemoveAfterEnumColl.h"
+#include "Aql/Optimizer/Rule/UpgradeScatterToDistribute.h"
 #include "Aql/Optimizer/Rule/UseIndexForCollect.h"
 #include "Aql/Optimizer/Rule/UseIndexForSort.h"
 #include "Aql/Optimizer/Rule/UseIndexes.h"
