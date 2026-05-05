@@ -39,6 +39,15 @@
 
 namespace arangodb::vector {
 
+namespace {
+// Copy a non-owning slice's bytes into a fresh owning SharedSlice.
+velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice) {
+  velocypack::Buffer<uint8_t> buf;
+  buf.append(slice.start(), slice.byteSize());
+  return velocypack::SharedSlice{std::move(buf)};
+}
+}  // namespace
+
 /// RocksDBInvertedListsIteratorBase
 RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(
     RocksDBVectorIndex* index, LogicalCollection* collection,
@@ -72,9 +81,12 @@ void RocksDBInvertedListsIteratorBase::on_heap_changed(faiss::idx_t newId,
     _sink->erase(LocalDocumentId{static_cast<uint64_t>(evictedId)});
   }
 
+  captureSurvivor(LocalDocumentId{static_cast<uint64_t>(newId)});
+}
+
+void RocksDBInvertedListsIteratorBase::captureSurvivor(LocalDocumentId id) {
   if (!_currentCaptureData.isNone()) {
-    _sink->insert_or_assign(LocalDocumentId{static_cast<uint64_t>(newId)},
-                            std::move(_currentCaptureData));
+    _sink->insert_or_assign(id, std::move(_currentCaptureData));
   }
 }
 
@@ -99,25 +111,48 @@ void RocksDBInvertedListsIterator<Strategy>::next() {
 template<VectorIndexStoredValuesStrategy Strategy>
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
-  // Use strategy to extract entry from RocksDB
-  auto [docId, entry] =
-      Strategy::extractVectorIndexEntry(_it->key(), _it->value(), _codeSize);
-  _currentEntry = std::move(entry);
-
-  if constexpr (Strategy::hasStoredValues) {
-    TRI_ASSERT(_currentEntry.encodedValue.size() == _codeSize)
-        << "The encoded size is: " << _currentEntry.encodedValue.size()
-        << " should be: " << _codeSize;
-    if (_sink != nullptr) {
-      _currentCaptureData = _currentEntry.storedValues;
-    }
-    return {static_cast<faiss::idx_t>(docId.id()),
-            _currentEntry.encodedValue.data()};
+  if constexpr (Strategy::kSupportsView) {
+    // V2: zero-allocation parse — _currentEntry just holds pointers into
+    // the rocksdb iterator's value() buffer. Bytes are promoted to an
+    // owning SharedSlice in captureSurvivor for top-K survivors only.
+    auto const docId = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
+    _currentEntry = Strategy::extractView(_it->value(), _codeSize);
+    return {static_cast<faiss::idx_t>(docId.id()), _currentEntry.encoded};
   } else {
-    TRI_ASSERT(_currentEntry.size() == _codeSize)
-        << "The encoded size is: " << _currentEntry.size()
-        << " should be: " << _codeSize;
-    return {static_cast<faiss::idx_t>(docId.id()), _currentEntry.data()};
+    auto [docId, entry] =
+        Strategy::extractVectorIndexEntry(_it->key(), _it->value(), _codeSize);
+    _currentEntry = std::move(entry);
+
+    if constexpr (Strategy::hasStoredValues) {
+      TRI_ASSERT(_currentEntry.encodedValue.size() == _codeSize)
+          << "The encoded size is: " << _currentEntry.encodedValue.size()
+          << " should be: " << _codeSize;
+      if (_sink != nullptr) {
+        _currentCaptureData = _currentEntry.storedValues;
+      }
+      return {static_cast<faiss::idx_t>(docId.id()),
+              _currentEntry.encodedValue.data()};
+    } else {
+      TRI_ASSERT(_currentEntry.size() == _codeSize)
+          << "The encoded size is: " << _currentEntry.size()
+          << " should be: " << _codeSize;
+      return {static_cast<faiss::idx_t>(docId.id()), _currentEntry.data()};
+    }
+  }
+}
+
+template<VectorIndexStoredValuesStrategy Strategy>
+void RocksDBInvertedListsIterator<Strategy>::captureSurvivor(
+    LocalDocumentId id) {
+  if constexpr (Strategy::kSupportsView) {
+    // V2: promote the rocksdb-backed view into an owned SharedSlice, but
+    // only now that we know this entry survives the top-K heap.
+    auto const& view = _currentEntry.storedValues;
+    if (!view.isNone()) {
+      _sink->insert_or_assign(id, toOwnedSharedSlice(view));
+    }
+  } else {
+    RocksDBInvertedListsIteratorBase::captureSurvivor(id);
   }
 }
 
@@ -243,9 +278,7 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
           velocypack::SharedSlice captureData;
           if (_filterContext.capturedDocuments != nullptr) {
             if (_filterContext.captureShape == CaptureShape::kFullDocument) {
-              velocypack::Buffer<uint8_t> buf;
-              buf.append(doc.start(), doc.byteSize());
-              captureData = velocypack::SharedSlice{std::move(buf)};
+              captureData = toOwnedSharedSlice(doc);
             } else if constexpr (Strategy::hasStoredValues) {
               captureData = entry.storedValues;
             }

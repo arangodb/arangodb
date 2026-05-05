@@ -174,6 +174,8 @@ concept VectorIndexStoredValuesStrategy = requires {
 ////////////////////////////////////////////////////////////////////////////////
 struct NoStoredValuesStrategy {
   static constexpr bool hasStoredValues = false;
+  // No stored values to view; out of scope for the zero-copy path.
+  static constexpr bool kSupportsView = false;
 
   static std::pair<LocalDocumentId, std::vector<uint8_t>>
   extractVectorIndexEntry(rocksdb::Slice const& key,
@@ -203,6 +205,8 @@ struct NoStoredValuesStrategy {
 ////////////////////////////////////////////////////////////////////////////////
 struct WithStoredValuesV1Strategy {
   static constexpr bool hasStoredValues = true;
+  // V1 must allocate to deserialize VPack; no zero-copy view path.
+  static constexpr bool kSupportsView = false;
 
   static std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>
   extractVectorIndexEntry(rocksdb::Slice const& key,
@@ -225,6 +229,8 @@ struct WithStoredValuesV1Strategy {
 ////////////////////////////////////////////////////////////////////////////////
 struct WithStoredValuesV2Strategy {
   static constexpr bool hasStoredValues = true;
+  // V2's raw layout lets the search-path iterator parse without allocating.
+  static constexpr bool kSupportsView = true;
 
   static std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>
   extractVectorIndexEntry(rocksdb::Slice const& key,
@@ -236,6 +242,15 @@ struct WithStoredValuesV2Strategy {
   static RocksDBVectorIndexEntryValue extractVectorIndexValue(
       rocksdb::Slice const& value, size_t codeSize) {
     return RocksDBValue::vectorIndexEntryValueV2(value, codeSize);
+  }
+
+  // Returns a non-owning view into the rocksdb iterator's value buffer.
+  // Lifetime is bounded by the rocksdb iterator's current position.
+  static RocksDBVectorIndexEntryViewV2 extractView(rocksdb::Slice const& value,
+                                                   size_t codeSize) {
+    auto const* data = reinterpret_cast<uint8_t const*>(value.data());
+    return {.encoded = data,
+            .storedValues = velocypack::Slice(data + codeSize)};
   }
 };
 
@@ -257,6 +272,10 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
   void on_heap_changed(faiss::idx_t new_id, faiss::idx_t evicted_id) final;
 
  protected:
+  // Insert hook for the topK heap; default takes ownership of
+  // _currentCaptureData. V2 overrides to promote a non-owning view.
+  virtual void captureSurvivor(LocalDocumentId id);
+
   RocksDBKey _rocksdbKey;
   arangodb::RocksDBVectorIndex* _index{nullptr};
   LogicalCollection* _collection{nullptr};
@@ -286,10 +305,13 @@ struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
+  void captureSurvivor(LocalDocumentId id) override;
+
  private:
-  // Storage varies based on strategy
-  std::conditional_t<Strategy::hasStoredValues, RocksDBVectorIndexEntryValue,
-                     std::vector<uint8_t>>
+  std::conditional_t<
+      Strategy::kSupportsView, RocksDBVectorIndexEntryViewV2,
+      std::conditional_t<Strategy::hasStoredValues,
+                         RocksDBVectorIndexEntryValue, std::vector<uint8_t>>>
       _currentEntry;
 };
 
