@@ -414,9 +414,8 @@ void DatabaseFeature::validateOptions(
 }
 
 void DatabaseFeature::initCalculationVocbase() {
-  auto& df = *this;
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server()), df.engine(), versionTracker(),
+      createExpressionVocbaseInfo(server()), engine(), versionTracker(),
       extendedNames(), /*isInternal*/ true);
 }
 
