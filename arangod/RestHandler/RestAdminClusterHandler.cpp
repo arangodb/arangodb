@@ -2262,19 +2262,19 @@ async<void> RestAdminClusterHandler::handleHealth() {
 
   // TODO handle timeout parameter
 
-  // query the agency config
-  auto agencies = co_await AsyncAgencyComm().getAgencies();
-  // connect to all the agencies and ask for their engine and version
+  auto agents = AsyncAgencyCommManager::INSTANCE->agents();
+  // connect to all the agents and ask for their engine and version
   std::vector<futures::Future<::agentConfigHealthResult>> fs;
   auto* pool = server().getFeature<NetworkFeature>().pool();
-  for (auto const& [id, endpoint] : agencies) {
+  for (auto const& agent : agents) {
     auto future =
-        network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
+        network::sendRequest(pool, agent.endpoint, fuerte::RestVerb::Get,
                              "/_api/agency/config", VPackBuffer<uint8_t>())
-            .then([endpoint = std::move(endpoint), id = std::move(id)](
+            .then([agent = std::move(agent)](
                       futures::Try<network::Response>&& resp) mutable {
               return futures::makeFuture(::agentConfigHealthResult{
-                  std::move(endpoint), std::move(id), std::move(resp)});
+                  std::move(agent.endpoint), std::move(agent.serverId),
+                  std::move(resp)});
             });
 
     fs.emplace_back(std::move(future));

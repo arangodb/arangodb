@@ -310,9 +310,6 @@ class AsyncAgencyComm final {
                                               RequestType type,
                                               uint64_t index) const;
 
-  using Endpoint = std::string;
-  futures::Future<std::vector<std::pair<ServerID, Endpoint>>> getAgencies();
-
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
       : _manager(manager) {}

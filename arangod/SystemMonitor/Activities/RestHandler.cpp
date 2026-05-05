@@ -52,11 +52,9 @@ namespace {
 template<typename R>
 requires std::ranges::input_range<R> &&
     std::convertible_to<std::ranges::range_reference_t<R>, std::string_view>
-auto getActivitiesFromServers(
-    R&& servers,
-    // containers::FlatHashMap<ServerID, std::string> const& servers,
-    std::vector<std::pair<ServerID, std::string>> agencies,
-    NetworkFeature& networkFeature, std::string const& path)
+auto getActivitiesFromServers(R&& servers, std::deque<Agent> agents,
+                              NetworkFeature& networkFeature,
+                              std::string const& path)
     -> async<
         std::vector<std::pair<ServerID, futures::Try<network::Response>>>> {
   auto* pool = networkFeature.pool();
@@ -76,11 +74,11 @@ auto getActivitiesFromServers(
         pool, "server:" + serverId, fuerte::RestVerb::Get, path,
         VPackBuffer<uint8_t>{}, options));
   }
-  for (auto const& [agencyId, endpoint] : agencies) {
-    serverIds.emplace_back(agencyId);
+  for (auto const& agent : agents) {
+    serverIds.emplace_back(agent.serverId);
     requests.emplace_back(
-        network::sendRequestRetry(pool, endpoint, fuerte::RestVerb::Get, path,
-                                  VPackBuffer<uint8_t>{}, options));
+        network::sendRequestRetry(pool, agent.endpoint, fuerte::RestVerb::Get,
+                                  path, VPackBuffer<uint8_t>{}, options));
   }
   auto responses = co_await futures::collectAll(requests);
   std::vector<std::pair<ServerID, futures::Try<network::Response>>> result;
@@ -177,10 +175,9 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto servers = _clusterFeature.clusterInfo().getServers();
   auto myId = ServerState::instance()->getId();
   servers.erase(myId);
-  auto agencies = co_await AsyncAgencyComm().getAgencies();
-  auto activities_per_server =
-      co_await getActivitiesFromServers(servers | std::views::keys, agencies,
-                                        _networkFeature, _request->prefix());
+  auto agents = AsyncAgencyCommManager::INSTANCE->agents();
+  auto activities_per_server = co_await getActivitiesFromServers(
+      servers | std::views::keys, agents, _networkFeature, _request->prefix());
 
   switch (_request->requestedApiVersion()) {
     case api_version::experimentalApiVersion: {
