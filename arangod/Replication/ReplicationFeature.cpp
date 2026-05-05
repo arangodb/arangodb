@@ -174,8 +174,9 @@ void ReplicationFeature::prepare() {
 }
 
 void ReplicationFeature::start() {
+  auto& engine = server().getFeature<DatabaseFeature>().engine();
   _globalReplicationApplier = std::make_unique<GlobalReplicationApplier>(
-      GlobalReplicationApplier::loadConfiguration(server()));
+      server(), engine);
 
   try {
     _globalReplicationApplier->loadState();
