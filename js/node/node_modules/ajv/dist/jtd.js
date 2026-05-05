@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
+exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv = void 0;
 const core_1 = require("./core");
 const jtd_1 = require("./vocabularies/jtd");
 const jtd_schema_1 = require("./refs/jtd-schema");
@@ -51,7 +51,9 @@ class Ajv extends core_1.default {
         return sch.parse;
     }
 }
+exports.Ajv = Ajv;
 module.exports = exports = Ajv;
+module.exports.Ajv = Ajv;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = Ajv;
 var validate_1 = require("./compile/validate");
