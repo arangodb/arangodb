@@ -422,6 +422,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   auto const faissIndex = index.faissIndex();
   auto* cf = index.columnFamily();
   auto const oid = index.objectId();
+  auto const formatVersion = index.formatVersion();
 
   auto const shardName = index.collection().name();
   auto const indexId = index.id().id();
@@ -610,6 +611,34 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
     }
   };
 
+  using MakeValueFn =
+      RocksDBValue (*)(EncodedVectors&, size_t k, size_t codeSize);
+  auto const makeValue =
+      std::invoke([&, codeSize = faissIndex->code_size]() -> MakeValueFn {
+        if (!hasStored) {
+          return [](EncodedVectors& item, size_t k, size_t codeSize) {
+            auto* ptr = item.codes.get() + k * codeSize;
+            return RocksDBValue::VectorIndexValue(ptr, codeSize);
+          };
+        } else if (formatVersion == VectorIndexFormatVersion::kV2) {
+          return [](EncodedVectors& item, size_t k, size_t codeSize) {
+            auto* ptr = item.codes.get() + k * codeSize;
+            RocksDBVectorIndexEntryValue v;
+            v.encodedValue = std::vector<uint8_t>(ptr, ptr + codeSize);
+            v.storedValues = std::move(item.storedValues[k]);
+            return RocksDBValue::VectorIndexValueV2(v);
+          };
+        } else {
+          return [](EncodedVectors& item, size_t k, size_t codeSize) {
+            auto* ptr = item.codes.get() + k * codeSize;
+            RocksDBVectorIndexEntryValue v;
+            v.encodedValue = std::vector<uint8_t>(ptr, ptr + codeSize);
+            v.storedValues = std::move(item.storedValues[k]);
+            return RocksDBValue::VectorIndexValueV1(v);
+          };
+        }
+      });
+
   auto writeDocuments = [&] {
     rocksdb::WriteBatch batch;
     while (true) {
@@ -629,19 +658,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
         for (size_t k = 0; k < item->docIds.size(); k++) {
           key.constructVectorIndexValue(oid, item->lists[k], item->docIds[k]);
 
-          auto const value = std::invoke([&]() {
-            auto* ptr = item->codes.get() + k * faissIndex->code_size;
-            if (hasStored) {
-              RocksDBVectorIndexEntryValue rocksdbEntryValue;
-              rocksdbEntryValue.encodedValue =
-                  std::vector<uint8_t>(ptr, ptr + faissIndex->code_size);
-              rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
-
-              return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
-            } else {
-              return RocksDBValue::VectorIndexValue(ptr, faissIndex->code_size);
-            }
-          });
+          auto const value = makeValue(*item, k, codeSize);
 
           status = batch.Put(cf, key.string(), value.string());
           if (not status.ok()) {
@@ -702,9 +719,10 @@ VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index)
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuilder::persistTrainedData(TrainedData const& trainedData) {
+Result VectorIndexBuilder::persistVectorIndexMetadata(
+    VectorIndexMetadata const& metadata) {
   velocypack::Builder builder;
-  velocypack::serialize(builder, trainedData);
+  velocypack::serialize(builder, metadata);
 
   RocksDBKey key;
   key.constructVectorIndexTrainedData(_index.objectId());
@@ -715,9 +733,9 @@ Result VectorIndexBuilder::persistTrainedData(TrainedData const& trainedData) {
   rocksdb::WriteOptions wo;
   auto status = _rootDB->Put(wo, vectorCF, key.string(), value.string());
   if (!status.ok()) {
-    return Result{
-        TRI_ERROR_INTERNAL,
-        std::string{"Failed to persist trained data: "} + status.ToString()};
+    return Result{TRI_ERROR_INTERNAL,
+                  std::string{"Failed to persist vector index metadata: "} +
+                      status.ToString()};
   }
   return {};
 }
@@ -777,7 +795,9 @@ Result VectorIndexBuilder::build(
 
   auto trainedData = serializeIndex(*faissIndex);
 
-  if (auto res = persistTrainedData(trainedData); res.fail()) {
+  VectorIndexMetadata metadata{.trainedData = trainedData,
+                               .formatVersion = _index.formatVersion()};
+  if (auto res = persistVectorIndexMetadata(metadata); res.fail()) {
     _index.resetTrainingState();
     return res;
   }

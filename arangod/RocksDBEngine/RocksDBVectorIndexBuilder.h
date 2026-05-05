@@ -132,7 +132,7 @@ class VectorIndexBuilder {
                std::stop_token stopToken = {});
 
  private:
-  Result persistTrainedData(TrainedData const& trainedData);
+  Result persistVectorIndexMetadata(VectorIndexMetadata const& metadata);
 
   RocksDBVectorIndex& _index;
   RocksDBEngine& _engine;
