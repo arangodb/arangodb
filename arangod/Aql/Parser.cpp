@@ -233,8 +233,7 @@ void Parser::pushObjectSplice(AstNode* node) {
   TRI_ASSERT(object != nullptr);
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
   object->addMember(node);
-  if (object->hasFlag(AstNodeFlagType::VALUE_CONSTANT) &&
-      !node->isConstant()) {
+  if (object->hasFlag(AstNodeFlagType::VALUE_CONSTANT) && !node->isConstant()) {
     object->removeFlag(AstNodeFlagType::VALUE_CONSTANT);
   }
 }
