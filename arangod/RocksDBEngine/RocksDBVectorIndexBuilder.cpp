@@ -613,33 +613,32 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
   using MakeValueFn =
       RocksDBValue (*)(EncodedVectors&, size_t k, size_t codeSize);
-  auto const makeValue =
-      std::invoke([&, codeSize = faissIndex->code_size]() -> MakeValueFn {
-        if (!hasStored) {
-          return [](EncodedVectors& item, size_t k, size_t codeSize) {
-            auto* ptr = item.codes.get() + k * codeSize;
-            return RocksDBValue::VectorIndexValue(ptr, codeSize);
-          };
-        } else if (formatVersion == VectorIndexFormatVersion::kV2) {
-          return [](EncodedVectors& item, size_t k, size_t codeSize) {
-            auto* ptr = item.codes.get() + k * codeSize;
-            RocksDBVectorIndexEntryValue v;
-            v.encodedValue = std::vector<uint8_t>(ptr, ptr + codeSize);
-            v.storedValues = std::move(item.storedValues[k]);
-            return RocksDBValue::VectorIndexValueV2(v);
-          };
-        } else {
-          return [](EncodedVectors& item, size_t k, size_t codeSize) {
-            auto* ptr = item.codes.get() + k * codeSize;
-            RocksDBVectorIndexEntryValue v;
-            v.encodedValue = std::vector<uint8_t>(ptr, ptr + codeSize);
-            v.storedValues = std::move(item.storedValues[k]);
-            return RocksDBValue::VectorIndexValueV1(v);
-          };
-        }
-      });
+  auto const makeValue = std::invoke([&]() -> MakeValueFn {
+    if (!hasStored) {
+      return [](EncodedVectors& item, size_t k, size_t codeSize) {
+        auto* ptr = item.codes.get() + k * codeSize;
+        return RocksDBValue::VectorIndexValue(ptr, codeSize);
+      };
+    } else if (formatVersion == VectorIndexFormatVersion::kV2) {
+      return [](EncodedVectors& item, size_t k, size_t codeSize) {
+        auto* ptr = item.codes.get() + k * codeSize;
+        RocksDBVectorIndexEntryValue v;
+        v.encodedValue = std::vector<uint8_t>(ptr, ptr + codeSize);
+        v.storedValues = std::move(item.storedValues[k]);
+        return RocksDBValue::VectorIndexValueV2(v);
+      };
+    } else {
+      return [](EncodedVectors& item, size_t k, size_t codeSize) {
+        auto* ptr = item.codes.get() + k * codeSize;
+        RocksDBVectorIndexEntryValue v;
+        v.encodedValue = std::vector<uint8_t>(ptr, ptr + codeSize);
+        v.storedValues = std::move(item.storedValues[k]);
+        return RocksDBValue::VectorIndexValueV1(v);
+      };
+    }
+  });
 
-  auto writeDocuments = [&] {
+  auto writeDocuments = [&, codeSize = faissIndex->code_size] {
     rocksdb::WriteBatch batch;
     while (true) {
       auto [item, blocked] = encodedChannel.pop();

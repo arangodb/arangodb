@@ -123,7 +123,8 @@ RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
 
 // Explicit instantiations
 template struct RocksDBInvertedListsIterator<NoStoredValuesStrategy>;
-template struct RocksDBInvertedListsIterator<WithStoredValuesStrategy>;
+template struct RocksDBInvertedListsIterator<WithStoredValuesV1Strategy>;
+template struct RocksDBInvertedListsIterator<WithStoredValuesV2Strategy>;
 
 /// RocksDBInvertedListsFilteringIteratorBase
 RocksDBInvertedListsFilteringIteratorBase::
@@ -271,21 +272,28 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
 
 // Explicit instantiations
 template struct RocksDBInvertedListsFilteringIterator<NoStoredValuesStrategy>;
-template struct RocksDBInvertedListsFilteringIterator<WithStoredValuesStrategy>;
+template struct RocksDBInvertedListsFilteringIterator<
+    WithStoredValuesV1Strategy>;
+template struct RocksDBInvertedListsFilteringIterator<
+    WithStoredValuesV2Strategy>;
 
 /// RocksDBInvertedListsFilteringStoredValuesIterator
-RocksDBInvertedListsFilteringStoredValuesIterator::
-    RocksDBInvertedListsFilteringStoredValuesIterator(
-        RocksDBVectorIndex* index, LogicalCollection* collection,
-        IteratorFilterContext& filterContext, std::size_t listNumber,
-        std::size_t codeSize)
+template<VectorIndexStoredValuesStrategy Strategy>
+requires(Strategy::hasStoredValues)
+    RocksDBInvertedListsFilteringStoredValuesIterator<Strategy>::
+        RocksDBInvertedListsFilteringStoredValuesIterator(
+            RocksDBVectorIndex* index, LogicalCollection* collection,
+            IteratorFilterContext& filterContext, std::size_t listNumber,
+            std::size_t codeSize)
     : RocksDBInvertedListsFilteringIteratorBase(
           index, collection, filterContext, listNumber, codeSize) {
   TRI_ASSERT(index->hasStoredValues() && filterContext.useStoredValuesIterator);
   skipOverFilteredDocuments();
 }
 
-bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
+template<VectorIndexStoredValuesStrategy Strategy>
+requires(Strategy::hasStoredValues) bool RocksDBInvertedListsFilteringStoredValuesIterator<
+    Strategy>::searchFilteredIds() {
   // Get documents ids from the vector index
   std::vector<std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>> items;
   items.reserve(kBatchSize);
@@ -294,7 +302,8 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
        i < kBatchSize && RocksDBInvertedListsIteratorBase::is_available();
        ++i, _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
-    auto entryValue = RocksDBValue::vectorIndexEntryValue(_it->value());
+    auto entryValue =
+        Strategy::extractVectorIndexValue(_it->value(), _codeSize);
 
     items.emplace_back(id, std::move(entryValue));
   }
@@ -362,6 +371,12 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
   return true;
 }
 
+// Explicit instantiations
+template struct RocksDBInvertedListsFilteringStoredValuesIterator<
+    WithStoredValuesV1Strategy>;
+template struct RocksDBInvertedListsFilteringStoredValuesIterator<
+    WithStoredValuesV2Strategy>;
+
 /// RocksDBInvertedLists
 RocksDBInvertedLists::RocksDBInvertedLists(RocksDBVectorIndex* index,
                                            LogicalCollection* collection,
@@ -376,6 +391,8 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
   auto* iteratorContext = static_cast<RocksDBFaissIteratorContext*>(context);
   TRI_ASSERT(iteratorContext != nullptr);
 
+  bool const isV2 = _index->formatVersion() == VectorIndexFormatVersion::kV2;
+
   return std::visit(
       overload{
           [&](IteratorFilterContext& filterContext)
@@ -384,32 +401,50 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
             // the projections are coverable -- in that case the FAISS layer
             // never needs to touch the underlying documents.
             if (filterContext.useStoredValuesIterator) {
-              return new RocksDBInvertedListsFilteringStoredValuesIterator(
-                  _index, _collection, filterContext, listNumber,
-                  this->code_size);
+              if (isV2) {
+                return new RocksDBInvertedListsFilteringStoredValuesIterator<
+                    WithStoredValuesV2Strategy>(_index, _collection,
+                                                filterContext, listNumber,
+                                                this->code_size);
+              }
+              return new RocksDBInvertedListsFilteringStoredValuesIterator<
+                  WithStoredValuesV1Strategy>(_index, _collection,
+                                              filterContext, listNumber,
+                                              this->code_size);
             }
 
-            // Choose the filtering iterator based on whether index has stored
-            // values
+            // Choose the filtering iterator based on whether the index has
+            // stored values, and on the on-disk format version when it does.
             if (_index->hasStoredValues()) {
+              if (isV2) {
+                return new RocksDBInvertedListsFilteringIterator<
+                    WithStoredValuesV2Strategy>(_index, _collection,
+                                                filterContext, listNumber,
+                                                this->code_size);
+              }
               return new RocksDBInvertedListsFilteringIterator<
-                  WithStoredValuesStrategy>(_index, _collection, filterContext,
-                                            listNumber, this->code_size);
-            } else {
-              return new RocksDBInvertedListsFilteringIterator<
-                  NoStoredValuesStrategy>(_index, _collection, filterContext,
-                                          listNumber, this->code_size);
+                  WithStoredValuesV1Strategy>(_index, _collection,
+                                              filterContext, listNumber,
+                                              this->code_size);
             }
+            return new RocksDBInvertedListsFilteringIterator<
+                NoStoredValuesStrategy>(_index, _collection, filterContext,
+                                        listNumber, this->code_size);
           },
           [&](IteratorContext const& simpleCtx)
               -> faiss::InvertedListsIterator* {
             if (_index->hasStoredValues()) {
-              return new RocksDBInvertedListsIterator<WithStoredValuesStrategy>(
-                  _index, _collection, simpleCtx, listNumber, this->code_size);
-            } else {
-              return new RocksDBInvertedListsIterator<NoStoredValuesStrategy>(
-                  _index, _collection, simpleCtx, listNumber, this->code_size);
+              if (isV2) {
+                return new RocksDBInvertedListsIterator<
+                    WithStoredValuesV2Strategy>(_index, _collection, simpleCtx,
+                                                listNumber, this->code_size);
+              }
+              return new RocksDBInvertedListsIterator<
+                  WithStoredValuesV1Strategy>(_index, _collection, simpleCtx,
+                                              listNumber, this->code_size);
             }
+            return new RocksDBInvertedListsIterator<NoStoredValuesStrategy>(
+                _index, _collection, simpleCtx, listNumber, this->code_size);
           },
       },
       *iteratorContext);

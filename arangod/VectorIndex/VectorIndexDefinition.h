@@ -81,12 +81,11 @@ inline auto inspect(Inspector& f, VectorIndexFormatVersion& x) {
 static constexpr VectorIndexFormatVersion kCurrentVectorIndexFormatVersion =
     VectorIndexFormatVersion::kV2;
 
-/// @brief Vector index metadata stored in RocksDB. Contains the trained data
-/// blob and
+/// @brief Per-index metadata sentinel record stored in the VectorIndex CF.
+/// Wraps TrainedData and adds the on-disk formatVersion. The kV1 default
+/// covers legacy records that pre-date the formatVersion field.
 struct VectorIndexMetadata {
   TrainedData trainedData;
-  // the default one is kv1 since vector indexes in initial version did not had
-  // formatVersion
   VectorIndexFormatVersion formatVersion = VectorIndexFormatVersion::kV1;
 
   template<class Inspector>

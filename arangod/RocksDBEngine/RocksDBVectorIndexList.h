@@ -195,27 +195,47 @@ struct NoStoredValuesStrategy {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Strategy for vector indexes WITH stored values
+/// @brief Strategy for vector indexes WITH stored values, v1 layout
 ///
-/// When stored values are present, the RocksDB value contains a serialized
-/// RocksDBVectorIndexEntryValue with both encoded vector data and stored
-/// values.
+/// V1 stores the entry as a VPack-serialized RocksDBVectorIndexEntryValue
+/// (self-describing). codeSize is unused because the format carries its own
+/// boundaries.
 ////////////////////////////////////////////////////////////////////////////////
-struct WithStoredValuesStrategy {
+struct WithStoredValuesV1Strategy {
   static constexpr bool hasStoredValues = true;
 
   static std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>
   extractVectorIndexEntry(rocksdb::Slice const& key,
                           rocksdb::Slice const& value, size_t /*codeSize*/) {
     auto const docId = RocksDBKey::indexDocumentId(key);
-    auto entry = RocksDBValue::vectorIndexEntryValue(value);
-    return {docId, std::move(entry)};
+    return {docId, RocksDBValue::vectorIndexEntryValueV1(value)};
+  }
+
+  static RocksDBVectorIndexEntryValue extractVectorIndexValue(
+      rocksdb::Slice const& value, size_t /*codeSize*/) {
+    return RocksDBValue::vectorIndexEntryValueV1(value);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Strategy for vector indexes WITH stored values, v2 layout
+///
+/// V2 stores the entry as raw concat: [encodedValue codeSize bytes]
+/// [storedValues VPack slice]. codeSize is required to locate the boundary.
+////////////////////////////////////////////////////////////////////////////////
+struct WithStoredValuesV2Strategy {
+  static constexpr bool hasStoredValues = true;
+
+  static std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>
+  extractVectorIndexEntry(rocksdb::Slice const& key,
+                          rocksdb::Slice const& value, size_t codeSize) {
+    auto const docId = RocksDBKey::indexDocumentId(key);
+    return {docId, RocksDBValue::vectorIndexEntryValueV2(value, codeSize)};
   }
 
   static RocksDBVectorIndexEntryValue extractVectorIndexValue(
       rocksdb::Slice const& value, size_t codeSize) {
-    auto entry = RocksDBValue::vectorIndexEntryValue(value);
-    return entry;
+    return RocksDBValue::vectorIndexEntryValueV2(value, codeSize);
   }
 };
 
@@ -331,7 +351,9 @@ struct RocksDBInvertedListsFilteringIterator final
 // except it does not needs to materialize documents, since it contains
 // values that will be used during expression evaluation.
 // It can be used iff storedValues fully cover the filterExpression
-struct RocksDBInvertedListsFilteringStoredValuesIterator final
+template<VectorIndexStoredValuesStrategy Strategy>
+requires(Strategy::hasStoredValues) struct
+    RocksDBInvertedListsFilteringStoredValuesIterator final
     : public RocksDBInvertedListsFilteringIteratorBase {
   RocksDBInvertedListsFilteringStoredValuesIterator(
       RocksDBVectorIndex* index, LogicalCollection* collection,
