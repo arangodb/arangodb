@@ -98,7 +98,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         let [qs, expectedNodes] = query;
 
-        let result = db._createStatement({query: qs, optimizer: {rules: ["-interchange-adjacent-enumerations"]}}).explain();
+        let result = db._createStatement({query: qs, optimizer: {rules: ["-interchange-adjacent-enumerations", "-upgrade-scatter-to-distribute"]}}).explain();
 
         let actualNodes = result.plan.nodes.map((n) => [n.type, n.isAsyncPrefetchEnabled === true ? true : false]);
         assertEqual(expectedNodes, actualNodes, query);
