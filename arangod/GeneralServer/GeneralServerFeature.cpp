@@ -172,8 +172,7 @@ GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
-      _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_requests_memory_usage{})),
+      _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),

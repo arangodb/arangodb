@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "common.h"
 #include "gtest/gtest.h"
 
@@ -194,7 +195,8 @@ class IResearchIndexTest
   IResearchIndexTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
 
     auto& analyzers =

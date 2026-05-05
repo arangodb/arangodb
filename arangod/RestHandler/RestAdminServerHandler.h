@@ -28,6 +28,8 @@
 
 namespace arangodb {
 
+class ApiRecordingFeature;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,5 +57,7 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleEncryptionKeyRotation();
   void handleApiCalls();
   void handleAqlRecordedQueries();
+
+  ApiRecordingFeature& _apiRecordingFeature;
 };
 }  // namespace arangodb

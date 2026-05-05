@@ -68,9 +68,10 @@ struct ClusterFeatureScale {
 DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
                   "Request time for Agency requests [ms]");
 
-ClusterFeature::ClusterFeature(ApplicationServer& server)
+ClusterFeature::ClusterFeature(ApplicationServer& server,
+                               metrics::MetricsFeature& metrics)
     : application_features::ApplicationFeature{server, *this},
-      _metrics{server.getFeature<metrics::MetricsFeature>()},
+      _metrics{metrics},
       _agency_comm_request_time_ms(
           _metrics.add(arangodb_agencycomm_request_time_msec{})) {
   setOptional(true);
@@ -1183,13 +1184,12 @@ AgencyCache& ClusterFeature::agencyCache() {
 void ClusterFeature::allocateMembers() {
   _agencyCallbackRegistry = std::make_unique<AgencyCallbackRegistry>(
       server(), *this, server().getFeature<EngineSelectorFeature>(),
-      server().getFeature<DatabaseFeature>(),
-      server().getFeature<metrics::MetricsFeature>(), agencyCallbacksPath());
+      server().getFeature<DatabaseFeature>(), _metrics, agencyCallbacksPath());
   _agencyCache = std::make_unique<AgencyCache>(
       server(), *_agencyCallbackRegistry, _syncerShutdownCode);
-  _clusterInfo = std::make_unique<ClusterInfo>(
-      server(), *_agencyCache, *_agencyCallbackRegistry, _syncerShutdownCode,
-      server().getFeature<metrics::MetricsFeature>());
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), *_agencyCache,
+                                               *_agencyCallbackRegistry,
+                                               _syncerShutdownCode, _metrics);
 }
 
 void ClusterFeature::addDirty(
