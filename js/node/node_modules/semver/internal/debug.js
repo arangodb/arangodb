@@ -1,5 +1,3 @@
-'use strict'
-
 const debug = (
   typeof process === 'object' &&
   process.env &&

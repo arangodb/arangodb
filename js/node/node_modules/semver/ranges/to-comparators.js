@@ -1,5 +1,3 @@
-'use strict'
-
 const Range = require('../classes/range')
 
 // Mostly just for testing and legacy API reasons

@@ -1,5 +1,3 @@
-'use strict'
-
 const SemVer = require('../classes/semver')
 const Range = require('../classes/range')
 const minSatisfying = (versions, range, options) => {

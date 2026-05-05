@@ -1,5 +1,3 @@
-'use strict'
-
 // parse out just the options we care about
 const looseOption = Object.freeze({ loose: true })
 const emptyOpts = Object.freeze({ })
