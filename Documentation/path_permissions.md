@@ -262,9 +262,13 @@ return a `Result`, so that a decline can return the actual reason
  - `isSuperuser() -> bool`
 
 Note that for now, `canSee*` is equivalent to `canUse*(RO)`. For
-collections `canUseCollection(RWDATA)` is needed to write data. However,
-we keep the semantic checks separate in case we want to split things
-further later.
+collections `canUseCollection(RWDATA)` is needed to write data. Testing
+existence of a collection only needs `canSeeCollection`, whereas reading
+the metadata of a collection needs `canUseCollection(RO)` and similarly
+for databases, views, analyzers and graphs.
+
+However, we keep the semantic checks separate in case we want to split
+things further later.
 
 There is one subtlety, though. If we ever want to separate being able
 to see `canSee*` from `canUse*(RO)` later, then we want that if a
