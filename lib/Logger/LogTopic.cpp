@@ -139,7 +139,6 @@ LogTopic Logger::RESTORE(logger::topic::Restore{});
 LogTopic Logger::ROCKSDB(logger::topic::Rocksdb{});
 LogTopic Logger::SSL(logger::topic::Ssl{});
 LogTopic Logger::STARTUP(logger::topic::Startup{});
-LogTopic Logger::STATISTICS(logger::topic::Statistics{});
 LogTopic Logger::SUPERVISION(logger::topic::Supervision{});
 LogTopic Logger::SYSCALL(logger::topic::Syscall{});
 LogTopic Logger::THREADS(logger::topic::Threads{});

@@ -359,7 +359,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
           auto& resp = it.get();
           auto res = resp.combinedResult();
           if (res.fail()) {
-            LOG_TOPIC("4800b", WARN, Logger::STATISTICS)
+            LOG_TOPIC("4800b", WARN, Logger::FIXME)
                 << "Failed to get server info: " << res.errorMessage();
           } else {
             auto slice = resp.slice();
@@ -627,7 +627,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 trx.count(collName, transaction::CountType::kNormal, options);
             std::ignore = trx.finish(opResult.result);
             if (opResult.fail()) {
-              LOG_TOPIC("8ae00", WARN, Logger::STATISTICS)
+              LOG_TOPIC("8ae00", WARN, Logger::FIXME)
                   << "Failed to get number of documents: "
                   << res.errorMessage();
             } else {
@@ -635,7 +635,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             }
 
           } else {
-            LOG_TOPIC("e7497", WARN, Logger::STATISTICS)
+            LOG_TOPIC("e7497", WARN, Logger::FIXME)
                 << "Failed to begin transaction for getting number of "
                    "documents: "
                 << res.errorMessage();
