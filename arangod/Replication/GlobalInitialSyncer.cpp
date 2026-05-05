@@ -32,7 +32,6 @@
 #include "Replication/DatabaseInitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "VocBase/LogicalCollection.h"
@@ -282,9 +281,9 @@ Result GlobalInitialSyncer::updateServerInventory(
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
       auto& server = _state.applier._server;
-      auto& rocksdbEngine = server.getFeature<RocksDBEngine>();
+      auto& engine = server.getFeature<DatabaseFeature>().engine();
       Result r = methods::Databases::create(
-          server, rocksdbEngine, ExecContext::current(), dbName,
+          server, engine, ExecContext::current(), dbName,
           VPackSlice::emptyArraySlice(), VPackSlice::emptyObjectSlice());
       if (r.fail()) {
         LOG_TOPIC("cf124", WARN, Logger::REPLICATION)

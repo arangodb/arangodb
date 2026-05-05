@@ -352,11 +352,11 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     }
 
     auto& server = _state.applier._server;
-    auto& rocksdbEngine = server.getFeature<RocksDBEngine>();
+    auto& engine = server.getFeature<DatabaseFeature>().engine();
     VPackSlice users = VPackSlice::emptyArraySlice();
-    Result res = methods::Databases::create(server, rocksdbEngine,
-                                            ExecContext::current(), name, users,
-                                            VPackSlice::emptyObjectSlice());
+    Result res =
+        methods::Databases::create(server, engine, ExecContext::current(), name,
+                                   users, VPackSlice::emptyObjectSlice());
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {

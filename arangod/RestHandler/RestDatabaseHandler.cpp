@@ -29,7 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 
@@ -149,9 +149,9 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
-  auto& rocksdbEngine = server().getFeature<RocksDBEngine>();
-  Result res = methods::Databases::create(server(), rocksdbEngine, _context,
-                                          dbName, users, options);
+  auto& engine = server().getFeature<DatabaseFeature>().engine();
+  Result res = methods::Databases::create(server(), engine, _context, dbName,
+                                          users, options);
   if (res.ok()) {
     generateOk(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {
