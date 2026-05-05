@@ -64,6 +64,39 @@ struct TrainedData {
   }
 };
 
+/// @brief On-disk format version for vector index list entries.
+///
+enum class VectorIndexFormatVersion : std::uint8_t {
+  kV1 = 1,  // VPack array of {blob(encodedValue), storedValuesSlice}, old
+            // format, should not be used for new indexes
+  kV2 = 2,  // raw concat: [encodedValue codeSize bytes][storedValues VPack]
+};
+
+template<class Inspector>
+inline auto inspect(Inspector& f, VectorIndexFormatVersion& x) {
+  return f.enumeration(x).values(VectorIndexFormatVersion::kV1, "1",
+                                 VectorIndexFormatVersion::kV2, "2");
+}
+
+static constexpr VectorIndexFormatVersion kCurrentVectorIndexFormatVersion =
+    VectorIndexFormatVersion::kV2;
+
+/// @brief Vector index metadata stored in RocksDB. Contains the trained data
+/// blob and
+struct VectorIndexMetadata {
+  TrainedData trainedData;
+  // the default one is kv1 since vector indexes in initial version did not had
+  // formatVersion
+  VectorIndexFormatVersion formatVersion = VectorIndexFormatVersion::kV1;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, VectorIndexMetadata& x) {
+    return f.object(x).fields(f.field("codeData", x.trainedData.codeData),
+                              f.field("formatVersion", x.formatVersion)
+                                  .fallback(VectorIndexFormatVersion::kV1));
+  }
+};
+
 /// @brief Strategy for computing nLists from document count.
 enum class NListsStrategy : std::uint8_t {
   kAutoSqrt,
