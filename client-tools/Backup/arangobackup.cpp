@@ -71,7 +71,8 @@ int main(int argc, char* argv[]) {
     server.addFeature<CommunicationFeaturePhase>();
     server.addFeature<GreetingsFeaturePhase>(std::true_type{});
     server.addFeature<VersionFeature>();
-    server.addFeature<HttpEndpointProvider, ClientFeature>(false);
+    auto& client =
+        server.addFeature<HttpEndpointProvider, ClientFeature>(false);
     server.addFeature<ConfigFeature>(context.binaryName());
     server.addFeature<FileSystemFeature>();
     server.addFeature<LoggerFeature>(false);
@@ -84,7 +85,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
 #endif
     server.addFeature<SslFeature>();
-    server.addFeature<BackupFeature>(ret);
+    server.addFeature<BackupFeature>(client, ret);
 
     try {
       server.run(argc, argv);
