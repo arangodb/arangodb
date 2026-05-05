@@ -130,6 +130,9 @@ class Parser {
   /// @brief push an AstNode into the object element on top of the stack
   void pushObjectElement(AstNode*, AstNode*);
 
+  /// @brief push an object splice (spread) node on top of the stack
+  void pushObjectSplice(AstNode*);
+
   void pushPatternNode(AstNode*);
   void pushMatchExprNode(AstNode*);
 

@@ -1,5 +1,6 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-458: AQL Object Splicing: Small addition to the AQL Syntax, similar to      JavaScripts {object...} Syntax.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
 

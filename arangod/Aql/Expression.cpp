@@ -47,6 +47,7 @@
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Context.h"
@@ -62,9 +63,22 @@
 #include <velocypack/Slice.h>
 
 #include <limits>
+#include <vector>
 
 namespace arangodb::aql {
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
+namespace {
+bool astNodeObjectLiteralHasObjectSplice(AstNode const* node) noexcept {
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (node->getMemberUnchecked(i)->type == NODE_TYPE_OBJECT_SPLICE) {
+      return true;
+    }
+  }
+  return false;
+}
+}  // namespace
 
 /// @brief create the expression
 Expression::Expression(Ast* ast, AstNode* node)
@@ -722,6 +736,93 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
 
   if (n == 0) {
     return AqlValue(AqlValueHintEmptyObject());
+  }
+
+  if (astNodeObjectLiteralHasObjectSplice(node)) {
+    containers::FlatHashMap<std::string, size_t> keyToSlot;
+    std::vector<std::string> keyOrder;
+    std::vector<VPackBuffer<uint8_t>> valueBuffers;
+    keyOrder.reserve(n);
+    valueBuffers.reserve(n);
+    keyToSlot.reserve(static_cast<size_t>(n) * 2);
+
+    auto mergeKeySlice = [&](std::string const& k, VPackSlice valueSlice) {
+      auto it = keyToSlot.find(k);
+      if (it == keyToSlot.end()) {
+        size_t const slot = valueBuffers.size();
+        keyToSlot.emplace(k, slot);
+        keyOrder.push_back(k);
+        valueBuffers.emplace_back();
+        {
+          VPackBuilder tmp(valueBuffers[slot]);
+          tmp.add(valueSlice);
+        }
+      } else {
+        size_t const slot = it->second;
+        valueBuffers[slot].clear();
+        VPackBuilder tmp(valueBuffers[slot]);
+        tmp.add(valueSlice);
+      }
+    };
+
+    auto stringBuffer = ThreadLocalStringLeaser::lease();
+    arangodb::velocypack::StringSink adapter(stringBuffer.get());
+
+    for (size_t i = 0; i < n; ++i) {
+      AstNode const* member = node->getMemberUnchecked(i);
+      if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+        bool localMustDestroy = false;
+        AqlValue result = executeSimpleExpression(
+            ctx, member->getMemberUnchecked(0), localMustDestroy, false);
+        AqlValueGuard guard(result, localMustDestroy);
+        if (result.isObject()) {
+          AqlValueMaterializer materializer(&vopts);
+          VPackSlice obj = materializer.slice(result);
+          for (VPackObjectIterator oit(obj, /*sequential*/ true); oit.valid();
+               oit.next()) {
+            mergeKeySlice(oit.key().copyString(), oit.value());
+          }
+        }
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+        bool localMustDestroy;
+        ast::CalculatedObjectElementNode calObjNode(member);
+        AqlValue keyResult = executeSimpleExpression(ctx, calObjNode.getKey(),
+                                                     localMustDestroy, false);
+        AqlValueGuard keyGuard(keyResult, localMustDestroy);
+        AqlValueMaterializer keyMat(&vopts);
+        VPackSlice keySlice = keyMat.slice(keyResult);
+        stringBuffer->clear();
+        functions::stringify(&vopts, adapter, keySlice);
+        bool valueMustDestroy = false;
+        AqlValue valueResult = executeSimpleExpression(
+            ctx, calObjNode.getValue(), valueMustDestroy, false);
+        AqlValueGuard valueGuard(valueResult, valueMustDestroy);
+        AqlValueMaterializer valueMat(&vopts);
+        mergeKeySlice(*stringBuffer, valueMat.slice(valueResult));
+      } else {
+        TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+        ast::ObjectElementNode objElem(member);
+        bool localMustDestroy = false;
+        AqlValue result = executeSimpleExpression(ctx, objElem.getValue(),
+                                                  localMustDestroy, false);
+        AqlValueGuard guard(result, localMustDestroy);
+        AqlValueMaterializer materializer(&vopts);
+        mergeKeySlice(std::string(member->getStringView()),
+                      materializer.slice(result));
+      }
+    }
+
+    auto builder = ThreadLocalBuilderLeaser::lease();
+    builder->openObject();
+    for (std::string const& k : keyOrder) {
+      auto it = keyToSlot.find(k);
+      TRI_ASSERT(it != keyToSlot.end());
+      builder->add(VPackValue(k));
+      builder->add(VPackSlice(valueBuffers[it->second].data()));
+    }
+    builder->close();
+    mustDestroy = true;
+    return AqlValue(builder->slice(), builder->size());
   }
 
   // unordered set for tracking unique object keys

@@ -478,6 +478,9 @@ class Ast {
 
   AstNode* createNodeArraySplice(AstNode const* in);
 
+  /// @brief create an AST object splice node (object spread: expr...)
+  AstNode* createNodeObjectSplice(AstNode const* in);
+
   /// @brief injects first-stage bind parameter values into the AST
   /// (i.e. collection bind parameters and bound attribute names,
   /// e.g. @@foo and `doc.@attr`).

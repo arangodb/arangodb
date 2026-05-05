@@ -2081,6 +2081,12 @@ AstNode* Ast::createNodeArraySplice(AstNode const* in) {
   return node;
 }
 
+AstNode* Ast::createNodeObjectSplice(AstNode const* in) {
+  AstNode* node = createNode(NODE_TYPE_OBJECT_SPLICE);
+  node->addMember(in);
+  return node;
+}
+
 /// @brief injects first-stage bind parameter values into the AST
 /// (i.e. collection bind parameters and bound attribute names,
 /// e.g. @@foo and `doc.@attr`).

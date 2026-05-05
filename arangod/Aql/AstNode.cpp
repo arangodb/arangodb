@@ -85,7 +85,7 @@ constexpr frozen::unordered_map<int, std::string_view, 26> kOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 /// @brief type names for AST nodes
-frozen::unordered_map<int, std::string_view, 89> kTypeNames{
+frozen::unordered_map<int, std::string_view, 90> kTypeNames{
     {static_cast<int>(NODE_TYPE_ROOT), "root"},
     {static_cast<int>(NODE_TYPE_FOR), "for"},
     {static_cast<int>(NODE_TYPE_LET), "let"},
@@ -180,6 +180,7 @@ frozen::unordered_map<int, std::string_view, 89> kTypeNames{
      "pattern match expression"},
     {static_cast<int>(NODE_TYPE_MATCH), "match"},
     {static_cast<int>(NODE_TYPE_ARRAY_SPLICE), "array splice"},
+    {static_cast<int>(NODE_TYPE_OBJECT_SPLICE), "object splice"},
 };
 
 /// @brief names for AST node value types
@@ -666,6 +667,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_PATTERN_MATCH_EXPRESSION:
     case NODE_TYPE_MATCH:
     case NODE_TYPE_ARRAY_SPLICE:
+    case NODE_TYPE_OBJECT_SPLICE:
       break;
   }
 
@@ -798,10 +800,16 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
     for (size_t i = 0; i < n; ++i) {
       auto sub = getMemberUnchecked(i);
       if (sub != nullptr) {
-        hash = fasthash64(static_cast<void const*>(sub->getStringValue()),
-                          sub->getStringLength(), hash);
-        TRI_ASSERT(sub->numMembers() > 0);
-        hash = sub->getMemberUnchecked(0)->hashValue(hash);
+        if (sub->type == NODE_TYPE_OBJECT_SPLICE) {
+          hash = fasthash64(static_cast<void const*>("objsplice"), 10, hash);
+          TRI_ASSERT(sub->numMembers() > 0);
+          hash = sub->getMemberUnchecked(0)->hashValue(hash);
+        } else {
+          hash = fasthash64(static_cast<void const*>(sub->getStringValue()),
+                            sub->getStringLength(), hash);
+          TRI_ASSERT(sub->numMembers() > 0);
+          hash = sub->getMemberUnchecked(0)->hashValue(hash);
+        }
       }
     }
     return hash;
@@ -1006,6 +1014,9 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
         if (member != nullptr) {
+          if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+            return false;
+          }
           // Throws if we do not have member 0
           auto value = member->getMember(0);
           TRI_ASSERT(value != nullptr);
@@ -1665,6 +1676,16 @@ bool AstNode::isSimple() const {
     return true;
   }
 
+  if (type == NODE_TYPE_ARRAY_SPLICE || type == NODE_TYPE_OBJECT_SPLICE) {
+    TRI_ASSERT(numMembers() == 1);
+    if (getMemberUnchecked(0)->isSimple()) {
+      setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+      return true;
+    }
+    setFlag(DETERMINED_SIMPLE);
+    return false;
+  }
+
   setFlag(DETERMINED_SIMPLE);
   return false;
 }
@@ -1796,6 +1817,9 @@ bool AstNode::isConstant() const {
           setFlag(DETERMINED_CONSTANT);
           return false;
         }
+      } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+        setFlag(DETERMINED_CONSTANT);
+        return false;
       } else {
         // definitely not const!
         TRI_ASSERT(member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
@@ -1938,6 +1962,9 @@ bool AstNode::mustCheckUniqueness() const {
           mustCheck = true;
           break;
         }
+      } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+        mustCheck = true;
+        break;
       } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
         // dynamic key... we don't know the key yet, so there's no
         // way around check it at runtime later
@@ -2096,6 +2123,19 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     return;
   }
 
+  if (type == NODE_TYPE_ARRAY_SPLICE) {
+    TRI_ASSERT(numMembers() == 1);
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.append("...");
+    return;
+  }
+  if (type == NODE_TYPE_OBJECT_SPLICE) {
+    TRI_ASSERT(numMembers() == 1);
+    buffer.append("...");
+    getMember(0)->stringify(buffer, failIfLong);
+    return;
+  }
+
   arangodb::velocypack::StringSink sink(&buffer);
   arangodb::velocypack::Dumper dumper(&sink);
 
@@ -2149,6 +2189,10 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
                             member->getStringLength());
         buffer.push_back(':');
 
+        member->getMember(0)->stringify(buffer, failIfLong);
+      } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+        TRI_ASSERT(member->numMembers() == 1);
+        buffer.append("...");
         member->getMember(0)->stringify(buffer, failIfLong);
       } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
         TRI_ASSERT(member->numMembers() == 2);
