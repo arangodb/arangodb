@@ -4,6 +4,9 @@
 * COR-469: Removed `ensureVertexCentricIndex` as it was just a wrapper around
   `ensureIndex` with direction parameters.
 
+* COR-420: Removed `statistics` log topic. The remaining log messages were
+  migrated to the `general` log topic.
+
 * COR-442: Renamed the startup options of the `--ssl.*` group into `--tls.*`,
   but still accept the old naming pattern as an alias to the new one.
   Config files using `[ssl]` sections are remapped automatically as well.
