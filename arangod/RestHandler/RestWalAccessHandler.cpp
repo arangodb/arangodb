@@ -79,7 +79,8 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
 RestWalAccessHandler::RestWalAccessHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _databaseFeature(server.getFeature<DatabaseFeature>()) {}
 
 RequestLane RestWalAccessHandler::lane() const {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
@@ -280,10 +281,9 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   if (_request->requestType() == arangodb::rest::RequestType::DELETE_REQ) {
     // this is a notification that tailing has come to an end, so we
     // can unregister the client from the list of tracked clients
-    server().getFeature<DatabaseFeature>().enumerateDatabases(
-        [&](TRI_vocbase_t& vocbase) -> void {
-          vocbase.replicationClients().untrack(syncerId, clientId, clientInfo);
-        });
+    _databaseFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+      vocbase.replicationClients().untrack(syncerId, clientId, clientInfo);
+    });
     generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
     return;
   }
@@ -303,12 +303,11 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   if (_request->parsedValue("trackOnly", false)) {
     // only track this client as a future WAL tailer, so that we do not purge
     // the WAL files it will need for tailing soon
-    server().getFeature<DatabaseFeature>().enumerateDatabases(
-        [&](TRI_vocbase_t& vocbase) -> void {
-          vocbase.replicationClients().track(
-              syncerId, clientId, clientInfo, filter.tickStart,
-              replutils::BatchInfo::DefaultTimeoutForTailing);
-        });
+    _databaseFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+      vocbase.replicationClients().track(
+          syncerId, clientId, clientInfo, filter.tickStart,
+          replutils::BatchInfo::DefaultTimeoutForTailing);
+    });
     generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
     return;
   }
@@ -408,12 +407,11 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
 
-  server().getFeature<DatabaseFeature>().enumerateDatabases(
-      [&](TRI_vocbase_t& vocbase) -> void {
-        vocbase.replicationClients().track(
-            syncerId, clientId, clientInfo, filter.tickStart,
-            replutils::BatchInfo::DefaultTimeoutForTailing);
-      });
+  _databaseFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+    vocbase.replicationClients().track(
+        syncerId, clientId, clientInfo, filter.tickStart,
+        replutils::BatchInfo::DefaultTimeoutForTailing);
+  });
 }
 
 /// @brief deprecated. remove in future version

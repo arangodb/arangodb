@@ -150,7 +150,7 @@ var Type;
 (function (Type) {
     Type[Type["Num"] = 0] = "Num";
     Type[Type["Str"] = 1] = "Str";
-})(Type = exports.Type || (exports.Type = {}));
+})(Type || (exports.Type = Type = {}));
 function getErrorPath(dataProp, dataPropType, jsPropertySyntax) {
     // let path
     if (dataProp instanceof codegen_1.Name) {
