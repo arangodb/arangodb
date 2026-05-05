@@ -161,6 +161,12 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   StoredValues const& storedValues() const override;
 
+  /// @brief On-disk format version for this index's list entries. Internal
+  /// detail; never surfaced through toVelocyPack or the REST API.
+  vector::VectorIndexFormatVersion formatVersion() const noexcept {
+    return _formatVersion;
+  }
+
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override;
 
@@ -194,11 +200,14 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  vector::TrainedData loadTrainedData(velocypack::Slice info) const;
+  vector::VectorIndexMetadata loadVectorIndexMetadata(
+      velocypack::Slice info) const;
 
   vector::UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   vector::TrainedData _trainedData;
+  vector::VectorIndexFormatVersion _formatVersion{
+      vector::VectorIndexFormatVersion::kV1};
   StoredValues const _storedValues;
 
   std::size_t _trainingThreshold{0};

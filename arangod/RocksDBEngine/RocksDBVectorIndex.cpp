@@ -149,7 +149,9 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
 
-  _trainedData = loadTrainedData(info);
+  auto metadata = loadVectorIndexMetadata(info);
+  _trainedData = std::move(metadata.trainedData);
+  _formatVersion = metadata.formatVersion;
 
   if (!_trainedData.codeData.empty()) {
     _faissIndex =
@@ -173,7 +175,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 
 RocksDBVectorIndex::~RocksDBVectorIndex() = default;
 
-vector::TrainedData RocksDBVectorIndex::loadTrainedData(
+vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
     velocypack::Slice info) const {
   RocksDBKey key;
   key.constructVectorIndexTrainedData(objectId());
@@ -182,15 +184,19 @@ vector::TrainedData RocksDBVectorIndex::loadTrainedData(
   rocksdb::ReadOptions ro;
   auto status = _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw);
 
-  vector::TrainedData result;
+  vector::VectorIndexMetadata result;
   if (status.ok()) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
     velocypack::deserialize(slice, result);
   } else if (auto data = info.get("trainedData"); !data.isNone()) {
     // Backwards compatibility: load from definitions CF for pre-migration
-    // indexes.
-    velocypack::deserialize(data, result);
+    // indexes. Such records contain only TrainedData fields, so formatVersion
+    // stays at the default kV1.
+    velocypack::deserialize(data, result.trainedData);
+  } else {
+    // New index new format, does not make a diffrence if it does not ahve storedValues
+    result.formatVersion = vector::kCurrentVectorIndexFormatVersion;
   }
   return result;
 }
@@ -449,7 +455,9 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
               ->get();
       rocksdbEntryValue.storedValues = extractedAttributeValues->sharedSlice();
 
-      return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
+      return _formatVersion == vector::VectorIndexFormatVersion::kV2
+                 ? RocksDBValue::VectorIndexValueV2(rocksdbEntryValue)
+                 : RocksDBValue::VectorIndexValueV1(rocksdbEntryValue);
     } else {
       // Store raw encoded values directly for better performance and
       // backwards compatibility
