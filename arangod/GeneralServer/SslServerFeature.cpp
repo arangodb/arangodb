@@ -174,11 +174,7 @@ Mac=SHA1
       .setLongDescription(R"(Use this option to specify the default encryption
 protocol to be used. The default value is 9 (generic TLS), which allows the
 negotiation of the TLS version between the client and the server, dynamically
-choosing the highest mutually supported version of TLS.
-
-Note that SSLv2 is unsupported as of version 3.4, because of the inherent
-security vulnerabilities in this protocol. Selecting SSLv2 as protocol aborts
-the startup.)");
+choosing the highest mutually supported version of TLS.)");
 
   options
       ->addOption("--tls.options",
@@ -227,17 +223,6 @@ http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html))");
   options->addOldOption("--ssl.ecdh-curve", "--tls.ecdh-curve");
   options->addOldOption("--ssl.prefer-http1-in-alpn",
                         "--tls.prefer-http1-in-alpn");
-}
-
-void SslServerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  // check for SSLv2
-  if (_options.sslProtocol == SslProtocol::SSL_V2) {
-    LOG_TOPIC("b7890", FATAL, arangodb::Logger::SSL)
-        << "SSLv2 is not supported any longer because of security "
-           "vulnerabilities in this protocol";
-    FATAL_ERROR_EXIT();
-  }
 }
 
 void SslServerFeature::prepare() {
@@ -674,18 +659,6 @@ std::string SslServerFeature::stringifySslOptions(uint64_t opts) const {
 #ifdef SSL_OP_TLS_ROLLBACK_BUG
   if (opts & SSL_OP_TLS_ROLLBACK_BUG) {
     result.append(", SSL_OP_TLS_ROLLBACK_BUG");
-  }
-#endif
-
-#ifdef SSL_OP_NO_SSLv2
-  if (opts & SSL_OP_NO_SSLv2) {
-    result.append(", SSL_OP_NO_SSLv2");
-  }
-#endif
-
-#ifdef SSL_OP_NO_SSLv3
-  if (opts & SSL_OP_NO_SSLv3) {
-    result.append(", SSL_OP_NO_SSLv3");
   }
 #endif
 
