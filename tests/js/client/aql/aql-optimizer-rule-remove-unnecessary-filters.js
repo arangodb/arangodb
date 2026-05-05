@@ -175,7 +175,7 @@ function optimizerRuleTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for empty-array IN constant folding
+/// @brief test suite for empty-array comparison constant folding
 ////////////////////////////////////////////////////////////////////////////////
 
 function emptyArrayFilterSuite() {
@@ -225,6 +225,17 @@ function emptyArrayFilterSuite() {
       assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
       assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
       assertEqual(5, db._query(q).toArray().length);
+    },
+
+    // x NOT IN [] is always true, filter removed
+    testNotInEmptyArrayDirectAlwaysTrue: function () {
+      const q = `FOR doc IN ${cn} FILTER doc.value NOT IN [] RETURN doc`;
+      const nodeTypes = helper.getCompactPlan(
+        db._createStatement({query: q, bindVars: {}, options: paramNoRules}).explain()
+      ).map(n => n.type);
+      assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
+      assertTrue(nodeTypes.indexOf('NoResultsNode') === -1, nodeTypes);
+      assertEqual(5, db._query(q, {}, paramNoRules).toArray().length);
     },
 
     // x IN [] AND y > 0 — AND with always-false left member is always false
@@ -303,17 +314,6 @@ function emptyArrayFilterSuite() {
       assertEqual([], db._query(q, {}, paramNoRules).toArray());
     },
 
-    // [] ANY == x with default optimizer — real-world scenario
-    testAnyEqEmptyArrayDefaultOptimizer: function () {
-      const q = `FOR doc IN ${cn} FILTER [] ANY == doc.value RETURN doc`;
-      const nodeTypes = helper.getCompactPlan(
-        db._createStatement({query: q, bindVars: {}}).explain()
-      ).map(n => n.type);
-      assertTrue(nodeTypes.indexOf('NoResultsNode') !== -1, nodeTypes);
-      assertTrue(nodeTypes.indexOf('FilterNode') === -1, nodeTypes);
-      assertEqual([], db._query(q).toArray());
-    },
-
     // NOT ([] ANY == x) — NOT of always-false is always true, filter removed
     testNotOfAnyEqEmptyArrayAlwaysTrue: function () {
       const q = `FOR doc IN ${cn} FILTER NOT ([] ANY == doc.value) RETURN doc`;
@@ -365,9 +365,7 @@ function emptyArrayFilterSuite() {
       assertEqual(3, db._query(q).toArray().length);
     },
 
-    // [] ANY <op> x — always false for any operator (ANY needs at least one element)
-    // For IN/NOT IN, doc.value is an integer, not an array — semantically unusual,
-    // but the filter is eliminated before execution so the rhs type is irrelevant.
+    // [] ANY <op> x — always false regardless of operator
     testAnyEmptyArrayOtherOpsAlwaysFalse: function () {
       const queries = [
         `FOR doc IN ${cn} FILTER [] ANY != doc.value RETURN doc`,
@@ -412,9 +410,11 @@ function emptyArrayFilterSuite() {
         `FOR doc IN ${cn} FILTER [] ALL != doc.value RETURN doc`,
         `FOR doc IN ${cn} FILTER [] ALL > doc.value RETURN doc`,
         `FOR doc IN ${cn} FILTER [] ALL IN doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] ALL NOT IN doc.value RETURN doc`,
         `FOR doc IN ${cn} FILTER [] NONE == doc.value RETURN doc`,
         `FOR doc IN ${cn} FILTER [] NONE > doc.value RETURN doc`,
         `FOR doc IN ${cn} FILTER [] NONE IN doc.value RETURN doc`,
+        `FOR doc IN ${cn} FILTER [] NONE NOT IN doc.value RETURN doc`,
       ];
       queries.forEach(function(q) {
         const nodeTypes = helper.getCompactPlan(

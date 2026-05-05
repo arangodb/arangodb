@@ -67,8 +67,8 @@ void removeUnnecessaryFiltersRule(Optimizer* opt,
       modified = true;
     } else if (root->isFalse() &&
                rule.level == OptimizerRule::removeUnnecessaryFiltersRule2) {
-      // direct false is caught at plan construction; variable refs (LET y = ...
-      // FILTER y) reach here
+      // direct false is caught at plan construction; deterministic variable
+      // refs (e.g. LET y = ([] ANY == x) FILTER y) reach here
       auto noRes = plan->createNode<NoResultsNode>(plan.get(), plan->nextId());
       plan->replaceNode(n, noRes);
       modified = true;
