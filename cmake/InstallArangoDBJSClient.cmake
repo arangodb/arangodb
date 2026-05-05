@@ -45,5 +45,5 @@ install(
   REGEX "^.*/node-netstat"                                 EXCLUDE
   REGEX "^.*/parse-prometheus-text-format"                 EXCLUDE
   REGEX "^.*/sinon"                                        EXCLUDE
-  REGEX "^node_modules/type-detect(/|$)"                   EXCLUDE
+  REGEX "^/type-detect"                                    EXCLUDE
 )
