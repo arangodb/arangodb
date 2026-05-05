@@ -29,7 +29,6 @@ var ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
 var arangodb = require('@arangodb');
 
 var ArangoError = arangodb.ArangoError;
-var sprintf = arangodb.sprintf;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief document collection

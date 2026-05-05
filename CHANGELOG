@@ -1,8 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* COR-469: Removed ensureVertexCentricIndex as it was just a wrapper around
-  ensureIndex with direction parameters
+* COR-469: Removed `ensureVertexCentricIndex` as it was just a wrapper around
+  `ensureIndex` with direction parameters.
 
 * COR-442: Renamed the startup options of the `--ssl.*` group into `--tls.*`,
   but still accept the old naming pattern as an alias to the new one.
