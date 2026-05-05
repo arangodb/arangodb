@@ -195,7 +195,8 @@ vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
     // stays at the default kV1.
     velocypack::deserialize(data, result.trainedData);
   } else {
-    // New index new format, does not make a diffrence if it does not ahve storedValues
+    // New index new format, does not make a diffrence if it does not ahve
+    // storedValues
     result.formatVersion = vector::kCurrentVectorIndexFormatVersion;
   }
   return result;
