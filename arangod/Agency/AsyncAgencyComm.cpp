@@ -125,14 +125,14 @@ std::string extractEndpointFromUrl(std::string_view location) {
   return Endpoint::unifiedForm(specification.substr(0, delim));
 }
 
-void redirectOrError(AsyncAgencyCommManager& man, std::string const& endpoint,
+void redirectOrError(AsyncAgencyCommManager& man, Agent const& agent,
                      std::string const& location) {
   std::string newEndpoint = extractEndpointFromUrl(location);
 
   if (newEndpoint.empty()) {
-    man.reportError(endpoint);
+    man.reportError(agent);
   } else {
-    man.reportRedirect(endpoint, newEndpoint);
+    man.reportRedirect(agent, newEndpoint);
   }
 }
 
@@ -198,7 +198,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
       }
     }
 
-    std::string endpoint = man.getCurrentEndpoint();
+    Agent agent = man.getCurrentAgent();
     network::RequestOptions opts;
     opts.timeout = meta.timeout;
     opts.skipScheduler = meta.skipScheduler;
@@ -208,11 +208,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
     // waste too much CPU resources there.
     opts.allowCompression = false;
 
-    auto future = network::sendRequest(man.pool(), endpoint, meta.method,
+    auto future = network::sendRequest(man.pool(), agent.endpoint, meta.method,
                                        "/_api/agency/inquire", std::move(query),
                                        opts, meta.headers);
     return std::move(future).thenValue([meta = std::move(meta),
-                                        endpoint = std::move(endpoint), &man,
+                                        agent = std::move(agent), &man,
                                         body = std::move(body)](
                                            network::Response&& result) mutable {
       switch (result.error) {
@@ -226,7 +226,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
             // get the Location header
             std::string const& location = result.response().header.metaByKey(
                 arangodb::StaticStrings::Location);
-            redirectOrError(man, endpoint, location);
+            redirectOrError(man, agent, location);
             return ::agencyAsyncInquiry(man, std::move(meta), std::move(body));
           } else if (result.statusCode() != fuerte::StatusServiceUnavailable) {
             // When hitting 503, i.e. no leader,  in multi-host agency, we need
@@ -251,7 +251,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
         case Error::ProtocolError:
         case Error::CloseRequested:
           // retry the request at different endpoint
-          man.reportError(endpoint);
+          man.reportError(agent);
 
           [[fallthrough]];
           /* fallthrough */
@@ -299,7 +299,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
       .thenValue([meta = std::move(meta), &man,
                   body = std::move(body)](auto) mutable {
         // acquire the current endpoint
-        std::string endpoint = man.getCurrentEndpoint();
+        Agent agent = man.getCurrentAgent();
         network::RequestOptions opts;
         opts.timeout = meta.timeout;
         opts.skipScheduler = meta.skipScheduler;
@@ -320,10 +320,10 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 
         // and fire off the request
         auto future =
-            network::sendRequest(man.pool(), endpoint, meta.method, meta.url,
-                                 std::move(body), opts, meta.headers);
+            network::sendRequest(man.pool(), agent.endpoint, meta.method,
+                                 meta.url, std::move(body), opts, meta.headers);
         return std::move(future)
-            .thenValue([meta = std::move(meta), endpoint = std::move(endpoint),
+            .thenValue([meta = std::move(meta), agent = std::move(agent),
                         &man](network::Response&& result) mutable {
               LOG_TOPIC("aac83", TRACE, Logger::AGENCYCOMM)
                   << "agencyAsyncSend [" << meta.requestId
@@ -357,7 +357,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
                     std::string const& location =
                         result.response().header.metaByKey(
                             arangodb::StaticStrings::Location);
-                    redirectOrError(man, endpoint, location);
+                    redirectOrError(man, agent, location);
 
                     // send again
                     return ::agencyAsyncSend(
@@ -392,7 +392,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
                   TRI_ASSERT(result.hasRequest());
 
                   // inquire the request
-                  man.reportError(endpoint);
+                  man.reportError(agent);
                   // in case of a write transaction we have to do inquiry
                   if (meta.isInquiryOnNoResponse()) {
                     return ::agencyAsyncInquiry(
@@ -412,7 +412,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
                       << "agencyAsyncSend [" << meta.requestId
                       << "] retry request soon";
                   // retry to send the request
-                  man.reportError(endpoint);
+                  man.reportError(agent);
                 }
                   [[fallthrough]];
 
@@ -540,55 +540,66 @@ AsyncAgencyComm::getAgencies() {
       });
 }
 
-void AsyncAgencyCommManager::addEndpoint(std::string const& endpoint) {
+void AsyncAgencyCommManager::addAgent(ServerID const& serverId,
+                                      std::string const& endpoint) {
   std::unique_lock<std::mutex> guard(_lock);
-  _endpoints.push_back(endpoint);
+  _agents.push_back(Agent{serverId, endpoint});
 }
 
-void AsyncAgencyCommManager::updateEndpoints(
-    std::vector<std::string> const& endpoints) {
+void AsyncAgencyCommManager::updateAgents(std::vector<Agent> const& agents) {
   std::unique_lock<std::mutex> guard(_lock);
-  _endpoints.assign(endpoints.begin(), endpoints.end());
+  _agents.assign(agents.begin(), agents.end());
 }
 
-std::string AsyncAgencyCommManager::getCurrentEndpoint() {
+Agent AsyncAgencyCommManager::getCurrentAgent() {
   std::unique_lock<std::mutex> guard(_lock);
-  TRI_ASSERT(!_endpoints.empty());
-  return _endpoints.front();
+  TRI_ASSERT(!_agents.empty());
+  return _agents.front();
 }
 
-void AsyncAgencyCommManager::reportError(std::string const& endpoint) {
+void AsyncAgencyCommManager::reportError(Agent const& agent) {
   std::unique_lock<std::mutex> guard(_lock);
-  TRI_ASSERT(!_endpoints.empty());
+  TRI_ASSERT(!_agents.empty());
   LOG_TOPIC("aac42", TRACE, Logger::AGENCYCOMM)
-      << "reportError(" << endpoint << "), endpoints = " << _endpoints;
-  if (endpoint == _endpoints.front()) {
-    _endpoints.pop_front();
-    _endpoints.push_back(endpoint);
+      << "reportError(" << inspection::json(agent)
+      << "), agents = " << inspection::json(_agents);
+  if (agent == _agents.front()) {
+    auto front = std::move(_agents.front());
+    _agents.pop_front();
+    _agents.push_back(std::move(front));
     LOG_TOPIC("aac43", DEBUG, Logger::AGENCYCOMM)
-        << "Error using endpoint " << endpoint << ", switching to "
-        << _endpoints.front();
+        << "Error using agent " << inspection::json(agent) << ", switching to "
+        << inspection::json(_agents.front());
   }
 }
 
-void AsyncAgencyCommManager::reportRedirect(std::string const& endpoint,
+void AsyncAgencyCommManager::reportRedirect(Agent const& agent,
                                             std::string const& redirectTo) {
   std::unique_lock<std::mutex> guard(_lock);
-  TRI_ASSERT(!_endpoints.empty());
+  TRI_ASSERT(!_agents.empty());
 
   LOG_TOPIC("aac45", TRACE, Logger::AGENCYCOMM)
-      << "reportRedirect(" << endpoint << ", " << redirectTo
-      << "), endpoints = " << _endpoints;
-  if (endpoint == _endpoints.front()) {
+      << "reportRedirect(" << agent.endpoint << ", " << redirectTo
+      << "), agents = " << inspection::json(_agents);
+  if (agent == _agents.front()) {
     LOG_TOPIC("aac46", DEBUG, Logger::AGENCYCOMM)
-        << "Redirect using endpoint " << endpoint << ", switching to "
-        << redirectTo;
-    _endpoints.pop_front();
-    _endpoints.erase(
-        std::remove(_endpoints.begin(), _endpoints.end(), redirectTo),
-        _endpoints.end());
-    _endpoints.push_back(endpoint);
-    _endpoints.push_front(redirectTo);
+        << "Redirect using agent " << inspection::json(agent)
+        << ", switching to " << redirectTo;
+    auto oldFront = std::move(_agents.front());
+    _agents.pop_front();
+    _agents.push_back(std::move(oldFront));
+
+    // If redirectTo is already in the deque, move it to the front
+    auto it = std::find_if(_agents.begin(), _agents.end(), [&](Agent const& a) {
+      return a.endpoint == redirectTo;
+    });
+    if (it == _agents.end()) {
+      _agents.push_front(Agent{agent.serverId, redirectTo});
+    } else {
+      auto redirectAgent = std::move(*it);
+      _agents.erase(it);
+      _agents.push_front(redirectAgent);
+    }
   }
 }
 
@@ -744,11 +755,6 @@ AsyncAgencyCommManager& AsyncAgencyCommManager::getInstance() {
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_DISABLED,
                                  "Agency Comm Manager not initialized");
-}
-
-std::string AsyncAgencyCommManager::endpointsString() const {
-  std::unique_lock<std::mutex> guard(_lock);
-  return basics::StringUtils::join(_endpoints);
 }
 
 }  // namespace arangodb

@@ -696,7 +696,9 @@ void ClusterFeature::prepare() {
       FATAL_ERROR_EXIT();
     }
 
-    AsyncAgencyCommManager::INSTANCE->addEndpoint(unified);
+    // server id is not yet known at startup time; it will be filled in by
+    // HeartbeatThread::updateAgentPool once the agency reports its pool.
+    AsyncAgencyCommManager::INSTANCE->addAgent(/*serverId*/ {}, unified);
   }
 
   bool ok = AgencyComm(server()).ensureStructureInitialized();
@@ -705,8 +707,8 @@ void ClusterFeature::prepare() {
 
   if (!ok) {
     LOG_TOPIC("54560", FATAL, arangodb::Logger::CLUSTER)
-        << "Could not connect to any agency endpoints ("
-        << AsyncAgencyCommManager::INSTANCE->endpointsString() << ")";
+        << "Could not connect to any agents ("
+        << inspection::json(AsyncAgencyCommManager::INSTANCE->agents()) << ")";
     FATAL_ERROR_EXIT();
   }
 
@@ -718,15 +720,14 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  auto endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
-
   auto role = ServerState::instance()->getRole();
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
     LOG_TOPIC("613f4", FATAL, arangodb::Logger::CLUSTER)
         << "unable to determine unambiguous role for server '"
         << ServerState::instance()->getId()
-        << "'. No role configured in agency (" << endpoints << ")";
+        << "'. No role configured in agency ("
+        << inspection::json(AsyncAgencyCommManager::INSTANCE->agents()) << ")";
     FATAL_ERROR_EXIT();
   }
 }
@@ -828,7 +829,7 @@ void ClusterFeature::start() {
   auto const version = comm.version();
 
   std::string const endpoints =
-      AsyncAgencyCommManager::INSTANCE->getCurrentEndpoint();
+      AsyncAgencyCommManager::INSTANCE->getCurrentAgent().endpoint;
 
   std::string myId = ServerState::instance()->getId();
 

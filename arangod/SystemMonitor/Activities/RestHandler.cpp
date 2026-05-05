@@ -21,7 +21,6 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "RestHandler.h"
-#include <openssl/x509v3.h>
 #include <ranges>
 
 #include "Agency/AsyncAgencyComm.h"

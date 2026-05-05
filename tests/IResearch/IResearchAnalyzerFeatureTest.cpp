@@ -2571,8 +2571,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   arangodb::AgencyCommHelper::initialize("arango");
   arangodb::AsyncAgencyCommManager::initialize(server.server());
   arangodb::AsyncAgencyCommManager::INSTANCE->pool(&pool);
-  arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint(
-      "tcp://localhost:4000/");
+  arangodb::AsyncAgencyCommManager::INSTANCE->addAgent(
+      /*serverId*/ {}, "tcp://localhost:4000/");
   arangodb::AgencyComm(server.server()).ensureStructureInitialized();
 
   ASSERT_TRUE(server.server().hasFeature<arangodb::DatabaseFeature>());

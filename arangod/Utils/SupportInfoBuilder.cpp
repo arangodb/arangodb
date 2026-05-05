@@ -388,7 +388,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
       auto manager = AsyncAgencyCommManager::INSTANCE.get();
       if (manager != nullptr) {
-        agents = manager->endpoints().size();
+        agents = manager->agents().size();
       }
 
       result.add("agents", VPackValue(agents));
