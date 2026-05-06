@@ -265,7 +265,6 @@ struct TRI_vocbase_t {
 
   TRI_voc_tick_t id() const { return _info.getId(); }
   decltype(auto) name() const { return _info.getName(); }
-  std::string path() const;
   std::uint32_t replicationFactor() const;
   std::uint32_t writeConcern() const;
   arangodb::replication::Version replicationVersion() const;
