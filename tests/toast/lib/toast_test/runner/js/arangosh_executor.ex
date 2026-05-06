@@ -141,7 +141,7 @@ defmodule ToastTest.Runner.JS.ArangoshExecutor do
 
     exec_opts = [
       :stdout,
-      :stderr,
+      {:stderr, :stdout},
       :monitor,
       :pty,
       {:cd, to_charlist(cwd)},
