@@ -865,17 +865,17 @@ bool isOffsetInfo(aql::Function const& func) noexcept {
 }
 
 IResearchFeature::IResearchFeature(
-    application_features::ApplicationServer& server)
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
-      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_num_out_of_sync_links{})),
+      _outOfSyncLinks(metrics.add(arangodb_search_num_out_of_sync_links{})),
 #ifdef USE_ENTERPRISE
-      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_columns_cache_size{})),
+      _columnsCacheMemoryUsed(
+          metrics.add(arangodb_search_columns_cache_size{})),
 #endif
-      _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_execution_threads_demand{})) {
+      _searchExecutionPool(
+          metrics.add(arangodb_search_execution_threads_demand{})) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();

@@ -59,19 +59,17 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       arangodb::RandomGenerator::RandomType::MERSENNE);
 
   // setup required application features
-  features.emplace_back(
-      server.addFeature<arangodb::metrics::MetricsFeature>(
-          LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-          LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-          LazyApplicationFeatureReference<EngineSelectorFeature>(server),
-          LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
-              nullptr),
-          LazyApplicationFeatureReference<ClusterFeature>(nullptr)),
-      false);
+  auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
+      LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+      LazyApplicationFeatureReference<EngineSelectorFeature>(server),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
+  features.emplace_back(metrics, false);
   features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                         false);
   features.emplace_back(
-      server.addFeature<arangodb::transaction::ManagerFeature>(), false);
+      server.addFeature<arangodb::transaction::ManagerFeature>(metrics), false);
   features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
   features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
                         false);
@@ -91,8 +89,8 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
   features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
                         true);  // required for IResearchAnalyzerFeature
-  features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
-                        false);
+  features.emplace_back(
+      server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
   features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
                         true);
 

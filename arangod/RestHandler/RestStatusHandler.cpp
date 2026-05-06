@@ -63,7 +63,8 @@ using namespace arangodb::rest;
 RestStatusHandler::RestStatusHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response),
+      _engineSelector(server.getFeature<EngineSelectorFeature>()) {}
 
 RestStatus RestStatusHandler::execute() {
   ServerSecurityFeature& security =
@@ -146,8 +147,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
     result.add("progress", VPackValue(VPackValueType::Object));
     result.add("phase", VPackValue(progressPhase));
     result.add("feature", VPackValue(progressFeature));
-    StorageEngine& engine =
-        server().getFeature<EngineSelectorFeature>().engine();
+    StorageEngine& engine = _engineSelector.engine();
     result.add("recoveryTick", VPackValue(engine.recoveryTick()));
     result.close();  // progress
 
@@ -212,8 +212,8 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
           result.add("agencyComm", VPackValue(VPackValueType::Object));
           result.add("endpoints", VPackValue(VPackValueType::Array));
 
-          for (auto const& ep : manager->endpoints()) {
-            result.add(VPackValue(ep));
+          for (auto const& a : manager->agents()) {
+            result.add(VPackValue(a.endpoint));
           }
 
           result.close();
@@ -243,7 +243,7 @@ RestStatus RestStatusHandler::executeOverview() {
   result.add("license", VPackValue("community"));
 #endif
 
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _engineSelector.engine();
   result.add("engine", VPackValue(engine.typeName()));
 
   StringBuffer buffer;

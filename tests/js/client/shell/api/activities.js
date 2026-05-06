@@ -25,8 +25,8 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const { assertTrue } = jsunity.jsUnity.assertions;
-
+const { assertTrue, assertFalse, assertEqual } = jsunity.jsUnity.assertions;
+const arango = require("@arangodb").arango;
 const internal = require('internal');
 const db = require('internal').db;
 const activitiesModule = require('@arangodb/activities');
@@ -36,12 +36,13 @@ const IM = global.instanceManager;
 
 const c = "my_collection";
 
+function activityRestHandlerFilter() {
+  return (a) => {
+    return a.type === "RestHandler" && a.data.handler === "ActivityRegistryRestHandler";
+  };
+}
+
 function activityRegistrySuite() {
-  function activityRestHandlerFilter() {
-    return (a) => {
-      return a.type === "RestHandler" && a.data.handler === "ActivityRegistryRestHandler";
-    };
-  }
   function dumpRestHandlerFilter() {
     return (a) => {
       return a.type === "RestHandler" && a.data.handler === "RestDumpHandler";
@@ -80,6 +81,20 @@ function activityRegistrySuite() {
       const activities = activitiesModule.get_snapshot_bare(); // is one REST request
       assertArrayLengthLargerThan(activities, 0);
       assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter()), 0);
+    },
+
+    testGetsActivitiesDirectlyFromASpecificServer: function () {
+      if (internal.isCluster()){
+        Object.entries(arango.GET("/_admin/cluster/health").Health)
+          // we cannot directly access agents
+          .filter(([serverId, properties]) => properties.Role !== "Agent")
+          .map(([serverId, properties]) => serverId)
+          .forEach((serverId) => {
+            const activities = activitiesModule.get_snapshot_bare(serverId);
+            assertArrayLengthLargerThan(activities, 0);
+            assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter()), 0);
+          });
+      }
     },
 
     testDumpContextIsAnActivity: function () {
@@ -135,9 +150,94 @@ function activityRegistrySuite() {
 
       // cleanup
       arangosh.checkRequestResult(dump.delete(dumpId, server));
-    }
+    },
+
   };
 }
 
+function activitiesOfAllServersSuite() {
+  return {
+    testWorksOnlyOnCoordinatorInCluster: function() {
+      let error;
+      try {
+        activitiesModule.get_snapshots_bare_all_servers();
+      }
+      catch (e) {
+        error=e;
+      }
+      if (!internal.isCluster()) {
+        assertTrue(error);
+        assertEqual(error.code, 403);
+      }
+    },
+
+    testGetsActivitiesForAllServers: function () {
+      if (internal.isCluster()) {
+        const servers = Object.entries(arango.GET("/_admin/cluster/health").Health)
+          .map(([serverId, properties]) => serverId)
+          .sort();
+        assertTrue(servers.length > 0);
+  
+        const servers_with_activities = Object.keys(activitiesModule.get_snapshots_bare_all_servers()).sort();
+        assertEqual(servers, servers_with_activities);
+      }
+    },
+
+    testAllServersIncludeAtLeastOneActivityRestHandlerActivity: function () {
+      if (internal.isCluster()) {
+        const activities_per_server = activitiesModule.get_snapshots_bare_all_servers();
+        Object.entries(activities_per_server)
+          .map(([serverId, activities]) => [serverId, activities.filter(activityRestHandlerFilter())])
+          .forEach(([serverId, filteredActivities]) => 
+            assertTrue(filteredActivities.length > 0,
+                       `Failed for server ${serverId}: ${filteredActivities.length} > 0, ${JSON.stringify(filteredActivities)} `));
+      }
+    },
+
+    testOkIfOneServerIsNotReached: function() {
+      if (internal.isCluster()){
+        const someDBServer = Object.entries(arango.GET("/_admin/cluster/health").Health)
+          .filter(([serverId, properties]) => properties.Role === "DBServer")
+          .map(([serverId, properties]) => serverId)[0];
+
+        IM.stopServer(someDBServer);
+  
+        let error;
+        try {
+          const activities_per_server = activitiesModule.get_snapshots_bare_all_servers();
+          assertTrue(activities_per_server[someDBServer]);
+          assertTrue(// if agency knows about failed server
+                     activities_per_server[someDBServer].number === internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code ||
+                     // if agency does not yet know about failed server
+                     activities_per_server[someDBServer].number === internal.errors.ERROR_CLUSTER_TIMEOUT.code,
+                     activities_per_server[someDBServer].number);
+        } catch(e) {
+          error = e;
+        } finally {
+          IM.waitForServerFailed(someDBServer);
+          IM.continueServerWaitOk(someDBServer);
+        }
+        assertFalse(error, error);
+      }
+    },
+
+    testDoesOnlyWorkForExperimentalApi: function() {
+      if (internal.isCluster()) {
+        let error;
+        try {
+          arangosh.checkRequestResult(db._connection.GET(`/_admin/activities/all`));
+        } catch(e) {
+          error = e;
+        }
+        assertTrue(error);
+        assertEqual(error.code, 404);
+      }
+    },
+
+  };
+
+}
+
 jsunity.run(activityRegistrySuite);
+jsunity.run(activitiesOfAllServersSuite);
 return jsunity.done();

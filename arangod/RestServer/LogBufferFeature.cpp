@@ -188,13 +188,13 @@ class LogAppenderMetricsCounter final : public LogAppender {
 };
 
 LogBufferFeature::LogBufferFeature(
-    application_features::ApplicationServer& server)
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<LoggerFeature>();
 
-  _metricsCounter = std::make_shared<LogAppenderMetricsCounter>(
-      server.getFeature<metrics::MetricsFeature>());
+  _metricsCounter = std::make_shared<LogAppenderMetricsCounter>(metrics);
 
   Logger::addGlobalAppender(Logger::defaultLogGroup(), _metricsCounter);
 

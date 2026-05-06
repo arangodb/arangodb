@@ -153,16 +153,17 @@ function NewAqlReplaceAnyWithINTestSuite() {
             var query = "FOR x IN " + replace.name() +
                 " FILTER [] ANY == x.name RETURN x.value";
 
-            var plans = verifyExecutionPlan(query, {});
-            verifyPlansDifferent(plans.withRule, plans.withoutRule, query);
+            // [] ANY == x is folded to false at AST optimization time, before any
+            // optimizer rule runs — the rule has nothing to rewrite and does not fire.
+            ruleIsNotUsed(query, {});
 
-            var expected = [];
-            var actual = getQueryResults(query);
-            assertEqual(expected, actual);
+            var planNoRules = getPlan(query, {}, {optimizer: {rules: ["-all"]}});
+            assertTrue(findExecutionNodes(planNoRules, "NoResultsNode").length > 0,
+                "[] ANY == should produce NoResultsNode via AST folding: " + query);
 
-            var withRule = executeWithRule(query, {});
-            var withoutRule = executeWithoutRule(query, {});
-            assertEqual(withRule, withoutRule, "Results with and without rule should match");
+            assertEqual([], getQueryResults(query));
+            assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}),
+                "Results with and without rule should match");
         },
 
         testFiresVariableArray: function () {
