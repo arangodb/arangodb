@@ -1428,6 +1428,10 @@ function JwtAllowedPathsSuite() {
 
     // A6: "always-allowed" paths (/_admin/aardvark/*) are still blocked by
     //     the allowed_paths gate, which runs first in canAccessPath.
+    // Comment (Tobias): I think it's debatable whether this is actually
+    //   desirable behavior. For now, I've added this test to cover the
+    //   existing behavior, so we don't change it accidentally - that
+    //   doesn't mean we mustn't change it.
     testServerIdAllowedPathsOverridesAlwaysAllowed: function () {
       const jwt = makeServerIdJwt([testApiPath]);
       const res = getWithJwt('/_admin/aardvark/index.html', jwt);
