@@ -4,6 +4,9 @@
 * COR-469: Removed `ensureVertexCentricIndex` as it was just a wrapper around
   `ensureIndex` with direction parameters.
 
+* COR-470: Removed the `path` attribute from the `_api/database/current`
+  response.
+
 * Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
   dependencies.
 
