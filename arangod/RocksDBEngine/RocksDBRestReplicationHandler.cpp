@@ -68,9 +68,7 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
-      _manager(server.getFeature<EngineSelectorFeature>()
-                   .engine<RocksDBEngine>()
-                   .replicationManager()),
+      _manager(_vocbase.engine<RocksDBEngine>().replicationManager()),
       _quickKeysNumDocsLimit(
           server.getFeature<ReplicationFeature>().quickKeysLimit()) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -106,8 +104,7 @@ RocksDBRestReplicationHandler::handleCommandBatch() {
     // create transaction+snapshot, ttl will be default if `ttl == 0``
     auto ttl = VelocyPackHelper::getNumericValue<double>(
         body, "ttl", replutils::BatchInfo::DefaultTimeout);
-    auto& engine =
-        server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    auto& engine = _vocbase.engine<RocksDBEngine>();
     auto ctx =
         _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
 
