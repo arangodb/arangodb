@@ -631,7 +631,8 @@ void MockClusterServer::startFeatures() {
   AgencyCommHelper::initialize("arango");
   AsyncAgencyCommManager::initialize(server());
   AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
-  AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
+  AsyncAgencyCommManager::INSTANCE->updateAgents(
+      {{ServerID{}, "tcp://localhost:4000/"}});
   AgencyComm(server()).ensureStructureInitialized();
   std::string st =
       "{\"" + ServerState::instance()->getId() + "\":{\"rebootId\":1}}";
