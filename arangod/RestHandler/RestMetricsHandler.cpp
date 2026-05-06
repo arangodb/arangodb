@@ -86,7 +86,9 @@ bool isOutdated(
 RestMetricsHandler::RestMetricsHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response),
+      _clusterMetricsFeature(
+          server.getFeature<metrics::ClusterMetricsFeature>()) {}
 
 auto RestMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto& security = server().getFeature<ServerSecurityFeature>();
@@ -195,8 +197,7 @@ auto RestMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (type == metrics::kCDJson) {
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::VPACK);
-    auto& metrics = server().getFeature<metrics::ClusterMetricsFeature>();
-    auto data = metrics.getData();
+    auto data = _clusterMetricsFeature.getData();
     if (isOutdated(*_request, data)) {
       _response->addPayload(VPackSlice{data->packed->data()});
     } else {
@@ -225,9 +226,9 @@ auto RestMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   }
 
   auto const leader = [&]() -> std::optional<std::string> {
-    auto& cm = server().getFeature<metrics::ClusterMetricsFeature>();
-    if (cm.isEnabled() && mode != metrics::CollectMode::Local) {
-      return cm.update(mode);
+    if (_clusterMetricsFeature.isEnabled() &&
+        mode != metrics::CollectMode::Local) {
+      return _clusterMetricsFeature.update(mode);
     }
     return std::nullopt;
   }();
@@ -278,9 +279,8 @@ auto RestMetricsHandler::makeRedirection(std::string const& serverId, bool last)
     co_return;
   }
   if (last) {
-    auto& cm = server().getFeature<metrics::ClusterMetricsFeature>();
-    if (cm.isEnabled()) {
-      cm.update(metrics::CollectMode::TriggerGlobal);
+    if (_clusterMetricsFeature.isEnabled()) {
+      _clusterMetricsFeature.update(metrics::CollectMode::TriggerGlobal);
     }
   }
   // TODO(MBkkt) move response

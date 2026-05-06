@@ -1,6 +1,21 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Update node modules:
+ - lodash to 4.18.0
+ - minimatch to 3.1.4
+ - js-yaml to 3.14.2
+ - qs to 6.14.2
+ - brace-expansion to 1.1.13
+ - ajv to 8.18.0
+ - @xmldom/xmldom@0.8.13
+
+* COR-466: Added constant folding empty array comparisons in `FILTER` nodes,
+  allowing filter optimizations:
+  `x IN []`, `[] ANY <op> x` are false.
+  `x NOT IN []`, `[] ALL <op> x` and `[] NONE <op> x` are true, where
+  `<op>` is `==`, `!=`, `<`, `<=`, `>`, `>=`, `IN` or `NOT IN`.
+
 * Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
   dependencies.
 
@@ -10,29 +25,29 @@
   The MMF engine has been removed in 3.7 already, so there is only the rocksdb
   engine anymore, making this option pointless.
 
-* COR-452: Vector search filters may now reference variables from outside the FOR
-  loop (subquery results, LET bindings, bind parameters).
+* COR-452: Vector search filters may now reference variables from outside the
+  FOR loop (subquery results, LET bindings, bind parameters).
 
-* COR-444: Vector index training now draws a uniformly random training set
-  via reservoir sampling (Algorithm L) over a full iteration of the
-  collection, instead of keeping the first `nLists * 256` documents.
+* COR-444: Vector index training now draws a uniformly random training set via
+  reservoir sampling (Algorithm L) over a full iteration of the collection,
+  instead of keeping the first `nLists * 256` documents.
 
 * COR-411: Introduced optimizer rule `replace-any-eq-with-in` that maps filter
-  nodes of the form FILTER [exp1] ANY == exp2 into FILTER exp2 IN [exp1] to
-  make them visible to downstream optimizer rules, including use-indexes,
+  nodes of the form FILTER [exp1] ANY == exp2 into FILTER exp2 IN [exp1] to make
+  them visible to downstream optimizer rules, including use-indexes,
   optimize-traversals, and sort-in-values.
 
 * COR-435: Fix a TOCTOU race in the Agency leader's sendAppendEntriesRPC that
   could crash a follower agent. The leader read log entries and the compaction
   snapshot in two non-atomic operations; compaction could advance the snapshot
-  between those reads, causing an inconsistent payload to be sent. The fix
-  loads the snapshot and the matching log entries under a single lock so that
-  no compaction can interleave between the two reads.
+  between those reads, causing an inconsistent payload to be sent. The fix loads
+  the snapshot and the matching log entries under a single lock so that no
+  compaction can interleave between the two reads.
 
 * COR-415: Fix vector index catch-up phase to use the proper
-  `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that
-  WAL entries written during training are correctly ingested, preventing
-  missed documents after index creation.
+  `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that WAL
+  entries written during training are correctly ingested, preventing missed
+  documents after index creation.
 
 * Updated ArangoDB Starter to v0.19.21.
 
@@ -41,16 +56,16 @@
 * The vector index API now exposes a `resolvedNLists` field that shows the
   actual nLists value used by the trained index. When using a fixed `nLists`
   value, `resolvedNLists` will match it. When using the scalable nLists
-  specification, `resolvedNLists` shows the value that was computed from
-  the document count at training time. The value is available per shard in
-  the `shards` detail returned by `collection.getIndexes(true, true)`. On
+  specification, `resolvedNLists` shows the value that was computed from the
+  document count at training time. The value is available per shard in the
+  `shards` detail returned by `collection.getIndexes(true, true)`. On
   single-server the collection name is used as the shard key.
 
 * COR-231: Vector index `nLists` now supports a tiered scaling specification
   alongside fixed integer values. The scaling spec uses
-  `{ "multiplier": M, "minNLists": N, "tiers": [...] }` to compute nLists
-  based on document count per shard at training time: tiers provide fixed
-  values for large collections, while smaller collections use
+  `{ "multiplier": M, "minNLists": N, "tiers": [...] }` to compute nLists based
+  on document count per shard at training time: tiers provide fixed values for
+  large collections, while smaller collections use
   `max(minNLists, multiplier * sqrt(docCount))`.
   Factory string are not supported in scaling mode.
 

@@ -28,9 +28,11 @@
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRule.h"
 #include "Containers/SmallVector.h"
 
 namespace arangodb::aql {
@@ -62,6 +64,13 @@ void removeUnnecessaryFiltersRule(Optimizer* opt,
 
     if (root->isTrue()) {
       toUnlink.emplace(n);
+      modified = true;
+    } else if (root->isFalse() &&
+               rule.level == OptimizerRule::removeUnnecessaryFiltersRule2) {
+      // direct false is caught at plan construction; deterministic variable
+      // refs (e.g. LET y = ([] ANY == x) FILTER y) reach here
+      auto noRes = plan->createNode<NoResultsNode>(plan.get(), plan->nextId());
+      plan->replaceNode(n, noRes);
       modified = true;
     }
   }
