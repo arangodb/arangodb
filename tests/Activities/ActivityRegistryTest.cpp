@@ -168,41 +168,22 @@ TEST_F(ActivityRegistryTest, nested_scopes_set_reset_activity) {
   EXPECT_EQ(Registry::currentlyExecutingActivity(), nullptr);
 }
 
-TEST_F(ActivityRegistryTest, with_set_current_activity) {
-  auto a = activities::make<GenericActivity>("GenericActivity",
-                                             GenericActivityData{});
-  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
-
-  auto scoped = withSetCurrentlyExecutingActivity(
-      a, [a]() { EXPECT_EQ(Registry::currentlyExecutingActivity(), a); });
-
-  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
-
-  auto b = activities::make<GenericActivity>("GenericActivity",
-                                             GenericActivityData{});
-  auto scopeGuard = Registry::ScopedCurrentlyExecutingActivity(b);
-
-  EXPECT_EQ(Registry::currentlyExecutingActivity(), b);
-
-  scoped();
-
-  EXPECT_EQ(Registry::currentlyExecutingActivity(), b);
-}
-
 TEST_F(ActivityRegistryTest, with_current_activity) {
-  auto outer = activities::make<GenericActivity>("GenericActivity",
-                                                 GenericActivityData{});
-  auto inner = activities::make<GenericActivity>("GenericActivity",
-                                                 GenericActivityData{});
-
+  auto outer =
+      activities::make<GenericActivity>("outer", GenericActivityData{});
   auto outerGuard = Registry::ScopedCurrentlyExecutingActivity(outer);
+
   auto testee = withCurrentlyExecutingActivity(
-      [current = Registry::currentlyExecutingActivity()]() {
+      [current = Registry::currentlyExecutingActivity(), outer]() {
         EXPECT_EQ(Registry::currentlyExecutingActivity(), current);
+        EXPECT_EQ(current, outer);
       });
 
   {
+    auto inner =
+        activities::make<GenericActivity>("inner", GenericActivityData{});
     auto innerGuard = Registry::ScopedCurrentlyExecutingActivity(inner);
+
     testee();
   }
 }
