@@ -868,4 +868,244 @@ TEST_F(AstNodeTest, toVelocyPackNestedObjectVerbose) {
   validate(root);
 }
 
+class CompareAstNodesTest : public ::testing::Test {
+ public:
+  CompareAstNodesTest()
+      : _server{}, _query{_server.createFakeQuery()}, _ast{_query->ast()} {}
+
+ protected:
+  tests::mocks::MockAqlServer _server;
+  std::shared_ptr<Query> _query;
+  Ast* _ast;
+
+  Variable* makeVar(std::string_view name) {
+    return _ast->variables()->createVariable(name, /*isUserDefined*/ true);
+  }
+
+  AstNode* ref(Variable* v) { return _ast->createNodeReference(v); }
+
+  AstNode* attr(AstNode* base, std::string_view name) {
+    return _ast->createNodeAttributeAccess(base, name);
+  }
+
+  AstNode* intVal(int64_t v) { return _ast->createNodeValueInt(v); }
+
+  AstNode* strVal(std::string_view s) {
+    return _ast->createNodeValueString(s.data(), s.size());
+  }
+
+  AstNode* binaryOp(AstNodeType t, AstNode* lhs, AstNode* rhs) {
+    return _ast->createNodeBinaryOperator(t, lhs, rhs);
+  }
+
+  AstNode* naryOp(AstNodeType t, std::initializer_list<AstNode*> children) {
+    AstNode* node = _ast->createNodeNaryOperator(t);
+    for (auto* c : children) {
+      node->addMember(c);
+    }
+    return node;
+  }
+
+  // Build `lhs IN [elems...]`
+  AstNode* inOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
+    AstNode* arr = _ast->createNodeArray();
+    for (auto* e : elems) {
+      arr->addMember(e);
+    }
+    return binaryOp(NODE_TYPE_OPERATOR_BINARY_IN, lhs, arr);
+  }
+
+  AstNode* ninOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
+    AstNode* arr = _ast->createNodeArray();
+    for (auto* e : elems) {
+      arr->addMember(e);
+    }
+    return binaryOp(NODE_TYPE_OPERATOR_BINARY_NIN, lhs, arr);
+  }
+};
+
+// --- constant value comparisons
+// -----------------------------------------------
+
+TEST_F(CompareAstNodesTest, constantInts) {
+  EXPECT_EQ(0, compareAstNodes(intVal(0), intVal(0), false));
+  EXPECT_EQ(-1, compareAstNodes(intVal(1), intVal(2), false));
+  EXPECT_EQ(1, compareAstNodes(intVal(2), intVal(1), false));
+}
+
+TEST_F(CompareAstNodesTest, constantStrings) {
+  EXPECT_EQ(0, compareAstNodes(strVal("foo"), strVal("foo"), false));
+  EXPECT_EQ(-1, compareAstNodes(strVal("bar"), strVal("foo"), false));
+  EXPECT_EQ(1, compareAstNodes(strVal("foo"), strVal("bar"), false));
+}
+
+TEST_F(CompareAstNodesTest, nullLessThanBool) {
+  auto* n = _ast->createNodeValueNull();
+  auto* b = _ast->createNodeValueBool(false);
+  EXPECT_LT(compareAstNodes(n, b, false), 0);
+  EXPECT_GT(compareAstNodes(b, n, false), 0);
+}
+
+// --- structural vs constant type ordering
+// -------------------------------------
+
+// String literals sort before structural expressions in the ordering.
+TEST_F(CompareAstNodesTest, stringLiteralBeforeStructural) {
+  auto* x = makeVar("x");
+  EXPECT_LT(compareAstNodes(strVal("z"), ref(x), false), 0);
+  EXPECT_GT(compareAstNodes(ref(x), strVal("z"), false), 0);
+}
+
+// --- REFERENCE nodes
+// ----------------------------------------------------------
+
+TEST_F(CompareAstNodesTest, referencesSameVariable) {
+  auto* x = makeVar("x");
+  EXPECT_EQ(0, compareAstNodes(ref(x), ref(x), false));
+}
+
+TEST_F(CompareAstNodesTest, referencesDifferentVariablesOrderedById) {
+  // Variables are assigned monotonically increasing ids; the one created first
+  // has the lower id and must compare as less.
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  EXPECT_LT(a->id, b->id);
+  EXPECT_LT(compareAstNodes(ref(a), ref(b), false), 0);
+  EXPECT_GT(compareAstNodes(ref(b), ref(a), false), 0);
+}
+
+// Same variable name in different Variable objects → different ids → not equal.
+TEST_F(CompareAstNodesTest, referencesDistinctVariablesSameName) {
+  auto* a1 = makeVar("a");
+  auto* a2 = makeVar("a");  // different object, different id
+  EXPECT_NE(a1->id, a2->id);
+  EXPECT_NE(0, compareAstNodes(ref(a1), ref(a2), false));
+}
+
+// --- ATTRIBUTE_ACCESS nodes
+// ---------------------------------------------------
+
+TEST_F(CompareAstNodesTest, attributeAccessSameBaseAndName) {
+  auto* x = makeVar("x");
+  EXPECT_EQ(0,
+            compareAstNodes(attr(ref(x), "name"), attr(ref(x), "name"), false));
+}
+
+TEST_F(CompareAstNodesTest, attributeAccessDifferentNameOrderedLexically) {
+  auto* x = makeVar("x");
+  // "age" < "name" lexicographically
+  EXPECT_LT(compareAstNodes(attr(ref(x), "age"), attr(ref(x), "name"), false),
+            0);
+  EXPECT_GT(compareAstNodes(attr(ref(x), "name"), attr(ref(x), "age"), false),
+            0);
+}
+
+TEST_F(CompareAstNodesTest, attributeAccessDifferentBase) {
+  auto* x = makeVar("x");
+  auto* y = makeVar("y");
+  EXPECT_LT(x->id, y->id);
+  // Same attr name "k"; bases differ by variable id.
+  int cmp = compareAstNodes(attr(ref(x), "k"), attr(ref(y), "k"), false);
+  EXPECT_LT(cmp, 0);
+}
+
+// --- commutative binary operators (EQ / NE)
+// -----------------------------------
+
+TEST_F(CompareAstNodesTest, equalityCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  // `a == b` and `b == a` must compare as equal.
+  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, ref(a), ref(b));
+  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, ref(b), ref(a));
+  EXPECT_EQ(0, compareAstNodes(ab, ba, false));
+}
+
+TEST_F(CompareAstNodesTest, inequalityCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_NE, ref(a), ref(b));
+  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_NE, ref(b), ref(a));
+  EXPECT_EQ(0, compareAstNodes(ab, ba, false));
+}
+
+// LT is not commutative: `a < b` ≠ `b < a` (unless a == b, which can't happen
+// for two distinct variables).
+TEST_F(CompareAstNodesTest, lessThanNotCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_LT, ref(a), ref(b));
+  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_LT, ref(b), ref(a));
+  EXPECT_NE(0, compareAstNodes(ab, ba, false));
+}
+
+// --- NARY operators
+// -----------------------------------------------------------
+
+TEST_F(CompareAstNodesTest, naryAndOrderIndependent) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  // (a AND b AND c) compared with (c AND a AND b) must be 0.
+  auto* abc = naryOp(NODE_TYPE_OPERATOR_NARY_AND, {ref(a), ref(b), ref(c)});
+  auto* cab = naryOp(NODE_TYPE_OPERATOR_NARY_AND, {ref(c), ref(a), ref(b)});
+  EXPECT_EQ(0, compareAstNodes(abc, cab, false));
+}
+
+TEST_F(CompareAstNodesTest, naryAndDifferentMembersNotEqual) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  auto* ab = naryOp(NODE_TYPE_OPERATOR_NARY_AND, {ref(a), ref(b)});
+  auto* ac = naryOp(NODE_TYPE_OPERATOR_NARY_AND, {ref(a), ref(c)});
+  EXPECT_NE(0, compareAstNodes(ab, ac, false));
+}
+
+TEST_F(CompareAstNodesTest, naryOrOrderIndependent) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = naryOp(NODE_TYPE_OPERATOR_NARY_OR, {ref(a), ref(b)});
+  auto* ba = naryOp(NODE_TYPE_OPERATOR_NARY_OR, {ref(b), ref(a)});
+  EXPECT_EQ(0, compareAstNodes(ab, ba, false));
+}
+
+// --- IN / NIN array element order independence
+// ---------------------------------
+
+TEST_F(CompareAstNodesTest, inArrayElementOrderIndependent) {
+  auto* x = makeVar("x");
+  // `x IN [1, 2]` vs `x IN [2, 1]` — must compare as equal.
+  auto* in12 = inOp(ref(x), {intVal(1), intVal(2)});
+  auto* in21 = inOp(ref(x), {intVal(2), intVal(1)});
+  EXPECT_EQ(0, compareAstNodes(in12, in21, false));
+}
+
+TEST_F(CompareAstNodesTest, ninArrayElementOrderIndependent) {
+  auto* x = makeVar("x");
+  auto* nin12 = ninOp(ref(x), {intVal(1), intVal(2)});
+  auto* nin21 = ninOp(ref(x), {intVal(2), intVal(1)});
+  EXPECT_EQ(0, compareAstNodes(nin12, nin21, false));
+}
+
+TEST_F(CompareAstNodesTest, inDifferentOperandsNotEqual) {
+  auto* x = makeVar("x");
+  auto* y = makeVar("y");
+  auto* inX = inOp(ref(x), {intVal(1)});
+  auto* inY = inOp(ref(y), {intVal(1)});
+  EXPECT_NE(0, compareAstNodes(inX, inY, false));
+}
+
+// --- structural nodes of different AstNodeType
+// --------------------------------
+
+TEST_F(CompareAstNodesTest, differentStructuralTypesOrderedByEnum) {
+  // NODE_TYPE_ATTRIBUTE_ACCESS = 35 < NODE_TYPE_REFERENCE = 45, so an
+  // ATTRIBUTE_ACCESS node must sort before a REFERENCE node.
+  auto* x = makeVar("x");
+  AstNode* refNode = ref(x);
+  AstNode* attrNode = attr(ref(x), "f");
+  EXPECT_LT(compareAstNodes(attrNode, refNode, false), 0);
+  EXPECT_GT(compareAstNodes(refNode, attrNode, false), 0);
+}
+
 }  // namespace
