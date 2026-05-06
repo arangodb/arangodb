@@ -149,19 +149,11 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   }
 
   if (suffixes.size() == 0) {
-    switch (_request->requestedApiVersion()) {
-      case api_version::experimentalApiVersion: {
-        auto output = Output{.activities = _feature.getData()};
-        VPackBuilder builder;
-        velocypack::serialize(builder, output);
-        generateResult(rest::ResponseCode::OK, builder.slice());
-        co_return;
-      };
-      default: {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-        co_return;
-      };
-    }
+    auto output = Output{.activities = _feature.getData()};
+    VPackBuilder builder;
+    velocypack::serialize(builder, output);
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    co_return;
   }
   if (suffixes[0] != "all") {
     co_return;
@@ -179,31 +171,23 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto activities_per_server = co_await getActivitiesFromServers(
       servers | std::views::keys, agents, _networkFeature, _request->prefix());
 
-  switch (_request->requestedApiVersion()) {
-    case api_version::experimentalApiVersion: {
-      VPackBuilder builder;
-      builder.openObject();
-      builder.add(VPackValue("activities_per_server"));
-      builder.openObject();
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(VPackValue("activities_per_server"));
+  builder.openObject();
 
-      // me
-      builder.add(VPackValue(myId));
-      auto myActivities = _feature.getData();
-      velocypack::serialize(builder, myActivities);
+  // me
+  builder.add(VPackValue(myId));
+  auto myActivities = _feature.getData();
+  velocypack::serialize(builder, myActivities);
 
-      for (auto& [serverId, responseFuture] : activities_per_server) {
-        builder.add(VPackValue(serverId));
-        serializeOneServer(builder, std::move(responseFuture));
-      }
-      builder.close();
-      builder.close();
-
-      generateResult(rest::ResponseCode::OK, builder.slice());
-      co_return;
-    };
-    default: {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-      co_return;
-    };
+  for (auto& [serverId, responseFuture] : activities_per_server) {
+    builder.add(VPackValue(serverId));
+    serializeOneServer(builder, std::move(responseFuture));
   }
+  builder.close();
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
+  co_return;
 }
