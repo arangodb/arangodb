@@ -438,7 +438,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
     shutdownExecute(false);
   };
 
-  co_await handleSpecialAccessChecks();
+  co_await handleAuthorizationChecks();
   if (_state == HandlerState::FAILED) {
     co_return fail();
   }
@@ -677,9 +677,9 @@ void RestHandler::compressResponse() {
 }
 
 async<Result> RestHandler::checkUserCanAccess() const {
-  bool userAuthenticated = request()->authenticated();
+  bool const userAuthenticated = request()->authenticated();
   bool canAccess = userAuthenticated;
-  std::string const& path = request()->requestPath();
+  auto const& path = request()->requestPath();
 
   auto vc = basics::downCast<VocbaseContext>(request()->requestContext());
   TRI_ASSERT(vc != nullptr)
@@ -699,7 +699,7 @@ async<Result> RestHandler::checkUserCanAccess() const {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
-    ConnectionInfo const& ci = request()->connectionInfo();
+    auto const& ci = request()->connectionInfo();
 
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !auth->authenticationUnixSockets()) {
@@ -728,24 +728,15 @@ async<Result> RestHandler::checkUserCanAccess() const {
   co_return canAccess
       ? Result()
       : (userAuthenticated
-             ? Result(TRI_ERROR_HTTP_UNAUTHORIZED,
-                      "No read access to database.")
+             ? Result(TRI_ERROR_HTTP_FORBIDDEN, "No read access to database.")
              : Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated."));
 }
 
-async<void> RestHandler::handleSpecialAccessChecks() {
-  auto auth = AuthenticationFeature::instance();
-  if (not auth->isActive()) {
-    // no authentication required at all
-    co_return;
-  }
-
-  Result authzResult = co_await checkUserCanAccess();
-  if (authzResult.fail()) {
+async<void> RestHandler::handleAuthorizationChecks() {
+  if (auto res = co_await checkUserCanAccess(); res.fail()) {
     _state = HandlerState::FAILED;
     events::NotAuthorized(*_request);
-    generateError(ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
-                  authzResult.errorMessage());
+    generateError(res);
   }
 }
 

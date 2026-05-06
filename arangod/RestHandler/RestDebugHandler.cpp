@@ -24,6 +24,7 @@
 #include "RestDebugHandler.h"
 
 #include "Basics/DebugRaceController.h"
+#include "Cluster/ServerState.h"
 
 #include <velocypack/Slice.h>
 
@@ -37,9 +38,18 @@ RestDebugHandler::RestDebugHandler(
     : RestBaseHandler(server, request, response) {}
 
 async<Result> RestDebugHandler::checkUserCanAccess() const {
-  co_return request()->authenticated()
-      ? Result{}
-      : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::instance()->mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()
+        ? Result{}
+        : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
+  }
+
+  co_return co_await RestBaseHandler::checkUserCanAccess();
 }
 
 RestStatus RestDebugHandler::execute() {

@@ -85,8 +85,11 @@ RestStatus RestStatusHandler::execute() {
 }
 
 async<Result> RestStatusHandler::checkUserCanAccess() const {
-  auto mode = ServerState::instance()->mode();
-  if (mode == ServerState::Mode::STARTUP ||
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::instance()->mode();
+      mode == ServerState::Mode::STARTUP ||
       mode == ServerState::Mode::MAINTENANCE) {
     co_return request()->authenticated()
         ? Result{}

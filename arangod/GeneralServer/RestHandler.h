@@ -229,7 +229,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
  private:
   mutable std::mutex _executionMutex;
 
-  async<void> handleSpecialAccessChecks();
+  async<void> handleAuthorizationChecks();
 
  protected:
   // TODO Move this in a separate header, side-by-side with SuspensionCounter?
