@@ -4416,7 +4416,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   newServer.addFeature<arangodb::AqlFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(
       newServer, {.databaseFeature = dbFeature,
-                  .engineSelector = selector,
                   .systemDatabase = sysDatabase,
                   .networkFeature = nullptr,
                   .clusterFeature = nullptr,
@@ -4767,7 +4766,6 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   newServer.addFeature<arangodb::AqlFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(
       newServer, {.databaseFeature = dbFeature,
-                  .engineSelector = selector,
                   .systemDatabase = sysDatabase,
                   .networkFeature = nullptr,
                   .clusterFeature = nullptr,
@@ -4922,7 +4920,6 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   newServer.addFeature<arangodb::AqlFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(
       newServer, {.databaseFeature = dbFeature,
-                  .engineSelector = selector,
                   .systemDatabase = sysDatabase,
                   .networkFeature = nullptr,
                   .clusterFeature = nullptr,

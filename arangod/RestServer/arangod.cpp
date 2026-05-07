@@ -216,7 +216,6 @@ void ArangodServer::addFeatures(
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
           .databaseFeature = database,
-          .engineSelector = engineSelectorFeature,
           .systemDatabase = systemDatabaseFeature,
           .networkFeature = &networkFeature,
           .clusterFeature = &clusterFeature,
