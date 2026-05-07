@@ -28,7 +28,17 @@ defmodule ToastTest.Runner.PostExecution do
 
   require Logger
 
+  @doc """
+  Builds a `SuiteResult` after test execution completes.
+
+  For manual-mode suites (no deployment), only processes events from the event
+  store (crashes, timeout kills) and runs attribution.
+
+  For deployed suites, additionally stops the deployment, collects artifacts
+  (coredumps, server logs), and performs full post-mortem analysis.
+  """
   @spec run(Toast.Deployment.t() | nil, map(), ToastTest.Config.t()) :: SuiteResult.t()
+  # Manual mode — no deployment was started, so only process event store data.
   def run(nil, test_data, _test_config) do
     snapshot = EventStore.snapshot()
 
