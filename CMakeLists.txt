@@ -606,7 +606,7 @@ if(USE_MAINTAINER_MODE)
 endif()
 
 # flex and bison are required to generate the AQL lexer/parser from
-# arangod/Aql/Parser/tokens.ll and arangod/Aql/Parsers/grammar.y.
+# arangod/Aql/Parser/tokens.ll and arangod/Aql/Parser/grammar.y.
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
