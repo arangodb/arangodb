@@ -98,24 +98,25 @@ namespace {
 // per-survivor data of the shape the executor needs.
 vector::RocksDBFaissIteratorContext makeFaissIteratorContext(
     vector::VectorSearchConfig const& config,
+    vector::VectorSearchContext const& ctx,
     containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
         captureSink) {
   if (config.strategy.filter == FilterMode::kNone) {
     vector::IteratorContext simpleCtx;
-    simpleCtx.trx = config.trx;
+    simpleCtx.trx = ctx.trx;
     simpleCtx.capturedDocuments = captureSink;
     return simpleCtx;
   }
-  TRI_ASSERT(config.queryContext != nullptr);
+  TRI_ASSERT(ctx.queryContext != nullptr);
   TRI_ASSERT(config.filterExpression != nullptr);
 
   vector::IteratorFilterContext searchCtx;
-  searchCtx.trx = config.trx;
+  searchCtx.trx = ctx.trx;
   searchCtx.filterExpression = config.filterExpression;
-  if (config.inputRow != nullptr) {
-    searchCtx.inputRow = *config.inputRow;
+  if (ctx.inputRow != nullptr) {
+    searchCtx.inputRow = *ctx.inputRow;
   }
-  searchCtx.queryContext = config.queryContext;
+  searchCtx.queryContext = ctx.queryContext;
   searchCtx.filterVarsToRegs = &config.filterVarsToRegs;
   searchCtx.documentVariable = config.documentVariable;
   searchCtx.useStoredValuesIterator =
@@ -259,14 +260,15 @@ void RocksDBVectorIndex::toVelocyPack(
 }
 
 vector::SearchResult RocksDBVectorIndex::readBatch(
-    vector::VectorSearchConfig const& config) {
-  TRI_ASSERT(config.inputs != nullptr);
-  TRI_ASSERT(config.trx != nullptr);
+    vector::VectorSearchConfig const& config,
+    vector::VectorSearchContext const& ctx) {
+  TRI_ASSERT(ctx.inputs != nullptr);
+  TRI_ASSERT(ctx.trx != nullptr);
   // The on_heap_changed are not thread safe unless this is true
   ADB_PROD_ASSERT(_faissIndex->parallel_mode == 0)
       << "FAISS parallel_mode must be 0; got " << _faissIndex->parallel_mode;
 
-  auto& inputs = *config.inputs;
+  auto& inputs = *ctx.inputs;
   TRI_ASSERT(inputs.size() == _definition.dimension)
       << "Number of components does not match vector dimension, topK: "
       << config.topK << ", dimension: " << _definition.dimension
@@ -297,7 +299,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
       (config.strategy.projection == ProjectionMode::kDocument &&
        config.strategy.filter == FilterMode::kDocument);
   auto* captureSink = captureNeeded ? &result.capturedDocuments : nullptr;
-  auto faissSearchContext = makeFaissIteratorContext(config, captureSink);
+  auto faissSearchContext = makeFaissIteratorContext(config, ctx, captureSink);
 
   faiss::SearchParametersIVF searchParametersIvf;
   searchParametersIvf.nprobe =

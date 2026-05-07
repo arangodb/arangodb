@@ -34,7 +34,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
-#include "VectorIndex/VectorSearchConfiguration.h"
+#include "VectorIndex/VectorSearchStrategy.h"
 
 namespace arangodb::aql {
 

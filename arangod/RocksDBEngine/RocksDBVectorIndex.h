@@ -26,25 +26,16 @@
 #include <memory>
 #include <type_traits>
 
-#include "Containers/NodeHashMap.h"
 #include "RocksDBIndex.h"
 #include "VectorIndex/VectorIndexDefinition.h"
-#include "VectorIndex/VectorSearchConfiguration.h"
+#include "VectorIndex/VectorReadBatch.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
-#include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
-#include "Aql/Expression.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/QueryContext.h"
-#include "Aql/RegisterId.h"
-#include "Aql/Variable.h"
 
 #include <faiss/IndexIVF.h>
 #include <rocksdb/iterator.h>
 #include <velocypack/Builder.h>
-#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
@@ -52,8 +43,6 @@ class DB;
 }  // namespace rocksdb
 
 namespace arangodb {
-
-using VectorIndexLabelId = faiss::idx_t;
 
 enum class VectorIndexTrainingState : std::uint8_t {
   kUnusable,
@@ -63,45 +52,6 @@ enum class VectorIndexTrainingState : std::uint8_t {
 };
 
 std::string_view trainingStateToString(VectorIndexTrainingState state) noexcept;
-
-namespace vector {
-
-// Configuration of a vector search. The static fields are filled by
-// EnumerateNearVectorNode::createBlock; the per-call fields are set by
-// the executor before each readBatch invocation.
-struct VectorSearchConfig {
-  SearchParameters searchParameters;
-  std::size_t topK;  // = LIMIT + OFFSET
-
-  // Optional pushed-down filter. When SearchStrategy::filter != kNone,
-  // these must be populated.
-  aql::Expression* filterExpression{nullptr};
-  std::vector<std::pair<aql::VariableId, aql::RegisterId>> filterVarsToRegs;
-  aql::Variable const* documentVariable{nullptr};
-
-  // Selects the iterator family and capture behaviour at the storage
-  // layer. Set based on the node's filter / projection coverage analysis.
-  SearchStrategy strategy;
-
-  // Per-call state. Pointers into executor-owned storage; updated before
-  // each readBatch.
-  std::vector<float>* inputs{nullptr};  // mutable: cosine renormalises in place
-  aql::InputAqlItemRow const* inputRow{nullptr};
-  transaction::Methods* trx{nullptr};
-  aql::QueryContext* queryContext{nullptr};
-};
-
-struct SearchResult {
-  std::vector<VectorIndexLabelId> labels;
-  std::vector<float> distances;
-  // Per-survivor VPack: a storedValues array (when strategy.projection ==
-  // kStoredValues) or a full document Object (kDocument). Empty unless
-  // strategy.projection != kNone.
-  containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>
-      capturedDocuments;
-};
-
-}  // namespace vector
 
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
@@ -128,7 +78,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
-  vector::SearchResult readBatch(vector::VectorSearchConfig const& config);
+  vector::SearchResult readBatch(vector::VectorSearchConfig const& config,
+                                 vector::VectorSearchContext const& ctx);
 
   vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 

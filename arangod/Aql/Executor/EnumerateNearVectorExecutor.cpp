@@ -140,12 +140,13 @@ void EnumerateNearVectorsExecutor::searchResults() {
   auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());
   TRI_ASSERT(vectorIndex != nullptr);
 
-  auto config = _infos.searchConfig;
-  config.inputs = &_inputRowConverted;
-  config.inputRow = &_inputRow;
-  config.trx = &_trx;
-  config.queryContext = &_infos.queryContext;
-  auto result = vectorIndex->readBatch(config);
+  vector::VectorSearchContext ctx{
+      .inputs = &_inputRowConverted,
+      .inputRow = &_inputRow,
+      .trx = &_trx,
+      .queryContext = &_infos.queryContext,
+  };
+  auto result = vectorIndex->readBatch(_infos.searchConfig, ctx);
   _labels = std::move(result.labels);
   _distances = std::move(result.distances);
   _documents = std::move(result.capturedDocuments);
