@@ -32,6 +32,8 @@ defmodule Recovery.CollectionsAndDocumentsTest do
 
   use Recovery.Suite
 
+  @edge_collection_type 3
+
   test "collections with various types and properties survive crash" do
     with_deployment(fn deployment ->
       client = default_client!(deployment)
@@ -77,7 +79,7 @@ defmodule Recovery.CollectionsAndDocumentsTest do
       expect(length(Client.Index.list!(client, "recovery_nosync")) == 2)
 
       expect(Client.Collection.count!(client, "recovery_edges") == 1)
-      expect(%{"type" => 3} = Client.Collection.properties!(client, "recovery_edges"))
+      expect(%{"type" => @edge_collection_type} = Client.Collection.properties!(client, "recovery_edges"))
       expect("edge" in Enum.map(Client.Index.list!(client, "recovery_edges"), & &1["type"]))
 
       expect(Client.Collection.count!(client, "_recovery_system") == 1)
