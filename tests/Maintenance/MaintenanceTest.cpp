@@ -547,9 +547,9 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
 
-    as.addFeature<MaintenanceFeature>();
+    as.addFeature<MaintenanceFeature>(nullptr);
     auto& dbpath = as.addFeature<DatabasePathFeature>();
-    auto& flush = as.addFeature<FlushFeature>();
+    auto& flush = as.addFeature<FlushFeature>(metrics);
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
     auto& schedulerFeature = as.addFeature<SchedulerFeature>(metrics);
 

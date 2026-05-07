@@ -104,7 +104,7 @@ uint64_t effectivePhysicalMemoryImpl() {
     }
     case cgroup::Version::V1: {
       try {
-        if (basics::FileUtils::exists(kCgroupV1MemoryLimitPath)) {
+        if (std::filesystem::exists(kCgroupV1MemoryLimitPath)) {
           if (auto const limit = basics::FileUtils::readCgroupFileValue(
                   kCgroupV1MemoryLimitPath);
               limit) {
@@ -128,7 +128,7 @@ uint64_t effectivePhysicalMemoryImpl() {
     }
     case cgroup::Version::V2: {
       try {
-        if (basics::FileUtils::exists(kCgroupV2MemoryMaxPath)) {
+        if (std::filesystem::exists(kCgroupV2MemoryMaxPath)) {
           if (auto const limit = basics::FileUtils::readCgroupFileValue(
                   kCgroupV2MemoryMaxPath);
               limit) {
