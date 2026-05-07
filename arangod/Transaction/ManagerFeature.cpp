@@ -112,6 +112,18 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 this period when no further operations are posted into them. Posting an
 operation into a non-expired Stream Transaction resets the transaction's
 timeout to the configured idle timeout.)");
+
+  options
+      ->addOption(
+          "--transaction.streaming-max-transaction-size",
+          "The maximum transaction size (in bytes) for Stream Transactions.",
+          new SizeTParameter(&_streamingMaxTransactionSize),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31115);
 }
 
 void ManagerFeature::prepare() {
@@ -175,6 +187,10 @@ void ManagerFeature::stop() {
 }
 
 void ManagerFeature::unprepare() { MANAGER.reset(); }
+
+size_t ManagerFeature::streamingMaxTransactionSize() const noexcept {
+  return _streamingMaxTransactionSize;
+}
 
 void ManagerFeature::queueGarbageCollection() {
   // The RequestLane needs to be something which is `HIGH` priority, otherwise

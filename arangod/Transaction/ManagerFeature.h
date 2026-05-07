@@ -51,8 +51,8 @@ class ManagerFeature final : public ArangodFeature {
   void beginShutdown() override;
   void unprepare() override;
 
+  size_t streamingMaxTransactionSize() const noexcept;
   double streamingLockTimeout() const noexcept { return _streamingLockTimeout; }
-
   double streamingIdleTimeout() const noexcept { return _streamingIdleTimeout; }
 
   static transaction::Manager* manager() noexcept { return MANAGER.get(); }
@@ -73,6 +73,9 @@ class ManagerFeature final : public ArangodFeature {
 
   // where rhythm is life, and life is rhythm :)
   std::function<void(bool)> _gcfunc;
+
+  // max size (in bytes) of streaming transactions
+  size_t _streamingMaxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
 
   // lock time in seconds
   double _streamingLockTimeout;
