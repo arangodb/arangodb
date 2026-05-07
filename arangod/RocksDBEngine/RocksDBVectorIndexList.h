@@ -221,6 +221,16 @@ struct WithStoredValuesV1Strategy {
   }
 };
 
+/// @brief Non-owning view into a v2 vector-index entry. Backed directly by
+/// the rocksdb iterator's value() bytes; valid only until the iterator
+/// advances. Promoted to an owned SharedSlice at capture time
+/// (on_heap_changed) for top-K survivors only. The encoded bytes are
+/// always exactly the index's codeSize, so size isn't carried here.
+struct RocksDBVectorIndexEntryViewV2 {
+  uint8_t const* encoded{nullptr};
+  velocypack::Slice storedValues;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Strategy for vector indexes WITH stored values, v2 layout
 ///
