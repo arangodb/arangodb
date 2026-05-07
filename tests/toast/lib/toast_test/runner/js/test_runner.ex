@@ -33,11 +33,11 @@ defmodule ToastTest.Runner.JS.TestRunner do
   @spec run_module(Compat.event_manager(), module(), keyword()) :: :ok
   def run_module(manager, module, opts \\ []) do
     js_file = module.__toast_js_file__()
-    js_module = String.to_atom(js_file)
     executor = Keyword.fetch!(opts, :executor)
     executor_opts = Keyword.get(opts, :executor_opts, [])
 
     placeholder_module = module.__ex_unit__()
+    js_module = placeholder_module.name
     EventStore.notify(%{event: :module_started, module: module})
     Compat.module_started(manager, placeholder_module)
 

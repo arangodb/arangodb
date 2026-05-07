@@ -221,15 +221,28 @@ defmodule ToastTest.Runner.JS.ArangoshExecutor do
     data
     |> Enum.reject(fn {key, _} -> MapSet.member?(@metadata_set, key) end)
     |> Enum.flat_map(fn
-      {_file_key, file_result} when is_map(file_result) ->
-        file_result
-        |> Enum.filter(fn {key, val} ->
-          is_map(val) and not MapSet.member?(@test_metadata_set, key)
-        end)
-        |> Enum.map(fn {name, result} -> parse_test_result(name, result, js_file) end)
+      {key, value} when is_map(value) ->
+        if test_container?(value) do
+          value
+          |> Enum.filter(fn {k, v} ->
+            is_map(v) and not MapSet.member?(@test_metadata_set, k)
+          end)
+          |> Enum.map(fn {name, result} -> parse_test_result(name, result, js_file) end)
+        else
+          [parse_test_result(key, value, js_file)]
+        end
 
       {_key, _non_map} ->
         []
+    end)
+  end
+
+  # jsunity groups tests under a file-path key, so the value contains nested
+  # maps. mocha/spec results are flat — each test is a top-level entry with
+  # only scalar values (status, duration, message).
+  defp test_container?(map) do
+    Enum.any?(map, fn {key, val} ->
+      is_map(val) and not MapSet.member?(@test_metadata_set, key)
     end)
   end
 
