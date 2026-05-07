@@ -134,13 +134,7 @@ std::string buildFilename(char const* path, char const* name) {
 std::string buildFilename(std::string const& path, std::string const& name) {
   std::filesystem::path base(path);
 
-  // If name starts with a separator, strip it so it's treated as relative
-  std::string nameToJoin = name;
-  if (!nameToJoin.empty() && nameToJoin.front() == TRI_DIR_SEPARATOR_CHAR) {
-    nameToJoin.erase(0, 1);
-  }
-
-  std::filesystem::path result = (base / nameToJoin).lexically_normal();
+  std::filesystem::path result = (base / name).lexically_normal();
   return result.make_preferred().string();
 }
 
