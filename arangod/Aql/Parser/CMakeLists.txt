@@ -8,8 +8,7 @@ target_sources(arango_aql PRIVATE
 ################################################################################
 
 # Generate the AQL lexer and parser into the build tree. flex and bison are
-# required unconditionally; see the top-level CMakeLists.txt for the
-# find_package calls.
+# required by the top-level CMakeLists.txt.
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tokens.cpp

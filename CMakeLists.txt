@@ -605,9 +605,8 @@ if(USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif()
 
-# flex and bison are required unconditionally: the AQL lexer/parser is
-# generated from arangod/Aql/tokens.ll and arangod/Aql/grammar.y at build time
-# and is no longer kept pre-generated in the source tree.
+# flex and bison are required to generate the AQL lexer/parser from
+# arangod/Aql/Parser/tokens.ll and arangod/Aql/Parsers/grammar.y.
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
