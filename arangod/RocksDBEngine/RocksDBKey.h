@@ -34,6 +34,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iosfwd>
+#include <limits>
 #include <string>
 #include <string_view>
 
@@ -47,6 +48,16 @@ namespace replication2 {
 class LogId;
 struct LogIndex;
 };  // namespace replication2
+
+/// This servers as a sentinel key where we store the tranedData for a
+/// vector index.
+/// kV1 is the version used before 3.12.10 and kv2 is the one used afterwards
+/// The idea is that when we downgrade the trainedData from new indexes will get
+/// lost and we will avoid crashes and trigger the retraining of vector indexes
+enum class VectorIndexMetadataSlot : std::uint64_t {
+  kV1 = std::numeric_limits<std::uint64_t>::max(),
+  kV2 = std::numeric_limits<std::uint64_t>::max() - 1,
+};
 
 class RocksDBKey {
  public:
@@ -201,7 +212,10 @@ class RocksDBKey {
   void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber,
                                  LocalDocumentId documentId);
 
-  void constructVectorIndexTrainedData(uint64_t indexId);
+  /// @brief Build the sentinel key under which the per-index vector metadata
+  /// record is stored in the VectorIndex CF. See VectorIndexMetadataSlot.
+  void constructVectorIndexTrainedData(uint64_t indexId,
+                                       VectorIndexMetadataSlot slot);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for revision tree for a collection

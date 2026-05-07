@@ -177,15 +177,20 @@ RocksDBVectorIndex::~RocksDBVectorIndex() = default;
 
 vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
     velocypack::Slice info) const {
-  RocksDBKey key;
-  key.constructVectorIndexTrainedData(objectId());
-
-  std::string raw;
-  rocksdb::ReadOptions ro;
-  auto status = _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw);
+  // Try the V2 slot first, then fall back to the V1 slot. The slots are
+  // distinct so an old binary that only knows the V1 slot will simply miss
+  // V2 metadata after a downgrade and treat the index as unusable
+  auto readSlot = [&](VectorIndexMetadataSlot slot, std::string& raw) -> bool {
+    RocksDBKey key;
+    key.constructVectorIndexTrainedData(objectId(), slot);
+    rocksdb::ReadOptions ro;
+    return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
+  };
 
   vector::VectorIndexMetadata result;
-  if (status.ok()) {
+  std::string raw;
+  if (readSlot(VectorIndexMetadataSlot::kV2, raw) ||
+      readSlot(VectorIndexMetadataSlot::kV1, raw)) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
     velocypack::deserialize(slice, result);
@@ -195,8 +200,9 @@ vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
     // stays at the default kV1.
     velocypack::deserialize(data, result.trainedData);
   } else {
-    // New index new format, does not make a diffrence if it does not ahve
-    // storedValues
+    // Brand-new index: stamp it with the current on-disk format. Has no
+    // effect for indexes without storedValues since their entry layout is
+    // already format-agnostic.
     result.formatVersion = vector::kCurrentVectorIndexFormatVersion;
   }
   return result;

@@ -723,8 +723,16 @@ Result VectorIndexBuilder::persistVectorIndexMetadata(
   velocypack::Builder builder;
   velocypack::serialize(builder, metadata);
 
+  // V1 metadata stays at the legacy slot so older binaries can still read it
+  // after a downgrade. V2 metadata is parked in a separate slot; an old
+  // binary looking at the V1 slot won't find it and will treat the index as
+  // unusable
+  auto const slot = (metadata.formatVersion == VectorIndexFormatVersion::kV2)
+                        ? ::arangodb::VectorIndexMetadataSlot::kV2
+                        : ::arangodb::VectorIndexMetadataSlot::kV1;
+
   RocksDBKey key;
-  key.constructVectorIndexTrainedData(_index.objectId());
+  key.constructVectorIndexTrainedData(_index.objectId(), slot);
   auto value = RocksDBValue::VectorIndexValue(builder.slice());
 
   auto* vectorCF = RocksDBColumnFamilyManager::get(
