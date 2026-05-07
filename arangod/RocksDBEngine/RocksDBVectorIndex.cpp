@@ -61,6 +61,10 @@
 
 namespace arangodb {
 
+using vector::CaptureShape;
+using vector::FilterMode;
+using vector::ProjectionMode;
+
 // This assertion must hold for faiss::idx_t to be used
 static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
               "Faiss id and LocalDocumentId must be of same size");
@@ -96,10 +100,6 @@ vector::RocksDBFaissIteratorContext makeFaissIteratorContext(
     vector::VectorSearchConfig const& config,
     containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
         captureSink) {
-  using vector::CaptureShape;
-  using vector::FilterMode;
-  using vector::ProjectionMode;
-
   if (config.strategy.filter == FilterMode::kNone) {
     vector::IteratorContext simpleCtx;
     simpleCtx.trx = config.trx;
@@ -292,8 +292,6 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   result.distances.resize(config.topK);
   result.labels.resize(config.topK);
 
-  using vector::FilterMode;
-  using vector::ProjectionMode;
   bool const captureNeeded =
       config.strategy.projection == ProjectionMode::kCovered ||
       (config.strategy.projection == ProjectionMode::kDocument &&
