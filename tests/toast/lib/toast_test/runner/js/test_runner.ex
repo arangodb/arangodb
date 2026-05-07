@@ -37,7 +37,7 @@ defmodule ToastTest.Runner.JS.TestRunner do
     executor = Keyword.fetch!(opts, :executor)
     executor_opts = Keyword.get(opts, :executor_opts, [])
 
-    placeholder_module = %{module.__ex_unit__() | name: js_module}
+    placeholder_module = module.__ex_unit__()
     EventStore.notify(%{event: :module_started, module: module})
     Compat.module_started(manager, placeholder_module)
 

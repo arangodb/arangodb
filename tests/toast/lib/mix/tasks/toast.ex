@@ -178,11 +178,11 @@ defmodule Mix.Tasks.Toast do
     test_filter = opts[:test]
 
     suite_data =
-      Enum.flat_map(suite_modules, fn {suite_module, suite_dir} ->
+      suite_modules
+      |> Enum.flat_map(fn {suite_module, suite_dir} ->
         prepare_suite(suite_module, suite_dir, file_filters, test_filter)
       end)
-
-    suite_data = apply_bucket_filter(suite_data, opts[:test_buckets])
+      |> apply_bucket_filter(opts[:test_buckets])
 
     test_config = ToastTest.Config.new()
     Toast.Application.reconfigure_file_logger(test_config.result_dir)

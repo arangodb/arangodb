@@ -94,7 +94,7 @@ defmodule ToastTest.Runner.JS.ModuleBuilderTest do
       test_module = module.__ex_unit__()
 
       assert %ExUnit.TestModule{} = test_module
-      assert test_module.name == module
+      assert test_module.name == String.to_atom(js_file)
       assert test_module.file == js_file
       assert test_module.setup_all? == false
       assert test_module.tags.async == false
@@ -107,7 +107,7 @@ defmodule ToastTest.Runner.JS.ModuleBuilderTest do
       test_module = module.__ex_unit__()
 
       assert [%ExUnit.Test{} = test] = test_module.tests
-      assert test.module == module
+      assert test.module == String.to_atom("/tmp/test_placeholder.js")
       assert test.tags.test_type == :test
     end
 

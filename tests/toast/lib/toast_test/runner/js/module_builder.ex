@@ -45,6 +45,7 @@ defmodule ToastTest.Runner.JS.ModuleBuilder do
   def build_module(suite_module, js_file, opts \\ []) do
     filename = Path.basename(js_file)
     module_name = derive_module_name(suite_module, filename)
+    js_module = String.to_atom(js_file)
     weight = Keyword.get(opts, :weight, 1)
     suffix_tags = tags_from_filename(filename)
 
@@ -53,7 +54,7 @@ defmodule ToastTest.Runner.JS.ModuleBuilder do
 
     placeholder_test = %ExUnit.Test{
       name: :"test js_execution",
-      module: module_name,
+      module: js_module,
       state: nil,
       time: 0,
       tags: test_tags
@@ -64,7 +65,7 @@ defmodule ToastTest.Runner.JS.ModuleBuilder do
 
     test_module_struct = %ExUnit.TestModule{
       file: js_file,
-      name: module_name,
+      name: js_module,
       setup_all?: false,
       state: nil,
       tags: module_tags,
