@@ -12,7 +12,7 @@ var UsedValueState;
 (function (UsedValueState) {
     UsedValueState[UsedValueState["Started"] = 0] = "Started";
     UsedValueState[UsedValueState["Completed"] = 1] = "Completed";
-})(UsedValueState = exports.UsedValueState || (exports.UsedValueState = {}));
+})(UsedValueState || (exports.UsedValueState = UsedValueState = {}));
 exports.varKinds = {
     const: new code_1.Name("const"),
     let: new code_1.Name("let"),
