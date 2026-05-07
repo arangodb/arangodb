@@ -1,6 +1,9 @@
 v3.11.14.4 (XXXX-XX-XX)
 -----------------------
 
+* Add --transaction.streaming-max-transaction-size option to make the maximum
+  transaction size for stream transactions configurable (in bytes).
+
 * Updated arangosync to v2.19.27
 
 * Ensure the js/node/package.json and js/node/package-lock.json have correct
