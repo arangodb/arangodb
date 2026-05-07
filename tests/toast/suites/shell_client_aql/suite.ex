@@ -21,5 +21,9 @@
 
 defmodule ShellClientAql.Suite do
   use ToastTest.JavascriptSuite,
-    paths: ["tests/js/client/aql", "enterprise/tests/js/client/aql"]
+    paths: [
+      "tests/js/client/aql",
+      "enterprise/tests/js/client/aql",
+      "enterprise/tests/js/common/aql/"
+    ]
 end
