@@ -158,7 +158,7 @@ collectAll(InputIterator first, InputIterator last) {
 
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
   for (size_t i = 0; first != last; ++first, ++i) {
-    first->update_requester(ctx->p.id());
+    (*first).update_requester(ctx->p.id());
     std::move(*first).thenFinal(
         [i, ctx](auto&& t) { ctx->results[i] = std::move(t); });
   }
