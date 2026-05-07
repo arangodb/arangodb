@@ -1440,11 +1440,18 @@ function processQuery(query, explain, planIndex) {
 
         let filter = '';
         if (node.filter) {
-          filter = keyword(' FILTER ') + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
-          if (node.filterMode === "storedValues") {
-            filter += annotation(" /* covered by storedValues */");
-          } else if (node.filterMode === "document") {
-            filter += annotation(" /* loads document */");
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        if (node.projections) {
+          // produce LET nodes for each projection output register
+          let parts = [];
+          node.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(node.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            filter = '   ' + keyword('LET') + ' ' + parts.join(', ') + filter;
           }
         }
 
@@ -1454,7 +1461,13 @@ function processQuery(query, explain, planIndex) {
         } else if (node.projectionMode === "document") {
           projectionAnnotation = ', projections via document';
         }
-        const enumAnnotation = annotation('/* vector index' + projectionAnnotation + projections(node, 'projections', 'projections') + ' */');
+        let filterAnnotation = '';
+        if (node.filterMode === "storedValues") {
+          filterAnnotation = ', filter via storedValues';
+        } else if (node.filterMode === "document") {
+          filterAnnotation = ', filter via document';
+        }
+        const enumAnnotation = annotation('/* vector index' + filterAnnotation + projectionAnnotation + projections(node, 'filterProjections', 'filter projections') + projections(node, 'projections', 'projections') + ' */');
 
         // Register the index used for near vector search
         if (node.hasOwnProperty('index')) {
