@@ -23,8 +23,8 @@ defmodule ToastTest.Runner.TestExecution do
   @moduledoc false
 
   alias ToastTest.ExUnitCompat, as: Compat
-  alias ToastTest.Runner.{FailureFormatter, TestFilter, TestProcess, Timeout}
-  alias ToastTest.{Abort, TestLifecycle, EventStore}
+  alias ToastTest.Runner.{Events, FailureFormatter, TestFilter, TestProcess, Timeout}
+  alias ToastTest.{Abort, TestLifecycle}
 
   require Logger
 
@@ -32,19 +32,16 @@ defmodule ToastTest.Runner.TestExecution do
 
   def emit_module_with_state(manager, module, transform_test) do
     test_module = Compat.get_test_metadata(module)
-    EventStore.notify(%{event: :module_started, module: module})
-    Compat.module_started(manager, test_module)
+    Events.module_started(manager, module, test_module)
 
     transformed_tests =
       for test <- test_module.tests do
         transformed = transform_test.(test)
-        Compat.test_started(manager, transformed)
-        Compat.test_finished(manager, transformed)
+        Events.emit_not_executed(manager, transformed)
         transformed
       end
 
-    Compat.module_finished(manager, %{test_module | tests: transformed_tests})
-    EventStore.notify(%{event: :module_finished, module: module})
+    Events.module_finished(manager, module, %{test_module | tests: transformed_tests})
   end
 
   def max_failures_reached?(%{stats_pid: stats_pid, max_failures: max_failures}) do
@@ -133,8 +130,7 @@ defmodule ToastTest.Runner.TestExecution do
 
   defp run_exunit_module(config, module) do
     test_module = Compat.get_test_metadata(module)
-    EventStore.notify(%{event: :module_started, module: module})
-    Compat.module_started(config.manager, test_module)
+    Events.module_started(config.manager, module, test_module)
 
     {to_run_tests, excluded_and_skipped_tests} =
       TestFilter.filter(config.filters, test_module.tests)
@@ -144,8 +140,7 @@ defmodule ToastTest.Runner.TestExecution do
 
   defp execute_module_tests(config, test_module, to_run_tests, excluded_and_skipped_tests) do
     for excluded_or_skipped_test <- excluded_and_skipped_tests do
-      Compat.test_started(config.manager, excluded_or_skipped_test)
-      Compat.test_finished(config.manager, excluded_or_skipped_test)
+      Events.emit_not_executed(config.manager, excluded_or_skipped_test)
     end
 
     {test_module, remaining_tests, finished_tests} =
@@ -249,13 +244,11 @@ defmodule ToastTest.Runner.TestExecution do
 
     for test <- remaining_tests do
       skipped = %{test | state: {:skipped, abort_msg}}
-      Compat.test_started(config.manager, skipped)
-      Compat.test_finished(config.manager, skipped)
+      Events.emit_not_executed(config.manager, skipped)
     end
 
     test_module = %{test_module | tests: Enum.reverse(finished_tests, remaining_tests)}
-    Compat.module_finished(config.manager, test_module)
-    EventStore.notify(%{event: :module_finished, module: test_module.name})
+    Events.module_finished(config.manager, test_module.name, test_module)
   end
 
   defp finish_pending_module(config, test_module, remaining_tests, finished_tests) do
@@ -273,13 +266,11 @@ defmodule ToastTest.Runner.TestExecution do
 
   defp emit_pending_tests(config, test_module, pending_tests, finished_tests) do
     for pending_test <- pending_tests do
-      Compat.test_started(config.manager, pending_test)
-      Compat.test_finished(config.manager, pending_test)
+      Events.emit_not_executed(config.manager, pending_test)
     end
 
     test_module = %{test_module | tests: Enum.reverse(finished_tests, pending_tests)}
-    Compat.module_finished(config.manager, test_module)
-    EventStore.notify(%{event: :module_finished, module: test_module.name})
+    Events.module_finished(config.manager, test_module.name, test_module)
   end
 
   defp emit_skipped_module(config, module, reason) do
@@ -343,34 +334,14 @@ defmodule ToastTest.Runner.TestExecution do
   end
 
   defp run_test(config, test, context) do
-    EventStore.notify(%{
-      event: :test_started,
-      module: test.module,
-      name: test.name
-    })
-
-    Compat.test_started(config.manager, test)
+    Events.test_started(config.manager, test)
     test = TestProcess.spawn_test(config, test, context)
-
-    EventStore.notify(%{
-      event: :test_finished,
-      module: test.module,
-      name: test.name,
-      outcome: ToastTest.Formatting.test_outcome(test),
-      duration_us: test.time
-    })
+    Events.test_finished(config.manager, test)
 
     case process_max_failures(config, test) do
-      :no ->
-        Compat.test_finished(config.manager, test)
-        {:ok, test}
-
-      {:reached, 1} ->
-        Compat.test_finished(config.manager, test)
-        :max_failures_reached
-
-      :surpassed ->
-        :max_failures_reached
+      :no -> {:ok, test}
+      {:reached, 1} -> :max_failures_reached
+      :surpassed -> :max_failures_reached
     end
   end
 

@@ -25,10 +25,9 @@ defmodule ToastTest.Runner.JS.TestRunner do
   then emitting ExUnit-compatible events through the event pipeline.
   """
 
-  alias ToastTest.Runner.FailureFormatter
+  alias ToastTest.Runner.{Events, FailureFormatter}
   alias ToastTest.Runner.JS.ResultMapper
   alias ToastTest.ExUnitCompat, as: Compat
-  alias ToastTest.EventStore
 
   @spec run_module(Compat.event_manager(), module(), keyword()) :: :ok
   def run_module(manager, module, opts \\ []) do
@@ -38,8 +37,7 @@ defmodule ToastTest.Runner.JS.TestRunner do
 
     placeholder_module = module.__ex_unit__()
     js_module = placeholder_module.name
-    EventStore.notify(%{event: :module_started, module: module})
-    Compat.module_started(manager, placeholder_module)
+    Events.module_started(manager, module, placeholder_module)
 
     tests =
       case executor.run(js_file, executor_opts) do
@@ -50,15 +48,24 @@ defmodule ToastTest.Runner.JS.TestRunner do
           [build_error_test(js_module, js_file, reason)]
       end
 
+    # We are emitting these events after all tests have run, which means the timestamps won't reflect
+    # the actual start and finish times. We need to do that to make sure we have all the events in the
+    # event store and that the RunnerStats are updated correctly.
     for test <- tests do
-      Compat.test_started(manager, test)
-      Compat.test_finished(manager, test)
+      Events.test_started(manager, test, timestamp_from_tag(test, :started_at))
+      Events.test_finished(manager, test, timestamp_from_tag(test, :finished_at))
     end
 
     finished_module = %{placeholder_module | tests: tests}
-    Compat.module_finished(manager, finished_module)
-    EventStore.notify(%{event: :module_finished, module: module})
+    Events.module_finished(manager, module, finished_module)
     :ok
+  end
+
+  defp timestamp_from_tag(test, key) do
+    case Map.get(test.tags, key) do
+      %DateTime{} = dt -> [timestamp: DateTime.to_unix(dt, :microsecond)]
+      _ -> []
+    end
   end
 
   defp build_error_test(js_module, js_file, reason) do
