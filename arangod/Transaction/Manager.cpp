@@ -483,8 +483,8 @@ Result Manager::prepareOptions(transaction::Options& options) {
     }
   } else {
     // for all other transactions, apply a size limitation
-    options.maxTransactionSize = std::min<size_t>(options.maxTransactionSize,
-                                                  Manager::maxTransactionSize);
+    options.maxTransactionSize = std::min<size_t>(
+        options.maxTransactionSize, _feature.streamingMaxTransactionSize());
   }
 
   return res;
