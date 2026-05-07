@@ -92,6 +92,49 @@ function VectorIndexIteratorScenariosTestSuite() {
         return db._createStatement({query, bindVars}).explain().plan;
     };
 
+    const explainText = function(query, bindVars) {
+        return require("@arangodb/aql/explainer").explain(
+            {query, bindVars}, {colors: false}, false);
+    };
+
+    // Asserts that the textual explainer output for an EnumerateNearVectorNode
+    // mirrors the node's structured filterMode/projectionMode fields, plus the
+    // FILTER and LET clauses when applicable.
+    const verifyExplainerOutput = function(text, node) {
+        assertTrue(text.includes("/* vector index"),
+            `missing vector index annotation: ${text}`);
+
+        if (node.filterMode === "storedValues") {
+            assertTrue(text.includes("filter via storedValues"), text);
+        } else if (node.filterMode === "document") {
+            assertTrue(text.includes("filter via document"), text);
+        } else {
+            assertFalse(text.includes("filter via"), text);
+        }
+
+        if (node.projectionMode === "covering") {
+            assertTrue(text.includes("projections via storedValues"), text);
+        } else if (node.projectionMode === "document") {
+            assertTrue(text.includes("projections via document"), text);
+        } else {
+            assertFalse(text.includes("projections via"), text);
+        }
+
+        if (node.filter) {
+            assertTrue(/\bFILTER\b/.test(text), text);
+            assertTrue(text.includes("early pruning"), text);
+        } else {
+            assertFalse(text.includes("early pruning"), text);
+        }
+
+        const hasProjectionVars = (node.projections || []).some(
+            p => p.hasOwnProperty('variable'));
+        if (hasProjectionVars) {
+            assertTrue(/\bLET\b/.test(text),
+                `expected LET for projection output registers: ${text}`);
+        }
+    };
+
     return {
         setUpAll: function() {
             db._useDatabase("_system");
@@ -152,6 +195,8 @@ function VectorIndexIteratorScenariosTestSuite() {
             assertEqual("pass-through-id", node.projectionMode);
             assertTrue(hasMaterializeNode(plan), "MaterializeNode needed to load the doc");
 
+            verifyExplainerOutput(explainText(query, bindVars), node);
+
             const results = db._query(query, bindVars).toArray();
             assertEqual(10, results.length);
         },
@@ -169,6 +214,8 @@ function VectorIndexIteratorScenariosTestSuite() {
             assertEqual("none", node.filterMode);
             assertEqual("pass-through-id", node.projectionMode);
             assertTrue(hasMaterializeNode(plan), "MaterializeNode needed for non-covered projections");
+
+            verifyExplainerOutput(explainText(query, bindVars), node);
 
             const results = db._query(query, bindVars).toArray();
             verifyTopK(results, 10);
@@ -188,6 +235,8 @@ function VectorIndexIteratorScenariosTestSuite() {
             assertEqual("covering", node.projectionMode);
             assertFalse(hasMaterializeNode(plan), "MaterializeNode should be dropped when storedValues cover projections");
 
+            verifyExplainerOutput(explainText(query, bindVars), node);
+
             const results = db._query(query, bindVars).toArray();
             verifyTopK(results, 10);
         },
@@ -205,6 +254,8 @@ function VectorIndexIteratorScenariosTestSuite() {
             assertEqual("document", node.filterMode);
             assertEqual("document", node.projectionMode);
             assertFalse(hasMaterializeNode(plan), "filter already loaded the doc");
+
+            verifyExplainerOutput(explainText(query, bindVars), node);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(10, results.length);
@@ -224,6 +275,8 @@ function VectorIndexIteratorScenariosTestSuite() {
             assertEqual("storedValues", node.filterMode);
             assertEqual("pass-through-id", node.projectionMode);
             assertTrue(hasMaterializeNode(plan), "MaterializeNode needed to load the doc");
+
+            verifyExplainerOutput(explainText(query, bindVars), node);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(10, results.length);
@@ -245,6 +298,8 @@ function VectorIndexIteratorScenariosTestSuite() {
             assertEqual("document", node.projectionMode);
             assertFalse(hasMaterializeNode(plan), "filter already loaded the doc");
 
+            verifyExplainerOutput(explainText(query, bindVars), node);
+
             const results = db._query(query, bindVars).toArray();
             verifyTopK(results, 10);
             verifyResultsMatchFilter(results, r => r.extra < 200);
@@ -265,6 +320,8 @@ function VectorIndexIteratorScenariosTestSuite() {
             assertEqual("pass-through-id", node.projectionMode);
             assertTrue(hasMaterializeNode(plan), "Materialize handles projections");
 
+            verifyExplainerOutput(explainText(query, bindVars), node);
+
             const results = db._query(query, bindVars).toArray();
             verifyTopK(results, 10);
         },
@@ -284,6 +341,8 @@ function VectorIndexIteratorScenariosTestSuite() {
             assertEqual("covering", node.projectionMode);
             assertFalse(hasMaterializeNode(plan), "covered projections; no Materialize needed");
 
+            verifyExplainerOutput(explainText(query, bindVars), node);
+
             const results = db._query(query, bindVars).toArray();
             verifyTopK(results, 10);
         },
@@ -302,6 +361,8 @@ function VectorIndexIteratorScenariosTestSuite() {
             assertEqual("storedValues", node.filterMode);
             assertEqual("covering", node.projectionMode);
             assertFalse(hasMaterializeNode(plan), "all stored; no doc load");
+
+            verifyExplainerOutput(explainText(query, bindVars), node);
 
             const results = db._query(query, bindVars).toArray();
             verifyTopK(results, 10);
