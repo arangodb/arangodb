@@ -75,8 +75,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _filterMode(filterMode),
       _projectionMode(projectionMode) {
   TRI_ASSERT(_index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
-  // FilterMode != kNone means a filter is pushed down -> filterExpression
-  // must be present. kNone means no filter pushed.
+  // If any mode of filterin is enabled, we need a filter expression.
   TRI_ASSERT((_filterMode == vector::FilterMode::kNone) ==
              (filterExpression == nullptr));
   if (filterExpression != nullptr) {
@@ -105,8 +104,7 @@ EnumerateNearVectorNode::extractFilterVarsToRegs() const {
     if (var->id == _outVariable->id) {
       continue;
     }
-    auto regId = variableToRegisterId(var);
-    filterVarsToRegs.emplace_back(var->id, std::move(regId));
+    filterVarsToRegs.emplace_back(var->id, variableToRegisterId(var));
   }
 
   return filterVarsToRegs;
@@ -114,9 +112,7 @@ EnumerateNearVectorNode::extractFilterVarsToRegs() const {
 
 std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     ExecutionEngine& engine) const {
-  auto writableOutputRegisters = RegIdSet{};
-  containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
-
+  RegIdSet writableOutputRegisters;
   // The doc-variable register is written for everything except kCovered.
   RegisterId outDocumentRegId = RegisterId::maxRegisterId;
   if (_projectionMode != vector::ProjectionMode::kCovered) {
@@ -126,7 +122,6 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
   RegisterId outDistanceRegId = variableToRegisterId(_distanceOutVariable);
   writableOutputRegisters.emplace(outDistanceRegId);
-
   // per-projection output registers (set by the projections rule)
   containers::FlatHashMap<VariableId, RegisterId> projectionVarsToRegs;
   for (size_t i = 0; i < _projections.size(); ++i) {
