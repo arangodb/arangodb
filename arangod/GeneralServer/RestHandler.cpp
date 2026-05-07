@@ -677,6 +677,11 @@ void RestHandler::compressResponse() {
 }
 
 async<Result> RestHandler::checkUserCanAccess() const {
+  auto const* const auth = AuthenticationFeature::instance();
+  if (!auth->isActive()) {
+    co_return Result();
+  }
+
   bool const userAuthenticated = request()->authenticated();
   bool canAccess = userAuthenticated;
   auto const& path = request()->requestPath();
@@ -694,8 +699,6 @@ async<Result> RestHandler::checkUserCanAccess() const {
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
   if (not canAccess) {
-    auto auth = AuthenticationFeature::instance();
-
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
