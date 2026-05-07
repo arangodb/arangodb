@@ -173,7 +173,9 @@ void RocksDBKey::constructVectorIndexTrainedData(uint64_t indexId,
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  uint64ToPersistent(*_buffer, static_cast<uint64_t>(slot));
+  uint64ToPersistent(
+      *_buffer,
+      static_cast<std::underlying_type_t<VectorIndexMetadataSlot>>(slot));
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
