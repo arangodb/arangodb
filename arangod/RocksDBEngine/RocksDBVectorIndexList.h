@@ -166,6 +166,15 @@ concept VectorIndexStoredValuesStrategy = requires {
   {T::extractVectorIndexValue(value, codeSize)};
 };
 
+/// @brief Non-owning view into a vector-index entry. Backed by the rocksdb
+/// iterator's value() bytes; valid only until the iterator advances.
+/// Encoded bytes are always exactly the index's codeSize. `storedValues`
+/// is a none-slice when the layout has no stored values.
+struct RocksDBVectorIndexEntryView {
+  uint8_t const* encoded{nullptr};
+  velocypack::Slice storedValues;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Strategy for vector indexes WITHOUT stored values
 ///
@@ -174,8 +183,8 @@ concept VectorIndexStoredValuesStrategy = requires {
 ////////////////////////////////////////////////////////////////////////////////
 struct NoStoredValuesStrategy {
   static constexpr bool hasStoredValues = false;
-  // No stored values to view; out of scope for the zero-copy path.
-  static constexpr bool kSupportsView = false;
+  // Raw encoded bytes — consumable in place, no parsing.
+  static constexpr bool kSupportsView = true;
 
   static std::pair<LocalDocumentId, std::vector<uint8_t>>
   extractVectorIndexEntry(rocksdb::Slice const& key,
@@ -193,6 +202,12 @@ struct NoStoredValuesStrategy {
         reinterpret_cast<uint8_t const*>(value.data()),
         reinterpret_cast<uint8_t const*>(value.data()) + codeSize);
     return encodedValue;
+  }
+
+  static RocksDBVectorIndexEntryView extractView(rocksdb::Slice const& value,
+                                                 size_t /*codeSize*/) {
+    return {.encoded = reinterpret_cast<uint8_t const*>(value.data()),
+            .storedValues = {}};
   }
 };
 
@@ -221,16 +236,6 @@ struct WithStoredValuesV1Strategy {
   }
 };
 
-/// @brief Non-owning view into a v2 vector-index entry. Backed directly by
-/// the rocksdb iterator's value() bytes; valid only until the iterator
-/// advances. Promoted to an owned SharedSlice at capture time
-/// (on_heap_changed) for top-K survivors only. The encoded bytes are
-/// always exactly the index's codeSize, so size isn't carried here.
-struct RocksDBVectorIndexEntryViewV2 {
-  uint8_t const* encoded{nullptr};
-  velocypack::Slice storedValues;
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Strategy for vector indexes WITH stored values, v2 layout
 ///
@@ -256,8 +261,8 @@ struct WithStoredValuesV2Strategy {
 
   // Returns a non-owning view into the rocksdb iterator's value buffer.
   // Lifetime is bounded by the rocksdb iterator's current position.
-  static RocksDBVectorIndexEntryViewV2 extractView(rocksdb::Slice const& value,
-                                                   size_t codeSize) {
+  static RocksDBVectorIndexEntryView extractView(rocksdb::Slice const& value,
+                                                 size_t codeSize) {
     auto const* data = reinterpret_cast<uint8_t const*>(value.data());
     return {.encoded = data,
             .storedValues = velocypack::Slice(data + codeSize)};
@@ -319,7 +324,7 @@ struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
 
  private:
   std::conditional_t<
-      Strategy::kSupportsView, RocksDBVectorIndexEntryViewV2,
+      Strategy::kSupportsView, RocksDBVectorIndexEntryView,
       std::conditional_t<Strategy::hasStoredValues,
                          RocksDBVectorIndexEntryValue, std::vector<uint8_t>>>
       _currentEntry;

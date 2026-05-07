@@ -112,9 +112,7 @@ template<VectorIndexStoredValuesStrategy Strategy>
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
   if constexpr (Strategy::kSupportsView) {
-    // V2: zero-allocation parse — _currentEntry just holds pointers into
-    // the rocksdb iterator's value() buffer. Bytes are promoted to an
-    // owning SharedSlice in captureSurvivor for top-K survivors only.
+    // Zero-allocation: _currentEntry points into the iterator's value buffer.
     auto const docId = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
     _currentEntry = Strategy::extractView(_it->value(), _codeSize);
     return {static_cast<faiss::idx_t>(docId.id()), _currentEntry.encoded};
@@ -145,8 +143,8 @@ template<VectorIndexStoredValuesStrategy Strategy>
 void RocksDBInvertedListsIterator<Strategy>::captureSurvivor(
     LocalDocumentId id) {
   if constexpr (Strategy::kSupportsView) {
-    // V2: promote the rocksdb-backed view into an owned SharedSlice, but
-    // only now that we know this entry survives the top-K heap.
+    // Promote the iterator-backed slice into an owned SharedSlice now that
+    // we know this entry survived the top-K heap.
     auto const& view = _currentEntry.storedValues;
     if (!view.isNone()) {
       _sink->insert_or_assign(id, toOwnedSharedSlice(view));
