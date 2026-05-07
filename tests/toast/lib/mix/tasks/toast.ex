@@ -186,6 +186,9 @@ defmodule Mix.Tasks.Toast do
 
     test_config = ToastTest.Config.new()
     Toast.Application.reconfigure_file_logger(test_config.result_dir)
+
+    ex_unit_opts = apply_build_exclusions(ex_unit_opts)
+
     start_time = System.monotonic_time()
     result = ToastTest.Runner.run_suites(suite_data, test_config, ex_unit_opts)
 
@@ -294,6 +297,32 @@ defmodule Mix.Tasks.Toast do
         {file_names, _line_filters} = Helpers.parse_file_specs(file_specs)
         Enum.filter(js_files, &(Path.basename(&1) in file_names))
     end
+  end
+
+  defp apply_build_exclusions(ex_unit_opts) do
+    build_dir = Application.get_env(:toast, :build_dir)
+    {:ok, arangod} = Toast.Utils.Filesystem.find_arangod(build_dir)
+
+    exclusions =
+      case ToastTest.BuildProperties.detect(arangod) do
+        {:ok, props} ->
+          Logger.info(
+            "Build: enterprise=#{props.enterprise}, asan=#{props.asan}, tsan=#{props.tsan}, " <>
+              "coverage=#{props.coverage}, failure_tests=#{props.failure_tests}, v8=#{props.v8}"
+          )
+
+          ToastTest.BuildProperties.exclusions(props)
+
+        {:error, reason} ->
+          Logger.warning("Could not detect build properties: #{reason}")
+          ToastTest.BuildProperties.default_exclusions()
+      end
+
+    if exclusions != [] do
+      Logger.info("Auto-excluded tags: #{inspect(exclusions)}")
+    end
+
+    Keyword.update(ex_unit_opts, :exclude, exclusions, &(exclusions ++ &1))
   end
 
   defp build_suite_entry(suite_module, suite_dir, test_files, line_filters, test_filter) do

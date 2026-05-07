@@ -29,24 +29,7 @@ defmodule ToastTest.Runner.JS.ModuleBuilder do
   using ExUnit.Case.
   """
 
-  @segment_tags [
-    {"cluster", :cluster_only},
-    {"noncluster", :single_only},
-    {"nightly", :nightly},
-    {"timecritical", :timecritical},
-    {"geo", :geo},
-    {"nondeterministic", :nondeterministic},
-    {"grey", :grey},
-    {"graph", :graph},
-    {"memoryintense", :memoryintense},
-    {"novalgrind", :novalgrind},
-    {"noarm", :noarm},
-    {"noinstr", :noinstr},
-    {"fp", :failure_points},
-    {"noasan", :noasan},
-    {"nocov", :nocov},
-    {"sjs", :server_js}
-  ]
+  @segment_tags ToastTest.BuildProperties.segment_tags()
 
   @spec build_modules(module(), [String.t()], keyword()) :: [module()]
   def build_modules(suite_module, js_files, opts \\ []) do

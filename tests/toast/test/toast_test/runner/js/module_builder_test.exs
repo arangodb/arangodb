@@ -124,7 +124,7 @@ defmodule ToastTest.Runner.JS.ModuleBuilderTest do
       assert ModuleBuilder.tags_from_filename("aql-join-cluster.js") == %{cluster_only: true}
     end
 
-    test "noncluster file does not get cluster_only" do
+    test "noncluster file gets single_only, not cluster_only" do
       tags = ModuleBuilder.tags_from_filename("aql-join-noncluster.js")
       assert tags == %{single_only: true}
       refute Map.has_key?(tags, :cluster_only)
@@ -132,20 +132,31 @@ defmodule ToastTest.Runner.JS.ModuleBuilderTest do
 
     test "multiple tags" do
       tags = ModuleBuilder.tags_from_filename("aql-nightly-cluster.js")
-      assert tags == %{cluster_only: true, nightly: true}
+      assert tags == %{cluster_only: true, full_only: true}
     end
 
     test "no matching segments" do
       assert ModuleBuilder.tags_from_filename("aql-parse.js") == %{}
     end
 
-    test "failure points tag" do
+    test "failure points" do
       assert ModuleBuilder.tags_from_filename("aql-crash-fp.js") == %{failure_points: true}
     end
 
-    test "sanitizer and nondeterministic" do
-      tags = ModuleBuilder.tags_from_filename("test-noasan-nondeterministic.js")
-      assert tags == %{noasan: true, nondeterministic: true}
+    test "skip_sanitizer" do
+      assert ModuleBuilder.tags_from_filename("test-noasan.js") == %{skip_sanitizer: true}
+    end
+
+    test "skip_instrumented" do
+      assert ModuleBuilder.tags_from_filename("test-noinstr.js") == %{skip_instrumented: true}
+    end
+
+    test "replication2" do
+      assert ModuleBuilder.tags_from_filename("test-r2.js") == %{replication2: true}
+    end
+
+    test "server_javascript" do
+      assert ModuleBuilder.tags_from_filename("test-sjs.js") == %{server_javascript: true}
     end
   end
 
