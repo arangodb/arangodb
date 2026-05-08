@@ -209,6 +209,23 @@ function makeDataWrapper (options) {
       }
       return false;
     }
+
+    createDump() {
+      this.dumpConfig = ct.createBaseConfig('dump', this.options, this.instanceManager);
+      this.dumpConfig.setOutputDirectory('dump');
+      this.dumpConfig.setIncludeSystem(true);
+      this.dumpConfig.setAllDatabases();
+      return ct.run.arangoDumpRestoreWithConfig(this.dumpConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
+
+    }
+    restoreDump() {
+      this.restoreConfig = ct.createBaseConfig('restore', this.options, this.instanceManager);
+      this.restoreConfig.setInputDirectory('dump', true);
+      this.restoreConfig.setIncludeSystem(true);
+      this.restoreConfig.setAllDatabases();
+      return ct.run.arangoDumpRestoreWithConfig(this.restoreConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
+    }
+
     runOneTest(file) {
       this.options.rtaNegFilter = "";
       if (this.options.skipServerJS) {
@@ -311,13 +328,17 @@ function makeDataWrapper (options) {
           }
         } else {
           this.waitForReplState();
-          if (count === 2) {
+          if (count === 1) {
+            this.createDump();
+          } else if (count === 2) {
             try {
               if (this.options.oldSource !== undefined) {
                 print("switching binary set");
                 pu.switchBinarySet(1);
               }
               this.instanceManager.upgradeCycleInstance();
+              this.restoreDump();
+              this.waitForReplState();
             } catch(e) {
               res.status = false;
               res.failed += 1;
