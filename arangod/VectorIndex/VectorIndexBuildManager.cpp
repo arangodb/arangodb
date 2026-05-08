@@ -23,8 +23,10 @@
 
 #include "VectorIndex/VectorIndexBuildManager.h"
 
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
@@ -52,6 +54,9 @@ DECLARE_GAUGE(arangodb_vector_index_unusable, uint64_t,
               "Number of unusable vector indexes on this DBServer");
 DECLARE_GAUGE(arangodb_vector_index_training_ongoing, uint64_t,
               "Number of vector index trainings currently ongoing");
+DECLARE_GAUGE(arangodb_vector_index_training_memory_peak_bytes, uint64_t,
+              "Peak memory in bytes used by the most recent vector index "
+              "training reservoir on this server");
 
 struct VectorTrainingDurationScale {
   static arangodb::metrics::LogScale<double> scale() {
@@ -83,9 +88,12 @@ VectorIndexBuildManager::VectorIndexBuildManager(
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
       _scheduler(scheduler),
+      _resourceMonitor(GlobalResourceMonitor::instance()),
       _untrainedCount(metrics.add(arangodb_vector_index_unusable{})),
       _trainingOngoingCount(
           metrics.add(arangodb_vector_index_training_ongoing{})),
+      _trainingMemoryPeakBytes(
+          metrics.add(arangodb_vector_index_training_memory_peak_bytes{})),
       _trainingDuration(metrics.add(arangodb_vector_index_training_duration{})),
       _ingestionDuration(
           metrics.add(arangodb_vector_index_ingestion_duration{})) {}
@@ -272,17 +280,30 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
             << " documents). Starting deferred training.";
 
         _trainingOngoingCount.fetch_add(1);
+        _resourceMonitor.clear();
         auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
-        VectorIndexBuilder builder(vecIdx);
+        VectorIndexBuilder builder(vecIdx, _resourceMonitor);
         auto const res = builder.build(std::move(indexPtr), _trainingDuration,
                                        _ingestionDuration, stopToken);
+        _trainingMemoryPeakBytes.store(_resourceMonitor.peak(),
+                                       std::memory_order_relaxed);
         _trainingOngoingCount.fetch_sub(1);
 
         if (res.fail()) {
           fulfillWaiters(vecIdx.id(), res);
-          LOG_TOPIC("e164b", ERR, Logger::ENGINES)
-              << "[index=" << vecIdx.id().id()
-              << "] Vector build failed: " << res.errorMessage();
+          if (res.is(TRI_ERROR_RESOURCE_LIMIT)) {
+            LOG_TOPIC("e165b", ERR, Logger::ENGINES)
+                << "[index=" << vecIdx.id().id()
+                << "] Vector build aborted: training reservoir exceeded the "
+                   "configured memory limit. Lower numberOfDocsPerCentroid in "
+                   "the index definition or raise the global memory limit. "
+                   "Details: "
+                << res.errorMessage();
+          } else {
+            LOG_TOPIC("e164b", ERR, Logger::ENGINES)
+                << "[index=" << vecIdx.id().id()
+                << "] Vector build failed: " << res.errorMessage();
+          }
           failedBuilds[vecIdx.objectId()] = {std::chrono::steady_clock::now(),
                                              numDocs};
 

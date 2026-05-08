@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Futures/Promise.h"
@@ -106,8 +107,16 @@ class VectorIndexBuildManager {
   Scheduler& _scheduler;
   std::jthread _thread;
 
+  // Tracks memory used by the training-data reservoir of each build.
+  // Backed by GlobalResourceMonitor::instance(), so allocations roll up
+  // into ArangoDB's global memory counter and a build that would exceed
+  // the global limit fails fast with TRI_ERROR_RESOURCE_LIMIT instead of
+  // OOM-killing the process. Cleared between builds.
+  ResourceMonitor _resourceMonitor;
+
   metrics::Gauge<uint64_t>& _untrainedCount;
   metrics::Gauge<uint64_t>& _trainingOngoingCount;
+  metrics::Gauge<uint64_t>& _trainingMemoryPeakBytes;
   metrics::Histogram<metrics::LogScale<double>>& _trainingDuration;
   metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
 
