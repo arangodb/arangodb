@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/AttributeNameParser.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "VectorIndex/VectorIndexDefinition.h"
@@ -52,7 +53,6 @@ class Index;
 class RocksDBIndex;
 class RocksDBVectorIndex;
 class RocksDBEngine;
-struct ResourceMonitor;
 }  // namespace arangodb
 
 namespace arangodb::vector {
@@ -81,6 +81,10 @@ class VectorIndexTrainer {
     // field. Used to resolve nLists for sparse indexes where numDocsHint
     // (total doc count) overestimates the actual vector-bearing doc count.
     std::size_t totalValidVectorCount;
+    // Holds the reservoir bytes against the resource monitor for the full
+    // lifetime of `data` (i.e. through the FAISS train() step). Released
+    // when this dataset is destroyed.
+    ResourceUsageScope memScope;
   };
 
  public:
