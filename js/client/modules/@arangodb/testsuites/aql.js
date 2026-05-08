@@ -94,7 +94,7 @@ function ensureCoordinators(options, numServers) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellV8 (options) {
-  const name = 'shell_v8'
+  const name = 'shell_v8';
   let testCases = tu.scanTestPaths(testPaths[name], options);
   testCases = tu.splitBuckets(options, testCases);
   let rc = new trs.shellv8Runner(options, name, []).run(testCases);
@@ -129,7 +129,7 @@ function shellApiClient (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellApiMulti (options) {
-  const name = shell_api_multi
+  const name = 'shell_api_multi';
   let testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);
