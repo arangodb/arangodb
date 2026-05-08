@@ -12,7 +12,7 @@
 
 * COR-467: Extended `compareAstNodes` to compare AST nodes that are not directly
   VPack-serializable (references, attribute accesses, function calls, operators).
-  `a ==/!= b` and `b ==/!= a` compare as equal, as do NARY conditions and IN/NIN
+  `a == b` and `b == a` (and `!=`) compare as equal, as do NARY conditions and IN/NIN
   arrays regardless of operand order.
 
 * COR-466: Added constant folding empty array comparisons in `FILTER` nodes,
