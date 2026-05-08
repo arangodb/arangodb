@@ -34,12 +34,10 @@ inline namespace v1 {
 /// so that fuerte does not need to include server headers.
 /// lib/Rest/ApiVersion.h re-exports this enum.
 
-enum class ApiVersion { V0 = 0, V1, Experimental };
+enum class ApiVersion { V1 = 1, Experimental };
 
 constexpr auto from(std::string_view s) -> std::optional<ApiVersion> {
-  if (s == "v0") {
-    return ApiVersion::V0;
-  } else if (s == "v1") {
+  if (s == "v1") {
     return ApiVersion::V1;
   } else if (s == "experimental") {
     return ApiVersion::Experimental;
@@ -49,8 +47,6 @@ constexpr auto from(std::string_view s) -> std::optional<ApiVersion> {
 
 constexpr auto to_string(ApiVersion v) -> std::string {
   switch (v) {
-    case ApiVersion::V0:
-      return "v0";
     case ApiVersion::V1:
       return "v1";
     case ApiVersion::Experimental:
