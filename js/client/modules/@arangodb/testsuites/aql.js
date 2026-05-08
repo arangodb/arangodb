@@ -264,7 +264,7 @@ function shellClientAql (options) {
 function shellClientAqlLarge (options) {
   let testCases;
   let name = 'shell_client_aql_large';
-  testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
+  testCases = tu.scanTestPaths(testPaths.shell_client_aql_lange, options);
 
   testCases = tu.splitBuckets(options, testCases);
 
