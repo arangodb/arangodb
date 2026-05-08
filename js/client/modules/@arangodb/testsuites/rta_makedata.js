@@ -211,7 +211,7 @@ function makeDataWrapper (options) {
     }
     runOneTest(file) {
       this.options.rtaNegFilter = "";
-      if (this.options.skipServerJS) {
+      if ((this.options.skipServerJS) || (localOptions.oldSource !== undefined)) {
         // TODO: QA-703
         this.options.rtaNegFilter = "070,071,801,550,900,960";
       }
@@ -356,6 +356,10 @@ function makeDataWrapper (options) {
     }
   }
   let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
+
+  if (localOptions.oldSource !== undefined) {
+    localOptions.skipServerJS = false;
+  }
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
