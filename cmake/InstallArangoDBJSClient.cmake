@@ -46,7 +46,7 @@ install(
   REGEX "^.*/sinon"                                        EXCLUDE
   REGEX "^.*/node/node_modules/type-detect"                EXCLUDE
   REGEX "^.*/node/node_modules/diff"                       EXCLUDE
-  REGEX "^.*/node/node_modules/eslnt"                      EXCLUDE
+  REGEX "^.*/node/node_modules/eslint"                     EXCLUDE
   REGEX "^.*js/node/package.*.json"                        EXCLUDE
 )
 
