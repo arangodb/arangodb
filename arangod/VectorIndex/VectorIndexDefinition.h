@@ -40,6 +40,9 @@ namespace arangodb::vector {
 // Number of training iterations, in faiss it is 25 by default
 static constexpr std::uint64_t kdefaultTrainingIterations{25};
 static constexpr std::uint64_t kdefaultNProbe{1};
+// Per-centroid sample count for the training reservoir. Mirrors
+// faiss::ClusteringParameters::max_points_per_centroid.
+static constexpr std::uint64_t kdefaultNumberOfDocsPerCentroid{256};
 
 struct SearchParameters {
   std::optional<std::int64_t> nProbe;
@@ -225,6 +228,13 @@ struct UserVectorIndexDefinition {
 
   std::int64_t defaultNProbe;
 
+  // Caps the per-centroid sample count of the training reservoir. The
+  // reservoir's worst-case size in bytes is
+  //   nLists * numberOfDocsPerCentroid * dimension * sizeof(float).
+  // Lower this to reduce memory pressure during training at the cost of
+  // training-set quality.
+  std::uint64_t numberOfDocsPerCentroid;
+
   // FAISS factory string.
   std::optional<std::string> factory;
 
@@ -263,6 +273,14 @@ struct UserVectorIndexDefinition {
             .invariant([](auto value) -> inspection::Status {
               if (value < 1) {
                 return {"defaultNProbe must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("numberOfDocsPerCentroid", x.numberOfDocsPerCentroid)
+            .fallback(kdefaultNumberOfDocsPerCentroid)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"numberOfDocsPerCentroid must be 1 or greater!"};
               }
               return inspection::Status::Success{};
             }));
