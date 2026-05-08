@@ -908,7 +908,7 @@ class CompareAstNodesTest : public ::testing::Test {
 
   // Build `lhs IN [elems...]`
   AstNode* inOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
-    AstNode* arr = _ast->createNodeArray();
+    AstNode* arr = _ast->createNodeArray(elems.size());
     for (auto* e : elems) {
       arr->addMember(e);
     }
@@ -916,7 +916,7 @@ class CompareAstNodesTest : public ::testing::Test {
   }
 
   AstNode* ninOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
-    AstNode* arr = _ast->createNodeArray();
+    AstNode* arr = _ast->createNodeArray(elems.size());
     for (auto* e : elems) {
       arr->addMember(e);
     }
@@ -1187,6 +1187,48 @@ TEST_F(CompareAstNodesTest, inDifferentArraySizeNotEqual) {
   auto* in1 = inOp(createRefNode(x), {intVal(1)});
   auto* in12 = inOp(createRefNode(x), {intVal(1), intVal(2)});
   EXPECT_NE(0, compare(in1, in12));
+}
+
+// BINARY_OR and TIMES are also in the commutative list — verify they're
+// covered.
+TEST_F(CompareAstNodesTest, binaryOrCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(a),
+                      createRefNode(b));
+  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(b),
+                      createRefNode(a));
+  EXPECT_EQ(0, compare(ab, ba));
+}
+
+TEST_F(CompareAstNodesTest, multiplicationCommutative) {
+  // `1 * 2` and `2 * 1` must compare as equal.
+  auto* m12 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(1), intVal(2));
+  auto* m21 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(2), intVal(1));
+  EXPECT_EQ(0, compare(m12, m21));
+}
+
+// Nested attribute access: doc.x.y vs doc.x.y
+TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
+  auto* x = makeVar("x");
+  auto* lhs = attr(attr(createRefNode(x), "a"), "b");
+  auto* rhs = attr(attr(createRefNode(x), "a"), "b");
+  EXPECT_EQ(0, compare(lhs, rhs));
+}
+
+TEST_F(CompareAstNodesTest, nestedAttributeAccessDifferentLeaf) {
+  auto* x = makeVar("x");
+  // doc.a.b vs doc.a.c — differ at the outer attribute name.
+  EXPECT_NE(0, compare(attr(attr(createRefNode(x), "a"), "b"),
+                       attr(attr(createRefNode(x), "a"), "c")));
+}
+
+// FCALL with same name but different argument count must not compare as equal.
+TEST_F(CompareAstNodesTest, fcallDifferentArgumentCount) {
+  auto* x = makeVar("x");
+  auto* y = makeVar("y");
+  EXPECT_NE(0, compare(fcall("CONCAT", {createRefNode(x)}),
+                       fcall("CONCAT", {createRefNode(x), createRefNode(y)})));
 }
 
 // --- structural nodes of different AstNodeType

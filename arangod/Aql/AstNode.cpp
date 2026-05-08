@@ -227,7 +227,7 @@ VPackValueType getNodeCompareType(AstNode const* node) noexcept {
     return VPackValueType::Object;
   }
 
-  // All other node types are compared structurally; subqueries
+  // All other node types are non-constant expressions; subqueries
   // trigger an assertion (pointer comparison in release builds).
   TRI_ASSERT(node->type != NODE_TYPE_SUBQUERY);
   return VPackValueType::Custom;
@@ -257,7 +257,8 @@ static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
 static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
-/// @brief compare two constant (vpack-serializable) AST nodes
+/// @brief compare two VPack-typed AST nodes (including arrays/objects with
+/// non-constant children)
 /// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 template<bool resolveAttributeAccess>
 int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
