@@ -328,9 +328,9 @@ function makeDataWrapper (options) {
           }
         } else {
           this.waitForReplState();
-          if (count === 1) {
+          if (count === 2) {
             this.createDump();
-          } else if (count === 2) {
+          } else if (count === 3) {
             try {
               if (this.options.oldSource !== undefined) {
                 print("switching binary set");
