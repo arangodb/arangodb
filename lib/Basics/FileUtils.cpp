@@ -135,11 +135,11 @@ std::string buildFilename(std::string const& path, std::string const& name) {
   namespace fs = std::filesystem;
   fs::path result;
 
-  if (!fs::path(path).empty())
+  if (!fs::path(path).empty()) {
     result = (fs::path(path) / fs::path(name).relative_path());
-  else
+  } else {
     result = fs::path(name);
-
+  }
   return result.lexically_normal().make_preferred().string();
 }
 
