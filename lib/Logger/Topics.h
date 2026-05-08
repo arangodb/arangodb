@@ -162,10 +162,6 @@ struct Startup {
   static constexpr std::string_view name = "startup";
   static constexpr LogLevel defaultLevel = LogLevel::INFO;
 };
-struct Statistics {
-  static constexpr std::string_view name = "statistics";
-  static constexpr LogLevel defaultLevel = LogLevel::INFO;
-};
 struct Supervision {
   static constexpr std::string_view name = "supervision";
   static constexpr LogLevel defaultLevel = LogLevel::INFO;
@@ -258,9 +254,9 @@ using TopicList = meta::TypeList<
     topic::Maintenance, topic::Memory, topic::Queries, topic::Replication,
     topic::Replication2, topic::ReplicatedState, topic::ReplicatedWal,
     topic::Requests, topic::Restore, topic::Rocksdb, topic::Ssl, topic::Startup,
-    topic::Statistics, topic::Supervision, topic::Syscall, topic::Threads,
-    topic::Trx, topic::Ttl, topic::Validation, topic::V8, topic::Views,
-    topic::Deprecation, topic::ArangoSearch, topic::LibIResearch
+    topic::Supervision, topic::Syscall, topic::Threads, topic::Trx, topic::Ttl,
+    topic::Validation, topic::V8, topic::Views, topic::Deprecation,
+    topic::ArangoSearch, topic::LibIResearch
 #ifdef USE_ENTERPRISE
     ,
     audit::Authentication, audit::Authorization, audit::Database,

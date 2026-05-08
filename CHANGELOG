@@ -1,6 +1,21 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-469: Removed `ensureVertexCentricIndex` as it was just a wrapper around
+  `ensureIndex` with direction parameters.
+
+* COR-470: Removed the `path` attribute from the `_api/database/current`
+  response.
+
+* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
+  dependencies.
+
+* COR-429: Removed support for the `--tls.protocol` startup option values 1, 2 and 3,
+  which stand for SSL v2, SSL v2/3, and SSL v3.
+
+* COR-420: Removed `statistics` log topic. The remaining log messages were
+  migrated to the `general` log topic.
+
 * COR-442: Renamed the startup options of the `--ssl.*` group into `--tls.*`,
   but still accept the old naming pattern as an alias to the new one.
   Config files using `[ssl]` sections are remapped automatically as well.
@@ -10,9 +25,6 @@
 
 * COR-295: Removed `StatisticsFeature`. The `--server.statistics-all-databases` and
   `--server.statistics-history` startup options are now obsolete and ignored.
-
-* Upgraded included rclone to v1.73.4 with go1.25.9 and non-vulnerable
-  dependencies.
 
 * Updated ArangoDB Starter to v0.20.0-preview-9.
 
