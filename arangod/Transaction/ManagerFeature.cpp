@@ -123,7 +123,7 @@ timeout to the configured idle timeout.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31115);
+      .setIntroducedIn(31114);
 }
 
 void ManagerFeature::prepare() {
