@@ -132,10 +132,15 @@ std::string buildFilename(char const* path, char const* name) {
 }
 
 std::string buildFilename(std::string const& path, std::string const& name) {
-  std::filesystem::path base(path);
+  namespace fs = std::filesystem;
+  fs::path result;
 
-  std::filesystem::path result = (base / name).lexically_normal();
-  return result.make_preferred().string();
+  if (!fs::path(path).empty())
+    result = (fs::path(path) / fs::path(name).relative_path());
+  else
+    result = fs::path(name);
+
+  return result.lexically_normal().make_preferred().string();
 }
 
 static void throwFileReadError(std::string const& filename) {
