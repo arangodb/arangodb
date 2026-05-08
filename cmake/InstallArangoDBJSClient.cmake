@@ -37,13 +37,27 @@ install(
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   REGEX "^.*/.bin"                                         EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
+  REGEX "^.*/.*-no-eslint"                                 EXCLUDE
   REGEX "^.*/@sinonjs"                                     EXCLUDE
   REGEX "^.*/@xmldom"                                      EXCLUDE
   REGEX "^.*/ansi_up"                                      EXCLUDE
-  REGEX "^.*/diff"                                         EXCLUDE
-  REGEX "^.*/eslint"                                       EXCLUDE
   REGEX "^.*/node-netstat"                                 EXCLUDE
   REGEX "^.*/parse-prometheus-text-format"                 EXCLUDE
   REGEX "^.*/sinon"                                        EXCLUDE
   REGEX "^.*/node/node_modules/type-detect"                EXCLUDE
+  REGEX "^.*/node/node_modules/diff"                       EXCLUDE
+  REGEX "^.*/node/node_modules/eslnt"                      EXCLUDE
+  REGEX "^.*js/node/package.*.json"                        EXCLUDE
+)
+
+install(
+  FILES ${ARANGODB_SOURCE_DIR}/js/node/package.json-no-eslint
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/node
+  RENAME package.json
+)
+
+install(
+  FILES ${ARANGODB_SOURCE_DIR}/js/node/package-lock.json-no-eslint
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/node
+  RENAME package-lock.json
 )
