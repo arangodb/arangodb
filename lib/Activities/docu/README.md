@@ -1,41 +1,78 @@
+# Activity documentation generator
 
-## Installation
+Walks the project's `compile_commands.json` with Clang LibTooling, finds every
+concrete subclass of `arangodb::activities::Activity`, and emits a single
+`generated/Activities.md` describing each one's serialized shape (Snapshot
+envelope + Data fields, recursively one level for project-local nested types).
 
+The generated file is git-ignored and meant to be regenerated on demand.
 
-```
-sudo apt install libclang-dev
-// creates libclang.so, e.g. in /usr/lib/llvm-18/lib
+## Prerequisites
 
-// python3 -m venv venv
-// source venv/bin/activate
+LLVM/Clang **19** (development headers + libraries) and `jq`:
 
-// pip install clang==<version> // put in version of libclang-dev
-sudo apt install python3-clang-18
-
+```sh
+sudo apt install libclang-19-dev llvm-19-dev clang-19 jq
 ```
 
-with clang-query
-```
-sudo apt install clang-tools
-```
-```
-clang-query -p build/ path/to/file.cpp
-```
-with build including the `compile_commands.json`
+You also need a configured ArangoDB build directory whose
+`compile_commands.json` covers the sources you want to scan. By default the
+target reads from `build-presets/my-edition`.
 
-with LibTooling (via C++)
-```
-sudo apt install clang libclang-19-dev llvm-19-dev cmake (libzstd-dev)
-cmake -S . -B build -DClang_DIR=/usr/lib/llvm-18/lib/cmake/clang -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
-```
-```
-./build/find-vars-of-type -p /path/to/project/build \
-    --type=MyType \
-    /path/to/project/src/*.cpp
-```
-jq -r '.[].file' ./compile_commands.json | sort -u | xargs -n 50 -P 8 ./build/find-vars-of-type -p . --type=std::basic_string
+## Build
 
-jq -r '.[] | select(.file | startswith("/home/jvolmer/code/arangodb/arangod")) | .file' ~/code/arangodb/build-presets/my-edition/compile_commands.json | sort -u | xargs -n 50 -P 8 ./build/find-vars-of-type -p ~/code/arangodb/build-presets/my-edition --type=arangodb::activities::Activity > find_activity
+```sh
+cmake -S lib/Activities/docu -B lib/Activities/docu/build
+cmake --build lib/Activities/docu/build
+```
 
--P 8 runs eight processes at once, -n 50 gives each one 50 files
+Override Clang location if needed:
+
+```sh
+cmake -S lib/Activities/docu -B lib/Activities/docu/build \
+      -DClang_DIR=/usr/lib/llvm-19/lib/cmake/clang \
+      -DLLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm
+```
+
+## Run
+
+```sh
+cmake --build lib/Activities/docu/build --target activity-docs
+```
+
+Output lands at `lib/Activities/docu/generated/Activities.md`.
+
+To point at a different build directory:
+
+```sh
+cmake -S lib/Activities/docu -B lib/Activities/docu/build \
+      -DACTIVITY_DOCS_COMPILE_DB=/path/to/build-presets/community-developer
+cmake --build lib/Activities/docu/build --target activity-docs
+```
+
+Tunables (env vars read by `run_docs.sh`):
+
+- `ACTIVITY_DOCS_PARALLEL` — number of parallel `xargs` workers (default 8)
+- `ACTIVITY_DOCS_BATCH` — files per worker invocation (default 50)
+
+## How it finds subclasses
+
+The tool's AST matcher is:
+
+```cpp
+cxxRecordDecl(
+    isDefinition(),
+    isDerivedFrom(hasName("::arangodb::activities::Activity")),
+    unless(hasName("GuardedActivity")))
+  .bind("activity");
+```
+
+For each match it walks the bases, finds the `GuardedActivity<Self, Data>`
+specialization, and resolves the second template argument to the `Data`
+record. The Data's public `FieldDecl`s become the documented fields. If a
+field's type is a record defined inside the project, one level of nested
+fields is also emitted.
+
+To enumerate subclasses of a different base class without recompiling, pass
+`--base-class=::your::Base --guarded-template=YourCRTPName` directly to the
+binary.
