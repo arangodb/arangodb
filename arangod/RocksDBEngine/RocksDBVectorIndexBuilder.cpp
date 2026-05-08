@@ -174,8 +174,11 @@ BoundedDocumentIterator::BoundedDocumentIterator(RocksDBKeyBounds bounds,
 }
 
 VectorIndexTrainer::VectorIndexTrainer(RocksDBVectorIndex const& index,
+                                       ResourceMonitor& resourceMonitor,
                                        rocksdb::DB* db, RocksDBKeyBounds bounds)
-    : _index(index), _docIt(std::move(bounds), db) {}
+    : _index(index),
+      _resourceMonitor(resourceMonitor),
+      _docIt(std::move(bounds), db) {}
 
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
     std::size_t resolvedNLists) const {
@@ -247,7 +250,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     return std::move(resolved).result();
   }
   std::size_t const reservoirCapacity = std::invoke([&] {
-    auto const capacity = resolved.get() * kMaxTrainingSizePerNLists;
+    auto const capacity = resolved.get() * def.numberOfDocsPerCentroid;
     if (_index.sparse()) {
       return capacity;
     }
@@ -257,12 +260,18 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
 
   auto const seed = RandomDevice::seed64();
 
+  std::uint64_t const expectedReservoirBytes =
+      static_cast<std::uint64_t>(reservoirCapacity) * def.dimension *
+      sizeof(float);
+  ResourceUsageScope memScope(_resourceMonitor, expectedReservoirBytes);
+
   LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
       "[shard={}, index={}] Collecting training data dimension {} for {} "
-      "index with numDocsHint: {}, reservoir capacity: {}, sampler seed: {}.",
+      "index with numDocsHint: {}, reservoir capacity: {} (~{} MiB), sampler "
+      "seed: {}.",
       _index.collection().name(), _index.id().id(), def.dimension,
       _index.sparse() ? "sparse" : "non-sparse", numDocsHint, reservoirCapacity,
-      seed);
+      expectedReservoirBytes / (1024 * 1024), seed);
 
   VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
   std::vector<float> inputBuffer;
@@ -318,7 +327,13 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     if (resolved.fail()) {
       return std::move(resolved).result();
     }
-    sampler.resize(resolved.get() * kMaxTrainingSizePerNLists);
+    auto const newCapacity = resolved.get() * def.numberOfDocsPerCentroid;
+    if (newCapacity < reservoirCapacity) {
+      auto const newBytes = static_cast<std::uint64_t>(newCapacity) *
+                            def.dimension * sizeof(float);
+      memScope.decrease(expectedReservoirBytes - newBytes);
+    }
+    sampler.resize(newCapacity);
   }
 
   auto trainingData = std::move(sampler).release();
@@ -335,7 +350,8 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
                   "training process."};
   }
 
-  return ResultT<TrainingDataset>({std::move(trainingData), validSeen});
+  return ResultT<TrainingDataset>(
+      {std::move(trainingData), validSeen, std::move(memScope)});
 }
 
 ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
@@ -695,8 +711,10 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   return firstError;
 }
 
-VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index)
+VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index,
+                                       ResourceMonitor& resourceMonitor)
     : _index(index),
+      _resourceMonitor(resourceMonitor),
       _engine(index.collection().vocbase().engine<RocksDBEngine>()),
       _rootDB(_engine.db()->GetRootDB()),
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
@@ -747,7 +765,7 @@ Result VectorIndexBuilder::build(
 
   // TRAINING PHASE
   auto const numDocsHint = _rcoll->meta().numberDocuments();
-  VectorIndexTrainer trainer(_index, _rootDB, _bounds);
+  VectorIndexTrainer trainer(_index, _resourceMonitor, _rootDB, _bounds);
 
   auto const trainStart = std::chrono::steady_clock::now();
   if (shouldAbort()) {

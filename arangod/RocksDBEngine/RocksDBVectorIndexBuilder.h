@@ -52,13 +52,10 @@ class Index;
 class RocksDBIndex;
 class RocksDBVectorIndex;
 class RocksDBEngine;
+struct ResourceMonitor;
 }  // namespace arangodb
 
 namespace arangodb::vector {
-
-// Taken from:
-// ClusteringParameters.max_points_per_centroid
-static constexpr std::size_t kMaxTrainingSizePerNLists{256};
 
 TrainedData serializeIndex(faiss::IndexIVF const& index);
 
@@ -87,7 +84,8 @@ class VectorIndexTrainer {
   };
 
  public:
-  VectorIndexTrainer(RocksDBVectorIndex const& index, rocksdb::DB* db,
+  VectorIndexTrainer(RocksDBVectorIndex const& index,
+                     ResourceMonitor& resourceMonitor, rocksdb::DB* db,
                      RocksDBKeyBounds bounds);
 
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
@@ -115,6 +113,7 @@ class VectorIndexTrainer {
   ResultT<std::size_t> resolveNLists(std::uint64_t numDocsHint) const;
 
   RocksDBVectorIndex const& _index;
+  ResourceMonitor& _resourceMonitor;
   BoundedDocumentIterator _docIt;
 };
 
@@ -124,7 +123,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
 class VectorIndexBuilder {
  public:
-  explicit VectorIndexBuilder(RocksDBVectorIndex& index);
+  VectorIndexBuilder(RocksDBVectorIndex& index,
+                     ResourceMonitor& resourceMonitor);
 
   Result build(std::shared_ptr<RocksDBIndex> indexPtr,
                metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
@@ -135,6 +135,7 @@ class VectorIndexBuilder {
   Result persistTrainedData(TrainedData const& trainedData);
 
   RocksDBVectorIndex& _index;
+  ResourceMonitor& _resourceMonitor;
   RocksDBEngine& _engine;
   rocksdb::DB* _rootDB;
   RocksDBCollection* _rcoll;
