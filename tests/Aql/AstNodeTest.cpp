@@ -933,6 +933,7 @@ class CompareAstNodesTest : public ::testing::Test {
                                         /*allowInternalFunctions*/ false);
   }
 
+  // <true> would crash resolving attribute accesses with a variable base.
   int compare(AstNode const* lhs, AstNode const* rhs, bool utf8 = false) {
     return compareAstNodes<false>(lhs, rhs, utf8);
   }

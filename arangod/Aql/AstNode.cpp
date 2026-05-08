@@ -193,7 +193,7 @@ int valueTypeOrder(VPackValueType type) noexcept {
     case VPackValueType::Double:
       return 2;
     case VPackValueType::String:
-    case VPackValueType::Custom:  // _id and structural AST nodes
+    case VPackValueType::Custom:  // _id and non-constant AST nodes
       return 3;
     case VPackValueType::Array:
       return 4;
@@ -564,7 +564,7 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
                (lType == VPackValueType::Custom &&
                 rType == VPackValueType::String)) {
       // String and Custom both have rank 3 in valueTypeOrder; break the tie
-      // by putting string literals before structural expressions.
+      // by putting string literals before non-constant expressions.
       return (lType == VPackValueType::String) ? -1 : 1;
     }
 
