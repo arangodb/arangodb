@@ -44,7 +44,7 @@ defmodule ToastTest.Runner.JS.ModuleBuilder do
   @spec build_module(module(), String.t(), keyword()) :: module()
   def build_module(suite_module, js_file, opts \\ []) do
     filename = Path.basename(js_file)
-    module_name = derive_module_name(suite_module, filename)
+    module_name = derive_module_name(suite_module, js_file)
     js_module = String.to_atom(js_file)
     weight = Keyword.get(opts, :weight, 1)
     suffix_tags = tags_from_filename(filename)
@@ -110,9 +110,16 @@ defmodule ToastTest.Runner.JS.ModuleBuilder do
     end)
   end
 
-  @doc "Derives an Elixir module name from a suite module and JS filename."
+  @doc """
+  Derives an Elixir module name from a suite module and JS file path.
+
+  Files under an `enterprise/` directory get an `Enterprise` segment to
+  avoid name clashes with identically-named community files.
+  """
   @spec derive_module_name(module(), String.t()) :: module()
-  def derive_module_name(suite_module, filename) do
+  def derive_module_name(suite_module, js_file) do
+    filename = Path.basename(js_file)
+
     base =
       filename
       |> String.trim_leading("test_")
@@ -120,7 +127,10 @@ defmodule ToastTest.Runner.JS.ModuleBuilder do
       |> String.split(~r/[_\-]+/)
       |> Enum.map_join(&String.capitalize/1)
 
+    enterprise? = String.starts_with?(js_file, "enterprise/")
+
     suite_parts = Module.split(suite_module) |> Enum.drop(-1)
-    Module.concat(suite_parts ++ ["JS", "#{base}Test"])
+    namespace = if enterprise?, do: ["JS", "Enterprise"], else: ["JS"]
+    Module.concat(suite_parts ++ namespace ++ ["#{base}Test"])
   end
 end

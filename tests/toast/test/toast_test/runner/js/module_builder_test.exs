@@ -28,23 +28,28 @@ defmodule ToastTest.Runner.JS.ModuleBuilderTest do
   @fake_suite ToastTest.Runner.JS.ModuleBuilderTest.FakeSuite
 
   describe "derive_module_name/2" do
-    test "simple filename" do
-      assert ModuleBuilder.derive_module_name(Smoke.Suite, "test_version.js") ==
-               Smoke.JS.VersionTest
+    test "community file" do
+      assert ModuleBuilder.derive_module_name(Smoke.Suite, "tests/js/client/aql/aql-parse.js") ==
+               Smoke.JS.AqlParseTest
+    end
+
+    test "enterprise file gets Enterprise namespace" do
+      path = "enterprise/tests/js/client/aql/aql-parse.js"
+
+      assert ModuleBuilder.derive_module_name(Smoke.Suite, path) ==
+               Smoke.JS.Enterprise.AqlParseTest
     end
 
     test "filename with underscores" do
-      assert ModuleBuilder.derive_module_name(Smoke.Suite, "test_aql_queries.js") ==
+      assert ModuleBuilder.derive_module_name(Smoke.Suite, "tests/js/test_aql_queries.js") ==
                Smoke.JS.AqlQueriesTest
     end
 
-    test "filename with hyphens" do
-      assert ModuleBuilder.derive_module_name(Smoke.Suite, "test_aql-join.js") ==
-               Smoke.JS.AqlJoinTest
-    end
-
     test "suite with deep namespace" do
-      assert ModuleBuilder.derive_module_name(Shell.Client.Aql.Suite, "test_optimizer.js") ==
+      assert ModuleBuilder.derive_module_name(
+               Shell.Client.Aql.Suite,
+               "tests/js/test_optimizer.js"
+             ) ==
                Shell.Client.Aql.JS.OptimizerTest
     end
   end
