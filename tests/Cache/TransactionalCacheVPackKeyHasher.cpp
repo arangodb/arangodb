@@ -29,6 +29,7 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
@@ -53,8 +54,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional, "",
                                                    false, cacheLimit);
 
   VPackBuilder builder;
@@ -105,8 +106,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional, "",
                                                    false, cacheLimit);
 
   std::vector<std::uint8_t> builder;
@@ -250,8 +251,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional, "",
                                                    false, cacheLimit);
 
   std::vector<std::uint8_t> builder;
@@ -436,8 +437,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional, "",
                                                    false, cacheLimit);
 
   Transaction tx;

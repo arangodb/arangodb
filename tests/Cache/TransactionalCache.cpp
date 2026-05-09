@@ -54,11 +54,11 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
 
   CacheOptions co;
   co.cacheSize = 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   auto cache1 = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
-                                                     false, 256 * 1024);
+                                                     "", false, 256 * 1024);
   auto cache2 = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
-                                                     false, 512 * 1024);
+                                                     "", false, 512 * 1024);
 
   ASSERT_EQ(0, cache1->usage());
   ASSERT_TRUE(256 * 1024 >= cache1->size());
@@ -76,9 +76,9 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
-                                                    false, cacheLimit);
+                                                    "", false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
@@ -132,9 +132,9 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
-                                                    false, cacheLimit);
+                                                    "", false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
@@ -198,9 +198,9 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
-                                                    false, cacheLimit);
+                                                    "", false, cacheLimit);
 
   Transaction tx;
   manager.beginTransaction(tx, false);
@@ -274,8 +274,9 @@ TEST(CacheTransactionalCacheTest,
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cache =
+      manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
   for (std::uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
@@ -305,10 +306,10 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache =
-      manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+      manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
 
   std::uint64_t chunkSize = 16 * 1024 * 1024;
   std::uint64_t initialInserts = 4 * 1024 * 1024;

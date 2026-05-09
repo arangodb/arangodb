@@ -70,8 +70,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
     friend class TransactionalCache;
   };
 
-  Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
-        std::shared_ptr<Table> table, bool enableWindowedStats,
+  Cache(Manager* manager, std::uint64_t id, std::string_view name,
+        Metadata&& metadata, std::shared_ptr<Table> table,
+        bool enableWindowedStats,
         std::function<Table::BucketClearer(Cache*, Metadata*)> bucketClearer,
         std::size_t slotsPerBucket);
 
@@ -252,6 +253,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // management
   Metadata& metadata();
+  std::string_view name() const noexcept;
   std::shared_ptr<Table> table() const;
   void shutdown();
   [[nodiscard]] bool canResize() noexcept;
@@ -282,6 +284,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // allow communication with manager
   Manager* _manager;
   std::uint64_t const _id;
+  std::string _name;
   Metadata _metadata;
 
   // local buffer for tracking allocations/deallocations by this cache.

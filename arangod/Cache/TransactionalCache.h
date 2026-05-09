@@ -58,8 +58,9 @@ template<typename Hasher>
 class TransactionalCache final : public Cache {
  public:
   TransactionalCache(Cache::ConstructionGuard guard, Manager* manager,
-                     std::uint64_t id, Metadata&& metadata,
-                     std::shared_ptr<Table> table, bool enableWindowedStats);
+                     std::uint64_t id, std::string_view name,
+                     Metadata&& metadata, std::shared_ptr<Table> table,
+                     bool enableWindowedStats);
   ~TransactionalCache();
 
   TransactionalCache() = delete;
@@ -122,6 +123,7 @@ class TransactionalCache final : public Cache {
   friend class MigrateTask;
 
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
+                                       std::string_view name,
                                        Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);

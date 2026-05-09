@@ -49,13 +49,14 @@ using SpinLocker = ::arangodb::basics::SpinLocker;
 using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 
 Cache::Cache(
-    Manager* manager, std::uint64_t id, Metadata&& metadata,
-    std::shared_ptr<Table> table, bool enableWindowedStats,
+    Manager* manager, std::uint64_t id, std::string_view name,
+    Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
     std::function<Table::BucketClearer(Cache*, Metadata*)> bucketClearer,
     std::size_t slotsPerBucket)
     : _shutdown(false),
       _manager(manager),
       _id(id),
+      _name(name),
       _metadata(std::move(metadata)),
       _memoryUsageDiff(0),
       _table(std::move(table)),
@@ -595,6 +596,10 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   _manager->reclaimTable(std::move(oldTable), false);
 
   return true;
+}
+
+std::string_view Cache::name() const noexcept {
+  return _name;
 }
 
 }  // namespace arangodb::cache

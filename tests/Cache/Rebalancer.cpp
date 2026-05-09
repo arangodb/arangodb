@@ -81,14 +81,15 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 128 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    caches.emplace_back(manager.createCache<BinaryKeyHasher>(CacheType::Plain));
+    caches.emplace_back(
+        manager.createCache<BinaryKeyHasher>(CacheType::Plain, ""));
   }
 
   std::atomic<bool> doneRebalancing(false);
@@ -211,7 +212,7 @@ TEST(CacheRebalancerTest,
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 128 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -219,7 +220,7 @@ TEST(CacheRebalancerTest,
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
     caches.emplace_back(
-        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, ""));
   }
 
   std::atomic_bool doneRebalancing = false;
@@ -361,7 +362,7 @@ TEST(
   CacheOptions co;
   // small enough so that we have memory pressure!
   co.cacheSize = 8 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -369,7 +370,7 @@ TEST(
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
     caches.emplace_back(
-        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, ""));
   }
 
   std::atomic_bool doneRebalancing = false;
