@@ -64,7 +64,7 @@ class AqlExecutorTestCase : public ::testing::Test {
   static void TearDownTestCase() { _server.reset(); }
 
  protected:
-  explicit AqlExecutorTestCase(Scheduler* scheduler);
+  explicit AqlExecutorTestCase(AcceptanceQueue* scheduler);
   AqlExecutorTestCase();
   virtual ~AqlExecutorTestCase();
 

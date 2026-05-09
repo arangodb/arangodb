@@ -38,6 +38,8 @@ namespace arangodb {
 namespace {
 struct StopWorkItem : LockfreeThreadPool::WorkItem {
   void invoke() noexcept override {}
+  bool queued() override { return true; };
+  bool dequeued() override { return true; };
 } stopItem;
 
 }  // namespace

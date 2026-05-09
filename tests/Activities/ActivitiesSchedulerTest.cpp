@@ -23,6 +23,8 @@
 #include "Activities/RegistryGlobalVariable.h"
 #include "GeneralServer/RequestLane.h"
 #include "Mocks/Servers.h"
+#include "Scheduler/AcceptanceQueue/LowPrioAntiOverwhelm.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueueImpl.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "gtest/gtest.h"
 #include "Metrics/MetricsFeature.h"
@@ -44,8 +46,10 @@ struct ActivitiesSchedulerTest : ::testing::Test {
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
                 nullptr))),
         metrics(std::make_shared<arangodb::SchedulerMetrics>(*metricsFeature)),
-        scheduler(mockApplicationServer.server(), 4, 4, 16, 16, 16, 16, 16,
-                  0.33, metrics) {}
+        lowPrioAntiOverwhelm(std::make_shared<arangodb::LowPrioAntiOverwhelm>(
+            mockApplicationServer.server(), 16, metrics)),
+        scheduler(mockApplicationServer.server(), 4, 4, 16, 16, 16, 16, metrics,
+                  lowPrioAntiOverwhelm) {}
   void SetUp() override {
     activityData["TestCase"] =
         ::testing::UnitTest::GetInstance()->current_test_info()->name();
@@ -59,6 +63,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
   arangodb::tests::mocks::MockRestServer mockApplicationServer;
   std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;
   std::shared_ptr<arangodb::SchedulerMetrics> metrics;
+  std::shared_ptr<arangodb::LowPrioAntiOverwhelm> lowPrioAntiOverwhelm;
   SupervisedScheduler scheduler;
   activities::GenericActivityData activityData;
 };
