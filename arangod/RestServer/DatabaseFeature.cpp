@@ -631,17 +631,24 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-  if (ServerState::instance()->isCoordinator()) {
-    auto& ce = server().getFeature<ClusterEngine>();
-    auto& rocksdb = server().getFeature<RocksDBEngine>();
-    rocksdb.disable();
-    ce.setActualEngine(&rocksdb);
-    _engine = &ce;
-  } else {
-    auto& rocksdb = server().getFeature<RocksDBEngine>();
-    rocksdb.enable();
-    _engine = &rocksdb;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (_engine == nullptr) {
+    // engine not injected by test code, inject it now
+#endif
+    if (ServerState::instance()->isCoordinator()) {
+      auto& ce = server().getFeature<ClusterEngine>();
+      auto& rocksdb = server().getFeature<RocksDBEngine>();
+      rocksdb.disable();
+      ce.setActualEngine(&rocksdb);
+      _engine = &ce;
+    } else {
+      auto& rocksdb = server().getFeature<RocksDBEngine>();
+      rocksdb.enable();
+      _engine = &rocksdb;
+    }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   }
+#endif
 
   if (server().hasFeature<ReplicationFeature>()) {
     _replicationFeature = &server().getFeature<ReplicationFeature>();
