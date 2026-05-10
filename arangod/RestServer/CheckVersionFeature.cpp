@@ -38,6 +38,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EnvironmentFeature.h"
 #include "Replication/ReplicationFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Version.h"
@@ -60,6 +61,7 @@ CheckVersionFeature::CheckVersionFeature(
 
   startsAfter<DatabaseFeature>();
   startsAfter<DatabasePathFeature>();
+  startsAfter<EngineSelectorFeature>();
   startsAfter<ServerIdFeature>();
   startsAfter<SystemDatabaseFeature>();
 }
