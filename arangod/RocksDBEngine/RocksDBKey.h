@@ -49,9 +49,9 @@ class LogId;
 struct LogIndex;
 };  // namespace replication2
 
-/// This servers as a sentinel key where we store the tranedData for a
+/// This serves as a sentinel key where we store the trainedData for a
 /// vector index.
-/// kV1 is the version used before 3.12.10 and kv2 is the one used afterwards
+/// kV1 is the version used before 3.12.10 and kV2 is the one used afterwards
 /// The idea is that when we downgrade the trainedData from new indexes will get
 /// lost and we will avoid crashes and trigger the retraining of vector indexes
 enum class VectorIndexMetadataSlot : std::uint64_t {

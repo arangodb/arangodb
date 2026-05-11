@@ -133,9 +133,10 @@ struct IteratorFilterContext : IteratorContext {
   aql::QueryContext* queryContext;
   std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
       filterVarsToRegs;
-  // True iff the storedValues-only iterator should be used: the filter is
-  // expressible against storedValues AND projections are too, so the FAISS
-  // layer can skip loading documents entirely.
+  // True iff the filter is expressible against storedValues, so the iterator
+  // can evaluate it without materializing the full document. Independent of
+  // the projection mode — what gets captured for projections is governed by
+  // captureShape below.
   bool useStoredValuesIterator;
   aql::Variable const* documentVariable;
   CaptureShape captureShape{CaptureShape::kStoredValues};

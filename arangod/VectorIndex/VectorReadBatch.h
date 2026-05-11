@@ -84,8 +84,8 @@ struct SearchResult {
   std::vector<VectorIndexLabelId> labels;
   std::vector<float> distances;
   // Per-survivor VPack: a storedValues array (when strategy.projection ==
-  // kStoredValues) or a full document Object (kDocument). Empty unless
-  // strategy.projection != kNone.
+  // kCovered) or a full document Object (kDocument). Empty unless
+  // strategy.projection != kPassThroughId.
   containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>
       capturedDocuments;
 };
