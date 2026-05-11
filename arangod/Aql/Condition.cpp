@@ -163,6 +163,34 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
   return node;
 }
 
+bool containsSubquery(AstNode const* node) noexcept {
+  if (node == nullptr) {
+    return false;
+  }
+  if (node->type == NODE_TYPE_SUBQUERY) {
+    return true;
+  }
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (containsSubquery(node->getMemberUnchecked(i))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Returns true if two AST nodes are structurally equal.
+// Nodes with subqueries are excluded — side effects and unbounded cost.
+bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
+  if (lhs == nullptr || rhs == nullptr) {
+    return lhs == rhs;
+  }
+  if (containsSubquery(lhs) || containsSubquery(rhs)) {
+    return false;
+  }
+  return compareAstNodes<false>(lhs, rhs, true) == 0;
+}
+
 struct PermutationState {
   PermutationState(aql::AstNode const* value, size_t n) noexcept
       : value(value), current(0), n(n) {}
@@ -761,10 +789,74 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
       if (op->type == NODE_TYPE_OPERATOR_BINARY_IN) {
         ++inComparisons;
         auto deduplicated = deduplicateInOperation(op);
+
+        // x IN [a] → x == a (constant arrays only)
+        auto rhs = deduplicated->getMemberUnchecked(1);
+        if (rhs->type == NODE_TYPE_ARRAY && rhs->isConstant() &&
+            rhs->numMembers() == 1) {
+          auto lhs = deduplicated->getMemberUnchecked(0);
+          auto optimized = _ast->createNodeBinaryOperator(
+              NODE_TYPE_OPERATOR_BINARY_EQ, lhs, rhs->getMemberUnchecked(0));
+          andNode->changeMember(j, optimized);
+          --inComparisons;
+          continue;
+        }
+
         andNode->changeMember(j, deduplicated);
       }
     }
     andNumMembers = andNode->numMembers();
+
+    // Drop the whole OR branch if any condition is always false.
+    {
+      bool hasFalse = false;
+      for (size_t j = 0; j < andNumMembers; ++j) {
+        if (andNode->getMemberUnchecked(j)->isFalse()) {
+          hasFalse = true;
+          break;
+        }
+      }
+      if (hasFalse) {
+        _root->removeMemberUncheckedUnordered(r);
+        retry = true;
+        n = _root->numMembers();
+        continue;
+      }
+    }
+
+    // Strip conditions that are always true, keeping at least one member.
+    if (andNumMembers > 1) {
+      for (size_t j = andNumMembers; j > 0; --j) {
+        if (andNumMembers == 1) {
+          break;
+        }
+        if (andNode->getMemberUnchecked(j - 1)->isTrue()) {
+          andNode->removeMemberUncheckedUnordered(j - 1);
+          --andNumMembers;
+        }
+      }
+    }
+
+    // Remove duplicate conditions via structural comparison.
+    if (andNumMembers > 1) {
+      for (size_t j = andNumMembers; j > 1; --j) {
+        auto op1 = andNode->getMemberUnchecked(j - 1);
+        if (!op1->isDeterministic()) {
+          continue;
+        }
+        for (size_t k = j - 1; k > 0; --k) {
+          auto op2 = andNode->getMemberUnchecked(k - 1);
+          if (!op2->isDeterministic()) {
+            continue;
+          }
+          if (::areNodesEqual(op1, op2)) {
+            andNode->removeMemberUncheckedUnordered(j - 1);
+            --andNumMembers;
+            break;
+          }
+        }
+      }
+    }
 
     if (andNumMembers <= 1) {
       // simple AND item with 0 or 1 members. nothing to do
@@ -1049,6 +1141,32 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
     // number of root sub-nodes has probably changed.
     // now recalculate the number and don't modify r!
     n = _root->numMembers();
+  }
+
+  if (_root->numMembers() == 0) {
+    return;
+  }
+
+  // Remove duplicate OR branches.
+  n = _root->numMembers();
+  for (size_t i = n; i > 1; --i) {
+    auto branch1 = _root->getMemberUnchecked(i - 1);
+    if (branch1->type != NODE_TYPE_OPERATOR_NARY_AND ||
+        !branch1->isDeterministic()) {
+      continue;
+    }
+    for (size_t j = i - 1; j > 0; --j) {
+      auto branch2 = _root->getMemberUnchecked(j - 1);
+      if (branch2->type != NODE_TYPE_OPERATOR_NARY_AND ||
+          !branch2->isDeterministic()) {
+        continue;
+      }
+      if (::areNodesEqual(branch1, branch2)) {
+        _root->removeMemberUncheckedUnordered(i - 1);
+        --n;
+        break;
+      }
+    }
   }
 }
 
