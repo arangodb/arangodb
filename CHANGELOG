@@ -4,7 +4,7 @@
 * COR-529: Track vector index training memory against the global resource
   monitor and fail with `TRI_ERROR_RESOURCE_LIMIT` instead of OOM-killing
   the process. New optional index parameter `numberOfDocsPerCentroid`
-  (default 256) caps the training reservoir size.
+  (default 100) caps the training reservoir size.
 
 * Update node modules:
  - lodash to 4.18.0

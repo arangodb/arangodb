@@ -293,8 +293,8 @@ function VectorIndexTestCreationWithVectors() {
                 },
             });
             const idx = collection.getIndexes().find(i => i.name === "vector_l2");
-            assertEqual(256, idx.params.numberOfDocsPerCentroid,
-                "default numberOfDocsPerCentroid should be 256");
+            assertEqual(100, idx.params.numberOfDocsPerCentroid,
+                "default numberOfDocsPerCentroid should be 100");
         },
 
         testCreateVectorIndexWithCustomNumberOfDocsPerCentroid: function() {
