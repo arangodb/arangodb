@@ -369,11 +369,6 @@ Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
   }
   auto const& def = _index.getDefinition();
   auto const newCapacity = resolved.get() * def.numberOfDocsPerCentroid;
-  if (newCapacity < reservoirCapacity) {
-    auto const newBytes =
-        static_cast<std::uint64_t>(newCapacity) * def.dimension * sizeof(float);
-    memScope.decrease(expectedReservoirBytes - newBytes);
-  }
   sampler.resize(newCapacity);
   return {};
 }

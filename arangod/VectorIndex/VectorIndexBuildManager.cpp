@@ -278,7 +278,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
             << " documents). Starting deferred training.";
 
         _trainingOngoingCount.fetch_add(1);
-        _resourceMonitor.clear();
+        TRI_ASSERT(_resourceMonitor.current() == 0);
         auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
         VectorIndexBuilder builder(vecIdx, _resourceMonitor);
 
