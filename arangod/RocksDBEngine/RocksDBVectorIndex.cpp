@@ -190,8 +190,11 @@ void RocksDBVectorIndex::toVelocyPack(
   builder.add(StaticStrings::IndexTrainingState,
               VPackValue(trainingStateToString(trainingState)));
   if (trainingState == VectorIndexTrainingState::kUnusable) {
-    builder.add(StaticStrings::ErrorMessage,
-                VPackValue("not enough training data for vector index"));
+    auto error = trainingError();
+    builder.add(
+        StaticStrings::ErrorMessage,
+        VPackValue(error.empty() ? "not enough training data for vector index"
+                                 : error));
   }
 
   if (auto const nLists = resolvedNLists(); nLists.has_value()) {
@@ -313,6 +316,16 @@ bool RocksDBVectorIndex::setTrainingState(
 void RocksDBVectorIndex::resetTrainingState() noexcept {
   _trainingState.exchange(VectorIndexTrainingState::kUnusable,
                           std::memory_order_acq_rel);
+}
+
+void RocksDBVectorIndex::setTrainingError(std::string error) noexcept {
+  std::lock_guard lock(_trainingErrorMutex);
+  _trainingError = std::move(error);
+}
+
+std::string RocksDBVectorIndex::trainingError() const {
+  std::lock_guard lock(_trainingErrorMutex);
+  return _trainingError;
 }
 
 Result RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,

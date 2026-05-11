@@ -81,9 +81,7 @@ class VectorIndexTrainer {
     // field. Used to resolve nLists for sparse indexes where numDocsHint
     // (total doc count) overestimates the actual vector-bearing doc count.
     std::size_t totalValidVectorCount;
-    // Holds the reservoir bytes against the resource monitor for the full
-    // lifetime of `data` (i.e. through the FAISS train() step). Released
-    // when this dataset is destroyed.
+    // Holds the reservoir bytes against the monitor for `data`'s lifetime.
     ResourceUsageScope memScope;
   };
 

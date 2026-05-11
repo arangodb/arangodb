@@ -23,6 +23,7 @@
 
 #include "VectorIndex/VectorIndexBuildManager.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -281,15 +282,29 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
 
         _trainingOngoingCount.fetch_add(1);
         _resourceMonitor.clear();
+        vecIdx.setTrainingError({});
         auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
         VectorIndexBuilder builder(vecIdx, _resourceMonitor);
-        auto const res = builder.build(std::move(indexPtr), _trainingDuration,
-                                       _ingestionDuration, stopToken);
+
+        // ResourceUsageScope throws on overflow; catch so cleanup below
+        // runs uniformly for both Result-failed and thrown failures.
+        auto const res = std::invoke([&]() -> Result {
+          try {
+            return builder.build(std::move(indexPtr), _trainingDuration,
+                                 _ingestionDuration, stopToken);
+          } catch (basics::Exception const& e) {
+            return Result{e.code(), e.message()};
+          } catch (std::exception const& e) {
+            return Result{TRI_ERROR_INTERNAL, e.what()};
+          }
+        });
         _trainingMemoryPeakBytes.store(_resourceMonitor.peak(),
                                        std::memory_order_relaxed);
         _trainingOngoingCount.fetch_sub(1);
 
         if (res.fail()) {
+          vecIdx.resetTrainingState();
+          vecIdx.setTrainingError(std::string{res.errorMessage()});
           fulfillWaiters(vecIdx.id(), res);
           if (res.is(TRI_ERROR_RESOURCE_LIMIT)) {
             LOG_TOPIC("e165b", ERR, Logger::ENGINES)
