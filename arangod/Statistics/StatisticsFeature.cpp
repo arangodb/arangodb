@@ -626,15 +626,14 @@ class StatisticsThread final : public ServerThread {
 // -----------------------------------------------------------------------------
 
 StatisticsFeature::StatisticsFeature(
-    application_features::ApplicationServer& server)
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
     : application_features::ApplicationFeature{server, *this},
       _descriptions(server),
       _requestStatisticsMemoryUsage{
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_request_statistics_memory_usage{})},
+          metrics.add(arangodb_request_statistics_memory_usage{})},
       _connectionStatisticsMemoryUsage{
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_connection_statistics_memory_usage{})} {
+          metrics.add(arangodb_connection_statistics_memory_usage{})} {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();

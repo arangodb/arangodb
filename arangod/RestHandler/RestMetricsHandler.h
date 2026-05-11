@@ -28,6 +28,9 @@
 #include <string>
 
 namespace arangodb {
+namespace metrics {
+class ClusterMetricsFeature;
+}
 
 class RestMetricsHandler : public arangodb::RestBaseHandler {
  public:
@@ -42,6 +45,8 @@ class RestMetricsHandler : public arangodb::RestBaseHandler {
 
  private:
   auto makeRedirection(std::string const& serverId, bool last) -> async<void>;
+
+  metrics::ClusterMetricsFeature& _clusterMetricsFeature;
 };
 
 }  // namespace arangodb

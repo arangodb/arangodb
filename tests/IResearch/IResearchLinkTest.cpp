@@ -105,7 +105,8 @@ class IResearchLinkTest
     *consolidationThreads->ptr = 1;
     ars.validateOptions(opts);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
     server.startFeatures();
     EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),
               ars.limits(arangodb::iresearch::ThreadGroup::_0));
