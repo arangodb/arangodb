@@ -318,22 +318,13 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
 
   std::size_t const validSeen = sampler.itemsSeen();
 
-  // Sparse+scaling: we need to resize after full iteration since we cannot
-  // calculate the true k from numDocsHint (which over-counts by the number of
-  // docs without the vector field). A uniform subsample of a uniform sample
-  // stays uniform, so this preserves the Algorithm L guarantee.
   if (sparseScaling && validSeen > 0) {
-    auto resolved = resolveNLists(validSeen);
-    if (resolved.fail()) {
-      return std::move(resolved).result();
+    if (auto res = shrinkReservoirForSparseScaling(validSeen, reservoirCapacity,
+                                                   expectedReservoirBytes,
+                                                   memScope, sampler);
+        res.fail()) {
+      return res;
     }
-    auto const newCapacity = resolved.get() * def.numberOfDocsPerCentroid;
-    if (newCapacity < reservoirCapacity) {
-      auto const newBytes = static_cast<std::uint64_t>(newCapacity) *
-                            def.dimension * sizeof(float);
-      memScope.decrease(expectedReservoirBytes - newBytes);
-    }
-    sampler.resize(newCapacity);
   }
 
   auto trainingData = std::move(sampler).release();
@@ -363,6 +354,28 @@ ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
                   "numDocsHint is 0"};
   }
   return resolveNListsParameter(nLists, numDocsHint);
+}
+
+// We resize after the full iteration because numDocsHint over-counts by the
+// number of docs without the vector field. A uniform subsample of a uniform
+// sample stays uniform, so this preserves the Algorithm L guarantee.
+Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
+    std::size_t validSeen, std::size_t reservoirCapacity,
+    std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
+    VectorIndexTrainingSampler& sampler) const {
+  auto resolved = resolveNLists(validSeen);
+  if (resolved.fail()) {
+    return std::move(resolved).result();
+  }
+  auto const& def = _index.getDefinition();
+  auto const newCapacity = resolved.get() * def.numberOfDocsPerCentroid;
+  if (newCapacity < reservoirCapacity) {
+    auto const newBytes =
+        static_cast<std::uint64_t>(newCapacity) * def.dimension * sizeof(float);
+    memScope.decrease(expectedReservoirBytes - newBytes);
+  }
+  sampler.resize(newCapacity);
+  return {};
 }
 
 ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(

@@ -40,7 +40,8 @@ namespace arangodb::vector {
 // Number of training iterations, in faiss it is 25 by default
 static constexpr std::uint64_t kdefaultTrainingIterations{25};
 static constexpr std::uint64_t kdefaultNProbe{1};
-// Mirrors faiss::ClusteringParameters::max_points_per_centroid.
+// Matches autofaiss's points_per_cluster default; lower than FAISS's
+// own max_points_per_centroid (256) to keep training memory in check.
 static constexpr std::uint64_t kdefaultNumberOfDocsPerCentroid{100};
 
 struct SearchParameters {

@@ -35,7 +35,6 @@
 #include <cstdint>
 #include <memory>
 #include <stop_token>
-#include <string_view>
 #include <vector>
 
 #include <faiss/IndexIVF.h>
@@ -56,6 +55,8 @@ class RocksDBEngine;
 }  // namespace arangodb
 
 namespace arangodb::vector {
+
+class VectorIndexTrainingSampler;
 
 TrainedData serializeIndex(faiss::IndexIVF const& index);
 
@@ -113,6 +114,14 @@ class VectorIndexTrainer {
   /// Resolve the nLists value from the definition, using numDocsHint for
   /// scaling mode.
   ResultT<std::size_t> resolveNLists(std::uint64_t numDocsHint) const;
+
+  /// Sparse+scaling post-iteration step: recompute reservoir capacity from
+  /// the actual valid-vector count, shrink the sampler, and release the
+  /// freed bytes from the resource monitor.
+  Result shrinkReservoirForSparseScaling(
+      std::size_t validSeen, std::size_t reservoirCapacity,
+      std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
+      VectorIndexTrainingSampler& sampler) const;
 
   RocksDBVectorIndex const& _index;
   ResourceMonitor& _resourceMonitor;
