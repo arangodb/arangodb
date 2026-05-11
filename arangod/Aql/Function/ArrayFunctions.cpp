@@ -198,26 +198,12 @@ AqlValue functions::Pop(ExpressionContext* expressionContext, AstNode const&,
 /// @brief function APPEND
 AqlValue functions::Append(ExpressionContext* expressionContext, AstNode const&,
                            VPackFunctionParametersView parameters) {
-  // cppcheck-suppress variableScope
-  static char const* AFN = "APPEND";
-
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& list =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   AqlValue const& toAppend =
       aql::functions::extractFunctionParameterValue(parameters, 1);
-
-  if (toAppend.isNull(true)) {
-    return list.clone();
-  }
-
-  AqlValueMaterializer toAppendMaterializer(vopts);
-  VPackSlice t = toAppendMaterializer.slice(toAppend);
-
-  if (t.isArray() && t.length() == 0) {
-    return list.clone();
-  }
 
   bool unique = false;
   if (parameters.size() == 3) {
@@ -226,16 +212,30 @@ AqlValue functions::Append(ExpressionContext* expressionContext, AstNode const&,
     unique = a.toBoolean();
   }
 
+  if (toAppend.isNull(true) && !unique &&
+      (list.isNull(true) || list.isArray())) {
+    return list.clone();
+  }
+
+  AqlValueMaterializer toAppendMaterializer(vopts);
+  VPackSlice t = toAppendMaterializer.slice(toAppend);
+
+  if (t.isArray() && t.length() == 0 && !unique) {
+    return list.clone();
+  }
+
   AqlValueMaterializer materializer(vopts);
   VPackSlice l = materializer.slice(list);
 
   if (l.isNull()) {
-    return toAppend.clone();
-  }
-
-  if (!l.isArray()) {
-    registerInvalidArgumentWarning(expressionContext, AFN);
-    return AqlValue(AqlValueHintNull());
+    if (t.isArray() && t.length() == 0) {
+      return list.clone();
+    }
+    if (t.isArray()) {
+      if (!unique) {
+        return toAppend.clone();
+      }
+    }
   }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
@@ -246,22 +246,20 @@ AqlValue functions::Append(ExpressionContext* expressionContext, AstNode const&,
 
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray();
-
-  for (VPackSlice it : VPackArrayIterator(l)) {
-    if (!unique || added.insert(it).second) {
-      builder->add(it);
+  if (l.isArray()) {
+    for (VPackSlice it : VPackArrayIterator(l)) {
+      if (!unique || added.insert(it).second) {
+        builder->add(it);
+      }
     }
   }
 
-  AqlValueMaterializer materializer2(vopts);
-  VPackSlice slice = materializer2.slice(toAppend);
-
-  if (!slice.isArray()) {
-    if (!unique || added.find(slice) == added.end()) {
-      builder->add(slice);
+  if (!t.isArray()) {
+    if (!toAppend.isNull(true) && (!unique || added.find(t) == added.end())) {
+      builder->add(t);
     }
   } else {
-    for (VPackSlice it : VPackArrayIterator(slice)) {
+    for (VPackSlice it : VPackArrayIterator(t)) {
       if (!unique || added.insert(it).second) {
         builder->add(it);
       }

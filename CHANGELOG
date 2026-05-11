@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-531: AQL APPEND() with unique=true does not perform de-duplication in few scenarios.
+
 * COR-469: Removed `ensureVertexCentricIndex` as it was just a wrapper around
   `ensureIndex` with direction parameters.
 
