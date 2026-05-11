@@ -111,7 +111,6 @@ class VectorIndexBuildManager {
 
   metrics::Gauge<uint64_t>& _untrainedCount;
   metrics::Gauge<uint64_t>& _trainingOngoingCount;
-  metrics::Gauge<uint64_t>& _trainingMemoryPeakBytes;
   metrics::Histogram<metrics::LogScale<double>>& _trainingDuration;
   metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
 

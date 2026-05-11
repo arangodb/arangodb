@@ -55,9 +55,6 @@ DECLARE_GAUGE(arangodb_vector_index_unusable, uint64_t,
               "Number of unusable vector indexes on this DBServer");
 DECLARE_GAUGE(arangodb_vector_index_training_ongoing, uint64_t,
               "Number of vector index trainings currently ongoing");
-DECLARE_GAUGE(arangodb_vector_index_training_memory_peak_bytes, uint64_t,
-              "Peak memory in bytes used by the most recent vector index "
-              "training reservoir on this server");
 
 struct VectorTrainingDurationScale {
   static arangodb::metrics::LogScale<double> scale() {
@@ -93,8 +90,6 @@ VectorIndexBuildManager::VectorIndexBuildManager(
       _untrainedCount(metrics.add(arangodb_vector_index_unusable{})),
       _trainingOngoingCount(
           metrics.add(arangodb_vector_index_training_ongoing{})),
-      _trainingMemoryPeakBytes(
-          metrics.add(arangodb_vector_index_training_memory_peak_bytes{})),
       _trainingDuration(metrics.add(arangodb_vector_index_training_duration{})),
       _ingestionDuration(
           metrics.add(arangodb_vector_index_ingestion_duration{})) {}
@@ -298,8 +293,6 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
             return Result{TRI_ERROR_INTERNAL, e.what()};
           }
         });
-        _trainingMemoryPeakBytes.store(_resourceMonitor.peak(),
-                                       std::memory_order_relaxed);
         _trainingOngoingCount.fetch_sub(1);
 
         if (res.fail()) {
