@@ -115,13 +115,15 @@ defmodule ToastTest.Runner.JS.ArangoshExecutor do
       deployment
       |> Toast.Deployment.servers()
       |> Enum.map(fn srv ->
-        %{
+        base = %{
           id: srv.id,
           instanceRole: to_string(srv.role),
           endpoint: srv.endpoint,
           url: endpoint_to_url(srv.endpoint),
           port: srv.port
         }
+
+        Toast.Utils.maybe_put(base, :rootDir, srv.server_dir)
       end)
 
     %{

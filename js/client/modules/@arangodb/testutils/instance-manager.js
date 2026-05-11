@@ -240,7 +240,8 @@ class instanceManager {
     mgr.urls = [];
 
     (struct.arangods || []).forEach(srv => {
-      let arangod = new inst.instance(mgr.options, srv.instanceRole, {}, {}, {}, protocol, '', '', mgr.agencyMgr, mgr.tmpDir);
+      let rootDir = srv.rootDir || '';
+      let arangod = new inst.instance(mgr.options, srv.instanceRole, {}, {}, {}, protocol, rootDir, '', mgr.agencyMgr, mgr.tmpDir);
       arangod.id = srv.id;
       arangod.instanceRole = srv.instanceRole;
       arangod.endpoint = srv.endpoint;
