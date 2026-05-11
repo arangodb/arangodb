@@ -270,6 +270,81 @@ function VectorIndexTestCreationWithVectors() {
             }
         },
 
+        testCreateVectorIndexNumberOfDocsPerCentroidDefaults: function() {
+            let gen = randomNumberGeneratorFloat(seed);
+
+            let docs = [];
+            for (let i = 0; i < 100; ++i) {
+                const vector = Array.from({ length: dimension }, () => gen());
+                docs.push({ vector });
+            }
+            collection.insert(docs);
+
+            collection.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: 1,
+                    trainingIterations: 10,
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === "vector_l2");
+            assertEqual(256, idx.params.numberOfDocsPerCentroid,
+                "default numberOfDocsPerCentroid should be 256");
+        },
+
+        testCreateVectorIndexWithCustomNumberOfDocsPerCentroid: function() {
+            let gen = randomNumberGeneratorFloat(seed);
+
+            let docs = [];
+            for (let i = 0; i < 100; ++i) {
+                const vector = Array.from({ length: dimension }, () => gen());
+                docs.push({ vector });
+            }
+            collection.insert(docs);
+
+            collection.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: 1,
+                    trainingIterations: 10,
+                    numberOfDocsPerCentroid: 32,
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === "vector_l2");
+            assertEqual(32, idx.params.numberOfDocsPerCentroid);
+        },
+
+        testCreateVectorIndexWithZeroNumberOfDocsPerCentroid: function() {
+            try {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                        numberOfDocsPerCentroid: 0,
+                    },
+                });
+                fail();
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+            }
+        },
+
         testCreateVectorIndexWithVectorsContainingIntegersAndDoubles: function() {
             let gen = randomNumberGeneratorFloat(seed);
 
