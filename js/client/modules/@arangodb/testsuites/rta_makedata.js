@@ -100,7 +100,6 @@ function makeDataWrapper (options) {
       state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
       this.instanceManager.arangods[1].toThisInstance(() => {
-        print(arango.getEndpoint());
         while (true) {
           let followerState = replication.globalApplier.state();
 
