@@ -254,13 +254,15 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         auto const numDocs = rcoll->meta().numberDocuments();
         if (numDocs < vecIdx.trainingThreshold()) {
           skippedWaiters.insert(vecIdx.id().id());
-          reportIndexError(
-              vocbase, *coll, vecIdx,
-              Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-                     std::format("not enough training data for vector "
-                                 "index, need at least {} documents "
-                                 "but only {} present",
-                                 vecIdx.trainingThreshold(), numDocs)});
+          auto belowThresholdMsg = std::format(
+              "not enough training data for vector "
+              "index, need at least {} documents "
+              "but only {} present",
+              vecIdx.trainingThreshold(), numDocs);
+          vecIdx.setTrainingError(belowThresholdMsg);
+          reportIndexError(vocbase, *coll, vecIdx,
+                           Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                                  std::move(belowThresholdMsg)});
           continue;
         }
 
