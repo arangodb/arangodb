@@ -3,7 +3,7 @@
 
 * COR-320: Vector search now supports projections, allowing covered queries
   to skip the document materialization step. Adds optimizer rule
-  `remove-materializer-for-enumerate-near`.
+  `materialize-for-enumerate-near`.
 
 * Update node modules:
  - lodash to 4.18.0
