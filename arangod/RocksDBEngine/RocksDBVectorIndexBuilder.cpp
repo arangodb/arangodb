@@ -37,6 +37,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <limits>
 #include <string>
 #include <thread>
 
@@ -260,6 +261,13 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
 
   auto const seed = RandomDevice::seed64();
 
+  // Guard against uint64_t overflow when computing the reservoir size.
+  // Wrap here would under-account memScope and let training allocate unbounded.
+  TRI_ASSERT(def.dimension > 0);
+  TRI_ASSERT(def.dimension <=
+             std::numeric_limits<std::uint64_t>::max() / sizeof(float));
+  TRI_ASSERT(reservoirCapacity <= std::numeric_limits<std::uint64_t>::max() /
+                                      (def.dimension * sizeof(float)));
   std::uint64_t const expectedReservoirBytes =
       static_cast<std::uint64_t>(reservoirCapacity) * def.dimension *
       sizeof(float);
