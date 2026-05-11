@@ -41,7 +41,7 @@ namespace arangodb::vector {
 static constexpr std::uint64_t kdefaultTrainingIterations{25};
 static constexpr std::uint64_t kdefaultNProbe{1};
 // Mirrors faiss::ClusteringParameters::max_points_per_centroid.
-static constexpr std::uint64_t kdefaultNumberOfDocsPerCentroid{256};
+static constexpr std::uint64_t kdefaultNumberOfDocsPerCentroid{100};
 
 struct SearchParameters {
   std::optional<std::int64_t> nProbe;
