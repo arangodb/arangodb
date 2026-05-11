@@ -279,7 +279,6 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
 
         _trainingOngoingCount.fetch_add(1);
         _resourceMonitor.clear();
-        vecIdx.setTrainingError({});
         auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
         VectorIndexBuilder builder(vecIdx, _resourceMonitor);
 
@@ -298,8 +297,10 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         _trainingOngoingCount.fetch_sub(1);
 
         if (res.fail()) {
-          vecIdx.resetTrainingState();
+          // Set the error before flipping state to kUnusable so a concurrent
+          // REST reader never observes kUnusable with an empty error.
           vecIdx.setTrainingError(std::string{res.errorMessage()});
+          vecIdx.resetTrainingState();
           fulfillWaiters(vecIdx.id(), res);
           if (res.is(TRI_ERROR_RESOURCE_LIMIT)) {
             LOG_TOPIC("e165b", ERR, Logger::ENGINES)

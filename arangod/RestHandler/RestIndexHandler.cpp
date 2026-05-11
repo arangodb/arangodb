@@ -147,17 +147,13 @@ VPackBuilder enrichVectorIndexes(VPackSlice indexes,
       result.add(StaticStrings::IndexTrainingState, VPackValue(aggregateState));
 
       if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
-        std::string_view shardError;
         for (auto const& [_, shardState] : states) {
           if (!shardState.error.empty()) {
-            shardError = shardState.error;
+            result.add(StaticStrings::ErrorMessage,
+                       VPackValue(shardState.error));
             break;
           }
         }
-        result.add(StaticStrings::ErrorMessage,
-                   VPackValue(shardError.empty()
-                                  ? "not enough training data for vector index"
-                                  : shardError));
       }
 
       if (withShardDetails) {
@@ -325,10 +321,7 @@ async<void> RestIndexHandler::getIndexes() {
                 VectorIndexShardState state;
                 state.trainingState = std::string(trainingStateToString(ts));
                 if (ts == VectorIndexTrainingState::kUnusable) {
-                  auto err = vecIdx->trainingError();
-                  state.error =
-                      err.empty() ? "not enough training data for vector index"
-                                  : std::move(err);
+                  state.error = vecIdx->trainingError();
                 }
                 state.resolvedNLists = vecIdx->resolvedNLists().value_or(0);
                 states.emplace(std::string(coll->name()), std::move(state));
@@ -546,18 +539,13 @@ async<void> RestIndexHandler::getIndexes() {
                     VPackValue(aggregateState));
 
             if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
-              std::string_view shardError;
               for (auto const& [_, shardState] : states) {
                 if (!shardState.error.empty()) {
-                  shardError = shardState.error;
+                  tmp.add(StaticStrings::ErrorMessage,
+                          VPackValue(shardState.error));
                   break;
                 }
               }
-              tmp.add(
-                  StaticStrings::ErrorMessage,
-                  VPackValue(shardError.empty()
-                                 ? "not enough training data for vector index"
-                                 : shardError));
             }
 
             tmp.add(VPackValue("shards"));

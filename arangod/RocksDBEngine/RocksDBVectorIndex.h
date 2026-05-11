@@ -174,7 +174,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       VectorIndexTrainingState::kUnusable};
 
   mutable std::mutex _trainingErrorMutex;
-  std::string _trainingError;
+  // default vector index state is unusable with "not enough training data"
+  // error, until proven otherwise
+  std::string _trainingError{"not enough training data for vector index"};
 };
 
 }  // namespace arangodb

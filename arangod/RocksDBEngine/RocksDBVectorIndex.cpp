@@ -190,11 +190,7 @@ void RocksDBVectorIndex::toVelocyPack(
   builder.add(StaticStrings::IndexTrainingState,
               VPackValue(trainingStateToString(trainingState)));
   if (trainingState == VectorIndexTrainingState::kUnusable) {
-    auto error = trainingError();
-    builder.add(
-        StaticStrings::ErrorMessage,
-        VPackValue(error.empty() ? "not enough training data for vector index"
-                                 : error));
+    builder.add(StaticStrings::ErrorMessage, VPackValue(trainingError()));
   }
 
   if (auto const nLists = resolvedNLists(); nLists.has_value()) {
@@ -356,7 +352,7 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
                                         TRI_voc_tick_t tick,
                                         transaction::Methods* trx) {
   resetTrainingState();
-  setTrainingError({});
+  setTrainingError("not enough training data for vector index");
   _faissIndex.reset();
   _trainedData = {};
   RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
