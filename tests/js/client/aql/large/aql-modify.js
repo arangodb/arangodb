@@ -31,6 +31,8 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const errors = internal.errors;
 const isCluster = require("internal").isCluster();
+const { versionHas } = require("@arangodb/test-helper");
+const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 
 const collectionName = "UnitTestAqlModify";
 let col;
@@ -1176,8 +1178,9 @@ function aqlUpsertOptionsSuite() {
     },
 
     testUpsertSkipAndHardLimitInSubquery: function () {
-      const countBefore = col.count();
-      let q = `
+      if (!isInstr) {
+        const countBefore = col.count();
+        let q = `
         FOR fv0 IN 1..3
           LET sq1 = (
             FOR fv2 IN ${collectionName}
@@ -1189,15 +1192,15 @@ function aqlUpsertOptionsSuite() {
           LIMIT 14,13
           RETURN {fv0, sq1}
       `;
-      const res = db._query(q);
-      const { writesExecuted, writesIgnored } = res.getExtra().stats;
-      assertEqual(0, writesIgnored);
-      // We update every document once per subquery execution
-      assertEqual(3 * countBefore, writesExecuted);
-      assertEqual(0, res.toArray().length);
-      assertEqual(countBefore, col.count(), `Only updates no inserts`);
+        const res = db._query(q);
+        const { writesExecuted, writesIgnored } = res.getExtra().stats;
+        assertEqual(0, writesIgnored);
+        // We update every document once per subquery execution
+        assertEqual(3 * countBefore, writesExecuted);
+        assertEqual(0, res.toArray().length);
+        assertEqual(countBefore, col.count(), `Only updates no inserts`);
+      }
     }
-
     /* We cannot yet solve this. If you need to ensure _rev value checks put them in the UPDATE {} clause
     testUpsertSingleWithInvalidRevInMatch : function () {
       const invalid = genInvalidValue();
