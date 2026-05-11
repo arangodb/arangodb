@@ -111,7 +111,6 @@
 #include "Sharding/ShardingFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/StatisticsWorker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
@@ -160,7 +159,7 @@ static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<metrics::MetricsFeature>(
       false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   server.addFeature<SharedPRNGFeature>(false);
@@ -309,7 +308,6 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
-  _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
   _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
 
   if (_server.hasFeature<SchedulerFeature>()) {
@@ -443,7 +441,7 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
 MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
   // setup required application features
   SetupGreetingsPhase(*this);
-  addFeature<EngineSelectorFeature>(false);
+  addFeature<DatabaseFeature>(false);
 
   if (start) {
     MockMetricsServer::startFeatures();

@@ -71,7 +71,6 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
@@ -2453,7 +2452,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   server.getFeature<arangodb::DatabaseFeature>()
       .enableUpgrade();  // skip IResearchView validation
 
-  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
+  auto& engine = server.getFeature<arangodb::DatabaseFeature>().engine();
   auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
                       .factory<arangodb::ClusterEngine>();
   const_cast<arangodb::IndexFactory&>(engine.indexFactory())
@@ -2769,7 +2768,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
   auto& engine = *static_cast<StorageEngineMock*>(
-      &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+      &server.getFeature<arangodb::DatabaseFeature>().engine());
   engine.views.clear();
 
   VPackBuilder bogus;
@@ -2874,7 +2873,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
       std::filesystem::path(dbPathFeature.directory()).c_str(), true));
 
   auto& engine = *static_cast<StorageEngineMock*>(
-      &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+      &server.getFeature<arangodb::DatabaseFeature>().engine());
   engine.views.clear();
 
   TRI_vocbase_t* vocbase;

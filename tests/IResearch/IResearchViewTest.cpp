@@ -62,7 +62,6 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -4611,7 +4610,7 @@ TEST_F(IResearchViewTest, test_register_link) {
   // new link in recovery
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     Vocbase vocbase(testDBInfo(server.server()), server.engine());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -4692,7 +4691,7 @@ TEST_F(IResearchViewTest, test_register_link) {
   // new link
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     Vocbase vocbase(testDBInfo(server.server()), server.engine());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -4790,7 +4789,7 @@ TEST_F(IResearchViewTest, test_register_link) {
   // known link
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     Vocbase vocbase(testDBInfo(server.server()), server.engine());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -4932,7 +4931,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
   // link removed before view (in recovery)
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     Vocbase vocbase(testDBInfo(server.server()), server.engine());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -5055,7 +5054,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
   // link removed before view
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     Vocbase vocbase(testDBInfo(server.server()), server.engine());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -5170,7 +5169,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
   // view removed before link
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     Vocbase vocbase(testDBInfo(server.server()), server.engine());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -5209,7 +5208,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
   // view deallocated before link removed
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     Vocbase vocbase(testDBInfo(server.server()), server.engine());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -5284,7 +5283,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // test empty before open (TRI_vocbase_t::createView(...) will call open())
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     Vocbase vocbase(testDBInfo(server.server()), server.engine());
     arangodb::LogicalView::ptr view;
@@ -5309,7 +5308,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // open())
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }");
@@ -5355,7 +5354,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // open())
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     auto updateJson0 = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }");
@@ -5418,7 +5417,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // initial populate persisted view
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
@@ -5461,7 +5460,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // test persisted CIDs on open
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102 "
@@ -5486,7 +5485,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // open())
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }");
@@ -5520,7 +5519,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // open())
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     auto updateJson0 = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }");

@@ -51,7 +51,6 @@
 #include "Mocks/StorageEngineMock.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -144,7 +143,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
   // no view specified
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -165,7 +164,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
   // Agency yet)
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -181,7 +180,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
   // valid link creation
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto linkJson = arangodb::velocypack::Parser::fromJson(
@@ -259,7 +258,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
   // valid link creation (explicit version)
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto linkJson = arangodb::velocypack::Parser::fromJson(
@@ -337,7 +336,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
   // ensure jSON is still valid after unload()
   {
     auto& engine = *static_cast<StorageEngineMock*>(
-        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+        &server.getFeature<arangodb::DatabaseFeature>().engine());
     engine.views.clear();
     TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto linkJson = arangodb::velocypack::Parser::fromJson(

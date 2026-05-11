@@ -45,7 +45,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "Cluster/ClusterFeature.h"
@@ -53,7 +52,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -202,19 +200,18 @@ class ShardDistributionReporterTest
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
 
+    auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(
-        server.addFeature<arangodb::DatabaseFeature>(),
-        false);  // required for TRI_vocbase_t::dropCollection(...)
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
-    features.emplace_back(selector, false);
-    selector.setEngineTesting(&engine);
+        dbFeature, false);  // required for TRI_vocbase_t::dropCollection(...)
+    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
-            selector,
+            arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
+                dbFeature),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(

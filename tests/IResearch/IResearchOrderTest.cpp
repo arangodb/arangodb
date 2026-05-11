@@ -57,7 +57,6 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/StatisticsWorker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 
@@ -290,15 +289,16 @@ class IResearchOrderTest
     arangodb::tests::init();
 
     // setup required application features
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
-    selector.setEngineTesting(&engine);
-    features.emplace_back(selector, false);
+    auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
+    dbFeature.setEngineTesting(&engine);
+    features.emplace_back(dbFeature, false);  // required for calculationVocbase
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        selector,
+        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
+            dbFeature),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -313,11 +313,9 @@ class IResearchOrderTest
         server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
     features.emplace_back(
         server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
-    auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
-    features.emplace_back(databaseFeature,
-                          false);  // required for calculationVocbase
+
     features.emplace_back(
-        server.addFeature<arangodb::VectorIndexFeature>(databaseFeature),
+        server.addFeature<arangodb::VectorIndexFeature>(dbFeature),
         false);
     {
       auto& feature =
@@ -359,8 +357,7 @@ class IResearchOrderTest
     arangodb::aql::AqlFunctionFeature(server)
         .unprepare();                     // unset singleton instance
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

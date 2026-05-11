@@ -34,11 +34,9 @@
 #include "Aql/QueryRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
@@ -47,8 +45,8 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/arangod.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace {
 struct TestView : public arangodb::LogicalView {
@@ -122,13 +120,11 @@ class LogicalViewTest
   ViewFactory viewFactory;
 
   LogicalViewTest() : server(nullptr, nullptr), engine(server) {
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
-    features.emplace_back(selector, false);
-    selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ExecContext
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);
+    auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
+    features.emplace_back(dbFeature, false);
+    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
@@ -136,7 +132,7 @@ class LogicalViewTest
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
-                arangodb::EngineSelectorFeature>(nullptr),
+                arangodb::DatabaseFeature>(dbFeature),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -164,7 +160,7 @@ class LogicalViewTest
   }
 
   ~LogicalViewTest() {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(
         nullptr);
 
     // destroy application features
