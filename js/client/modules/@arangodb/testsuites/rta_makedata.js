@@ -100,6 +100,7 @@ function makeDataWrapper (options) {
       state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
       this.instanceManager.arangods[1].toThisInstance(() => {
+        print(arango.getEndpoint());
         while (true) {
           let followerState = replication.globalApplier.state();
 
@@ -220,7 +221,7 @@ function makeDataWrapper (options) {
     }
     restoreDump() {
       this.restoreConfig = ct.createBaseConfig('restore', this.options, this.instanceManager);
-      this.restoreConfig.setInputDirectory('dump', true);
+      this.restoreConfig.setInputDirectory('dump', false);
       this.restoreConfig.setIncludeSystem(true);
       this.restoreConfig.setAllDatabases();
       return ct.run.arangoDumpRestoreWithConfig(this.restoreConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
@@ -330,6 +331,8 @@ function makeDataWrapper (options) {
           this.waitForReplState();
           if (count === 2) {
             this.createDump();
+            this.restoreDump();
+            this.waitForReplState();
           } else if (count === 3) {
             try {
               if (this.options.oldSource !== undefined) {
