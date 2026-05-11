@@ -173,10 +173,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::atomic<VectorIndexTrainingState> _trainingState{
       VectorIndexTrainingState::kUnusable};
 
+  // Placeholder used while the build manager hasn't yet diagnosed why the
+  // index is unusable (e.g. between ensureIndex and the first scan).
+  static constexpr std::string_view kDefaultTrainingError =
+      "not enough training data for vector index";
+
   mutable std::mutex _trainingErrorMutex;
-  // default vector index state is unusable with "not enough training data"
-  // error, until proven otherwise
-  std::string _trainingError{"not enough training data for vector index"};
+  std::string _trainingError{kDefaultTrainingError};
 };
 
 }  // namespace arangodb
