@@ -147,13 +147,20 @@ VPackBuilder enrichVectorIndexes(VPackSlice indexes,
       result.add(StaticStrings::IndexTrainingState, VPackValue(aggregateState));
 
       if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
+        // Agency `Current` is updated asynchronously by the DBServer's
+        // build manager, so for a fresh index the shard `error` can still
+        // be empty while the state is already published as `unusable`.
+        // Fall back to the same placeholder used by the in-memory single-
+        // server path so the response shape is consistent.
+        std::string_view shardError =
+            StaticStrings::VectorIndexDefaultTrainingError;
         for (auto const& [_, shardState] : states) {
           if (!shardState.error.empty()) {
-            result.add(StaticStrings::ErrorMessage,
-                       VPackValue(shardState.error));
+            shardError = shardState.error;
             break;
           }
         }
+        result.add(StaticStrings::ErrorMessage, VPackValue(shardError));
       }
 
       if (withShardDetails) {
@@ -539,13 +546,18 @@ async<void> RestIndexHandler::getIndexes() {
                     VPackValue(aggregateState));
 
             if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
+              // See the enrichVectorIndexes branch above: agency `Current`
+              // lags ensureIndex, so fall back to the placeholder when no
+              // shard has a real error yet.
+              std::string_view shardError =
+                  "not enough training data for vector index";
               for (auto const& [_, shardState] : states) {
                 if (!shardState.error.empty()) {
-                  tmp.add(StaticStrings::ErrorMessage,
-                          VPackValue(shardState.error));
+                  shardError = shardState.error;
                   break;
                 }
               }
+              tmp.add(StaticStrings::ErrorMessage, VPackValue(shardError));
             }
 
             tmp.add(VPackValue("shards"));

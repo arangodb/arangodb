@@ -28,6 +28,7 @@
 #include <string>
 #include <type_traits>
 
+#include "Basics/StaticStrings.h"
 #include "RocksDBIndex.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -173,13 +174,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::atomic<VectorIndexTrainingState> _trainingState{
       VectorIndexTrainingState::kUnusable};
 
+  mutable std::mutex _trainingErrorMutex;
   // Placeholder used while the build manager hasn't yet diagnosed why the
   // index is unusable (e.g. between ensureIndex and the first scan).
-  static constexpr std::string_view kDefaultTrainingError =
-      "not enough training data for vector index";
-
-  mutable std::mutex _trainingErrorMutex;
-  std::string _trainingError{kDefaultTrainingError};
+  std::string _trainingError{StaticStrings::VectorIndexDefaultTrainingError};
 };
 
 }  // namespace arangodb

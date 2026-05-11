@@ -160,6 +160,8 @@ class StaticStrings {
   static std::string_view constexpr IndexTrainingStateIngesting{"ingesting"};
   static std::string_view constexpr IndexTrainingStateReady{"ready"};
   static std::string_view constexpr IndexResolvedNLists{"resolvedNLists"};
+  static std::string_view constexpr VectorIndexDefaultTrainingError{
+      "not enough training data for vector index"};
 
   // static index names
   static std::string const IndexNameEdge;

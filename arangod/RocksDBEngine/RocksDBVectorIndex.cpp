@@ -352,7 +352,7 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
                                         TRI_voc_tick_t tick,
                                         transaction::Methods* trx) {
   resetTrainingState();
-  setTrainingError(std::string{kDefaultTrainingError});
+  setTrainingError(std::string{StaticStrings::VectorIndexDefaultTrainingError});
   _faissIndex.reset();
   _trainedData = {};
   RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
