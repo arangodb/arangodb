@@ -110,21 +110,16 @@ struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {
 };
 
 template<typename Func>
-auto withSetCurrentlyExecutingActivity(ActivityHandle activity, Func&& func) {
+auto withCurrentlyExecutingActivity(Func&& func) {
   return [
-    func = std::forward<Func>(func), activity
+    func = std::forward<Func>(func),
+    activity = Registry::currentlyExecutingActivity()
   ]<typename... Args,
     typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
       Args && ... args) mutable {
     Registry::ScopedCurrentlyExecutingActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
-}
-
-template<typename Func>
-auto withCurrentlyExecutingActivity(Func&& func) {
-  return withSetCurrentlyExecutingActivity(
-      Registry::currentlyExecutingActivity(), std::forward<Func>(func));
 }
 
 }  // namespace arangodb::activities
