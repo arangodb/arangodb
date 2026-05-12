@@ -607,8 +607,13 @@ endif()
 
 # flex and bison are required to generate the AQL lexer/parser from
 # arangod/Aql/Parser/tokens.ll and arangod/Aql/Parser/grammar.y.
-find_package(FLEX REQUIRED)
-find_package(BISON REQUIRED)
+# Bison >= 3.0 (Jul 2013) is required at least for the `error=<category>`
+# --warnings syntax we pass was added in 3.0.
+# Flex >= 2.6.0 (Sep 2015) is the oldest we have actually tested; 2.6.4
+# (May 2017) is still the latest release. Older 2.5.x may also work but
+# is not exercised.
+find_package(FLEX 2.6 REQUIRED)
+find_package(BISON 3.0 REQUIRED)
 
 option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
 if(USE_GOOGLE_TESTS)
