@@ -324,6 +324,9 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryPlusNonNumeric : function () {
+      // COR-527: if either operand is a string, + performs string concatenation.
+      // Otherwise (null / boolean / array / object operands), + keeps the prior
+      // numeric-coercion semantics.
       var buildQuery = function(nr, left, right) {
         switch (nr) {
           case 0:
@@ -335,15 +338,10 @@ function ahuacatlArithmeticTestSuite () {
         }
       };
       for (var i = 0; i < 2; ++i) {
+        // Non-string operands: numeric coercion path.
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "null")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "false")));
         assertEqual([ 2 ], getQueryResults(buildQuery(i, "1", "true")));
-        assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "\"0\"")));
-        assertEqual([ 3 ], getQueryResults(buildQuery(i, "1", "\"2\"")));
-        assertEqual([ 3.5 ], getQueryResults(buildQuery(i, "1", "\"2.5\"")));
-        assertEqual([ -1.5 ], getQueryResults(buildQuery(i, "1", "\"-2.5\"")));
-        assertEqual([ 43 ], getQueryResults(buildQuery(i, "1", "\"42\"")));
-        assertEqual([ -16 ], getQueryResults(buildQuery(i, "1", "\"-17\"")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "[ ]")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "[ 0 ]")));
         assertEqual([ 5 ], getQueryResults(buildQuery(i, "1", "[ 4 ]")));
@@ -352,19 +350,27 @@ function ahuacatlArithmeticTestSuite () {
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "null", "1")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "false", "1")));
         assertEqual([ 2 ], getQueryResults(buildQuery(i, "true", "1")));
-        assertEqual([ 1 ], getQueryResults(buildQuery(i, "\"0\"", "1")));
-        assertEqual([ 24 ], getQueryResults(buildQuery(i, "\"23\"", "1")));
-        assertEqual([ -8 ], getQueryResults(buildQuery(i, "\"-9\"", "1")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "[ ]", "1")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "[ 0 ]", "1")));
         assertEqual([ 5 ], getQueryResults(buildQuery(i, "[ 4 ]", "1")));
         assertEqual([ -3 ], getQueryResults(buildQuery(i, "[ -4 ]", "1")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "{ }", "1")));
-        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"a\"", "\"b\"")));
-        assertEqual([ 3 ], getQueryResults(buildQuery(i, "\"1\"", "\"2\"")));
-        assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "\"\"")));
-        assertEqual([ 1 ], getQueryResults(buildQuery(i, "\"\"", "1")));
-        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"\"", "\"\"")));
+
+        // String operand on either side: string concatenation path.
+        assertEqual([ "10" ], getQueryResults(buildQuery(i, "1", "\"0\"")));
+        assertEqual([ "12" ], getQueryResults(buildQuery(i, "1", "\"2\"")));
+        assertEqual([ "12.5" ], getQueryResults(buildQuery(i, "1", "\"2.5\"")));
+        assertEqual([ "1-2.5" ], getQueryResults(buildQuery(i, "1", "\"-2.5\"")));
+        assertEqual([ "142" ], getQueryResults(buildQuery(i, "1", "\"42\"")));
+        assertEqual([ "1-17" ], getQueryResults(buildQuery(i, "1", "\"-17\"")));
+        assertEqual([ "01" ], getQueryResults(buildQuery(i, "\"0\"", "1")));
+        assertEqual([ "231" ], getQueryResults(buildQuery(i, "\"23\"", "1")));
+        assertEqual([ "-91" ], getQueryResults(buildQuery(i, "\"-9\"", "1")));
+        assertEqual([ "ab" ], getQueryResults(buildQuery(i, "\"a\"", "\"b\"")));
+        assertEqual([ "12" ], getQueryResults(buildQuery(i, "\"1\"", "\"2\"")));
+        assertEqual([ "1" ], getQueryResults(buildQuery(i, "1", "\"\"")));
+        assertEqual([ "1" ], getQueryResults(buildQuery(i, "\"\"", "1")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"\"", "\"\"")));
       }
     },
 

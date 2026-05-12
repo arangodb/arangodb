@@ -443,7 +443,9 @@ function VersioningWithComputedValuesSuite () {
         computedValues: [
           {
             name: "computed",
-            expression: "RETURN @doc.value + 1",
+            // Use TO_NUMBER so this stays numeric addition; plain @doc.value + 1
+            // would stringify when @doc.value is a string (COR-527).
+            expression: "RETURN TO_NUMBER(@doc.value) + 1",
             overwrite: true,
           }
         ]
