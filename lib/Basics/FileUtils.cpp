@@ -128,48 +128,19 @@ namespace arangodb::basics::FileUtils {
 std::string buildFilename(char const* path, char const* name) {
   TRI_ASSERT(path != nullptr);
   TRI_ASSERT(name != nullptr);
-
-  std::string result(path);
-
-  if (!result.empty()) {
-    std::filesystem::path sourcepath{result};
-    result = sourcepath.lexically_normal().string();
-    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
-      result += TRI_DIR_SEPARATOR_CHAR;
-    }
-  }
-
-  if (!result.empty() && *name == TRI_DIR_SEPARATOR_CHAR) {
-    // skip initial forward slash in name to avoid having two forward slashes in
-    // result
-    result.append(name + 1);
-  } else {
-    result.append(name);
-  }
-
-  return std::filesystem::path(result).make_preferred().string();
+  return buildFilename(std::string(path), std::string(name));
 }
 
 std::string buildFilename(std::string const& path, std::string const& name) {
-  std::string result(path);
+  namespace fs = std::filesystem;
+  fs::path result;
 
-  if (!result.empty()) {
-    std::filesystem::path sourcepath{result};
-    result = sourcepath.lexically_normal().string();
-    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
-      result += TRI_DIR_SEPARATOR_CHAR;
-    }
-  }
-
-  if (!result.empty() && !name.empty() && name[0] == TRI_DIR_SEPARATOR_CHAR) {
-    // skip initial forward slash in name to avoid having two forward slashes in
-    // result
-    result.append(name.c_str() + 1, name.size() - 1);
+  if (!fs::path(path).empty()) {
+    result = (fs::path(path) / fs::path(name).relative_path());
   } else {
-    result.append(name);
+    result = fs::path(name);
   }
-
-  return std::filesystem::path(result).make_preferred().string();
+  return result.lexically_normal().make_preferred().string();
 }
 
 static void throwFileReadError(std::string const& filename) {

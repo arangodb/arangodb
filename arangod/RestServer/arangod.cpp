@@ -160,7 +160,7 @@ void ArangodServer::addFeatures(
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>();
   auto& scheduler = addFeature<SchedulerFeature>(metrics);
-  auto& vectorIndex = addFeature<VectorIndexFeature>();
+  auto& vectorIndex = addFeature<VectorIndexFeature>(database);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(std::string{binaryName});
 #endif
