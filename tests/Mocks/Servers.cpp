@@ -447,7 +447,6 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
 MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
   // setup required application features
   SetupGreetingsPhase(*this);
-  addFeature<DatabaseFeature>(false);
   addFeature<EngineSelectorFeature>(false);
 
   if (start) {
