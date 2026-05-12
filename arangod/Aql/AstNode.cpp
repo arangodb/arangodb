@@ -381,12 +381,25 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
   }
 
   // Compare attribute name before children.
-  if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+  if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      lhs->type == NODE_TYPE_PARAMETER ||
+      lhs->type == NODE_TYPE_PARAMETER_DATASOURCE ||
+      lhs->type == NODE_TYPE_FCALL_USER) {
     std::string_view lhsName = lhs->getStringView();
     std::string_view rhsName = rhs->getStringView();
     int cmp = lhsName.compare(rhsName);
     if (cmp != 0) {
       return (cmp < 0 ? -1 : 1);
+    }
+  }
+
+  // ALL/ANY/NONE/AT LEAST kind lives in the int value; AT LEAST also has a
+  // threshold child, so fall through to the member loop.
+  if (lhs->type == NODE_TYPE_QUANTIFIER) {
+    int64_t lv = lhs->getIntValue();
+    int64_t rv = rhs->getIntValue();
+    if (lv != rv) {
+      return (lv < rv ? -1 : 1);
     }
   }
 

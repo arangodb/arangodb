@@ -23,6 +23,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Logger/LogMacros.h"
 #include "Mocks/Servers.h"
@@ -1229,6 +1230,48 @@ TEST_F(CompareAstNodesTest, fcallDifferentArgumentCount) {
   auto* y = makeVar("y");
   EXPECT_NE(0, compare(fcall("CONCAT", {createRefNode(x)}),
                        fcall("CONCAT", {createRefNode(x), createRefNode(y)})));
+}
+
+// --- bind parameters
+// ----------------------------------------------------------
+
+TEST_F(CompareAstNodesTest, bindParameterSameNameEqual) {
+  auto* p1 = _ast->createNodeParameter("x");
+  auto* p2 = _ast->createNodeParameter("x");
+  EXPECT_EQ(0, compare(p1, p2));
+}
+
+TEST_F(CompareAstNodesTest, bindParameterDifferentNamesNotEqual) {
+  auto* p1 = _ast->createNodeParameter("x");
+  auto* p2 = _ast->createNodeParameter("y");
+  EXPECT_NE(0, compare(p1, p2));
+}
+
+TEST_F(CompareAstNodesTest, datasourceParameterSameNameEqual) {
+  auto* p1 = _ast->createNodeParameterDatasource("coll");
+  auto* p2 = _ast->createNodeParameterDatasource("coll");
+  EXPECT_EQ(0, compare(p1, p2));
+}
+
+TEST_F(CompareAstNodesTest, datasourceParameterDifferentNamesNotEqual) {
+  auto* p1 = _ast->createNodeParameterDatasource("coll1");
+  auto* p2 = _ast->createNodeParameterDatasource("coll2");
+  EXPECT_NE(0, compare(p1, p2));
+}
+
+// --- quantifiers
+// -------------------------------------------------------------
+
+TEST_F(CompareAstNodesTest, quantifierSameKindEqual) {
+  auto* all1 = _ast->createNodeQuantifier(Quantifier::Type::kAll);
+  auto* all2 = _ast->createNodeQuantifier(Quantifier::Type::kAll);
+  EXPECT_EQ(0, compare(all1, all2));
+}
+
+TEST_F(CompareAstNodesTest, quantifierDifferentKindsNotEqual) {
+  auto* all = _ast->createNodeQuantifier(Quantifier::Type::kAll);
+  auto* none = _ast->createNodeQuantifier(Quantifier::Type::kNone);
+  EXPECT_NE(0, compare(all, none));
 }
 
 // --- structural nodes of different AstNodeType
