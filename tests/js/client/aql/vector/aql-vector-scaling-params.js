@@ -211,6 +211,100 @@ function VectorIndexScalingTestSuite() {
                 assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
             }
         },
+
+        testFactoryTemplateWithDefaultScaling: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension,
+                    factory: "IVF{}_HNSW2,SQ8",
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+
+            assertTrue(idx !== undefined);
+            assertEqual("IVF{}_HNSW2,SQ8", idx.params.factory);
+            assertEqual("autoSqrt", idx.params.nLists.strategy);
+            assertScaledResolvedNLists(collection, idx.params.nLists);
+        },
+
+        testFactoryTemplateWithForcedMinNLists: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    factory: "IVF{}_HNSW8,PQ16x4",
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+
+            assertTrue(idx !== undefined);
+            assertEqual("IVF{}_HNSW8,PQ16x4", idx.params.factory);
+            assertEqual(15, idx.params.nLists.minNLists);
+            assertResolvedNLists(15, collection);
+            assertVectorIndexUsable(randomPoint, 5, 15);
+        },
+
+        testFixedFactoryWithMatchingScaling: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    factory: "IVF15,Flat",
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual("IVF15,Flat", idx.params.factory);
+            assertResolvedNLists(15, collection);
+            assertVectorIndexUsable(randomPoint, 5, 15);
+        },
+
+        testFixedFactoryWithMismatchedScalingFails: function() {
+            try {
+                collection.ensureIndex({
+                    name: idxName,
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2", dimension,
+                        factory: "IVF20,Flat",
+                        nLists: {
+                            strategy: "autoSqrt",
+                            multiplier: 1,
+                            minNLists: 15,
+                            tiers: [],
+                        },
+                    },
+                });
+                fail();
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+            }
+        },
     };
 }
 
@@ -323,6 +417,34 @@ function VectorIndexScalingTiersTestSuite() {
                     },
                 },
             });
+            assertResolvedNLists(2, collection);
+            assertVectorIndexUsable(randomPoint, 5, 2);
+        },
+
+        testFactoryTemplateWithTierHit: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    factory: "IVF{}_HNSW3,RaBitQfs",
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [
+                            { threshold: 10, fixedValue: 1 },
+                            { threshold: 30, fixedValue: 1 },
+                            { threshold: 60, fixedValue: 2 },
+                        ],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual("IVF{}_HNSW3,RaBitQfs", idx.params.factory);
             assertResolvedNLists(2, collection);
             assertVectorIndexUsable(randomPoint, 5, 2);
         },
