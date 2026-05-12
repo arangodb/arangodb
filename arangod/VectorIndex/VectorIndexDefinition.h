@@ -26,11 +26,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <format>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
 
+#include "Assertions/Assert.h"
 #include "Basics/overload.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
@@ -218,6 +220,22 @@ inline std::size_t resolveNListsParameter(NListsParameter const& p,
           },
       },
       p);
+}
+
+/// @brief Check if an NListsParameter is in scaling mode.
+inline bool isFactoryAStringScaling(std::string_view factoryString) {
+  return factoryString.find("{}") != std::string_view::npos;
+}
+
+/// @brief Resolve an factory string to a concrete value.
+/// In fixed mode, returne the string
+/// In scaling mode, the factory string can be defined as temaplte
+/// e.g. "IVF{}_HNSW32,SQ8" and the {} will be replaced by the resolved
+/// nLists value
+inline std::string resolveFactoryString(std::string const& factoryString,
+                                        std::size_t nlists) {
+  TRI_ASSERT(factoryString.find("{}") != std::string_view::npos);
+  return std::vformat(factoryString, std::make_format_args(nlists));
 }
 
 struct UserVectorIndexDefinition {
