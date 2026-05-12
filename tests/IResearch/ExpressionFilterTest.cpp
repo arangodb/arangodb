@@ -335,8 +335,7 @@ struct IResearchExpressionFilterTest
   ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(
-        nullptr);
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {
@@ -365,7 +364,7 @@ struct FilterCtx : irs::attribute_provider {
 
   arangodb::iresearch::ExpressionExecutionContext*
       _execCtx;  // expression execution context
-};               // FilterCtx
+};  // FilterCtx
 
 }  // namespace
 

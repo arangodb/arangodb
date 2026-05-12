@@ -76,8 +76,8 @@ class FlushFeatureTest
             arangodb::QueryRegistryFeature>(server),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::DatabaseFeature>(server),
+        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
+            server),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -113,8 +113,7 @@ class FlushFeatureTest
   }
 
   ~FlushFeatureTest() {
-    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(
-        nullptr);
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

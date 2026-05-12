@@ -64,8 +64,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
           lazyQueryRegistryFeatureRef,
       LazyApplicationFeatureReference<StatisticsFeature>
           lazyStatisticsFeatureRef,
-      LazyApplicationFeatureReference<DatabaseFeature>
-          lazyDatabaseFeatureRef,
+      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
       LazyApplicationFeatureReference<ClusterMetricsFeature>
           lazyClusterMetricsFeatureRef,
       LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef);
@@ -145,8 +144,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   LazyApplicationFeatureReference<QueryRegistryFeature>
       _lazyQueryRegistryFeatureRef;
   LazyApplicationFeatureReference<StatisticsFeature> _lazyStatisticsFeatureRef;
-  LazyApplicationFeatureReference<DatabaseFeature>
-      _lazyDatabaseFeatureRef;
+  LazyApplicationFeatureReference<DatabaseFeature> _lazyDatabaseFeatureRef;
   LazyApplicationFeatureReference<ClusterMetricsFeature>
       _lazyClusterMetricsFeatureRef;
   LazyApplicationFeatureReference<ClusterFeature> _lazyClusterFeatureRef;

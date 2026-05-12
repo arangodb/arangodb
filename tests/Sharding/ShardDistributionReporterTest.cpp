@@ -210,8 +210,8 @@ class ShardDistributionReporterTest
                 arangodb::QueryRegistryFeature>(server),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-                dbFeature),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::DatabaseFeature>(dbFeature),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
