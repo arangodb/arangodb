@@ -376,7 +376,11 @@ enum yysymbol_kind_t
   YYSYMBOL_bind_parameter = 234,           /* bind_parameter  */
   YYSYMBOL_bind_parameter_datasource_expected = 235, /* bind_parameter_datasource_expected  */
   YYSYMBOL_object_element_name = 236,      /* object_element_name  */
-  YYSYMBOL_variable_name = 237             /* variable_name  */
+  YYSYMBOL_variable_name = 237,             /* variable_name  */
+  YYSYMBOL_T_INNER_JOIN = 238,              /* "INNER_JOIN declaration"  */
+  YYSYMBOL_T_LEFT_JOIN = 239,               /* "LEFT_JOIN declaration"  */
+  YYSYMBOL_T_RIGHT_JOIN = 240,              /* "RIGHT_JOIN declaration"  */
+  YYSYMBOL_T_OUTER_JOIN = 241               /* "OUTER_JOIN declaration"  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 

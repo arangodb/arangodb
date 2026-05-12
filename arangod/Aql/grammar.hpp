@@ -141,7 +141,11 @@ extern int Aqldebug;
     FUNCCALL = 341,                /* FUNCCALL  */
     REFERENCE = 342,               /* REFERENCE  */
     INDEXED = 343,                 /* INDEXED  */
-    EXPANSION = 344                /* EXPANSION  */
+    EXPANSION = 344,               /* EXPANSION  */
+    T_INNER_JOIN = 345,            /* "INNER_JOIN declaration"  */
+    T_LEFT_JOIN = 346,             /* "LEFT_JOIN declaration"  */
+    T_RIGHT_JOIN = 347,            /* "RIGHT_JOIN declaration"  */
+    T_OUTER_JOIN = 348             /* "OUTER_JOIN declaration"  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -160,7 +164,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 163 "grammar.hpp"
+#line 167 "grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;
