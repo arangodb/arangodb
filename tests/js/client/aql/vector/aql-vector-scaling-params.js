@@ -437,7 +437,7 @@ function VectorIndexScalingTiersTestSuite() {
                 inBackground: false,
                 params: {
                     metric: "l2", dimension,
-                    factory: "IVF{}_HNSW3,RaBitQfs",
+                    factory: "IVF{}_HNSW3,LSQ16x4fs",
                     nLists: {
                         strategy: "autoSqrt",
                         multiplier: 4,
@@ -452,7 +452,7 @@ function VectorIndexScalingTiersTestSuite() {
             });
             const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
-            assertEqual("IVF{}_HNSW3,RaBitQfs", idx.params.factory);
+            assertEqual("IVF{}_HNSW3,LSQ16x4fs", idx.params.factory);
             assertResolvedNLists(2, collection);
             assertVectorIndexUsable(randomPoint, 5, 2);
         },
