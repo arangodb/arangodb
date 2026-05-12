@@ -396,8 +396,8 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
   // ALL/ANY/NONE/AT LEAST kind lives in the int value; AT LEAST also has a
   // threshold child, so fall through to the member loop.
   if (lhs->type == NODE_TYPE_QUANTIFIER) {
-    int64_t lv = lhs->getIntValue();
-    int64_t rv = rhs->getIntValue();
+    int64_t lv = lhs->getIntValue(true);
+    int64_t rv = rhs->getIntValue(true);
     if (lv != rv) {
       return (lv < rv ? -1 : 1);
     }
