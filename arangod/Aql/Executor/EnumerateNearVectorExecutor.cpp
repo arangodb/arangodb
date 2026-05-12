@@ -115,10 +115,10 @@ void EnumerateNearVectorsExecutor::searchResults() {
   auto validCount = std::count_if(_labels.begin(), _labels.end(),
                                   [](auto const& l) { return l != -1; });
   LOG_TOPIC("f1a2b", WARN, Logger::ENGINES) << std::format(
-      "EnumerateNearVectors::searchResults: requested={}, returned={}, "
-      "validLabels={}, collectionCount={}",
-      _infos.getNumberOfResults(), _labels.size(), validCount,
-      _collectionCount);
+      "EnumerateNearVectors::searchResults: shard={}, processedInputs={}, "
+      "requested={}, returned={}, validLabels={}, collectionCount={}",
+      _collection->name(), _processedInputs, _infos.getNumberOfResults(),
+      _labels.size(), validCount, _collectionCount);
 
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
@@ -217,22 +217,35 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     return {state(), {}, skipped, {}};
   } else if (call.needSkipMore()) {
     TRI_ASSERT(call.needsFullCount());
-    auto skipped = skipOutput(AqlCall::Infinity{});
+    std::size_t const labelsSizeBefore = _labels.size();
+    std::size_t const currentProcessedBefore = _currentProcessedResultCount;
+    bool const reportedBefore = _reportedCurrentRowForFullCount;
+    auto skippedFromOutput = skipOutput(AqlCall::Infinity{});
+    auto skipped = skippedFromOutput;
 
     TRI_ASSERT(!hasResults());
     auto remainingRows = inputRange.countAndSkipAllRemainingDataRows();
+    std::size_t collectionAdjustment = 0;
     if (_processedInputs > 0 && !_reportedCurrentRowForFullCount) {
-      skipped += _collectionCount - _currentProcessedResultCount;
+      collectionAdjustment = _collectionCount - _currentProcessedResultCount;
+      skipped += collectionAdjustment;
       _reportedCurrentRowForFullCount = true;
     }
-    skipped += remainingRows * _collectionCount;
+    std::size_t const remainingInputAdjustment = remainingRows * _collectionCount;
+    skipped += remainingInputAdjustment;
     call.didSkip(skipped);
 
-    LOG_TOPIC("f1a2c", DEBUG, Logger::ENGINES) << std::format(
-        "EnumerateNearVectors::skipRowsRange(fullCount): skipped={}, "
-        "remainingRows={}, currentProcessed={}, nr={}, state={}, "
-        "hasResults={}, call={}, colCount={}",
-        skipped, remainingRows, _currentProcessedResultCount,
+    LOG_TOPIC("f1a2c", WARN, Logger::ENGINES) << std::format(
+        "EnumerateNearVectors::skipRowsRange(fullCount): shard={}, "
+        "processedInputs={}, reportedBefore={}, reportedAfter={}, "
+        "labelsSizeBefore={}, labelsSize={}, currentProcessedBefore={}, "
+        "currentProcessed={}, skippedFromOutput={}, collectionAdjustment={}, "
+        "remainingRows={}, remainingInputAdjustment={}, skipped={}, nr={}, "
+        "state={}, hasResults={}, call={}, colCount={}",
+        _collection->name(), _processedInputs, reportedBefore,
+        _reportedCurrentRowForFullCount, labelsSizeBefore, _labels.size(),
+        currentProcessedBefore, _currentProcessedResultCount, skippedFromOutput,
+        collectionAdjustment, remainingRows, remainingInputAdjustment, skipped,
         _infos.getNumberOfResults(), state(), hasResults(), to_string(call),
         _collectionCount);
 
