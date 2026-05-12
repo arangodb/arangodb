@@ -3,6 +3,12 @@
 #include <string>
 #include <vector>
 
+/**
+ * A single public field of a record: its name and source-spelled type.
+ *
+ * Example:
+ *   Member{.name = "user", .type = "std::string"};
+ */
 struct Member {
   std::string name;
   std::string type;
@@ -10,6 +16,16 @@ struct Member {
   auto operator==(Member const&) const -> bool = default;
 };
 
+/**
+ * A named record with the list of its public fields.
+ *
+ * Used both for an activity's Data record itself and for project-local
+ * records reached one level deep from any of its members.
+ *
+ * Example:
+ *   Struct{.name = "TransactionCollection",
+ *          .fields = {Member{.name = "name", .type = "std::string"}}};
+ */
 struct Struct {
   std::string name;
   std::vector<Member> fields;
@@ -17,22 +33,26 @@ struct Struct {
   auto operator==(Struct const&) const -> bool = default;
 };
 
-// Describes the data slice of one Activity subclass. The Snapshot envelope
-// (id, parent, type, created) is the same for every Activity and is not
-// modeled here.
-//
-// `owner_file` / `owner_line` point at the variable declaration (member or
-// non-parameter local) whose underlying type — after peeling `shared_ptr` /
-// `unique_ptr` — is the Activity subclass.
-//
-// `data_type` is the fully-qualified spelled type of the Data template arg.
-//
-// `field_types`:
-//   - empty: data is either a dynamic container (e.g. std::unordered_map) or
-//     the Data type couldn't be resolved from a GuardedActivity base.
-//   - non-empty: first entry is the data record itself; subsequent entries
-//     are project-local nested records reached through one container layer
-//     (e.g. TransactionCollection via std::vector<TransactionCollection>).
+/**
+ * Describes one Activity subclass declaration
+ *
+ * Where it lives, the spelled Data type, and the shape of that Data (one level
+ * of nested records).
+ *
+ * Example:
+ *   ActivityDeclaration{
+ *     .owner_file = "arangod/StorageEngine/TransactionState.h",
+ *     .owner_line = 521,
+ *     .data_type  = "arangodb::transaction::activity::TransactionActivityData",
+ *     .field_types = {
+ *       Struct{.name = "TransactionActivityData",
+ *              .fields = {Member{.name = "user", .type = "std::string"}}}}};
+ *
+ * The Snapshot envelope (id, parent, type, created) is the same for every
+ * Activity and is intentionally not modeled here. `field_types` is empty
+ * when the Data is a dynamic container (e.g. std::unordered_map) or when
+ * the Data type couldn't be resolved.
+ */
 struct ActivityDeclaration {
   std::string owner_file;
   unsigned owner_line = 0;
@@ -42,8 +62,19 @@ struct ActivityDeclaration {
   auto operator==(ActivityDeclaration const&) const -> bool = default;
 };
 
-// Walks the AST of every translation unit at or under `path` (a single source
-// file or a directory) and returns one ActivityData per discovered Activity
-// subclass declaration. `compile_commands.json` is auto-detected from `path`.
+/**
+ * Find every Activity-subclass declaration owned somewhere under `path`.
+ *
+ * `path` is a single source file or a directory; compile_commands.json is
+ * auto-detected. Headers are routed to their sibling .cpp so ClangTool has
+ * a translation unit to parse.
+ *
+ * Example:
+ *   auto activities = find_all_activities(
+ *       "arangod/StorageEngine/TransactionState.cpp");
+ *   for (auto const& activity : activities) {
+ *     std::cout << activity.data_type << " @ " << activity.owner_file << "\n";
+ *   }
+ */
 auto find_all_activities(std::string const& path)
     -> std::vector<ActivityDeclaration>;

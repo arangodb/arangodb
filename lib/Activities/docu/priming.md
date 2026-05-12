@@ -19,6 +19,16 @@ Intermediate representation of an activity (`ActivityDeclaration`):
 - use `auto` as often as you can (also for fn definitions)
 - instantiate variables only when using them, as few mutations as possible
 - no one-letter variables
+- write short and concise documentation for every struct or function with
+  /**
+   * Short sentence explaining what it is (prefered one line)
+	 *
+	 * If needed, more detailed explanation
+	 *
+	 * For pulic components: at least one simple code example
+	 *
+	 * Even more advanced explanations if necessary
+	 */
 
 ## Naming conventions
 - Files: snake_case

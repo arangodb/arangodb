@@ -10,8 +10,10 @@
 
 namespace {
 
-// Streams an ActivityDeclaration in a vaguely C++-literal-ish form to help
-// diagnose mismatches without pulling in a test framework.
+/**
+ * Format the IR types in a vaguely C++-literal-ish form for failure
+ * diagnostics, so a mismatch can be copy-pasted into source.
+ */
 std::ostream& operator<<(std::ostream& os, Member const& member) {
   return os << "Member{.name=\"" << member.name << "\", .type=\""
             << member.type << "\"}";
@@ -39,6 +41,12 @@ std::ostream& operator<<(std::ostream& os, ActivityDeclaration const& decl) {
 
 std::string const project_root = PROJECT_ROOT;
 
+/**
+ * Assert that `expected` appears somewhere in `activities`.
+ *
+ * On failure, print the expected value and every actual entry to stderr
+ * and return false.
+ */
 auto assert_includes(std::vector<ActivityDeclaration> const& activities,
                      ActivityDeclaration const& expected) -> bool {
   for (ActivityDeclaration const& activity : activities) {
@@ -54,6 +62,10 @@ auto assert_includes(std::vector<ActivityDeclaration> const& activities,
   return false;
 }
 
+/**
+ * A named test: `fn` is called with the project root and returns true on
+ * pass, false on fail.
+ */
 struct TestCase {
   char const* name;
   bool (*fn)(std::string const&);

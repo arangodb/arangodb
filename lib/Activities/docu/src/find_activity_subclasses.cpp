@@ -32,6 +32,13 @@ constexpr char const* GUARDED_TEMPLATE = "GuardedActivity";
 // ...) declares variables of concrete Activity types but isn't a real owner.
 constexpr char const* ACTIVITY_LIB_PATH = "/lib/Activities/";
 
+/**
+ * Convert a clang QualType to a human-readable string.
+ *
+ * When `is_fully_qualified` is true, nested identifiers are rewritten with
+ * full namespace prefixes everywhere; otherwise the source-as-written
+ * spelling is preserved.
+ */
 auto type_to_string(QualType qt, ASTContext const& ctx, bool is_fully_qualified)
     -> std::string {
   auto pp = PrintingPolicy(ctx.getLangOpts());
@@ -50,6 +57,11 @@ auto type_to_string(QualType qt, ASTContext const& ctx, bool is_fully_qualified)
   return qt.getAsString(pp);
 }
 
+/**
+ * Whether a source location is inside the project's own code.
+ *
+ * Excludes invalid locations, system headers, `3rdParty/`, and build output.
+ */
 auto is_in_project(SourceLocation loc, SourceManager const& sm) -> bool {
   if (loc.isInvalid()) return false;
   loc = sm.getFileLoc(loc);
@@ -62,6 +74,9 @@ auto is_in_project(SourceLocation loc, SourceManager const& sm) -> bool {
   return true;
 }
 
+/**
+ * Whether a record is in namespace std or in a system header.
+ */
 auto is_std_record(CXXRecordDecl const* rd, SourceManager const& sm) -> bool {
   if (rd == nullptr) return false;
   if (rd->isInStdNamespace()) return true;
@@ -69,16 +84,22 @@ auto is_std_record(CXXRecordDecl const* rd, SourceManager const& sm) -> bool {
   return loc.isInvalid() || sm.isInSystemHeader(loc);
 }
 
+/**
+ * Whether a field is publicly accessible.
+ */
 auto is_public(FieldDecl const* f) -> bool {
   return f->getAccess() == AS_public || f->getAccess() == AS_none;
 }
 
-// Returns the as-written Data type of derived's GuardedActivity<Self, Data>
-// base, or a null QualType if no such base is found. Preserves typedef sugar
-// (so e.g. GuardedActivity<G, GenericActivityData> yields the alias, not its
-// std::unordered_map<...> canonical form).
+/**
+ * Resolve the Data type from `derived`'s GuardedActivity<Self, Data> base.
+ *
+ * Preserves typedef sugar (so e.g. GuardedActivity<G, GenericActivityData>
+ * yields the alias, not its std::unordered_map<...> canonical form).
+ * Returns a null QualType if no matching base is found.
+ */
 auto find_guarded_data_type(CXXRecordDecl const* derived,
-                         std::string const& template_name) -> QualType {
+                            std::string const& template_name) -> QualType {
   if (derived == nullptr || !derived->hasDefinition()) return {};
   for (auto const& base : derived->bases()) {
     // QualType::getAs<T>() peels through sugar (typedefs, ElaboratedType),
@@ -96,8 +117,12 @@ auto find_guarded_data_type(CXXRecordDecl const* derived,
   return {};
 }
 
-// Drills through one level of common containers (vector<T>, optional<T>, ...)
-// so the underlying record can be inspected.
+/**
+ * Return the first template argument's type, or `qt` unchanged.
+ *
+ * Used to drill one level into common containers (vector<T>, optional<T>,
+ * ...) so the underlying record can be inspected.
+ */
 auto peel_one_template_arg(QualType qt) -> QualType {
   if (auto const* tst = qt->getAs<TemplateSpecializationType>()) {
     if (!tst->template_arguments().empty()) {
@@ -108,23 +133,33 @@ auto peel_one_template_arg(QualType qt) -> QualType {
   return qt;
 }
 
+/**
+ * Collect the public fields of a record into IR `Member`s.
+ */
 auto collect_public_members(CXXRecordDecl const* record, ASTContext const& ctx)
     -> std::vector<Member> {
   auto out = std::vector<Member>{};
   if (record == nullptr) return out;
   for (auto const* field : record->fields()) {
     if (!is_public(field)) continue;
-    out.push_back(Member{
-        .name = field->getNameAsString(),
-        .type = type_to_string(field->getType(), ctx,
-                               /*is_fully_qualified=*/false)});
+    out.push_back(Member{.name = field->getNameAsString(),
+                         .type = type_to_string(field->getType(), ctx,
+                                                /*is_fully_qualified=*/false)});
   }
   return out;
 }
 
+/**
+ * Build an IR `ActivityDeclaration` from a matched Activity-subclass record.
+ *
+ * Returns nullopt for records that aren't real concrete activities (primary
+ * templates, partial specializations, undefined classes). The returned
+ * declaration's `field_types` is empty when the Data type is a dynamic
+ * container or otherwise unresolvable.
+ */
 auto build_activity_declaration(CXXRecordDecl const* rd, std::string owner_file,
-                              unsigned owner_line, ASTContext const& ctx,
-                              SourceManager const& sm)
+                                unsigned owner_line, ASTContext const& ctx,
+                                SourceManager const& sm)
     -> std::optional<ActivityDeclaration> {
   if (rd == nullptr || !rd->hasDefinition()) return std::nullopt;
   if (rd->getDescribedClassTemplate() != nullptr) return std::nullopt;
@@ -166,6 +201,16 @@ auto build_activity_declaration(CXXRecordDecl const* rd, std::string owner_file,
   return ad;
 }
 
+/**
+ * MatchFinder callback: collects one ActivityDeclaration per match into the
+ * caller-supplied output vector.
+ *
+ * Dedupes by `owner_file:owner_line`, so the same physical declaration isn't
+ * reported across the many TUs that include the same header — but distinct
+ * declarations of the same Activity class (e.g. a member field plus a
+ * `make<T>` call site elsewhere) both survive. Declarations inside
+ * `lib/Activities/` itself are skipped as internal plumbing.
+ */
 class ActivityCallback : public MatchFinder::MatchCallback {
  public:
   explicit ActivityCallback(std::vector<ActivityDeclaration>& out)
@@ -179,7 +224,6 @@ class ActivityCallback : public MatchFinder::MatchCallback {
     auto const& sm = *result.SourceManager;
     auto loc = sm.getFileLoc(decl->getLocation());
     if (!is_in_project(loc, sm)) return;
-
     auto path = sm.getFilename(loc).str();
     auto line = sm.getSpellingLineNumber(loc);
     if (path.empty()) return;
@@ -192,7 +236,7 @@ class ActivityCallback : public MatchFinder::MatchCallback {
     if (!_seen.insert(std::move(seen_key)).second) return;
 
     auto ad = build_activity_declaration(rd, std::move(path), line,
-                                       *result.Context, sm);
+                                         *result.Context, sm);
     if (!ad) return;
     _out.push_back(std::move(*ad));
   }
@@ -202,9 +246,13 @@ class ActivityCallback : public MatchFinder::MatchCallback {
   std::unordered_set<std::string> _seen;
 };
 
-// Headers aren't compiled directly. If a header was passed, substitute a
-// sibling translation-unit source (.cpp/.cc/.cxx) so ClangTool has something
-// the compile DB knows about.
+/**
+ * Route a header path to its sibling translation-unit source.
+ *
+ * Headers aren't in compile_commands.json, so ClangTool needs a `.cpp`/
+ * `.cc`/`.cxx` that includes them. If no sibling exists or the input is
+ * already a TU, `p` is returned unchanged.
+ */
 auto resolve_source_file(std::filesystem::path const& p)
     -> std::filesystem::path {
   auto ext = p.extension().string();
@@ -217,10 +265,22 @@ auto resolve_source_file(std::filesystem::path const& p)
   return p;
 }
 
+/**
+ * The compile database plus the list of source files to feed to ClangTool.
+ */
 struct Sources {
   std::unique_ptr<CompilationDatabase> db;
   std::vector<std::string> files;
 };
+
+/**
+ * Resolve `path_name` (a file or a directory) into a Sources payload.
+ *
+ * Returns:
+ *   - nullopt when `path_name` is neither a regular file nor a directory.
+ *   - Sources with `db == nullptr` when no compile_commands.json was found.
+ *   - Sources with `files` empty when no project sources matched.
+ */
 auto get_sources(std::string const& path_name) -> std::optional<Sources> {
   namespace fs = std::filesystem;
 
@@ -282,8 +342,8 @@ auto find_all_activities(std::string const& path)
   auto callback = ActivityCallback(out);
 
   auto activity_subclass = cxxRecordDecl(isDerivedFrom(hasName(BASE_CLASS)),
-                                        unless(hasName(GUARDED_TEMPLATE)))
-                              .bind("activity_class");
+                                         unless(hasName(GUARDED_TEMPLATE)))
+                               .bind("activity_class");
 
   auto type_filter =
       hasType(hasUnqualifiedDesugaredType(recordType(hasDeclaration(anyOf(
