@@ -309,8 +309,12 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
-  _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
-  _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
+  if (_server.hasFeature<EngineSelectorFeature>()) {
+    _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
+  }
+  if (_server.hasFeature<DatabaseFeature>()) {
+    _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
+  }
 
   if (_server.hasFeature<SchedulerFeature>()) {
     auto& sched = _server.getFeature<SchedulerFeature>();
