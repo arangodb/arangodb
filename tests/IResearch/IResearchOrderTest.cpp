@@ -311,10 +311,12 @@ class IResearchOrderTest
         server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
     features.emplace_back(
         server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
+    auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
+    features.emplace_back(databaseFeature,
                           false);  // required for calculationVocbase
-    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                          false);
+    features.emplace_back(
+        server.addFeature<arangodb::VectorIndexFeature>(databaseFeature),
+        false);
     {
       auto& feature =
           features

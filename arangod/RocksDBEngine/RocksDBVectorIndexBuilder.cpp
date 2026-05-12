@@ -37,6 +37,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <limits>
 #include <string>
 #include <thread>
 
@@ -174,8 +175,11 @@ BoundedDocumentIterator::BoundedDocumentIterator(RocksDBKeyBounds bounds,
 }
 
 VectorIndexTrainer::VectorIndexTrainer(RocksDBVectorIndex const& index,
+                                       ResourceMonitor& resourceMonitor,
                                        rocksdb::DB* db, RocksDBKeyBounds bounds)
-    : _index(index), _docIt(std::move(bounds), db) {}
+    : _index(index),
+      _resourceMonitor(resourceMonitor),
+      _docIt(std::move(bounds), db) {}
 
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
     std::size_t resolvedNLists) const {
@@ -247,7 +251,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     return std::move(resolved).result();
   }
   std::size_t const reservoirCapacity = std::invoke([&] {
-    auto const capacity = resolved.get() * kMaxTrainingSizePerNLists;
+    auto const capacity = resolved.get() * def.numberOfDocsPerCentroid;
     if (_index.sparse()) {
       return capacity;
     }
@@ -257,12 +261,25 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
 
   auto const seed = RandomDevice::seed64();
 
+  // Guard against uint64_t overflow when computing the reservoir size.
+  // Wrap here would under-account memScope and let training allocate unbounded.
+  TRI_ASSERT(def.dimension > 0);
+  TRI_ASSERT(def.dimension <=
+             std::numeric_limits<std::uint64_t>::max() / sizeof(float));
+  TRI_ASSERT(reservoirCapacity <= std::numeric_limits<std::uint64_t>::max() /
+                                      (def.dimension * sizeof(float)));
+  std::uint64_t const expectedReservoirBytes =
+      static_cast<std::uint64_t>(reservoirCapacity) * def.dimension *
+      sizeof(float);
+  ResourceUsageScope memScope(_resourceMonitor, expectedReservoirBytes);
+
   LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
       "[shard={}, index={}] Collecting training data dimension {} for {} "
-      "index with numDocsHint: {}, reservoir capacity: {}, sampler seed: {}.",
+      "index with numDocsHint: {}, reservoir capacity: {} (~{} MiB), sampler "
+      "seed: {}.",
       _index.collection().name(), _index.id().id(), def.dimension,
       _index.sparse() ? "sparse" : "non-sparse", numDocsHint, reservoirCapacity,
-      seed);
+      expectedReservoirBytes / (1024 * 1024), seed);
 
   VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
   std::vector<float> inputBuffer;
@@ -309,16 +326,13 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
 
   std::size_t const validSeen = sampler.itemsSeen();
 
-  // Sparse+scaling: we need to resize after full iteration since we cannot
-  // calculate the true k from numDocsHint (which over-counts by the number of
-  // docs without the vector field). A uniform subsample of a uniform sample
-  // stays uniform, so this preserves the Algorithm L guarantee.
   if (sparseScaling && validSeen > 0) {
-    auto resolved = resolveNLists(validSeen);
-    if (resolved.fail()) {
-      return std::move(resolved).result();
+    if (auto res = shrinkReservoirForSparseScaling(validSeen, reservoirCapacity,
+                                                   expectedReservoirBytes,
+                                                   memScope, sampler);
+        res.fail()) {
+      return res;
     }
-    sampler.resize(resolved.get() * kMaxTrainingSizePerNLists);
   }
 
   auto trainingData = std::move(sampler).release();
@@ -335,7 +349,8 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
                   "training process."};
   }
 
-  return ResultT<TrainingDataset>({std::move(trainingData), validSeen});
+  return ResultT<TrainingDataset>(
+      {std::move(trainingData), validSeen, std::move(memScope)});
 }
 
 ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
@@ -347,6 +362,23 @@ ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
                   "numDocsHint is 0"};
   }
   return resolveNListsParameter(nLists, numDocsHint);
+}
+
+// We resize after the full iteration because numDocsHint over-counts by the
+// number of docs without the vector field. A uniform subsample of a uniform
+// sample stays uniform, so this preserves the Algorithm L guarantee.
+Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
+    std::size_t validSeen, std::size_t reservoirCapacity,
+    std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
+    VectorIndexTrainingSampler& sampler) const {
+  auto resolved = resolveNLists(validSeen);
+  if (resolved.fail()) {
+    return std::move(resolved).result();
+  }
+  auto const& def = _index.getDefinition();
+  auto const newCapacity = resolved.get() * def.numberOfDocsPerCentroid;
+  sampler.resize(newCapacity);
+  return {};
 }
 
 ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
@@ -711,8 +743,10 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   return firstError;
 }
 
-VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index)
+VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index,
+                                       ResourceMonitor& resourceMonitor)
     : _index(index),
+      _resourceMonitor(resourceMonitor),
       _engine(index.collection().vocbase().engine<RocksDBEngine>()),
       _rootDB(_engine.db()->GetRootDB()),
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
@@ -772,7 +806,7 @@ Result VectorIndexBuilder::build(
 
   // TRAINING PHASE
   auto const numDocsHint = _rcoll->meta().numberDocuments();
-  VectorIndexTrainer trainer(_index, _rootDB, _bounds);
+  VectorIndexTrainer trainer(_index, _resourceMonitor, _rootDB, _bounds);
 
   auto const trainStart = std::chrono::steady_clock::now();
   if (shouldAbort()) {

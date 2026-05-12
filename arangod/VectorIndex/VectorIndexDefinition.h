@@ -40,6 +40,9 @@ namespace arangodb::vector {
 // Number of training iterations, in faiss it is 25 by default
 static constexpr std::uint64_t kdefaultTrainingIterations{25};
 static constexpr std::uint64_t kdefaultNProbe{1};
+// Matches autofaiss's points_per_cluster default; lower than FAISS's
+// own max_points_per_centroid (256) to keep training memory in check.
+static constexpr std::uint64_t kdefaultNumberOfDocsPerCentroid{100};
 
 /// @brief Similarity metrics for vector index.
 enum class SimilarityMetric : std::uint8_t {
@@ -241,6 +244,11 @@ struct UserVectorIndexDefinition {
 
   std::int64_t defaultNProbe;
 
+  // Reservoir size = nLists * numberOfDocsPerCentroid * dimension *
+  // sizeof(float). Lower this to reduce training memory at the cost of
+  // training-set quality.
+  std::uint64_t numberOfDocsPerCentroid;
+
   // FAISS factory string.
   std::optional<std::string> factory;
 
@@ -279,6 +287,14 @@ struct UserVectorIndexDefinition {
             .invariant([](auto value) -> inspection::Status {
               if (value < 1) {
                 return {"defaultNProbe must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("numberOfDocsPerCentroid", x.numberOfDocsPerCentroid)
+            .fallback(kdefaultNumberOfDocsPerCentroid)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"numberOfDocsPerCentroid must be 1 or greater!"};
               }
               return inspection::Status::Success{};
             }));

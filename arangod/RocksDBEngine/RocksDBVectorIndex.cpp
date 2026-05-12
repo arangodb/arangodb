@@ -250,8 +250,7 @@ void RocksDBVectorIndex::toVelocyPack(
   builder.add(StaticStrings::IndexTrainingState,
               VPackValue(trainingStateToString(trainingState)));
   if (trainingState == VectorIndexTrainingState::kUnusable) {
-    builder.add(StaticStrings::ErrorMessage,
-                VPackValue("not enough training data for vector index"));
+    builder.add(StaticStrings::ErrorMessage, VPackValue(trainingError()));
   }
 
   if (auto const nLists = resolvedNLists(); nLists.has_value()) {
@@ -362,6 +361,16 @@ void RocksDBVectorIndex::resetTrainingState() noexcept {
                           std::memory_order_acq_rel);
 }
 
+void RocksDBVectorIndex::setTrainingError(std::string error) noexcept {
+  std::lock_guard lock(_trainingErrorMutex);
+  _trainingError = std::move(error);
+}
+
+std::string RocksDBVectorIndex::trainingError() const {
+  std::lock_guard lock(_trainingErrorMutex);
+  return _trainingError;
+}
+
 Result RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                         rocksdb::Slice upper,
                                         RocksDBMethods* /*methods*/) {
@@ -390,6 +399,7 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
                                         TRI_voc_tick_t tick,
                                         transaction::Methods* trx) {
   resetTrainingState();
+  setTrainingError(std::string{StaticStrings::VectorIndexDefaultTrainingError});
   _faissIndex.reset();
   _trainedData = {};
   RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
