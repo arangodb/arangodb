@@ -65,6 +65,13 @@ class ConditionRemoveForTraversalTest : public ::testing::Test {
   }
 
   AstNode* pathArrayEq(Variable const* pathVar, int64_t value) {
+    return pathArrayCmp(pathVar, "age", NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ,
+                        Quantifier::Type::kAll, value);
+  }
+
+  AstNode* pathArrayCmp(Variable const* pathVar, char const* attr,
+                        AstNodeType op, Quantifier::Type quantifierType,
+                        int64_t value) {
     AstNode* vertices = _ast->createNodeAttributeAccess(
         _ast->createNodeReference(pathVar), "vertices");
 
@@ -79,12 +86,11 @@ class ConditionRemoveForTraversalTest : public ::testing::Test {
 
     _ast->scopes()->endCurrent();
 
-    AstNode* age = _ast->createNodeAttributeAccess(expansion, "age");
+    AstNode* field = _ast->createNodeAttributeAccess(expansion, attr);
     AstNode* rhs = _ast->createNodeValueInt(value);
-    AstNode* quantifier = _ast->createNodeQuantifier(Quantifier::Type::kAll);
+    AstNode* quantifier = _ast->createNodeQuantifier(quantifierType);
 
-    return _ast->createNodeBinaryArrayOperator(
-        NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, age, rhs, quantifier);
+    return _ast->createNodeBinaryArrayOperator(op, field, rhs, quantifier);
   }
 
   AstNode* cmpIntIn(Variable const* v, char const* attr,
@@ -529,6 +535,61 @@ TEST_F(ConditionRemoveForTraversalTest,
                                /*isPathCondition*/ false);
 
   EXPECT_EQ(result, before);
+}
+
+// -----------------------------------------------------------------------------
+// Pass 6: Quantifier mismatch on path conditions
+// -----------------------------------------------------------------------------
+
+TEST_F(ConditionRemoveForTraversalTest,
+       KeepsPathArrayComparisonWithDifferentQuantifier) {
+  // filter:    p.vertices[*].age NONE == 5
+  // traversal: p.vertices[*].age ALL  == 5
+  // => unchanged — ALL and NONE are not interchangeable
+  Condition filterCond(_ast);
+  filterCond.andCombine(pathArrayCmp(_p, "age",
+                                     NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ,
+                                     Quantifier::Type::kNone, 5));
+  filterCond.normalize();
+
+  Condition traversalCond(_ast);
+  traversalCond.andCombine(pathArrayCmp(_p, "age",
+                                        NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ,
+                                        Quantifier::Type::kAll, 5));
+  traversalCond.normalize();
+
+  AstNode* before = filterCond.root();
+  ASSERT_NE(before, nullptr);
+
+  AstNode* result =
+      removeTraversalCondition(filterCond, _plan, _p, traversalCond.root(),
+                               /*isPathCondition*/ true);
+
+  EXPECT_EQ(result, before);
+}
+
+TEST_F(ConditionRemoveForTraversalTest,
+       RemovesPathArrayComparisonWithSameQuantifier) {
+  // filter:    p.vertices[*].age NONE == 5
+  // traversal: p.vertices[*].age NONE == 5
+  // => nullptr — identical quantifier and value, filter is redundant
+  Condition filterCond(_ast);
+  filterCond.andCombine(pathArrayCmp(_p, "age",
+                                     NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ,
+                                     Quantifier::Type::kNone, 5));
+  filterCond.normalize();
+
+  Condition traversalCond(_ast);
+  traversalCond.andCombine(pathArrayCmp(_p, "age",
+                                        NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ,
+                                        Quantifier::Type::kNone, 5));
+  traversalCond.normalize();
+
+  AstNode* result =
+      removeTraversalCondition(filterCond, _plan, _p, traversalCond.root(),
+                               /*isPathCondition*/ true);
+
+  EXPECT_EQ(result, nullptr);
 }
 }  // namespace
 }  // namespace arangodb::aql
