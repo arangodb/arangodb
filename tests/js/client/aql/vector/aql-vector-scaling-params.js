@@ -302,7 +302,15 @@ function VectorIndexScalingTestSuite() {
                 });
                 fail();
             } catch (e) {
-                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+                // Single-server propagates the createFaissIndex throw as
+                // ERROR_BAD_PARAMETER. In a cluster the coordinator polls
+                // per-shard training state and surfaces any unusable shard as
+                // ERROR_QUERY_VECTOR_INDEX_NOT_READY, with the original
+                // message preserved as a string.
+                const expected = isCluster
+                    ? errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code
+                    : errors.ERROR_BAD_PARAMETER.code;
+                assertEqual(expected, e.errorNum);
             }
         },
     };
