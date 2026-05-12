@@ -369,6 +369,34 @@ function ahuacatlArithmeticTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test binary + with string concatenation
+////////////////////////////////////////////////////////////////////////////////
+    
+    testBinaryPlusChainedStringConcat : function () {
+      var expected = [ "3str" ];
+      var actual = getQueryResults("RETURN 1 + 2 + \"str\"");
+      assertEqual(expected, actual);
+
+      // Force the + to be executed at runtime
+      actual = getQueryResults("RETURN NOOPT(FLOOR(1) + FLOOR(2)) + \"str\"");
+      assertEqual(expected, actual);
+
+      expected = [ "1str2" ];
+      actual = getQueryResults("RETURN 1 + \"str\" + 2");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(FLOOR(1)) + \"str\" + 2");
+      assertEqual(expected, actual);
+
+      expected = [ "str123" ];
+      actual = getQueryResults("RETURN \"str\" + 1 + 2 + 3");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN \"str\" + NOOPT(FLOOR(1)) + 2 + 3");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test binary minus
 ////////////////////////////////////////////////////////////////////////////////
     

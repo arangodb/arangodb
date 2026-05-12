@@ -3737,28 +3737,39 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
   if (lhs->isConstant() && rhs->isConstant()) {
     // now calculate the expression result
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
-      // arithmetic +
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
+      // At runtime, binary + uses string concatenation when either operand is a
+      // string. Do not constant-fold as numeric + if either operand is a string
+      // literal: castToNumber would turn non-numeric strings into 0 (e.g.
+      // 3 + "str" must not become 3 + 0).
+      bool const lhsIsString =
+          lhs->type == NODE_TYPE_VALUE && lhs->value.type == VALUE_TYPE_STRING;
+      bool const rhsIsString =
+          rhs->type == NODE_TYPE_VALUE && rhs->value.type == VALUE_TYPE_STRING;
+      if (!lhsIsString && !rhsIsString) {
+        // arithmetic +
+        AstNode const* left = lhs->castToNumber(this);
+        AstNode const* right = rhs->castToNumber(this);
 
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeAddition<int64_t>(l, r);
+        bool useDoublePrecision =
+            (left->isDoubleValue() || right->isDoubleValue());
 
         if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l + r);
-        }
-      }
+          auto l = left->getIntValue();
+          auto r = right->getIntValue();
+          // check if the result would overflow
+          useDoublePrecision = isUnsafeAddition<int64_t>(l, r);
 
-      // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() +
-                                        right->getDoubleValue());
+          if (!useDoublePrecision) {
+            // can calculate using integers
+            return createArithmeticResultNode(l + r);
+          }
+        }
+
+        // must use double precision
+        return createArithmeticResultNode(left->getDoubleValue() +
+                                          right->getDoubleValue());
+      }
+      return node;
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
       AstNode const* left = lhs->castToNumber(this);
       AstNode const* right = rhs->castToNumber(this);
