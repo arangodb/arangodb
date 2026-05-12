@@ -45,6 +45,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "Cluster/ClusterFeature.h"
@@ -203,6 +204,9 @@ class ShardDistributionReporterTest
     auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(
         dbFeature, false);  // required for TRI_vocbase_t::dropCollection(...)
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector, false);
+    selector.setEngineTesting(&engine);
     dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(

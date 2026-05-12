@@ -43,6 +43,7 @@
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -89,6 +90,9 @@ class FlushFeatureTest
                           false);  // required for V8DealerFeature::prepare()
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
     features.emplace_back(dbFeature, false);
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector, false);
+    selector.setEngineTesting(&engine);
     dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
@@ -113,6 +117,8 @@ class FlushFeatureTest
   }
 
   ~FlushFeatureTest() {
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
+        nullptr);
     server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features

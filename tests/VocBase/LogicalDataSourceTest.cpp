@@ -33,6 +33,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "velocypack/Parser.h"
@@ -81,6 +82,9 @@ class LogicalDataSourceTest : public ::testing::Test {
 
   LogicalDataSourceTest() : server(nullptr, nullptr), engine(server) {
     // setup required application features
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector, false);
+    selector.setEngineTesting(&engine);
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
     features.emplace_back(dbFeature, false);
     dbFeature.setEngineTesting(&engine);
@@ -116,6 +120,8 @@ class LogicalDataSourceTest : public ::testing::Test {
   }
 
   ~LogicalDataSourceTest() {
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
+        nullptr);
     server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features

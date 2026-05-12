@@ -111,6 +111,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/StatisticsWorker.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
@@ -308,6 +309,7 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
+  _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
   _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
 
   if (_server.hasFeature<SchedulerFeature>()) {
@@ -442,6 +444,7 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
   // setup required application features
   SetupGreetingsPhase(*this);
   addFeature<DatabaseFeature>(false);
+  addFeature<EngineSelectorFeature>(false);
 
   if (start) {
     MockMetricsServer::startFeatures();

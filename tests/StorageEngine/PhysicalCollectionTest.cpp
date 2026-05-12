@@ -40,6 +40,7 @@
 #include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Helpers.h"
@@ -77,6 +78,9 @@ class PhysicalCollectionTest
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
     auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(dbFeature);
+    auto& selector = server.addFeature<EngineSelectorFeature>();
+    features.emplace_back(selector);
+    selector.setEngineTesting(&engine);
     dbFeature.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(server),
@@ -94,6 +98,7 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
     server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
