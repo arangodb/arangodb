@@ -599,13 +599,16 @@ if(USE_MAINTAINER_MODE)
     add_definitions("-D_FORTIFY_SOURCE=3")
   endif()
 
-  find_package(FLEX)
-  find_package(BISON)
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
   find_program(SED_EXECUTABLE sed)
   find_program(AWK_EXECUTABLE awk)
 endif()
+
+# flex and bison are required to generate the AQL lexer/parser from
+# arangod/Aql/Parser/tokens.ll and arangod/Aql/Parser/grammar.y.
+find_package(FLEX REQUIRED)
+find_package(BISON REQUIRED)
 
 option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
 if(USE_GOOGLE_TESTS)
