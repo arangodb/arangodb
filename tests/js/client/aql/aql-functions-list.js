@@ -431,9 +431,9 @@ function ahuacatlListTestSuite() {
         [["two", "one", null, "three", "one", "two", null, "three"], [["two", "one", null, "three"], ["one", "two", null, "three"]]],
         [["two", "one", null, "three"], [["two", "one", null, "three"], ["one", "two", null, "three"], true]],
         [["two", "one", null, "three", "four"], [["two", "one", null, "three"], ["one", "two", "four", null, "three"], true]],
-        [[1, 2, 5], [[1, 2, 2,5,5], [], true]],
-        [[1, 2, 5], [[1, 2, 2,5,5], null, true]],
-        [[1, 2, 5], [null, [1, 2, 2,5,5], true]]
+        [[1, 2, 5], [[1, 2, 2, 5, 5], [], true]],
+        [[1, 2, 5], [[1, 2, 2, 5, 5], null, true]],
+        [null, ["", [1, 2, 2, 5, 5], true]]
       ];
 
       data.forEach(function (d) {
@@ -522,10 +522,7 @@ function ahuacatlListTestSuite() {
 
       actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND('stringvalue', tmp)", bindVars);
       assertEqual(actual.length, 1);
-      actual = actual[0];
-      for (i = 0; i < 10; ++i) {
-        assertEqual(actual[i]._key, "test" + i);
-      }
+      assertNull(actual[0]);
     },
 
     testAppendDocuments3: function () {
@@ -550,17 +547,14 @@ function ahuacatlListTestSuite() {
 
       actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN APPEND('stringvalue', tmp)", bindVars);
       assertEqual(actual.length, 1);
-      actual = actual[0];
-      for (i = 0; i < 10; ++i) {
-        assertEqual(actual[i], collectionName + "/test" + i);
-      }
+      assertNull(actual[0]);
     },
 
     testAppendSecondUnique: function () {
       var actual = getQueryResults("RETURN APPEND('stringvalue', [1,1,1,1,1,1], true)");
       assertEqual(actual.length, 1);
       actual = actual[0];
-      assertEqual(actual, [1]);
+      assertNull(actual);
 
       actual = getQueryResults("RETURN APPEND([1,1,1,1,1,1], 'stringvalue', true)");
       assertEqual(actual.length, 1);
@@ -575,7 +569,7 @@ function ahuacatlListTestSuite() {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND([ ])");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND([ ], [ ], false, [ ])");
-      assertEqual([[1]], getQueryResults("RETURN APPEND('foo', [1])"));
+      assertEqual([null], getQueryResults("RETURN APPEND('foo', [1])"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
