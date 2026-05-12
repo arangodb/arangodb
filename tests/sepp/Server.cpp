@@ -217,7 +217,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<ReplicationMetricsFeature>(metrics);
   _server.addFeature<ReplicationTimeoutFeature>();
   auto& scheduler = _server.addFeature<SchedulerFeature>(metrics);
-  auto& vectorIndex = _server.addFeature<VectorIndexFeature>();
+  auto& vectorIndex = _server.addFeature<VectorIndexFeature>(database);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _server.addFeature<ProcessEnvironmentFeature>(name);
 #endif
