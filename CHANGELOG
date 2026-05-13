@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-528: Reserve Keywords for Join Operation added.
+
 * COR-469: Removed `ensureVertexCentricIndex` as it was just a wrapper around
   `ensureIndex` with direction parameters.
 
