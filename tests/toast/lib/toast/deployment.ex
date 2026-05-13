@@ -139,6 +139,17 @@ defmodule Toast.Deployment do
     end
   end
 
+  @config_keys Map.keys(%Config{}) -- [:__struct__]
+  @cluster_opts_keys Map.keys(%Toast.Deployment.ClusterOpts{}) -- [:__struct__]
+
+  defp split_config_opts(opts) do
+    Keyword.split(opts, @config_keys)
+  end
+
+  defp split_cluster_opts(opts) do
+    Keyword.split(opts, @cluster_opts_keys)
+  end
+
   @doc "Start a single-server deployment with defaults from app env."
   @spec start_single_server(Path.t(), keyword()) :: {:ok, t()} | {:error, term()}
   def start_single_server(deployment_dir, opts \\ [])
@@ -148,7 +159,8 @@ defmodule Toast.Deployment do
   end
 
   def start_single_server(deployment_dir, opts) when is_binary(deployment_dir) do
-    start(Config.new(), deployment_dir, opts)
+    {config_opts, opts} = split_config_opts(opts)
+    start(Config.new(config_opts), deployment_dir, opts)
   end
 
   @doc "Start a single-server deployment with explicit config."
@@ -167,7 +179,9 @@ defmodule Toast.Deployment do
   end
 
   def start_cluster(deployment_dir, opts) when is_binary(deployment_dir) do
-    start(Config.new(cluster: true), deployment_dir, opts)
+    {cluster_opts, opts} = split_cluster_opts(opts)
+    {config_opts, opts} = split_config_opts(opts)
+    start(Config.new([cluster: cluster_opts] ++ config_opts), deployment_dir, opts)
   end
 
   @doc "Start a cluster deployment with explicit config."
