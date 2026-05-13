@@ -418,14 +418,14 @@ function VectorIndexScalingTiersTestSuite() {
                         multiplier: 4,
                         minNLists: 2,
                         tiers: [
-                            { threshold: 10, fixedValue: 1 },
-                            { threshold: 30, fixedValue: 1 },
-                            { threshold: 60, fixedValue: 2 },
+                            { threshold: 2, fixedValue: 2 },
+                            { threshold: 5, fixedValue: 4 },
+                            { threshold: 20, fixedValue: 6 },
                         ],
                     },
                 },
             });
-            assertResolvedNLists(2, collection);
+            assertResolvedNLists(6, collection);
             assertVectorIndexUsable(randomPoint, 5, 2);
         },
 
@@ -443,9 +443,9 @@ function VectorIndexScalingTiersTestSuite() {
                         multiplier: 4,
                         minNLists: 2,
                         tiers: [
-                            { threshold: 10, fixedValue: 1 },
-                            { threshold: 30, fixedValue: 1 },
-                            { threshold: 60, fixedValue: 2 },
+                            { threshold: 2, fixedValue: 2 },
+                            { threshold: 5, fixedValue: 4 },
+                            { threshold: 20, fixedValue: 6 },
                         ],
                     },
                 },
@@ -453,7 +453,7 @@ function VectorIndexScalingTiersTestSuite() {
             const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
             assertEqual("IVF{}_HNSW3,SQ4", idx.params.factory);
-            assertResolvedNLists(2, collection);
+            assertResolvedNLists(6, collection);
             assertVectorIndexUsable(randomPoint, 5, 2);
         },
     };
