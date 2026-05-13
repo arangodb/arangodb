@@ -255,8 +255,8 @@ static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
 static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
-/// @brief compare two VPack-typed AST nodes (including arrays/objects with
-/// non-constant children)
+/// @brief compare two constant AST nodes (VPack-serializable, known at query
+/// compile time)
 /// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 template<bool resolveAttributeAccess>
 int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
@@ -347,11 +347,13 @@ int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
     }
 
     default:
+      TRI_ASSERT(false);
       return 0;
   }
 }
 
-/// @brief structurally compare two non-constant AST nodes
+/// @brief compare non-VPack-serializable AST nodes: references, attribute
+/// accesses, function calls, operators, quantifiers, and subqueries
 /// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
                                 bool compareUtf8) {
@@ -359,8 +361,8 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     return (lhs->type < rhs->type ? -1 : 1);
   }
 
-  // Subqueries are compared by pointer identity: their structure may contain
-  // side effects and structural comparison would be expensive.
+  // Subqueries are compared by pointer identity; full structural comparison
+  // would be expensive and subqueries may reference outer-scope variables.
   if (lhs->type == NODE_TYPE_SUBQUERY) {
     if (lhs == rhs) {
       return 0;
@@ -391,8 +393,8 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     }
   }
 
-  // ALL/ANY/NONE/AT LEAST kind lives in the int value; AT LEAST also has a
-  // threshold child, so fall through to the member loop.
+  // Quantifier kind is stored as an int; AT LEAST also has a threshold child
+  // that the member loop below will compare.
   if (lhs->type == NODE_TYPE_QUANTIFIER) {
     int64_t lv = lhs->getIntValue(true);
     int64_t rv = rhs->getIntValue(true);
@@ -419,10 +421,9 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     return (lhsMembers < rhsMembers ? -1 : 1);
   }
 
-  // Sort operands of commutative operators into a fixed order so that e.g.
-  // `a == b` and `b == a` compare as equal. BINARY_AND/OR are the
-  // pre-normalization forms the parser produces before Condition::normalize()
-  // converts them to NARY.
+  // Normalize operand order for commutative operators so `a == b` and `b == a`
+  // compare as equal. BINARY_AND/OR are pre-normalization forms; normalized
+  // conditions use NARY.
   bool isCommutative = (lhs->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
                         lhs->type == NODE_TYPE_OPERATOR_BINARY_NE ||
                         lhs->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
@@ -450,8 +451,8 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     return compareAstNodes<false>(lhsRight, rhsRight, compareUtf8);
   }
 
-  // NARY operators: sort children before comparing so that member order does
-  // not affect equality.
+  // Sort NARY children before comparing so member order doesn't affect
+  // equality.
   if (lhs->type == NODE_TYPE_OPERATOR_NARY_AND ||
       lhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
     containers::SmallVector<AstNode const*, 8> lhsChildren;
@@ -477,8 +478,8 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     return 0;
   }
 
-  // IN/NIN: lhs operand compared in order; rhs array elements sorted so that
-  // `x IN [a, b]` and `x IN [b, a]` compare as equal.
+  // IN/NIN: compare the lhs operand in order; sort rhs array elements so that
+  // `x IN [a, b]` and `x IN [b, a]` are equal.
   if ((lhs->type == NODE_TYPE_OPERATOR_BINARY_IN ||
        lhs->type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
       lhsMembers == 2) {

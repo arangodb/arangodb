@@ -945,14 +945,14 @@ class CompareAstNodesTest : public ::testing::Test {
 
 TEST_F(CompareAstNodesTest, constantInts) {
   EXPECT_EQ(0, compare(intVal(0), intVal(0)));
-  EXPECT_EQ(-1, compare(intVal(1), intVal(2)));
-  EXPECT_EQ(1, compare(intVal(2), intVal(1)));
+  EXPECT_LT(compare(intVal(1), intVal(2)), 0);
+  EXPECT_GT(compare(intVal(2), intVal(1)), 0);
 }
 
 TEST_F(CompareAstNodesTest, constantStrings) {
   EXPECT_EQ(0, compare(strVal("foo"), strVal("foo")));
-  EXPECT_EQ(-1, compare(strVal("bar"), strVal("foo")));
-  EXPECT_EQ(1, compare(strVal("foo"), strVal("bar")));
+  EXPECT_LT(compare(strVal("bar"), strVal("foo")), 0);
+  EXPECT_GT(compare(strVal("foo"), strVal("bar")), 0);
 }
 
 TEST_F(CompareAstNodesTest, nullLessThanBool) {
@@ -981,8 +981,7 @@ TEST_F(CompareAstNodesTest, referencesSameVariable) {
 }
 
 TEST_F(CompareAstNodesTest, referencesDifferentVariablesOrderedById) {
-  // Variables are assigned monotonically increasing ids; the one created first
-  // has the lower id and must compare as less.
+  // Variables get monotonically increasing ids, so creation order == id order.
   auto* a = makeVar("a");
   auto* b = makeVar("b");
   ASSERT_LT(a->id, b->id);
@@ -1009,7 +1008,6 @@ TEST_F(CompareAstNodesTest, attributeAccessSameBaseAndName) {
 
 TEST_F(CompareAstNodesTest, attributeAccessDifferentNameOrderedLexically) {
   auto* x = makeVar("x");
-  // "age" < "name" lexicographically
   EXPECT_LT(
       compare(attr(createRefNode(x), "age"), attr(createRefNode(x), "name")),
       0);
@@ -1033,7 +1031,6 @@ TEST_F(CompareAstNodesTest, attributeAccessDifferentBase) {
 TEST_F(CompareAstNodesTest, equalityCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
-  // `a == b` and `b == a` must compare as equal.
   auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(a),
                       createRefNode(b));
   auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(b),
@@ -1051,8 +1048,6 @@ TEST_F(CompareAstNodesTest, inequalityCommutative) {
   EXPECT_EQ(0, compare(ab, ba));
 }
 
-// LT is not commutative: `a < b` ≠ `b < a` (unless a == b, which can't happen
-// for two distinct variables).
 TEST_F(CompareAstNodesTest, lessThanNotCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
@@ -1064,7 +1059,6 @@ TEST_F(CompareAstNodesTest, lessThanNotCommutative) {
 }
 
 TEST_F(CompareAstNodesTest, additionCommutative) {
-  // `1 + 2` and `2 + 1` must compare as equal.
   auto* plus12 = binaryOp(NODE_TYPE_OPERATOR_BINARY_PLUS, intVal(1), intVal(2));
   auto* plus21 = binaryOp(NODE_TYPE_OPERATOR_BINARY_PLUS, intVal(2), intVal(1));
   EXPECT_EQ(0, compare(plus12, plus21));
@@ -1089,10 +1083,8 @@ TEST_F(CompareAstNodesTest, fcallSameFunction) {
                        fcall("LENGTH", {createRefNode(x)})));
 }
 
-// Different functions with the same arg must not compare as equal.
 TEST_F(CompareAstNodesTest, fcallOrderedByName) {
   auto* x = makeVar("x");
-  // "LENGTH" < "UPPER"
   EXPECT_LT(compare(fcall("LENGTH", {createRefNode(x)}),
                     fcall("UPPER", {createRefNode(x)})),
             0);
@@ -1117,7 +1109,6 @@ TEST_F(CompareAstNodesTest, naryAndOrderIndependent) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
   auto* c = makeVar("c");
-  // (a AND b AND c) compared with (c AND a AND b) must be 0.
   auto* abc = naryOp(NODE_TYPE_OPERATOR_NARY_AND,
                      {createRefNode(a), createRefNode(b), createRefNode(c)});
   auto* cab = naryOp(NODE_TYPE_OPERATOR_NARY_AND,
@@ -1136,7 +1127,7 @@ TEST_F(CompareAstNodesTest, naryAndDifferentMembersNotEqual) {
   EXPECT_NE(0, compare(ab, ac));
 }
 
-TEST_F(CompareAstNodesTest, naryDifferentCountsNotEqual) {
+TEST_F(CompareAstNodesTest, naryAndDifferentCountsNotEqual) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
   auto* c = makeVar("c");
@@ -1157,12 +1148,22 @@ TEST_F(CompareAstNodesTest, naryOrOrderIndependent) {
   EXPECT_EQ(0, compare(ab, ba));
 }
 
+TEST_F(CompareAstNodesTest, naryOrDifferentCountsNotEqual) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  auto* ab =
+      naryOp(NODE_TYPE_OPERATOR_NARY_OR, {createRefNode(a), createRefNode(b)});
+  auto* abc = naryOp(NODE_TYPE_OPERATOR_NARY_OR,
+                     {createRefNode(a), createRefNode(b), createRefNode(c)});
+  EXPECT_NE(0, compare(ab, abc));
+}
+
 // --- IN / NIN array element order independence
 // ---------------------------------
 
 TEST_F(CompareAstNodesTest, inArrayElementOrderIndependent) {
   auto* x = makeVar("x");
-  // `x IN [1, 2]` vs `x IN [2, 1]` — must compare as equal.
   auto* in12 = inOp(createRefNode(x), {intVal(1), intVal(2)});
   auto* in21 = inOp(createRefNode(x), {intVal(2), intVal(1)});
   EXPECT_EQ(0, compare(in12, in21));
@@ -1190,8 +1191,12 @@ TEST_F(CompareAstNodesTest, inDifferentArraySizeNotEqual) {
   EXPECT_NE(0, compare(in1, in12));
 }
 
-// BINARY_OR and TIMES are also in the commutative list — verify they're
-// covered.
+TEST_F(CompareAstNodesTest, inAndNinNotEqual) {
+  auto* x = makeVar("x");
+  EXPECT_NE(0, compare(inOp(createRefNode(x), {intVal(1)}),
+                       ninOp(createRefNode(x), {intVal(1)})));
+}
+
 TEST_F(CompareAstNodesTest, binaryOrCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
@@ -1203,13 +1208,11 @@ TEST_F(CompareAstNodesTest, binaryOrCommutative) {
 }
 
 TEST_F(CompareAstNodesTest, multiplicationCommutative) {
-  // `1 * 2` and `2 * 1` must compare as equal.
   auto* m12 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(1), intVal(2));
   auto* m21 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(2), intVal(1));
   EXPECT_EQ(0, compare(m12, m21));
 }
 
-// Nested attribute access: doc.x.y vs doc.x.y
 TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
   auto* x = makeVar("x");
   auto* lhs = attr(attr(createRefNode(x), "a"), "b");
@@ -1219,12 +1222,10 @@ TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
 
 TEST_F(CompareAstNodesTest, nestedAttributeAccessDifferentLeaf) {
   auto* x = makeVar("x");
-  // doc.a.b vs doc.a.c — differ at the outer attribute name.
   EXPECT_NE(0, compare(attr(attr(createRefNode(x), "a"), "b"),
                        attr(attr(createRefNode(x), "a"), "c")));
 }
 
-// FCALL with same name but different argument count must not compare as equal.
 TEST_F(CompareAstNodesTest, fcallDifferentArgumentCount) {
   auto* x = makeVar("x");
   auto* y = makeVar("y");
