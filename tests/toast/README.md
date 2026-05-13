@@ -5,6 +5,12 @@ integration testing framework for ArangoDB. It manages ArangoDB server deploymen
 (single-server and cluster), runs tests against them, collects diagnostics (crash
 logs, sanitizer errors, core dumps), and produces CI-friendly reports (JSON, JUnit XML).
 
+## Installation
+
+- Install elixir
+- Install the package manager with `mix local.hex`
+- Pull all dependent packages via `mix deps.get`
+
 ## Quick Start
 
 ```bash
@@ -733,12 +739,15 @@ differs from the current weight are shown.
 
 ## Interactive Mode
 
+Start the interactive mode with `TOAST_BUILD_DIR=path/to/build-dir iex -S mix`.
+
 `ToastTest.Interactive` lets you run individual test modules against a
 manually-started deployment, useful for debugging.
 
 ```elixir
 # In an IEx session:
-{:ok, deployment} = Toast.Deployment.start_single_server("/path/to/work-dir")
+TOAST_BUILD_DIR=../../build-presets/my-edition iex -S mix
+{:ok, deployment} = Toast.Deployment.start_cluster("/path/to/work-dir")
 
 # Run a test file
 ToastTest.Interactive.run("suites/smoke/test_version.exs", deployment: deployment)
