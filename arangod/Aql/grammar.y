@@ -480,7 +480,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_INNER_JOIN "INNER_JOIN declaration"
 %token T_LEFT_JOIN 	"LEFT_JOIN declaration"
 %token T_RIGHT_JOIN "RIGHT_JOIN declaration"
-%token T_OUTER_JOIN "OUTER_JOIN declaration
+%token T_OUTER_JOIN "OUTER_JOIN declaration"
 
 %token T_ASC "ASC keyword"
 %token T_DESC "DESC keyword"
