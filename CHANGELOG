@@ -1,6 +1,9 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
+  dependencies.
+
 * Updated ArangoDB Starter to v0.19.22.
 
 * COR-519: Vector index `factory` strings may now be combined with the scaling
@@ -28,9 +31,6 @@
   `x IN []`, `[] ANY <op> x` are false.
   `x NOT IN []`, `[] ALL <op> x` and `[] NONE <op> x` are true, where
   `<op>` is `==`, `!=`, `<`, `<=`, `>`, `>=`, `IN` or `NOT IN`.
-
-* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
-  dependencies.
 
 * Upgraded FAISS to v1.14.1.
 
