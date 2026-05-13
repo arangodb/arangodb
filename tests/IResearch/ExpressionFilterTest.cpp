@@ -265,8 +265,7 @@ struct IResearchExpressionFilterTest
             arangodb::QueryRegistryFeature>(server),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
-            databaseFeature),
+        databaseFeature,
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -370,7 +369,7 @@ struct FilterCtx : irs::attribute_provider {
 
   arangodb::iresearch::ExpressionExecutionContext*
       _execCtx;  // expression execution context
-};               // FilterCtx
+};  // FilterCtx
 
 }  // namespace
 

@@ -3076,7 +3076,6 @@ void RestReplicationHandler::handleCommandLoggerLast() {
 //////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerTickRanges() {
-  TRI_ASSERT(!_vocbase.engine().typeName().empty());
   auto& engine = _vocbase.engine();
   VPackBuilder b;
   Result res = engine.createTickRanges(b);
