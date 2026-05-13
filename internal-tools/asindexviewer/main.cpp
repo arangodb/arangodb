@@ -44,6 +44,9 @@ clang++-19 -std=c++20   -DBOOST_TEXT_DISABLE_CONCEPTS   -DUNICODE -D_UNICODE \
 #include "utils/type_limits.hpp"
 #include "utils/numeric_utils.hpp"  // Add this include at the top
 #include "util.h"
+#include "velocypack/Builder.h"
+#include "Basics/ScopeGuard.h"
+#include "VPackObjectWrapper.h"
 using std::cout, std::endl;
 
 // Mirrors arangodb::iresearch::kludge::kAnalyzerDelimiter and ArangoDB
@@ -171,18 +174,19 @@ struct ArangoFieldTypeInfo {
 }
 
 void printArangoFieldHeader(std::string_view const storage_name,
-                            ArangoFieldTypeInfo const& t) {
-  cout << "  arangoDetectedKind=" << arangoFieldKindLabel(t.kind)
-       << " logicalField=\"" << escapeLogicalFieldName(t.logical_name) << "\"";
+                            ArangoFieldTypeInfo const& t,
+                          VPackBuilder& bField) {
+
+  bField.add("type", VPackValue(arangoFieldKindLabel(t.kind)));
+  bField.add("logicalField", VPackValue(escapeLogicalFieldName(t.logical_name)));
   if (t.kind == ArangoFieldKind::AnalyzedString && t.type_suffix.size() > 1) {
-    cout << " analyzer=\"" << escapeLogicalFieldName(t.type_suffix.substr(1))
-         << "\"";
+    bField.add("analyzer", VPackValue(escapeLogicalFieldName(t.type_suffix.substr(1))));
   }
-  cout << " storageNameBytes=" << hexBytes(
+  auto val = hexBytes(
               irs::bytes_view(reinterpret_cast<irs::byte_type const*>(
                                   storage_name.data()),
-                              storage_name.size()))
-       << std::endl;
+                              storage_name.size()));
+  bField.add("storageNameBytes", VPackValue(val));
 }
 
 // Decode bytes produced by irs::numeric_token_stream (Arango numeric fields).
@@ -321,64 +325,77 @@ void printSegmentLocalDocId(size_t const segment_index,
 
 void printSegmentLocalDocTable(size_t const segment_index,
                                DocPkMap const& pk_by_doc,
-                               irs::SubReader const& segment) {
-  cout << "  Documents in this segment (local ids; repeat 1..N each segment):\n";
+                               irs::SubReader const& segment,
+                               VPackBuilder& b) {
+  // cout << "  Documents in this segment (local ids; repeat 1..N each segment):\n";
+  b.add("documents", VPackValue(VPackValueType::Object));
+  arangodb::ScopeGuard closeDocumentsGuard([&]() noexcept {
+    b.close();
+  });
+
+  b.add("count", VPackValue(pk_by_doc.size()));
+
   if (pk_by_doc.empty()) {
-    cout << "    (no @_PK rows loaded)\n";
     return;
   }
+
   std::vector<irs::doc_id_t> ids;
   ids.reserve(pk_by_doc.size());
   for (auto const& e : pk_by_doc) {
     ids.push_back(e.first);
   }
+  
   std::sort(ids.begin(), ids.end());
+  b.add("docs", VPackValue(VPackValueType::Array));
   for (irs::doc_id_t const id : ids) {
-    cout << "    S" << segment_index << "/d" << id << " -> "
-         << pk_by_doc.at(id) << "\n";
+    std::ostringstream oss;
+    oss << "S" << segment_index << "/d" << id << " -> "
+         << pk_by_doc.at(id);
+    b.add(VPackValue(oss.str()));
   }
-  auto const live = static_cast<size_t>(segment.live_docs_count());
-  if (pk_by_doc.size() != live) {
-    cout << "    (note: @_PK rows=" << pk_by_doc.size()
-         << " vs segment.live_docs_count=" << live << ")\n";
-  }
+  b.close();  //  Close docs []
+
+  // auto const live = static_cast<size_t>(segment.live_docs_count());
+  // if (pk_by_doc.size() != live) {
+  //   cout << "    (note: @_PK rows=" << pk_by_doc.size()
+  //        << " vs segment.live_docs_count=" << live << ")\n";
+  // }
 }
 
 // After next()/read(), prints attributes on the term iterator. See IResearch
 // `term_meta`, `version10::term_meta` (formats_10_attributes.hpp), and
 // burst-trie `term_iterator_base`.
 void printTermLine(irs::term_iterator const& term,
-                   ArangoFieldKind const field_kind) {
+                   ArangoFieldKind const field_kind,
+                  VPackBuilder& b) {
+
   irs::bytes_view const v = term.value();
-  cout << "    Term\n"
-       << "      display: (" << formatTermForField(field_kind, v) << ")\n"
-       << "      raw_bytes: " << hexBytes(v) << "\n";
-
-  if (auto const* tm = irs::get<irs::term_meta>(term)) {
-    cout << "      term_meta: docs_with_term=" << tm->docs_count
-         << "  position_total=" << tm->freq
-         << "  (freq = sum of within-doc occurrences across all postings)\n";
-  } else {
-    cout << "      term_meta: (not exposed on this iterator)\n";
-  }
-
-  if (auto const* ta = irs::get<irs::term_attribute>(term)) {
-    if (ta->value.data() != v.data() || ta->value.size() != v.size()) {
-      cout << "      term_attribute.bytes: " << hexBytes(ta->value)
-           << "  (differs from iterator.value — unusual)\n";
+  b.add("display", VPackValue(formatTermForField(field_kind, v)));
+  b.add("raw_bytes", VPackValue(hexBytes(v)));
+  b.add("term_meta", VPackValue(VPackValueType::Object));
+  {
+    if (auto const* tm = irs::get<irs::term_meta>(term)) {
+      b.add("docs_with_term", VPackValue(tm->docs_count));
+      //  freq = sum of within-doc occurrences across all postings
+      b.add("freq", VPackValue(tm->freq));
     }
   }
 
+  // if (auto const* ta = irs::get<irs::term_attribute>(term)) {
+  //   if (ta->value.data() != v.data() || ta->value.size() != v.size()) {
+  //     cout << "      term_attribute.bytes: " << hexBytes(ta->value)
+  //          << "  (differs from iterator.value — unusual)\n";
+  //   }
+  // }
+
+  std::string payload { "(empty)" };
   if (auto const* pl = irs::get<irs::payload>(term)) {
-    cout << "      payload: ";
-    if (irs::IsNull(pl->value)) {
-      cout << "(empty)\n";
-    } else {
-      cout << hexBytes(pl->value) << "\n";
+    if (!irs::IsNull(pl->value)) {
+      payload = hexBytes(pl->value);
     }
   }
-
-  cout << std::flush;
+  b.add("payload", VPackValue(payload));
+  b.close();
 }
 
 // Postings use segment-local doc ids. When `pk_by_doc` is non-null, annotate
@@ -386,7 +403,8 @@ void printTermLine(irs::term_iterator const& term,
 void printTermPostings(irs::field_meta const& meta,
                        irs::term_iterator const& term,
                        size_t const segment_index,
-                       DocPkMap const* pk_by_doc) {
+                       DocPkMap const* pk_by_doc,
+                      VPackBuilder& b) {
   irs::IndexFeatures const ff = meta.index_features;
   bool const field_has_pos =
       (ff & irs::IndexFeatures::POS) != irs::IndexFeatures::NONE;
@@ -443,66 +461,87 @@ void printTermPostings(irs::field_meta const& meta,
   }
 }
 
-void readIndexData(const std::string& indexPath) {
-    irs::FSDirectory dir(indexPath);
-    auto reader = irs::DirectoryReader(dir);
+void processSegmentField(irs::field_iterator::ptr& fields, size_t segmentIndex, DocPkMap const* pk_by_doc, VPackBuilder& b) {
 
-    // for (const auto& /* irs::SegmentReader */ segment : reader) {
-    //     cout << "typeof(segment): " << typeid(segment).name() << endl;
-    // }
-      cout << "Index"
-         << " segmentsCount=" << reader.size()
-         << " docsCount=" << reader.docs_count()
-         << " liveDocsCount=" << reader.live_docs_count() << std::endl;
-
-  size_t i = 0;
-  for (auto& segment : reader) {
-    DocPkMap const pk_by_doc = loadArangoPkByIresearchDoc(segment);
-    cout << "Segment id=" << i << " docsCount=" << segment.docs_count()
-           << " liveDocsCount=" << segment.live_docs_count() << std::endl;
-    cout << "  IResearch assigns doc ids 1..liveDocs independently in EACH "
-            "segment (not global, not Arango _key).\n"
-         << "  Use S<segment>/d<id> below; same d1 in S0 vs S1 is two different "
-            "Arango rows if PKs differ.\n"
-         << "  @_PK column rows loaded=" << pk_by_doc.size() << "\n";
-    printSegmentLocalDocTable(i, pk_by_doc, segment);
-
-    cout << "----------------------------------------------" << endl;
-    cout << "Fields data:" << endl;
-    cout << "----------------------------------------------" << endl;
-    for (auto fields = segment.fields(); fields->next();) {
+      b.add(VPackValue(VPackValueType::Object));
       auto& field = fields->value();
       auto& meta = field.meta();
       std::string_view const storage_name{meta.name};
       ArangoFieldTypeInfo const detected = detectArangoFieldType(storage_name);
-      printArangoFieldHeader(storage_name, detected);
-      cout << "Field indexFeatures=" << static_cast<uint32_t>(meta.index_features)
-           << " minTerm=(" << irs::ViewCast<char>(field.min()) << ")"
-           << " maxTerm=(" << irs::ViewCast<char>(field.max()) << ")"
-           << " termsCount=" << field.size()
-           << " docsCount=" << field.docs_count() << std::endl;
+      b.add("name", VPackValue(storage_name));
+      printArangoFieldHeader(storage_name, detected, b);
+      b.add("fieldIndexFeatures", VPackValue(VPackValueType::Object));
+      {
+        // auto minTerm = irs::ViewCast<char>(field.min());
+        // cout << "DBG: " << minTerm << endl;
+        // b.add("minTerm", VPackValue(minTerm));
+        auto maxTerm = irs::ViewCast<char>(field.max());
+        b.add("maxTerm", VPackValue(maxTerm));
+        b.add("termsCount", VPackValue(field.size()));
+        b.add("docsCount", VPackValue(field.docs_count()));
+      }
+      b.close(); //  Close fieldIndexFeatures
 
       auto term = field.iterator(irs::SeekMode::NORMAL);
-      cout << "Values" << std::endl;
+      b.add("terms", VPackValue(VPackValueType::Array));
       for (; term->next();) {
+        b.add(VPackValue(VPackValueType::Object));
         term->read();
-        printTermLine(*term, detected.kind);
-        printTermPostings(meta, *term, i, &pk_by_doc);
+        printTermLine(*term, detected.kind, b);
+
+        b.add("postings", VPackValue(VPackValueType::Array));
+        {
+          b.add(VPackValue(VPackValueType::Object));
+          // printTermPostings(meta, *term, segmentIndex, pk_by_doc, b);
+          b.close();
+        }
+        b.close();  //  Close postings array
+        b.close();  //  Close term element
       }
-      cout << endl;
+      b.close();  //  Close terms array
+      b.close(); //  Close array element
+}
+
+void processSegment(const irs::SubReader& segment, size_t segmentIndex, VPackBuilder& b) {
+
+    DocPkMap const pk_by_doc = loadArangoPkByIresearchDoc(segment);
+
+    b.add(VPackValue(VPackValueType::Object));
+    b.add("segmentId", VPackValue(0));
+    b.add("docsCount", VPackValue(segment.docs_count()));
+    b.add("liveDocsCount", VPackValue(segment.live_docs_count()));
+
+    // cout
+    //     << "  IResearch assigns doc ids 1..liveDocs independently in EACH "
+    //        "segment (not global, not Arango _key).\n"
+    //     << "  Use S<segment>/d<id> below; same d1 in S0 vs S1 is two different "
+    //        "Arango rows if PKs differ.\n"
+    //     << "  @_PK column rows loaded=" << pk_by_doc.size() << "\n";
+    printSegmentLocalDocTable(segmentIndex, pk_by_doc, segment, b);
+
+    //--------------------------------
+    //  Fields array
+    //--------------------------------
+    b.add("fields", VPackValue(VPackValueType::Array));
+    for (auto fields = segment.fields(); fields->next();) {
+      processSegmentField(fields, segmentIndex, &pk_by_doc, b);
     }
+    b.close();  //  Close fields array.
+    //--------------------------------
 
-    cout << endl;
-    cout << "----------------------------------------------" << endl;
-    cout << "Column store:" << endl;
-    cout << "----------------------------------------------" << endl;
+    //--------------------------------
+    //  Column store
+    //--------------------------------
+    b.add("columns", VPackValue(VPackValueType::Array));
     for (auto columns = segment.columns(); columns->next();) {
-      auto& reader = columns->value();
 
-      cout << "Column id=" << reader.id() << " name=(" << reader.name() << ")"
-             << endl;
+      b.add(VPackValue(VPackValueType::Object));
+      auto& columnReader = columns->value();
 
-      auto it = reader.iterator(irs::ColumnHint::kConsolidation);
+      b.add("id", VPackValue(columnReader.id()));
+      b.add("name", VPackValue(columnReader.name()));
+
+      auto it = columnReader.iterator(irs::ColumnHint::kConsolidation);
       auto* payload = irs::get<irs::payload>(*it);
       auto* doc = irs::get<irs::document>(*it);
 
@@ -510,22 +549,61 @@ void readIndexData(const std::string& indexPath) {
         return;
       }
 
+      b.add("documents", VPackValue(VPackValueType::Array));
       while (it->next()) {
-        cout << "doc=" << doc
-               << " value=(" << irs::ViewCast<char>(payload->value) << ")" << endl;
+        b.add(VPackValue(VPackValueType::Object));
+        b.add("id", VPackValue(doc->value));
+        b.add("payload", VPackValue(irs::ViewCast<char>(payload->value)));
+        b.close();
       }
-      cout << endl;
+      b.close();
+      b.close();
     }
-    ++i;
-  }
+    b.close(); // Close columns array
+    //--------------------------------
+
+    b.close(); // Close Segment array element
 }
 
+void readIndexData(const std::string& indexPath, VPackBuilder& b) {
+  irs::FSDirectory dir(indexPath);
+  auto reader = irs::DirectoryReader(dir);
+
+  b.add("index", VPackValue(VPackValueType::Object));
+  arangodb::ScopeGuard closeIndexGuard([&b]() noexcept {
+    b.close(); // Close Index
+  });
+
+  {
+    b.add("segmentsCount", VPackValue(reader.size()));
+    b.add("docsCount", VPackValue(reader.docs_count()));
+    b.add("liveDocsCount", VPackValue(reader.live_docs_count()));
+  }
+
+  b.add("segments", VPackValue(VPackValueType::Array));
+
+  size_t segmentId = 0;
+  for (auto& segment : reader) {
+    processSegment(segment, segmentId++, b);
+  }
+  b.close(); // Close segment array
+}
+
+
 int main(int argc, char* argv[]) {
+  
+  VPackBuilder b;
+  {
     if (argc < 2) {
-        cout << "index path missing" << endl;
-        return 0;
+      cout << "index path missing" << endl;
+      return 0;
     }
 
-    readIndexData(argv[1]);
+    b.add(VPackValue(VPackValueType::Object));
+    readIndexData(argv[1], b);
+    b.close();
+
+    cout << b.toJson();
     return 0;
+  }
 }

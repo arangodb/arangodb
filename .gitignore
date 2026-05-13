@@ -36,7 +36,7 @@ cppcheck.xml
 
 enterprise
 upgrade-data-tests
-compile_commands.json
+# compile_commands.json
 instanceinfo.json
 testresult.json
 testsStarted
@@ -87,7 +87,7 @@ nbproject/
 .idea
 .vs
 CMakeSettings.json
-.vscode
+# .vscode
 *.sublime-workspace
 *.sublime-project
 
