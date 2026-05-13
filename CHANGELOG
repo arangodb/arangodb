@@ -1,6 +1,8 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Updated ArangoDB Starter to v0.19.22.
+
 * COR-519: Vector index `factory` strings may now be combined with the scaling
   `nLists` specification (previously rejected). A factory string can contain a
   `{}` placeholder that is substituted per shard with the resolved nLists at
@@ -59,8 +61,6 @@
   `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that WAL
   entries written during training are correctly ingested, preventing missed
   documents after index creation.
-
-* Updated ArangoDB Starter to v0.19.21.
 
 * Upgraded OpenSSL to 3.5.6.
 
