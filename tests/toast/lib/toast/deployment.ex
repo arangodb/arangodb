@@ -83,11 +83,12 @@ defmodule Toast.Deployment do
             role: Toast.Deployment.ServerInstance.role(),
             port: non_neg_integer(),
             endpoint: String.t(),
-            arango_id: String.t() | nil
+            arango_id: String.t() | nil,
+            server_dir: Path.t() | nil
           }
 
     @enforce_keys [:id, :role, :port, :endpoint]
-    defstruct [:id, :role, :port, :endpoint, :arango_id]
+    defstruct [:id, :role, :port, :endpoint, :arango_id, :server_dir]
   end
 
   @type mode :: :single_server | :cluster
@@ -631,7 +632,8 @@ defmodule Toast.Deployment do
       role: s.role,
       port: s.port || 0,
       endpoint: s.endpoint || "",
-      arango_id: s.arango_id
+      arango_id: s.arango_id,
+      server_dir: s.server_dir
     }
   end
 
