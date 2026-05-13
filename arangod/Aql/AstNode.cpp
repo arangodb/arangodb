@@ -352,8 +352,7 @@ int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
   }
 }
 
-/// @brief compare non-VPack-serializable AST nodes: references, attribute
-/// accesses, function calls, operators, quantifiers, and subqueries
+/// @brief compare non-VPack-serializable AST nodes
 /// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
                                 bool compareUtf8) {
@@ -361,8 +360,7 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     return (lhs->type < rhs->type ? -1 : 1);
   }
 
-  // Subqueries are compared by pointer identity; full structural comparison
-  // would be expensive and subqueries may reference outer-scope variables.
+  // Subqueries can be large; treat them as equal only if they're the same node.
   if (lhs->type == NODE_TYPE_SUBQUERY) {
     if (lhs == rhs) {
       return 0;
@@ -370,7 +368,7 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     return (lhs < rhs ? -1 : 1);
   }
 
-  // References are identified solely by their variable ID.
+  // References compare by variable ID.
   if (lhs->type == NODE_TYPE_REFERENCE) {
     auto lhsVar = static_cast<Variable const*>(lhs->getData());
     auto rhsVar = static_cast<Variable const*>(rhs->getData());
@@ -380,7 +378,7 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     return 0;
   }
 
-  // Compare attribute name before children.
+  // Name comes before children for these node types.
   if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
       lhs->type == NODE_TYPE_PARAMETER ||
       lhs->type == NODE_TYPE_PARAMETER_DATASOURCE ||
@@ -393,8 +391,7 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     }
   }
 
-  // Quantifier kind is stored as an int; AT LEAST also has a threshold child
-  // that the member loop below will compare.
+  // Quantifier kind is an int; AT LEAST's threshold child is handled below.
   if (lhs->type == NODE_TYPE_QUANTIFIER) {
     int64_t lv = lhs->getIntValue(true);
     int64_t rv = rhs->getIntValue(true);
@@ -403,7 +400,7 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     }
   }
 
-  // Compare function identity for function calls before comparing arguments.
+  // Function name before arguments.
   if (lhs->type == NODE_TYPE_FCALL) {
     auto lhsFunc = static_cast<Function const*>(lhs->getData());
     auto rhsFunc = static_cast<Function const*>(rhs->getData());
@@ -421,9 +418,8 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     return (lhsMembers < rhsMembers ? -1 : 1);
   }
 
-  // Normalize operand order for commutative operators so `a == b` and `b == a`
-  // compare as equal. BINARY_AND/OR are pre-normalization forms; normalized
-  // conditions use NARY.
+  // Normalize operand order so `a == b` and `b == a` compare as equal.
+  // BINARY_AND/OR are pre-normalization; normalized conditions use NARY.
   bool isCommutative = (lhs->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
                         lhs->type == NODE_TYPE_OPERATOR_BINARY_NE ||
                         lhs->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
