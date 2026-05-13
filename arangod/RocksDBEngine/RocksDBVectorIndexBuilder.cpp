@@ -185,9 +185,8 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
     std::size_t resolvedNLists) const {
   auto const& def = _index.getDefinition();
   if (def.factory) {
-    bool const isFactoryScaling = isFactoryAStringScaling(*def.factory);
     auto const factoryString = std::invoke([&]() -> std::string {
-      if (isFactoryScaling) {
+      if (isFactoryAStringScaling(*def.factory)) {
         return resolveFactoryString(*def.factory, resolvedNLists);
       }
       return *def.factory;
