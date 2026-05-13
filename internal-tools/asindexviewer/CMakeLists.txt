@@ -35,6 +35,8 @@ target_compile_definitions(asindexviewer PRIVATE
 target_include_directories(asindexviewer PRIVATE
     ../../lib/iresearch/core
     ../../3rdParty/abseil-cpp
+    ../../3rdParty/velocypack/include
+    ../../lib
 )
 
 target_include_directories(asindexviewer SYSTEM PRIVATE
@@ -44,6 +46,7 @@ target_include_directories(asindexviewer SYSTEM PRIVATE
     ../../3rdParty/iresearch/external/highway
     ../../3rdParty/iresearch/external/openfst
     ../../3rdParty/iresearch/external/kaldi/src
+    ../../3rdParty
 )
 
 # ------------------------------------------------------------------------------
