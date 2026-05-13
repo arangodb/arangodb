@@ -147,19 +147,20 @@ VPackBuilder enrichVectorIndexes(VPackSlice indexes,
       result.add(StaticStrings::IndexTrainingState, VPackValue(aggregateState));
 
       if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
-        std::string_view shardError;
+        // Agency `Current` is updated asynchronously by the DBServer's
+        // build manager, so for a fresh index the shard `error` can still
+        // be empty while the state is already published as `unusable`.
+        // Fall back to the same placeholder used by the in-memory single-
+        // server path so the response shape is consistent.
+        std::string_view shardError =
+            StaticStrings::VectorIndexDefaultTrainingError;
         for (auto const& [_, shardState] : states) {
           if (!shardState.error.empty()) {
             shardError = shardState.error;
             break;
           }
         }
-        if (shardError.empty()) {
-          result.add(StaticStrings::ErrorMessage,
-                     VPackValue("not enough training data for vector index"));
-        } else {
-          result.add(StaticStrings::ErrorMessage, VPackValue(shardError));
-        }
+        result.add(StaticStrings::ErrorMessage, VPackValue(shardError));
       }
 
       if (withShardDetails) {
@@ -327,7 +328,7 @@ async<void> RestIndexHandler::getIndexes() {
                 VectorIndexShardState state;
                 state.trainingState = std::string(trainingStateToString(ts));
                 if (ts == VectorIndexTrainingState::kUnusable) {
-                  state.error = "not enough training data for vector index";
+                  state.error = vecIdx->trainingError();
                 }
                 state.resolvedNLists = vecIdx->resolvedNLists().value_or(0);
                 states.emplace(std::string(coll->name()), std::move(state));
@@ -545,20 +546,18 @@ async<void> RestIndexHandler::getIndexes() {
                     VPackValue(aggregateState));
 
             if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
-              std::string_view shardError;
+              // See the enrichVectorIndexes branch above: agency `Current`
+              // lags ensureIndex, so fall back to the placeholder when no
+              // shard has a real error yet.
+              std::string_view shardError =
+                  "not enough training data for vector index";
               for (auto const& [_, shardState] : states) {
                 if (!shardState.error.empty()) {
                   shardError = shardState.error;
                   break;
                 }
               }
-              if (shardError.empty()) {
-                tmp.add(StaticStrings::ErrorMessage,
-                        VPackValue("not enough training data for "
-                                   "vector index"));
-              } else {
-                tmp.add(StaticStrings::ErrorMessage, VPackValue(shardError));
-              }
+              tmp.add(StaticStrings::ErrorMessage, VPackValue(shardError));
             }
 
             tmp.add(VPackValue("shards"));

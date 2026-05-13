@@ -70,7 +70,8 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
                         false);
   features.emplace_back(
       server.addFeature<arangodb::transaction::ManagerFeature>(metrics), false);
-  features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+  auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
+  features.emplace_back(databaseFeature, false);
   features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
                         false);
   server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
@@ -91,8 +92,8 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
                         true);  // required for IResearchAnalyzerFeature
   features.emplace_back(
       server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
-  features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                        true);
+  features.emplace_back(
+      server.addFeature<arangodb::VectorIndexFeature>(databaseFeature), true);
 
   for (auto& f : features) {
     f.first.prepare();

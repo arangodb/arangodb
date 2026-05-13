@@ -270,8 +270,9 @@ struct IResearchExpressionFilterTest
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
             nullptr));
     features.emplace_back(metrics, false);
-    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                          false);
+    features.emplace_back(
+        server.addFeature<arangodb::VectorIndexFeature>(databaseFeature),
+        false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(metrics),
         false);  // must be first

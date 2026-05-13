@@ -938,14 +938,6 @@ Result IndexFactory::enhanceJsonIndexVector(
       return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
     }
 
-    // Using scaling nLists and factory is not allowed
-    if (vectorIndexDefinition.factory.has_value() &&
-        vector::isNListsScaling(vectorIndexDefinition.nLists)) {
-      return {
-          TRI_ERROR_BAD_PARAMETER,
-          "Using scaling nLists and factory is not allowed in vector index"};
-    }
-
     if (auto const res =
             processIndexStoredValues(definition, builder, 1, 32, create,
                                      /*allowSubAttributes*/ true,
