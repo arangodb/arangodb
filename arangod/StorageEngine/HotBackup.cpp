@@ -24,11 +24,9 @@
 #include "HotBackup.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterHotBackup.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup/RocksDBHotBackup.h"

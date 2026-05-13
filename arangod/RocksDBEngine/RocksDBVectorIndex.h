@@ -24,8 +24,11 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
+#include <string>
 #include <type_traits>
 
+#include "Basics/StaticStrings.h"
 #include "RocksDBIndex.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -141,8 +144,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _trainingState.load(std::memory_order_acquire);
   }
 
-  /// @brief Clear trained data on build failure so that
-  /// stale training state is not accidentally persisted.
   void resetTrainingState() noexcept;
 
   /// @brief Construct a fresh, untrained sibling of this index for the
@@ -151,6 +152,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   /// generated IndexId, a fresh objectId (so its CF data lives at a
   /// disjoint key range), no Faiss state, and a kUnusable training state.
   std::shared_ptr<RocksDBVectorIndex> makeRetrainShadow() const;
+
+  void setTrainingError(std::string error) noexcept;
+
+  std::string trainingError() const;
 
  protected:
   ResultT<std::vector<float>> preModificationCheck(std::string_view operation,
@@ -175,6 +180,11 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::size_t _trainingThreshold{0};
   std::atomic<VectorIndexTrainingState> _trainingState{
       VectorIndexTrainingState::kUnusable};
+
+  mutable std::mutex _trainingErrorMutex;
+  // Placeholder used while the build manager hasn't yet diagnosed why the
+  // index is unusable (e.g. between ensureIndex and the first scan).
+  std::string _trainingError{StaticStrings::VectorIndexDefaultTrainingError};
 };
 
 }  // namespace arangodb

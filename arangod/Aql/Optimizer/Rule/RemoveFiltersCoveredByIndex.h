@@ -26,11 +26,22 @@
 
 #include "Aql/ExecutionPlan.h"
 
-namespace arangodb::aql {
+namespace arangodb {
+class Index;
+
+namespace aql {
+class Condition;
 class Optimizer;
+struct Variable;
+struct AstNode;
 
 /// @brief try to remove filters which are covered by indexes
 void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
 
-}  // namespace arangodb::aql
+AstNode* removeIndexCondition(Condition& cond, ExecutionPlan const* plan,
+                              Variable const* variable, AstNode const* other,
+                              Index const* index);
+
+}  // namespace aql
+}  // namespace arangodb

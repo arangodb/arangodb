@@ -76,10 +76,6 @@ void appendToFile(std::string const& filename, char const* ptr, size_t len,
 void appendToFile(std::string const& filename, std::string_view s,
                   bool sync = false);
 
-// if a file could be removed returns TRI_ERROR_NO_ERROR.
-// otherwise, returns TRI_ERROR_SYS_ERROR and sets LastError.
-[[nodiscard]] ErrorCode remove(std::string const& fileName);
-
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
 /// returns true (now wrapper for version below with TRI_copy_recursive_e
@@ -109,12 +105,6 @@ bool copyDirectoryRecursive(
 // does not recurse into subdirectories. will throw an exception in
 // case the directory cannot be opened for iteration.
 std::vector<std::string> listFiles(std::string const& directory);
-
-// checks if path is a directory
-bool isDirectory(std::string const& path);
-
-// checks if path exists
-bool exists(std::string const& path);
 
 // strip extension
 std::string stripExtension(std::string const& path,

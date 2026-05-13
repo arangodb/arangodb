@@ -1,0 +1,167 @@
+################################################################################
+## DISCLAIMER
+##
+## Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+## Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+##
+## Licensed under the Business Source License 1.1 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+## Copyright holder is ArangoDB GmbH, Cologne, Germany
+################################################################################
+
+defmodule ToastTest.Runner.PostExecution do
+  @moduledoc false
+
+  alias ToastTest.{EventStore, SuiteResult}
+  alias ToastTest.Formatting.{Color, Utils}
+  alias ToastTest.Runner.ResultBuilder
+
+  require Logger
+
+  @spec run(Toast.Deployment.t() | nil, map(), ToastTest.Config.t()) :: SuiteResult.t()
+  def run(nil, test_data, _test_config) do
+    snapshot = EventStore.snapshot()
+    crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
+
+    {issues, _coredump_reports} =
+      ToastTest.Attribution.run(test_data, %{}, crash_events,
+        timeout_kills: snapshot.timeout_kills
+      )
+
+    SuiteResult.build(test_data, issues, events: snapshot.events)
+  end
+
+  def run(deployment, test_data, %ToastTest.Config{} = test_config) do
+    maybe_dump_agency(deployment, test_data, test_config)
+
+    Logger.debug("Post-execution: stopping deployment")
+    {servers, error} = stop_deployment(deployment)
+    if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
+
+    try do
+      build_suite_result(servers, test_data, test_config)
+    rescue
+      e ->
+        Logger.warning(
+          "build_suite_result crashed, returning degraded result: " <>
+            "#{Exception.format(:error, e, __STACKTRACE__)}"
+        )
+
+        SuiteResult.build(test_data, [],
+          warnings: ["Post-execution analysis failed: #{Exception.message(e)}"]
+        )
+    end
+  end
+
+  defp stop_deployment(deployment) do
+    case Toast.Deployment.stop(deployment) do
+      {:ok, info} -> {info.servers, info.error}
+      {:error, _reason, info} -> {info.servers, info.error}
+    end
+  end
+
+  defp build_suite_result(servers, test_data, test_config) do
+    Utils.print_header("SUITE FINISHED", IO.ANSI.enabled?(), Color.info())
+
+    Logger.info("Running post-execution analysis...")
+
+    snapshot = EventStore.snapshot()
+
+    Logger.debug("Collecting artifacts")
+    artifact_opts = [coredump_dir: test_config.coredump_dir, not_before: test_data.started_at]
+
+    artifacts =
+      ToastTest.ArtifactCollector.collect(servers, snapshot.pids_by_server, artifact_opts)
+
+    Logger.debug("Running attribution")
+
+    crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
+
+    {issues, coredump_reports} =
+      ToastTest.Attribution.run(test_data, artifacts, crash_events,
+        timeout_kills: snapshot.timeout_kills,
+        analyzer_opts: build_coredump_analyzer_opts(test_config)
+      )
+
+    Logger.debug("Collecting server logs")
+    windows = ToastTest.Attribution.TimeWindows.build(test_data)
+    all_log_files = ResultBuilder.collect_log_files(snapshot.servers)
+    server_logs = ToastTest.Attribution.ServerLogs.collect(issues, all_log_files, windows)
+
+    Logger.debug("Building results (#{length(issues)} issues found)")
+    active_sanitizers = test_config.active_sanitizers
+
+    warnings =
+      ResultBuilder.coredump_warnings(
+        crash_events,
+        artifacts,
+        test_config.coredump_dir,
+        active_sanitizers
+      )
+
+    deployments = ResultBuilder.build_deployments(snapshot, server_logs)
+
+    suite_result =
+      SuiteResult.build(test_data, issues,
+        warnings: warnings,
+        deployments: deployments,
+        coredumps: coredump_reports,
+        events: snapshot.events
+      )
+
+    SuiteResult.write_all(suite_result, test_config.result_dir)
+    suite_result
+  end
+
+  defp build_coredump_analyzer_opts(test_config) do
+    opts = [timeout: test_config.coredump_timeout]
+
+    case Toast.Diagnostics.Coredump.resolve_debugger(test_config.debugger) do
+      nil -> opts
+      debugger -> [{:debugger, debugger} | opts]
+    end
+  end
+
+  defp maybe_dump_agency(deployment, test_data, test_config) do
+    has_error =
+      ToastTest.Abort.reason() != nil or
+        EventStore.unexpected_crashes() != [] or
+        test_data.failures != []
+
+    if has_error and test_config.dump_agency_on_error do
+      case Toast.Deployment.dump_agency(deployment) do
+        {:ok, json} when json != nil ->
+          write_agency_dump(json, test_config.result_dir, deployment.id)
+
+        {:ok, nil} ->
+          Logger.warning("Agency dump returned nil (no responsive agents?)")
+
+        {:error, reason} ->
+          Logger.debug("Agency dump skipped: #{inspect(reason)}")
+      end
+    end
+  rescue
+    e ->
+      Logger.warning("Agency dump failed: #{Exception.message(e)}")
+  end
+
+  defp write_agency_dump(json, result_dir, deployment_id) do
+    case Toast.Diagnostics.AgencyDump.write(json, result_dir, deployment_id) do
+      {:ok, path} ->
+        Logger.info("Agency dump written to #{path}")
+
+      {:error, reason} ->
+        Logger.warning("Failed to write agency dump: #{inspect(reason)}")
+    end
+  end
+end

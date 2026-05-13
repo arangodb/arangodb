@@ -36,8 +36,9 @@
 namespace arangodb {
 
 VectorIndexFeature::VectorIndexFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature)
+    : ApplicationFeature{server, *this}, _databaseFeature{databaseFeature} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -49,8 +50,19 @@ void VectorIndexFeature::collectOptions(
 }
 
 bool VectorIndexFeature::shouldRunBuildManager() const {
-  return isVectorIndexEnabled() && (ServerState::instance()->isDBServer() ||
-                                    ServerState::instance()->isSingleServer());
+  if (!isVectorIndexEnabled()) {
+    return false;
+  }
+  if (!ServerState::instance()->isDBServer() &&
+      !ServerState::instance()->isSingleServer()) {
+    return false;
+  }
+  // Skip during transient startup modes that exit via _exit() without
+  // running destructors, which would leak the build manager's jthread.
+  if (_databaseFeature.checkVersion() || _databaseFeature.upgrade()) {
+    return false;
+  }
+  return true;
 }
 
 void VectorIndexFeature::start() {
@@ -58,7 +70,7 @@ void VectorIndexFeature::start() {
     return;
   }
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  _buildManager.emplace(server().getFeature<DatabaseFeature>(),
+  _buildManager.emplace(_databaseFeature,
                         server().getFeature<MaintenanceFeature>(),
                         server().getFeature<metrics::MetricsFeature>(),
                         *SchedulerFeature::SCHEDULER);

@@ -23,8 +23,11 @@
 
 #include "VectorIndex/VectorIndexBuildManager.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
@@ -117,6 +120,7 @@ VectorIndexBuildManager::VectorIndexBuildManager(
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
       _scheduler(scheduler),
+      _resourceMonitor(GlobalResourceMonitor::instance()),
       _untrainedCount(metrics.add(arangodb_vector_index_unusable{})),
       _trainingOngoingCount(
           metrics.add(arangodb_vector_index_training_ongoing{})),
