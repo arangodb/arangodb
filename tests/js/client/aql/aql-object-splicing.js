@@ -63,15 +63,15 @@ function objectSplicingSuite () {
       let res = db._query(query).toArray();
       assertEqual([{ u: 1, v: 2 }], res);
     },
-    testObjectSplicingParenthesizedSpreads: function () {
-      let query = `LET x = { name: "Pavani", age: 35, city: "Hyderabad" } LET y = { country: "India" } RETURN (...x, ...y)`;
+    testObjectSplicingWithDynamicKeyTwoSpreads: function () {
+      let query = ` LET a = "prefix" LET x = {name: "Rahul", prefixname: "Lanka" } LET y = { [CONCAT(a, "name")]: "newprefix"} RETURN [{...x, ...y}] `;
       let res = db._query(query).toArray();
-      assertEqual([{ name: "Pavani", age: 35, city: "Hyderabad", country: "India" }], res);
+      assertEqual([[{ "name" : "Rahul", "prefixname" : "newprefix" }]], res);
     },
-    testObjectSplicingSingleParenthesizedSpread: function () {
-      let query = `LET o = { a: 1 } RETURN (...o)`;
+    testObjectSplicingEarlierOverriddenTwoSpreads: function () {
+      let query = `LET x = { name: "Rahul", age: 21 } LET y = { "name" : "Sam", "age" : 35 } RETURN { ...x, ...y }`;
       let res = db._query(query).toArray();
-      assertEqual([{ a: 1 }], res);
+      assertEqual([{ name: "Sam", age: 35 }], res);
     }
   };
 }

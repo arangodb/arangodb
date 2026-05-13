@@ -1125,9 +1125,9 @@ union yyalloc
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  95
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  150
+#define YYNNTS  147
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  351
+#define YYNRULES  345
 /* YYNSTATES -- Number of states.  */
 #define YYNSTATES  606
 
@@ -1301,15 +1301,13 @@ static const char *const yytname[] =
   "optional_function_call_arguments", "expression_or_query", "$@26",
   "function_arguments_list", "compound_value", "array", "$@27",
   "optional_array_elements", "array_elements_list", "array_element",
-  "optional_parenthesized_object_spread_suffix",
-  "parenthesized_object_spread_suffix_list", "for_options", "options",
-  "object", "$@28", "optional_object_elements", "object_elements_list",
-  "object_element", "array_filter_operator", "array_map_operator",
-  "optional_array_filter", "optional_array_limit", "optional_array_return",
-  "graph_collection", "graph_collection_list", "graph_subject", "$@29",
-  "graph_direction", "graph_direction_steps", "reference", "$@30", "$@31",
-  "$@32", "$@33", "simple_value", "numeric_value", "value_literal",
-  "in_or_into_collection_name", "bind_parameter",
+  "for_options", "options", "object", "$@28", "optional_object_elements",
+  "object_elements_list", "object_element", "array_filter_operator",
+  "array_map_operator", "optional_array_filter", "optional_array_limit",
+  "optional_array_return", "graph_collection", "graph_collection_list",
+  "graph_subject", "$@29", "graph_direction", "graph_direction_steps",
+  "reference", "$@30", "$@31", "$@32", "simple_value", "numeric_value",
+  "value_literal", "in_or_into_collection_name", "bind_parameter",
   "bind_parameter_datasource_expected", "object_element_name",
   "variable_name", YY_NULLPTR
 };
@@ -1326,7 +1324,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
 
-#define YYTABLE_NINF (-352)
+#define YYTABLE_NINF (-346)
 
 #define yytable_value_is_error(Yyn) \
   0
@@ -1403,20 +1401,20 @@ static const yytype_int16 yypact[] =
    means the default is an error.  */
 static const yytype_int16 yydefact[] =
 {
-       9,    10,    20,     0,     0,    12,     0,     1,     4,   348,
-     347,     6,    11,     5,     0,     0,     0,     0,   114,   139,
+       9,    10,    20,     0,     0,    12,     0,     1,     4,   342,
+     341,     6,    11,     5,     0,     0,     0,     0,   114,   139,
        0,     0,    89,     0,     0,     0,     0,     0,    13,    21,
       22,    34,    24,    23,   125,    25,    26,    27,    28,    14,
-      29,    30,    31,    32,    33,     0,     8,   351,   105,    98,
+      29,    30,    31,    32,    33,     0,     8,   345,   105,    98,
       37,     0,    38,    39,    35,    92,    93,     0,     0,     0,
-     339,   340,   341,   317,   337,   335,   336,   346,   345,     0,
-       0,     0,     0,   324,   264,   246,    91,     0,   320,   178,
-     179,   180,   318,   244,   245,   182,   338,   181,   319,   175,
-     152,   177,     0,   132,   262,     0,   125,     0,   148,     0,
+     333,   334,   335,   313,   331,   329,   330,   340,   339,     0,
+       0,     0,     0,   318,   260,   246,    91,     0,   316,   178,
+     179,   180,   314,   244,   245,   182,   332,   181,   315,   175,
+     152,   177,     0,   132,   258,     0,   125,     0,   148,     0,
      245,    84,     0,     0,   159,     0,   162,     0,   167,   170,
-     165,   166,     0,   262,   262,   125,     7,   107,   100,     0,
+     165,   166,     0,   258,   258,   125,     7,   107,   100,     0,
        0,     0,     0,     0,     0,   192,   188,   190,   191,     0,
-       0,    20,   266,   248,     0,     0,   195,   193,     0,     0,
+      20,   262,   248,     0,     0,   195,   193,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,   232,     0,   173,   172,   174,     0,     0,     0,
      186,     0,     0,     0,     0,     0,     0,   116,   115,   122,
@@ -1629,10 +1627,10 @@ static const yytype_int16 yytable[] =
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
      155,   156,   157,   158,     0,     0,     0,     0,   135,   136,
      137,   138,   139,   140,   141,   142,   143,   144,   145,   146,
-     147,   148,   149,   150,   151,   152,   153,   134,     0,   154,
-       0,     0,     0,   222,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,   155,   156,   157,   158,     0,     0,
-       0,     0,   135,   136,   137,   138,   139,   140,   141,   142,
+     147,   148,   149,   150,   151,   152,   133,     0,   153,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,   154,   155,   156,   157,     0,     0,     0,
+       0,   134,   135,   136,   137,   138,   139,   140,   141,   142,
      143,   144,   145,   146,   147,   148,   149,   150,   151,   152,
      133,     0,   153,     0,     0,     0,   220,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,   154,   155,   156,
@@ -2068,17 +2066,16 @@ static const yytype_int8 yyr2[] =
        4,     4,     4,     4,     7,     7,     7,     7,     7,     7,
        7,     7,     0,     0,     7,     0,     5,     0,     1,     1,
        0,     2,     1,     3,     1,     1,     0,     4,     0,     1,
-       2,     1,     3,     1,     2,     0,     1,     3,     4,     0,
-       2,     4,     0,     2,     0,     4,     0,     1,     2,     1,
-       3,     1,     3,     3,     3,     3,     3,     3,     3,     3,
-       3,     3,     3,     3,     5,     2,     1,     2,     1,     2,
-       0,     2,     3,     6,     3,     0,     2,     4,     0,     2,
-       1,     1,     2,     2,     1,     3,     1,     0,     4,     2,
-       2,     2,     1,     1,     1,     1,     2,     1,     1,     1,
-       1,     3,     0,     6,     0,     4,     3,     3,     4,     0,
-       6,     0,     8,     1,     1,     1,     1,     1,     1,     1,
+       2,     1,     3,     1,     2,     0,     2,     4,     0,     2,
+       0,     4,     0,     1,     2,     1,     3,     1,     3,     3,
+       3,     3,     3,     3,     3,     3,     3,     3,     3,     3,
+       5,     2,     1,     2,     1,     2,     0,     2,     3,     6,
+       3,     0,     2,     4,     0,     2,     1,     1,     2,     2,
+       1,     3,     1,     0,     4,     2,     2,     2,     1,     1,
+       1,     1,     2,     1,     1,     1,     1,     3,     0,     4,
+       3,     3,     4,     0,     6,     0,     8,     1,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1
+       1,     1,     1,     1,     1,     1
 };
 
 

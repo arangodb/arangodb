@@ -800,16 +800,10 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
     for (size_t i = 0; i < n; ++i) {
       auto sub = getMemberUnchecked(i);
       if (sub != nullptr) {
-        if (sub->type == NODE_TYPE_OBJECT_SPLICE) {
-          hash = fasthash64(static_cast<void const*>("objsplice"), 10, hash);
-          TRI_ASSERT(sub->numMembers() > 0);
-          hash = sub->getMemberUnchecked(0)->hashValue(hash);
-        } else {
-          hash = fasthash64(static_cast<void const*>(sub->getStringValue()),
-                            sub->getStringLength(), hash);
-          TRI_ASSERT(sub->numMembers() > 0);
-          hash = sub->getMemberUnchecked(0)->hashValue(hash);
-        }
+        hash = fasthash64(static_cast<void const*>(sub->getStringValue()),
+                          sub->getStringLength(), hash);
+        TRI_ASSERT(sub->numMembers() > 0);
+        hash = sub->getMemberUnchecked(0)->hashValue(hash);
       }
     }
     return hash;
@@ -1014,9 +1008,6 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
         if (member != nullptr) {
-          if (member->type == NODE_TYPE_OBJECT_SPLICE) {
-            return false;
-          }
           // Throws if we do not have member 0
           auto value = member->getMember(0);
           TRI_ASSERT(value != nullptr);
@@ -1676,16 +1667,6 @@ bool AstNode::isSimple() const {
     return true;
   }
 
-  if (type == NODE_TYPE_ARRAY_SPLICE || type == NODE_TYPE_OBJECT_SPLICE) {
-    TRI_ASSERT(numMembers() == 1);
-    if (getMemberUnchecked(0)->isSimple()) {
-      setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-      return true;
-    }
-    setFlag(DETERMINED_SIMPLE);
-    return false;
-  }
-
   setFlag(DETERMINED_SIMPLE);
   return false;
 }
@@ -1962,9 +1943,7 @@ bool AstNode::mustCheckUniqueness() const {
           mustCheck = true;
           break;
         }
-      } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
-        mustCheck = true;
-        break;
+
       } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
         // dynamic key... we don't know the key yet, so there's no
         // way around check it at runtime later
@@ -2120,19 +2099,6 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
   if (type == NODE_TYPE_VALUE) {
     // must be JavaScript-compatible!
     appendValue(buffer);
-    return;
-  }
-
-  if (type == NODE_TYPE_ARRAY_SPLICE) {
-    TRI_ASSERT(numMembers() == 1);
-    getMember(0)->stringify(buffer, failIfLong);
-    buffer.append("...");
-    return;
-  }
-  if (type == NODE_TYPE_OBJECT_SPLICE) {
-    TRI_ASSERT(numMembers() == 1);
-    buffer.append("...");
-    getMember(0)->stringify(buffer, failIfLong);
     return;
   }
 

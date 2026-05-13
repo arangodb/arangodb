@@ -720,199 +720,180 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
                                                    bool& mustDestroy) {
   auto& trx = ctx.trx();
   auto& vopts = trx.vpackOptions();
-
   mustDestroy = false;
+
+  // constant object fast-path
   if (node->isConstant()) {
-    // this will not create a copy
     uint8_t const* cv = node->computedValue();
     if (cv != nullptr) {
+      // no copy
       return AqlValue(cv);
     }
+
     auto builder = ThreadLocalBuilderLeaser::lease();
     return AqlValue(node->computeValue(builder.get()).begin());
   }
 
   size_t const n = node->numMembers();
-
   if (n == 0) {
     return AqlValue(AqlValueHintEmptyObject());
   }
 
-  if (astNodeObjectLiteralHasObjectSplice(node)) {
-    containers::FlatHashMap<std::string, size_t> keyToSlot;
-    std::vector<std::string> keyOrder;
-    std::vector<VPackBuffer<uint8_t>> valueBuffers;
-    keyOrder.reserve(n);
-    valueBuffers.reserve(n);
-    keyToSlot.reserve(static_cast<size_t>(n) * 2);
+  // unified object assembly pipeline
+  struct ObjectEntry {
+    std::string key;
+    AqlValue value;
+    bool mustDestroy;
+  };
 
-    auto mergeKeySlice = [&](std::string const& k, VPackSlice valueSlice) {
-      auto it = keyToSlot.find(k);
-      if (it == keyToSlot.end()) {
-        size_t const slot = valueBuffers.size();
-        keyToSlot.emplace(k, slot);
-        keyOrder.push_back(k);
-        valueBuffers.emplace_back();
-        {
-          VPackBuilder tmp(valueBuffers[slot]);
-          tmp.add(valueSlice);
-        }
-      } else {
-        size_t const slot = it->second;
-        valueBuffers[slot].clear();
-        VPackBuilder tmp(valueBuffers[slot]);
-        tmp.add(valueSlice);
-      }
-    };
+  containers::FlatHashMap<std::string, size_t> keyToIndex;
+  std::vector<ObjectEntry> entries;
 
-    auto stringBuffer = ThreadLocalStringLeaser::lease();
-    arangodb::velocypack::StringSink adapter(stringBuffer.get());
+  entries.reserve(n);
+  keyToIndex.reserve(static_cast<size_t>(n) * 2);
 
-    for (size_t i = 0; i < n; ++i) {
-      AstNode const* member = node->getMemberUnchecked(i);
-      if (member->type == NODE_TYPE_OBJECT_SPLICE) {
-        bool localMustDestroy = false;
-        AqlValue result = executeSimpleExpression(
-            ctx, member->getMemberUnchecked(0), localMustDestroy, false);
-        AqlValueGuard guard(result, localMustDestroy);
-        if (result.isObject()) {
-          AqlValueMaterializer materializer(&vopts);
-          VPackSlice obj = materializer.slice(result);
-          for (VPackObjectIterator oit(obj, /*sequential*/ true); oit.valid();
-               oit.next()) {
-            mergeKeySlice(oit.key().copyString(), oit.value());
-          }
-        }
-      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-        bool localMustDestroy;
-        ast::CalculatedObjectElementNode calObjNode(member);
-        AqlValue keyResult = executeSimpleExpression(ctx, calObjNode.getKey(),
-                                                     localMustDestroy, false);
-        AqlValueGuard keyGuard(keyResult, localMustDestroy);
-        AqlValueMaterializer keyMat(&vopts);
-        VPackSlice keySlice = keyMat.slice(keyResult);
-        stringBuffer->clear();
-        functions::stringify(&vopts, adapter, keySlice);
-        bool valueMustDestroy = false;
-        AqlValue valueResult = executeSimpleExpression(
-            ctx, calObjNode.getValue(), valueMustDestroy, false);
-        AqlValueGuard valueGuard(valueResult, valueMustDestroy);
-        AqlValueMaterializer valueMat(&vopts);
-        mergeKeySlice(*stringBuffer, valueMat.slice(valueResult));
-      } else {
-        TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
-        ast::ObjectElementNode objElem(member);
-        bool localMustDestroy = false;
-        AqlValue result = executeSimpleExpression(ctx, objElem.getValue(),
-                                                  localMustDestroy, false);
-        AqlValueGuard guard(result, localMustDestroy);
-        AqlValueMaterializer materializer(&vopts);
-        mergeKeySlice(std::string(member->getStringView()),
-                      materializer.slice(result));
-      }
+  bool const hasSplice = astNodeObjectLiteralHasObjectSplice(node);
+  bool const mustCheckUniqueness = (!hasSplice && node->mustCheckUniqueness());
+
+  auto stringBuffer = ThreadLocalStringLeaser::lease();
+  arangodb::velocypack::StringSink adapter(stringBuffer.get());
+
+  // helper: insert or overwrite entry
+  auto addOrUpdateEntry = [&](std::string key, AqlValue value,
+                              bool valueMustDestroy) {
+    auto it = keyToIndex.find(key);
+
+    if (it == keyToIndex.end()) {
+      // new key
+      size_t const pos = entries.size();
+      keyToIndex.emplace(key, pos);
+      entries.emplace_back(
+          ObjectEntry{std::move(key), value, valueMustDestroy});
+      return;
     }
 
-    auto builder = ThreadLocalBuilderLeaser::lease();
-    builder->openObject();
-    for (std::string const& k : keyOrder) {
-      auto it = keyToSlot.find(k);
-      TRI_ASSERT(it != keyToSlot.end());
-      builder->add(VPackValue(k));
-      builder->add(VPackSlice(valueBuffers[it->second].data()));
+    // duplicate handling
+    if (mustCheckUniqueness) {
+      // first key wins
+      if (valueMustDestroy) {
+        value.destroy();
+      }
+      return;
     }
-    builder->close();
-    mustDestroy = true;
-    return AqlValue(builder->slice(), builder->size());
-  }
 
-  // unordered set for tracking unique object keys
-  containers::FlatHashSet<std::string> keys;
-  bool const mustCheckUniqueness = node->mustCheckUniqueness();
+    // overwrite semantics (splice semantics)
+    ObjectEntry& existing = entries[it->second];
 
-  auto builder = ThreadLocalBuilderLeaser::lease();
-  builder->openObject();
+    if (existing.mustDestroy) {
+      existing.value.destroy();
+    }
 
-  auto buffer = ThreadLocalStringLeaser::lease();
-  arangodb::velocypack::StringSink adapter(buffer.get());
+    existing.value = value;
+    existing.mustDestroy = valueMustDestroy;
+  };
 
+  // helper: evaluate node
+  auto evaluateNode = [&](AstNode const* n,
+                          bool& localMustDestroy) -> AqlValue {
+    return executeSimpleExpression(ctx, n, localMustDestroy, false);
+  };
+
+  // main object member loop
   for (size_t i = 0; i < n; ++i) {
     AstNode const* member = node->getMemberUnchecked(i);
 
-    // process attribute key, taking into account duplicates
-    if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-      bool localMustDestroy;
-      ast::CalculatedObjectElementNode calObjNode(member);
-      AqlValue result = executeSimpleExpression(ctx, calObjNode.getKey(),
-                                                localMustDestroy, false);
-      AqlValueGuard guard(result, localMustDestroy);
+    // OBJECT SPLICE
+    if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+      TRI_ASSERT(hasSplice);
 
-      // make sure key is a string, and convert it if not
+      bool localMustDestroy = false;
+
+      AqlValue spliceValue =
+          evaluateNode(member->getMemberUnchecked(0), localMustDestroy);
+
+      AqlValueGuard spliceGuard(spliceValue, localMustDestroy);
+
+      if (!spliceValue.isObject()) {
+        continue;
+      }
+
       AqlValueMaterializer materializer(&vopts);
-      VPackSlice slice = materializer.slice(result);
+      VPackSlice slice = materializer.slice(spliceValue);
 
-      buffer->clear();
-      functions::stringify(&vopts, adapter, slice);
+      for (VPackObjectIterator it(slice, /*sequential*/ true); it.valid();
+           it.next()) {
+        // materialize attribute value into independent AqlValue
+        AqlValue copiedValue(it.value());
 
-      if (mustCheckUniqueness) {
-        // prevent duplicate keys from being used
-        auto it = keys.find(*buffer);
-
-        if (it != keys.end()) {
-          // duplicate key
-          continue;
-        }
-
-        // unique key
-        builder->add(VPackValue(*buffer));
-        if (i != n - 1) {
-          // track usage of key
-          keys.emplace(*buffer);
-        }
-      } else {
-        builder->add(VPackValue(*buffer));
+        addOrUpdateEntry(it.key().copyString(), copiedValue, false);
       }
 
-      // value
-      member = calObjNode.getValue();
-    } else {
-      TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
-
-      if (mustCheckUniqueness) {
-        std::string key(member->getString());
-
-        // track each individual object key
-        auto it = keys.find(key);
-
-        if (it != keys.end()) {
-          // duplicate key
-          continue;
-        }
-
-        // unique key
-        builder->add(VPackValue(key));
-        if (i != n - 1) {
-          // track usage of key
-          keys.emplace(std::move(key));
-        }
-      } else {
-        builder->add(VPackValue(member->getStringView()));
-      }
-
-      // value
-      member = ast::ObjectElementNode(member).getValue();
+      continue;
     }
 
-    // add the attribute value
-    bool localMustDestroy;
-    AqlValue result =
-        executeSimpleExpression(ctx, member, localMustDestroy, false);
-    AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&vopts, *builder.get(), /*allowUnindexed*/ false);
+    // CALCULATED OBJECT ELEMENT
+    if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      ast::CalculatedObjectElementNode calObjNode(member);
+
+      // evaluate key
+      bool keyMustDestroy = false;
+
+      AqlValue keyResult = evaluateNode(calObjNode.getKey(), keyMustDestroy);
+
+      AqlValueGuard keyGuard(keyResult, keyMustDestroy);
+
+      AqlValueMaterializer keyMaterializer(&vopts);
+      VPackSlice keySlice = keyMaterializer.slice(keyResult);
+
+      stringBuffer->clear();
+      functions::stringify(&vopts, adapter, keySlice);
+
+      // evaluate value
+      bool valueMustDestroy = false;
+
+      AqlValue valueResult =
+          evaluateNode(calObjNode.getValue(), valueMustDestroy);
+
+      addOrUpdateEntry(*stringBuffer, valueResult, valueMustDestroy);
+
+      continue;
+    }
+
+    // NORMAL OBJECT ELEMENT
+    TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+
+    ast::ObjectElementNode objElem(member);
+
+    bool valueMustDestroy = false;
+
+    AqlValue valueResult = evaluateNode(objElem.getValue(), valueMustDestroy);
+
+    addOrUpdateEntry(std::string(member->getStringView()), valueResult,
+                     valueMustDestroy);
+  }
+
+  // build final VPack object
+  auto builder = ThreadLocalBuilderLeaser::lease();
+
+  builder->openObject();
+
+  for (auto& entry : entries) {
+    builder->add(VPackValue(entry.key));
+
+    entry.value.toVelocyPack(&vopts, *builder.get(),
+                             /*allowUnindexed*/ false);
   }
 
   builder->close();
 
-  mustDestroy = true;  // AqlValue contains builder contains dynamic data
+  // cleanup temporary owned values
+  for (auto& entry : entries) {
+    if (entry.mustDestroy) {
+      entry.value.destroy();
+    }
+  }
+
+  mustDestroy = true;
 
   return AqlValue(builder->slice(), builder->size());
 }

@@ -653,8 +653,6 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> object_element;
 %type <strval> object_element_name;
 %type <intval> array_filter_operator;
-%type <node> optional_parenthesized_object_spread_suffix;
-%type <node> parenthesized_object_spread_suffix_list;
 %type <intval> array_map_operator;
 %type <node> optional_array_filter;
 %type <node> optional_array_limit;
@@ -2359,30 +2357,6 @@ array_element:
     }
   ;
 
-// JavaScript-style grouped object spreads: RETURN (...x, ...y)
-optional_parenthesized_object_spread_suffix:
-    /* empty */ {
-      $$ = nullptr;
-    }
-  | parenthesized_object_spread_suffix_list {
-      $$ = nullptr;
-    }
-  ;
-
-  
-parenthesized_object_spread_suffix_list:
-    T_COMMA T_ELLIPSIS expression {
-      auto x = parser->ast()->createNodeObjectSplice($3);
-      parser->pushObjectSplice(x);
-      $$ = nullptr;
-    }
-  | parenthesized_object_spread_suffix_list T_COMMA T_ELLIPSIS expression {
-      auto x = parser->ast()->createNodeObjectSplice($4);
-      parser->pushObjectSplice(x);
-      $$ = nullptr;
-    }
-  ;
-
 for_options:
     /* empty */ {
       $$ = nullptr;
@@ -2550,8 +2524,6 @@ object_element:
       parser->pushObjectElement($2, $5);
     }
   | T_ELLIPSIS expression {
-      // object spread (prefix `...` like JavaScript; postfix `expr...` is
-      // reserved for arrays and would shift/reduce-conflict with { a } keys)
       auto x = parser->ast()->createNodeObjectSplice($2);
       parser->pushObjectSplice(x);
     }
@@ -2754,15 +2726,7 @@ reference:
         $$ = $2;
       }
     }
-  | T_OPEN T_ELLIPSIS expression {
-      // grouped object spread, e.g. RETURN (...x, ...y) — same AST as { ...x, ...y }
-      auto node = parser->ast()->createNodeObject();
-      parser->pushStack(node);
-      auto x = parser->ast()->createNodeObjectSplice($3);
-      parser->pushObjectSplice(x);
-    } optional_parenthesized_object_spread_suffix T_CLOSE {
-      $$ = static_cast<AstNode*>(parser->popStack());
-    }
+  
   | T_OPEN {
       parser->lazyConditions().flushAssignments();
 
