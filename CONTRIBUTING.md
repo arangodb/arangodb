@@ -324,10 +324,12 @@ Debian-based Linux is recommended. Dependencies:
 - `cmake` (at least 3.21)
 - `libssl-dev`
 - `libstdc++-14-dev`
+- `bison`
+- `flex`
 
 Dependencies for a Fedora-based distribution:
 ```
-dnf install clang-19 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel
+dnf install clang-19 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel bison flex
 ```
 
 After installing, follow the general build steps above.
