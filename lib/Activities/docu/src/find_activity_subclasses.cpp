@@ -1,5 +1,6 @@
 #include "find_activity_subclasses.h"
 
+#include "sources.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclTemplate.h"
@@ -9,11 +10,9 @@
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Basic/SourceManager.h"
-#include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <filesystem>
 #include <memory>
 #include <string>
 #include <system_error>
@@ -246,80 +245,11 @@ class ActivityCallback : public MatchFinder::MatchCallback {
   std::unordered_set<std::string> _seen;
 };
 
-/**
- * Route a header path to its sibling translation-unit source.
- *
- * Headers aren't in compile_commands.json, so ClangTool needs a `.cpp`/
- * `.cc`/`.cxx` that includes them. If no sibling exists or the input is
- * already a TU, `p` is returned unchanged.
- */
-auto resolve_source_file(std::filesystem::path const& p)
-    -> std::filesystem::path {
-  auto ext = p.extension().string();
-  if (ext != ".h" && ext != ".hpp" && ext != ".hxx") return p;
-  for (auto const* candExt : {".cpp", ".cc", ".cxx"}) {
-    auto candidate = p;
-    candidate.replace_extension(candExt);
-    if (std::filesystem::is_regular_file(candidate)) return candidate;
-  }
-  return p;
-}
-
-/**
- * The compile database plus the list of source files to feed to ClangTool.
- */
-struct Sources {
-  std::unique_ptr<CompilationDatabase> db;
-  std::vector<std::string> files;
-};
-
-/**
- * Resolve `path_name` (a file or a directory) into a Sources payload.
- *
- * Returns:
- *   - nullopt when `path_name` is neither a regular file nor a directory.
- *   - Sources with `db == nullptr` when no compile_commands.json was found.
- *   - Sources with `files` empty when no project sources matched.
- */
-auto get_sources(std::string const& path_name) -> std::optional<Sources> {
-  namespace fs = std::filesystem;
-
-  auto ec = std::error_code{};
-  auto path = fs::path(path_name);
-  if (!fs::exists(path, ec) || ec) return {};
-
-  if (fs::is_directory(path)) {
-    auto err = std::string{};
-    auto db = CompilationDatabase::autoDetectFromDirectory(path_name, err);
-    if (!db) return Sources{};
-
-    auto prefix = fs::canonical(path).string();
-    if (!prefix.empty() && prefix.back() != '/') prefix += '/';
-    auto files = std::vector<std::string>{};
-    for (auto const& file : db->getAllFiles()) {
-      if (file.starts_with(prefix) && fs::is_regular_file(file)) {
-        files.push_back(file);
-      }
-    }
-    return Sources{.db = std::move(db), .files = files};
-
-  } else if (fs::is_regular_file(path)) {
-    auto source = resolve_source_file(fs::canonical(path));
-    auto err = std::string{};
-    auto db = CompilationDatabase::autoDetectFromSource(source.string(), err);
-    if (!db) return Sources{};
-    return Sources{.db = std::move(db), .files = {source.string()}};
-
-  } else {
-    return Sources{};
-  }
-}
-
 }  // namespace
 
 auto find_all_activities(std::string const& path)
     -> std::vector<ActivityDeclaration> {
-  auto maybe_sources = get_sources(path);
+  auto maybe_sources = sources::get_sources(path);
   if (not maybe_sources.has_value()) {
     std::cerr << "Cannot find directory or regular file at path " << path
               << std::endl;
