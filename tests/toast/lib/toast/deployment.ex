@@ -89,6 +89,18 @@ defmodule Toast.Deployment do
 
     @enforce_keys [:id, :role, :port, :endpoint]
     defstruct [:id, :role, :port, :endpoint, :arango_id, :server_dir]
+
+    defimpl Inspect do
+      import Inspect.Algebra
+
+      def inspect(server, _opts) do
+        parts =
+          [server.id, server.endpoint, server.arango_id]
+          |> Toast.Utils.compact()
+
+        concat(["#Toast.Deployment.ServerInfo<", fold_doc(parts, &glue/2), ">"])
+      end
+    end
   end
 
   @type mode :: :single_server | :cluster
@@ -684,5 +696,43 @@ defmodule Toast.Deployment do
       String.starts_with?(mod_str, "Elixir.Toast.Deployment")
     end)
     |> Enum.take(10)
+  end
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    def inspect(deployment, opts) do
+      header =
+        fold_doc(
+          [deployment.id, concat("protocol: ", to_doc(deployment.protocol, opts))],
+          &glue/2
+        )
+
+      Map.values(deployment.servers)
+      |> Enum.sort_by(& &1.id)
+      |> case do
+        [] ->
+          concat(["#Toast.Deployment<", header, ">"])
+
+        servers ->
+          id_width = servers |> Enum.map(&String.length(&1.id)) |> Enum.max()
+
+          server_lines =
+            Enum.map(servers, fn srv ->
+              id_col = String.pad_trailing(srv.id, id_width)
+              line = "  #{id_col}  #{srv.endpoint}"
+              if srv.arango_id, do: line <> "  " <> srv.arango_id, else: line
+            end)
+
+          concat([
+            "#Toast.Deployment<",
+            header,
+            line(),
+            Enum.join(server_lines, "\n"),
+            line(),
+            ">"
+          ])
+      end
+    end
   end
 end
