@@ -232,10 +232,11 @@ inline bool isFactoryAStringScaling(std::string_view factoryString) {
 /// In scaling mode, the factory string can be defined as temaplte
 /// e.g. "IVF{}_HNSW32,SQ8" and the {} will be replaced by the resolved
 /// nLists value
-inline std::string resolveFactoryString(std::string const& factoryString,
+inline std::string resolveFactoryString(std::string factoryString,
                                         std::size_t nlists) {
   TRI_ASSERT(factoryString.find("{}") != std::string_view::npos);
-  return std::vformat(factoryString, std::make_format_args(nlists));
+  return factoryString.replace(factoryString.find("{}"), 2,
+                               std::to_string(nlists));
 }
 
 struct UserVectorIndexDefinition {
