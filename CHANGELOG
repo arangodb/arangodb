@@ -1,6 +1,9 @@
 3.12.9.2 (2026-XX-XX)
 ---------------------
 
+* Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
+  dependencies.
+
 * Updated ArangoDB Starter to v0.19.22.
 
 * Update node modules:
@@ -17,6 +20,8 @@
 ---------------------
 
 * Rebuilt included rclone v1.65.2 with go1.25.9 and non-vulnerable dependencies.
+
+* Updated ArangoDB Starter to v0.19.21.
 
 * Upgraded OpenSSL to 3.5.6.
 
