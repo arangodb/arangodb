@@ -941,6 +941,7 @@ License Id: -
 
 * Name: @hapi/hoek
 * Version: 8.5.1
+* Project Home: <https://github.com/hapijs/hoek>
 * License: <https://raw.githubusercontent.com/hapijs/hoek/master/LICENSE.md>
 * License Name: BSD-style 3-Clause License
 * License Id: BSD-3-Clause
@@ -985,6 +986,8 @@ License Id: -
 
 * Name: accepts
 * Version: 1.3.8
+* Project Home: <https://github.com/jshttp/accepts>
+* License: <https://raw.githubusercontent.com/jshttp/accepts/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -993,6 +996,7 @@ License Id: -
 * Name: ajv
 * Version: 8.18.0
 * Project Home: <https://ajv.js.org>
+* License: <https://raw.githubusercontent.com/ajv-validator/ajv/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1000,6 +1004,7 @@ License Id: -
 
 * Name: ansi_up
 * Version: 5.2.1
+* Project Home: <https://github.com/drudru/ansi_up>
 * License: <https://raw.githubusercontent.com/drudru/ansi_up/main/LICENSE>
 * License Name: MIT License
 * License Id: MIT
@@ -1017,6 +1022,8 @@ License Id: -
 
 * Name: ansi-regex
 * Version: 2.1.1
+* Project Home: <https://github.com/chalk/ansi-regex>
+* License: <https://raw.githubusercontent.com/chalk/ansi-regex/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1024,6 +1031,8 @@ License Id: -
 
 * Name: ansi-styles
 * Version: 2.2.1
+* Project Home: <https://github.com/chalk/ansi-styles>
+* License: <https://raw.githubusercontent.com/chalk/ansi-styles/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1040,6 +1049,8 @@ License Id: -
 
 * Name: argparse
 * Version: 1.0.10
+* Project Home: <https://github.com/nodeca/argparse>
+* License: <https://raw.githubusercontent.com/nodeca/argparse/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1047,6 +1058,7 @@ License Id: -
 
 * Name: assertion-error
 * Version: 1.1.0
+* Project Home: <https://github.com/chaijs/assertion-error>
 * License: <https://raw.githubusercontent.com/chaijs/assertion-error/main/LICENSE>
 * License Name: MIT License
 * License Id: MIT
@@ -1064,6 +1076,7 @@ License Id: -
 
 * Name: balanced-match
 * Version: 4.0.3
+* Project Home: <https://github.com/juliangruber/balanced-match>
 * License: <https://raw.githubusercontent.com/juliangruber/balanced-match/master/LICENSE.md>
 * License Name: MIT License
 * License Id: MIT
@@ -1072,6 +1085,7 @@ License Id: -
 
 * Name: brace-expansion
 * Version: 5.0.5
+* Project Home: <https://github.com/juliangruber/brace-expansion>
 * License: <https://raw.githubusercontent.com/juliangruber/brace-expansion/main/LICENSE>
 * License Name: MIT License
 * License Id: MIT
@@ -1107,6 +1121,8 @@ License Id: -
 
 * Name: chalk
 * Version: 1.1.3
+* Project Home: <https://github.com/chalk/chalk>
+* License: <https://raw.githubusercontent.com/chalk/chalk/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1114,6 +1130,8 @@ License Id: -
 
 * Name: content-disposition
 * Version: 0.5.4
+* Project Home: <https://github.com/jshttp/content-disposition>
+* License: <https://raw.githubusercontent.com/jshttp/content-disposition/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1121,6 +1139,8 @@ License Id: -
 
 * Name: content-type
 * Version: 1.0.5
+* Project Home: <https://raw.githubusercontent.com/jshttp/content-disposition/refs/heads/master/LICENSE>
+* License: <https://raw.githubusercontent.com/jshttp/content-type/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1145,6 +1165,8 @@ License Id: -
 
 * Name: depd
 * Version: 1.1.2
+* Project Home: <https://github.com/dougwilson/nodejs-depd>
+* License: <https://raw.githubusercontent.com/dougwilson/nodejs-depd/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1152,6 +1174,7 @@ License Id: -
 
 * Name: diff
 * Version: 8.0.3
+* Project Home: <https://github.com/kpdecker/jsdiff>
 * License: <https://raw.githubusercontent.com/kpdecker/jsdiff/master/LICENSE>
 * License Name: BSD-style 3-Clause License
 * License Id: BSD-3-Clause
@@ -1205,6 +1228,8 @@ License Id: -
 
 * Name: escape-string-regexp
 * Version: 1.0.5
+* Project Home: <https://github.com/sindresorhus/escape-string-regexp>
+* License: <https://raw.githubusercontent.com/sindresorhus/escape-string-regexp/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1213,6 +1238,7 @@ License Id: -
 * Name: esprima
 * Version: 4.0.1
 * Project Home: <http://esprima.org>
+* License: <https://raw.githubusercontent.com/jquery/esprima/refs/heads/main/LICENSE.BSD>
 * License Name: BSD-style 2-Clause License
 * License Id: BSD-2-Clause
 
@@ -1221,6 +1247,7 @@ License Id: -
 * Name: esutils
 * Version: 2.0.3
 * Project Home: <https://github.com/estools/esutils>
+* License: <https://raw.githubusercontent.com/estools/esutils/refs/heads/master/LICENSE.BSD>
 * License Name: BSD-style 2-Clause License
 * License Id: BSD-2-Clause
 
@@ -1229,6 +1256,7 @@ License Id: -
 * Name: extendible
 * Version: 0.1.1
 * Project Home: <https://github.com/bigpipe/extendible>
+* License: <https://github.com/bigpipe/extendible#license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1307,6 +1335,8 @@ License Id: -
 
 * Name: has-ansi
 * Version: 2.0.0
+* Project Home: <https://github.com/chalk/has-ansi>
+* License: <https://raw.githubusercontent.com/chalk/has-ansi/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1314,6 +1344,8 @@ License Id: -
 
 * Name: has-flag
 * Version: 4.0.0
+* Project Home: <https://github.com/chalk/has-ansi>
+* License: <https://raw.githubusercontent.com/chalk/has-ansi/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1348,6 +1380,8 @@ License Id: -
 
 * Name: http-errors
 * Version: 1.8.0
+* Project Home: <https://github.com/jshttp/http-errors>
+* License: <https://raw.githubusercontent.com/jshttp/http-errors/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1357,6 +1391,8 @@ License Id: -
 * Version: 0.3.7
 * Project Home: <http://pksunkara.github.com/inflect>
 * License: <https://raw.githubusercontent.com/pksunkara/inflect/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### iconv-lite
 
@@ -1371,6 +1407,7 @@ License Id: -
 
 * Name: inherits
 * Version: 2.0.4
+* Project Home: <https://github.com/isaacs/inherits>
 * License: <https://raw.githubusercontent.com/isaacs/inherits/main/LICENSE.md>
 * License Name: ISC
 * License Id: ISC
@@ -1379,6 +1416,8 @@ License Id: -
 
 * Name: is-wsl
 * Version: 1.1.0
+* Project Home: <https://github.com/sindresorhus/is-wsl>
+* License: <https://raw.githubusercontent.com/sindresorhus/is-wsl/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1386,6 +1425,7 @@ License Id: -
 
 * Name: isemail
 * Version: 3.2.0
+* Project Home: <https://github.com/hapijs/isemail>
 * License: <https://raw.githubusercontent.com/hapijs/isemail/master/LICENSE>
 * License Name: BSD-style 3-Clause License
 * License Id: BSD-3-Clause
@@ -1413,6 +1453,7 @@ License Id: -
 * Name: joi-to-json-schema
 * Version: 4.0.1
 * Project Home: <https://github.com/lightsofapollo/joi-to-json-schema>
+* License: <https://github.com/lightsofapollo/joi-to-json-schema#license>
 * License Name: Apache 2 License
 * License Id: Apache2
 
@@ -1420,6 +1461,8 @@ License Id: -
 
 * Name: js-tokens
 * Version: 3.0.2
+* Project Home: <https://github.com/lydell/js-tokens>
+* License: <https://raw.githubusercontent.com/lydell/js-tokens/refs/heads/main/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1428,6 +1471,7 @@ License Id: -
 * Name: js-yaml
 * Version: 3.14.2
 * Project Home: <https://github.com/nodeca/js-yaml>
+* License: <https://raw.githubusercontent.com/nodeca/js-yaml/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1445,6 +1489,7 @@ License Id: -
 * Name: lodash
 * Version: 4.18.1
 * Project Home: <https://lodash.com/>
+* License: <https://raw.githubusercontent.com/lodash/lodash/refs/heads/main/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1452,6 +1497,7 @@ License Id: -
 
 * Name: lru-cache
 * Version: 6.0.0
+* Project Home: <https://github.com/isaacs/node-lru-cache>
 * License: <https://raw.githubusercontent.com/isaacs/node-lru-cache/main/LICENSE.md>
 * License Name: ISC
 * License Id: ISC
@@ -1469,6 +1515,8 @@ License Id: -
 
 * Name: media-typer
 * Version: 0.3.0
+* Project Home: <https://github.com/jshttp/media-typer>
+* License: <https://raw.githubusercontent.com/jshttp/media-typer/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1476,6 +1524,8 @@ License Id: -
 
 * Name: mime-db
 * Version: 1.52.0
+* Project Home: <https://github.com/jshttp/mime-db>
+* License: <https://raw.githubusercontent.com/jshttp/mime-db/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1483,6 +1533,8 @@ License Id: -
 
 * Name: mime-types
 * Version: 2.1.35
+* Project Home: <https://raw.githubusercontent.com/jshttp/mime-db/refs/heads/master/LICENSE>
+* License: <https://raw.githubusercontent.com/jshttp/mime-types/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1490,6 +1542,7 @@ License Id: -
 
 * Name: minimatch
 * Version: 10.2.3
+* Project Home: <https://github.com/isaacs/minimatch>
 * License: <https://raw.githubusercontent.com/isaacs/minimatch/main/LICENSE.md>
 * License Name: BlueOak-1.0.0
 * License Id: BlueOak-1.0.0
@@ -1498,6 +1551,8 @@ License Id: -
 
 * Name: ms
 * Version: 2.1.3
+* Project Home: <https://github.com/vercel/ms>
+* License: <https://raw.githubusercontent.com/vercel/ms/refs/heads/main/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1505,6 +1560,8 @@ License Id: -
 
 * Name: negotiator
 * Version: 0.6.3
+* Project Home: <https://github.com/jshttp/negotiator>
+* License: <https://raw.githubusercontent.com/jshttp/negotiator/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1521,6 +1578,8 @@ License Id: -
 
 * Name: node-netstat
 * Version: 1.8.0
+* Project Home: <https://github.com/danielkrainas/node-netstat>
+* License: <https://raw.githubusercontent.com/danielkrainas/node-netstat/refs/heads/master/UNLICENSE>
 * License Name: Unlicense
 * License Id: Unlicense
 
@@ -1537,6 +1596,7 @@ License Id: -
 
 * Name: parse-prometheus-text-format
 * Version: 1.1.1
+* Project Home: <https://github.com/yunyu/parse-prometheus-text-format>
 * License: <https://raw.githubusercontent.com/yunyu/parse-prometheus-text-format/master/LICENSE>
 * License Name: Apache 2 License
 * License Id: Apache-2.0
@@ -1546,6 +1606,7 @@ License Id: -
 * Name: punycode
 * Version: 2.3.0
 * Project Home: <https://mths.be/punycode>
+* License: <https://raw.githubusercontent.com/mathiasbynens/punycode.js/refs/heads/main/LICENSE-MIT.txt>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1562,6 +1623,8 @@ License Id: -
 
 * Name: range-parser
 * Version: 1.2.1
+* Project Home: <https://github.com/jshttp/range-parser>
+* License: <https://raw.githubusercontent.com/jshttp/range-parser/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1569,6 +1632,8 @@ License Id: -
 
 * Name: require-from-string
 * Version: 2.0.2
+* Project Home: <https://github.com/floatdrop/require-from-string>
+* License: <https://raw.githubusercontent.com/floatdrop/require-from-string/refs/heads/master/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1585,6 +1650,7 @@ License Id: -
 
 * Name: safer-buffer
 * Version: 2.1.2
+* Project Home: <https://github.com/ChALkeR/safer-buffer>
 * License: <https://raw.githubusercontent.com/ChALkeR/safer-buffer/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
@@ -1593,6 +1659,7 @@ License Id: -
 
 * Name: semver
 * Version: 7.5.4
+* Project Home: <https://github.com/npm/node-semver>
 * License: <https://raw.githubusercontent.com/npm/node-semver/main/LICENSE>
 * License Name: ISC
 * License Id: ISC
@@ -1610,6 +1677,7 @@ License Id: -
 
 * Name: shallow-equal
 * Version: 1.2.1
+* Project Home: <https://github.com/moroshko/shallow-equal>
 * License: <https://raw.githubusercontent.com/moroshko/shallow-equal/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
@@ -1663,6 +1731,7 @@ License Id: -
 
 * Name: sprintf-js
 * Version: 1.0.3
+* Project Home: <https://github.com/alexei/sprintf.js>
 * License: <https://raw.githubusercontent.com/alexei/sprintf.js/master/LICENSE>
 * License Name: BSD-style 3-Clause License
 * License Id: BSD-3-Clause
@@ -1680,6 +1749,8 @@ License Id: -
 
 * Name: statuses
 * Version: 1.5.0
+* Project Home: <https://github.com/jshttp/statuses>
+* License: <https://raw.githubusercontent.com/jshttp/statuses/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1687,6 +1758,8 @@ License Id: -
 
 * Name: strip-ansi
 * Version: 3.0.1
+* Project Home: <https://github.com/chalk/strip-ansi>
+* License: <https://raw.githubusercontent.com/chalk/strip-ansi/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1694,6 +1767,8 @@ License Id: -
 
 * Name: supports-color
 * Version: 2.0.0
+* Project Home: <https://github.com/chalk/supports-color>
+* License: <https://raw.githubusercontent.com/chalk/supports-color/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1701,6 +1776,8 @@ License Id: -
 
 * Name: supports-color
 * Version: 7.2.0
+* Project Home: <https://github.com/chalk/supports-color>
+* License: <https://raw.githubusercontent.com/chalk/supports-color/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1709,6 +1786,7 @@ License Id: -
 * Name: timezone
 * Version: 1.0.23
 * Project Home: <http://bigeasy.github.io/timezone>
+* License: <https://raw.githubusercontent.com/bigeasy/timezone/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1716,6 +1794,8 @@ License Id: -
 
 * Name: toidentifier
 * Version: 1.0.0
+* Project Home: <https://github.com/component/toidentifier>
+* License: <https://raw.githubusercontent.com/component/toidentifier/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1723,6 +1803,7 @@ License Id: -
 
 * Name: topo
 * Version: 3.0.3
+* Project Home: <https://github.com/hapijs/topo>
 * License: <https://raw.githubusercontent.com/hapijs/topo/master/LICENSE.md>
 * License Name: BSD-style 3-Clause License
 * License Id: BSD-3-Clause
@@ -1731,6 +1812,7 @@ License Id: -
 
 * Name: type-detect
 * Version: 4.1.0
+* Project Home: <https://github.com/chaijs/type-detect>
 * License: <https://raw.githubusercontent.com/chaijs/type-detect/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
@@ -1739,6 +1821,7 @@ License Id: -
 
 * Name: type-detect
 * Version: 0.1.1
+* Project Home: <https://github.com/chaijs/type-detect>
 * License: <https://raw.githubusercontent.com/chaijs/type-detect/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
@@ -1747,6 +1830,7 @@ License Id: -
 
 * Name: type-detect
 * Version: 1.0.0
+* Project Home: <https://github.com/chaijs/type-detect>
 * License: <https://raw.githubusercontent.com/chaijs/type-detect/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
@@ -1755,6 +1839,7 @@ License Id: -
 
 * Name: type-detect
 * Version: 4.0.8
+* Project Home: <https://github.com/chaijs/type-detect>
 * License: <https://raw.githubusercontent.com/chaijs/type-detect/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
@@ -1763,6 +1848,8 @@ License Id: -
 
 * Name: type-is
 * Version: 1.6.18
+* Project Home: <https://github.com/jshttp/type-is>
+* License: <https://raw.githubusercontent.com/jshttp/type-is/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1770,6 +1857,8 @@ License Id: -
 
 * Name: vary
 * Version: 1.1.2
+* Project Home: <https://github.com/jshttp/vary>
+* License: <https://raw.githubusercontent.com/jshttp/vary/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
@@ -1777,6 +1866,7 @@ License Id: -
 
 * Name: yallist
 * Version: 4.0.0
+* Project Home: <https://github.com/isaacs/yallist>
 * License: <https://raw.githubusercontent.com/isaacs/yallist/main/LICENSE.md>
 * License Name: ISC
 * License Id: ISC
