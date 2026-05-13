@@ -207,4 +207,18 @@ describe('Single Traversal Optimizer', function () {
     });
   });
 
+  describe('should not remove a filter when quantifiers differ', () => {
+    // NONE > 5 and ALL > 3 together constrain foo to (3, 5] on every edge.
+    // Neither condition implies the other; both must be kept.
+    it('on p.edges[*].foo NONE > 5 AND p.edges[*].foo ALL > 3', () => {
+      let query = `WITH @@vertices
+                     FOR v, e, p IN 1..2 OUTBOUND @start @@edges
+                     FILTER p.edges[*].foo NONE > 5
+                     FILTER p.edges[*].foo ALL > 3
+                     RETURN v._key`;
+
+      validateResult(query, bindVars);
+    });
+  });
+
 });
