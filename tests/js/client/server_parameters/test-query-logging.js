@@ -115,7 +115,7 @@ function QueryPermissionsSuite() {
         json: true,
         auth: {username: "test_user", password: "testi"},
       });
-      assertEqual(401, result.statusCode);
+      assertEqual(403, result.statusCode);
       let body = JSON.parse(result.body);
       assertTrue(body.error, body);
     },
@@ -163,7 +163,7 @@ function QueryPermissionsSuite() {
           json: true,
           auth: {username: "test_user", password: "testi"},
         });
-        assertEqual(401, result.statusCode);
+        assertEqual(403, result.statusCode);
         let body = JSON.parse(result.body);
         assertTrue(body.error, body);
       } finally {

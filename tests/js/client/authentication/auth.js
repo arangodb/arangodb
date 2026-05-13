@@ -1046,8 +1046,8 @@ function UnauthorizedAccesSuite() {
       assertFalse(res.parsedBody.hasOwnProperty("errorMessage"));
       assertEqual(res.parsedBody.result.name, "dbTest2");
       res = arango.GET_RAW("/_db/dbTest3/_api/database/current");
-      assertEqual(401, res.code);
-      assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
+      assertEqual(403, res.code);
+      assertEqual(res.parsedBody.errorMessage, "No read access to database.");
       res = arango.GET_RAW("/_db/dbTest4/_api/database/current");
       assertEqual(401, res.code);
       assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
