@@ -227,9 +227,7 @@ VPackValueType getNodeCompareType(AstNode const* node) noexcept {
     return VPackValueType::Object;
   }
 
-  // All other node types are non-constant expressions; subqueries
-  // trigger an assertion (pointer comparison in release builds).
-  TRI_ASSERT(node->type != NODE_TYPE_SUBQUERY);
+  // All other node types are non-constant expressions compared structurally.
   return VPackValueType::Custom;
 }
 

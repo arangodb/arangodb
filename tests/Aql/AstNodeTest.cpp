@@ -1274,6 +1274,57 @@ TEST_F(CompareAstNodesTest, quantifierDifferentKindsNotEqual) {
   EXPECT_NE(0, compare(all, none));
 }
 
+TEST_F(CompareAstNodesTest, quantifierAtLeastSameThresholdEqual) {
+  auto* al2a =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(2));
+  auto* al2b =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(2));
+  EXPECT_EQ(0, compare(al2a, al2b));
+}
+
+TEST_F(CompareAstNodesTest, quantifierAtLeastDifferentThresholdNotEqual) {
+  auto* al2 = _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(2));
+  auto* al3 = _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(3));
+  EXPECT_NE(0, compare(al2, al3));
+}
+
+TEST_F(CompareAstNodesTest, quantifierAtLeastNotEqualAll) {
+  auto* al2 = _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(2));
+  auto* all = _ast->createNodeQuantifier(Quantifier::Type::kAll);
+  EXPECT_NE(0, compare(al2, all));
+}
+
+// --- compareUtf8 flag propagation
+// -------------------------------------------------
+
+TEST_F(CompareAstNodesTest, stringCompareUtf8FlagPropagates) {
+  EXPECT_EQ(0, compare(strVal("abc"), strVal("abc"), /*utf8=*/true));
+  EXPECT_LT(compare(strVal("abc"), strVal("abd"), /*utf8=*/true), 0);
+  EXPECT_GT(compare(strVal("abd"), strVal("abc"), /*utf8=*/true), 0);
+}
+
+// --- IN / NIN with non-constant (structural) elements
+// -------------------------
+
+TEST_F(CompareAstNodesTest, inNonConstantElementsOrderIndependent) {
+  auto* x = makeVar("x");
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  ASSERT_LT(a->id, b->id);
+  auto* inAB = inOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
+  auto* inBA = inOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
+  EXPECT_EQ(0, compare(inAB, inBA));
+}
+
+TEST_F(CompareAstNodesTest, ninNonConstantElementsOrderIndependent) {
+  auto* x = makeVar("x");
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ninAB = ninOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
+  auto* ninBA = ninOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
+  EXPECT_EQ(0, compare(ninAB, ninBA));
+}
+
 // --- structural nodes of different AstNodeType
 // --------------------------------
 
