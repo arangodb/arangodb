@@ -1,6 +1,12 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-519: Vector index `factory` strings may now be combined with the scaling
+  `nLists` specification (previously rejected). A factory string can contain a
+  `{}` placeholder that is substituted per shard with the resolved nLists at
+  training time, e.g. `"IVF{}_HNSW32,SQ8"`. Fixed factory strings remain
+  supported and must agree with the resolved nLists, otherwise training fails.
+
 * COR-529: Track vector index training memory against the global resource
   monitor and fail with `TRI_ERROR_RESOURCE_LIMIT` instead of OOM-killing
   the process. New optional index parameter `numberOfDocsPerCentroid`
