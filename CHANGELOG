@@ -1,8 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* COR-528: Reserve Keywords for Join Operation added.
-
+* COR-528: Reserve keywords "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", and "OUTER_JOIN"
+  are introduced for JOIN operations.
+  
 * COR-469: Removed `ensureVertexCentricIndex` as it was just a wrapper around
   `ensureIndex` with direction parameters.
 
