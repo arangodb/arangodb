@@ -1327,7 +1327,8 @@ License Id: -
 
 * Name: graphql-sync
 * Version: 0.6.2-sync
-* Project Home: <https://github.com/arangodb/graphql-sync#readme>
+* Project Home: <https://www.npmjs.com/package/graphql-sync>
+* License: <https://www.npmjs.com/package/graphql-sync#license>
 * License Name: BSD-style 3-Clause License
 * License Id: BSD-3-Clause
 
