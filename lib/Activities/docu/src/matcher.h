@@ -1,3 +1,5 @@
+#pragma once
+
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 
 namespace matcher {

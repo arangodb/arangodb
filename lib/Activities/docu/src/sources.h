@@ -1,3 +1,5 @@
+#pragma once
+
 #include "clang/Tooling/CompilationDatabase.h"
 
 #include <memory>
