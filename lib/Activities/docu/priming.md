@@ -18,7 +18,10 @@ Intermediate representation of an activity (`ActivityDeclaration`):
 - pure functions instead of side effects (better readability and testability)
 - use `auto` as often as you can (also for fn definitions)
 - instantiate variables only when using them, as few mutations as possible
+- prefer one-shot construction over field-by-field assignment for structs
 - no one-letter variables
+- put if-blocks always in brackets
+- don't pass data through a function that doesn't operate on it
 - write short and concise documentation for every struct or function with
   /**
    * Short sentence explaining what it is (prefered one line)
