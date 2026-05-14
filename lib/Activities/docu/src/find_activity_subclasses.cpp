@@ -245,6 +245,26 @@ class ActivityCallback : public MatchFinder::MatchCallback {
   std::unordered_set<std::string> _seen;
 };
 
+auto matcher(ActivityCallback& callback) -> MatchFinder {
+  auto activity_subclass = cxxRecordDecl(isDerivedFrom(hasName(BASE_CLASS)),
+                                         unless(hasName(GUARDED_TEMPLATE)))
+                               .bind("activity_class");
+
+  auto type_filter =
+      hasType(hasUnqualifiedDesugaredType(recordType(hasDeclaration(anyOf(
+          activity_subclass,
+          classTemplateSpecializationDecl(
+              hasAnyName("::std::shared_ptr", "::std::unique_ptr"),
+              hasTemplateArgument(
+                  0, refersToType(hasDeclaration(activity_subclass)))))))));
+
+  auto finder = MatchFinder{};
+  finder.addMatcher(fieldDecl(type_filter).bind("decl"), &callback);
+  finder.addMatcher(varDecl(type_filter, unless(parmVarDecl())).bind("decl"),
+                    &callback);
+  return finder;
+}
+
 }  // namespace
 
 auto find_all_activities(std::string const& path)
@@ -270,23 +290,7 @@ auto find_all_activities(std::string const& path)
 
   auto out = std::vector<ActivityDeclaration>{};
   auto callback = ActivityCallback(out);
-
-  auto activity_subclass = cxxRecordDecl(isDerivedFrom(hasName(BASE_CLASS)),
-                                         unless(hasName(GUARDED_TEMPLATE)))
-                               .bind("activity_class");
-
-  auto type_filter =
-      hasType(hasUnqualifiedDesugaredType(recordType(hasDeclaration(anyOf(
-          activity_subclass,
-          classTemplateSpecializationDecl(
-              hasAnyName("::std::shared_ptr", "::std::unique_ptr"),
-              hasTemplateArgument(
-                  0, refersToType(hasDeclaration(activity_subclass)))))))));
-
-  auto finder = MatchFinder{};
-  finder.addMatcher(fieldDecl(type_filter).bind("decl"), &callback);
-  finder.addMatcher(varDecl(type_filter, unless(parmVarDecl())).bind("decl"),
-                    &callback);
+  auto finder = matcher(callback);
 
   auto tool = ClangTool(*sources.db, sources.files);
   tool.run(newFrontendActionFactory(&finder).get());
