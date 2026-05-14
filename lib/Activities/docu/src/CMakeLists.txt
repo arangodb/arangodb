@@ -1,4 +1,5 @@
 add_library(activity-finder STATIC
+  conversion.cpp
   matcher.cpp
   sources.cpp
   find_activity_subclasses.cpp)
