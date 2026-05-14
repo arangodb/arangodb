@@ -1,4 +1,5 @@
 add_library(activity-finder STATIC
+  matcher.cpp
   sources.cpp
   find_activity_subclasses.cpp)
 target_include_directories(activity-finder PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
