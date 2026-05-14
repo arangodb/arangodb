@@ -133,8 +133,11 @@ auto peel_one_template_arg(QualType qt) -> QualType {
  */
 auto collect_public_members(CXXRecordDecl const* record, ASTContext const& ctx)
     -> std::vector<Member> {
+  if (record == nullptr) {
+    return std::vector<Member>{};
+  }
+
   auto out = std::vector<Member>{};
-  if (record == nullptr) return out;
   for (auto const* field : record->fields()) {
     if (!is_public(field)) continue;
     out.push_back(Member{.name = field->getNameAsString(),
@@ -152,30 +155,14 @@ auto collect_public_members(CXXRecordDecl const* record, ASTContext const& ctx)
  * declaration's `field_types` is empty when the Data type is a dynamic
  * container or otherwise unresolvable.
  */
-auto build_activity_declaration(CXXRecordDecl const* rd, std::string owner_file,
-                                unsigned owner_line, ASTContext const& ctx,
-                                SourceManager const& sm)
-    -> std::optional<ActivityDeclaration> {
-  if (rd == nullptr) return std::nullopt;
+auto build_fields(CXXRecordDecl const* data_record, ASTContext const& ctx,
+                  SourceManager const& sm) -> std::vector<Struct> {
   // Primary class templates aren't usable as field/var types in well-formed
   // code, so the matcher almost never delivers one — guard anyway.
-  if (rd->getDescribedClassTemplate() != nullptr) return std::nullopt;
 
-  auto ad = ActivityDeclaration{};
-  ad.owner_file = std::move(owner_file);
-  ad.owner_line = owner_line;
-
-  auto data_type = find_guarded_data_type(rd, GUARDED_TEMPLATE);
-  if (data_type.isNull()) return ad;
-
-  ad.data_type = type_to_string(data_type, ctx, /*is_fully_qualified=*/true);
-
-  auto const* data_record = data_type->getAsCXXRecordDecl();
-  if (data_record == nullptr || is_std_record(data_record, sm)) return ad;
-
-  ad.field_types.push_back(
-      Struct{.name = data_record->getNameAsString(),
-             .fields = collect_public_members(data_record, ctx)});
+  auto fields = std::vector<Struct>{};
+  fields.push_back(Struct{.name = data_record->getNameAsString(),
+                          .fields = collect_public_members(data_record, ctx)});
 
   auto seen = std::unordered_set<std::string>{};
   seen.insert(data_record->getCanonicalDecl()->getQualifiedNameAsString());
@@ -190,11 +177,10 @@ auto build_activity_declaration(CXXRecordDecl const* rd, std::string owner_file,
     if (!seen.insert(nq).second) continue;
     auto members = collect_public_members(nested, ctx);
     if (members.empty()) continue;
-    ad.field_types.push_back(Struct{.name = nested->getNameAsString(),
-                                    .fields = std::move(members)});
+    fields.push_back(Struct{.name = nested->getNameAsString(),
+                            .fields = std::move(members)});
   }
-
-  return ad;
+  return fields;
 }
 
 /**
@@ -231,10 +217,33 @@ class ActivityCallback
     auto seen_key = path + ":" + std::to_string(line);
     if (!_seen.insert(std::move(seen_key)).second) return;
 
-    auto ad = build_activity_declaration(rd, std::move(path), line,
-                                         *result.Context, sm);
-    if (!ad) return;
-    _out.push_back(std::move(*ad));
+    // Primary class templates aren't usable as field/var types in well-formed
+    // code, so the matcher almost never delivers one — guard anyway.
+    if (rd->getDescribedClassTemplate() != nullptr) return;
+    auto data_type = find_guarded_data_type(rd, GUARDED_TEMPLATE);
+    if (data_type.isNull()) {
+      _out.push_back(ActivityDeclaration{.owner_file = std::move(path),
+                                         .owner_line = line});
+      return;
+    }
+
+    auto const* data_record = data_type->getAsCXXRecordDecl();
+    if (data_record == nullptr || is_std_record(data_record, sm)) {
+      _out.push_back(ActivityDeclaration{
+          .owner_file = std::move(path),
+          .owner_line = line,
+          .data_type = type_to_string(data_type, *result.Context,
+                                      /*is_fully_qualified=*/true)});
+      return;
+    }
+
+    auto fields = build_fields(data_record, *result.Context, sm);
+    _out.push_back(ActivityDeclaration{
+        .owner_file = std::move(path),
+        .owner_line = line,
+        .data_type = type_to_string(data_type, *result.Context,
+                                    /*is_fully_qualified=*/true),
+        .field_types = std::move(fields)});
   }
 
  private:
