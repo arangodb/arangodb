@@ -30,9 +30,9 @@ std::ostream& operator<<(std::ostream& os, ActivityDeclaration const& decl) {
   os << "ActivityDeclaration{.owner_file=\"" << decl.owner_file
      << "\", .owner_line=" << decl.owner_line << ", .data_type=\""
      << decl.data_type << "\", .field_types={";
-  for (size_t index = 0; index < decl.field_types.size(); ++index) {
+  for (size_t index = 0; index < decl.type_definition.size(); ++index) {
     if (index != 0) os << ", ";
-    os << decl.field_types[index];
+    os << decl.type_definition[index];
   }
   return os << "}}";
 }
@@ -82,7 +82,7 @@ TestCase const tests[] = {
                .owner_line = 521,
                .data_type =
                    "arangodb::transaction::activity::TransactionActivityData",
-               .field_types =
+               .type_definition =
                    std::vector<Struct>{
                        Struct{
                            .name = "TransactionActivityData",
@@ -99,6 +99,7 @@ TestCase const tests[] = {
                                           .type = "std::vector<"
                                                   "TransactionCollection>"},
                                }},
+                       Struct{.name = "TransactionId", .fields = {}},
                        Struct{.name = "TransactionCollection",
                               .fields =
                                   {
@@ -111,7 +112,7 @@ TestCase const tests[] = {
                                       Member{.name = "lockStatus",
                                              .type = "LockStatus"},
                                   }},
-                   },
+                       Struct{.name = "DataSourceId", .fields = {}}},
            });
      }},
     {"find_maintenance_activity",
@@ -122,7 +123,7 @@ TestCase const tests[] = {
                .owner_file = root + "/arangod/Cluster/ActionBase.h",
                .owner_line = 266,
                .data_type = "arangodb::maintenance::ActionDescription",
-               .field_types =
+               .type_definition =
                    std::vector<Struct>{Struct{.name = "ActionDescription",
                                               // TODO show all inspected fields
                                               .fields = {}}}});
@@ -134,7 +135,7 @@ TestCase const tests[] = {
                .owner_file = root + "/arangod/VocBase/Methods/Collections.cpp",
                .owner_line = 598,
                .data_type = "arangodb::activities::GenericActivityData",
-               .field_types = std::vector<Struct>{}});
+               .type_definition = std::vector<Struct>{}});
      }}};
 
 int main() {

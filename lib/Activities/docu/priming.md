@@ -21,6 +21,8 @@ Intermediate representation of an activity (`ActivityDeclaration`):
 - prefer one-shot construction over field-by-field assignment for structs
 - no one-letter variables
 - put if-blocks always in brackets
+- inline single-use temporaries
+- prefer std::views over bare loops
 - don't pass data through a function that doesn't operate on it
 - write short and concise documentation for every struct or function with
   /**
@@ -49,7 +51,7 @@ Intermediate representation of an activity (`ActivityDeclaration`):
 ## State
 - [x] first implementation with local tests
 - [ ] GenericActivityData content is also shown in field_types
-- [ ] show all data types recursively (including enums)
+- [x] show all data types recursively (including enums)
 - [ ] use inspectors for data members
 - [ ] improve GenericActivity output
 - [ ] convert the results to one markdown file (future session)

@@ -16,10 +16,10 @@ int main(int argc, char const** argv) {
   for (auto const& activity : results) {
     std::cout << activity.data_type << "  (" << activity.owner_file << ":"
               << activity.owner_line << ")  ";
-    if (activity.field_types.empty()) {
+    if (activity.type_definition.empty()) {
       std::cout << "dynamic (no statically known fields)";
     } else {
-      std::cout << activity.field_types.size() << " struct(s)";
+      std::cout << activity.type_definition.size() << " struct(s)";
     }
     std::cout << "\n";
   }
