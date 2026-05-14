@@ -3,6 +3,7 @@ project(activity-docs CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Pin to LLVM/Clang 19. Override at configure time with
 # -DClang_DIR=/usr/lib/llvm-XX/lib/cmake/clang if needed.

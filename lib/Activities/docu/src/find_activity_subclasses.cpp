@@ -1,6 +1,8 @@
 #include "find_activity_subclasses.h"
 
 #include "sources.h"
+#include "matcher.h"
+
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclTemplate.h"
@@ -8,7 +10,6 @@
 #include "clang/AST/QualTypeNames.h"
 #include "clang/AST/Type.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/raw_ostream.h"
@@ -19,17 +20,12 @@
 #include <unordered_set>
 #include <iostream>
 
+constexpr char const* GUARDED_TEMPLATE = "GuardedActivity";  // TODO
+
 using namespace clang;
-using namespace clang::ast_matchers;
 using namespace clang::tooling;
 
 namespace {
-
-constexpr char const* BASE_CLASS = "::arangodb::activities::Activity";
-constexpr char const* GUARDED_TEMPLATE = "GuardedActivity";
-// Internal plumbing in the Activity library itself (Registry, GuardedActivity,
-// ...) declares variables of concrete Activity types but isn't a real owner.
-constexpr char const* ACTIVITY_LIB_PATH = "/lib/Activities/";
 
 /**
  * Convert a clang QualType to a human-readable string.
@@ -160,9 +156,10 @@ auto build_activity_declaration(CXXRecordDecl const* rd, std::string owner_file,
                                 unsigned owner_line, ASTContext const& ctx,
                                 SourceManager const& sm)
     -> std::optional<ActivityDeclaration> {
-  if (rd == nullptr || !rd->hasDefinition()) return std::nullopt;
+  if (rd == nullptr) return std::nullopt;
+  // Primary class templates aren't usable as field/var types in well-formed
+  // code, so the matcher almost never delivers one — guard anyway.
   if (rd->getDescribedClassTemplate() != nullptr) return std::nullopt;
-  if (isa<ClassTemplatePartialSpecializationDecl>(rd)) return std::nullopt;
 
   auto ad = ActivityDeclaration{};
   ad.owner_file = std::move(owner_file);
@@ -207,26 +204,26 @@ auto build_activity_declaration(CXXRecordDecl const* rd, std::string owner_file,
  * Dedupes by `owner_file:owner_line`, so the same physical declaration isn't
  * reported across the many TUs that include the same header — but distinct
  * declarations of the same Activity class (e.g. a member field plus a
- * `make<T>` call site elsewhere) both survive. Declarations inside
- * `lib/Activities/` itself are skipped as internal plumbing.
+ * `make<T>` call site elsewhere) both survive. Location-based filtering
+ * (system headers, 3rdParty/, build outputs, Activity library internals) is
+ * applied in the matcher itself.
  */
-class ActivityCallback : public MatchFinder::MatchCallback {
+class ActivityCallback
+    : public clang::ast_matchers::MatchFinder::MatchCallback {
  public:
   explicit ActivityCallback(std::vector<ActivityDeclaration>& out)
       : _out(out) {}
 
-  auto run(MatchFinder::MatchResult const& result) -> void override {
+  auto run(clang::ast_matchers::MatchFinder::MatchResult const& result)
+      -> void override {
     auto const* decl = result.Nodes.getNodeAs<DeclaratorDecl>("decl");
     auto const* rd = result.Nodes.getNodeAs<CXXRecordDecl>("activity_class");
     if (decl == nullptr || rd == nullptr) return;
 
     auto const& sm = *result.SourceManager;
     auto loc = sm.getFileLoc(decl->getLocation());
-    if (!is_in_project(loc, sm)) return;
     auto path = sm.getFilename(loc).str();
     auto line = sm.getSpellingLineNumber(loc);
-    if (path.empty()) return;
-    if (path.find(ACTIVITY_LIB_PATH) != std::string::npos) return;
 
     // Dedupe by source location: the same declaration is visited across many
     // TUs, but distinct declarations of the same Activity class (e.g. a
@@ -244,26 +241,6 @@ class ActivityCallback : public MatchFinder::MatchCallback {
   std::vector<ActivityDeclaration>& _out;
   std::unordered_set<std::string> _seen;
 };
-
-auto matcher(ActivityCallback& callback) -> MatchFinder {
-  auto activity_subclass = cxxRecordDecl(isDerivedFrom(hasName(BASE_CLASS)),
-                                         unless(hasName(GUARDED_TEMPLATE)))
-                               .bind("activity_class");
-
-  auto type_filter =
-      hasType(hasUnqualifiedDesugaredType(recordType(hasDeclaration(anyOf(
-          activity_subclass,
-          classTemplateSpecializationDecl(
-              hasAnyName("::std::shared_ptr", "::std::unique_ptr"),
-              hasTemplateArgument(
-                  0, refersToType(hasDeclaration(activity_subclass)))))))));
-
-  auto finder = MatchFinder{};
-  finder.addMatcher(fieldDecl(type_filter).bind("decl"), &callback);
-  finder.addMatcher(varDecl(type_filter, unless(parmVarDecl())).bind("decl"),
-                    &callback);
-  return finder;
-}
 
 }  // namespace
 
@@ -290,9 +267,10 @@ auto find_all_activities(std::string const& path)
 
   auto out = std::vector<ActivityDeclaration>{};
   auto callback = ActivityCallback(out);
-  auto finder = matcher(callback);
+  auto finder = matcher::match(callback);
 
   auto tool = ClangTool(*sources.db, sources.files);
   tool.run(newFrontendActionFactory(&finder).get());
+
   return out;
 }
