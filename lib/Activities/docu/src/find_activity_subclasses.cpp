@@ -15,9 +15,11 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <memory>
+#include <ranges>
 #include <string>
 #include <system_error>
 #include <unordered_set>
+#include <vector>
 #include <iostream>
 
 constexpr char const* GUARDED_TEMPLATE = "GuardedActivity";  // TODO
@@ -26,6 +28,14 @@ using namespace clang;
 using namespace clang::tooling;
 
 namespace {
+
+/**
+ *Materialize a range into a vector
+ */
+template<std::ranges::input_range R>
+auto to_vector(R&& r) -> std::vector<std::ranges::range_value_t<R>> {
+  return {r.begin(), r.end()};
+}
 
 /**
  * Convert a clang QualType to a human-readable string.
@@ -128,60 +138,45 @@ auto peel_one_template_arg(QualType qt) -> QualType {
   return qt;
 }
 
-/**
- * Collect the public fields of a record into IR `Member`s.
- */
-auto collect_public_members(CXXRecordDecl const* record, ASTContext const& ctx)
-    -> std::vector<Member> {
-  if (record == nullptr) {
-    return std::vector<Member>{};
+struct TypeDefinition {
+  std::vector<Struct> types;
+  std::unordered_set<std::string> seen_types;
+
+  ASTContext const& ctx;
+  SourceManager const& sm;
+
+  auto add_field_recursively(CXXRecordDecl const* data_record) -> void {
+    if (not seen_types
+                .insert(
+                    data_record->getCanonicalDecl()->getQualifiedNameAsString())
+                .second)
+      return;
+
+    auto public_members = to_vector(
+        data_record->fields() | std::views::filter([this](FieldDecl const* f) {
+          return is_public(f) && is_in_project(f->getLocation(), sm);
+        }));
+
+    types.push_back(
+        Struct{.name = data_record->getNameAsString(),
+               .fields = to_vector(std::ranges::transform_view(
+                   std::views::all(public_members), [this](FieldDecl const* f) {
+                     return Member{
+                         .name = f->getNameAsString(),
+                         .type = type_to_string(f->getType(), ctx,
+                                                /*is_fully_qualified=*/false)};
+                   }))});
+
+    for (auto const& field : public_members) {
+      auto const* nested =
+          peel_one_template_arg(field->getType().getNonReferenceType())
+              ->getAsCXXRecordDecl();
+      if (nested != nullptr && !is_std_record(nested, sm)) {
+        add_field_recursively(nested);
+      }
+    }
   }
-
-  auto out = std::vector<Member>{};
-  for (auto const* field : record->fields()) {
-    if (!is_public(field)) continue;
-    out.push_back(Member{.name = field->getNameAsString(),
-                         .type = type_to_string(field->getType(), ctx,
-                                                /*is_fully_qualified=*/false)});
-  }
-  return out;
-}
-
-/**
- * Build an IR `ActivityDeclaration` from a matched Activity-subclass record.
- *
- * Returns nullopt for records that aren't real concrete activities (primary
- * templates, partial specializations, undefined classes). The returned
- * declaration's `field_types` is empty when the Data type is a dynamic
- * container or otherwise unresolvable.
- */
-auto build_fields(CXXRecordDecl const* data_record, ASTContext const& ctx,
-                  SourceManager const& sm) -> std::vector<Struct> {
-  // Primary class templates aren't usable as field/var types in well-formed
-  // code, so the matcher almost never delivers one — guard anyway.
-
-  auto fields = std::vector<Struct>{};
-  fields.push_back(Struct{.name = data_record->getNameAsString(),
-                          .fields = collect_public_members(data_record, ctx)});
-
-  auto seen = std::unordered_set<std::string>{};
-  seen.insert(data_record->getCanonicalDecl()->getQualifiedNameAsString());
-  for (auto const* field : data_record->fields()) {
-    if (!is_public(field)) continue;
-    auto inner = peel_one_template_arg(field->getType().getNonReferenceType());
-    auto const* nested = inner->getAsCXXRecordDecl();
-    if (nested == nullptr || is_std_record(nested, sm)) continue;
-    auto nloc = sm.getFileLoc(nested->getLocation());
-    if (!is_in_project(nloc, sm)) continue;
-    auto nq = nested->getCanonicalDecl()->getQualifiedNameAsString();
-    if (!seen.insert(nq).second) continue;
-    auto members = collect_public_members(nested, ctx);
-    if (members.empty()) continue;
-    fields.push_back(Struct{.name = nested->getNameAsString(),
-                            .fields = std::move(members)});
-  }
-  return fields;
-}
+};
 
 /**
  * MatchFinder callback: collects one ActivityDeclaration per match into the
@@ -198,7 +193,7 @@ class ActivityCallback
     : public clang::ast_matchers::MatchFinder::MatchCallback {
  public:
   explicit ActivityCallback(std::vector<ActivityDeclaration>& out)
-      : _out(out) {}
+      : _out_activities(out) {}
 
   auto run(clang::ast_matchers::MatchFinder::MatchResult const& result)
       -> void override {
@@ -215,21 +210,21 @@ class ActivityCallback
     // TUs, but distinct declarations of the same Activity class (e.g. a
     // member field plus a `make<T>` call site elsewhere) should both survive.
     auto seen_key = path + ":" + std::to_string(line);
-    if (!_seen.insert(std::move(seen_key)).second) return;
+    if (!_seen_activities.insert(std::move(seen_key)).second) return;
 
     // Primary class templates aren't usable as field/var types in well-formed
     // code, so the matcher almost never delivers one — guard anyway.
     if (rd->getDescribedClassTemplate() != nullptr) return;
     auto data_type = find_guarded_data_type(rd, GUARDED_TEMPLATE);
     if (data_type.isNull()) {
-      _out.push_back(ActivityDeclaration{.owner_file = std::move(path),
-                                         .owner_line = line});
+      _out_activities.push_back(ActivityDeclaration{
+          .owner_file = std::move(path), .owner_line = line});
       return;
     }
 
     auto const* data_record = data_type->getAsCXXRecordDecl();
     if (data_record == nullptr || is_std_record(data_record, sm)) {
-      _out.push_back(ActivityDeclaration{
+      _out_activities.push_back(ActivityDeclaration{
           .owner_file = std::move(path),
           .owner_line = line,
           .data_type = type_to_string(data_type, *result.Context,
@@ -237,18 +232,19 @@ class ActivityCallback
       return;
     }
 
-    auto fields = build_fields(data_record, *result.Context, sm);
-    _out.push_back(ActivityDeclaration{
+    auto type_definition = TypeDefinition{.ctx = *result.Context, .sm = sm};
+    type_definition.add_field_recursively(data_record);
+    _out_activities.push_back(ActivityDeclaration{
         .owner_file = std::move(path),
         .owner_line = line,
         .data_type = type_to_string(data_type, *result.Context,
                                     /*is_fully_qualified=*/true),
-        .field_types = std::move(fields)});
+        .type_definition = std::move(type_definition.types)});
   }
 
  private:
-  std::vector<ActivityDeclaration>& _out;
-  std::unordered_set<std::string> _seen;
+  std::vector<ActivityDeclaration>& _out_activities;
+  std::unordered_set<std::string> _seen_activities;
 };
 
 }  // namespace
