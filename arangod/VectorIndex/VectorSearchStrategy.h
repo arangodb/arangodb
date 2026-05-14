@@ -25,7 +25,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <string_view>
 
 #include "Inspection/Status.h"
 
@@ -53,59 +52,30 @@ enum class FilterMode : std::uint8_t {
   kDocument,
 };
 
+template<class Inspector>
+inline auto inspect(Inspector& f, FilterMode& x) {
+  return f.enumeration(x).values(FilterMode::kNone, "none",
+                                 FilterMode::kStoredValues, "storedValues",
+                                 FilterMode::kDocument, "document");
+}
+
 enum class ProjectionMode : std::uint8_t {
   kPassThroughId,
   kCovered,
   kDocument,
 };
 
+template<class Inspector>
+inline auto inspect(Inspector& f, ProjectionMode& x) {
+  return f.enumeration(x).values(ProjectionMode::kPassThroughId,
+                                 "pass-through-id", ProjectionMode::kCovered,
+                                 "covering", ProjectionMode::kDocument,
+                                 "document");
+}
+
 struct SearchStrategy {
   FilterMode filter{FilterMode::kNone};
   ProjectionMode projection{ProjectionMode::kPassThroughId};
 };
-
-inline std::string_view filterModeName(FilterMode m) noexcept {
-  switch (m) {
-    case FilterMode::kNone:
-      return "none";
-    case FilterMode::kStoredValues:
-      return "storedValues";
-    case FilterMode::kDocument:
-      return "document";
-  }
-  return "none";
-}
-
-inline FilterMode parseFilterMode(std::string_view name) noexcept {
-  if (name == "storedValues") {
-    return FilterMode::kStoredValues;
-  }
-  if (name == "document") {
-    return FilterMode::kDocument;
-  }
-  return FilterMode::kNone;
-}
-
-inline std::string_view projectionModeName(ProjectionMode m) noexcept {
-  switch (m) {
-    case ProjectionMode::kPassThroughId:
-      return "pass-through-id";
-    case ProjectionMode::kCovered:
-      return "covering";
-    case ProjectionMode::kDocument:
-      return "document";
-  }
-  return "pass-through-id";
-}
-
-inline ProjectionMode parseProjectionMode(std::string_view name) noexcept {
-  if (name == "covering") {
-    return ProjectionMode::kCovered;
-  }
-  if (name == "document") {
-    return ProjectionMode::kDocument;
-  }
-  return ProjectionMode::kPassThroughId;
-}
 
 }  // namespace arangodb::vector

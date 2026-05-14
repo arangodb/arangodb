@@ -44,13 +44,13 @@
 namespace arangodb::aql {
 
 namespace {
-static constexpr std::string_view kInVariableName{"inVariable"};
-static constexpr std::string_view kDistanceOutVariable{"distanceOutVariable"};
-static constexpr std::string_view kLimit{"limit"};
-static constexpr std::string_view kOffset{"offset"};
-static constexpr std::string_view kFilterMode{"filterMode"};
-static constexpr std::string_view kSearchParameters{"searchParameters"};
-static constexpr std::string_view kProjectionMode{"projectionMode"};
+constexpr std::string_view kInVariableName{"inVariable"};
+constexpr std::string_view kDistanceOutVariable{"distanceOutVariable"};
+constexpr std::string_view kLimit{"limit"};
+constexpr std::string_view kOffset{"offset"};
+constexpr std::string_view kFilterMode{"filterMode"};
+constexpr std::string_view kSearchParameters{"searchParameters"};
+constexpr std::string_view kProjectionMode{"projectionMode"};
 }  // namespace
 
 EnumerateNearVectorNode::EnumerateNearVectorNode(
@@ -276,9 +276,9 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
-  builder.add(kFilterMode, VPackValue(vector::filterModeName(_filterMode)));
-  builder.add(kProjectionMode,
-              VPackValue(vector::projectionModeName(_projectionMode)));
+
+  builder.add(kFilterMode, velocypack::serialize(_filterMode).slice());
+  builder.add(kProjectionMode, velocypack::serialize(_projectionMode).slice());
 
   builder.add(VPackValue(kSearchParameters));
   builder.add(velocypack::serialize(_searchParameters));
@@ -301,9 +301,11 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _limit(base.get(kLimit).getNumericValue<std::size_t>()),
       _offset(base.get(kOffset).getNumericValue<std::size_t>()),
       _filterMode(std::invoke([&] {
-        auto slice = base.get(kFilterMode);
-        return slice.isString() ? vector::parseFilterMode(slice.stringView())
-                                : vector::FilterMode::kNone;
+        vector::FilterMode mode{vector::FilterMode::kNone};
+        if (auto slice = base.get(kFilterMode); !slice.isNone()) {
+          velocypack::deserialize(slice, mode);
+        }
+        return mode;
       })) {
   std::string iid = base.get("index").get("id").copyString();
 
@@ -316,8 +318,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
 
   _index = collection()->indexByIdentifier(iid);
 
-  if (auto slice = base.get(kProjectionMode); slice.isString()) {
-    _projectionMode = vector::parseProjectionMode(slice.stringView());
+  if (auto slice = base.get(kProjectionMode); !slice.isNone()) {
+    velocypack::deserialize(slice, _projectionMode);
   }
 }
 
