@@ -76,13 +76,12 @@ function DuplicateConditionOptimizationSuite() {
       assertEqual([5, 6], res);
     },
 
-    // Non-constant single-element IN is not rewritten to ==.
-    testNonConstantSingleElementInNotRewritten: function () {
-      // NOOPT prevents constant-folding, so the RHS array is non-constant.
+    testSingleElementInRewrittenForLetBoundVar: function () {
       const q = `LET v = NOOPT(5) FOR doc IN ${cn} FILTER doc.value IN [v] RETURN doc.value`;
       assertEqual([5], query(q));
       const planStr = JSON.stringify(db._createStatement(q).explain().plan);
-      assertTrue(planStr.includes('"compare in"'), 'non-constant IN must not be rewritten');
+      assertFalse(planStr.includes('"compare in"'), 'single-element IN should be rewritten');
+      assertTrue(planStr.includes('"compare =="'), 'should use == after rewrite');
     },
 
     // --- false AND branch removal -------------------------------------------

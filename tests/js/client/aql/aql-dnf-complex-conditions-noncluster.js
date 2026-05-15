@@ -88,9 +88,10 @@ function MaxNumberOfConditionsSuite () {
     },
 
     testComplexConditionNoThresholdExceedsMemory : function () {
+      // Unique values per branch prevent dedup from shrinking the DNF expansion.
       let parts = [];
       for (let i = 0; i < 8; ++i) {
-        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
+        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar${i}' && doc.what NOT IN ['test${i}a', 'test${i}b', 'test${i}c'])`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
