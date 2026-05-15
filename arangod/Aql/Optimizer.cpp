@@ -435,29 +435,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
 namespace {
 
-bool willUseV8(ExecutionPlan const& plan) {
-  struct V8Checker : WalkerWorkerBase<ExecutionNode> {
-    bool before(ExecutionNode* n) override {
-      if (n->getType() == ExecutionNode::CALCULATION &&
-          static_cast<CalculationNode*>(n)->expression()->willUseV8()) {
-        result = true;
-        return true;
-      }
-      return false;
-    }
-    bool result{false};
-  } walker{};
-  plan.root()->walk(walker);
-  return walker.result;
-}
-
 void activateCallstackSplit(ExecutionPlan& plan) {
-  if (willUseV8(plan)) {
-    // V8 requires thread local context configuration, so we cannot
-    // use our thread based split solution...
-    return;
-  }
-
   auto const& options = plan.getAst()->query().queryOptions();
   struct CallstackSplitter : WalkerWorkerBase<ExecutionNode> {
     explicit CallstackSplitter(size_t maxNodes)

@@ -283,13 +283,6 @@ Result StandaloneCalculation::validateQuery(
     TRI_ASSERT(astRoot);
     TRI_ASSERT(astRoot->type == NODE_TYPE_ROOT);
 
-    // Forbid all V8 related stuff as it is not available on DBServers where
-    // analyzers run.
-    if (astRoot->willUseV8()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              absl::StrCat("V8 usage is forbidden", errorContext)};
-    }
-
     // no modification (as data access is forbidden) but to give more clear
     // error message
     if (ast->containsModificationNode()) {

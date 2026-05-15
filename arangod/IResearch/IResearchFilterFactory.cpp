@@ -4211,11 +4211,6 @@ Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
 Result FilterFactory::filter(irs::boolean_filter* filter,
                              FilterContext const& filterCtx,
                              aql::AstNode const& node) {
-  if (node.willUseV8()) {
-    return {TRI_ERROR_NOT_IMPLEMENTED,
-            "using V8 dependent function is not allowed in SEARCH statement"};
-  }
-
   const auto res = makeFilter(filter, filterCtx, node);
 
   if (res.fail()) {

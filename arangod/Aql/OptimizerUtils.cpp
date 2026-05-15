@@ -562,8 +562,6 @@ void captureNonConstExpression(Ast* ast, VarInfoMap const& varInfo,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  result._hasV8Expression |= e->willUseV8();
-
   VarSet innerVars;
   e->variables(innerVars);
 

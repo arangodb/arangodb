@@ -1818,18 +1818,9 @@ bool Expression::isDeterministic() {
   return (_type == ExpressionType::kJson || _node->isDeterministic());
 }
 
-bool Expression::willUseV8() {
-  TRI_ASSERT(_type != ExpressionType::kUnprocessed);
-  return (_type == ExpressionType::kSimple && _node->willUseV8());
-}
-
 bool Expression::canBeUsedInPrune(bool isOneShard, std::string& errorReason) {
   errorReason.clear();
 
-  if (willUseV8()) {
-    errorReason = "JavaScript expressions cannot be used inside PRUNE";
-    return false;
-  }
   if (!canRunOnDBServer(isOneShard)) {
     errorReason =
         "PRUNE expression contains a function that cannot be used on "

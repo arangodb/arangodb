@@ -98,7 +98,6 @@ void CalculationNode::doToVelocyPack(velocypack::Builder& nodes,
                 nodes.add(
                     "cacheable",
                     VPackValue(func->hasFlag(Function::Flags::Cacheable)));
-                nodes.add("usesV8", VPackValue(node->willUseV8()));
                 // deprecated
                 nodes.add("canRunOnDBServer",
                           VPackValue(func->hasFlag(
@@ -215,9 +214,6 @@ AsyncPrefetchEligibility CalculationNode::canUseAsyncPrefetching()
   // the constraint for determinism is there because we could produce
   // different query results when prefetching is enabled, at least in
   // streaming queries.
-  if (expression()->willUseV8()) {
-    return AsyncPrefetchEligibility::kDisableGlobally;
-  }
   if (expression()->isDeterministic()) {
     return AsyncPrefetchEligibility::kEnableForNode;
   }

@@ -88,9 +88,6 @@ class Expression {
   /// @brief whether or not the expression is deterministic
   bool isDeterministic();
 
-  /// @brief whether or not the expression will use V8
-  bool willUseV8();
-
   /// @brief whether or not the expression can be used inside a PRUNE statement
   bool canBeUsedInPrune(bool isOneShard, std::string& errorReason);
 

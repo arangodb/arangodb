@@ -452,8 +452,8 @@ AstNode::AstNode(AstNodeType type, InternalNode /*internal*/)
     : type(type),
       flags(makeFlags(DETERMINED_SORTED, DETERMINED_CONSTANT, DETERMINED_SIMPLE,
                       DETERMINED_NONDETERMINISTIC, DETERMINED_RUNONDBSERVER,
-                      DETERMINED_CHECKUNIQUENESS, DETERMINED_V8,
-                      VALUE_RUNONDBSERVER, FLAG_INTERNAL_CONST)),
+                      DETERMINED_CHECKUNIQUENESS, VALUE_RUNONDBSERVER,
+                      FLAG_INTERNAL_CONST)),
       _computedValue(nullptr) {
   // properly zero-initialize all members
   value.value._int = 0;
@@ -476,8 +476,8 @@ AstNode::AstNode(AstNodeValue const& value, InternalNode /*internal*/)
     : type(NODE_TYPE_VALUE),
       flags(makeFlags(DETERMINED_SORTED, DETERMINED_CONSTANT, DETERMINED_SIMPLE,
                       DETERMINED_NONDETERMINISTIC, DETERMINED_RUNONDBSERVER,
-                      DETERMINED_CHECKUNIQUENESS, DETERMINED_V8, VALUE_CONSTANT,
-                      VALUE_SIMPLE, VALUE_RUNONDBSERVER, FLAG_INTERNAL_CONST)),
+                      DETERMINED_CHECKUNIQUENESS, VALUE_CONSTANT, VALUE_SIMPLE,
+                      VALUE_RUNONDBSERVER, FLAG_INTERNAL_CONST)),
       value(value),
       _computedValue(nullptr) {}
 
@@ -1669,90 +1669,10 @@ bool AstNode::isSimple() const {
   return false;
 }
 
-/// @brief whether or not a node will use V8 internally
-bool AstNode::willUseV8() const {
-  if (hasFlag(DETERMINED_V8)) {
-    // fast track exit
-    return hasFlag(VALUE_V8);
-  }
-
-  if (type == NODE_TYPE_FCALL_USER) {
-    // user-defined function will always use v8
-    setFlag(DETERMINED_V8, VALUE_V8);
-    return true;
-  }
-
-  if (type == NODE_TYPE_FCALL) {
-    // some functions have C++ handlers
-    // check if the called function is one of them
-    auto func = static_cast<Function*>(getData());
-    TRI_ASSERT(func != nullptr);
-
-    if (func->hasV8Implementation()) {
-      TRI_ASSERT(!func->hasCxxImplementation());
-      // a function without a C++ implementation
-      setFlag(DETERMINED_V8, VALUE_V8);
-      return true;
-    }
-
-    if (func->name == "CALL" || func->name == "APPLY") {
-      // CALL and APPLY can call arbitrary other functions...
-      if (numMembers() > 0 && getMemberUnchecked(0)->isArray() &&
-          getMemberUnchecked(0)->numMembers() > 0 &&
-          getMemberUnchecked(0)->getMemberUnchecked(0)->isStringValue()) {
-        // calling a function with a fixed name (known an query compile time)
-        if (auto s =
-                getMemberUnchecked(0)->getMemberUnchecked(0)->getStringView();
-            s.find(':') != std::string::npos) {
-          // a user-defined function.
-          // this will use V8
-          setFlag(DETERMINED_V8, VALUE_V8);
-          return true;
-        } else {
-          // a built-in function (or some invalid function name)
-          auto [normalized, isBuiltIn] = Ast::normalizeFunctionName(s);
-          // note: normalizeFunctionName always returns an upper-case name.
-          // we must hard-code the function name here, because we can't lookup
-          // the definition for the function s without having access to the
-          // AqlFunctionsFeature, which is not present here.
-          if (normalized == "V8") {
-            // the V8() function itself... obviously uses V8
-            setFlag(DETERMINED_V8, VALUE_V8);
-            return true;
-          }
-        }
-        // fallthrough intentional. additionally inspect the function call
-        // parameters for CALL/APPLY
-      } else {
-        // we are unsure about what function will be called by
-        // CALL and APPLY. We cannot rule out user-defined functions,
-        // so we assume the worst case here
-        setFlag(DETERMINED_V8, VALUE_V8);
-        return true;
-      }
-    }
-  }
-
-  // inspect all subnodes
-  size_t const n = numMembers();
-
-  for (size_t i = 0; i < n; ++i) {
-    auto member = getMemberUnchecked(i);
-
-    if (member->willUseV8()) {
-      setFlag(DETERMINED_V8, VALUE_V8);
-      return true;
-    }
-  }
-
-  setFlag(DETERMINED_V8);
-  return false;
-}
-
 /// @brief whether or not a node's filter condition can be used inside a
 /// TraversalNode
 bool AstNode::canBeUsedInFilter(bool isOneShard) const {
-  if (willUseV8() || !canRunOnDBServer(isOneShard) || !isDeterministic()) {
+  if (!canRunOnDBServer(isOneShard) || !isDeterministic()) {
     return false;
   }
   return true;

@@ -243,7 +243,6 @@ ComputedValues::ComputedValue::ComputedValue(
   // build Expression object from Ast
   _expression = std::make_unique<aql::Expression>(ast, _rootNode);
   _expression->prepareForExecution();
-  TRI_ASSERT(!_expression->willUseV8());
   TRI_ASSERT(_expression->canRunOnDBServer(true));
   TRI_ASSERT(_expression->canRunOnDBServer(false));
 }

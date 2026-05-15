@@ -1402,7 +1402,6 @@ void TraversalNode::registerPostFilterCondition(AstNode const* condition) {
   // We cannot modify the postFilterExpression after it was build
   TRI_ASSERT(_postFilterExpression == nullptr);
   TRI_ASSERT(condition != nullptr);
-  TRI_ASSERT(!condition->willUseV8());
   TRI_ASSERT(!ServerState::instance()->isRunningInCluster() ||
              condition->canRunOnDBServer(vocbase()->isOneShard()));
   _postFilterConditions.emplace_back(condition);

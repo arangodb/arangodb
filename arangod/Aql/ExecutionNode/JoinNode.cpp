@@ -543,8 +543,7 @@ CostEstimate JoinNode::estimateCost() const {
 
 AsyncPrefetchEligibility JoinNode::canUseAsyncPrefetching() const noexcept {
   for (auto const& it : _indexInfos) {
-    if (it.filter != nullptr &&
-        (!it.filter->isDeterministic() || it.filter->willUseV8())) {
+    if (it.filter != nullptr && !it.filter->isDeterministic()) {
       // we cannot use prefetching if the filter employs V8, because the
       // Query object only has a single V8 context, which it can enter and exit.
       // with prefetching, multiple threads can execute calculations in the same
@@ -557,8 +556,7 @@ AsyncPrefetchEligibility JoinNode::canUseAsyncPrefetching() const noexcept {
       return AsyncPrefetchEligibility::kDisableForNode;
     }
     if (it.condition != nullptr && it.condition->root() != nullptr &&
-        (!it.condition->root()->isDeterministic() ||
-         it.condition->root()->willUseV8())) {
+        !it.condition->root()->isDeterministic()) {
       // we cannot use prefetching if the lookup employs V8, because the
       // Query object only has a single V8 context, which it can enter and exit.
       // with prefetching, multiple threads can execute calculations in the same

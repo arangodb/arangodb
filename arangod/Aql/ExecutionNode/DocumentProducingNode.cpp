@@ -212,7 +212,7 @@ AsyncPrefetchEligibility DocumentProducingNode::canUseAsyncPrefetching()
   // the constraint for determinism is there because we could produce
   // different query results when prefetching is enabled, at least in
   // streaming queries.
-  return (!hasFilter() || (_filter->isDeterministic() && !_filter->willUseV8()))
+  return (!hasFilter() || (_filter->isDeterministic()))
              ? AsyncPrefetchEligibility::kEnableForNode
              : AsyncPrefetchEligibility::kDisableForNode;
 }

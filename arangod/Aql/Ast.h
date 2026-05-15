@@ -167,7 +167,7 @@ class Ast {
   bool containsUpsertLookupValueBindParameters() const noexcept;
 
   bool canApplyParallelism() const noexcept {
-    return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
+    return _containsParallelNode && !_containsModificationNode;
   }
 
   /// @brief convert the AST into VelocyPack
@@ -786,9 +786,6 @@ class Ast {
 
   /// @brief whether or not a part of the query uses async prefetching
   bool _containsAsyncPrefetch;
-
-  /// @brief query makes use of V8 function(s)
-  bool _willUseV8;
 
   /// @brief special node types that are used often and for which no memory
   /// allocation will be needed. The node types are singletons in an AST,

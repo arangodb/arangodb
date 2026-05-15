@@ -74,9 +74,6 @@ enum AstNodeFlagType : AstNodeFlagsType {
   // object's keys must be checked for uniqueness
   DETERMINED_CHECKUNIQUENESS = 0x0000040,
 
-  // node will use V8 internally
-  DETERMINED_V8 = 0x0000080,
-
   // node is a list and its members are sorted asc.
   VALUE_SORTED = 0x0000100,
 
@@ -94,9 +91,6 @@ enum AstNodeFlagType : AstNodeFlagsType {
 
   // object's keys must be checked for uniqueness
   VALUE_CHECKUNIQUENESS = 0x0004000,
-
-  // node will use V8 internally
-  VALUE_V8 = 0x0008000,
 
   // node is a reference to a variable name, not the variable value (used in
   // KEEP nodes)
@@ -452,10 +446,6 @@ struct AstNode {
   /// @brief whether or not a node has a constant value
   /// this may also set the FLAG_CONSTANT or the FLAG_DYNAMIC flags for the node
   bool isConstant() const;
-
-  /// @brief whether or not a node will use V8 internally
-  /// this may also set the FLAG_V8 flag for the node
-  bool willUseV8() const;
 
   /// @brief whether or not a node's filter condition can be used inside a
   /// TraversalNode
