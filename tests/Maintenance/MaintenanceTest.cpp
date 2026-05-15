@@ -555,7 +555,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
     auto& rocksDbRecoveryManager = as.addFeature<RocksDBRecoveryManager>();
     auto& databaseFeature = as.addFeature<DatabaseFeature>();
-    auto& vectorIndex = as.addFeature<VectorIndexFeature>();
+    auto& vectorIndex = as.addFeature<VectorIndexFeature>(databaseFeature);
     auto& rocksDbIndexCacheRefillFeature =
         as.addFeature<RocksDBIndexCacheRefillFeature>(databaseFeature, nullptr,
                                                       metrics);
