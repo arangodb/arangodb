@@ -26,6 +26,11 @@ defmodule Toast.Client.Admin.Activities do
   alias Toast.Client
   require Client
 
+  @spec get(Client.t()) :: {:ok, map()} | {:error, term()}
+  def get(%Client{} = client) do
+    client |> Client.get("/_arango/experimental/_admin/activities") |> Client.unwrap()
+  end
+
   @spec all(Client.t()) :: {:ok, map()} | {:error, term()}
   def all(%Client{} = client) do
     client |> Client.get("/_arango/experimental/_admin/activities/all") |> Client.unwrap()
