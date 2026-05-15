@@ -849,7 +849,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
           if (!op2->isDeterministic()) {
             continue;
           }
-          if (::areNodesEqual(op1, op2)) {
+          if (areNodesEqual(op1, op2)) {
             andNode->removeMemberUncheckedUnordered(j - 1);
             --andNumMembers;
             break;
@@ -1161,7 +1161,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
           !branch2->isDeterministic()) {
         continue;
       }
-      if (::areNodesEqual(branch1, branch2)) {
+      if (areNodesEqual(branch1, branch2)) {
         _root->removeMemberUncheckedUnordered(i - 1);
         --n;
         break;
