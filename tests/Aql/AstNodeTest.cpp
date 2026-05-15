@@ -1326,6 +1326,23 @@ TEST_F(CompareAstNodesTest, ninNonConstantElementsOrderIndependent) {
   EXPECT_EQ(0, compare(ninAB, ninBA));
 }
 
+// --- SUBQUERY nodes
+// -----------------------------------------------------------
+
+// Two distinct subquery nodes are not equal even with the same structure;
+// equality is pointer identity only.
+TEST_F(CompareAstNodesTest, subqueryDistinctNodesNotEqual) {
+  auto* s1 = _ast->createNodeSubquery();
+  auto* s2 = _ast->createNodeSubquery();
+  EXPECT_NE(s1, s2);
+  EXPECT_NE(0, compare(s1, s2));
+}
+
+TEST_F(CompareAstNodesTest, subquerySamePointerEqual) {
+  auto* s = _ast->createNodeSubquery();
+  EXPECT_EQ(0, compare(s, s));
+}
+
 // --- structural nodes of different AstNodeType
 // --------------------------------
 

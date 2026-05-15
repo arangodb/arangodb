@@ -3594,7 +3594,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
   if (!lhsIsConst) {
     if (rhs->numMembers() >= AstNode::kSortNumberThreshold &&
-        rhs->type == NODE_TYPE_ARRAY &&
+        rhs->type == NODE_TYPE_ARRAY && rhs->isDeterministic() &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
       // if the IN list contains a considerable amount of items, we will sort
