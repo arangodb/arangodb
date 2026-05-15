@@ -1,6 +1,6 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-
+* COR-540: Register warning when input is neither array nor null
 * COR-528: Reserve keywords "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", and "OUTER_JOIN"
   are introduced for JOIN operations.
   
