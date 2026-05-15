@@ -369,6 +369,28 @@ function waitForAllVectorIndexesState(collection, expectedState, timeoutSec = 60
 }
 
 /**
+ * Asserts that the value returned by collection.ensureIndex() for a synchronous
+ * vector-index creation reflects a permanent training failure: trainingState
+ * is `unusable` and a non-empty errorMessage is present. Throws on mismatch so
+ * the surrounding jsunity test fails.
+ *
+ * @param {object} result - the value returned by collection.ensureIndex()
+ * @param {string} [context] - optional context string included in failure messages
+ */
+function assertEnsureIndexResultUnusable(result, context) {
+    const suffix = context ? ` (${context})` : "";
+    if (result.trainingState !== VectorIndexTrainingState.kUnusable) {
+        throw new Error(
+            `Expected ensureIndex result to report 'unusable' trainingState but got '` +
+            result.trainingState + `'` + suffix);
+    }
+    if (!result.errorMessage || result.errorMessage.length === 0) {
+        throw new Error(
+            `Unusable ensureIndex result should carry a non-empty errorMessage` + suffix);
+    }
+}
+
+/**
  * Generates simple documents each containing a random vector field.
  *
  * @param {function} gen - random float generator (e.g. from randomNumberGeneratorFloat)
@@ -391,3 +413,4 @@ exports.VectorIndexTrainingState = VectorIndexTrainingState;
 exports.waitForVectorIndexState = waitForVectorIndexState;
 exports.waitForAllVectorIndexesState = waitForAllVectorIndexesState;
 exports.insertDocsAndAssertIndex = insertDocsAndAssertIndex;
+exports.assertEnsureIndexResultUnusable = assertEnsureIndexResultUnusable;
