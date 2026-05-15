@@ -156,7 +156,8 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   if (_projectionMode == vector::ProjectionMode::kCovered &&
       !projections.empty()) {
     [[maybe_unused]] bool const ok = _index->covers(projections);
-    TRI_ASSERT(ok);
+    ADB_PROD_ASSERT(ok) << "projections must be covered by the index if "
+                           "projection mode is COVERED";
     projections.setCoveringContext(_collectionAccess.collection()->id(),
                                    _index);
   }
