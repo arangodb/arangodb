@@ -109,6 +109,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -1006,7 +1007,7 @@ run in parallel. This is only possible for certain operations in a query.)");
 }
 
 void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
   engine.addOptimizerRules(*this);
 }
 
