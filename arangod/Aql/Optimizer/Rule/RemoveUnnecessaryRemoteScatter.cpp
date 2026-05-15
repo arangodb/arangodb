@@ -57,7 +57,7 @@ void removeUnnecessaryRemoteScatterRule(Optimizer* opt,
     }
 
     auto const dep = n->getFirstDependency();
-    if (dep->getType() != EN::SCATTER) {
+    if ((dep->getType() != EN::SCATTER) && (dep->getType() != EN::DISTRIBUTE)) {
       continue;
     }
 
