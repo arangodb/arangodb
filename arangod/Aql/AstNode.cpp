@@ -255,8 +255,8 @@ static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
 static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
-/// @brief compare two constant AST nodes (VPack-serializable, known at query
-/// compile time)
+/// @brief compare two AST nodes whose top-level type maps to a non-Custom VPack
+/// type (scalar values, arrays, objects)
 /// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 template<bool resolveAttributeAccess>
 int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
@@ -563,9 +563,9 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
 /// @tparam resolveAttributeAccess if true, constant attribute accesses are
 ///         resolved to their value before comparing
 /// @return range from -1 to +1 depending:
-///  - -1 LHS being  less then   RHS,
+///  - -1 LHS being  less than   RHS,
 ///  -  0 LHS being     equal    RHS
-///  -  1 LHS being greater then RHS
+///  -  1 LHS being greater than RHS
 template<bool resolveAttributeAccess>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   TRI_ASSERT(lhs != nullptr);

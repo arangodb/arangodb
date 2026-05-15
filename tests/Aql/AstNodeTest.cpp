@@ -1326,6 +1326,18 @@ TEST_F(CompareAstNodesTest, ninNonConstantElementsOrderIndependent) {
   EXPECT_EQ(0, compare(ninAB, ninBA));
 }
 
+// test string and custom types, as both have rank 3 in valueTypeOrder, and we
+// need to make sure they're distinguished to produce the correct comparison
+// result.
+TEST_F(CompareAstNodesTest,
+       inMixedStringAndStructuralElementsOrderIndependent) {
+  auto* x = makeVar("x");
+  auto* p = _ast->createNodeParameter("p");
+  auto* in1 = inOp(createRefNode(x), {strVal("abc"), p});
+  auto* in2 = inOp(createRefNode(x), {p, strVal("abc")});
+  EXPECT_EQ(0, compare(in1, in2));
+}
+
 // --- SUBQUERY nodes
 // -----------------------------------------------------------
 
