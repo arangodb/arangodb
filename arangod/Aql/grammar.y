@@ -477,6 +477,11 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_SCAN "SCAN declaration"
 %token T_FOLD "FOLD declaration"
 
+%token T_INNER_JOIN "INNER_JOIN declaration"
+%token T_LEFT_JOIN 	"LEFT_JOIN declaration"
+%token T_RIGHT_JOIN "RIGHT_JOIN declaration"
+%token T_OUTER_JOIN "OUTER_JOIN declaration"
+
 %token T_ASC "ASC keyword"
 %token T_DESC "DESC keyword"
 %token T_IN "IN keyword"
@@ -673,6 +678,10 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <strval> T_UNTIL;
 %type <strval> T_SCAN;
 %type <strval> T_FOLD;
+%type <strval> T_INNER_JOIN;
+%type <strval> T_LEFT_JOIN;
+%type <strval> T_RIGHT_JOIN;
+%type <strval> T_OUTER_JOIN;
 
 /* define start token of language */
 %start queryStart
