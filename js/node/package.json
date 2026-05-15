@@ -13,6 +13,7 @@
     "diff": "^8.0.3",
     "error-stack-parser": "^2.1.4",
     "extendible": "^0.1.1",
+    "fast-uri": "^3.1.2",
     "graphql-sync": "^0.6.2-sync",
     "highlight.js": "^10.7.3",
     "http-errors": "^1.8.0",
