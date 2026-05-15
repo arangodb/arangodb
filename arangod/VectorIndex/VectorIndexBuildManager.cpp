@@ -422,7 +422,7 @@ VectorIndexBuildManager::processVectorIndex(
 
   _trainingOngoingCount.fetch_add(1);
   auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
-  VectorIndexBuilder builder(vecIdx);
+  VectorIndexBuilder builder(vecIdx, _resourceMonitor);
   auto const res = builder.build(std::move(indexPtr), _trainingDuration,
                                  _ingestionDuration, stopToken);
   _trainingOngoingCount.fetch_sub(1);
@@ -536,7 +536,7 @@ void VectorIndexBuildManager::runRetrain(LogicalCollection& coll,
       << ", shadow=" << shadow->id().id() << "] Starting vector index retrain.";
 
   _trainingOngoingCount.fetch_add(1);
-  VectorIndexBuilder builder(shadowVec);
+  VectorIndexBuilder builder(shadowVec, _resourceMonitor);
   auto buildRes = builder.build(shadowRocks, _trainingDuration,
                                 _ingestionDuration, stopToken);
   _trainingOngoingCount.fetch_sub(1);
