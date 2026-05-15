@@ -1,4 +1,4 @@
-3.12.9.2 (2026-XX-XX)
+3.12.9.2 (2026-05-15)
 ---------------------
 
 * Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
