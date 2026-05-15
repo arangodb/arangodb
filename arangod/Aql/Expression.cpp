@@ -40,10 +40,6 @@
 #include "Aql/TypedAstNodes.h"
 #include "Assertions/ProdAssert.h"
 #include "Basics/ThreadLocalLeaser.h"
-#include "Logger/LogMacros.h"
-#ifdef USE_V8
-#include "Aql/V8ErrorHandler.h"
-#endif
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
