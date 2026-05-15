@@ -118,9 +118,6 @@ struct Function {
            functions::FunctionImplementation implementation);
 #endif
 
-  /// @brief whether or not the function is based on V8
-  bool hasV8Implementation() const noexcept;
-
   /// @brief whether or not the function is based on cxx
   bool hasCxxImplementation() const noexcept;
 

@@ -100,7 +100,6 @@ class IndexExecutorInfos {
   std::vector<transaction::Methods::IndexHandle> const& getIndexes()
       const noexcept;
   AstNode const* getCondition() const noexcept;
-  bool getV8Expression() const noexcept;
   RegisterId getOutputRegisterId() const noexcept;
   std::vector<std::unique_ptr<NonConstExpression>> const&
   getNonConstExpressions() const noexcept;

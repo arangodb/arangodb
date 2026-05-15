@@ -216,8 +216,6 @@ void BaseOptions::LookupInfo::initializeNonConstExpressions(
     aql::Variable const* indexVariable) {
   _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
       ast, varInfo, false, nullptr, indexCondition, indexVariable);
-  // We cannot optimize V8 expressions
-  TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 }
 
 void BaseOptions::LookupInfo::calculateIndexExpressions(

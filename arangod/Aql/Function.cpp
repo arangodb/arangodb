@@ -200,11 +200,6 @@ void Function::initializeArguments() {
   }
 }
 
-/// @brief whether or not the function is built using V8
-bool Function::hasV8Implementation() const noexcept {
-  return implementation == nullptr;
-}
-
 /// @brief whether or not the function is built using C++
 bool Function::hasCxxImplementation() const noexcept {
   return implementation != nullptr;
@@ -231,9 +226,6 @@ void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("arguments", velocypack::Value(arguments));
   builder.add("implementations",
               velocypack::Value(velocypack::ValueType::Array));
-  if (hasV8Implementation()) {
-    builder.add(velocypack::Value("js"));
-  }
   if (hasCxxImplementation()) {
     builder.add(velocypack::Value("cxx"));
   }

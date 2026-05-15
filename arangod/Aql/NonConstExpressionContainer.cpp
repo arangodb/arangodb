@@ -35,7 +35,6 @@ constexpr const char expressionKey[] = "expression";
 constexpr const char indexPathKey[] = "indexPath";
 constexpr const char expressionsKey[] = "expressions";
 constexpr const char varMappingKey[] = "varMapping";
-constexpr const char hasV8ExpressionKey[] = "hasV8Expression";
 
 void NonConstExpressionContainer::toVelocyPack(
     velocypack::Builder& builder) const {
@@ -63,7 +62,6 @@ void NonConstExpressionContainer::toVelocyPack(
       builder.add(basics::StringUtils::itoa(varId), VPackValue(regId.value()));
     }
   }
-  builder.add(hasV8ExpressionKey, VPackValue(_hasV8Expression));
 }
 
 NonConstExpressionContainer NonConstExpressionContainer::clone(Ast* ast) const {
@@ -77,7 +75,7 @@ NonConstExpressionContainer NonConstExpressionContainer::clone(Ast* ast) const {
   }
 
   return NonConstExpressionContainer{std::move(expressions),
-                                     _varToRegisterMapping, _hasV8Expression};
+                                     _varToRegisterMapping};
 }
 
 NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(
@@ -85,7 +83,6 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.hasKey(expressionsKey));
   TRI_ASSERT(slice.hasKey(varMappingKey));
-  TRI_ASSERT(slice.hasKey(hasV8ExpressionKey));
 
   auto exprs = slice.get(expressionsKey);
   TRI_ASSERT(exprs.isArray());
@@ -119,19 +116,14 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(
     result._varToRegisterMapping.emplace_back(
         std::make_pair(variableId, regId.getNumber<RegisterId::value_t>()));
   }
-  auto v8 = slice.get(hasV8ExpressionKey);
-  TRI_ASSERT(v8.isBoolean());
-  result._hasV8Expression = v8.getBoolean();
 
   return result;
 }
 
 NonConstExpressionContainer::NonConstExpressionContainer(
     std::vector<std::unique_ptr<NonConstExpression>> expressions,
-    std::vector<std::pair<VariableId, RegisterId>> varToRegisterMapping,
-    bool hasV8Expression)
+    std::vector<std::pair<VariableId, RegisterId>> varToRegisterMapping)
     : _expressions(std::move(expressions)),
-      _varToRegisterMapping(std::move(varToRegisterMapping)),
-      _hasV8Expression(hasV8Expression) {}
+      _varToRegisterMapping(std::move(varToRegisterMapping)) {}
 
 }  // namespace arangodb::aql

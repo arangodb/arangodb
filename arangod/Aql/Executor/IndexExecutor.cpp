@@ -278,10 +278,6 @@ AstNode const* IndexExecutorInfos::getCondition() const noexcept {
   return _condition;
 }
 
-bool IndexExecutorInfos::getV8Expression() const noexcept {
-  return _nonConstExpressions._hasV8Expression;
-}
-
 RegisterId IndexExecutorInfos::getOutputRegisterId() const noexcept {
   return _outputRegisterId;
 }
@@ -687,16 +683,10 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
   if (!_infos.getNonConstExpressions().empty()) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
 
-    if (_infos.getV8Expression()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "unexpected v8 function call in IndexExecutor");
-    } else {
-      // no V8 context required!
-      executeExpressions(input);
-      TRI_IF_FAILURE("IndexBlock::executeExpression") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
+    // no V8 context required!
+    executeExpressions(input);
+    TRI_IF_FAILURE("IndexBlock::executeExpression") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
 
