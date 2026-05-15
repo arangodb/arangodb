@@ -258,6 +258,22 @@ class Parser;
   return T_FOLD;
 }
 
+(?i:INNER_JOIN) {
+  return T_INNER_JOIN;
+}
+
+(?i:LEFT_JOIN) {
+  return T_LEFT_JOIN;
+}
+
+(?i:RIGHT_JOIN) {
+  return T_RIGHT_JOIN;
+}
+
+(?i:OUTER_JOIN) {
+  return T_OUTER_JOIN;
+}
+
  /* ---------------------------------------------------------------------------
   * predefined type literals
   * --------------------------------------------------------------------------- */
