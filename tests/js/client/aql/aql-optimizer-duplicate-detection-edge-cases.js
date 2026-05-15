@@ -174,12 +174,24 @@ function DuplicateConditionOptimizationSuite() {
 
     // --- subquery guard ------------------------------------------------------
 
-    // Conditions with subqueries are excluded from deduplication; verify no crash.
-    testSubqueryConditionsNotDeduplicated: function () {
+    // sub is a LET-bound variable; LENGTH(sub) contains a REFERENCE node, not
+    // a SUBQUERY node, so deduplication fires normally and gives the right result.
+    testLetBoundSubqueryRefIsDeduplicated: function () {
       const res = query(`
         FOR doc IN ${cn}
           LET sub = (FOR x IN ${cn} FILTER x.value > 5 RETURN x)
           FILTER LENGTH(sub) > 0 AND LENGTH(sub) > 0
+          RETURN doc.value`);
+      assertEqual(10, res.length);
+    },
+
+    // Inline subqueries produce NODE_TYPE_SUBQUERY nodes in the AST.
+    // The containsSubquery guard fires and deduplication is skipped; verify no crash.
+    testInlineSubqueryConditionNotDeduplicated: function () {
+      const res = query(`
+        FOR doc IN ${cn}
+          FILTER LENGTH((FOR x IN ${cn} FILTER x.value > 5 RETURN x)) > 0
+             AND LENGTH((FOR x IN ${cn} FILTER x.value > 5 RETURN x)) > 0
           RETURN doc.value`);
       assertEqual(10, res.length);
     },

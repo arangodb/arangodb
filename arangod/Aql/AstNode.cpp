@@ -352,178 +352,24 @@ int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
   }
 }
 
-/// @brief compare non-VPack-serializable AST nodes
-/// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
-int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
-                                bool compareUtf8) {
-  if (lhs->type != rhs->type) {
-    return (lhs->type < rhs->type ? -1 : 1);
+int compareSubquery(AstNode const* lhs, AstNode const* rhs) noexcept {
+  return (lhs == rhs) ? 0 : (lhs < rhs ? -1 : 1);
+}
+
+int compareReference(AstNode const* lhs, AstNode const* rhs) noexcept {
+  auto lhsVar = static_cast<Variable const*>(lhs->getData());
+  auto rhsVar = static_cast<Variable const*>(rhs->getData());
+  return (lhsVar->id == rhsVar->id) ? 0 : (lhsVar->id < rhsVar->id ? -1 : 1);
+}
+
+int compareChildrenInOrder(AstNode const* lhs, AstNode const* rhs,
+                           bool compareUtf8) {
+  size_t lhsN = lhs->numMembers();
+  size_t rhsN = rhs->numMembers();
+  if (lhsN != rhsN) {
+    return (lhsN < rhsN ? -1 : 1);
   }
-
-  // Subqueries can be large; treat them as equal only if they're the same node.
-  if (lhs->type == NODE_TYPE_SUBQUERY) {
-    if (lhs == rhs) {
-      return 0;
-    }
-    return (lhs < rhs ? -1 : 1);
-  }
-
-  // References compare by variable ID.
-  if (lhs->type == NODE_TYPE_REFERENCE) {
-    auto lhsVar = static_cast<Variable const*>(lhs->getData());
-    auto rhsVar = static_cast<Variable const*>(rhs->getData());
-    if (lhsVar->id != rhsVar->id) {
-      return (lhsVar->id < rhsVar->id ? -1 : 1);
-    }
-    return 0;
-  }
-
-  // Name comes before children for these node types.
-  if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      lhs->type == NODE_TYPE_PARAMETER ||
-      lhs->type == NODE_TYPE_PARAMETER_DATASOURCE ||
-      lhs->type == NODE_TYPE_FCALL_USER) {
-    std::string_view lhsName = lhs->getStringView();
-    std::string_view rhsName = rhs->getStringView();
-    int cmp = lhsName.compare(rhsName);
-    if (cmp != 0) {
-      return (cmp < 0 ? -1 : 1);
-    }
-  }
-
-  // Quantifier kind is an int; AT LEAST's threshold child is handled below.
-  if (lhs->type == NODE_TYPE_QUANTIFIER) {
-    int64_t lv = lhs->getIntValue(true);
-    int64_t rv = rhs->getIntValue(true);
-    if (lv != rv) {
-      return (lv < rv ? -1 : 1);
-    }
-  }
-
-  // Function name before arguments.
-  if (lhs->type == NODE_TYPE_FCALL) {
-    auto lhsFunc = static_cast<Function const*>(lhs->getData());
-    auto rhsFunc = static_cast<Function const*>(rhs->getData());
-    if (lhsFunc != rhsFunc) {
-      int cmp = lhsFunc->name.compare(rhsFunc->name);
-      if (cmp != 0) {
-        return (cmp < 0 ? -1 : 1);
-      }
-    }
-  }
-
-  size_t lhsMembers = lhs->numMembers();
-  size_t rhsMembers = rhs->numMembers();
-  if (lhsMembers != rhsMembers) {
-    return (lhsMembers < rhsMembers ? -1 : 1);
-  }
-
-  // Normalize operand order so `a == b` and `b == a` compare as equal.
-  // BINARY_AND/OR are pre-normalization; normalized conditions use NARY.
-  bool isCommutative = (lhs->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
-                        lhs->type == NODE_TYPE_OPERATOR_BINARY_NE ||
-                        lhs->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
-                        lhs->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
-                        lhs->type == NODE_TYPE_OPERATOR_BINARY_AND ||
-                        lhs->type == NODE_TYPE_OPERATOR_BINARY_OR);
-
-  if (isCommutative && lhsMembers == 2) {
-    AstNode const* lhsLeft = lhs->getMemberUnchecked(0);
-    AstNode const* lhsRight = lhs->getMemberUnchecked(1);
-    AstNode const* rhsLeft = rhs->getMemberUnchecked(0);
-    AstNode const* rhsRight = rhs->getMemberUnchecked(1);
-
-    if (compareAstNodes<false>(lhsLeft, lhsRight, compareUtf8) > 0) {
-      std::swap(lhsLeft, lhsRight);
-    }
-    if (compareAstNodes<false>(rhsLeft, rhsRight, compareUtf8) > 0) {
-      std::swap(rhsLeft, rhsRight);
-    }
-
-    int cmp = compareAstNodes<false>(lhsLeft, rhsLeft, compareUtf8);
-    if (cmp != 0) {
-      return cmp;
-    }
-    return compareAstNodes<false>(lhsRight, rhsRight, compareUtf8);
-  }
-
-  // Sort NARY children before comparing so member order doesn't affect
-  // equality.
-  if (lhs->type == NODE_TYPE_OPERATOR_NARY_AND ||
-      lhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
-    containers::SmallVector<AstNode const*, 8> lhsChildren;
-    containers::SmallVector<AstNode const*, 8> rhsChildren;
-    lhsChildren.reserve(lhsMembers);
-    rhsChildren.reserve(rhsMembers);
-    for (size_t i = 0; i < lhsMembers; ++i) {
-      lhsChildren.push_back(lhs->getMemberUnchecked(i));
-      rhsChildren.push_back(rhs->getMemberUnchecked(i));
-    }
-    auto cmp = [compareUtf8](AstNode const* a, AstNode const* b) {
-      return compareAstNodes<false>(a, b, compareUtf8) < 0;
-    };
-    std::sort(lhsChildren.begin(), lhsChildren.end(), cmp);
-    std::sort(rhsChildren.begin(), rhsChildren.end(), cmp);
-    for (size_t i = 0; i < lhsMembers; ++i) {
-      int res =
-          compareAstNodes<false>(lhsChildren[i], rhsChildren[i], compareUtf8);
-      if (res != 0) {
-        return res;
-      }
-    }
-    return 0;
-  }
-
-  // IN/NIN: compare the lhs operand in order; sort rhs array elements so that
-  // `x IN [a, b]` and `x IN [b, a]` are equal.
-  if ((lhs->type == NODE_TYPE_OPERATOR_BINARY_IN ||
-       lhs->type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
-      lhsMembers == 2) {
-    int cmp = compareAstNodes<false>(lhs->getMemberUnchecked(0),
-                                     rhs->getMemberUnchecked(0), compareUtf8);
-    if (cmp != 0) {
-      return cmp;
-    }
-
-    AstNode const* lhsArray = lhs->getMemberUnchecked(1);
-    AstNode const* rhsArray = rhs->getMemberUnchecked(1);
-
-    if (lhsArray->type != NODE_TYPE_ARRAY ||
-        rhsArray->type != NODE_TYPE_ARRAY) {
-      return compareAstNodes<false>(lhsArray, rhsArray, compareUtf8);
-    }
-
-    size_t const numLhs = lhsArray->numMembers();
-    size_t const numRhs = rhsArray->numMembers();
-    if (numLhs != numRhs) {
-      return (numLhs < numRhs ? -1 : 1);
-    }
-
-    containers::SmallVector<AstNode const*, 8> lhsElements;
-    containers::SmallVector<AstNode const*, 8> rhsElements;
-    lhsElements.reserve(numLhs);
-    rhsElements.reserve(numRhs);
-    for (size_t i = 0; i < numLhs; ++i) {
-      lhsElements.push_back(lhsArray->getMemberUnchecked(i));
-      rhsElements.push_back(rhsArray->getMemberUnchecked(i));
-    }
-    auto elemCmp = [compareUtf8](AstNode const* a, AstNode const* b) {
-      return compareAstNodes<false>(a, b, compareUtf8) < 0;
-    };
-    std::sort(lhsElements.begin(), lhsElements.end(), elemCmp);
-    std::sort(rhsElements.begin(), rhsElements.end(), elemCmp);
-    for (size_t i = 0; i < numLhs; ++i) {
-      int res =
-          compareAstNodes<false>(lhsElements[i], rhsElements[i], compareUtf8);
-      if (res != 0) {
-        return res;
-      }
-    }
-    return 0;
-  }
-
-  // Fallback: compare children in order.
-  for (size_t i = 0; i < lhsMembers; ++i) {
+  for (size_t i = 0; i < lhsN; ++i) {
     int res = compareAstNodes<false>(lhs->getMemberUnchecked(i),
                                      rhs->getMemberUnchecked(i), compareUtf8);
     if (res != 0) {
@@ -533,7 +379,182 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
   return 0;
 }
 
+// ATTRIBUTE_ACCESS, PARAMETER, PARAMETER_DATASOURCE, FCALL_USER: name first.
+int compareNamedNode(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  int cmp = lhs->getStringView().compare(rhs->getStringView());
+  if (cmp != 0) {
+    return (cmp < 0 ? -1 : 1);
+  }
+  return compareChildrenInOrder(lhs, rhs, compareUtf8);
+}
+
+int compareQuantifier(AstNode const* lhs, AstNode const* rhs,
+                      bool compareUtf8) {
+  int64_t lv = lhs->getIntValue(true);
+  int64_t rv = rhs->getIntValue(true);
+  if (lv != rv) {
+    return (lv < rv ? -1 : 1);
+  }
+  return compareChildrenInOrder(lhs, rhs, compareUtf8);
+}
+
+// Callers must guarantee both nodes are deterministic before comparing.
+int compareFcall(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  auto lhsFunc = static_cast<Function const*>(lhs->getData());
+  auto rhsFunc = static_cast<Function const*>(rhs->getData());
+  if (lhsFunc != rhsFunc) {
+    int cmp = lhsFunc->name.compare(rhsFunc->name);
+    if (cmp != 0) {
+      return (cmp < 0 ? -1 : 1);
+    }
+  }
+  return compareChildrenInOrder(lhs, rhs, compareUtf8);
+}
+
+// Normalize operand order so `a == b` and `b == a` compare as equal.
+// BINARY_AND/OR are pre-normalization; normalized conditions use NARY.
+int compareCommutativeBinary(AstNode const* lhs, AstNode const* rhs,
+                             bool compareUtf8) {
+  TRI_ASSERT(lhs->numMembers() == 2);
+  TRI_ASSERT(rhs->numMembers() == 2);
+  AstNode const* lhsLeft = lhs->getMemberUnchecked(0);
+  AstNode const* lhsRight = lhs->getMemberUnchecked(1);
+  AstNode const* rhsLeft = rhs->getMemberUnchecked(0);
+  AstNode const* rhsRight = rhs->getMemberUnchecked(1);
+
+  if (compareAstNodes<false>(lhsLeft, lhsRight, compareUtf8) > 0) {
+    std::swap(lhsLeft, lhsRight);
+  }
+  if (compareAstNodes<false>(rhsLeft, rhsRight, compareUtf8) > 0) {
+    std::swap(rhsLeft, rhsRight);
+  }
+
+  int cmp = compareAstNodes<false>(lhsLeft, rhsLeft, compareUtf8);
+  if (cmp != 0) {
+    return cmp;
+  }
+  return compareAstNodes<false>(lhsRight, rhsRight, compareUtf8);
+}
+
+// Sort children before comparing so member order doesn't affect equality.
+int compareNary(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  size_t lhsN = lhs->numMembers();
+  size_t rhsN = rhs->numMembers();
+  if (lhsN != rhsN) {
+    return (lhsN < rhsN ? -1 : 1);
+  }
+  containers::SmallVector<AstNode const*, 8> lhsChildren;
+  containers::SmallVector<AstNode const*, 8> rhsChildren;
+  lhsChildren.reserve(lhsN);
+  rhsChildren.reserve(rhsN);
+  for (size_t i = 0; i < lhsN; ++i) {
+    lhsChildren.push_back(lhs->getMemberUnchecked(i));
+    rhsChildren.push_back(rhs->getMemberUnchecked(i));
+  }
+  auto cmp = [compareUtf8](AstNode const* a, AstNode const* b) {
+    return compareAstNodes<false>(a, b, compareUtf8) < 0;
+  };
+  std::sort(lhsChildren.begin(), lhsChildren.end(), cmp);
+  std::sort(rhsChildren.begin(), rhsChildren.end(), cmp);
+  for (size_t i = 0; i < lhsN; ++i) {
+    int res =
+        compareAstNodes<false>(lhsChildren[i], rhsChildren[i], compareUtf8);
+    if (res != 0) {
+      return res;
+    }
+  }
+  return 0;
+}
+
+// Sort rhs array elements so `x IN [a, b]` and `x IN [b, a]` compare as equal.
+int compareInNin(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  TRI_ASSERT(lhs->numMembers() == 2);
+  TRI_ASSERT(rhs->numMembers() == 2);
+  int cmp = compareAstNodes<false>(lhs->getMemberUnchecked(0),
+                                   rhs->getMemberUnchecked(0), compareUtf8);
+  if (cmp != 0) {
+    return cmp;
+  }
+
+  AstNode const* lhsArray = lhs->getMemberUnchecked(1);
+  AstNode const* rhsArray = rhs->getMemberUnchecked(1);
+
+  if (lhsArray->type != NODE_TYPE_ARRAY || rhsArray->type != NODE_TYPE_ARRAY) {
+    return compareAstNodes<false>(lhsArray, rhsArray, compareUtf8);
+  }
+
+  size_t const numLhs = lhsArray->numMembers();
+  size_t const numRhs = rhsArray->numMembers();
+  if (numLhs != numRhs) {
+    return (numLhs < numRhs ? -1 : 1);
+  }
+
+  containers::SmallVector<AstNode const*, 8> lhsElements;
+  containers::SmallVector<AstNode const*, 8> rhsElements;
+  lhsElements.reserve(numLhs);
+  rhsElements.reserve(numRhs);
+  for (size_t i = 0; i < numLhs; ++i) {
+    lhsElements.push_back(lhsArray->getMemberUnchecked(i));
+    rhsElements.push_back(rhsArray->getMemberUnchecked(i));
+  }
+  auto elemCmp = [compareUtf8](AstNode const* a, AstNode const* b) {
+    return compareAstNodes<false>(a, b, compareUtf8) < 0;
+  };
+  std::sort(lhsElements.begin(), lhsElements.end(), elemCmp);
+  std::sort(rhsElements.begin(), rhsElements.end(), elemCmp);
+  for (size_t i = 0; i < numLhs; ++i) {
+    int res =
+        compareAstNodes<false>(lhsElements[i], rhsElements[i], compareUtf8);
+    if (res != 0) {
+      return res;
+    }
+  }
+  return 0;
+}
+
+/// @brief compare non-VPack-serializable AST nodes
+/// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
+int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
+                                bool compareUtf8) {
+  if (lhs->type != rhs->type) {
+    return (lhs->type < rhs->type ? -1 : 1);
+  }
+
+  switch (lhs->type) {
+    case NODE_TYPE_SUBQUERY:
+      return compareSubquery(lhs, rhs);
+    case NODE_TYPE_REFERENCE:
+      return compareReference(lhs, rhs);
+    case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PARAMETER_DATASOURCE:
+    case NODE_TYPE_FCALL_USER:
+      return compareNamedNode(lhs, rhs, compareUtf8);
+    case NODE_TYPE_QUANTIFIER:
+      return compareQuantifier(lhs, rhs, compareUtf8);
+    case NODE_TYPE_FCALL:
+      return compareFcall(lhs, rhs, compareUtf8);
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_BINARY_OR:
+      return compareCommutativeBinary(lhs, rhs, compareUtf8);
+    case NODE_TYPE_OPERATOR_NARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_OR:
+      return compareNary(lhs, rhs, compareUtf8);
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+      return compareInNin(lhs, rhs, compareUtf8);
+    default:
+      return compareChildrenInOrder(lhs, rhs, compareUtf8);
+  }
+}
+
 /// @brief compare two nodes
+/// @tparam resolveAttributeAccess if true, constant attribute accesses are
+///         resolved to their value before comparing
 /// @return range from -1 to +1 depending:
 ///  - -1 LHS being  less then   RHS,
 ///  -  0 LHS being     equal    RHS

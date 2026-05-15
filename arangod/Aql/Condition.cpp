@@ -180,7 +180,8 @@ bool containsSubquery(AstNode const* node) noexcept {
 }
 
 // Returns true if two AST nodes are structurally equal.
-// Nodes with subqueries are excluded — side effects and unbounded cost.
+// Skips nodes containing subqueries — side effects make structural equality
+// unsafe.
 bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
   if (lhs == nullptr || rhs == nullptr) {
     return lhs == rhs;
@@ -807,7 +808,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
     }
     andNumMembers = andNode->numMembers();
 
-    // Drop the whole OR branch if any condition is always false.
+    // Drop this OR branch if any condition is statically false.
     {
       bool hasFalse = false;
       for (size_t j = 0; j < andNumMembers; ++j) {
@@ -818,13 +819,12 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
       }
       if (hasFalse) {
         _root->removeMemberUncheckedUnordered(r);
-        retry = true;
         n = _root->numMembers();
         continue;
       }
     }
 
-    // Strip conditions that are always true, keeping at least one member.
+    // Strip always-true conditions, keeping at least one.
     if (andNumMembers > 1) {
       for (size_t j = andNumMembers; j > 0; --j) {
         if (andNumMembers == 1) {
@@ -837,7 +837,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
       }
     }
 
-    // Remove duplicate conditions via structural comparison.
+    // Remove duplicate deterministic conditions.
     if (andNumMembers > 1) {
       for (size_t j = andNumMembers; j > 1; --j) {
         auto op1 = andNode->getMemberUnchecked(j - 1);
