@@ -3,6 +3,9 @@
 
 * COR-531: AQL APPEND() with unique=true does not perform de-duplication in few scenarios.
 
+* COR-528: Reserve keywords "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", and "OUTER_JOIN"
+  are introduced for JOIN operations.
+  
 * COR-469: Removed `ensureVertexCentricIndex` as it was just a wrapper around
   `ensureIndex` with direction parameters.
 
