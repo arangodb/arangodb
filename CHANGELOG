@@ -1,7 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* COR-531: AQL APPEND() with unique=true does not perform de-duplication in few scenarios.
+* COR-531: With this fix, APPEND() now correctly removes duplicate values when the unique parameter 
+  is set to true, even if the appender array is null/empty or the first parameter is null.
 
 * COR-528: Reserve keywords "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", and "OUTER_JOIN"
   are introduced for JOIN operations.
