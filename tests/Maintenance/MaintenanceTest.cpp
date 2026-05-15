@@ -571,8 +571,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     engine = std::make_unique<RocksDBEngine>(
         as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
         schedulerFeature, replicatedLogFeature, rocksDbRecoveryManager,
-        databaseFeature, rocksDbIndexCacheRefillFeature, cacheManagerFeature,
-        agencyFeature);
+        LazyApplicationFeatureReference<DatabaseFeature>(databaseFeature),
+        rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
     selector.setEngineTesting(engine.get());
   }
 

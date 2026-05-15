@@ -61,10 +61,12 @@ bool ClusterEngine::Mocking = false;
 #endif
 
 // create the storage engine
-ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
+ClusterEngine::ClusterEngine(
+    application_features::ApplicationServer& server,
+    LazyApplicationFeatureReference<ClusterFeature> clusterFeature)
     : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
                     std::make_unique<ClusterIndexFactory>(server, *this)),
-      _clusterFeature(server.getFeature<ClusterFeature>()),
+      _lazyClusterFeature(std::move(clusterFeature)),
       _actualEngine(nullptr) {
   setOptional(true);
 }
@@ -107,6 +109,10 @@ ClusterEngineType ClusterEngine::engineType() const {
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void ClusterEngine::prepare() {
+  // Resolve the lazy reference now that all features have been registered.
+  // Subsequent runtime calls (e.g. getStatistics, compactAll) use the cached
+  // pointer.
+  _clusterFeature = std::move(_lazyClusterFeature).get();
   if (!ServerState::instance()->isCoordinator()) {
     setEnabled(false);
   }
@@ -146,7 +152,8 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
-  Result res = getEngineStatsFromDBServers(_clusterFeature, builder);
+  TRI_ASSERT(_clusterFeature != nullptr);
+  Result res = getEngineStatsFromDBServers(*_clusterFeature, builder);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -257,7 +264,8 @@ Result ClusterEngine::changeView(LogicalView const&, velocypack::Slice) {
 
 Result ClusterEngine::compactAll(bool changeLevel,
                                  bool compactBottomMostLevel) {
-  return compactOnAllDBServers(_clusterFeature, changeLevel,
+  TRI_ASSERT(_clusterFeature != nullptr);
+  return compactOnAllDBServers(*_clusterFeature, changeLevel,
                                compactBottomMostLevel);
 }
 
