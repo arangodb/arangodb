@@ -658,16 +658,13 @@ std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
     : AgencyComm(server, server.getFeature<ClusterFeature>(),
-                 server.getFeature<EngineSelectorFeature>(),
                  server.getFeature<DatabaseFeature>()) {}
 
 AgencyComm::AgencyComm(ApplicationServer& server,
                        ClusterFeature& clusterFeature,
-                       EngineSelectorFeature& engineSelectorFeature,
                        DatabaseFeature& databaseFeature)
     : _server(server),
       _clusterFeature(clusterFeature),
-      _engineSelectorFeature(engineSelectorFeature),
       _databaseFeature(databaseFeature),
       _agency_comm_request_time_ms(
           _clusterFeature.agency_comm_request_time_ms()) {}
@@ -686,7 +683,7 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
 
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
-      arangodb::HealthData hd = _engineSelectorFeature.engine().healthCheck();
+      arangodb::HealthData hd = _databaseFeature.engine().healthCheck();
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 
@@ -722,7 +719,9 @@ std::string AgencyComm::version() {
 
 AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
   VPackBuilder builder;
-  { VPackObjectBuilder dir(&builder); }
+  {
+    VPackObjectBuilder dir(&builder);
+  }
 
   AgencyOperation operation(key, AgencyValueOperationType::SET,
                             builder.slice());
@@ -1379,11 +1378,17 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add("NumberOfCoordinators", VPackSlice::nullSlice());
       builder.add("NumberOfDBServers", VPackSlice::nullSlice());
       builder.add(VPackValue("CleanedServers"));
-      { VPackArrayBuilder dd(&builder); }
+      {
+        VPackArrayBuilder dd(&builder);
+      }
       builder.add(VPackValue("ToBeCleanedServers"));
-      { VPackArrayBuilder dd(&builder); }
+      {
+        VPackArrayBuilder dd(&builder);
+      }
       builder.add(VPackValue("FailedServers"));
-      { VPackObjectBuilder dd(&builder); }
+      {
+        VPackObjectBuilder dd(&builder);
+      }
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("Failed", builder);
       addEmptyVPackObject("Finished", builder);

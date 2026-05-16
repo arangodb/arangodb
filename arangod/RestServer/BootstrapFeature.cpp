@@ -143,7 +143,7 @@ namespace {
 /// must only return if we are bootstrap lead or bootstrap is done.
 void raceForClusterBootstrap(BootstrapFeature& feature) {
   AgencyComm agency(feature.server(), feature.clusterFeature(),
-                    feature.engineSelectorFeature(), feature.databaseFeature());
+                    feature.databaseFeature());
   auto& ci = feature.clusterFeature().clusterInfo();
   while (true) {
     AgencyCommResult result = agency.getValues(::bootstrapKey);
@@ -424,8 +424,7 @@ void BootstrapFeature::waitForHealthEntry() {
   LOG_TOPIC("4000c", DEBUG, arangodb::Logger::CLUSTER)
       << "waiting for our health entry to appear in Supervision/Health";
   bool found = false;
-  AgencyComm agency(server(), _clusterFeature, _engineSelectorFeature,
-                    _databaseFeature);
+  AgencyComm agency(server(), _clusterFeature, _databaseFeature);
   int tries = 0;
   while (++tries < 30) {
     AgencyCommResult result = agency.getValues(::healthKey);

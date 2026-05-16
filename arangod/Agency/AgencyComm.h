@@ -590,7 +590,7 @@ class AgencyComm {
       "dependency")]] explicit AgencyComm(application_features::
                                               ApplicationServer&);
   AgencyComm(application_features::ApplicationServer&, ClusterFeature&,
-             EngineSelectorFeature&, DatabaseFeature&);
+             DatabaseFeature&);
 
   AgencyCommResult sendServerState(double timeout);
 
@@ -668,7 +668,6 @@ class AgencyComm {
 
   application_features::ApplicationServer& _server;
   ClusterFeature& _clusterFeature;
-  EngineSelectorFeature& _engineSelectorFeature;
   DatabaseFeature& _databaseFeature;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
