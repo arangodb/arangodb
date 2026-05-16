@@ -43,7 +43,6 @@
 #include "Rest/GeneralRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 

@@ -38,13 +38,11 @@
 #include "Rest/CommonDefines.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb {
 class Endpoint;
 class Result;
 class ClusterFeature;
-class EngineSelectorFeature;
 class DatabaseFeature;
 
 namespace application_features {

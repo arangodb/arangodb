@@ -33,7 +33,6 @@ class V8DealerFeature;
 class ClusterUpgradeFeature;
 class SystemDatabaseFeature;
 class DatabaseFeature;
-class EngineSelectorFeature;
 class ClusterFeature;
 
 class BootstrapFeature final : public application_features::ApplicationFeature {
