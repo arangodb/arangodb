@@ -66,9 +66,7 @@ using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(
     application_features::ApplicationServer& server,
-    ClusterFeature& clusterFeature,
-    EngineSelectorFeature& engineSelectorFeature,
-    DatabaseFeature& databaseFeature,
+    ClusterFeature& clusterFeature, DatabaseFeature& databaseFeature,
     SystemDatabaseFeature* systemDatabaseFeature,
     ClusterUpgradeFeature* clusterUpgradeFeature
 #ifdef USE_V8
@@ -78,7 +76,6 @@ BootstrapFeature::BootstrapFeature(
     )
     : ApplicationFeature{server, *this},
       _clusterFeature(clusterFeature),
-      _engineSelectorFeature(engineSelectorFeature),
       _databaseFeature(databaseFeature),
       _systemDatabaseFeature(systemDatabaseFeature),
       _clusterUpgradeFeature(clusterUpgradeFeature),
@@ -113,10 +110,6 @@ bool BootstrapFeature::isReady() const {
 }
 
 ClusterFeature& BootstrapFeature::clusterFeature() { return _clusterFeature; }
-
-EngineSelectorFeature& BootstrapFeature::engineSelectorFeature() {
-  return _engineSelectorFeature;
-}
 
 DatabaseFeature& BootstrapFeature::databaseFeature() {
   return _databaseFeature;

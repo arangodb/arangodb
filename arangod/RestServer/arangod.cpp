@@ -121,9 +121,8 @@ void ArangodServer::addFeatures(
   auto& dumpLimits = addFeature<DumpLimitsFeature>();
   addFeature<HttpEndpointProvider, EndpointFeature>();
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
-  auto& engineSelectorFeature = addFeature<EngineSelectorFeature>();
-  addFeature<BootstrapFeature>(clusterFeature, engineSelectorFeature, database,
-                               &systemDatabaseFeature, &clusterUpgradeFeature
+  addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
+                               &clusterUpgradeFeature
 #ifdef USE_V8
                                ,
                                &v8DealerFeature
