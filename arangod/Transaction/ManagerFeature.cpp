@@ -123,10 +123,19 @@ timeout to the configured idle timeout.)");
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
-  StorageEngine& engine = ServerState::instance()->isCoordinator()
-                     ? static_cast<StorageEngine&>(server().getFeature<ClusterEngine>())
-                     : static_cast<StorageEngine&>(server().getFeature<RocksDBEngine>());                    
-  MANAGER = engine.createTransactionManager(*this);
+  StorageEngine* engine = nullptr;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (!server().hasFeature<RocksDBEngine>() &&
+      !server().hasFeature<ClusterEngine>()) {
+    engine = &server().getFeature<DatabaseFeature>().engine();
+  } else
+#endif
+      if (ServerState::instance()->isCoordinator()) {
+    engine = &server().getFeature<ClusterEngine>();
+  } else {
+    engine = &server().getFeature<RocksDBEngine>();
+  }
+  MANAGER = engine->createTransactionManager(*this);
 }
 
 void ManagerFeature::start() {
