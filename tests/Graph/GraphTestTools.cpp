@@ -67,10 +67,12 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   features.emplace_back(metrics, false);
-  auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
-  features.emplace_back(databaseFeature, false);
+  features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
+                        false);
   features.emplace_back(
       server.addFeature<arangodb::transaction::ManagerFeature>(metrics), false);
+  auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
+  features.emplace_back(databaseFeature, false);
   features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
                         false);
   server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);

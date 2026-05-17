@@ -316,7 +316,6 @@ class IResearchOrderTest
         server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
     features.emplace_back(
         server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
-
     features.emplace_back(
         server.addFeature<arangodb::VectorIndexFeature>(dbFeature),
         false);
