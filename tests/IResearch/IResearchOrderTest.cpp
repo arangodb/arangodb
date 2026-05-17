@@ -317,8 +317,7 @@ class IResearchOrderTest
     features.emplace_back(
         server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
     features.emplace_back(
-        server.addFeature<arangodb::VectorIndexFeature>(dbFeature),
-        false);
+        server.addFeature<arangodb::VectorIndexFeature>(dbFeature), false);
     {
       auto& feature =
           features
