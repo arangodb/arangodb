@@ -25,6 +25,9 @@
  * ctx.request(method, path, body?, extraHeaders?)
  *   Makes an HTTP call with superuser JWT, returns { status, body }.
  *
+ * A setup function may return an object; the runner binds it to ctx.data so
+ * the corresponding teardown can access whatever setup created.
+ *
  * Failure (throw) inside setup or teardown is fatal and stops the run.
  */
 
@@ -430,7 +433,7 @@ async function runCollectionTest(endpoint, superuserToken, test) {
         const authHeader = `Basic ${Buffer.from(`${username}:${username}`).toString('base64')}`;
 
         if (setup) {
-          await runPhase(setup, ctx, 'setup', name);
+          ctx.data = await runPhase(setup, ctx, 'setup', name);
         }
 
         const resp = await httpRequest(endpoint, method, path, body, {
@@ -441,6 +444,7 @@ async function runCollectionTest(endpoint, superuserToken, test) {
         if (teardown) {
           await runPhase(teardown, ctx, 'teardown', name);
         }
+        ctx.data = undefined;
 
         row += codeCell(resp.status);
       }
@@ -471,7 +475,7 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
     const authHeader = `Basic ${Buffer.from(`${username}:${username}`).toString('base64')}`;
 
     if (setup) {
-      await runPhase(setup, ctx, 'setup', name);
+      ctx.data = await runPhase(setup, ctx, 'setup', name);
     }
 
     const resp = await httpRequest(endpoint, method, path, body, {
@@ -482,6 +486,7 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
     if (teardown) {
       await runPhase(teardown, ctx, 'teardown', name);
     }
+    ctx.data = undefined;
 
     row += codeCell(resp.status);
   }
@@ -516,7 +521,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
     const authHeader = `Basic ${Buffer.from(`${username}:${username}`).toString('base64')}`;
 
     if (setup) {
-      await runPhase(setup, ctx, 'setup', name);
+      ctx.data = await runPhase(setup, ctx, 'setup', name);
     }
 
     const resp = await httpRequest(endpoint, method, path, body, {
@@ -527,13 +532,14 @@ async function runAdminTest(endpoint, superuserToken, test) {
     if (teardown) {
       await runPhase(teardown, ctx, 'teardown', name);
     }
+    ctx.data = undefined;
 
     row += adminCodeCell(resp.status);
   }
 
   // Superuser column
   if (setup) {
-    await runPhase(setup, ctx, 'setup', name);
+    ctx.data = await runPhase(setup, ctx, 'setup', name);
   }
 
   const suResp = await httpRequest(endpoint, method, path, body, {
@@ -544,6 +550,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
   if (teardown) {
     await runPhase(teardown, ctx, 'teardown', name);
   }
+  ctx.data = undefined;
 
   row += adminCodeCell(suResp.status) + '|';
   console.log(row);
@@ -555,7 +562,7 @@ async function runAdminTest(endpoint, superuserToken, test) {
  */
 async function runPhase(fn, ctx, phase, testName) {
   try {
-    await fn(ctx);
+    return await fn(ctx);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const wrapper = new Error(`[${phase}] for test "${testName}": ${msg}`);
