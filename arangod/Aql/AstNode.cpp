@@ -406,6 +406,8 @@ int compareQuantifier(AstNode const* lhs, AstNode const* rhs,
 /// @brief compare built-in function call nodes by name then arguments
 // Callers must guarantee both nodes are deterministic before comparing.
 int compareFcall(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  TRI_ASSERT(lhs->isDeterministic());
+  TRI_ASSERT(rhs->isDeterministic());
   auto lhsFunc = static_cast<Function const*>(lhs->getData());
   auto rhsFunc = static_cast<Function const*>(rhs->getData());
   if (lhsFunc != rhsFunc) {

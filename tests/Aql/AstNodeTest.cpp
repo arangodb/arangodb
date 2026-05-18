@@ -934,6 +934,18 @@ class CompareAstNodesTest : public ::testing::Test {
                                         /*allowInternalFunctions*/ false);
   }
 
+  // Creates a NODE_TYPE_FCALL_USER node via VPack deserialization instead of
+  // createNodeFunctionCall, which requires V8, and we just want to test the
+  // comparator of the user functions here.
+  AstNode* fcallUser(std::string_view name) {
+    VPackBuilder b;
+    b.openObject();
+    b.add("typeID", VPackValue(static_cast<int>(NODE_TYPE_FCALL_USER)));
+    b.add("name", VPackValue(name));
+    b.close();
+    return _ast->createNode(b.slice());
+  }
+
   // <true> would crash resolving attribute accesses with a variable base.
   int compare(AstNode const* lhs, AstNode const* rhs, bool utf8 = false) {
     return compareAstNodes<false>(lhs, rhs, utf8);
@@ -1025,6 +1037,19 @@ TEST_F(CompareAstNodesTest, attributeAccessDifferentBase) {
   EXPECT_LT(cmp, 0);
 }
 
+TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
+  auto* x = makeVar("x");
+  auto* lhs = attr(attr(createRefNode(x), "a"), "b");
+  auto* rhs = attr(attr(createRefNode(x), "a"), "b");
+  EXPECT_EQ(0, compare(lhs, rhs));
+}
+
+TEST_F(CompareAstNodesTest, nestedAttributeAccessDifferentLeaf) {
+  auto* x = makeVar("x");
+  EXPECT_NE(0, compare(attr(attr(createRefNode(x), "a"), "b"),
+                       attr(attr(createRefNode(x), "a"), "c")));
+}
+
 // --- commutative binary operators (EQ / NE)
 // -----------------------------------
 
@@ -1074,6 +1099,32 @@ TEST_F(CompareAstNodesTest, binaryAndCommutative) {
   EXPECT_EQ(0, compare(ab, ba));
 }
 
+TEST_F(CompareAstNodesTest, binaryOrCommutative) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(a),
+                      createRefNode(b));
+  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(b),
+                      createRefNode(a));
+  EXPECT_EQ(0, compare(ab, ba));
+}
+
+TEST_F(CompareAstNodesTest, multiplicationCommutative) {
+  auto* m12 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(1), intVal(2));
+  auto* m21 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(2), intVal(1));
+  EXPECT_EQ(0, compare(m12, m21));
+}
+
+TEST_F(CompareAstNodesTest, equalityDifferentRhsNotEqual) {
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  auto* c = makeVar("c");
+  EXPECT_NE(0, compare(binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(a),
+                                createRefNode(b)),
+                       binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(a),
+                                createRefNode(c))));
+}
+
 // --- FCALL nodes
 // --------------------------------------------------------------
 
@@ -1100,6 +1151,21 @@ TEST_F(CompareAstNodesTest, fcallDifferentArgs) {
   EXPECT_LT(compare(fcall("LENGTH", {createRefNode(x)}),
                     fcall("LENGTH", {createRefNode(y)})),
             0);
+}
+
+TEST_F(CompareAstNodesTest, fcallDifferentArgumentCount) {
+  auto* x = makeVar("x");
+  auto* y = makeVar("y");
+  EXPECT_NE(0, compare(fcall("CONCAT", {createRefNode(x)}),
+                       fcall("CONCAT", {createRefNode(x), createRefNode(y)})));
+}
+
+TEST_F(CompareAstNodesTest, fcallUserSameNameEqual) {
+  EXPECT_EQ(0, compare(fcallUser("my::func"), fcallUser("my::func")));
+}
+
+TEST_F(CompareAstNodesTest, fcallUserDifferentNamesNotEqual) {
+  EXPECT_NE(0, compare(fcallUser("my::func1"), fcallUser("my::func2")));
 }
 
 // --- NARY operators
@@ -1195,42 +1261,6 @@ TEST_F(CompareAstNodesTest, inAndNinNotEqual) {
   auto* x = makeVar("x");
   EXPECT_NE(0, compare(inOp(createRefNode(x), {intVal(1)}),
                        ninOp(createRefNode(x), {intVal(1)})));
-}
-
-TEST_F(CompareAstNodesTest, binaryOrCommutative) {
-  auto* a = makeVar("a");
-  auto* b = makeVar("b");
-  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(a),
-                      createRefNode(b));
-  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(b),
-                      createRefNode(a));
-  EXPECT_EQ(0, compare(ab, ba));
-}
-
-TEST_F(CompareAstNodesTest, multiplicationCommutative) {
-  auto* m12 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(1), intVal(2));
-  auto* m21 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(2), intVal(1));
-  EXPECT_EQ(0, compare(m12, m21));
-}
-
-TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
-  auto* x = makeVar("x");
-  auto* lhs = attr(attr(createRefNode(x), "a"), "b");
-  auto* rhs = attr(attr(createRefNode(x), "a"), "b");
-  EXPECT_EQ(0, compare(lhs, rhs));
-}
-
-TEST_F(CompareAstNodesTest, nestedAttributeAccessDifferentLeaf) {
-  auto* x = makeVar("x");
-  EXPECT_NE(0, compare(attr(attr(createRefNode(x), "a"), "b"),
-                       attr(attr(createRefNode(x), "a"), "c")));
-}
-
-TEST_F(CompareAstNodesTest, fcallDifferentArgumentCount) {
-  auto* x = makeVar("x");
-  auto* y = makeVar("y");
-  EXPECT_NE(0, compare(fcall("CONCAT", {createRefNode(x)}),
-                       fcall("CONCAT", {createRefNode(x), createRefNode(y)})));
 }
 
 // --- bind parameters
