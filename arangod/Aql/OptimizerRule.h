@@ -323,6 +323,11 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
+    // keeps track of the used shardKeys of an out variable
+    // and if all shardKeys are used it tries to upgrade the corresponding
+    // ScatterNode to a DistribeNode.
+    upgradeScatterToDistributeRule,
+
     // remove calculations that are redundant
     // this is hidden and disabled by default version
     // used to cleanup calculation nodes after conditionally
@@ -333,11 +338,6 @@ struct OptimizerRule {
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule,
-
-    // keeps track of the used shardKeys of an out variable
-    // and if all shardKeys are used it tries to upgrade the corresponding
-    // ScatterNode to a DistribeNode.
-    upgradeScatterToDistributeRule,
 
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule,
