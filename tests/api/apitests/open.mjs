@@ -17,7 +17,7 @@ export default [
   },
 
   {
-    name: "Renew a JWT token (POST /_open/auth/renew)",
+    name: "Renew a JWT token (POST /_open/auth/renew) with proper token",
     type: "admin",
     method: "POST",
     path: "/_open/auth/renew",
@@ -37,5 +37,15 @@ export default [
       const r = await ctx.request('POST', '/_open/auth', { username: "AR", password: "AR" });
       return { jwt: r.body.jwt };
     },
+  },
+
+  {
+    name: "Renew a JWT token (POST /_open/auth/renew) without proper token",
+    type: "admin",
+    method: "POST",
+    path: "/_open/auth/renew",
+    // The renew endpoint requires JWT authentication with a non-empty username.
+    // The runner's default auth (Basic Auth for admin users, superuser JWT for
+    // the last column) must yield 404.
   },
 ];
