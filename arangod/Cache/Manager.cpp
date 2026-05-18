@@ -77,7 +77,7 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _shuttingDown(false),
       _resizing(false),
       _rebalancing(false),
-      _accessStats(sharedPRNG,
+      _accessStats(sharedPRNG.getPRNG(),
                    (_options.cacheSize >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::uint64_t))
                        : (_options.cacheSize / (1024 * sizeof(std::uint64_t)))),
@@ -113,8 +113,8 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (_options.enableWindowedStats) {
-    _findStats =
-        std::make_unique<FindStatBuffer>(sharedPRNG, kFindStatsCapacity);
+    _findStats = std::make_unique<FindStatBuffer>(sharedPRNG.getPRNG(),
+                                                  kFindStatsCapacity);
     _fixedAllocation += _findStats->memoryUsage();
     _globalAllocation = _fixedAllocation;
     _peakGlobalAllocation = _globalAllocation;

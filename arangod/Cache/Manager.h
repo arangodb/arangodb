@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/SharedCounter.h"
 #include "Basics/SpinLocker.h"

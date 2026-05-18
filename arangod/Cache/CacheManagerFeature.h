@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/CacheOptionsProvider.h"
 
