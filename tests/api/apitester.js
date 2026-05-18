@@ -537,8 +537,8 @@ async function runCollectionTest(endpoint, superuserToken, test) {
         const resolvedBody    = resolveDeep(body, ctx);
         const resolvedHeaders = resolveDeep(headers, ctx);
         const resp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
-          ...resolvedHeaders,
           'Authorization': authHeader,
+          ...resolvedHeaders,
         });
 
         if (teardown) {
@@ -584,8 +584,8 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
     const resolvedBody    = resolveDeep(body, ctx);
     const resolvedHeaders = resolveDeep(headers, ctx);
     const resp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
-      ...resolvedHeaders,
       'Authorization': authHeader,
+      ...resolvedHeaders,
     });
 
     if (teardown) {
@@ -635,8 +635,8 @@ async function runAdminTest(endpoint, superuserToken, test) {
     const resolvedBody    = resolveDeep(body, ctx);
     const resolvedHeaders = resolveDeep(headers, ctx);
     const resp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
-      ...resolvedHeaders,
       'Authorization': authHeader,
+      ...resolvedHeaders,
     });
 
     if (teardown) {
@@ -656,8 +656,8 @@ async function runAdminTest(endpoint, superuserToken, test) {
   const resolvedBody    = resolveDeep(body, ctx);
   const resolvedHeaders = resolveDeep(headers, ctx);
   const suResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
-    ...resolvedHeaders,
     'Authorization': `bearer ${superuserToken}`,
+    ...resolvedHeaders,
   });
 
   if (teardown) {
