@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
+  dependencies.
+
 * COR-528: Reserve keywords "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", and "OUTER_JOIN"
   are introduced for JOIN operations.
   
@@ -9,9 +12,6 @@
 
 * COR-470: Removed the `path` attribute from the `_api/database/current`
   response.
-
-* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
-  dependencies.
 
 * COR-429: Removed support for the `--tls.protocol` startup option values 1, 2 and 3,
   which stand for SSL v2, SSL v2/3, and SSL v3.
