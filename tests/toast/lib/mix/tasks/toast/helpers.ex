@@ -250,22 +250,23 @@ defmodule Mix.Tasks.Toast.Helpers do
   # -- Internal helpers --
 
   defp build_only_test_ids(test_modules, line_filters) do
-    for mod <- test_modules,
-        test <- mod.__ex_unit__().tests,
-        line_matches?(test, line_filters),
+    all_tests = Enum.flat_map(test_modules, & &1.__ex_unit__().tests)
+
+    for {filter_file, filter_line} <- line_filters,
+        test = closest_test_at_or_before(all_tests, filter_file, filter_line),
+        test != nil,
         into: MapSet.new() do
       {test.module, test.name}
     end
   end
 
-  defp line_matches?(%{tags: %{file: nil}}, _line_filters), do: false
-
-  defp line_matches?(%{tags: tags}, line_filters) do
-    file_basename = Path.basename(tags[:file])
-
-    Enum.any?(line_filters, fn {filter_file, filter_line} ->
-      file_basename == filter_file and tags[:line] == filter_line
+  defp closest_test_at_or_before(tests, filter_file, filter_line) do
+    tests
+    |> Enum.filter(fn %{tags: tags} ->
+      tags[:file] != nil and Path.basename(tags[:file]) == filter_file and
+        tags[:line] <= filter_line
     end)
+    |> Enum.max_by(fn %{tags: tags} -> tags[:line] end, fn -> nil end)
   end
 
   defp filter_opts(opts, key) do
