@@ -1065,10 +1065,6 @@ Result ensureIndexCoordinatorInner(
                 continue;  // this is not our index
               }
 
-              // For vector indexes a shard error here is a training failure
-              // (FAISS, threshold) that the REST wait helper surfaces via
-              // the index's trainingState/errorMessage — count this shard as
-              // reported instead of failing the whole index creation.
               if (hasError(v)) {
                 auto const indexType = Index::type(
                     arangodb::basics::VelocyPackHelper::getStringView(

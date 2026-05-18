@@ -61,14 +61,6 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   // DBServer/SingleServer delegates to VectorIndexBuildManager. On
   // Coordinator, polls shard training states from CollectionInfoCurrent
   // until all report "ready" or "unusable", or a timeout is reached.
-  //
-  // Return value:
-  //   ResultT::error(...)     transient/administrative error (timeout,
-  //                           shutdown, index disappeared) — surface as HTTP
-  //                           error.
-  //   ResultT::success("")    training succeeded (kReady).
-  //   ResultT::success(<msg>) training failed permanently (kUnusable); the
-  //                           string is the underlying training error.
   [[nodiscard]] futures::Future<ResultT<std::string>> waitForVectorIndexReady(
       std::shared_ptr<LogicalCollection> const& coll, IndexId indexId);
 
