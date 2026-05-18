@@ -51,7 +51,7 @@
  * Failure (throw) inside setup or teardown is fatal and stops the run.
  */
 
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, statSync } from 'fs';
 import { resolve, join } from 'path';
 import { pathToFileURL } from 'url';
 import { createHmac } from 'crypto';
@@ -66,7 +66,7 @@ function parseArgs() {
     jwtSecretFile: null,
     rootPassword: '',
     subcommand: null,   // 'setup' | 'teardown' | 'test'
-    directory: null,    // only used for 'test'
+    inputs: [],         // one or more paths (files or directory) for 'test'
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -89,8 +89,8 @@ function parseArgs() {
           printHelp();
           process.exit(1);
         }
-      } else if (opts.subcommand === 'test' && opts.directory === null) {
-        opts.directory = a;
+      } else if (opts.subcommand === 'test') {
+        opts.inputs.push(a);
       } else {
         console.error(`Unexpected argument: ${a}`);
         printHelp();
@@ -115,8 +115,8 @@ function parseArgs() {
       printHelp();
       process.exit(1);
     }
-    if (!opts.directory) {
-      console.error('Error: <directory> argument is required for the test subcommand');
+    if (opts.inputs.length === 0) {
+      console.error('Error: at least one <path> argument is required for the test subcommand');
       printHelp();
       process.exit(1);
     }
@@ -130,13 +130,15 @@ function printHelp() {
 Usage:
   node apitester.js [options] setup
   node apitester.js [options] teardown
-  node apitester.js [options] --jwt-secret <file> test <directory>
+  node apitester.js [options] --jwt-secret <file> test <path> [<path> ...]
 
 Subcommands:
   setup       Create database 'd', collection 'c', 64 permission-matrix users,
               and 4 admin users (AU/AN/AR/AW).
   teardown    Drop database 'd' and delete all test users.
-  test        Run API authorization tests from *.mjs files in <directory>.
+  test        Run API authorization tests.  Each <path> may be a directory
+              (all *.mjs files inside are used, sorted) or an individual *.mjs
+              file.  Multiple paths are accepted and processed in order.
 
 Options:
   --endpoint,       -e <url>   ArangoDB endpoint URL (default: http://localhost:8529)
@@ -715,21 +717,48 @@ async function main() {
 
   const superuserToken = generateSuperuserJwt(secret);
 
-  // Discover and sort test files
-  const dir = resolve(opts.directory);
-  let files;
-  try {
-    files = readdirSync(dir)
-      .filter(f => f.endsWith('.mjs'))
-      .sort()
-      .map(f => join(dir, f));
-  } catch (err) {
-    console.error(`Error reading directory "${dir}": ${err.message}`);
-    process.exit(1);
+  // Resolve each input to an ordered list of absolute .mjs file paths.
+  // A directory input is expanded (sorted) to all *.mjs files inside it.
+  // An individual file input is used as-is after a basic sanity check.
+  const files = [];
+  for (const input of opts.inputs) {
+    const abs = resolve(input);
+    let st;
+    try {
+      st = statSync(abs);
+    } catch (err) {
+      console.error(`Error accessing path "${input}": ${err.message}`);
+      process.exit(1);
+    }
+    if (st.isDirectory()) {
+      let entries;
+      try {
+        entries = readdirSync(abs)
+          .filter(f => f.endsWith('.mjs'))
+          .sort()
+          .map(f => join(abs, f));
+      } catch (err) {
+        console.error(`Error reading directory "${input}": ${err.message}`);
+        process.exit(1);
+      }
+      if (entries.length === 0) {
+        console.error(`Warning: no *.mjs files found in directory "${input}"`);
+      }
+      files.push(...entries);
+    } else if (st.isFile()) {
+      if (!abs.endsWith('.mjs')) {
+        console.error(`Error: "${input}" is not a *.mjs file`);
+        process.exit(1);
+      }
+      files.push(abs);
+    } else {
+      console.error(`Error: "${input}" is neither a file nor a directory`);
+      process.exit(1);
+    }
   }
 
   if (files.length === 0) {
-    console.log(`No *.mjs files found in ${dir}`);
+    console.log('No *.mjs test files to run.');
     return;
   }
 

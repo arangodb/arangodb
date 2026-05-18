@@ -120,14 +120,39 @@ node apitester.js \
 
 ### `test`
 
-Runs all `*.mjs` test files found in `<directory>` (sorted alphabetically),
-then prints a formatted result table to **stdout**.
+Runs one or more `*.mjs` test files, then prints a formatted result table to
+**stdout**.  Each positional argument after `test` may be:
+
+- a **directory** — all `*.mjs` files inside are collected and sorted
+  alphabetically before running, or
+- an **individual `*.mjs` file** — used exactly as given.
+
+Multiple paths are accepted and processed in the order supplied.
 
 ```bash
+# Run every file in a directory (original behaviour)
 node apitester.js \
   --endpoint http://localhost:8529 \
   --jwt-secret /path/to/jwt.secret \
   test apitests/
+
+# Run a single file
+node apitester.js \
+  --endpoint http://localhost:8529 \
+  --jwt-secret /path/to/jwt.secret \
+  test apitests/open.mjs
+
+# Run several specific files
+node apitester.js \
+  --endpoint http://localhost:8529 \
+  --jwt-secret /path/to/jwt.secret \
+  test apitests/open.mjs apitests/documents.mjs
+
+# Mix a specific file with a whole directory
+node apitester.js \
+  --endpoint http://localhost:8529 \
+  --jwt-secret /path/to/jwt.secret \
+  test apitests/open.mjs apitests/
 ```
 
 `--jwt-secret` is **required** for the `test` subcommand.  The file must
@@ -157,9 +182,13 @@ npm install
 # 2. Create test users / database / collection
 node apitester.js -e http://localhost:8529 -p secret setup
 
-# 3. Run tests, capture output
+# 3. Run all tests, capture output
 node apitester.js -e http://localhost:8529 -j /var/lib/arangodb3/jwt.secret \
   test apitests/ > results-3.12.txt
+
+# 3a. (Optional) Run only specific files during development
+node apitester.js -e http://localhost:8529 -j /var/lib/arangodb3/jwt.secret \
+  test apitests/open.mjs apitests/documents.mjs
 
 # 4. Clean up
 node apitester.js -e http://localhost:8529 -p secret teardown
@@ -200,7 +229,7 @@ export default [
 | `method`   | `string`           | yes      | HTTP verb: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` |
 | `path`     | `string`           | yes      | Full URL path, e.g. `/_db/d/_api/collection/c` |
 | `body`     | `object \| null`   | no       | JSON body sent with the request. String values anywhere inside the object are subject to `${…}` interpolation (see below). |
-| `headers`  | `object`           | no       | Extra HTTP headers. String values are subject to `${…}` interpolation (see below). |
+| `headers`  | `object`           | no       | Extra HTTP headers. String values are subject to `${…}` interpolation (see below). If the object contains an `Authorization` key it **overrides** the runner's default authorization header for that request (useful for endpoints that require a specific auth scheme such as JWT). |}
 | `setup`    | `async (ctx) => …` | no       | Hook executed **before** each matrix cell; runs as superuser. May return an object that is bound to `ctx.data` for the subsequent `teardown` call. |
 | `teardown` | `async (ctx) => …` | no       | Hook executed **after** each matrix cell; runs as superuser. Receives whatever `setup` returned via `ctx.data`. |
 
