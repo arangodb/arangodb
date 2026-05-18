@@ -28,6 +28,18 @@
  * A setup function may return an object; the runner binds it to ctx.data so
  * the corresponding teardown can access whatever setup created.
  *
+ * String interpolation in path, body, and headers:
+ *   Any string value in path, body (recursively), or headers that contains
+ *   the substring '${' is evaluated as a JavaScript template literal with
+ *   ctx in scope after setup has run.  This lets test entries reference
+ *   ctx.data without using backtick template literals in the *.mjs file:
+ *
+ *     path: "/_db/d/_api/document/${ctx.data.id}"
+ *     body: { _key: "${ctx.data.key}", value: 1 }
+ *     headers: { "x-my-header": "${ctx.data.token}" }
+ *
+ *   Strings that do not contain '${' are passed through unchanged.
+ *
  * Failure (throw) inside setup or teardown is fatal and stops the run.
  */
 
@@ -138,6 +150,11 @@ export that is an array of test objects with the following fields:
 
 ctx.request(method, path, body?, extraHeaders?)
   Executes an HTTP call with superuser JWT; returns { status, body }.
+
+String interpolation:
+  Any string value in path, body (recursively), or headers that contains '\${' is
+  evaluated as a template literal with ctx in scope after setup has run.
+  Example:  path: "/_db/d/_api/document/\${ctx.data.id}"
 `);
 }
 
@@ -405,6 +422,50 @@ async function doTeardown(endpoint, rootPassword) {
   console.log('Teardown complete.');
 }
 
+// ─── Runtime value resolution ─────────────────────────────────────────────────
+
+/**
+ * Interpolate a single string as a template literal with ctx in scope,
+ * but only when the string actually contains '${'.
+ * Strings without '${' are returned unchanged (zero overhead).
+ *
+ * new Function('ctx', 'return `...`') compiles the string as the body of a
+ * template literal, making ctx (and ctx.data) available at evaluation time.
+ * This lets test files use ordinary double-quoted strings such as
+ *   "/_db/d/_api/document/${ctx.data.id}"
+ * instead of backtick template literals.
+ */
+function resolveString(s, ctx) {
+  if (s.includes('${')) {
+    return new Function('ctx', `return \`${s}\``)(ctx);
+  }
+  return s;
+}
+
+/**
+ * Recursively walk value and interpolate every string that contains '${'.
+ * - Strings  → resolveString(s, ctx)
+ * - Arrays   → each element resolved recursively
+ * - Objects  → each own-property value resolved recursively
+ * - All other types (number, boolean, null, …) → returned as-is
+ */
+function resolveDeep(value, ctx) {
+  if (typeof value === 'string') {
+    return resolveString(value, ctx);
+  }
+  if (Array.isArray(value)) {
+    return value.map(v => resolveDeep(v, ctx));
+  }
+  if (value !== null && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = resolveDeep(v, ctx);
+    }
+    return out;
+  }
+  return value;
+}
+
 // ─── Per-type test runners ────────────────────────────────────────────────────
 
 /**
@@ -436,8 +497,11 @@ async function runCollectionTest(endpoint, superuserToken, test) {
           ctx.data = await runPhase(setup, ctx, 'setup', name);
         }
 
-        const resp = await httpRequest(endpoint, method, path, body, {
-          ...headers,
+        const resolvedPath    = resolveString(path, ctx);
+        const resolvedBody    = resolveDeep(body, ctx);
+        const resolvedHeaders = resolveDeep(headers, ctx);
+        const resp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
+          ...resolvedHeaders,
           'Authorization': authHeader,
         });
 
@@ -478,8 +542,11 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
       ctx.data = await runPhase(setup, ctx, 'setup', name);
     }
 
-    const resp = await httpRequest(endpoint, method, path, body, {
-      ...headers,
+    const resolvedPath    = resolveString(path, ctx);
+    const resolvedBody    = resolveDeep(body, ctx);
+    const resolvedHeaders = resolveDeep(headers, ctx);
+    const resp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
+      ...resolvedHeaders,
       'Authorization': authHeader,
     });
 
@@ -524,8 +591,11 @@ async function runAdminTest(endpoint, superuserToken, test) {
       ctx.data = await runPhase(setup, ctx, 'setup', name);
     }
 
-    const resp = await httpRequest(endpoint, method, path, body, {
-      ...headers,
+    const resolvedPath    = resolveString(path, ctx);
+    const resolvedBody    = resolveDeep(body, ctx);
+    const resolvedHeaders = resolveDeep(headers, ctx);
+    const resp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
+      ...resolvedHeaders,
       'Authorization': authHeader,
     });
 
@@ -542,8 +612,11 @@ async function runAdminTest(endpoint, superuserToken, test) {
     ctx.data = await runPhase(setup, ctx, 'setup', name);
   }
 
-  const suResp = await httpRequest(endpoint, method, path, body, {
-    ...headers,
+  const resolvedPath    = resolveString(path, ctx);
+  const resolvedBody    = resolveDeep(body, ctx);
+  const resolvedHeaders = resolveDeep(headers, ctx);
+  const suResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
+    ...resolvedHeaders,
     'Authorization': `bearer ${superuserToken}`,
   });
 
