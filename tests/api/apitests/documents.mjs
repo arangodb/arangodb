@@ -45,7 +45,7 @@ export default [
   },
 
   {
-    name: "Replace a document (PUT)",
+    name: "Replace a document (PUT) with key",
     type: "collection",
     // Insert the document so there is always something to replace.
     setup: async (ctx) => {
@@ -61,7 +61,23 @@ export default [
   },
 
   {
-    name: "Update a document (PATCH)",
+    name: "Replace a document (PUT) without key",
+    type: "collection",
+    // Insert the document so there is always something to replace.
+    setup: async (ctx) => {
+      await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
+      await ctx.request('POST', '/_db/d/_api/document/c', { _key: 'testdoc', value: 1 });
+    },
+    method: "PUT",
+    path: "/_db/d/_api/document/c",
+    body: [{ _key: "testdoc", value: 2 }],
+    teardown: async (ctx) => {
+      await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
+    },
+  },
+
+  {
+    name: "Update a document (PATCH) with key",
     type: "collection",
     // Insert the document so there is always something to patch.
     setup: async (ctx) => {
@@ -77,7 +93,23 @@ export default [
   },
 
   {
-    name: "Delete a document (DELETE)",
+    name: "Update a document (PATCH) without key",
+    type: "collection",
+    // Insert the document so there is always something to patch.
+    setup: async (ctx) => {
+      await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
+      await ctx.request('POST', '/_db/d/_api/document/c', { _key: 'testdoc', value: 1 });
+    },
+    method: "PATCH",
+    path: "/_db/d/_api/document/c",
+    body: [{ _key: "testdoc", value: 3 }],
+    teardown: async (ctx) => {
+      await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
+    },
+  },
+
+  {
+    name: "Delete a document (DELETE) with key",
     type: "collection",
     // Insert the document so there is always something to delete.
     setup: async (ctx) => {
@@ -86,6 +118,23 @@ export default [
     },
     method: "DELETE",
     path: "/_db/d/_api/document/c/testdoc",
+    // Remove the document in case the DELETE was denied and it still exists.
+    teardown: async (ctx) => {
+      await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
+    },
+  },
+
+  {
+    name: "Delete a document (DELETE) without key",
+    type: "collection",
+    // Insert the document so there is always something to delete.
+    setup: async (ctx) => {
+      await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
+      await ctx.request('POST', '/_db/d/_api/document/c', { _key: 'testdoc', value: 1 });
+    },
+    method: "DELETE",
+    path: "/_db/d/_api/document/c",
+    body: { _key: "testdoc" },
     // Remove the document in case the DELETE was denied and it still exists.
     teardown: async (ctx) => {
       await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');

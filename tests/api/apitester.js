@@ -511,7 +511,9 @@ async function runCollectionTest(endpoint, superuserToken, test) {
   const { name, method, path, body = null, headers = {}, setup, teardown } = test;
   const ctx = makeSuperuserCtx(endpoint, superuserToken);
 
+  console.log(name);
   console.log(`${method} ${path}`);
+  if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
   const hdr = ' '.repeat(22)
     + colCell('DB undef') + colCell('DB none') + colCell('DB ro') + colCell('DB rw') + '|';
@@ -561,7 +563,9 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
   const { name, method, path, body = null, headers = {}, setup, teardown } = test;
   const ctx = makeSuperuserCtx(endpoint, superuserToken);
 
+  console.log(name);
   console.log(`${method} ${path}`);
+  if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
   const hdr = colCell('DB undef') + colCell('DB none') + colCell('DB ro') + colCell('DB rw') + '|';
   console.log(hdr);
@@ -604,7 +608,9 @@ async function runAdminTest(endpoint, superuserToken, test) {
   const { name, method, path, body = null, headers = {}, setup, teardown } = test;
   const ctx = makeSuperuserCtx(endpoint, superuserToken);
 
+  console.log(name);
   console.log(`${method} ${path}`);
+  if (Object.keys(headers).length > 0) console.log(JSON.stringify(headers));
 
   const hdr = adminColCell('_sys undef')
     + adminColCell('_sys none')
