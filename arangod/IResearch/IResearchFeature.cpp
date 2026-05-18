@@ -377,12 +377,12 @@ Result upgradeArangoSearchLinkCollectionName(
             LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
                 << "Setting collection name '" << clusterCollectionName
                 << "' for link " << id;
-            if (vocbase.engine().typeName() == RocksDBEngine::kEngineName) {
-              auto& engine = static_cast<RocksDBEngine&>(vocbase.engine());
+            if (auto* engine = dynamic_cast<RocksDBEngine*>(&vocbase.engine());
+                engine != nullptr) {
               auto builder = collection->toVelocyPackIgnore(
                   {"path", "statusString"},
                   LogicalDataSource::Serialization::PersistenceWithInProgress);
-              auto res = engine.writeCreateCollectionMarker(
+              auto res = engine->writeCreateCollectionMarker(
                   vocbase.id(), collection->id(), builder.slice(),
                   RocksDBLogValue::Empty());
               if (res.fail()) {

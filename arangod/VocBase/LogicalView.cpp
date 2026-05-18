@@ -366,12 +366,6 @@ Result drop(LogicalView const& view) noexcept {
 Result properties(LogicalView const& view, bool safe) noexcept {
   auto& vocbase = view.vocbase();
   auto& engine = vocbase.engine();
-  if (engine.typeName().empty()) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failed to find storage engine while updating definition of view '" +
-            view.name() + "' in database '" + vocbase.name() + "'"};
-  }
   return safeCall([&]() -> Result {
     if (engine.inRecovery()) {
       return {};

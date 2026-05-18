@@ -955,11 +955,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         "failed to find feature 'Database' while updating collection");
   }
 
-  if (vocbase().engine().typeName().empty()) {
-    return Result(TRI_ERROR_INTERNAL,
-                  "failed to find a storage engine while updating collection");
-  }
-
   std::lock_guard guard{_infoLock};  // prevent simultaneous updates
 
   auto res = updateSchema(slice.get(StaticStrings::Schema));

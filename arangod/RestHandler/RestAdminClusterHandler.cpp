@@ -3031,24 +3031,22 @@ async<void> RestAdminClusterHandler::handleVPackSortMigration(
   VPackBuilder result;
   Result res;
   if (!ServerState::instance()->isCoordinator()) {
-    auto& storageEngine = _vocbase.engine();
-    if (storageEngine.typeName() != RocksDBEngine::kEngineName) {
+    auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&_vocbase.engine());
+    if (rocksDBEngine == nullptr) {
       res = Result(TRI_ERROR_NOT_IMPLEMENTED,
                    "VPack sorting migration is unnecessary for storage engines "
                    "other than RocksDB");
     } else {
-      auto& rocksDBEngine = static_cast<RocksDBEngine&>(storageEngine);
-
       if (request()->requestType() == rest::RequestType::GET) {
         if (subCommand == VPackSortMigrationCheck) {
           res = ::analyzeVPackIndexSorting(
-              rocksDBEngine, _vocbase.server().getFeature<DatabaseFeature>(),
+              *rocksDBEngine, _vocbase.server().getFeature<DatabaseFeature>(),
               result);
         } else {
-          res = ::statusVPackIndexSorting(rocksDBEngine, result);
+          res = ::statusVPackIndexSorting(*rocksDBEngine, result);
         }
       } else {  // PUT
-        res = ::migrateVPackIndexSorting(rocksDBEngine, result);
+        res = ::migrateVPackIndexSorting(*rocksDBEngine, result);
       }
     }
   } else {
