@@ -738,9 +738,9 @@ futures::Future<ResultT<std::string>> RestIndexHandler::waitForVectorIndexReady(
       if (vecIdx->trainingState() == VectorIndexTrainingState::kUnusable) {
         auto msg = vecIdx->trainingError();
         // Empty message would collide with the "ready" sentinel, so
-        // substitute a generic one.
+        // fall back to the same placeholder enrichVectorIndexes uses.
         if (msg.empty()) {
-          msg = "vector index training failed";
+          msg = std::string{StaticStrings::VectorIndexDefaultTrainingError};
         }
         co_return msg;
       }
@@ -748,8 +748,9 @@ futures::Future<ResultT<std::string>> RestIndexHandler::waitForVectorIndexReady(
     co_return ResultT<std::string>::error(std::move(res));
   }
 
-  // Coordinator: poll shard training states until all report "ready" or
-  // "unusable".
+  // Coordinator: poll shard training states until the aggregate reaches a
+  // terminal value — "ready", or "unusable" with an explicit shard error.
+  // The intermediate states "training" and "ingesting" keep polling.
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   auto bareIndexId = std::to_string(indexId.id());
