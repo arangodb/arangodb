@@ -36,7 +36,8 @@ defmodule ToastTest.Runner.JS.ArangoshExecutor do
 
   ## Optional options
 
-    * `:timeout` — execution timeout in milliseconds (default: 300_000)
+    * `:timeout` — remaining suite/global budget in ms, used for both the process
+      kill deadline and `--javascript.execution-deadline` (default: 3_600_000)
     * `:extra_args` — map of extra arangosh CLI arguments
     * `:test_filter` — test name filter string
 
@@ -59,7 +60,7 @@ defmodule ToastTest.Runner.JS.ArangoshExecutor do
     endpoint = Keyword.fetch!(opts, :endpoint)
     arangosh = Keyword.fetch!(opts, :arangosh)
     repo_root = Keyword.fetch!(opts, :repo_root)
-    timeout = Keyword.get(opts, :timeout, 300_000)
+    timeout = Keyword.get(opts, :timeout, 3_600_000)
     extra_args = Keyword.get(opts, :extra_args, %{})
     test_filter = Keyword.get(opts, :test_filter)
 
@@ -161,9 +162,9 @@ defmodule ToastTest.Runner.JS.ArangoshExecutor do
   end
 
   defp await_exit(os_pid, deadline, timeout) do
-    remaining = deadline - System.monotonic_time(:millisecond)
+    remaining = Toast.Utils.remaining_ms(deadline)
 
-    if remaining <= 0 do
+    if remaining == 0 do
       :exec.kill(os_pid, :sigkill)
       {:error, "arangosh timed out after #{timeout}ms"}
     else

@@ -235,7 +235,7 @@ defmodule Toast.Diagnostics.Coredump do
   end
 
   defp collect_port_output(port, os_pid, chunks, deadline) do
-    remaining = max(0, deadline - System.monotonic_time(:millisecond))
+    remaining = Toast.Utils.remaining_ms(deadline)
 
     receive do
       {^port, {:data, data}} ->

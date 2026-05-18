@@ -106,7 +106,7 @@ defmodule ToastTest.Runner.TestExecution do
     {:ok, repo_root} = Toast.Utils.Filesystem.find_repository_root(build_dir)
     arangosh = Path.expand(Path.join([build_dir, "bin", "arangosh"]))
 
-    {base_timeout, _source} = Timeout.get_timeout(config, %{})
+    remaining = Timeout.remaining_ms(config.timeout_settings)
 
     extra_args =
       if function_exported?(suite_module, :__toast_js_extra_args__, 0),
@@ -118,7 +118,7 @@ defmodule ToastTest.Runner.TestExecution do
       deployment: deployment,
       arangosh: arangosh,
       repo_root: repo_root,
-      timeout: base_timeout,
+      timeout: remaining,
       extra_args: extra_args
     ]
 
