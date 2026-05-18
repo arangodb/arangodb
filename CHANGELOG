@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-10.
+
 * Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
   dependencies.
 
@@ -28,8 +30,6 @@
 
 * COR-295: Removed `StatisticsFeature`. The `--server.statistics-all-databases` and
   `--server.statistics-history` startup options are now obsolete and ignored.
-
-* Updated ArangoDB Starter to v0.20.0-preview-9.
 
 * Upgraded OpenSSL to 3.5.6.
 
