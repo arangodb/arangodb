@@ -25,7 +25,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/SharedPRNG.h"
+#include "Basics/SharedPRNG.h"
 
 namespace arangodb {
 
@@ -38,10 +38,10 @@ class SharedPRNGFeature final
 
   uint64_t rand() noexcept;
 
-  SharedPRNG& getPRNG() noexcept { return _prng; }
+  basics::SharedPRNG& getPRNG() noexcept { return _prng; }
 
  private:
-  SharedPRNG _prng;
+  basics::SharedPRNG _prng;
 };
 
 }  // namespace arangodb

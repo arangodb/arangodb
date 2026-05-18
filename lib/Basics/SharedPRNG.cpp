@@ -26,7 +26,7 @@
 
 #include <mutex>
 
-namespace arangodb {
+namespace arangodb::basics {
 
 namespace {
 
@@ -42,7 +42,7 @@ class PRNGSeeder {
 
  private:
   std::mutex _mutex;
-  basics::splitmix64 _seeder;
+  splitmix64 _seeder;
 };
 
 /// @brief global PRNG seeder, to seed thread-local PRNG objects
@@ -57,7 +57,7 @@ struct SeededPRNG {
 
   inline uint64_t next() noexcept { return prng.next(); }
 
-  basics::xoroshiro128plus prng;
+  xoroshiro128plus prng;
 };
 
 static thread_local SeededPRNG threadLocalPRNG;
@@ -66,4 +66,4 @@ static thread_local SeededPRNG threadLocalPRNG;
 
 std::uint64_t SharedPRNG::rand() noexcept { return threadLocalPRNG.next(); }
 
-}  // namespace arangodb
+}  // namespace arangodb::basics

@@ -23,10 +23,10 @@
 
 #include <cstdint>
 
-namespace arangodb {
+namespace arangodb::basics {
 
 struct SharedPRNG final {
   static std::uint64_t rand() noexcept;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::basics
