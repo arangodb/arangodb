@@ -1,6 +1,8 @@
 v3.11.14.4 (XXXX-XX-XX)
 -----------------------
 
+* Updated ArangoDB Starter to v0.18.25.
+
 * Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
   dependencies.
 
@@ -20,8 +22,6 @@ v3.11.14.4 (XXXX-XX-XX)
 
 * Ensure the js/node/package.json and js/node/package-lock.json have correct
   versions of the included node packages.
-
-* Updated ArangoDB Starter to v0.18.24.
 
 * Upgraded OpenSSL to 3.5.6 and OpenLDAP to 2.6.13.
 
