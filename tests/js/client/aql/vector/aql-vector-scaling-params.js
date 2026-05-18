@@ -33,7 +33,6 @@ const {
     generateSeed
 } = require("@arangodb/testutils/seededRandom");
 const {
-    VectorIndexTrainingState,
     assertEnsureIndexResultUnusable,
 } = require("@arangodb/testutils/vector-index-common");
 
