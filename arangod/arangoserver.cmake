@@ -155,6 +155,7 @@ add_library(arangoserver STATIC
   RestServer/QueryRegistryFeatureOptions.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/SharedPRNG.cpp
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SupervisorFeature.cpp

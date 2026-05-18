@@ -32,20 +32,17 @@
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
-#include "GeneralServer/Acceptor.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "Network/NetworkFeature.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/SharedPRNGFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "Statistics/RequestStatistics.h"
 #include "Cluster/ServerState.h"
 
 using namespace arangodb;
@@ -163,7 +160,7 @@ SupervisedScheduler::SupervisedScheduler(
     std::shared_ptr<SchedulerMetrics> metrics)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
-      _sharedPRNG(server.getFeature<SharedPRNGFeature>()),
+      _sharedPRNG(server.getFeature<SharedPRNGFeature>().getPRNG()),
       _numWorkers(0),
       _stopping(false),
       _acceptingNewJobs(true),
