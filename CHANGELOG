@@ -1,6 +1,16 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
 * COR-540: Register warning when input is neither array nor null
+
+* COR-531: With this fix, APPEND() now correctly removes duplicate values when the unique parameter 
+  is set to true, even if the appender array is null/empty or the first parameter is null.
+
+* Updated ArangoDB Starter to v0.20.0-preview-10.
+
+* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
+  dependencies.
+
 * COR-528: Reserve keywords "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", and "OUTER_JOIN"
   are introduced for JOIN operations.
   
@@ -9,9 +19,6 @@
 
 * COR-470: Removed the `path` attribute from the `_api/database/current`
   response.
-
-* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
-  dependencies.
 
 * COR-429: Removed support for the `--tls.protocol` startup option values 1, 2 and 3,
   which stand for SSL v2, SSL v2/3, and SSL v3.
@@ -28,8 +35,6 @@
 
 * COR-295: Removed `StatisticsFeature`. The `--server.statistics-all-databases` and
   `--server.statistics-history` startup options are now obsolete and ignored.
-
-* Updated ArangoDB Starter to v0.20.0-preview-9.
 
 * Upgraded OpenSSL to 3.5.6.
 
