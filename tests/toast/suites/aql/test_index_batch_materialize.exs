@@ -414,7 +414,7 @@ defmodule Aql.IndexBatchMaterializeTest do
 
     assert %{
              index: [%{"id" => id1}, %{"id" => id2}],
-             materialize: [%{"dependencies" => [id1 | _]}, %{"dependencies" => [id2 | _]}]
+             materialize: [%{"dependencies" => [id1]}, %{"dependencies" => [id2]}]
            } = expect_double_optimization(client, query)
 
     check_result(client, query)
@@ -430,10 +430,10 @@ defmodule Aql.IndexBatchMaterializeTest do
 
     # chained: index -> index -> materialize -> materialize
     assert %{
-             index: [%{"id" => id1}, %{"id" => id2, "dependencies" => [id1 | _]}],
+             index: [%{"id" => id1}, %{"id" => id2, "dependencies" => [id1]}],
              materialize: [
-               %{"id" => id3, "dependencies" => [id2 | _]},
-               %{"dependencies" => [id3 | _]}
+               %{"id" => id3, "dependencies" => [id2]},
+               %{"dependencies" => [id3]}
              ]
            } = expect_double_optimization(client, query)
 
@@ -450,10 +450,10 @@ defmodule Aql.IndexBatchMaterializeTest do
 
     # chained: index -> index -> materialize -> materialize
     assert %{
-             index: [%{"id" => id1}, %{"id" => id2, "dependencies" => [id1 | _]}],
+             index: [%{"id" => id1}, %{"id" => id2, "dependencies" => [id1]}],
              materialize: [
-               %{"id" => id3, "dependencies" => [id2 | _]},
-               %{"dependencies" => [id3 | _]}
+               %{"id" => id3, "dependencies" => [id2]},
+               %{"dependencies" => [id3]}
              ]
            } = expect_double_optimization(client, query)
 
@@ -470,7 +470,7 @@ defmodule Aql.IndexBatchMaterializeTest do
 
     assert %{
              index: [%{"id" => id1}, %{"id" => id2}],
-             materialize: [%{"dependencies" => [id1 | _]}, %{"dependencies" => [id2 | _]}]
+             materialize: [%{"dependencies" => [id1]}, %{"dependencies" => [id2]}]
            } = expect_double_optimization(client, query)
 
     check_result(client, query)
@@ -486,7 +486,7 @@ defmodule Aql.IndexBatchMaterializeTest do
 
     assert %{
              index: [%{"id" => id1}, %{"id" => id2}],
-             materialize: [%{"dependencies" => [id1 | _]}, %{"dependencies" => [id2 | _]}]
+             materialize: [%{"dependencies" => [id1]}, %{"dependencies" => [id2]}]
            } = expect_double_optimization(client, query)
 
     check_result(client, query)
