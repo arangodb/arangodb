@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertMatch, assertTrue, assertFalse, arango, db */
+/* global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,14 +25,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const IM = global.instanceManager;
-const AM = IM.agencyMgr;
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require('@arangodb').arango;
+const db = require('@arangodb').db;
+const AM = global.instanceManager.agencyMgr;
 
 let { getServersByType } = require('@arangodb/test-helper');
 
 const wait = require("internal").wait;
-
-const primaryEndpoint = arango.getEndpoint();
 
 function indexCleanupSuite() {
   'use strict';

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, fail, arango */
+/* global getOptions, runSetup, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,6 +24,13 @@
 /// @author Jan Steemann
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const db = require('@arangodb').db;
+const errors = require('@arangodb').errors;
+const arango = require('@arangodb').arango;
+let queries = require('@arangodb/aql/queries');
+let IM = global.instanceManager;
 
 if (getOptions === true) {
   return {
@@ -40,13 +47,7 @@ if (runSetup === true) {
   return true;
 }
 
-let jsunity = require('jsunity');
-let queries = require('@arangodb/aql/queries');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
-  let db = require("@arangodb").db;
-  const errors = require('@arangodb').errors;
   const cn = "UnitTestsDatabase";
 
   return {
@@ -63,7 +64,7 @@ function testSuite() {
       db._useDatabase('_system');
       db._dropDatabase(cn);
     },
-    
+
     testQueriesFromNonSystemDatabase : function() {
       db._useDatabase(cn);
       let result = queries.current();
@@ -80,15 +81,15 @@ function testSuite() {
         assertEqual(errors.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err.errorNum);
       }
     },
-    
+
     testAllQueriesFromSystemDatabase : function() {
       let result = queries.current(true);
       // must succeed
       assertTrue(Array.isArray(result));
     },
-    
+
     testAllQueriesWithUnprivilegedUser : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       try {
         db._useDatabase(cn);
         try {
@@ -98,10 +99,10 @@ function testSuite() {
           assertEqual(errors.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err.errorNum);
         }
       } catch (err) {
-        arango.reconnect(endpoint, db._name(), "root", "");
+        arango.reconnect(IM.endpoint, db._name(), "root", "");
       }
     },
-    
+
     testSlowQueriesFromNonSystemDatabase : function() {
       db._useDatabase(cn);
       let result = queries.slow();
@@ -118,15 +119,15 @@ function testSuite() {
         assertEqual(errors.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err.errorNum);
       }
     },
-    
+
     testAllSlowQueriesFromSystemDatabase : function() {
       let result = queries.slow(true);
       // must succeed
       assertTrue(Array.isArray(result));
     },
-    
+
     testAllSlowQueriesWithUnprivilegedUser : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       try {
         db._useDatabase(cn);
         try {
@@ -136,17 +137,17 @@ function testSuite() {
           assertEqual(errors.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err.errorNum);
         }
       } catch (err) {
-        arango.reconnect(endpoint, db._name(), "root", "");
+        arango.reconnect(IM.endpoint, db._name(), "root", "");
       }
     },
-    
+
     testClearSlowQueriesFromNonSystemDatabase : function() {
       db._useDatabase(cn);
       let result = queries.clearSlow();
       assertFalse(result.error);
       assertEqual(200, result.code);
     },
-    
+
     testClearAllSlowQueriesFromNonSystemDatabase : function() {
       db._useDatabase(cn);
       try {
@@ -156,16 +157,16 @@ function testSuite() {
         assertEqual(errors.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err.errorNum);
       }
     },
-    
+
     testClearAllSlowQueriesFromSystemDatabase : function() {
       let result = queries.clearSlow(true);
       // must succeed
       assertFalse(result.error);
       assertEqual(200, result.code);
     },
-    
+
     testClearAllSlowQueriesWithUnprivilegedUser : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       try {
         db._useDatabase(cn);
         try {
@@ -175,7 +176,7 @@ function testSuite() {
           assertEqual(errors.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err.errorNum);
         }
       } catch (err) {
-        arango.reconnect(endpoint, db._name(), "root", "");
+        arango.reconnect(IM.endpoint, db._name(), "root", "");
       }
     },
 

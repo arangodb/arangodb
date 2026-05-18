@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, arango */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -28,22 +28,23 @@
 'use strict';
 
 const jsunity = require("jsunity");
-const db = require("internal").db;
-const url = require('url');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require('@arangodb').arango;
+const db = require('@arangodb').db;
 const _ = require("lodash");
 const { getDBServers } = require('@arangodb/test-helper');
+const IM = global.instanceManager;
 
 const cn = "UnitTestsQueries";
-const originalEndpoint = arango.getEndpoint();
 
 function queriesTestSuite () {
   'use strict';
-  
+
   return {
     setUpAll: function() {
-      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
+      IM.rememberConnection();
       db._drop(cn);
-      
+
       let c = db._create(cn, { numberOfShards: 5 });
       let docs = [];
       for (let i = 0; i < 100; ++i) {
@@ -53,18 +54,18 @@ function queriesTestSuite () {
     },
 
     tearDownAll: function() {
-      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
+      IM.reconnectMe();
       db._drop(cn);
     },
 
     setUp: function() {
-      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
+      IM.rememberConnection();
     },
 
     tearDown: function() {
-      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
+      IM.reconnectMe();
     },
-    
+
     // test executing operations on the coordinator
     testCoordinator: function() {
       assertEqual(100, db[cn].count());

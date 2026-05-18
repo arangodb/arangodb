@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango */
+/*global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,13 +25,15 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require('jsunity');
-var expect = require('chai').expect;
-var request = require('@arangodb/request');
+const jsunity = require('jsunity');
+const expect = require('chai').expect;
+const request = require('@arangodb/request');
+const arango = require('@arangodb').arango;
 var url = require('url');
 var querystring = require('querystring');
 var qs = require('qs');
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const IM = global.instanceManager;
 
 'use strict';
 
@@ -43,11 +45,11 @@ function BaseRequestSuite () {
   var buildUrl = function (append, base) {
     base = base === false ? '' : '/_admin/echo';
     append = append || '';
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + base + append;
+    return IM.url + base + append;
   };
-  
+
   var buildUrlBroken = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + '/_not-there' + append;
+    return IM.url + append;
   };
 
   return {

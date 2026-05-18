@@ -25,22 +25,24 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
+const arango = arangodb.arango;
 const internal = require('internal');
 const db = arangodb.db;
+let IM = global.instanceManager;
 
-const originalEndpoint = arango.getEndpoint();
 const createConnection = (protocol) => {
-  let endpoint = protocol + originalEndpoint.replace(/^[a-z0-9]+:/, ':');
+  let endpoint = protocol + IM.endpoint.replace(/^[a-z0-9]+:/, ':');
   arango.reconnect(endpoint, db._name(), "root", "");
 };
 
 function JobsApiWithDifferentProtocols() {
   'use strict';
-  
+
   return {
     tearDown: function () {
-      arango.reconnect(originalEndpoint, db._name(), "root", "");
+      arango.reconnect(IM.endpoint, db._name(), "root", "");
     },
 
     testStartJobWithHttp1AndFetchWithHttp2: function () {

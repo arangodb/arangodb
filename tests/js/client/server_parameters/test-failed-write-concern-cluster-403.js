@@ -37,6 +37,7 @@ let db = require('internal').db;
 let lh = require('@arangodb/testutils/replicated-logs-helper');
 let lpreds = require('@arangodb/testutils/replicated-logs-predicates');
 let reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
+let IM = global.instanceManager;
 
 let {
   getEndpointById,
@@ -57,8 +58,6 @@ function testSuite() {
     },
     
     testFailedBehaviour : function() {
-      let coordinator = arango.getEndpoint();
-
       let c = db._collection(cn);
       let shards = c.shards(true);
       let shard = Object.keys(shards)[0];
@@ -79,7 +78,7 @@ function testSuite() {
           reconnectRetry(follower1, "_system", "root", "");
           arango.PUT_RAW("/_admin/debug/failat/LogicalCollection::insert", {});
           arango.PUT_RAW("/_admin/debug/failat/SynchronizeShard::disable", {});
-          reconnectRetry(coordinator, "_system", "root", "");
+          reconnectRetry(IM.endpoint, "_system", "root", "");
           let d = c.insert({Hallo:3});  // This drops the followers, but works
         } else {
           // stop the follower, causing a failed write concern
@@ -182,7 +181,7 @@ function testSuite() {
           reconnectRetry(follower1, "_system", "root", "");
           arango.DELETE_RAW("/_admin/debug/failat/LogicalCollection::insert");
           arango.DELETE_RAW("/_admin/debug/failat/SynchronizeShard::disable");
-          reconnectRetry(coordinator, "_system", "root", "");
+          reconnectRetry(IM.endpoint, "_system", "root", "");
         } else {
           followerCtrl.resume();
           lh.waitFor(lpreds.serverHealthy(followerId));

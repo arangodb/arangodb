@@ -1,12 +1,15 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertEqual, fail */
+/* global getOptions, fail */
 'use strict';
 const fs = require('fs');
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
+const FoxxManager = require('@arangodb/foxx/manager');
+let IM = global.instanceManager;
 
 if (getOptions === true) {
-  let users = require("@arangodb/users");
   let testPath = fs.join(pu.TOP_DIR, internal.pathForTesting(''));
 
   return {
@@ -29,18 +32,11 @@ if (getOptions === true) {
   };
 }
 
-
-const jsunity = require('jsunity');
-
 function testSuite() {
-  const db = internal.db;
-  const arangodb = require('@arangodb');
-  const FoxxManager = require('@arangodb/foxx/manager');
   const download = internal.download;
-  const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
+  const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
   const foxxApp = fs.join(basePath, 'server-security');
   const mount = '/testmount';
-  const endpoint = arangodb.arango.getEndpoint().replace('tcp://', 'http://');
 
   return {
     setUp: function() {
@@ -61,81 +57,81 @@ function testSuite() {
     // tests/js/common/test-data/apps/server-security/index.js
 
     testPid : function() {
-      const url = endpoint + mount + "/pid";
+      const url = IM.url + mount + "/pid";
       const res = download(url);
       assertEqual(403, res.code);
       assertEqual("Forbidden", res.message);
     },
 
      testPasswd : function() {
-       const url = endpoint + mount + "/passwd";
+       const url = IM.url + mount + "/passwd";
        const res = download(url);
        assertEqual(403, res.code);
        assertEqual("Forbidden", res.message);
      },
 
      testDlHeise : function() {
-       const url = endpoint + mount + "/dl-heise";
+       const url = IM.url + mount + "/dl-heise";
        const res = download(url);
        assertEqual(403, res.code);
        assertEqual("Forbidden", res.message);
      },
 
      testTestPort : function() {
-       const url = endpoint + mount + "/test-port";
+       const url = IM.url + mount + "/test-port";
        const res = download(url);
        assertEqual(403, res.code);
        assertEqual("Forbidden", res.message);
      },
 
      testGetTmpPath : function() {
-       const url = endpoint + mount + "/get-tmp-path";
+       const url = IM.url + mount + "/get-tmp-path";
        const res = download(url);
        assertEqual(200, res.code);
        let body = JSON.parse(res.body);
      },
 
      testGetTmpFile : function() {
-       const url = endpoint + mount + "/get-tmp-file";
+       const url = IM.url + mount + "/get-tmp-file";
        const res = download(url);
        assertEqual(200, res.code);
        let body = JSON.parse(res.body);
      },
 
      testWriteTmpFile : function() {
-       const url = endpoint + mount + "/write-tmp-file";
+       const url = IM.url + mount + "/write-tmp-file";
        const res = download(url);
        assertEqual(200, res.code);
      },
 
      testProcessStatistics : function() {
-       const url = endpoint + mount + "/process-statistics";
+       const url = IM.url + mount + "/process-statistics";
        const res = download(url);
        //disabled for oasis
        //assertEqual(403, res.code);
      },
 
      testExecuteExternal : function() {
-       const url = endpoint + mount + "/execute-external";
+       const url = IM.url + mount + "/execute-external";
        const res = download(url);
        assertEqual(403, res.code);
      },
 
      testPath : function() {
        { // read
-         const url = endpoint + mount + "/environment-variables-get-path";
+         const url = IM.url + mount + "/environment-variables-get-path";
          const res = download(url);
          assertEqual(204, res.code);
          assertEqual("", res.body);
        }
        { // modify
-         const url = endpoint + mount + "/environment-variables-set-path";
+         const url = IM.url + mount + "/environment-variables-set-path";
          const res = download(url);
          assertEqual(200, res.code);
          assertEqual("true", res.body);
        }
        { // read
-         const url = endpoint + mount + "/environment-variables-get-path";
+         const url = IM.url + mount + "/environment-variables-get-path";
          const res = download(url);
          assertEqual(204, res.code);
          assertEqual("", res.body);
@@ -143,14 +139,14 @@ function testSuite() {
      },
 
      testStartupOptions : function() {
-       const url = endpoint + mount + "/startup-options-log-file";
+       const url = IM.url + mount + "/startup-options-log-file";
        const res = download(url);
        assertEqual(204, res.code);
        assertEqual("", res.body);
      },
 
      testReadServiceFile : function() {
-       const url = endpoint + mount + "/read-service-file";
+       const url = IM.url + mount + "/read-service-file";
        const res = download(url);
        assertEqual(200, res.code);
        let body = JSON.parse(res.body);
@@ -159,12 +155,12 @@ function testSuite() {
 
      testWriteRemoveServiceFile : function() {
        {
-         const url = endpoint + mount + "/write-service-file";
+         const url = IM.url + mount + "/write-service-file";
          const res = download(url);
          assertEqual(200, res.code);
        }
        {
-         const url = endpoint + mount + "/remove-service-file";
+         const url = IM.url + mount + "/remove-service-file";
          const res = download(url);
          assertEqual(200, res.code);
        }
