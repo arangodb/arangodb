@@ -1,6 +1,9 @@
 v3.11.14.4 (XXXX-XX-XX)
 -----------------------
 
+* Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
+  dependencies.
+
 * Add --transaction.streaming-max-transaction-size option to make the maximum
   transaction size for stream transactions configurable (in bytes).
 
@@ -17,9 +20,6 @@ v3.11.14.4 (XXXX-XX-XX)
 
 * Ensure the js/node/package.json and js/node/package-lock.json have correct
   versions of the included node packages.
-
-* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
-  dependencies.
 
 * Updated ArangoDB Starter to v0.18.24.
 
