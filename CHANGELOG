@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-531: With this fix, APPEND() now correctly removes duplicate values when the unique parameter 
+  is set to true, even if the appender array is null/empty or the first parameter is null.
+
 * Updated ArangoDB Starter to v0.20.0-preview-10.
 
 * Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
