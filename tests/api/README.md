@@ -258,6 +258,19 @@ interface Ctx {
 `ctx.request` always uses the superuser JWT token, so it can perform any
 administrative operation regardless of the user currently under test.
 
+`ctx.resolveString(s)` and `ctx.resolveDeep(value)` expose the same
+interpolation engine that the runner uses for `path`, `body`, and `headers`.
+They are useful inside `teardown` (or `setup`) when you need to expand a
+`${…}` expression yourself — for example to build a URL from `ctx.data`
+without relying on automatic interpolation:
+
+```js
+teardown: async (ctx) => {
+  const url = ctx.resolveString('/_db/d/_api/document/${ctx.data.id}');
+  await ctx.request('DELETE', url);
+},
+```
+
 If `setup` returns a value, the runner assigns it to `ctx.data` before
 resolving `path`/`body`/`headers` and before invoking `teardown`.  After
 `teardown` completes, `ctx.data` is reset to `undefined` so it does not

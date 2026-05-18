@@ -25,6 +25,14 @@
  * ctx.request(method, path, body?, extraHeaders?)
  *   Makes an HTTP call with superuser JWT, returns { status, body }.
  *
+ * ctx.resolveString(s)
+ *   Interpolates a single string as a template literal with ctx in scope.
+ *   Strings that do not contain '${' are returned unchanged.
+ *
+ * ctx.resolveDeep(value)
+ *   Recursively walks value and interpolates every string that contains '${'.
+ *   Non-string leaves (numbers, booleans, null, …) are returned as-is.
+ *
  * A setup function may return an object; the runner binds it to ctx.data so
  * the corresponding teardown can access whatever setup created.
  *
@@ -150,6 +158,10 @@ export that is an array of test objects with the following fields:
 
 ctx.request(method, path, body?, extraHeaders?)
   Executes an HTTP call with superuser JWT; returns { status, body }.
+ctx.resolveString(s)
+  Interpolates a single string as a template literal with ctx in scope.
+ctx.resolveDeep(value)
+  Recursively walks value and interpolates every string that contains '\${'.
 
 String interpolation:
   Any string value in path, body (recursively), or headers that contains '\${' is
@@ -214,7 +226,7 @@ async function httpRequest(endpoint, method, path, body, headers) {
 
 /** Build a context object for setup/teardown that wraps superuser calls. */
 function makeSuperuserCtx(endpoint, superuserToken) {
-  return {
+  const ctx = {
     /**
      * Execute an HTTP call with the superuser JWT.
      * @param {string} method
@@ -229,8 +241,30 @@ function makeSuperuserCtx(endpoint, superuserToken) {
         'Authorization': `bearer ${superuserToken}`,
       });
     },
+
+    /**
+     * Interpolate a single string as a template literal with ctx in scope.
+     * Strings that do not contain '${' are returned unchanged.
+     * @param {string} s
+     * @returns {string}
+     */
+    resolveString(s) {
+      return resolveString(s, ctx);
+    },
+
+    /**
+     * Recursively walk value and interpolate every string that contains '${'.
+     * Non-string leaves (numbers, booleans, null, …) are returned as-is.
+     * @param {any} value
+     * @returns {any}
+     */
+    resolveDeep(value) {
+      return resolveDeep(value, ctx);
+    },
+
     endpoint,
   };
+  return ctx;
 }
 
 // ─── Access-level constants ───────────────────────────────────────────────────
