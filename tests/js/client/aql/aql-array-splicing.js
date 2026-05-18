@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -48,8 +48,12 @@ function splicingSuite () {
     },
     testArraySplicingNotArray : function() {
       let query = `LET a = 5 RETURN [...a]`;
-      let res = db._query(query).toArray();
-      assertEqual([[5]], res);
+      let data = db._query(query).data;
+      assertEqual([[]], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('array splice'));
     },
     testArraySplicingNull : function() {
       let query = `LET a = null RETURN [...a]`;
@@ -58,8 +62,11 @@ function splicingSuite () {
     },
     testArraySplicingObject : function() {
       let query = `LET a = {} RETURN [...a]`;
-      let res = db._query(query).toArray();
-      assertEqual([[{}]], res);
+      let data = db._query(query).data;
+      assertEqual([[]], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
+        data.extra.warnings[0].code);
     },
     testArraySplicingNested : function() {
       let query = `LET a = [[1,2,3],[4]] RETURN [...[...a]]`;
