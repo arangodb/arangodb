@@ -1033,8 +1033,23 @@ TEST_F(CompareAstNodesTest, attributeAccessDifferentBase) {
   auto* y = makeVar("y");
   ASSERT_LT(x->id, y->id);
   // Same attr name "k"; bases differ by variable id.
-  int cmp = compare(attr(createRefNode(x), "k"), attr(createRefNode(y), "k"));
-  EXPECT_LT(cmp, 0);
+  EXPECT_LT(compare(attr(createRefNode(x), "k"), attr(createRefNode(y), "k")),
+            0);
+  EXPECT_GT(compare(attr(createRefNode(y), "k"), attr(createRefNode(x), "k")),
+            0);
+}
+
+TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
+  auto* x = makeVar("x");
+  auto* lhs = attr(attr(createRefNode(x), "a"), "b");
+  auto* rhs = attr(attr(createRefNode(x), "a"), "b");
+  EXPECT_EQ(0, compare(lhs, rhs));
+}
+
+TEST_F(CompareAstNodesTest, nestedAttributeAccessDifferentLeaf) {
+  auto* x = makeVar("x");
+  EXPECT_NE(0, compare(attr(attr(createRefNode(x), "a"), "b"),
+                       attr(attr(createRefNode(x), "a"), "c")));
 }
 
 TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
@@ -1151,6 +1166,24 @@ TEST_F(CompareAstNodesTest, fcallDifferentArgs) {
   EXPECT_LT(compare(fcall("LENGTH", {createRefNode(x)}),
                     fcall("LENGTH", {createRefNode(y)})),
             0);
+  EXPECT_GT(compare(fcall("LENGTH", {createRefNode(y)}),
+                    fcall("LENGTH", {createRefNode(x)})),
+            0);
+}
+
+TEST_F(CompareAstNodesTest, fcallDifferentArgumentCount) {
+  auto* x = makeVar("x");
+  auto* y = makeVar("y");
+  EXPECT_NE(0, compare(fcall("CONCAT", {createRefNode(x)}),
+                       fcall("CONCAT", {createRefNode(x), createRefNode(y)})));
+}
+
+TEST_F(CompareAstNodesTest, fcallUserSameNameEqual) {
+  EXPECT_EQ(0, compare(fcallUser("my::func"), fcallUser("my::func")));
+}
+
+TEST_F(CompareAstNodesTest, fcallUserDifferentNamesNotEqual) {
+  EXPECT_NE(0, compare(fcallUser("my::func1"), fcallUser("my::func2")));
 }
 
 TEST_F(CompareAstNodesTest, fcallDifferentArgumentCount) {
@@ -1323,6 +1356,20 @@ TEST_F(CompareAstNodesTest, quantifierAtLeastNotEqualAll) {
   auto* al2 = _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, intVal(2));
   auto* all = _ast->createNodeQuantifier(Quantifier::Type::kAll);
   EXPECT_NE(0, compare(al2, all));
+}
+
+TEST_F(CompareAstNodesTest, quantifierAtLeastDifferentNonConstantThreshold) {
+  // Threshold children are variable references (non-constant);
+  // compareQuantifier falls through to compareChildrenInOrder for the threshold
+  // child.
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  ASSERT_LT(a->id, b->id);
+  auto* alA =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, createRefNode(a));
+  auto* alB =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, createRefNode(b));
+  EXPECT_NE(0, compare(alA, alB));
 }
 
 // --- compareUtf8 flag propagation

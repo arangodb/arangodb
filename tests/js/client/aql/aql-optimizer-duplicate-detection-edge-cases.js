@@ -84,6 +84,21 @@ function DuplicateConditionOptimizationSuite() {
       assertTrue(planStr.includes('"compare =="'), 'should use == after rewrite');
     },
 
+    // IN with a non-constant array must NOT be rewritten to ==, even if it has
+    // one element at runtime. isConstant() guards the rewrite.
+    testInNonConstantArrayNotRewritten: function () {
+      const q = `LET arr = NOOPT([5]) FOR doc IN ${cn} FILTER doc.value IN arr RETURN doc.value`;
+      assertEqual([5], query(q));
+      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      assertTrue(planStr.includes('"compare in"'), 'non-constant array IN must not be rewritten');
+    },
+
+    // IN [] is always false; no rewrite to ==, branch is dropped as false.
+    testInEmptyArrayProducesNoResults: function () {
+      const res = query(`FOR doc IN ${cn} FILTER doc.value IN [] RETURN doc.value`);
+      assertEqual([], res);
+    },
+
     // --- false AND branch removal -------------------------------------------
 
     // doc.value IN [] is always false, so the whole AND branch is dropped.
@@ -147,9 +162,23 @@ function DuplicateConditionOptimizationSuite() {
 
     // Non-deterministic conditions are skipped by deduplication.
     testNonDeterministicNotDeduplicated: function () {
-      // RAND() >= 0 is always true but non-deterministic; verify no crash.
-      const res = query(`FOR doc IN ${cn} FILTER RAND() >= 0 AND RAND() >= 0 RETURN doc.value`);
-      assertEqual(10, res.length);
+      // RAND() >= 0 is non-deterministic; dedup must not fire so both calls
+      // remain in the plan. Verify no crash and correct result count.
+      const q = `FOR doc IN ${cn} FILTER RAND() >= 0 AND RAND() >= 0 RETURN doc.value`;
+      assertEqual(10, query(q).length);
+      const plan = db._createStatement(q).explain().plan;
+      const filterNodes = plan.nodes.filter(n => n.type === 'FilterNode');
+      assertTrue(filterNodes.length > 0, 'FilterNode should remain for non-deterministic conditions');
+    },
+
+    // Duplicate with both sides non-constant (two attribute accesses).
+    testDuplicateAndConditionRemovedNonConstantOperands: function () {
+      const res = sorted(query(`
+        FOR doc IN ${cn}
+          FILTER doc.value > doc.name AND doc.value > doc.name
+          RETURN doc.value`));
+      const expected = sorted(query(`FOR doc IN ${cn} FILTER doc.value > doc.name RETURN doc.value`));
+      assertEqual(expected, res);
     },
 
     // --- duplicate OR branch removal ----------------------------------------
@@ -169,6 +198,17 @@ function DuplicateConditionOptimizationSuite() {
           FILTER doc.value > 7 OR doc.value == 0 OR doc.value > 7
           RETURN doc.value`));
       assertEqual([0, 8, 9], res);
+    },
+
+    // Non-deterministic OR branch must not be deduplicated; the deterministic
+    // duplicate on either side of it must still be removed correctly.
+    testDuplicateOrWithNonDeterministicMiddle: function () {
+      const res = sorted(query(`
+        FOR doc IN ${cn}
+          FILTER doc.value > 7 OR RAND() >= 0 OR doc.value > 7
+          RETURN doc.value`));
+      // RAND() >= 0 always true → all docs match regardless.
+      assertEqual(10, res.length);
     },
 
     // --- subquery guard ------------------------------------------------------

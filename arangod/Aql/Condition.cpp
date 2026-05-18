@@ -180,8 +180,9 @@ bool containsSubquery(AstNode const* node) noexcept {
 }
 
 // Returns true if two AST nodes are structurally equal.
-// Skips nodes containing subqueries — side effects make structural equality
-// unsafe.
+// Subquery nodes are excluded because structural identity doesn't imply result
+// identity. Non-deterministic functions are excluded by callers via
+// isDeterministic() before this function is called.
 bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
   if (lhs == nullptr || rhs == nullptr) {
     return lhs == rhs;
@@ -189,7 +190,10 @@ bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
   if (containsSubquery(lhs) || containsSubquery(rhs)) {
     return false;
   }
-  return compareAstNodes<false>(lhs, rhs, true) == 0;
+  // Use byte comparison (false) to match how == and != evaluate at runtime;
+  // ICU collation could equate byte-distinct string literals and cause
+  // incorrect deduplication.
+  return compareAstNodes<false>(lhs, rhs, false) == 0;
 }
 
 struct PermutationState {
