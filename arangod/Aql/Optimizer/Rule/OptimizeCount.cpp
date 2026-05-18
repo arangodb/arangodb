@@ -256,8 +256,6 @@ void optimizeCountRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           break;
         }
 
-        case EN::DISTRIBUTE:
-
         case EN::INSERT:
         case EN::UPDATE:
         case EN::REPLACE:
