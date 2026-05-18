@@ -190,10 +190,14 @@ bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
   if (containsSubquery(lhs) || containsSubquery(rhs)) {
     return false;
   }
-  // Use byte comparison (false) to match how == and != evaluate at runtime;
-  // ICU collation could equate byte-distinct string literals and cause
-  // incorrect deduplication.
-  return compareAstNodes<false>(lhs, rhs, false) == 0;
+  // ==/!= compare strings by byte, while ordering operators like >= use
+  // Unicode-aware comparison, so two literals that are semantically the same
+  // but have different byte encodings of the same character (e.g. NFC vs NFD)
+  // are considered different. We mirror that here, otherwise they could be
+  // mistaken for the same condition and one of them would be dropped.
+  bool const compareUtf8 = (lhs->type != NODE_TYPE_OPERATOR_BINARY_EQ &&
+                            lhs->type != NODE_TYPE_OPERATOR_BINARY_NE);
+  return compareAstNodes<false>(lhs, rhs, compareUtf8) == 0;
 }
 
 struct PermutationState {
