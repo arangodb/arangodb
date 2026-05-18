@@ -1,6 +1,8 @@
 v3.11.14.4 (XXXX-XX-XX)
 -----------------------
 
+* Updated arangosync to v2.19.28.
+
 * Updated ArangoDB Starter to v0.18.25.
 
 * Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
@@ -17,8 +19,6 @@ v3.11.14.4 (XXXX-XX-XX)
  - brace-expansion to 1.1.13
  - ajv to 8.18.0
  - @xmldom/xmldom@0.8.13
-
-* Updated arangosync to v2.19.27
 
 * Ensure the js/node/package.json and js/node/package-lock.json have correct
   versions of the included node packages.
