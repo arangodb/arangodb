@@ -275,4 +275,27 @@ defmodule Toast.Client do
       {request, response}
     end
   end
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    def inspect(client, opts) do
+      fields =
+        [
+          if(client.database, do: {"db", client.database}),
+          {"protocol", client.protocol},
+          {"content_type", client.content_type},
+          if(client.auth, do: {"auth", auth_label(client.auth)}),
+          if(client.trx_id, do: {"trx_id", client.trx_id})
+        ]
+        |> Toast.Utils.compact()
+        |> Enum.map(fn {k, v} -> concat([k, ": ", to_doc(v, opts)]) end)
+
+      inner = fold_doc([client.base_url | fields], &glue/2)
+      concat(["#Toast.Client<", nest(inner, 2), ">"])
+    end
+
+    defp auth_label({kind, _}), do: kind
+    defp auth_label({kind, _, _}), do: kind
+  end
 end

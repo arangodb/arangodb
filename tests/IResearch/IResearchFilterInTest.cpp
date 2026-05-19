@@ -995,7 +995,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1122,7 +1122,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "FOR d IN collection FILTER d.a.b.c.e.f in [ '1', d, '3' ] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1250,7 +1250,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1378,7 +1378,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1506,7 +1506,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1620,7 +1620,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "FOR d IN collection FILTER 4 in [ 1, d.b.a, 4 ] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -4160,7 +4160,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -4295,7 +4295,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -4430,7 +4430,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -4565,7 +4565,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "], 1.5) RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -4701,7 +4701,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -4836,7 +4836,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -4954,7 +4954,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "FOR d IN collection FILTER 4 not in [ 1, d.b.a, 4 ] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
