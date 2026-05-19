@@ -305,6 +305,22 @@ resolving `path`/`body`/`headers` and before invoking `teardown`.  After
 `teardown` completes, `ctx.data` is reset to `undefined` so it does not
 bleed into the next matrix cell.
 
+If the object returned by `setup` has a truthy `skipTest` property, the
+test request **and** teardown are both skipped for that matrix cell.  The
+output table prints `SKIP` in that cell instead of a status code.  This is
+useful when a precondition cannot be met for a specific user (e.g. a
+required resource does not exist in that permission context):
+
+```js
+setup: async (ctx) => {
+  const r = await ctx.request('GET', '/_api/version');
+  if (r.status !== 200) {
+    return { skipTest: true };   // skip this cell entirely
+  }
+  return { token: r.body.version };
+},
+```
+
 A failure (thrown error) inside `setup` or `teardown` is treated as **fatal**:
 the runner prints the error and exits immediately.
 

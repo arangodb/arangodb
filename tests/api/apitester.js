@@ -35,6 +35,8 @@
  *
  * A setup function may return an object; the runner binds it to ctx.data so
  * the corresponding teardown can access whatever setup created.
+ * If the returned object has a truthy 'skipTest' property the test request and
+ * teardown are both skipped for that matrix cell; the output table shows SKIP.
  *
  * String interpolation in path, body, and headers:
  *   Any string value in path, body (recursively), or headers that contains
@@ -65,6 +67,7 @@ function parseArgs() {
     endpoint: 'http://localhost:8529',
     jwtSecretFile: null,
     rootPassword: '',
+    verbose: false,
     subcommand: null,   // 'setup' | 'teardown' | 'test'
     inputs: [],         // one or more paths (files or directory) for 'test'
   };
@@ -77,6 +80,8 @@ function parseArgs() {
       opts.jwtSecretFile = args[++i];
     } else if ((a === '--root-password' || a === '-p') && i + 1 < args.length) {
       opts.rootPassword = args[++i];
+    } else if (a === '--verbose' || a === '-v') {
+      opts.verbose = true;
     } else if (a === '--help' || a === '-h') {
       printHelp();
       process.exit(0);
@@ -144,6 +149,7 @@ Options:
   --endpoint,       -e <url>   ArangoDB endpoint URL (default: http://localhost:8529)
   --root-password,  -p <pw>    Password for the root user (default: empty string)
   --jwt-secret,     -j <file>  Path to JWT secret file (required for 'test')
+  --verbose,        -v         Log every outgoing request and incoming response to stderr
   --help,           -h         Show this help
 
 For the 'test' subcommand each *.mjs file in <directory> must have a default
@@ -185,6 +191,9 @@ function generateSuperuserJwt(secret) {
 
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 
+/** When true every HTTP exchange is logged to stderr. Set by parseArgs(). */
+let verboseMode = false;
+
 /** Single shared undici Agent that ignores TLS cert errors. */
 let _agent = null;
 function getAgent() {
@@ -194,9 +203,21 @@ function getAgent() {
   return _agent;
 }
 
+/** Maximum number of characters to print for a body in verbose mode. */
+const VERBOSE_BODY_LIMIT = 2048;
+
+/** Redact the value of an Authorization header for verbose output. */
+function redactAuth(value) {
+  if (typeof value !== 'string') return value;
+  if (value.toLowerCase().startsWith('basic ')) return 'Basic <redacted>';
+  if (value.toLowerCase().startsWith('bearer ')) return 'bearer <redacted>';
+  return '<redacted>';
+}
+
 /**
- * Make an HTTP request and return { status, body }.
+ * Make an HTTP request and return { status, body, headers }.
  * body is parsed as JSON if possible, otherwise returned as a string.
+ * When verboseMode is true every exchange is logged to stderr.
  */
 async function httpRequest(endpoint, method, path, body, headers) {
   const url = `${endpoint}${path}`;
@@ -206,6 +227,20 @@ async function httpRequest(endpoint, method, path, body, headers) {
   if (body !== null && body !== undefined) {
     reqBody = JSON.stringify(body);
     reqHeaders['content-type'] = 'application/json';
+  }
+
+  if (verboseMode) {
+    process.stderr.write(`→ ${method} ${url}\n`);
+    for (const [k, v] of Object.entries(reqHeaders)) {
+      const display = k.toLowerCase() === 'authorization' ? redactAuth(v) : v;
+      process.stderr.write(`  ${k}: ${display}\n`);
+    }
+    if (reqBody !== null) {
+      const preview = reqBody.length > VERBOSE_BODY_LIMIT
+        ? reqBody.slice(0, VERBOSE_BODY_LIMIT) + ` … (${reqBody.length} bytes total)`
+        : reqBody;
+      process.stderr.write(`  body: ${preview}\n`);
+    }
   }
 
   const resp = await undiciRequest(url, {
@@ -221,6 +256,14 @@ async function httpRequest(endpoint, method, path, body, headers) {
     parsedBody = JSON.parse(text);
   } catch {
     parsedBody = text;
+  }
+
+  if (verboseMode) {
+    const preview = text.length > VERBOSE_BODY_LIMIT
+      ? text.slice(0, VERBOSE_BODY_LIMIT) + ` … (${text.length} bytes total)`
+      : text;
+    process.stderr.write(`← ${resp.statusCode}\n`);
+    process.stderr.write(`  body: ${preview}\n`);
   }
 
   return { status: resp.statusCode, body: parsedBody, headers: resp.headers };
@@ -535,6 +578,12 @@ async function runCollectionTest(endpoint, superuserToken, test) {
           ctx.data = await runPhase(setup, ctx, 'setup', name);
         }
 
+        if (ctx.data && ctx.data.skipTest === true) {
+          ctx.data = undefined;
+          row += codeCell('SKIP');
+          continue;
+        }
+
         const resolvedPath    = resolveString(path, ctx);
         const resolvedBody    = resolveDeep(body, ctx);
         const resolvedHeaders = resolveDeep(headers, ctx);
@@ -580,6 +629,12 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
 
     if (setup) {
       ctx.data = await runPhase(setup, ctx, 'setup', name);
+    }
+
+    if (ctx.data && ctx.data.skipTest === true) {
+      ctx.data = undefined;
+      row += codeCell('SKIP');
+      continue;
     }
 
     const resolvedPath    = resolveString(path, ctx);
@@ -633,6 +688,12 @@ async function runAdminTest(endpoint, superuserToken, test) {
       ctx.data = await runPhase(setup, ctx, 'setup', name);
     }
 
+    if (ctx.data && ctx.data.skipTest === true) {
+      ctx.data = undefined;
+      row += adminCodeCell('SKIP');
+      continue;
+    }
+
     const resolvedPath    = resolveString(path, ctx);
     const resolvedBody    = resolveDeep(body, ctx);
     const resolvedHeaders = resolveDeep(headers, ctx);
@@ -654,20 +715,25 @@ async function runAdminTest(endpoint, superuserToken, test) {
     ctx.data = await runPhase(setup, ctx, 'setup', name);
   }
 
-  const resolvedPath    = resolveString(path, ctx);
-  const resolvedBody    = resolveDeep(body, ctx);
-  const resolvedHeaders = resolveDeep(headers, ctx);
-  const suResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
-    'Authorization': `bearer ${superuserToken}`,
-    ...resolvedHeaders,
-  });
+  if (ctx.data && ctx.data.skipTest === true) {
+    ctx.data = undefined;
+    row += adminCodeCell('SKIP') + '|';
+  } else {
+    const resolvedPath    = resolveString(path, ctx);
+    const resolvedBody    = resolveDeep(body, ctx);
+    const resolvedHeaders = resolveDeep(headers, ctx);
+    const suResp = await httpRequest(endpoint, method, resolvedPath, resolvedBody, {
+      'Authorization': `bearer ${superuserToken}`,
+      ...resolvedHeaders,
+    });
 
-  if (teardown) {
-    await runPhase(teardown, ctx, 'teardown', name);
+    if (teardown) {
+      await runPhase(teardown, ctx, 'teardown', name);
+    }
+    ctx.data = undefined;
+
+    row += adminCodeCell(suResp.status) + '|';
   }
-  ctx.data = undefined;
-
-  row += adminCodeCell(suResp.status) + '|';
   console.log(row);
 }
 
@@ -692,6 +758,8 @@ async function runPhase(fn, ctx, phase, testName) {
 
 async function main() {
   const opts = parseArgs();
+
+  verboseMode = opts.verbose;
 
   // Dispatch setup / teardown without needing a JWT secret
   if (opts.subcommand === 'setup') {
