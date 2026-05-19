@@ -733,7 +733,8 @@ futures::Future<ResultT<std::string>> RestIndexHandler::waitForVectorIndexReady(
     // condition (shutdown, index dropped, ...) inspect the local index
     // state directly.
     auto idx = coll->lookupIndex(indexId);
-    if (idx != nullptr && idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    if (idx != nullptr) {
+      TRI_ASSERT(idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
       auto* vecIdx = static_cast<RocksDBVectorIndex*>(idx.get());
       if (vecIdx->trainingState() == VectorIndexTrainingState::kUnusable) {
         auto msg = vecIdx->trainingError();
