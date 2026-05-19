@@ -13,7 +13,7 @@
 // Authorization for every route in this group: AUTHEN
 //   → any authenticated user (no further check beyond authentication)
 //   → if compiled in:     AU→401, AN→401, AR→200, AW→200, superuser→200
-//   → if not compiled in: AU→404, AN→404, AR→404, AW→404, superuser→404
+//   → if not compiled in: AU→401, AN→401, AR→404, AW→404, superuser→404
 //
 // NOTE: PUT /_admin/debug/crash is intentionally omitted from this test suite.
 //       Issuing that request with a superuser token would actually terminate the
@@ -28,7 +28,7 @@ export default [
   // this build.  Completely read-only and side-effect-free.
   // Auth: AUTHEN (no further check)
   // Expected (compiled in):     AU→401, AN→401, AR→200, AW→200, superuser→200
-  // Expected (not compiled in): AU→404, AN→404, AR→404, AW→404, superuser→404
+  // Expected (not compiled in): AU→401, AN→401, AR→404, AW→404, superuser→404
   {
     name: "Query failure-points availability (GET /_admin/debug/failat)",
     type: "admin",
@@ -40,7 +40,7 @@ export default [
   // Returns the list of all currently active failure points.  Read-only.
   // Auth: AUTHEN
   // Expected (compiled in):     AU→401, AN→401, AR→200, AW→200, superuser→200
-  // Expected (not compiled in): AU→404, AN→404, AR→404, AW→404, superuser→404
+  // Expected (not compiled in): AU→401, AN→401, AR→404, AW→404, superuser→404
   {
     name: "List all active failure points (GET /_admin/debug/failat/all)",
     type: "admin",
@@ -54,7 +54,7 @@ export default [
   // later tests are not affected.
   // Auth: AUTHEN
   // Expected (compiled in):     AU→401, AN→401, AR→200, AW→200, superuser→200
-  // Expected (not compiled in): AU→404, AN→404, AR→404, AW→404, superuser→404
+  // Expected (not compiled in): AU→401, AN→401, AR→404, AW→404, superuser→404
   {
     name: "Activate failure point (PUT /_admin/debug/failat/apitest-dummy)",
     type: "admin",
@@ -81,7 +81,7 @@ export default [
   // not compiled in).
   // Auth: AUTHEN
   // Expected (compiled in):     AU→401, AN→401, AR→200, AW→200, superuser→200
-  // Expected (not compiled in): AU→404, AN→404, AR→404, AW→404, superuser→404
+  // Expected (not compiled in): AU→401, AN→401, AR→404, AW→404, superuser→404
   {
     name: "Remove single failure point (DELETE /_admin/debug/failat/apitest-dummy)",
     type: "admin",
@@ -106,7 +106,7 @@ export default [
   // are no failure points; the call is idempotent.
   // Auth: AUTHEN
   // Expected (compiled in):     AU→401, AN→401, AR→200, AW→200, superuser→200
-  // Expected (not compiled in): AU→404, AN→404, AR→404, AW→404, superuser→404
+  // Expected (not compiled in): AU→401, AN→401, AR→404, AW→404, superuser→404
   {
     name: "Clear all failure points (DELETE /_admin/debug/failat)",
     type: "admin",
@@ -121,8 +121,8 @@ export default [
   // failure tests) it returns 404.
   // Auth: AUTHEN (no further check)
   // Expected (maintainer build):       AU→401, AN→401, AR→200, AW→200, superuser→200
-  // Expected (failure-tests-only):     AU→501, AN→501, AR→501, AW→501, superuser→501
-  // Expected (not compiled in at all): AU→404, AN→404, AR→404, AW→404, superuser→404
+  // Expected (failure-tests-only):     AU→401, AN→401, AR→501, AW→501, superuser→501
+  // Expected (not compiled in at all): AU→401, AN→401, AR→404, AW→404, superuser→404
   {
     name: "Reset race controller (DELETE /_admin/debug/raceControl)",
     type: "admin",
