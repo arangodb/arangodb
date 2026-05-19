@@ -28,7 +28,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -85,7 +85,7 @@ RestStatus ClusterRestWalHandler::execute() {
     }
 #endif
     server()
-        .getFeature<EngineSelectorFeature>()
+        .getFeature<DatabaseFeature>()
         .engine()
         .waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,

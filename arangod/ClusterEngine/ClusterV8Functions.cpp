@@ -32,7 +32,7 @@
 #include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"
@@ -182,7 +182,7 @@ static void JS_WaitForEstimatorSync(
   TRI_GET_SERVER_GLOBALS(ArangodServer);
 
   v8g->server()
-      .getFeature<EngineSelectorFeature>()
+      .getFeature<DatabaseFeature>()
       .engine()
       .waitForEstimatorSync();
 
