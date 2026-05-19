@@ -23,7 +23,7 @@
  *   teardown: async (ctx) => { ... }   – runs after  the test, superuser auth
  *
  * ctx.request(method, path, body?, extraHeaders?)
- *   Makes an HTTP call with superuser JWT, returns { status, body }.
+ *   Makes an HTTP call with superuser JWT, returns { status, body, headers }.
  *
  * ctx.resolveString(s)
  *   Interpolates a single string as a template literal with ctx in scope.
@@ -159,7 +159,7 @@ export that is an array of test objects with the following fields:
   teardown  async function(ctx)?    – called after  each matrix cell, superuser
 
 ctx.request(method, path, body?, extraHeaders?)
-  Executes an HTTP call with superuser JWT; returns { status, body }.
+  Executes an HTTP call with superuser JWT; returns { status, body, headers }.
 ctx.resolveString(s)
   Interpolates a single string as a template literal with ctx in scope.
 ctx.resolveDeep(value)
@@ -223,7 +223,7 @@ async function httpRequest(endpoint, method, path, body, headers) {
     parsedBody = text;
   }
 
-  return { status: resp.statusCode, body: parsedBody };
+  return { status: resp.statusCode, body: parsedBody, headers: resp.headers };
 }
 
 /** Build a context object for setup/teardown that wraps superuser calls. */
@@ -235,7 +235,7 @@ function makeSuperuserCtx(endpoint, superuserToken) {
      * @param {string} path
      * @param {object|null} [body]
      * @param {object} [extraHeaders]
-     * @returns {Promise<{status: number, body: any}>}
+     * @returns {Promise<{status: number, body: any, headers: object}>}
      */
     async request(method, path, body = null, extraHeaders = {}) {
       return httpRequest(endpoint, method, path, body, {
