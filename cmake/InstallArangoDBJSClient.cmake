@@ -35,12 +35,15 @@ endif ()
 install(
   DIRECTORY ${ARANGODB_SOURCE_DIR}/js/node
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
+  REGEX "^.*/.bin"                                         EXCLUDE
+  REGEX "^.*/.npmignore"                                   EXCLUDE
+  REGEX "^.*/@sinonjs"                                     EXCLUDE
+  REGEX "^.*/@xmldom"                                      EXCLUDE
   REGEX "^.*/ansi_up"                                      EXCLUDE
+  REGEX "^.*/has-flag"                                     EXCLUDE
   REGEX "^.*/node-netstat"                                 EXCLUDE
   REGEX "^.*/parse-prometheus-text-format"                 EXCLUDE
   REGEX "^.*/sinon"                                        EXCLUDE
-  REGEX "^.*/@sinonjs"                                     EXCLUDE
-  REGEX "^.*/@xmldom"                                      EXCLUDE
-  REGEX "^.*/.bin"                                         EXCLUDE
-  REGEX "^.*/.npmignore"                                   EXCLUDE
+  REGEX "^node_modules/supports-color(/|$)"                EXCLUDE
+  REGEX "^node_modules/type-detect(/|$)"                   EXCLUDE
 )

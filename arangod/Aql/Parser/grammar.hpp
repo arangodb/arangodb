@@ -149,6 +149,88 @@ extern int Aqldebug;
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
+/* Token kinds.  */
+#define YYEMPTY -2
+#define T_END 0
+#define YYerror 256
+#define YYUNDEF 257
+#define T_FOR 258
+#define T_LET 259
+#define T_FILTER 260
+#define T_RETURN 261
+#define T_COLLECT 262
+#define T_SORT 263
+#define T_LIMIT 264
+#define T_WINDOW 265
+#define T_ASC 266
+#define T_DESC 267
+#define T_IN 268
+#define T_WITH 269
+#define T_INTO 270
+#define T_AGGREGATE 271
+#define T_GRAPH 272
+#define T_SHORTEST_PATH 273
+#define T_K_SHORTEST_PATHS 274
+#define T_K_PATHS 275
+#define T_ALL_SHORTEST_PATHS 276
+#define T_DISTINCT 277
+#define T_REMOVE 278
+#define T_INSERT 279
+#define T_UPDATE 280
+#define T_REPLACE 281
+#define T_UPSERT 282
+#define T_NULL 283
+#define T_TRUE 284
+#define T_FALSE 285
+#define T_STRING 286
+#define T_QUOTED_STRING 287
+#define T_INTEGER 288
+#define T_DOUBLE 289
+#define T_PARAMETER 290
+#define T_DATA_SOURCE_PARAMETER 291
+#define T_ASSIGN 292
+#define T_NOT 293
+#define T_AND 294
+#define T_OR 295
+#define T_NOT_IN 296
+#define T_REGEX_MATCH 297
+#define T_REGEX_NON_MATCH 298
+#define T_EQ 299
+#define T_NE 300
+#define T_LT 301
+#define T_GT 302
+#define T_LE 303
+#define T_GE 304
+#define T_LIKE 305
+#define T_PLUS 306
+#define T_MINUS 307
+#define T_TIMES 308
+#define T_DIV 309
+#define T_MOD 310
+#define T_QUESTION 311
+#define T_COLON 312
+#define T_SCOPE 313
+#define T_RANGE 314
+#define T_COMMA 315
+#define T_OPEN 316
+#define T_CLOSE 317
+#define T_OBJECT_OPEN 318
+#define T_OBJECT_CLOSE 319
+#define T_ARRAY_OPEN 320
+#define T_ARRAY_CLOSE 321
+#define T_OUTBOUND 322
+#define T_INBOUND 323
+#define T_ANY 324
+#define T_ALL 325
+#define T_NONE 326
+#define T_AT_LEAST 327
+#define UMINUS 328
+#define UPLUS 329
+#define UNEGATION 330
+#define FUNCCALL 331
+#define REFERENCE 332
+#define INDEXED 333
+#define EXPANSION 334
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -164,7 +246,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 167 "grammar.hpp"
+#line 235 "grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

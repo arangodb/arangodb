@@ -92,7 +92,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
-#include "Aql/Parser.h"
+#include "Aql/Parser/Parser.h"
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/types.h"
@@ -406,22 +406,22 @@ void Aqlerror(YYLTYPE* locp,
 namespace {
 
 // forward declaration
-void destructureObject(Parser* parser, std::string_view sourceVariable, 
+void destructureObject(Parser* parser, std::string_view sourceVariable,
                        arangodb::containers::SmallVector<AstNode const*, 8>& paths, AstNode const* array);
 
-void destructureArray(Parser* parser, std::string_view sourceVariable, 
+void destructureArray(Parser* parser, std::string_view sourceVariable,
                       arangodb::containers::SmallVector<AstNode const*, 8>& paths, AstNode const* array) {
   int64_t index = 0;
   size_t const n = array->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
     auto member = array->getMember(i);
-    
+
     if (member->type == NODE_TYPE_ARRAY) {
       // array value => recurse
       AstNode* indexNode = parser->ast()->createNodeValueInt(index);
       paths.emplace_back(indexNode);
- 
+
       int64_t tag = member->getIntValue(true);
       if (tag == 1) {
         destructureArray(parser, sourceVariable, paths, member);
@@ -441,7 +441,7 @@ void destructureArray(Parser* parser, std::string_view sourceVariable,
       }
       AstNode* node = parser->ast()->createNodeLet(member, accessor);
       parser->ast()->addOperation(node);
-      
+
       paths.pop_back();
     }
 
@@ -449,16 +449,16 @@ void destructureArray(Parser* parser, std::string_view sourceVariable,
   }
 }
 
-void destructureObject(Parser* parser, std::string_view sourceVariable, 
+void destructureObject(Parser* parser, std::string_view sourceVariable,
                        arangodb::containers::SmallVector<AstNode const*, 8>& paths, AstNode const* array) {
   size_t const n = array->numMembers();
-  
+
   for (size_t i = 0; i < n; i += 2) {
     auto member = array->getMember(i);
-    
+
     if (member->isStringValue()) {
       AstNode const* assigned = array->getMember(i + 1);
-      
+
       paths.emplace_back(member);
       if (assigned->type == NODE_TYPE_ARRAY) {
         // need to recurse
@@ -494,7 +494,7 @@ void handleUpsertOptions(AstNode const* options, AstNode* forNode, AstNode* forO
       auto nodeMember = options->getMember(i);
       if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
         std::string_view nodeMemberName = nodeMember->getStringView();
-        if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
+        if (nodeMemberName == arangodb::StaticStrings::IndexHintOption ||
           nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
           nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex ||
           nodeMemberName == arangodb::StaticStrings::UseCache) {
@@ -531,7 +531,7 @@ AstNode* buildShortestPathInfo(Parser* parser,
   infoNode->addMember(startNode);
   infoNode->addMember(endNode);
   infoNode->addMember(graph);
-  
+
   auto opts = parser->ast()->createNodeOptions(options);
   TRI_ASSERT(opts != nullptr);
   infoNode->addMember(opts);
@@ -579,7 +579,7 @@ void validateOptions(Parser* parser, AstNode const* node,
 
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
-void checkCollectVariables(Parser* parser, char const* context, 
+void checkCollectVariables(Parser* parser, char const* context,
                            AstNode const* expression,
                            int line, int column,
                            VarSet const& variablesIntroduced) {
@@ -588,7 +588,7 @@ void checkCollectVariables(Parser* parser, char const* context,
   }
 
   arangodb::containers::SmallVector<AstNode const*, 4> toTraverse = { expression };
- 
+
   // recursively find all variables in expression
   auto preVisitor = [](AstNode const* node) -> bool {
     // ignore constant nodes, as they can't contain variables
@@ -649,14 +649,14 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
                         int line, int column) {
   VarSet variablesIntroduced{};
   VarSet varsInAssignment{};
-  
+
   size_t const n = aggregates->numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = aggregates->getMemberUnchecked(i);
 
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-      
+
       // keep track of the variable for our assignment
       auto v = static_cast<Variable*>(member->getMember(0)->getData());
       variablesIntroduced.emplace(v);
@@ -674,7 +674,7 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
           parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
         }
       }
-      
+
       // check if any of the assignment refers to a variable introduced by this very
       // same COLLECT, e.g. COLLECT aggregate x = .., y = x
       varsInAssignment.clear();
@@ -696,12 +696,12 @@ bool validateWindowSpec(Parser* parser, AstNode const* spec,
                         int line, int column) {
   bool preceding = false;
   bool following = false;
-  
+
   size_t const n = spec->numMembers();
   if (n == 0) {
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "At least one WINDOW bound must be specified ('preceding'/'following')", line, column);
   }
-  
+
   for (size_t i = 0; i < n; ++i) {
     auto member = spec->getMemberUnchecked(i);
 
@@ -717,12 +717,12 @@ bool validateWindowSpec(Parser* parser, AstNode const* spec,
         char const* error = "Invalid WINDOW attribute '%s'; only \"preceding\" and \"following\" are supported";
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name, line, column);
       }
-      
+
       if (*attr) {
         char const* error = "WINDOW attribute '%s' is specified multiple times";
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name, line, column);
       }
-      
+
       // mark this attribute as "seen"
       *attr = true;
     }
@@ -1187,41 +1187,37 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   692,   692,   698,   708,   711,   717,   721,   725,   732,
-     734,   734,   746,   751,   756,   758,   761,   764,   767,   770,
-     776,   778,   783,   785,   787,   789,   791,   793,   795,   797,
-     799,   801,   803,   805,   807,   812,   819,   826,   829,   832,
-     838,   845,   869,   892,   905,   911,   917,   923,   932,   932,
-    1044,  1044,  1085,  1097,  1109,  1121,  1137,  1144,  1153,  1158,
-    1162,  1163,  1164,  1168,  1168,  1174,  1178,  1182,  1185,  1189,
-    1192,  1196,  1197,  1200,  1201,  1204,  1208,  1212,  1218,  1219,
-    1222,  1223,  1226,  1230,  1232,  1235,  1232,  1243,  1244,  1247,
-    1247,  1256,  1264,  1269,  1271,  1276,  1280,  1288,  1299,  1299,
-    1309,  1312,  1315,  1318,  1321,  1326,  1326,  1336,  1340,  1344,
-    1348,  1352,  1356,  1361,  1372,  1372,  1383,  1393,  1406,  1430,
-    1485,  1504,  1538,  1540,  1545,  1552,  1555,  1558,  1567,  1580,
-    1596,  1596,  1611,  1611,  1621,  1623,  1628,  1635,  1635,  1647,
-    1647,  1658,  1661,  1667,  1673,  1676,  1679,  1682,  1688,  1693,
-    1700,  1715,  1733,  1741,  1744,  1750,  1760,  1770,  1778,  1789,
-    1794,  1802,  1813,  1818,  1821,  1827,  1830,  1836,  1852,  1836,
-    1899,  1899,  1958,  1961,  1964,  1970,  1970,  1980,  1986,  1989,
-    1992,  1995,  1998,  2001,  2007,  2010,  2023,  2023,  2030,  2030,
-    2040,  2043,  2046,  2052,  2052,  2058,  2058,  2064,  2067,  2070,
-    2073,  2076,  2079,  2082,  2085,  2088,  2091,  2094,  2097,  2100,
-    2103,  2110,  2117,  2123,  2129,  2135,  2142,  2145,  2148,  2151,
-    2154,  2157,  2160,  2163,  2166,  2170,  2174,  2178,  2182,  2186,
-    2190,  2194,  2201,  2237,  2201,  2245,  2245,  2278,  2280,  2285,
-    2288,  2288,  2308,  2311,  2317,  2320,  2326,  2326,  2335,  2337,
-    2339,  2344,  2346,  2351,  2354,  2361,  2364,  2389,  2409,  2412,
-    2427,  2427,  2436,  2438,  2440,  2445,  2447,  2452,  2468,  2472,
-    2476,  2480,  2484,  2488,  2492,  2496,  2500,  2504,  2508,  2512,
-    2522,  2529,  2532,  2538,  2541,  2547,  2550,  2554,  2558,  2562,
-    2570,  2573,  2576,  2582,  2585,  2591,  2594,  2597,  2601,  2607,
-    2611,  2618,  2624,  2624,  2633,  2640,  2644,  2653,  2656,  2659,
-    2665,  2668,  2674,  2706,  2709,  2712,  2716,  2725,  2725,  2742,
-    2757,  2770,  2783,  2783,  2828,  2828,  2886,  2889,  2895,  2899,
-    2906,  2909,  2912,  2915,  2918,  2924,  2929,  2934,  2945,  2953,
-    2960,  2968,  2976,  2979,  2984
+       0,   667,   667,   673,   683,   686,   692,   696,   700,   707,
+     709,   709,   721,   726,   731,   733,   736,   739,   742,   745,
+     751,   753,   758,   760,   762,   764,   766,   768,   770,   772,
+     774,   776,   778,   780,   785,   792,   799,   802,   805,   811,
+     818,   842,   865,   878,   884,   890,   896,   905,   905,  1017,
+    1017,  1058,  1070,  1082,  1094,  1109,  1117,  1122,  1124,  1129,
+    1133,  1141,  1152,  1152,  1162,  1165,  1168,  1171,  1174,  1179,
+    1179,  1189,  1193,  1197,  1201,  1205,  1209,  1214,  1225,  1225,
+    1236,  1246,  1259,  1283,  1338,  1357,  1391,  1393,  1398,  1405,
+    1408,  1411,  1420,  1433,  1449,  1449,  1464,  1464,  1474,  1476,
+    1481,  1488,  1488,  1500,  1500,  1511,  1514,  1520,  1526,  1529,
+    1532,  1535,  1541,  1546,  1553,  1568,  1586,  1594,  1597,  1603,
+    1613,  1623,  1631,  1642,  1647,  1655,  1666,  1671,  1674,  1680,
+    1683,  1689,  1705,  1689,  1752,  1752,  1811,  1814,  1817,  1823,
+    1823,  1833,  1839,  1842,  1845,  1848,  1851,  1854,  1860,  1863,
+    1876,  1876,  1883,  1883,  1893,  1896,  1899,  1905,  1905,  1911,
+    1911,  1917,  1920,  1923,  1926,  1929,  1932,  1935,  1938,  1941,
+    1944,  1947,  1950,  1953,  1956,  1963,  1970,  1976,  1982,  1988,
+    1995,  1998,  2001,  2004,  2007,  2010,  2013,  2016,  2019,  2023,
+    2027,  2031,  2035,  2039,  2043,  2047,  2054,  2090,  2054,  2098,
+    2098,  2131,  2133,  2138,  2141,  2141,  2161,  2164,  2170,  2173,
+    2179,  2179,  2188,  2190,  2192,  2197,  2199,  2204,  2210,  2213,
+    2238,  2258,  2261,  2276,  2276,  2285,  2287,  2289,  2294,  2296,
+    2301,  2317,  2321,  2325,  2329,  2333,  2337,  2341,  2345,  2349,
+    2353,  2357,  2361,  2371,  2378,  2381,  2387,  2390,  2396,  2399,
+    2403,  2407,  2411,  2419,  2422,  2425,  2431,  2434,  2440,  2443,
+    2446,  2450,  2456,  2460,  2467,  2473,  2473,  2482,  2489,  2493,
+    2502,  2505,  2508,  2514,  2517,  2523,  2555,  2558,  2561,  2565,
+    2574,  2574,  2591,  2606,  2619,  2632,  2632,  2677,  2677,  2735,
+    2738,  2744,  2748,  2755,  2758,  2761,  2764,  2767,  2773,  2778,
+    2783,  2794,  2802,  2809,  2817,  2825,  2828,  2833
 };
 #endif
 
@@ -2946,7 +2942,7 @@ yyreduce:
       AstNode* variableNode = parser->ast()->createNodeLet((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node), true);
       node->addMember(variableNode);
       node->addMember((yyvsp[0].node));
-      (yyval.node) = node;    
+      (yyval.node) = node;
   }
 #line 2951 "grammar.cpp"
     break;
@@ -3355,7 +3351,7 @@ yyreduce:
       ::validateForOutVariables(parser, variablesNode, 1, 1, /*allowDestructuring*/ true, "Collections and views FOR loops", yyloc);
       if (variablesNode->type == NODE_TYPE_ARRAY) {
         parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-        
+
         // now create an out variable for the FOR statement
         // this prepares us to handle the optional SEARCH condition, which may
         // or may not refer to the FOR's variable
@@ -3366,10 +3362,10 @@ yyreduce:
       } else {
         TRI_ASSERT(variablesNode->type == NODE_TYPE_DESTRUCTURING);
         parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-      
+
         parser->pushStack(variablesNode);
       }
-      
+
       // we are temporarily forcing all conditionals to be inlined, just for
       // evaluating a potential SEARCH condition, which must remain a single
       // condition
@@ -3385,7 +3381,7 @@ yyreduce:
 
       // now we can handle the optional SEARCH condition and OPTIONS.
       AstNode* variablesNode = static_cast<AstNode*>(parser->popStack());
-        
+
       TRI_ASSERT(variablesNode != nullptr);
       if (variablesNode->type == NODE_TYPE_VARIABLE) {
         Variable* variable = static_cast<Variable*>(variablesNode->getData());
@@ -3421,16 +3417,16 @@ yyreduce:
         } else {
           node = parser->ast()->createNodeFor(variable, (yyvsp[-2].node), options);
         }
-      
+
         parser->ast()->addOperation(node);
       } else {
         TRI_ASSERT(variablesNode->type == NODE_TYPE_DESTRUCTURING);
-        
+
         // create a temporary output variable
         std::string nextName = parser->ast()->variables()->nextName();
         AstNode* variableNode = parser->ast()->createNodeVariable(nextName, false);
         Variable* variable = static_cast<Variable*>(variableNode->getData());
-        
+
         AstNode* search = nullptr;
         AstNode* options = nullptr;
 
@@ -3453,10 +3449,10 @@ yyreduce:
           // we got a SEARCH clause. this is disallowed with destructuring
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, "SEARCH condition is incompatible with destructuring", yylloc.first_line, yylloc.first_column);
         }
-          
+
         AstNode* node = parser->ast()->createNodeFor(variable, (yyvsp[-2].node), options);
         parser->ast()->addOperation(node);
-      
+
         if (variablesNode->getBoolValue()) {
           // destructure object
           arangodb::containers::SmallVector<AstNode const*, 8> paths;
@@ -4232,7 +4228,7 @@ yyreduce:
         }
         ::checkCollectVariables(parser, "INTO", (yyvsp[-2].node)->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
-        
+
       if ((yyvsp[-1].node) != nullptr && (yyvsp[-1].node)->type == NODE_TYPE_ARRAY) {
         ::checkCollectVariables(parser, "KEEP", (yyvsp[-1].node), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
@@ -4243,61 +4239,61 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect((yyvsp[-3].node), parser->ast()->createNodeArray(), into, intoExpression, (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4246 "grammar.cpp"
+#line 3896 "grammar.cpp"
     break;
 
-  case 122: /* collect_list: collect_element  */
-#line 1538 "grammar.y"
+  case 86: /* collect_list: collect_element  */
+#line 1391 "grammar.y"
                     {
     }
-#line 4253 "grammar.cpp"
+#line 3903 "grammar.cpp"
     break;
 
-  case 123: /* collect_list: collect_list "," collect_element  */
-#line 1540 "grammar.y"
+  case 87: /* collect_list: collect_list "," collect_element  */
+#line 1393 "grammar.y"
                                          {
     }
-#line 4260 "grammar.cpp"
+#line 3910 "grammar.cpp"
     break;
 
-  case 124: /* collect_element: variable_name "assignment" expression  */
-#line 1545 "grammar.y"
+  case 88: /* collect_element: variable_name "assignment" expression  */
+#line 1398 "grammar.y"
                                       {
       auto node = parser->ast()->createNodeAssign((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
       parser->pushArrayElement(node);
     }
-#line 4269 "grammar.cpp"
+#line 3919 "grammar.cpp"
     break;
 
-  case 125: /* collect_optional_into: %empty  */
-#line 1552 "grammar.y"
+  case 89: /* collect_optional_into: %empty  */
+#line 1405 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 4277 "grammar.cpp"
+#line 3927 "grammar.cpp"
     break;
 
-  case 126: /* collect_optional_into: "INTO keyword" variable_name  */
-#line 1555 "grammar.y"
+  case 90: /* collect_optional_into: "INTO keyword" variable_name  */
+#line 1408 "grammar.y"
                          {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 4285 "grammar.cpp"
+#line 3935 "grammar.cpp"
     break;
 
-  case 127: /* collect_optional_into: "INTO keyword" variable_name "assignment" expression  */
-#line 1558 "grammar.y"
+  case 91: /* collect_optional_into: "INTO keyword" variable_name "assignment" expression  */
+#line 1411 "grammar.y"
                                              {
       auto node = parser->ast()->createNodeArray();
       node->addMember(parser->ast()->createNodeValueString((yyvsp[-2].strval).value, (yyvsp[-2].strval).length));
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;
     }
-#line 4296 "grammar.cpp"
+#line 3946 "grammar.cpp"
     break;
 
-  case 128: /* variable_list: variable_name  */
-#line 1567 "grammar.y"
+  case 92: /* variable_list: variable_name  */
+#line 1420 "grammar.y"
                   {
       std::string_view variableName((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (!parser->ast()->scopes()->existsVariable(variableName)) {
@@ -4311,11 +4307,11 @@ yyreduce:
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 4314 "grammar.cpp"
+#line 3964 "grammar.cpp"
     break;
 
-  case 129: /* variable_list: variable_list "," variable_name  */
-#line 1580 "grammar.y"
+  case 93: /* variable_list: variable_list "," variable_name  */
+#line 1433 "grammar.y"
                                         {
       std::string_view variableName((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (!parser->ast()->scopes()->existsVariable(variableName)) {
@@ -4329,11 +4325,11 @@ yyreduce:
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 4332 "grammar.cpp"
+#line 3982 "grammar.cpp"
     break;
 
-  case 130: /* $@11: %empty  */
-#line 1596 "grammar.y"
+  case 94: /* $@7: %empty  */
+#line 1449 "grammar.y"
              {
       std::string_view operation((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (!::caseInsensitiveEqual(operation, "KEEP")) {
@@ -4343,241 +4339,241 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 4346 "grammar.cpp"
+#line 3996 "grammar.cpp"
     break;
 
-  case 131: /* keep: "identifier" $@11 variable_list  */
-#line 1604 "grammar.y"
+  case 95: /* keep: "identifier" $@7 variable_list  */
+#line 1457 "grammar.y"
                     {
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 4355 "grammar.cpp"
+#line 4005 "grammar.cpp"
     break;
 
-  case 132: /* $@12: %empty  */
-#line 1611 "grammar.y"
+  case 96: /* $@8: %empty  */
+#line 1464 "grammar.y"
                 {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 4364 "grammar.cpp"
+#line 4014 "grammar.cpp"
     break;
 
-  case 133: /* aggregate: "AGGREGATE keyword" $@12 aggregate_list  */
-#line 1614 "grammar.y"
+  case 97: /* aggregate: "AGGREGATE keyword" $@8 aggregate_list  */
+#line 1467 "grammar.y"
                      {
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 4373 "grammar.cpp"
+#line 4023 "grammar.cpp"
     break;
 
-  case 134: /* aggregate_list: aggregate_element  */
-#line 1621 "grammar.y"
+  case 98: /* aggregate_list: aggregate_element  */
+#line 1474 "grammar.y"
                       {
     }
-#line 4380 "grammar.cpp"
+#line 4030 "grammar.cpp"
     break;
 
-  case 135: /* aggregate_list: aggregate_list "," aggregate_element  */
-#line 1623 "grammar.y"
+  case 99: /* aggregate_list: aggregate_list "," aggregate_element  */
+#line 1476 "grammar.y"
                                              {
     }
-#line 4387 "grammar.cpp"
+#line 4037 "grammar.cpp"
     break;
 
-  case 136: /* aggregate_element: variable_name "assignment" aggregate_function_call  */
-#line 1628 "grammar.y"
+  case 100: /* aggregate_element: variable_name "assignment" aggregate_function_call  */
+#line 1481 "grammar.y"
                                                    {
       auto node = parser->ast()->createNodeAssign((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
       parser->pushArrayElement(node);
     }
-#line 4396 "grammar.cpp"
+#line 4046 "grammar.cpp"
     break;
 
-  case 137: /* $@13: %empty  */
-#line 1635 "grammar.y"
+  case 101: /* $@9: %empty  */
+#line 1488 "grammar.y"
                          {
       parser->pushStack((yyvsp[-1].strval).value);
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 4406 "grammar.cpp"
+#line 4056 "grammar.cpp"
     break;
 
-  case 138: /* aggregate_function_call: function_name "(" $@13 optional_function_call_arguments ")"  */
-#line 1639 "grammar.y"
+  case 102: /* aggregate_function_call: function_name "(" $@9 optional_function_call_arguments ")"  */
+#line 1492 "grammar.y"
                                                               {
       auto list = static_cast<AstNode const*>(parser->popStack());
       // this works because the function name here is always NUL-terminated
       (yyval.node) = parser->ast()->createNodeAggregateFunctionCall(static_cast<char const*>(parser->popStack()), list);
     }
-#line 4416 "grammar.cpp"
+#line 4066 "grammar.cpp"
     break;
 
-  case 139: /* $@14: %empty  */
-#line 1647 "grammar.y"
+  case 103: /* $@10: %empty  */
+#line 1500 "grammar.y"
            {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 4425 "grammar.cpp"
+#line 4075 "grammar.cpp"
     break;
 
-  case 140: /* sort_statement: "SORT declaration" $@14 sort_list  */
-#line 1650 "grammar.y"
+  case 104: /* sort_statement: "SORT declaration" $@10 sort_list  */
+#line 1503 "grammar.y"
                 {
       auto list = static_cast<AstNode const*>(parser->popStack());
       auto node = parser->ast()->createNodeSort(list);
       parser->ast()->addOperation(node);
     }
-#line 4435 "grammar.cpp"
+#line 4085 "grammar.cpp"
     break;
 
-  case 141: /* sort_list: sort_element  */
-#line 1658 "grammar.y"
+  case 105: /* sort_list: sort_element  */
+#line 1511 "grammar.y"
                  {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 4443 "grammar.cpp"
+#line 4093 "grammar.cpp"
     break;
 
-  case 142: /* sort_list: sort_list "," sort_element  */
-#line 1661 "grammar.y"
+  case 106: /* sort_list: sort_list "," sort_element  */
+#line 1514 "grammar.y"
                                    {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 4451 "grammar.cpp"
+#line 4101 "grammar.cpp"
     break;
 
-  case 143: /* sort_element: expression sort_direction  */
-#line 1667 "grammar.y"
+  case 107: /* sort_element: expression sort_direction  */
+#line 1520 "grammar.y"
                               {
       (yyval.node) = parser->ast()->createNodeSortElement((yyvsp[-1].node), (yyvsp[0].node));
     }
-#line 4459 "grammar.cpp"
+#line 4109 "grammar.cpp"
     break;
 
-  case 144: /* sort_direction: %empty  */
-#line 1673 "grammar.y"
+  case 108: /* sort_direction: %empty  */
+#line 1526 "grammar.y"
                 {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 4467 "grammar.cpp"
+#line 4117 "grammar.cpp"
     break;
 
-  case 145: /* sort_direction: "ASC keyword"  */
-#line 1676 "grammar.y"
+  case 109: /* sort_direction: "ASC keyword"  */
+#line 1529 "grammar.y"
           {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 4475 "grammar.cpp"
+#line 4125 "grammar.cpp"
     break;
 
-  case 146: /* sort_direction: "DESC keyword"  */
-#line 1679 "grammar.y"
+  case 110: /* sort_direction: "DESC keyword"  */
+#line 1532 "grammar.y"
            {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 4483 "grammar.cpp"
+#line 4133 "grammar.cpp"
     break;
 
-  case 147: /* sort_direction: simple_value  */
-#line 1682 "grammar.y"
+  case 111: /* sort_direction: simple_value  */
+#line 1535 "grammar.y"
                  {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4491 "grammar.cpp"
+#line 4141 "grammar.cpp"
     break;
 
-  case 148: /* limit_statement: "LIMIT declaration" expression  */
-#line 1688 "grammar.y"
+  case 112: /* limit_statement: "LIMIT declaration" expression  */
+#line 1541 "grammar.y"
                        {
       auto offset = parser->ast()->createNodeValueInt(0);
       auto node = parser->ast()->createNodeLimit(offset, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4501 "grammar.cpp"
+#line 4151 "grammar.cpp"
     break;
 
-  case 149: /* limit_statement: "LIMIT declaration" expression "," expression  */
-#line 1693 "grammar.y"
+  case 113: /* limit_statement: "LIMIT declaration" expression "," expression  */
+#line 1546 "grammar.y"
                                           {
       auto node = parser->ast()->createNodeLimit((yyvsp[-2].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4510 "grammar.cpp"
+#line 4160 "grammar.cpp"
     break;
 
-  case 150: /* window_statement: "WINDOW declaration" object aggregate  */
-#line 1700 "grammar.y"
+  case 114: /* window_statement: "WINDOW declaration" object aggregate  */
+#line 1553 "grammar.y"
                               {
       /* WINDOW {preceding:2, following:2} AGGREGATE x = AVG(x) */
-      
+
       // validate aggregates
       if (!::validateAggregates(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column)) {
         YYABORT;
       }
-      
+
       if (!::validateWindowSpec(parser, (yyvsp[-1].node), yylloc.first_line, yylloc.first_column)) {
         YYABORT;
       }
-      
+
       auto node = parser->ast()->createNodeWindow(/*spec*/(yyvsp[-1].node), /*range*/nullptr, /*aggrs*/(yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4530 "grammar.cpp"
+#line 4180 "grammar.cpp"
     break;
 
-  case 151: /* window_statement: "WINDOW declaration" expression "WITH keyword" object aggregate  */
-#line 1715 "grammar.y"
+  case 115: /* window_statement: "WINDOW declaration" expression "WITH keyword" object aggregate  */
+#line 1568 "grammar.y"
                                                 {
     /* WINDOW rangeVar WITH {preceding:"1d", following:"1d"} AGGREGATE x = AVG(x) */
-    
+
     // validate aggregates
     if (!::validateAggregates(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column)) {
       YYABORT;
     }
-    
+
     if (!::validateWindowSpec(parser, (yyvsp[-1].node), yylloc.first_line, yylloc.first_column)) {
       YYABORT;
     }
-    
+
     auto node = parser->ast()->createNodeWindow(/*spec*/(yyvsp[-1].node), /*range*/(yyvsp[-3].node), /*aggrs*/(yyvsp[0].node));
     parser->ast()->addOperation(node);
   }
-#line 4550 "grammar.cpp"
+#line 4200 "grammar.cpp"
     break;
 
-  case 152: /* return_statement: "RETURN declaration" distinct_expression  */
-#line 1733 "grammar.y"
+  case 116: /* return_statement: "RETURN declaration" distinct_expression  */
+#line 1586 "grammar.y"
                                  {
       auto node = parser->ast()->createNodeReturn((yyvsp[0].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 4560 "grammar.cpp"
+#line 4210 "grammar.cpp"
     break;
 
-  case 153: /* in_or_into_collection: "IN keyword" in_or_into_collection_name  */
-#line 1741 "grammar.y"
+  case 117: /* in_or_into_collection: "IN keyword" in_or_into_collection_name  */
+#line 1594 "grammar.y"
                                     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4568 "grammar.cpp"
+#line 4218 "grammar.cpp"
     break;
 
-  case 154: /* in_or_into_collection: "INTO keyword" in_or_into_collection_name  */
-#line 1744 "grammar.y"
+  case 118: /* in_or_into_collection: "INTO keyword" in_or_into_collection_name  */
+#line 1597 "grammar.y"
                                       {
        (yyval.node) = (yyvsp[0].node);
      }
-#line 4576 "grammar.cpp"
+#line 4226 "grammar.cpp"
     break;
 
-  case 155: /* remove_statement: "REMOVE command" expression in_or_into_collection options  */
-#line 1750 "grammar.y"
+  case 119: /* remove_statement: "REMOVE command" expression in_or_into_collection options  */
+#line 1603 "grammar.y"
                                                       {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4585,11 +4581,11 @@ yyreduce:
       auto node = parser->ast()->createNodeRemove((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4588 "grammar.cpp"
+#line 4238 "grammar.cpp"
     break;
 
-  case 156: /* insert_statement: "INSERT command" expression in_or_into_collection options  */
-#line 1760 "grammar.y"
+  case 120: /* insert_statement: "INSERT command" expression in_or_into_collection options  */
+#line 1613 "grammar.y"
                                                       {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4597,11 +4593,11 @@ yyreduce:
       auto node = parser->ast()->createNodeInsert((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4600 "grammar.cpp"
+#line 4250 "grammar.cpp"
     break;
 
-  case 157: /* update_parameters: expression in_or_into_collection options  */
-#line 1770 "grammar.y"
+  case 121: /* update_parameters: expression in_or_into_collection options  */
+#line 1623 "grammar.y"
                                              {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4610,11 +4606,11 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeUpdate(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4613 "grammar.cpp"
+#line 4263 "grammar.cpp"
     break;
 
-  case 158: /* update_parameters: expression "WITH keyword" expression in_or_into_collection options  */
-#line 1778 "grammar.y"
+  case 122: /* update_parameters: expression "WITH keyword" expression in_or_into_collection options  */
+#line 1631 "grammar.y"
                                                                {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4623,18 +4619,18 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeUpdate((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4626 "grammar.cpp"
+#line 4276 "grammar.cpp"
     break;
 
-  case 159: /* update_statement: "UPDATE command" update_parameters  */
-#line 1789 "grammar.y"
+  case 123: /* update_statement: "UPDATE command" update_parameters  */
+#line 1642 "grammar.y"
                                {
     }
-#line 4633 "grammar.cpp"
+#line 4283 "grammar.cpp"
     break;
 
-  case 160: /* replace_parameters: expression in_or_into_collection options  */
-#line 1794 "grammar.y"
+  case 124: /* replace_parameters: expression in_or_into_collection options  */
+#line 1647 "grammar.y"
                                              {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4643,11 +4639,11 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeReplace(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4646 "grammar.cpp"
+#line 4296 "grammar.cpp"
     break;
 
-  case 161: /* replace_parameters: expression "WITH keyword" expression in_or_into_collection options  */
-#line 1802 "grammar.y"
+  case 125: /* replace_parameters: expression "WITH keyword" expression in_or_into_collection options  */
+#line 1655 "grammar.y"
                                                                {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4656,50 +4652,50 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeReplace((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4659 "grammar.cpp"
+#line 4309 "grammar.cpp"
     break;
 
-  case 162: /* replace_statement: "REPLACE command" replace_parameters  */
-#line 1813 "grammar.y"
+  case 126: /* replace_statement: "REPLACE command" replace_parameters  */
+#line 1666 "grammar.y"
                                  {
     }
-#line 4666 "grammar.cpp"
+#line 4316 "grammar.cpp"
     break;
 
-  case 163: /* update_or_replace: "UPDATE command"  */
-#line 1818 "grammar.y"
+  case 127: /* update_or_replace: "UPDATE command"  */
+#line 1671 "grammar.y"
              {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_UPDATE);
     }
-#line 4674 "grammar.cpp"
+#line 4324 "grammar.cpp"
     break;
 
-  case 164: /* update_or_replace: "REPLACE command"  */
-#line 1821 "grammar.y"
+  case 128: /* update_or_replace: "REPLACE command"  */
+#line 1674 "grammar.y"
               {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_REPLACE);
     }
-#line 4682 "grammar.cpp"
+#line 4332 "grammar.cpp"
     break;
 
-  case 165: /* upsert_input: object  */
-#line 1827 "grammar.y"
+  case 129: /* upsert_input: object  */
+#line 1680 "grammar.y"
            {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4690 "grammar.cpp"
+#line 4340 "grammar.cpp"
     break;
 
-  case 166: /* upsert_input: bind_parameter  */
-#line 1830 "grammar.y"
+  case 130: /* upsert_input: bind_parameter  */
+#line 1683 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4698 "grammar.cpp"
+#line 4348 "grammar.cpp"
     break;
 
-  case 167: /* $@15: %empty  */
-#line 1836 "grammar.y"
+  case 131: /* $@11: %empty  */
+#line 1689 "grammar.y"
                       {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
@@ -4717,17 +4713,17 @@ yyreduce:
       parser->ast()->addOperation(forNode);
       parser->pushStack(forNode);
     }
-#line 4720 "grammar.cpp"
+#line 4370 "grammar.cpp"
     break;
 
-  case 168: /* $@16: %empty  */
-#line 1852 "grammar.y"
+  case 132: /* $@12: %empty  */
+#line 1705 "grammar.y"
                  {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
       auto filterNode = parser->ast()->createNodeFilter((yyvsp[0].node));
       parser->ast()->addOperation(filterNode);
-      
+
       auto scopes = parser->ast()->scopes();
       scopes->unstackCurrentVariable();
 
@@ -4754,11 +4750,11 @@ yyreduce:
 
       parser->pushStack(forNode);
     }
-#line 4757 "grammar.cpp"
+#line 4407 "grammar.cpp"
     break;
 
-  case 169: /* upsert_statement: "UPSERT command" "FILTER declaration" $@15 expression $@16 "INSERT command" expression update_or_replace expression in_or_into_collection options  */
-#line 1883 "grammar.y"
+  case 133: /* upsert_statement: "UPSERT command" "FILTER declaration" $@11 expression $@12 "INSERT command" expression update_or_replace expression in_or_into_collection options  */
+#line 1736 "grammar.y"
                                                                                      {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, (yyvsp[-1].node));
@@ -4775,11 +4771,11 @@ yyreduce:
       auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>((yyvsp[-3].intval)), parser->ast()->createNodeReference(Variable::NAME_OLD), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), upsertOptionsNode, canReadOwnWrites);
       parser->ast()->addOperation(node);
     }
-#line 4778 "grammar.cpp"
+#line 4428 "grammar.cpp"
     break;
 
-  case 170: /* $@17: %empty  */
-#line 1899 "grammar.y"
+  case 134: /* $@13: %empty  */
+#line 1752 "grammar.y"
                           {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
@@ -4821,11 +4817,11 @@ yyreduce:
 
       parser->pushStack(forNode);
     }
-#line 4824 "grammar.cpp"
+#line 4474 "grammar.cpp"
     break;
 
-  case 171: /* upsert_statement: "UPSERT command" upsert_input $@17 "INSERT command" expression update_or_replace expression in_or_into_collection options  */
-#line 1939 "grammar.y"
+  case 135: /* upsert_statement: "UPSERT command" upsert_input $@13 "INSERT command" expression update_or_replace expression in_or_into_collection options  */
+#line 1792 "grammar.y"
                                                                                      {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, (yyvsp[-1].node));
@@ -4842,35 +4838,35 @@ yyreduce:
       auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>((yyvsp[-3].intval)), parser->ast()->createNodeReference(Variable::NAME_OLD), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), upsertOptionsNode, canReadOwnWrites);
       parser->ast()->addOperation(node);
     }
-#line 4845 "grammar.cpp"
+#line 4495 "grammar.cpp"
     break;
 
-  case 172: /* quantifier: "all modifier"  */
-#line 1958 "grammar.y"
+  case 136: /* quantifier: "all modifier"  */
+#line 1811 "grammar.y"
           {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::Type::kAll);
     }
-#line 4853 "grammar.cpp"
+#line 4503 "grammar.cpp"
     break;
 
-  case 173: /* quantifier: "any modifier"  */
-#line 1961 "grammar.y"
+  case 137: /* quantifier: "any modifier"  */
+#line 1814 "grammar.y"
           {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::Type::kAny);
     }
-#line 4861 "grammar.cpp"
+#line 4511 "grammar.cpp"
     break;
 
-  case 174: /* quantifier: "none modifier"  */
-#line 1964 "grammar.y"
+  case 138: /* quantifier: "none modifier"  */
+#line 1817 "grammar.y"
            {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::Type::kNone);
     }
-#line 4869 "grammar.cpp"
+#line 4519 "grammar.cpp"
     break;
 
-  case 175: /* $@18: %empty  */
-#line 1970 "grammar.y"
+  case 139: /* $@14: %empty  */
+#line 1823 "grammar.y"
                {
       auto const scopeType = parser->ast()->scopes()->type();
 
@@ -4879,83 +4875,83 @@ yyreduce:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "cannot use DISTINCT modifier on top-level query element", yylloc.first_line, yylloc.first_column);
       }
     }
-#line 4882 "grammar.cpp"
+#line 4532 "grammar.cpp"
     break;
 
-  case 176: /* distinct_expression: "DISTINCT modifier" $@18 expression  */
-#line 1977 "grammar.y"
+  case 140: /* distinct_expression: "DISTINCT modifier" $@14 expression  */
+#line 1830 "grammar.y"
                  {
       (yyval.node) = parser->ast()->createNodeDistinct((yyvsp[0].node));
     }
-#line 4890 "grammar.cpp"
+#line 4540 "grammar.cpp"
     break;
 
-  case 177: /* distinct_expression: expression  */
-#line 1980 "grammar.y"
+  case 141: /* distinct_expression: expression  */
+#line 1833 "grammar.y"
                {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4898 "grammar.cpp"
+#line 4548 "grammar.cpp"
     break;
 
-  case 178: /* expression: operator_unary  */
-#line 1986 "grammar.y"
+  case 142: /* expression: operator_unary  */
+#line 1839 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4906 "grammar.cpp"
+#line 4556 "grammar.cpp"
     break;
 
-  case 179: /* expression: operator_binary  */
-#line 1989 "grammar.y"
+  case 143: /* expression: operator_binary  */
+#line 1842 "grammar.y"
                     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4914 "grammar.cpp"
+#line 4564 "grammar.cpp"
     break;
 
-  case 180: /* expression: operator_ternary  */
-#line 1992 "grammar.y"
+  case 144: /* expression: operator_ternary  */
+#line 1845 "grammar.y"
                      {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4922 "grammar.cpp"
+#line 4572 "grammar.cpp"
     break;
 
-  case 181: /* expression: value_literal  */
-#line 1995 "grammar.y"
+  case 145: /* expression: value_literal  */
+#line 1848 "grammar.y"
                   {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4930 "grammar.cpp"
+#line 4580 "grammar.cpp"
     break;
 
-  case 182: /* expression: reference  */
-#line 1998 "grammar.y"
+  case 146: /* expression: reference  */
+#line 1851 "grammar.y"
               {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4938 "grammar.cpp"
+#line 4588 "grammar.cpp"
     break;
 
-  case 183: /* expression: expression ".." expression  */
-#line 2001 "grammar.y"
+  case 147: /* expression: expression ".." expression  */
+#line 1854 "grammar.y"
                                   {
       (yyval.node) = parser->ast()->createNodeRange((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4946 "grammar.cpp"
+#line 4596 "grammar.cpp"
     break;
 
-  case 184: /* function_name: "identifier"  */
-#line 2007 "grammar.y"
+  case 148: /* function_name: "identifier"  */
+#line 1860 "grammar.y"
              {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 4954 "grammar.cpp"
+#line 4604 "grammar.cpp"
     break;
 
-  case 185: /* function_name: function_name "::" "identifier"  */
-#line 2010 "grammar.y"
+  case 149: /* function_name: function_name "::" "identifier"  */
+#line 1863 "grammar.y"
                                    {
       std::string temp((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
       temp.append("::");
@@ -4966,209 +4962,209 @@ yyreduce:
       (yyval.strval).value = p;
       (yyval.strval).length = temp.size();
     }
-#line 4969 "grammar.cpp"
+#line 4619 "grammar.cpp"
     break;
 
-  case 186: /* $@19: %empty  */
-#line 2023 "grammar.y"
+  case 150: /* $@15: %empty  */
+#line 1876 "grammar.y"
                          {
       auto args = parser->ast()->createNodeArray();
       parser->pushStack(args);
     }
-#line 4978 "grammar.cpp"
+#line 4628 "grammar.cpp"
     break;
 
-  case 187: /* function_call: function_name "(" $@19 optional_function_call_arguments ")"  */
-#line 2026 "grammar.y"
+  case 151: /* function_call: function_name "(" $@15 optional_function_call_arguments ")"  */
+#line 1879 "grammar.y"
                                                               {
       auto args = static_cast<AstNode const*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeFunctionCall(/*function name*/ {(yyvsp[-4].strval).value, (yyvsp[-4].strval).length}, args, false);
     }
-#line 4987 "grammar.cpp"
+#line 4637 "grammar.cpp"
     break;
 
-  case 188: /* $@20: %empty  */
-#line 2030 "grammar.y"
+  case 152: /* $@16: %empty  */
+#line 1883 "grammar.y"
                   {
       auto args = parser->ast()->createNodeArray();
       parser->pushStack(args);
     }
-#line 4996 "grammar.cpp"
+#line 4646 "grammar.cpp"
     break;
 
-  case 189: /* function_call: "like operator" "(" $@20 optional_function_call_arguments ")"  */
-#line 2033 "grammar.y"
+  case 153: /* function_call: "like operator" "(" $@16 optional_function_call_arguments ")"  */
+#line 1886 "grammar.y"
                                                               {
       auto args = static_cast<AstNode const*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeFunctionCall("LIKE", args, false);
     }
-#line 5005 "grammar.cpp"
+#line 4655 "grammar.cpp"
     break;
 
-  case 190: /* operator_unary: "+ operator" expression  */
-#line 2040 "grammar.y"
+  case 154: /* operator_unary: "+ operator" expression  */
+#line 1893 "grammar.y"
                                   {
       (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, (yyvsp[0].node)));
     }
-#line 5013 "grammar.cpp"
+#line 4663 "grammar.cpp"
     break;
 
-  case 191: /* operator_unary: "- operator" expression  */
-#line 2043 "grammar.y"
+  case 155: /* operator_unary: "- operator" expression  */
+#line 1896 "grammar.y"
                                     {
       (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, (yyvsp[0].node)));
     }
-#line 5021 "grammar.cpp"
+#line 4671 "grammar.cpp"
     break;
 
-  case 192: /* operator_unary: "not operator" expression  */
-#line 2046 "grammar.y"
+  case 156: /* operator_unary: "not operator" expression  */
+#line 1899 "grammar.y"
                                      {
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, (yyvsp[0].node));
     }
-#line 5029 "grammar.cpp"
+#line 4679 "grammar.cpp"
     break;
 
-  case 193: /* $@21: %empty  */
-#line 2052 "grammar.y"
+  case 157: /* $@17: %empty  */
+#line 1905 "grammar.y"
                     {
       parser->lazyConditions().push((yyvsp[-1].node), /*negated*/ true);
     }
-#line 5037 "grammar.cpp"
+#line 4687 "grammar.cpp"
     break;
 
-  case 194: /* operator_binary: expression "or operator" $@21 expression  */
-#line 2054 "grammar.y"
+  case 158: /* operator_binary: expression "or operator" $@17 expression  */
+#line 1907 "grammar.y"
                  {
       LazyCondition previous = parser->lazyConditions().pop();
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_OR, previous.condition, (yyvsp[0].node));
     }
-#line 5046 "grammar.cpp"
+#line 4696 "grammar.cpp"
     break;
 
-  case 195: /* $@22: %empty  */
-#line 2058 "grammar.y"
+  case 159: /* $@18: %empty  */
+#line 1911 "grammar.y"
                      {
       parser->lazyConditions().push((yyvsp[-1].node), /*negated*/ false);
     }
-#line 5054 "grammar.cpp"
+#line 4704 "grammar.cpp"
     break;
 
-  case 196: /* operator_binary: expression "and operator" $@22 expression  */
-#line 2060 "grammar.y"
+  case 160: /* operator_binary: expression "and operator" $@18 expression  */
+#line 1913 "grammar.y"
                  {
       LazyCondition previous = parser->lazyConditions().pop();
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, previous.condition, (yyvsp[0].node));
     }
-#line 5063 "grammar.cpp"
+#line 4713 "grammar.cpp"
     break;
 
-  case 197: /* operator_binary: expression "+ operator" expression  */
-#line 2064 "grammar.y"
+  case 161: /* operator_binary: expression "+ operator" expression  */
+#line 1917 "grammar.y"
                                  {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_PLUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5071 "grammar.cpp"
+#line 4721 "grammar.cpp"
     break;
 
-  case 198: /* operator_binary: expression "- operator" expression  */
-#line 2067 "grammar.y"
+  case 162: /* operator_binary: expression "- operator" expression  */
+#line 1920 "grammar.y"
                                   {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MINUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5079 "grammar.cpp"
+#line 4729 "grammar.cpp"
     break;
 
-  case 199: /* operator_binary: expression "* operator" expression  */
-#line 2070 "grammar.y"
+  case 163: /* operator_binary: expression "* operator" expression  */
+#line 1923 "grammar.y"
                                   {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_TIMES, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5087 "grammar.cpp"
+#line 4737 "grammar.cpp"
     break;
 
-  case 200: /* operator_binary: expression "/ operator" expression  */
-#line 2073 "grammar.y"
+  case 164: /* operator_binary: expression "/ operator" expression  */
+#line 1926 "grammar.y"
                                 {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_DIV, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5095 "grammar.cpp"
+#line 4745 "grammar.cpp"
     break;
 
-  case 201: /* operator_binary: expression "% operator" expression  */
-#line 2076 "grammar.y"
+  case 165: /* operator_binary: expression "% operator" expression  */
+#line 1929 "grammar.y"
                                 {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MOD, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5103 "grammar.cpp"
+#line 4753 "grammar.cpp"
     break;
 
-  case 202: /* operator_binary: expression "== operator" expression  */
-#line 2079 "grammar.y"
+  case 166: /* operator_binary: expression "== operator" expression  */
+#line 1932 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5111 "grammar.cpp"
+#line 4761 "grammar.cpp"
     break;
 
-  case 203: /* operator_binary: expression "!= operator" expression  */
-#line 2082 "grammar.y"
+  case 167: /* operator_binary: expression "!= operator" expression  */
+#line 1935 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5119 "grammar.cpp"
+#line 4769 "grammar.cpp"
     break;
 
-  case 204: /* operator_binary: expression "< operator" expression  */
-#line 2085 "grammar.y"
+  case 168: /* operator_binary: expression "< operator" expression  */
+#line 1938 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5127 "grammar.cpp"
+#line 4777 "grammar.cpp"
     break;
 
-  case 205: /* operator_binary: expression "> operator" expression  */
-#line 2088 "grammar.y"
+  case 169: /* operator_binary: expression "> operator" expression  */
+#line 1941 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5135 "grammar.cpp"
+#line 4785 "grammar.cpp"
     break;
 
-  case 206: /* operator_binary: expression "<= operator" expression  */
-#line 2091 "grammar.y"
+  case 170: /* operator_binary: expression "<= operator" expression  */
+#line 1944 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5143 "grammar.cpp"
+#line 4793 "grammar.cpp"
     break;
 
-  case 207: /* operator_binary: expression ">= operator" expression  */
-#line 2094 "grammar.y"
+  case 171: /* operator_binary: expression ">= operator" expression  */
+#line 1947 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5151 "grammar.cpp"
+#line 4801 "grammar.cpp"
     break;
 
-  case 208: /* operator_binary: expression "IN keyword" expression  */
-#line 2097 "grammar.y"
+  case 172: /* operator_binary: expression "IN keyword" expression  */
+#line 1950 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5159 "grammar.cpp"
+#line 4809 "grammar.cpp"
     break;
 
-  case 209: /* operator_binary: expression "not in operator" expression  */
-#line 2100 "grammar.y"
+  case 173: /* operator_binary: expression "not in operator" expression  */
+#line 1953 "grammar.y"
                                    {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5167 "grammar.cpp"
+#line 4817 "grammar.cpp"
     break;
 
-  case 210: /* operator_binary: expression "not operator" "like operator" expression  */
-#line 2103 "grammar.y"
+  case 174: /* operator_binary: expression "not operator" "like operator" expression  */
+#line 1956 "grammar.y"
                                        {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-3].node));
@@ -5176,11 +5172,11 @@ yyreduce:
       AstNode* expression = parser->ast()->createNodeFunctionCall("LIKE", arguments, false);
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
-#line 5179 "grammar.cpp"
+#line 4829 "grammar.cpp"
     break;
 
-  case 211: /* operator_binary: expression "not operator" "~= operator" expression  */
-#line 2110 "grammar.y"
+  case 175: /* operator_binary: expression "not operator" "~= operator" expression  */
+#line 1963 "grammar.y"
                                               {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-3].node));
@@ -5188,44 +5184,44 @@ yyreduce:
       AstNode* expression = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments, false);
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
-#line 5191 "grammar.cpp"
+#line 4841 "grammar.cpp"
     break;
 
-  case 212: /* operator_binary: expression "not operator" "~! operator" expression  */
-#line 2117 "grammar.y"
+  case 176: /* operator_binary: expression "not operator" "~! operator" expression  */
+#line 1970 "grammar.y"
                                                   {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-3].node));
       arguments->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments, false);
     }
-#line 5202 "grammar.cpp"
+#line 4852 "grammar.cpp"
     break;
 
-  case 213: /* operator_binary: expression "like operator" expression  */
-#line 2123 "grammar.y"
+  case 177: /* operator_binary: expression "like operator" expression  */
+#line 1976 "grammar.y"
                                  {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeFunctionCall("LIKE", arguments, false);
     }
-#line 5213 "grammar.cpp"
+#line 4863 "grammar.cpp"
     break;
 
-  case 214: /* operator_binary: expression "~= operator" expression  */
-#line 2129 "grammar.y"
+  case 178: /* operator_binary: expression "~= operator" expression  */
+#line 1982 "grammar.y"
                                         {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments, false);
     }
-#line 5224 "grammar.cpp"
+#line 4874 "grammar.cpp"
     break;
 
-  case 215: /* operator_binary: expression "~! operator" expression  */
-#line 2135 "grammar.y"
+  case 179: /* operator_binary: expression "~! operator" expression  */
+#line 1988 "grammar.y"
                                             {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
@@ -5233,156 +5229,156 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments, false);
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
-#line 5236 "grammar.cpp"
+#line 4886 "grammar.cpp"
     break;
 
-  case 216: /* operator_binary: expression quantifier "== operator" expression  */
-#line 2142 "grammar.y"
+  case 180: /* operator_binary: expression quantifier "== operator" expression  */
+#line 1995 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 5244 "grammar.cpp"
+#line 4894 "grammar.cpp"
     break;
 
-  case 217: /* operator_binary: expression quantifier "!= operator" expression  */
-#line 2145 "grammar.y"
+  case 181: /* operator_binary: expression quantifier "!= operator" expression  */
+#line 1998 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 5252 "grammar.cpp"
+#line 4902 "grammar.cpp"
     break;
 
-  case 218: /* operator_binary: expression quantifier "< operator" expression  */
-#line 2148 "grammar.y"
+  case 182: /* operator_binary: expression quantifier "< operator" expression  */
+#line 2001 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 5260 "grammar.cpp"
+#line 4910 "grammar.cpp"
     break;
 
-  case 219: /* operator_binary: expression quantifier "> operator" expression  */
-#line 2151 "grammar.y"
+  case 183: /* operator_binary: expression quantifier "> operator" expression  */
+#line 2004 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 5268 "grammar.cpp"
+#line 4918 "grammar.cpp"
     break;
 
-  case 220: /* operator_binary: expression quantifier "<= operator" expression  */
-#line 2154 "grammar.y"
+  case 184: /* operator_binary: expression quantifier "<= operator" expression  */
+#line 2007 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 5276 "grammar.cpp"
+#line 4926 "grammar.cpp"
     break;
 
-  case 221: /* operator_binary: expression quantifier ">= operator" expression  */
-#line 2157 "grammar.y"
+  case 185: /* operator_binary: expression quantifier ">= operator" expression  */
+#line 2010 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 5284 "grammar.cpp"
+#line 4934 "grammar.cpp"
     break;
 
-  case 222: /* operator_binary: expression quantifier "IN keyword" expression  */
-#line 2160 "grammar.y"
+  case 186: /* operator_binary: expression quantifier "IN keyword" expression  */
+#line 2013 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 5292 "grammar.cpp"
+#line 4942 "grammar.cpp"
     break;
 
-  case 223: /* operator_binary: expression quantifier "not in operator" expression  */
-#line 2163 "grammar.y"
+  case 187: /* operator_binary: expression quantifier "not in operator" expression  */
+#line 2016 "grammar.y"
                                               {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 5300 "grammar.cpp"
+#line 4950 "grammar.cpp"
     break;
 
-  case 224: /* operator_binary: expression "at least modifier" "(" expression ")" "== operator" expression  */
-#line 2166 "grammar.y"
+  case 188: /* operator_binary: expression "at least modifier" "(" expression ")" "== operator" expression  */
+#line 2019 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5309 "grammar.cpp"
+#line 4959 "grammar.cpp"
     break;
 
-  case 225: /* operator_binary: expression "at least modifier" "(" expression ")" "!= operator" expression  */
-#line 2170 "grammar.y"
+  case 189: /* operator_binary: expression "at least modifier" "(" expression ")" "!= operator" expression  */
+#line 2023 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5318 "grammar.cpp"
+#line 4968 "grammar.cpp"
     break;
 
-  case 226: /* operator_binary: expression "at least modifier" "(" expression ")" "< operator" expression  */
-#line 2174 "grammar.y"
+  case 190: /* operator_binary: expression "at least modifier" "(" expression ")" "< operator" expression  */
+#line 2027 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5327 "grammar.cpp"
+#line 4977 "grammar.cpp"
     break;
 
-  case 227: /* operator_binary: expression "at least modifier" "(" expression ")" "> operator" expression  */
-#line 2178 "grammar.y"
+  case 191: /* operator_binary: expression "at least modifier" "(" expression ")" "> operator" expression  */
+#line 2031 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5336 "grammar.cpp"
+#line 4986 "grammar.cpp"
     break;
 
-  case 228: /* operator_binary: expression "at least modifier" "(" expression ")" "<= operator" expression  */
-#line 2182 "grammar.y"
+  case 192: /* operator_binary: expression "at least modifier" "(" expression ")" "<= operator" expression  */
+#line 2035 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5345 "grammar.cpp"
+#line 4995 "grammar.cpp"
     break;
 
-  case 229: /* operator_binary: expression "at least modifier" "(" expression ")" ">= operator" expression  */
-#line 2186 "grammar.y"
+  case 193: /* operator_binary: expression "at least modifier" "(" expression ")" ">= operator" expression  */
+#line 2039 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5354 "grammar.cpp"
+#line 5004 "grammar.cpp"
     break;
 
-  case 230: /* operator_binary: expression "at least modifier" "(" expression ")" "IN keyword" expression  */
-#line 2190 "grammar.y"
+  case 194: /* operator_binary: expression "at least modifier" "(" expression ")" "IN keyword" expression  */
+#line 2043 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5363 "grammar.cpp"
+#line 5013 "grammar.cpp"
     break;
 
-  case 231: /* operator_binary: expression "at least modifier" "(" expression ")" "not in operator" expression  */
-#line 2194 "grammar.y"
+  case 195: /* operator_binary: expression "at least modifier" "(" expression ")" "not in operator" expression  */
+#line 2047 "grammar.y"
                                                                         {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5372 "grammar.cpp"
+#line 5022 "grammar.cpp"
     break;
 
-  case 232: /* $@23: %empty  */
-#line 2201 "grammar.y"
+  case 196: /* $@19: %empty  */
+#line 2054 "grammar.y"
                           {
-      // ternary operator: 
+      // ternary operator:
       //   condition ? true part : false part
       //
       // check if we must inline the condition of the ternary operator.
       // this is the case if we must execute a single expression, e.g. in computed values.
       // for normal AQL queries we normally want the condition of the ternary operator
       // to be placed in its own LET node, so we can move it around.
-        
+
       // if the condition is not inlined, the condition expression is assigned to a
       // temporary variable using a LET statement. insertConditional() also pushes
       // this LET variable onto the stack of conditions to honor in any subqueries that
@@ -5411,40 +5407,40 @@ yyreduce:
       // condition is falsy.
       parser->lazyConditions().push((yyvsp[-1].node), /*negated*/ false);
     }
-#line 5414 "grammar.cpp"
+#line 5064 "grammar.cpp"
     break;
 
-  case 233: /* $@24: %empty  */
-#line 2237 "grammar.y"
+  case 197: /* $@20: %empty  */
+#line 2090 "grammar.y"
                          {
       LazyCondition previous = parser->lazyConditions().pop();
       // negate the condition and push the negated version onto the stack
       parser->lazyConditions().push(previous.condition, /*negated*/ true);
     }
-#line 5424 "grammar.cpp"
+#line 5074 "grammar.cpp"
     break;
 
-  case 234: /* operator_ternary: expression "?" $@23 expression ":" $@24 expression  */
-#line 2241 "grammar.y"
+  case 198: /* operator_ternary: expression "?" $@19 expression ":" $@20 expression  */
+#line 2094 "grammar.y"
                  {
       LazyCondition previous = parser->lazyConditions().pop();
       (yyval.node) = parser->ast()->createNodeTernaryOperator(previous.condition, (yyvsp[-3].node), (yyvsp[0].node));
     }
-#line 5433 "grammar.cpp"
+#line 5083 "grammar.cpp"
     break;
 
-  case 235: /* $@25: %empty  */
-#line 2245 "grammar.y"
+  case 199: /* $@21: %empty  */
+#line 2098 "grammar.y"
                           {
-      // shortcut ternary operator: 
+      // shortcut ternary operator:
       //   condition ? : false part
-      // 
+      //
       // if the condition is not inlined, the condition expression is assigned to a
       // temporary variable using a LET statement. insertConditional() also pushes
       // this LET variable onto the stack of conditions to honor in any subqueries that
       // are started inside the ternary operator.
       // for example, consider the following query:
-      //   RETURN !IS_ARRAY(values) ?: (FOR v IN values ...) 
+      //   RETURN !IS_ARRAY(values) ?: (FOR v IN values ...)
       // if the condition is not forced to be inlined, the generated AST for the query
       // will look like this:
       //   LET tmp1 = !IS_ARRAY(values)
@@ -5462,42 +5458,42 @@ yyreduce:
       // condition is falsy.
       parser->lazyConditions().push((yyvsp[-1].node), /*negated*/ true);
     }
-#line 5465 "grammar.cpp"
+#line 5115 "grammar.cpp"
     break;
 
-  case 236: /* operator_ternary: expression "?" $@25 ":" expression  */
-#line 2271 "grammar.y"
+  case 200: /* operator_ternary: expression "?" $@21 ":" expression  */
+#line 2124 "grammar.y"
                          {
       LazyCondition previous = parser->lazyConditions().pop();
       (yyval.node) = parser->ast()->createNodeTernaryOperator(previous.condition, (yyvsp[0].node));
     }
-#line 5474 "grammar.cpp"
+#line 5124 "grammar.cpp"
     break;
 
-  case 237: /* optional_function_call_arguments: %empty  */
-#line 2278 "grammar.y"
+  case 201: /* optional_function_call_arguments: %empty  */
+#line 2131 "grammar.y"
                 {
     }
-#line 5481 "grammar.cpp"
+#line 5131 "grammar.cpp"
     break;
 
-  case 238: /* optional_function_call_arguments: function_arguments_list  */
-#line 2280 "grammar.y"
+  case 202: /* optional_function_call_arguments: function_arguments_list  */
+#line 2133 "grammar.y"
                             {
     }
-#line 5488 "grammar.cpp"
+#line 5138 "grammar.cpp"
     break;
 
-  case 239: /* expression_or_query: expression  */
-#line 2285 "grammar.y"
+  case 203: /* expression_or_query: expression  */
+#line 2138 "grammar.y"
                {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5496 "grammar.cpp"
+#line 5146 "grammar.cpp"
     break;
 
-  case 240: /* $@26: %empty  */
-#line 2288 "grammar.y"
+  case 204: /* $@22: %empty  */
+#line 2141 "grammar.y"
     {
       parser->lazyConditions().flushAssignments();
 
@@ -5506,11 +5502,11 @@ yyreduce:
 
       parser->lazyConditions().flushFilters();
     }
-#line 5509 "grammar.cpp"
+#line 5159 "grammar.cpp"
     break;
 
-  case 241: /* expression_or_query: $@26 query  */
-#line 2295 "grammar.y"
+  case 205: /* expression_or_query: $@22 query  */
+#line 2148 "grammar.y"
             {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -5521,120 +5517,111 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeSubqueryReference(variableName, node);
     }
-#line 5524 "grammar.cpp"
+#line 5174 "grammar.cpp"
     break;
 
-  case 242: /* function_arguments_list: expression_or_query  */
-#line 2308 "grammar.y"
+  case 206: /* function_arguments_list: expression_or_query  */
+#line 2161 "grammar.y"
                         {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 5532 "grammar.cpp"
+#line 5182 "grammar.cpp"
     break;
 
-  case 243: /* function_arguments_list: function_arguments_list "," expression_or_query  */
-#line 2311 "grammar.y"
+  case 207: /* function_arguments_list: function_arguments_list "," expression_or_query  */
+#line 2164 "grammar.y"
                                                         {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 5540 "grammar.cpp"
+#line 5190 "grammar.cpp"
     break;
 
-  case 244: /* compound_value: array  */
-#line 2317 "grammar.y"
+  case 208: /* compound_value: array  */
+#line 2170 "grammar.y"
           {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5548 "grammar.cpp"
+#line 5198 "grammar.cpp"
     break;
 
-  case 245: /* compound_value: object  */
-#line 2320 "grammar.y"
+  case 209: /* compound_value: object  */
+#line 2173 "grammar.y"
            {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5556 "grammar.cpp"
+#line 5206 "grammar.cpp"
     break;
 
-  case 246: /* $@27: %empty  */
-#line 2326 "grammar.y"
+  case 210: /* $@23: %empty  */
+#line 2179 "grammar.y"
                  {
       auto node = parser->ast()->createNodeArray();
       parser->pushArray(node);
     }
-#line 5565 "grammar.cpp"
+#line 5215 "grammar.cpp"
     break;
 
-  case 247: /* array: "[" $@27 optional_array_elements "]"  */
-#line 2329 "grammar.y"
+  case 211: /* array: "[" $@23 optional_array_elements "]"  */
+#line 2182 "grammar.y"
                                             {
       (yyval.node) = parser->popArray();
     }
-#line 5573 "grammar.cpp"
+#line 5223 "grammar.cpp"
     break;
 
-  case 248: /* optional_array_elements: %empty  */
-#line 2335 "grammar.y"
+  case 212: /* optional_array_elements: %empty  */
+#line 2188 "grammar.y"
                 {
     }
-#line 5580 "grammar.cpp"
+#line 5230 "grammar.cpp"
     break;
 
-  case 249: /* optional_array_elements: array_elements_list  */
-#line 2337 "grammar.y"
+  case 213: /* optional_array_elements: array_elements_list  */
+#line 2190 "grammar.y"
                         {
     }
-#line 5587 "grammar.cpp"
+#line 5237 "grammar.cpp"
     break;
 
-  case 250: /* optional_array_elements: array_elements_list ","  */
-#line 2339 "grammar.y"
+  case 214: /* optional_array_elements: array_elements_list ","  */
+#line 2192 "grammar.y"
                                 {
     }
-#line 5594 "grammar.cpp"
+#line 5244 "grammar.cpp"
     break;
 
-  case 251: /* array_elements_list: array_element  */
-#line 2344 "grammar.y"
+  case 215: /* array_elements_list: array_element  */
+#line 2197 "grammar.y"
                   {
     }
-#line 5601 "grammar.cpp"
+#line 5251 "grammar.cpp"
     break;
 
-  case 252: /* array_elements_list: array_elements_list "," array_element  */
-#line 2346 "grammar.y"
+  case 216: /* array_elements_list: array_elements_list "," array_element  */
+#line 2199 "grammar.y"
                                               {
     }
-#line 5608 "grammar.cpp"
+#line 5258 "grammar.cpp"
     break;
 
-  case 253: /* array_element: expression  */
-#line 2351 "grammar.y"
+  case 217: /* array_element: expression  */
+#line 2204 "grammar.y"
                {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 5616 "grammar.cpp"
+#line 5266 "grammar.cpp"
     break;
 
-  case 254: /* array_element: "..." expression  */
-#line 2354 "grammar.y"
-                            {
-      auto x = parser->ast()->createNodeArraySplice((yyvsp[0].node));
-      parser->pushArrayElement(x);
-    }
-#line 5625 "grammar.cpp"
-    break;
-
-  case 255: /* for_options: %empty  */
-#line 2361 "grammar.y"
+  case 218: /* for_options: %empty  */
+#line 2210 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 5633 "grammar.cpp"
+#line 5274 "grammar.cpp"
     break;
 
-  case 256: /* for_options: "identifier" expression  */
-#line 2364 "grammar.y"
+  case 219: /* for_options: "identifier" expression  */
+#line 2213 "grammar.y"
                         {
       std::string_view operation((yyvsp[-1].strval).value, (yyvsp[-1].strval).length);
       TRI_ASSERT((yyvsp[0].node) != nullptr);
@@ -5660,11 +5647,11 @@ yyreduce:
 
       (yyval.node) = node;
     }
-#line 5663 "grammar.cpp"
+#line 5304 "grammar.cpp"
     break;
 
-  case 257: /* for_options: "identifier" expression "identifier" expression  */
-#line 2389 "grammar.y"
+  case 220: /* for_options: "identifier" expression "identifier" expression  */
+#line 2238 "grammar.y"
                                             {
       std::string_view operation((yyvsp[-3].strval).value, (yyvsp[-3].strval).length);
       TRI_ASSERT((yyvsp[-2].node) != nullptr);
@@ -5674,7 +5661,7 @@ yyreduce:
           !::caseInsensitiveEqual({(yyvsp[-1].strval).value, (yyvsp[-1].strval).length}, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", operation, yylloc.first_line, yylloc.first_column);
       }
-     
+
       ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column);
 
       auto node = parser->ast()->createNodeArray(2);
@@ -5682,19 +5669,19 @@ yyreduce:
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;
     }
-#line 5685 "grammar.cpp"
+#line 5326 "grammar.cpp"
     break;
 
-  case 258: /* options: %empty  */
-#line 2409 "grammar.y"
+  case 221: /* options: %empty  */
+#line 2258 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 5693 "grammar.cpp"
+#line 5334 "grammar.cpp"
     break;
 
-  case 259: /* options: "identifier" object  */
-#line 2412 "grammar.y"
+  case 222: /* options: "identifier" object  */
+#line 2261 "grammar.y"
                     {
       std::string_view operation((yyvsp[-1].strval).value, (yyvsp[-1].strval).length);
       TRI_ASSERT((yyvsp[0].node) != nullptr);
@@ -5702,68 +5689,68 @@ yyreduce:
       if (!::caseInsensitiveEqual(operation, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", operation, yylloc.first_line, yylloc.first_column);
       }
-     
+
       ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column);
 
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5710 "grammar.cpp"
+#line 5351 "grammar.cpp"
     break;
 
-  case 260: /* $@28: %empty  */
-#line 2427 "grammar.y"
+  case 223: /* $@24: %empty  */
+#line 2276 "grammar.y"
                   {
       auto node = parser->ast()->createNodeObject();
       parser->pushStack(node);
     }
-#line 5719 "grammar.cpp"
+#line 5360 "grammar.cpp"
     break;
 
-  case 261: /* object: "{" $@28 optional_object_elements "}"  */
-#line 2430 "grammar.y"
+  case 224: /* object: "{" $@24 optional_object_elements "}"  */
+#line 2279 "grammar.y"
                                               {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 5727 "grammar.cpp"
+#line 5368 "grammar.cpp"
     break;
 
-  case 262: /* optional_object_elements: %empty  */
-#line 2436 "grammar.y"
+  case 225: /* optional_object_elements: %empty  */
+#line 2285 "grammar.y"
                 {
     }
-#line 5734 "grammar.cpp"
+#line 5375 "grammar.cpp"
     break;
 
-  case 263: /* optional_object_elements: object_elements_list  */
-#line 2438 "grammar.y"
+  case 226: /* optional_object_elements: object_elements_list  */
+#line 2287 "grammar.y"
                          {
     }
-#line 5741 "grammar.cpp"
+#line 5382 "grammar.cpp"
     break;
 
-  case 264: /* optional_object_elements: object_elements_list ","  */
-#line 2440 "grammar.y"
+  case 227: /* optional_object_elements: object_elements_list ","  */
+#line 2289 "grammar.y"
                                  {
     }
-#line 5748 "grammar.cpp"
+#line 5389 "grammar.cpp"
     break;
 
-  case 265: /* object_elements_list: object_element  */
-#line 2445 "grammar.y"
+  case 228: /* object_elements_list: object_element  */
+#line 2294 "grammar.y"
                    {
     }
-#line 5755 "grammar.cpp"
+#line 5396 "grammar.cpp"
     break;
 
-  case 266: /* object_elements_list: object_elements_list "," object_element  */
-#line 2447 "grammar.y"
+  case 229: /* object_elements_list: object_elements_list "," object_element  */
+#line 2296 "grammar.y"
                                                 {
     }
-#line 5762 "grammar.cpp"
+#line 5403 "grammar.cpp"
     break;
 
-  case 267: /* object_element: "identifier"  */
-#line 2452 "grammar.y"
+  case 230: /* object_element: "identifier"  */
+#line 2301 "grammar.y"
              {
       // attribute-name-only (comparable to JS enhanced object literals, e.g. { foo, bar })
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
@@ -5780,110 +5767,110 @@ yyreduce:
       auto node = ast->createNodeReference(variable);
       parser->pushObjectElement((yyvsp[0].strval).value, (yyvsp[0].strval).length, node);
     }
-#line 5783 "grammar.cpp"
+#line 5424 "grammar.cpp"
     break;
 
-  case 268: /* object_element: "inbound modifier" ":" expression  */
-#line 2468 "grammar.y"
+  case 231: /* object_element: "inbound modifier" ":" expression  */
+#line 2317 "grammar.y"
                                  {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5792 "grammar.cpp"
+#line 5433 "grammar.cpp"
     break;
 
-  case 269: /* object_element: "outbound modifier" ":" expression  */
-#line 2472 "grammar.y"
+  case 232: /* object_element: "outbound modifier" ":" expression  */
+#line 2321 "grammar.y"
                                   {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5801 "grammar.cpp"
+#line 5442 "grammar.cpp"
     break;
 
-  case 270: /* object_element: "any modifier" ":" expression  */
-#line 2476 "grammar.y"
+  case 233: /* object_element: "any modifier" ":" expression  */
+#line 2325 "grammar.y"
                              {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5810 "grammar.cpp"
+#line 5451 "grammar.cpp"
     break;
 
-  case 271: /* object_element: "all modifier" ":" expression  */
-#line 2480 "grammar.y"
+  case 234: /* object_element: "all modifier" ":" expression  */
+#line 2329 "grammar.y"
                              {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5819 "grammar.cpp"
+#line 5460 "grammar.cpp"
     break;
 
-  case 272: /* object_element: "none modifier" ":" expression  */
-#line 2484 "grammar.y"
+  case 235: /* object_element: "none modifier" ":" expression  */
+#line 2333 "grammar.y"
                               {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5828 "grammar.cpp"
+#line 5469 "grammar.cpp"
     break;
 
-  case 273: /* object_element: "like operator" ":" expression  */
-#line 2488 "grammar.y"
+  case 236: /* object_element: "like operator" ":" expression  */
+#line 2337 "grammar.y"
                               {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5837 "grammar.cpp"
+#line 5478 "grammar.cpp"
     break;
 
-  case 274: /* object_element: "INTO keyword" ":" expression  */
-#line 2492 "grammar.y"
+  case 237: /* object_element: "INTO keyword" ":" expression  */
+#line 2341 "grammar.y"
                               {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5846 "grammar.cpp"
+#line 5487 "grammar.cpp"
     break;
 
-  case 275: /* object_element: "WITH keyword" ":" expression  */
-#line 2496 "grammar.y"
+  case 238: /* object_element: "WITH keyword" ":" expression  */
+#line 2345 "grammar.y"
                               {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5855 "grammar.cpp"
+#line 5496 "grammar.cpp"
     break;
 
-  case 276: /* object_element: "WINDOW declaration" ":" expression  */
-#line 2500 "grammar.y"
+  case 239: /* object_element: "WINDOW declaration" ":" expression  */
+#line 2349 "grammar.y"
                                 {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5864 "grammar.cpp"
+#line 5505 "grammar.cpp"
     break;
 
-  case 277: /* object_element: "LIMIT declaration" ":" expression  */
-#line 2504 "grammar.y"
+  case 240: /* object_element: "LIMIT declaration" ":" expression  */
+#line 2353 "grammar.y"
                                {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5873 "grammar.cpp"
+#line 5514 "grammar.cpp"
     break;
 
-  case 278: /* object_element: object_element_name ":" expression  */
-#line 2508 "grammar.y"
+  case 241: /* object_element: object_element_name ":" expression  */
+#line 2357 "grammar.y"
                                            {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5882 "grammar.cpp"
+#line 5523 "grammar.cpp"
     break;
 
-  case 279: /* object_element: "bind parameter" ":" expression  */
-#line 2512 "grammar.y"
+  case 242: /* object_element: "bind parameter" ":" expression  */
+#line 2361 "grammar.y"
                                    {
       // bind-parameter : attribute-value
       std::string_view name((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
@@ -5894,219 +5881,219 @@ yyreduce:
       auto param = parser->ast()->createNodeParameter(name);
       parser->pushObjectElement(param, (yyvsp[0].node));
     }
-#line 5897 "grammar.cpp"
+#line 5538 "grammar.cpp"
     break;
 
-  case 280: /* object_element: "[" expression "]" ":" expression  */
-#line 2522 "grammar.y"
+  case 243: /* object_element: "[" expression "]" ":" expression  */
+#line 2371 "grammar.y"
                                                              {
       // [ attribute-name-expression ] : attribute-value
       parser->pushObjectElement((yyvsp[-3].node), (yyvsp[0].node));
     }
-#line 5906 "grammar.cpp"
+#line 5547 "grammar.cpp"
     break;
 
-  case 281: /* array_filter_operator: "?"  */
-#line 2529 "grammar.y"
+  case 244: /* array_filter_operator: "?"  */
+#line 2378 "grammar.y"
                {
       (yyval.intval) = 1;
     }
-#line 5914 "grammar.cpp"
+#line 5555 "grammar.cpp"
     break;
 
-  case 282: /* array_filter_operator: array_filter_operator "?"  */
-#line 2532 "grammar.y"
+  case 245: /* array_filter_operator: array_filter_operator "?"  */
+#line 2381 "grammar.y"
                                      {
       (yyval.intval) = (yyvsp[-1].intval) + 1;
     }
-#line 5922 "grammar.cpp"
+#line 5563 "grammar.cpp"
     break;
 
-  case 283: /* array_map_operator: "* operator"  */
-#line 2538 "grammar.y"
+  case 246: /* array_map_operator: "* operator"  */
+#line 2387 "grammar.y"
             {
       (yyval.intval) = 1;
     }
-#line 5930 "grammar.cpp"
+#line 5571 "grammar.cpp"
     break;
 
-  case 284: /* array_map_operator: array_map_operator "* operator"  */
-#line 2541 "grammar.y"
+  case 247: /* array_map_operator: array_map_operator "* operator"  */
+#line 2390 "grammar.y"
                                {
       (yyval.intval) = (yyvsp[-1].intval) + 1;
     }
-#line 5938 "grammar.cpp"
+#line 5579 "grammar.cpp"
     break;
 
-  case 285: /* optional_array_filter: %empty  */
-#line 2547 "grammar.y"
+  case 248: /* optional_array_filter: %empty  */
+#line 2396 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 5946 "grammar.cpp"
+#line 5587 "grammar.cpp"
     break;
 
-  case 286: /* optional_array_filter: "FILTER declaration" expression  */
-#line 2550 "grammar.y"
+  case 249: /* optional_array_filter: "FILTER declaration" expression  */
+#line 2399 "grammar.y"
                         {
       // FILTER filter-condition
       (yyval.node) = parser->ast()->createNodeArrayFilter(nullptr, (yyvsp[0].node));
     }
-#line 5955 "grammar.cpp"
+#line 5596 "grammar.cpp"
     break;
 
-  case 287: /* optional_array_filter: quantifier "FILTER declaration" expression  */
-#line 2554 "grammar.y"
+  case 250: /* optional_array_filter: quantifier "FILTER declaration" expression  */
+#line 2403 "grammar.y"
                                    {
       // ALL|ANY|NONE|AT LEAST FILTER filter-condition
       (yyval.node) = parser->ast()->createNodeArrayFilter((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5964 "grammar.cpp"
+#line 5605 "grammar.cpp"
     break;
 
-  case 288: /* optional_array_filter: "at least modifier" "(" expression ")" "FILTER declaration" expression  */
-#line 2558 "grammar.y"
+  case 251: /* optional_array_filter: "at least modifier" "(" expression ")" "FILTER declaration" expression  */
+#line 2407 "grammar.y"
                                                              {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeArrayFilter(quantifier, (yyvsp[0].node));
     }
-#line 5973 "grammar.cpp"
+#line 5614 "grammar.cpp"
     break;
 
-  case 289: /* optional_array_filter: expression "FILTER declaration" expression  */
-#line 2562 "grammar.y"
+  case 252: /* optional_array_filter: expression "FILTER declaration" expression  */
+#line 2411 "grammar.y"
                                    {
       // 1    FILTER filter-condition
       // 2..5 FILTER filter-condition
       (yyval.node) = parser->ast()->createNodeArrayFilter((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5983 "grammar.cpp"
+#line 5624 "grammar.cpp"
     break;
 
-  case 290: /* optional_array_limit: %empty  */
-#line 2570 "grammar.y"
+  case 253: /* optional_array_limit: %empty  */
+#line 2419 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 5991 "grammar.cpp"
+#line 5632 "grammar.cpp"
     break;
 
-  case 291: /* optional_array_limit: "LIMIT declaration" expression  */
-#line 2573 "grammar.y"
+  case 254: /* optional_array_limit: "LIMIT declaration" expression  */
+#line 2422 "grammar.y"
                        {
       (yyval.node) = parser->ast()->createNodeArrayLimit(nullptr, (yyvsp[0].node));
     }
-#line 5999 "grammar.cpp"
+#line 5640 "grammar.cpp"
     break;
 
-  case 292: /* optional_array_limit: "LIMIT declaration" expression "," expression  */
-#line 2576 "grammar.y"
+  case 255: /* optional_array_limit: "LIMIT declaration" expression "," expression  */
+#line 2425 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeArrayLimit((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 6007 "grammar.cpp"
+#line 5648 "grammar.cpp"
     break;
 
-  case 293: /* optional_array_return: %empty  */
-#line 2582 "grammar.y"
+  case 256: /* optional_array_return: %empty  */
+#line 2431 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 6015 "grammar.cpp"
+#line 5656 "grammar.cpp"
     break;
 
-  case 294: /* optional_array_return: "RETURN declaration" expression  */
-#line 2585 "grammar.y"
+  case 257: /* optional_array_return: "RETURN declaration" expression  */
+#line 2434 "grammar.y"
                         {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6023 "grammar.cpp"
+#line 5664 "grammar.cpp"
     break;
 
-  case 295: /* graph_collection: "identifier"  */
-#line 2591 "grammar.y"
+  case 258: /* graph_collection: "identifier"  */
+#line 2440 "grammar.y"
              {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 6031 "grammar.cpp"
+#line 5672 "grammar.cpp"
     break;
 
-  case 296: /* graph_collection: bind_parameter_datasource_expected  */
-#line 2594 "grammar.y"
+  case 259: /* graph_collection: bind_parameter_datasource_expected  */
+#line 2443 "grammar.y"
                                        {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6039 "grammar.cpp"
+#line 5680 "grammar.cpp"
     break;
 
-  case 297: /* graph_collection: graph_direction "identifier"  */
-#line 2597 "grammar.y"
+  case 260: /* graph_collection: graph_direction "identifier"  */
+#line 2446 "grammar.y"
                              {
       auto tmp = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       (yyval.node) = parser->ast()->createNodeCollectionDirection((yyvsp[-1].intval), tmp);
     }
-#line 6048 "grammar.cpp"
+#line 5689 "grammar.cpp"
     break;
 
-  case 298: /* graph_collection: graph_direction bind_parameter  */
-#line 2601 "grammar.y"
+  case 261: /* graph_collection: graph_direction bind_parameter  */
+#line 2450 "grammar.y"
                                    {
       (yyval.node) = parser->ast()->createNodeCollectionDirection((yyvsp[-1].intval), (yyvsp[0].node));
     }
-#line 6056 "grammar.cpp"
+#line 5697 "grammar.cpp"
     break;
 
-  case 299: /* graph_collection_list: graph_collection  */
-#line 2607 "grammar.y"
+  case 262: /* graph_collection_list: graph_collection  */
+#line 2456 "grammar.y"
                       {
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 6065 "grammar.cpp"
+#line 5706 "grammar.cpp"
     break;
 
-  case 300: /* graph_collection_list: graph_collection_list "," graph_collection  */
-#line 2611 "grammar.y"
+  case 263: /* graph_collection_list: graph_collection_list "," graph_collection  */
+#line 2460 "grammar.y"
                                                     {
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 6074 "grammar.cpp"
+#line 5715 "grammar.cpp"
     break;
 
-  case 301: /* graph_subject: graph_collection  */
-#line 2618 "grammar.y"
+  case 264: /* graph_subject: graph_collection  */
+#line 2467 "grammar.y"
                      {
       auto node = parser->ast()->createNodeArray();
       node->addMember((yyvsp[0].node));
       auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollectionList(node, resolver);
     }
-#line 6085 "grammar.cpp"
+#line 5726 "grammar.cpp"
     break;
 
-  case 302: /* $@29: %empty  */
-#line 2624 "grammar.y"
+  case 265: /* $@25: %empty  */
+#line 2473 "grammar.y"
                              {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
       node->addMember((yyvsp[-1].node));
     }
-#line 6095 "grammar.cpp"
+#line 5736 "grammar.cpp"
     break;
 
-  case 303: /* graph_subject: graph_collection "," $@29 graph_collection_list  */
-#line 2628 "grammar.y"
+  case 266: /* graph_subject: graph_collection "," $@25 graph_collection_list  */
+#line 2477 "grammar.y"
                             {
       auto node = static_cast<AstNode*>(parser->popStack());
       auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollectionList(node, resolver);
     }
-#line 6105 "grammar.cpp"
+#line 5746 "grammar.cpp"
     break;
 
-  case 304: /* graph_subject: "GRAPH keyword" bind_parameter  */
-#line 2633 "grammar.y"
+  case 267: /* graph_subject: "GRAPH keyword" bind_parameter  */
+#line 2482 "grammar.y"
                            {
       // graph name
       if ((yyvsp[0].node)->type == NODE_TYPE_PARAMETER) {
@@ -6114,69 +6101,69 @@ yyreduce:
       }
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6117 "grammar.cpp"
+#line 5758 "grammar.cpp"
     break;
 
-  case 305: /* graph_subject: "GRAPH keyword" "quoted string"  */
-#line 2640 "grammar.y"
+  case 268: /* graph_subject: "GRAPH keyword" "quoted string"  */
+#line 2489 "grammar.y"
                             {
       // graph name
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 6126 "grammar.cpp"
+#line 5767 "grammar.cpp"
     break;
 
-  case 306: /* graph_subject: "GRAPH keyword" "identifier"  */
-#line 2644 "grammar.y"
+  case 269: /* graph_subject: "GRAPH keyword" "identifier"  */
+#line 2493 "grammar.y"
                      {
       // graph name
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 6135 "grammar.cpp"
+#line 5776 "grammar.cpp"
     break;
 
-  case 307: /* graph_direction: "outbound modifier"  */
-#line 2653 "grammar.y"
+  case 270: /* graph_direction: "outbound modifier"  */
+#line 2502 "grammar.y"
                {
       (yyval.intval) = 2;
     }
-#line 6143 "grammar.cpp"
+#line 5784 "grammar.cpp"
     break;
 
-  case 308: /* graph_direction: "inbound modifier"  */
-#line 2656 "grammar.y"
+  case 271: /* graph_direction: "inbound modifier"  */
+#line 2505 "grammar.y"
               {
       (yyval.intval) = 1;
     }
-#line 6151 "grammar.cpp"
+#line 5792 "grammar.cpp"
     break;
 
-  case 309: /* graph_direction: "any modifier"  */
-#line 2659 "grammar.y"
+  case 272: /* graph_direction: "any modifier"  */
+#line 2508 "grammar.y"
           {
       (yyval.intval) = 0;
     }
-#line 6159 "grammar.cpp"
+#line 5800 "grammar.cpp"
     break;
 
-  case 310: /* graph_direction_steps: graph_direction  */
-#line 2665 "grammar.y"
+  case 273: /* graph_direction_steps: graph_direction  */
+#line 2514 "grammar.y"
                     {
       (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), 1);
     }
-#line 6167 "grammar.cpp"
+#line 5808 "grammar.cpp"
     break;
 
-  case 311: /* graph_direction_steps: expression graph_direction  */
-#line 2668 "grammar.y"
+  case 274: /* graph_direction_steps: expression graph_direction  */
+#line 2517 "grammar.y"
                                                 {
       (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), (yyvsp[-1].node));
     }
-#line 6175 "grammar.cpp"
+#line 5816 "grammar.cpp"
     break;
 
-  case 312: /* reference: "identifier"  */
-#line 2674 "grammar.y"
+  case 275: /* reference: "identifier"  */
+#line 2523 "grammar.y"
              {
       // variable or collection or view
       auto ast = parser->ast();
@@ -6188,7 +6175,7 @@ yyreduce:
       if (variable == nullptr) {
         // variable does not exist
         // now try special variables
-        if (ast->scopes()->canUseCurrentVariable() && 
+        if (ast->scopes()->canUseCurrentVariable() &&
             (variableName == Variable::NAME_CURRENT || variableName == Variable::NAME_CURRENT.substr(1))) {
           variable = ast->scopes()->getCurrentVariable();
         }
@@ -6209,36 +6196,36 @@ yyreduce:
 
       (yyval.node) = node;
     }
-#line 6212 "grammar.cpp"
+#line 5853 "grammar.cpp"
     break;
 
-  case 313: /* reference: compound_value  */
-#line 2706 "grammar.y"
+  case 276: /* reference: compound_value  */
+#line 2555 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6220 "grammar.cpp"
+#line 5861 "grammar.cpp"
     break;
 
-  case 314: /* reference: bind_parameter  */
-#line 2709 "grammar.y"
+  case 277: /* reference: bind_parameter  */
+#line 2558 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6228 "grammar.cpp"
+#line 5869 "grammar.cpp"
     break;
 
-  case 315: /* reference: function_call  */
-#line 2712 "grammar.y"
+  case 278: /* reference: function_call  */
+#line 2561 "grammar.y"
                   {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6237 "grammar.cpp"
+#line 5878 "grammar.cpp"
     break;
 
-  case 316: /* reference: "(" expression ")"  */
-#line 2716 "grammar.y"
+  case 279: /* reference: "(" expression ")"  */
+#line 2565 "grammar.y"
                               {
       if ((yyvsp[-1].node)->type == NODE_TYPE_EXPANSION) {
         // create a dummy passthru node that reduces and evaluates the expansion first
@@ -6248,24 +6235,24 @@ yyreduce:
         (yyval.node) = (yyvsp[-1].node);
       }
     }
-#line 6251 "grammar.cpp"
+#line 5892 "grammar.cpp"
     break;
 
-  case 317: /* $@30: %empty  */
-#line 2725 "grammar.y"
+  case 280: /* $@26: %empty  */
+#line 2574 "grammar.y"
            {
       parser->lazyConditions().flushAssignments();
 
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
-      
+
       parser->lazyConditions().flushFilters();
     }
-#line 6264 "grammar.cpp"
+#line 5905 "grammar.cpp"
     break;
 
-  case 318: /* reference: "(" $@30 query ")"  */
-#line 2732 "grammar.y"
+  case 281: /* reference: "(" $@26 query ")"  */
+#line 2581 "grammar.y"
                     {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -6276,11 +6263,11 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeSubqueryReference(variableName, node);
     }
-#line 6279 "grammar.cpp"
+#line 5920 "grammar.cpp"
     break;
 
-  case 319: /* reference: reference '.' "identifier"  */
-#line 2742 "grammar.y"
+  case 282: /* reference: reference '.' "identifier"  */
+#line 2591 "grammar.y"
                                            {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       // named variable access, e.g. variable.reference
@@ -6296,11 +6283,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeAttributeAccess((yyvsp[-2].node), name);
       }
     }
-#line 6299 "grammar.cpp"
+#line 5940 "grammar.cpp"
     break;
 
-  case 320: /* reference: reference '.' bind_parameter  */
-#line 2757 "grammar.y"
+  case 283: /* reference: reference '.' bind_parameter  */
+#line 2606 "grammar.y"
                                                  {
       // named variable access, e.g. variable.@reference
       if ((yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
@@ -6314,11 +6301,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeBoundAttributeAccess((yyvsp[-2].node), (yyvsp[0].node));
       }
     }
-#line 6317 "grammar.cpp"
+#line 5958 "grammar.cpp"
     break;
 
-  case 321: /* reference: reference "[" expression "]"  */
-#line 2770 "grammar.y"
+  case 284: /* reference: reference "[" expression "]"  */
+#line 2619 "grammar.y"
                                                                   {
       // indexed variable access, e.g. variable[index]
       if ((yyvsp[-3].node)->type == NODE_TYPE_EXPANSION) {
@@ -6332,11 +6319,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[-3].node), (yyvsp[-1].node));
       }
     }
-#line 6335 "grammar.cpp"
+#line 5976 "grammar.cpp"
     break;
 
-  case 322: /* $@31: %empty  */
-#line 2783 "grammar.y"
+  case 285: /* $@27: %empty  */
+#line 2632 "grammar.y"
                                                  {
       // variable expansion, e.g. variable[?], with optional FILTER clause
       if ((yyvsp[0].intval) > 1 && (yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
@@ -6364,11 +6351,11 @@ yyreduce:
       // condition
       parser->lazyConditions().pushForceInline();
     }
-#line 6367 "grammar.cpp"
+#line 6008 "grammar.cpp"
     break;
 
-  case 323: /* reference: reference "[" array_filter_operator $@31 optional_array_filter "]"  */
-#line 2809 "grammar.y"
+  case 286: /* reference: reference "[" array_filter_operator $@27 optional_array_filter "]"  */
+#line 2658 "grammar.y"
                                                           {
       parser->lazyConditions().popForceInline();
 
@@ -6388,11 +6375,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeBooleanExpansion((yyvsp[-3].intval), iterator, parser->ast()->createNodeReference(variable->name), (yyvsp[-1].node));
       }
     }
-#line 6391 "grammar.cpp"
+#line 6032 "grammar.cpp"
     break;
 
-  case 324: /* $@32: %empty  */
-#line 2828 "grammar.y"
+  case 287: /* $@28: %empty  */
+#line 2677 "grammar.y"
                                               {
       // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and RETURN clauses
       if ((yyvsp[0].intval) > 1 && (yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
@@ -6414,17 +6401,17 @@ yyreduce:
 
       auto scopes = parser->ast()->scopes();
       scopes->stackCurrentVariable(scopes->getVariable(nextName));
-      
+
       // we are temporarily forcing all conditionals to be inlined, just for
       // evaluating the FILTER condition, which must remain a single
       // condition
       parser->lazyConditions().pushForceInline();
     }
-#line 6423 "grammar.cpp"
+#line 6064 "grammar.cpp"
     break;
 
-  case 325: /* reference: reference "[" array_map_operator $@32 optional_array_filter optional_array_limit optional_array_return "]"  */
-#line 2854 "grammar.y"
+  case 288: /* reference: reference "[" array_map_operator $@28 optional_array_filter optional_array_limit optional_array_return "]"  */
+#line 2703 "grammar.y"
                                                                                                      {
       parser->lazyConditions().popForceInline();
 
@@ -6454,105 +6441,105 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeExpansion((yyvsp[-5].intval), iterator, parser->ast()->createNodeReference(variable->name), (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node));
       }
     }
-#line 6457 "grammar.cpp"
+#line 6098 "grammar.cpp"
     break;
 
-  case 326: /* simple_value: value_literal  */
-#line 2886 "grammar.y"
+  case 289: /* simple_value: value_literal  */
+#line 2735 "grammar.y"
                   {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6465 "grammar.cpp"
+#line 6106 "grammar.cpp"
     break;
 
-  case 327: /* simple_value: bind_parameter  */
-#line 2889 "grammar.y"
+  case 290: /* simple_value: bind_parameter  */
+#line 2738 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6473 "grammar.cpp"
+#line 6114 "grammar.cpp"
     break;
 
-  case 328: /* numeric_value: "integer number"  */
-#line 2895 "grammar.y"
+  case 291: /* numeric_value: "integer number"  */
+#line 2744 "grammar.y"
               {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6482 "grammar.cpp"
+#line 6123 "grammar.cpp"
     break;
 
-  case 329: /* numeric_value: "number"  */
-#line 2899 "grammar.y"
+  case 292: /* numeric_value: "number"  */
+#line 2748 "grammar.y"
              {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6491 "grammar.cpp"
+#line 6132 "grammar.cpp"
     break;
 
-  case 330: /* value_literal: "quoted string"  */
-#line 2906 "grammar.y"
+  case 293: /* value_literal: "quoted string"  */
+#line 2755 "grammar.y"
                     {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 6499 "grammar.cpp"
+#line 6140 "grammar.cpp"
     break;
 
-  case 331: /* value_literal: numeric_value  */
-#line 2909 "grammar.y"
+  case 294: /* value_literal: numeric_value  */
+#line 2758 "grammar.y"
                   {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6507 "grammar.cpp"
+#line 6148 "grammar.cpp"
     break;
 
-  case 332: /* value_literal: "null"  */
-#line 2912 "grammar.y"
+  case 295: /* value_literal: "null"  */
+#line 2761 "grammar.y"
            {
       (yyval.node) = parser->ast()->createNodeValueNull();
     }
-#line 6515 "grammar.cpp"
+#line 6156 "grammar.cpp"
     break;
 
-  case 333: /* value_literal: "true"  */
-#line 2915 "grammar.y"
+  case 296: /* value_literal: "true"  */
+#line 2764 "grammar.y"
            {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 6523 "grammar.cpp"
+#line 6164 "grammar.cpp"
     break;
 
-  case 334: /* value_literal: "false"  */
-#line 2918 "grammar.y"
+  case 297: /* value_literal: "false"  */
+#line 2767 "grammar.y"
             {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 6531 "grammar.cpp"
+#line 6172 "grammar.cpp"
     break;
 
-  case 335: /* in_or_into_collection_name: "identifier"  */
-#line 2924 "grammar.y"
+  case 298: /* in_or_into_collection_name: "identifier"  */
+#line 2773 "grammar.y"
              {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollection(resolver, name, arangodb::AccessMode::Type::WRITE);
     }
-#line 6541 "grammar.cpp"
+#line 6182 "grammar.cpp"
     break;
 
-  case 336: /* in_or_into_collection_name: "quoted string"  */
-#line 2929 "grammar.y"
+  case 299: /* in_or_into_collection_name: "quoted string"  */
+#line 2778 "grammar.y"
                     {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollection(resolver, name, arangodb::AccessMode::Type::WRITE);
     }
-#line 6551 "grammar.cpp"
+#line 6192 "grammar.cpp"
     break;
 
-  case 337: /* in_or_into_collection_name: "bind data source parameter"  */
-#line 2934 "grammar.y"
+  case 300: /* in_or_into_collection_name: "bind data source parameter"  */
+#line 2783 "grammar.y"
                             {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (name.size() < 2 || name.front() != '@') {
@@ -6561,11 +6548,11 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeParameterDatasource(name);
     }
-#line 6564 "grammar.cpp"
+#line 6205 "grammar.cpp"
     break;
 
-  case 338: /* bind_parameter: "bind data source parameter"  */
-#line 2945 "grammar.y"
+  case 301: /* bind_parameter: "bind data source parameter"  */
+#line 2794 "grammar.y"
                             {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (name.size() < 2 || name.front() != '@') {
@@ -6574,20 +6561,20 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeParameterDatasource(name);
     }
-#line 6577 "grammar.cpp"
+#line 6218 "grammar.cpp"
     break;
 
-  case 339: /* bind_parameter: "bind parameter"  */
-#line 2953 "grammar.y"
+  case 302: /* bind_parameter: "bind parameter"  */
+#line 2802 "grammar.y"
                 {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       (yyval.node) = parser->ast()->createNodeParameter(name);
     }
-#line 6586 "grammar.cpp"
+#line 6227 "grammar.cpp"
     break;
 
-  case 340: /* bind_parameter_datasource_expected: "bind data source parameter"  */
-#line 2960 "grammar.y"
+  case 303: /* bind_parameter_datasource_expected: "bind data source parameter"  */
+#line 2809 "grammar.y"
                             {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (name.size() < 2 || name.front() != '@') {
@@ -6596,45 +6583,45 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeParameterDatasource(name);
     }
-#line 6599 "grammar.cpp"
+#line 6240 "grammar.cpp"
     break;
 
-  case 341: /* bind_parameter_datasource_expected: "bind parameter"  */
-#line 2968 "grammar.y"
+  case 304: /* bind_parameter_datasource_expected: "bind parameter"  */
+#line 2817 "grammar.y"
                 {
       // convert normal value bind parameter into datasource bind parameter
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       (yyval.node) = parser->ast()->createNodeParameterDatasource(name);
     }
-#line 6609 "grammar.cpp"
+#line 6250 "grammar.cpp"
     break;
 
-  case 342: /* object_element_name: "identifier"  */
-#line 2976 "grammar.y"
+  case 305: /* object_element_name: "identifier"  */
+#line 2825 "grammar.y"
              {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 6617 "grammar.cpp"
+#line 6258 "grammar.cpp"
     break;
 
-  case 343: /* object_element_name: "quoted string"  */
-#line 2979 "grammar.y"
+  case 306: /* object_element_name: "quoted string"  */
+#line 2828 "grammar.y"
                     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 6625 "grammar.cpp"
+#line 6266 "grammar.cpp"
     break;
 
-  case 344: /* variable_name: "identifier"  */
-#line 2984 "grammar.y"
+  case 307: /* variable_name: "identifier"  */
+#line 2833 "grammar.y"
              {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 6633 "grammar.cpp"
+#line 6274 "grammar.cpp"
     break;
 
 
-#line 6637 "grammar.cpp"
+#line 6278 "grammar.cpp"
 
       default: break;
     }
