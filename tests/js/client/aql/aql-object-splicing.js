@@ -72,6 +72,36 @@ function objectSplicingSuite () {
       let query = `LET x = { name: "Rahul", age: 21 } LET y = { "name" : "Sam", "age" : 35 } RETURN { ...x, ...y }`;
       let res = db._query(query).toArray();
       assertEqual([{ name: "Sam", age: 35 }], res);
+    },
+    testObjectSplicingTwoSpreadsAndOneNormal: function () {
+      let query = `LET x = { name: "Pavani",  age: 35, city: "Hyderabad"  } LET y = { city: "Chennai"} LET z = {name: "Rahul",  age: 21, city: "Delhi" } RETURN {... x,...y, z}`;
+      let res = db._query(query).toArray();
+      assertEqual([ { "name" : "Pavani", "age" : 35, "city" : "Chennai", "z" : { "name" : "Rahul", "age" : 21, "city" : "Delhi"  } } ], res);
+    },
+    testObjectSplicingOneSpreadOneNormalAndOneSpread: function () {
+      let query = `LET x = { name: "Pavani",  age: 35, city: "Hyderabad"  } LET y = { city: "Chennai"} LET z = {name: "Rahul",  age: 21, city: "Delhi" } RETURN {...x, y, ...z}`;
+      let res = db._query(query).toArray();
+      assertEqual([ { "name" : "Rahul", "age" : 21, "city" : "Delhi", "y" : {"city" : "Chennai" }} ], res);
+    },
+    testObjectSplicingTwoSpreadOneObjectLiteral: function () {
+      const {aql, db, errors} = require("@arangodb");
+      let query = `LET x = { name: "Pavani",  age: 35, city: "Hyderabad"  } LET y = { city: "Delhi"} RETURN {... x,...y, {city: "Chennai"}}`;
+      try{
+        let res = db._query(query).toArray();
+        fail();
+      } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    },
+    testObjectSplicingTwoSpreadOnePropertyDefinition: function () {
+      let query = `LET x = { name: "Pavani",  age: 35, city: "Hyderabad"  } LET y = { city: "Delhi"} RETURN {... x,...y, city: "Chennai"}`;
+      let res = db._query(query).toArray();
+      assertEqual([ { "name" : "Pavani", "age" : 35, "city" : "Chennai" } ], res);  
+    },
+    testObjectSplicingThreeSpreadWithOverriddenProperty: function () {
+      let query = `LET x = { name: "Pavani",  age: 35, city: "Hyderabad"  } LET y = { city: "Chennai"} LET z = {name: "Rahul",  age: 21, city: "Delhi" } RETURN {...x, ...y, ...z}`;
+      let res = db._query(query).toArray();
+      assertEqual([ { "name" : "Rahul", "age" : 21, "city" : "Delhi" } ], res);  
     }
   };
 }
