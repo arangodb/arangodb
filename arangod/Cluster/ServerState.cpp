@@ -55,6 +55,7 @@
 #include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
