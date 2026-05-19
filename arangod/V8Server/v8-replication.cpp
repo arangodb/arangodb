@@ -40,7 +40,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/V8Context.h"
@@ -73,7 +72,7 @@ static void JS_StateLoggerReplication(
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->server().getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<DatabaseFeature>().engine();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_vocbase_t& vocbase = GetContextVocBase(isolate);
 
@@ -102,7 +101,7 @@ static void JS_TickRangesLoggerReplication(
   VPackBuilder builder;
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->server().getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<DatabaseFeature>().engine();
   Result res = engine.createTickRanges(builder);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -127,7 +126,7 @@ static void JS_FirstTickLoggerReplication(
   TRI_voc_tick_t tick = UINT64_MAX;
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->server().getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<DatabaseFeature>().engine();
   Result res = engine.firstTick(tick);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -170,7 +169,7 @@ static void JS_LastLoggerReplication(
   VPackBuilder builder(transactionContext->getVPackOptions());
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->server().getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<DatabaseFeature>().engine();
   Result res = engine.lastLogger(vocbase, tickStart, tickEnd, builder);
   v8::Handle<v8::Value> result;
 
