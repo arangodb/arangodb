@@ -465,36 +465,47 @@ std::string const AnalyzerCollectionName("_analyzers");
 std::string testResourceDir;
 
 static void findIResearchTestResources() {
-  std::string toBeFound =
-      basics::FileUtils::buildFilename("iresearch", "tests", "resources");
-
   // peek into environment variable first
   char const* dir = getenv("IRESEARCH_TEST_RESOURCE_DIR");
   if (dir != nullptr) {
     // environment variable set, so use it
     testResourceDir = std::string(dir);
-  } else {
-    // environment variable not set, so try to auto-detect the location
-    testResourceDir = ".";
-    do {
-      if (basics::FileUtils::isDirectory(
-              basics::FileUtils::buildFilename(testResourceDir, toBeFound))) {
-        testResourceDir =
-            basics::FileUtils::buildFilename(testResourceDir, toBeFound);
-        return;
-      }
-      testResourceDir = basics::FileUtils::buildFilename(testResourceDir, "..");
-      if (!basics::FileUtils::isDirectory(testResourceDir)) {
-        testResourceDir = IResearch_test_resource_dir;
-        break;
-      }
-    } while (true);
+    return;
   }
 
-  if (!basics::FileUtils::isDirectory(testResourceDir)) {
+  std::filesystem::path const toBeFound =
+      std::filesystem::path("iresearch") / "tests" / "resources";
+
+  std::error_code ec;
+  std::filesystem::path probe = std::filesystem::current_path(ec);
+  if (ec) {
+    testResourceDir = IResearch_test_resource_dir;
+  } else {
+    constexpr int kMaxWalk = 128;
+    for (int i = 0; i < kMaxWalk; ++i) {
+      std::filesystem::path const candidate = probe / toBeFound;
+      if (std::filesystem::is_directory(candidate)) {
+        testResourceDir = std::filesystem::weakly_canonical(candidate).string();
+        return;
+      }
+      if (!probe.has_parent_path()) {
+        break;
+      }
+      std::filesystem::path const parent = probe.parent_path();
+      if (parent == probe) {
+        break;
+      }
+      probe = parent;
+    }
+    testResourceDir = IResearch_test_resource_dir;
+  }
+
+  std::error_code dirEc;
+  if (!std::filesystem::is_directory(testResourceDir, dirEc)) {
     LOG_TOPIC("45f9d", ERR, Logger::FIXME)
         << "unable to find directory for IResearch test resources. use "
-           "environment variable IRESEARCH_TEST_RESOURCE_DIR to set it";
+           "environment variable IRESEARCH_TEST_RESOURCE_DIR to set it"
+        << dirEc.message();
   }
 }
 

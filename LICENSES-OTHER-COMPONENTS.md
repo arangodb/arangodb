@@ -67,8 +67,8 @@ _Enterprise Edition only_
 ### faiss
 
 * Name: faiss
-* Version: 1.9.0
-* Date: 2024-10-04
+* Version: 1.14.1
+* Date: 2026-04-28
 * Project Home:https://github.com/facebookresearch/faiss/
 * License: https://github.com/facebookresearch/faiss/blob/main/LICENSE 
 * License Name: MIT License

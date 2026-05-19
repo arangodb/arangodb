@@ -67,6 +67,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <regex>
 #include <string>
 #include <string_view>
@@ -1097,7 +1098,7 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
     for (auto const& it : basics::FileUtils::listFiles(_options.inputPath)) {
       std::string path =
           basics::FileUtils::buildFilename(_options.inputPath, it);
-      if (basics::FileUtils::isDirectory(path)) {
+      if (std::filesystem::is_directory(path)) {
         EncryptionFeature* encryption{};
 #ifdef USE_ENTERPRISE
         TRI_ASSERT(server().hasFeature<EncryptionFeature>());
@@ -2443,7 +2444,8 @@ void RestoreFeature::start() {
     _exitCode = EXIT_FAILURE;
   } else {
     for (auto const& fn : filesToClean) {
-      [[maybe_unused]] auto result = basics::FileUtils::remove(fn);
+      // std::error_code removeEc;
+      std::filesystem::remove(fn);
     }
   }
 
