@@ -1418,7 +1418,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a'"
         ")] == '1') RETURN d";
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1518,7 +1518,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "collection FILTER not ('1' < "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')"
         "]) RETURN d";
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1615,7 +1615,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& refName = "d";
     std::string const& queryString =
         "FOR d IN collection FILTER not (d.a < _NONDETERM_('1')) RETURN d";
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1711,7 +1711,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& queryString =
         "FOR d IN collection FILTER BOOST(not (d.a < _NONDETERM_('1')), 2.5) "
         "RETURN d";
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1810,7 +1810,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& queryString =
         "LET k={} FOR d IN collection FILTER not (k.a < _NONDETERM_('1')) "
         "RETURN d";
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -1906,7 +1906,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& queryString =
         "LET k={} FOR d IN collection FILTER not BOOST(k.a < _NONDETERM_('1'), "
         "1.5) RETURN d";
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -2005,7 +2005,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& refName = "d";
     std::string const& queryString =
         "FOR d IN collection FILTER not (d.a < 1+d.b) RETURN d";
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::create(
@@ -3042,7 +3042,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
   // noneterministic expression -> wrap it
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     std::string const refName = "d";
     std::string const queryString =
@@ -3147,7 +3147,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
   // noneterministic expression -> wrap it, boost
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     std::string const refName = "d";
     std::string const queryString =
@@ -3524,7 +3524,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     std::string const refName = "d";
     std::string const queryString =
@@ -3962,7 +3962,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     std::string const refName = "d";
     std::string const queryString =
@@ -4062,7 +4062,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     std::string const refName = "d";
     std::string const queryString =
@@ -4437,7 +4437,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     std::string const refName = "d";
     std::string const queryString =
@@ -4628,7 +4628,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     std::string const refName = "d";
     std::string const queryString =
@@ -6728,7 +6728,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // noneterministic expression -> wrap it
   {
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
     std::string const refName = "d";
     std::string const queryString =

@@ -1705,7 +1705,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::create(
@@ -1808,7 +1808,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::create(
@@ -1927,7 +1927,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::create(
@@ -2042,7 +2042,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::create(
@@ -3570,7 +3570,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       SCOPED_TRACE(testing::Message("Query: ") << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::create(
@@ -3715,7 +3715,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::create(
@@ -3860,7 +3860,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       SCOPED_TRACE(testing::Message("Query:") << queryString);
       std::string const refName = "d";
 
-      TRI_vocbase_t vocbase(testDBInfo(server.server()));
+      TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::create(
