@@ -213,8 +213,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void decrementCollectionCount(size_t count = 1);
 
  private:
-  static void initCalculationVocbase(
-      application_features::ApplicationServer& server);
+  void initCalculationVocbase();
 
   void stopAppliers();
 

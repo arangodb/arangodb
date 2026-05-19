@@ -351,12 +351,10 @@ void DatabaseFeature::validateOptions(
   }
 }
 
-void DatabaseFeature::initCalculationVocbase(
-    application_features::ApplicationServer& server) {
-  auto& df = server.getFeature<DatabaseFeature>();
+void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server), df.versionTracker(),
-      df.extendedNames(), /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()), versionTracker(), extendedNames(),
+      /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
@@ -568,7 +566,7 @@ void DatabaseFeature::prepare() {
   }
 
   // need this to make calculation analyzer available in database links
-  initCalculationVocbase(server());
+  initCalculationVocbase();
 
   // Initialize metadata metrics on single server
   if (ServerState::instance()->isSingleServer()) {

@@ -331,7 +331,9 @@ void buildHealthResult(
 RestAdminClusterHandler::RestAdminClusterHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _clusterFeature(server.getFeature<ClusterFeature>()),
+      _networkFeature(server.getFeature<NetworkFeature>()) {}
 
 std::string const RestAdminClusterHandler::Health = "health";
 std::string const RestAdminClusterHandler::NumberOfServers = "numberOfServers";
@@ -377,8 +379,7 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
     // before).
     bool const isWriteOperation =
         (request()->requestType() != rest::RequestType::GET);
-    std::string const& apiJwtPolicy =
-        server().getFeature<ClusterFeature>().apiJwtPolicy();
+    std::string const& apiJwtPolicy = _clusterFeature.apiJwtPolicy();
 
     if (apiJwtPolicy == "jwt-all" ||
         (apiJwtPolicy == "jwt-write" && isWriteOperation)) {
@@ -708,7 +709,7 @@ void RestAdminClusterHandler::handleShardStatistics() {
   std::string const& restrictServer = _request->value("DBserver");
   bool details = _request->parsedValue("details", false);
 
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ClusterInfo& ci = _clusterFeature.clusterInfo();
   VPackBuilder builder;
   Result res;
 
@@ -863,8 +864,7 @@ async<void> RestAdminClusterHandler::createMoveShard(
     co_return;
   }
 
-  std::string jobId = std::to_string(
-      server().getFeature<ClusterFeature>().clusterInfo().uniqid());
+  std::string jobId = std::to_string(_clusterFeature.clusterInfo().uniqid());
   auto jobToDoPath =
       arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
 
@@ -916,8 +916,8 @@ async<void> RestAdminClusterHandler::createMoveShard(
 async<void> RestAdminClusterHandler::handlePostMoveShard(
     std::unique_ptr<MoveShardContext>&& ctx) {
   std::shared_ptr<LogicalCollection> collection =
-      server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
-          ctx->database, ctx->collection);
+      _clusterFeature.clusterInfo().getCollectionNT(ctx->database,
+                                                    ctx->collection);
 
   if (collection == nullptr) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
@@ -1090,7 +1090,7 @@ async<void> RestAdminClusterHandler::handleCancelJob() {
   };
 
   try {
-    auto& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
+    auto& agencyCache = _clusterFeature.agencyCache();
     auto [acb, idx] = agencyCache.read(paths);
     auto res = acb->slice();
 
@@ -1257,8 +1257,7 @@ async<void> RestAdminClusterHandler::handleSingleServerJob(
 
 async<void> RestAdminClusterHandler::handleCreateSingleServerJob(
     std::string const& job, std::string const& serverId, VPackSlice body) {
-  std::string jobId = std::to_string(
-      server().getFeature<ClusterFeature>().clusterInfo().uniqid());
+  std::string jobId = std::to_string(_clusterFeature.clusterInfo().uniqid());
   auto jobToDoPath =
       arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
 
@@ -1324,7 +1323,7 @@ async<void> RestAdminClusterHandler::handleProxyGetRequest(
     co_return;
   }
 
-  auto* pool = server().getFeature<NetworkFeature>().pool();
+  auto* pool = _networkFeature.pool();
 
   network::RequestOptions opt;
   opt.timeout = 10s;
@@ -1640,7 +1639,7 @@ RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
         return false;
       },
       true, true);
-  auto& cf = server().getFeature<ClusterFeature>();
+  auto& cf = _clusterFeature;
 
   if (auto result = cf.agencyCallbackRegistry()->registerCallback(cb);
       result.fail()) {
@@ -2085,7 +2084,7 @@ async<void> RestAdminClusterHandler::handlePutUniqId() {
   try {
     uint64_t smallest, largest;
 
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    auto& ci = _clusterFeature.clusterInfo();
 
     if (!numberParam.empty()) {
       // Mode 1: Get a specific number of unique IDs
@@ -2201,50 +2200,24 @@ async<void> RestAdminClusterHandler::handleHealth() {
 
   // TODO handle timeout parameter
 
-  // query the agency config
-  auto fConfig =
-      AsyncAgencyComm()
-          .sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config", 60.0s,
-                            AsyncAgencyComm::RequestType::READ,
-                            VPackBuffer<uint8_t>())
-          .thenValue([this](AsyncAgencyCommResult&& result) {
-            // this lambda has to capture self since collect returns early on
-            // an exception and the RestHandler might be freed too early
-            // otherwise
+  auto agents = AsyncAgencyCommManager::INSTANCE->agents();
+  // connect to all the agents and ask for their engine and version
+  std::vector<futures::Future<::agentConfigHealthResult>> fs;
+  auto* pool = _networkFeature.pool();
+  for (auto const& agent : agents) {
+    auto future =
+        network::sendRequest(pool, agent.endpoint, fuerte::RestVerb::Get,
+                             "/_api/agency/config", VPackBuffer<uint8_t>())
+            .then([agent = std::move(agent)](
+                      futures::Try<network::Response>&& resp) mutable {
+              return futures::makeFuture(::agentConfigHealthResult{
+                  std::move(agent.endpoint), std::move(agent.serverId),
+                  std::move(resp)});
+            });
 
-            if (result.fail() || result.statusCode() != fuerte::StatusOK) {
-              THROW_ARANGO_EXCEPTION(result.asResult());
-            }
-
-            // now connect to all the members and ask for their engine and
-            // version
-            std::vector<futures::Future<::agentConfigHealthResult>> fs;
-
-            auto* pool = server().getFeature<NetworkFeature>().pool();
-            for (auto member : VPackObjectIterator(result.slice().get(
-                     std::vector<std::string>{"configuration", "pool"}))) {
-              std::string endpoint = member.value.copyString();
-              std::string memberName = member.key.copyString();
-
-              auto future =
-                  network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
-                                       "/_api/agency/config",
-                                       VPackBuffer<uint8_t>())
-                      .then(
-                          [endpoint = std::move(endpoint),
-                           memberName = std::move(memberName)](
-                              futures::Try<network::Response>&& resp) mutable {
-                            return futures::makeFuture(
-                                ::agentConfigHealthResult{std::move(endpoint),
-                                                          std::move(memberName),
-                                                          std::move(resp)});
-                          });
-
-              fs.emplace_back(std::move(future));
-            }
-
-            return futures::collectAll(fs);
-          });
+    fs.emplace_back(std::move(future));
+  }
+  auto fConfig = futures::collectAll(fs);
 
   // query information from the store
   auto rootPath = arangodb::cluster::paths::root()->arango();
@@ -2287,8 +2260,7 @@ async<void> RestAdminClusterHandler::handleHealth() {
 
 std::string RestAdminClusterHandler::resolveServerNameID(
     std::string const& serverName) {
-  auto servers =
-      server().getFeature<ClusterFeature>().clusterInfo().getServerAliases();
+  auto servers = _clusterFeature.clusterInfo().getServerAliases();
 
   for (auto const& pair : servers) {
     if (pair.second == serverName) {
@@ -2314,7 +2286,7 @@ struct hash<RestAdminClusterHandler::CollectionShardPair> {
 
 void RestAdminClusterHandler::getShardDistribution(
     std::map<std::string, std::unordered_set<CollectionShardPair>>& distr) {
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = _clusterFeature.clusterInfo();
 
   for (auto const& server : ci.getCurrentDBServers()) {
     distr[server].clear();
@@ -2400,8 +2372,7 @@ RestAdminClusterHandler::handlePostRebalanceShards(
   std::map<std::string, std::unordered_set<CollectionShardPair>> shardMap;
   getShardDistribution(shardMap);
 
-  algorithm(shardMap, moves,
-            server().getFeature<ClusterFeature>().maxNumberOfMoveShards(),
+  algorithm(shardMap, moves, _clusterFeature.maxNumberOfMoveShards(),
             _vocbase.name());
 
   VPackBuilder responseBuilder;
@@ -2419,7 +2390,7 @@ RestAdminClusterHandler::handlePostRebalanceShards(
     VPackBuilder builder(trx);
     auto write = arangodb::agency::envelope::into_builder(builder).write();
 
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    auto& ci = _clusterFeature.clusterInfo();
     std::string timestamp = timepointToString(std::chrono::system_clock::now());
     for (auto const& move : moves) {
       std::string jobId = std::to_string(ci.uniqid());
@@ -2531,7 +2502,7 @@ auto inspect(Inspector& f, RebalanceOptions& x) {
 
 RestAdminClusterHandler::MoveShardCount
 RestAdminClusterHandler::countAllMoveShardJobs() {
-  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+  auto& cache = _clusterFeature.agencyCache();
 
   auto const countMoveShardsInSlice = [](VPackSlice slice) -> std::size_t {
     std::size_t count = 0;
@@ -2658,7 +2629,7 @@ async<void> RestAdminClusterHandler::handleRebalanceExecute() {
     co_return;
   }
 
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = _clusterFeature.clusterInfo();
 
   auto const idMapper = [](MoveShardDescription const& desc) -> auto& {
     return desc;
@@ -2759,7 +2730,7 @@ async<void> RestAdminClusterHandler::handleRebalancePlan() {
       generateOk(responseCode, builder.slice());
     }
   };
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = _clusterFeature.clusterInfo();
 
   auto const moveShardConverter = [&](MoveShardJob const& job) {
     auto& shard = p.shards[job.shardId];
@@ -2832,14 +2803,14 @@ cluster::rebalance::AutoRebalanceProblem
 RestAdminClusterHandler::collectRebalanceInformation(
     std::vector<std::string> const& excludedDatabases,
     bool excludeSystemCollections) {
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = _clusterFeature.clusterInfo();
 
   cluster::rebalance::AutoRebalanceProblem p;
   p.zones.emplace_back(cluster::rebalance::Zone{.id = "ZONE"});
 
   std::string const healthPath = "Supervision/Health";
 
-  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+  auto& cache = _clusterFeature.agencyCache();
   auto [acb, idx] =
       cache.read(std::vector<std::string>{AgencyCommHelper::path(healthPath)});
   auto agencyCacheInfo = acb->slice();

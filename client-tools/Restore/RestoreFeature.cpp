@@ -1847,10 +1847,10 @@ Result RestoreFeature::RestoreSendJob::run(
 }
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
-                               int& exitCode)
+                               ClientFeature& client, int& exitCode)
     : ApplicationFeature{server, *this},
-      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
-                     Logger::RESTORE},
+      _client(client),
+      _clientManager{client, Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   setOptional(false);
@@ -2175,16 +2175,13 @@ void RestoreFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  ClientFeature& client =
-      server().getFeature<HttpEndpointProvider, ClientFeature>();
-
   _exitCode = EXIT_SUCCESS;
 
   // enumerate all databases present in the dump directory (in case of
   // --all-databases=true, or use just the flat files in case of
   // --all-databases=false)
   std::vector<DatabaseInfo> databases =
-      determineDatabaseList(client.databaseName());
+      determineDatabaseList(_client.databaseName());
 
   std::unique_ptr<SimpleHttpClient> httpClient;
 
@@ -2215,7 +2212,7 @@ void RestoreFeature::start() {
     FATAL_ERROR_EXIT();
   }
   if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
-    std::string dbName = client.databaseName();
+    std::string dbName = _client.databaseName();
     if (_options.createDatabase) {
       // database not found, but database creation requested
       LOG_TOPIC("9b5a6", INFO, Logger::RESTORE)
@@ -2233,7 +2230,7 @@ void RestoreFeature::start() {
       }
 
       // restore old database name
-      client.setDatabaseName(dbName);
+      _client.setDatabaseName(dbName);
 
       // re-check connection and version
       result = _clientManager.getConnectedClient(httpClient, _options.force,
@@ -2318,7 +2315,7 @@ void RestoreFeature::start() {
 
     if (_options.allDatabases) {
       // inject current database
-      client.setDatabaseName(db.name);
+      _client.setDatabaseName(db.name);
       LOG_TOPIC("36075", INFO, Logger::RESTORE)
           << "Restoring database '" << db.name << "'";
 
@@ -2360,7 +2357,7 @@ void RestoreFeature::start() {
 
           // restore old database name
 
-          client.setDatabaseName(db.name);
+          _client.setDatabaseName(db.name);
 
           // re-check connection and version
           result = _clientManager.getConnectedClient(httpClient, _options.force,

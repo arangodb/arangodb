@@ -249,30 +249,27 @@ struct IResearchExpressionFilterTest
                           true);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                           false);
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);
-    features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
-                          false);
+    auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
+    features.emplace_back(databaseFeature, false);
+    features.emplace_back(
+        server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
 
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        &engine);
-    features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::QueryRegistryFeature>(server),
-            selector,
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::metrics::ClusterMetricsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-                nullptr)),
-        false);
+    selector.setEngineTesting(&engine);
+    auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(server),
+        selector,
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            nullptr));
+    features.emplace_back(metrics, false);
     features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
                           false);
     features.emplace_back(
-        server.addFeature<arangodb::QueryRegistryFeature>(
-            server.getFeature<arangodb::metrics::MetricsFeature>()),
+        server.addFeature<arangodb::QueryRegistryFeature>(metrics),
         false);  // must be first
     system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
     features.emplace_back(
@@ -287,13 +284,16 @@ struct IResearchExpressionFilterTest
         server.addFeature<arangodb::aql::AqlFunctionFeature>(),
         true);  // required for IResearchAnalyzerFeature
     features.emplace_back(
-        server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
+        server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+            arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::
+                fromServer(server)),
         true);
 
     auto& feature =
         features
             .emplace_back(
-                server.addFeature<arangodb::iresearch::IResearchFeature>(),
+                server.addFeature<arangodb::iresearch::IResearchFeature>(
+                    metrics),
                 true)
             .first;
     feature.collectOptions(server.options());
