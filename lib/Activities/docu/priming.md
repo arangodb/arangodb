@@ -13,28 +13,6 @@ Intermediate representation of an activity (`ActivityDeclaration`):
 - LibTooling
 - clang-19
 
-## Patterns
-- test driven development: write tests before implementation
-- pure functions instead of side effects (better readability and testability)
-- use `auto` as often as you can (also for fn definitions)
-- instantiate variables only when using them, as few mutations as possible
-- prefer one-shot construction over field-by-field assignment for structs
-- no one-letter variables
-- put if-blocks always in brackets
-- inline single-use temporaries
-- prefer std::views over bare loops
-- don't pass data through a function that doesn't operate on it
-- write short and concise documentation for every struct or function with
-  /**
-   * Short sentence explaining what it is (prefered one line)
-	 *
-	 * If needed, more detailed explanation
-	 *
-	 * For pulic components: at least one simple code example
-	 *
-	 * Even more advanced explanations if necessary
-	 */
-
 ## Naming conventions
 - Files: snake_case
 - Functions: snake_case
