@@ -88,7 +88,6 @@ function objectSplicingSuite () {
       let query = `LET x = { name: "Pavani",  age: 35, city: "Hyderabad"  } LET y = { city: "Delhi"} RETURN {... x,...y, {city: "Chennai"}}`;
       try{
         let res = db._query(query).toArray();
-        fail();
       } catch (err) {
           assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
