@@ -108,9 +108,12 @@ function MaxNumberOfConditionsSuite () {
     },
     
     testComplexConditionWithThresholdMemoryUsage : function () {
+      // Unique values per branch prevent dedup from shrinking the DNF expansion.
+      // 10 branches × 3 conditions each → 3^10 = 59,049 AND-branches after
+      // negation and DNF expansion.
       let parts = [];
-      for (let i = 0; i < 8; ++i) {
-        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
+      for (let i = 0; i < 10; ++i) {
+        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar${i}' && doc.what NOT IN ['test${i}a', 'test${i}b', 'test${i}c'])`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
@@ -120,9 +123,10 @@ function MaxNumberOfConditionsSuite () {
         let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers }});
         let plan = stmt.explain();
       });
-      
+
       // with this many condition nodes, we will exceed memory
-      [8192, 16384, 32768].forEach((maxDNFConditionMembers) => {
+      // thresholds must exceed 59,049 so the count cap doesn't fire before memory does
+      [65536, 131072, 262144].forEach((maxDNFConditionMembers) => {
         try {
           let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers }});
           let plan = stmt.explain();
