@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -38,7 +39,8 @@ class ClusterEngine final : public StorageEngine {
   static constexpr std::string_view name() noexcept { return "ClusterEngine"; }
 
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer& server);
+  ClusterEngine(application_features::ApplicationServer& server,
+                LazyApplicationFeatureReference<ClusterFeature> clusterFeature);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e);
@@ -240,7 +242,10 @@ class ClusterEngine final : public StorageEngine {
 #endif
 
  private:
-  ClusterFeature& _clusterFeature;
+  // Lazy ref consumed in prepare(); see ClusterEngine.cpp for resolution.
+  LazyApplicationFeatureReference<ClusterFeature> _lazyClusterFeature;
+  // Resolved in prepare() from _lazyClusterFeature; nullptr until then.
+  ClusterFeature* _clusterFeature = nullptr;
   /// path to arangodb data dir
   std::string _basePath;
   StorageEngine* _actualEngine;

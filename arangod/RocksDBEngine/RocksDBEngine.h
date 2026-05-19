@@ -35,6 +35,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CacheManagerFeature.h"
@@ -76,6 +77,7 @@ struct WalManager;
 
 class AgencyFeature;
 class CacheManagerFeature;
+class DatabaseFeature;
 class DatabasePathFeature;
 class DumpLimitsFeature;
 class FlushFeature;
@@ -170,20 +172,21 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
-  RocksDBEngine(application_features::ApplicationServer& server,
-                RocksDBOptionsProvider& optionsProvider,
-                metrics::MetricsFeature& metrics,
-                DatabasePathFeature const& databasePathFeature,
-                VectorIndexFeature const& vectorIndexFeature,
-                FlushFeature& flushFeature,
-                DumpLimitsFeature const& dumpLimitsFeature,
-                SchedulerFeature& schedulerFeature,
-                ReplicatedLogFeature* replicatedLogFeature,
-                RocksDBRecoveryManager const& rocksDbRecoveryManager,
-                DatabaseFeature& databaseFeature,
-                RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-                CacheManagerFeature& cacheManagerFeature,
-                AgencyFeature const& agencyFeature);
+  RocksDBEngine(
+      application_features::ApplicationServer& server,
+      RocksDBOptionsProvider& optionsProvider,
+      metrics::MetricsFeature& metrics,
+      DatabasePathFeature const& databasePathFeature,
+      VectorIndexFeature const& vectorIndexFeature,
+      FlushFeature& flushFeature,
+      DumpLimitsFeature const& dumpLimitsFeature,
+      SchedulerFeature& schedulerFeature,
+      ReplicatedLogFeature* replicatedLogFeature,
+      RocksDBRecoveryManager const& rocksDbRecoveryManager,
+      LazyApplicationFeatureReference<DatabaseFeature> databaseFeature,
+      RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
+      CacheManagerFeature& cacheManagerFeature,
+      AgencyFeature const& agencyFeature);
   ~RocksDBEngine();
 
   // Temporary, for easier refactoring:
@@ -627,7 +630,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   SchedulerFeature& _schedulerFeature;
   ReplicatedLogFeature* _replicatedLogFeature;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
-  DatabaseFeature& _databaseFeature;
+  // Lazy ref consumed in prepare(); after that, runtime code uses
+  // *_databaseFeature.
+  LazyApplicationFeatureReference<DatabaseFeature> _lazyDatabaseFeature;
+  // Resolved in prepare() from _lazyDatabaseFeature; nullptr until then.
+  DatabaseFeature* _databaseFeature = nullptr;
   RocksDBIndexCacheRefillFeature& _rocksDbIndexCacheRefillFeature;
   CacheManagerFeature& _cacheManagerFeature;
   AgencyFeature const& _agencyFeature;

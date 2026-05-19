@@ -284,7 +284,7 @@ RocksDBEngine::RocksDBEngine(
     SchedulerFeature& schedulerFeature,
     ReplicatedLogFeature* replicatedLogFeature,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    DatabaseFeature& databaseFeature,
+    LazyApplicationFeatureReference<DatabaseFeature> databaseFeature,
     RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
     CacheManagerFeature& cacheManagerFeature,
     AgencyFeature const& agencyFeature)
@@ -297,7 +297,7 @@ RocksDBEngine::RocksDBEngine(
       _schedulerFeature(schedulerFeature),
       _replicatedLogFeature(replicatedLogFeature),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
-      _databaseFeature(databaseFeature),
+      _lazyDatabaseFeature(std::move(databaseFeature)),
       _rocksDbIndexCacheRefillFeature(rocksDbIndexCacheRefillFeature),
       _cacheManagerFeature(cacheManagerFeature),
       _agencyFeature(agencyFeature),
@@ -897,6 +897,9 @@ void RocksDBEngine::validateOptions(
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void RocksDBEngine::prepare() {
+  // Resolve the lazy reference now that all features have been registered.
+  _databaseFeature = std::move(_lazyDatabaseFeature).get();
+
   // get base path from DatabaseServerFeature
   _basePath = _databasePathFeature.directory();
 
@@ -1265,7 +1268,8 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseFeature,
+  TRI_ASSERT(_databaseFeature != nullptr);
+  arangodb::rocksdbStartupVersionCheck(*server().options(), *_databaseFeature,
                                        _db, dbExisted, _forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
@@ -1944,7 +1948,8 @@ void RocksDBEngine::processTreeRebuilds() {
       if (!server().isStopping()) {
         VocbasePtr vocbase;
         try {
-          vocbase = _databaseFeature.useDatabase(candidate.first);
+          TRI_ASSERT(_databaseFeature != nullptr);
+          vocbase = _databaseFeature->useDatabase(candidate.first);
           if (vocbase != nullptr) {
             auto collection = vocbase->lookupCollectionByUuid(candidate.second);
             if (collection != nullptr && !collection->deleted()) {
@@ -3115,9 +3120,10 @@ void RocksDBEngine::addSystemDatabase() {
               VPackValue(StaticStrings::SystemDatabase));
   builder.add("deleted", VPackValue(false));
   // Also store the ReplicationVersion when creating the Database
+  TRI_ASSERT(_databaseFeature != nullptr);
   builder.add(StaticStrings::ReplicationVersion,
               VPackValue(replication::versionToString(
-                  _databaseFeature.defaultReplicationVersion())));
+                  _databaseFeature->defaultReplicationVersion())));
   builder.close();
 
   RocksDBLogValue log = RocksDBLogValue::DatabaseCreate(id);
@@ -4325,7 +4331,8 @@ std::string RocksDBEngine::getLanguageFile() const {
 }
 
 auto RocksDBEngine::getDatabaseFeature() const -> DatabaseFeature& {
-  return _databaseFeature;
+  TRI_ASSERT(_databaseFeature != nullptr);
+  return *_databaseFeature;
 }
 auto RocksDBEngine::getMetricsFeature() const -> metrics::MetricsFeature& {
   return _metrics;
