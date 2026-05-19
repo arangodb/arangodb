@@ -10,6 +10,8 @@
 * Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
   dependencies.
 
+* Updated node module fast-uri to 3.1.2.
+
 * Updated ArangoDB Starter to v0.19.22.
 
 * COR-519: Vector index `factory` strings may now be combined with the scaling

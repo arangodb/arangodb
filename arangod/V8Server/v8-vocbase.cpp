@@ -1791,9 +1791,9 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
-  Result res =
-      methods::Databases::create(vocbase.server(), ExecContext::current(),
-                                 dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create(vocbase.server(), vocbase.engine(),
+                                          ExecContext::current(), dbName,
+                                          users.slice(), options.slice());
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
