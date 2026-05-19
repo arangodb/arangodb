@@ -46,7 +46,6 @@
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -954,12 +953,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     return Result(
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while updating collection");
-  }
-
-  if (!vocbase().server().hasFeature<EngineSelectorFeature>() ||
-      !vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
-    return Result(TRI_ERROR_INTERNAL,
-                  "failed to find a storage engine while updating collection");
   }
 
   std::lock_guard guard{_infoLock};  // prevent simultaneous updates
