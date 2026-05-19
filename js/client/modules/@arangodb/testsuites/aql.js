@@ -252,12 +252,6 @@ function shellClientAql (options) {
   let testCases;
   let name = 'shell_client_aql';
   testCases = tu.scanTestPaths(testPaths[name], options);
-  if (options.skipRanges) {
-    testCases = _.filter(testCases,
-                         function (p) { return p.indexOf('ranges-combined') === -1; });
-    name = 'shell_client_aql_skipranges';
-  }
-
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
@@ -407,7 +401,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['legacy'] = legacy;
 
   opts['skipAql'] = false;
-  opts['skipRanges'] = true;
 
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);

@@ -170,7 +170,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
       false);  // true ??
   server.addFeature<AuthenticationFeature>(true);
   server.addFeature<transaction::ManagerFeature>(false, metrics);
-  server.addFeature<DatabaseFeature>(false);
+  auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
   server.addFeature<EngineSelectorFeature>(false);
   server.addFeature<StorageEngineFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
@@ -179,7 +179,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<ViewTypesFeature>(false);  // true ??
   server.addFeature<MaintenanceFeature>(false,
                                         nullptr);  // do not start the thread
-  server.addFeature<VectorIndexFeature>(true);
+  server.addFeature<VectorIndexFeature>(true, databaseFeature);
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE

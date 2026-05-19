@@ -123,6 +123,24 @@ add_library(arango_aql STATIC
   VariableGenerator.cpp
 )
 
+# Generate the AQL lexer/parser into the build tree. The BISON_TARGET /
+# FLEX_TARGET macros must live in the same directory scope as the consuming
+# target (arango_aql, declared above) — when placed in
+# arangod/Aql/Parser/CMakeLists.txt CMake's Ninja generator emits phantom
+# build edges without a COMMAND, and the files are never actually generated.
+BISON_TARGET(AqlGrammar
+  ${CMAKE_CURRENT_SOURCE_DIR}/Parser/grammar.y
+  ${CMAKE_CURRENT_BINARY_DIR}/Parser/grammar.cpp
+  DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/Parser/grammar.hpp
+  COMPILE_FLAGS "-ra --warnings=deprecated,other,error=conflicts-sr,error=conflicts-rr"
+)
+FLEX_TARGET(AqlTokens
+  ${CMAKE_CURRENT_SOURCE_DIR}/Parser/tokens.ll
+  ${CMAKE_CURRENT_BINARY_DIR}/Parser/tokens.cpp
+  COMPILE_FLAGS "-L"
+)
+ADD_FLEX_BISON_DEPENDENCY(AqlTokens AqlGrammar)
+
 add_subdirectory(ExecutionNode)
 add_subdirectory(Executor)
 add_subdirectory(Function)
@@ -139,4 +157,5 @@ target_link_libraries(arango_aql
 
 target_include_directories(arango_aql PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_BINARY_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
