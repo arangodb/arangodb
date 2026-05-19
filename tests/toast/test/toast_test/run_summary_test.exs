@@ -164,5 +164,23 @@ defmodule ToastTest.Formatting.RunSummaryTest do
       assert output =~ "Modules:     1 total, 0 passed, 0 failed, 1 skipped"
       assert output =~ "Test cases:  2 total, 0 passed, 0 failed, 2 skipped"
     end
+
+    test "invalidated tests are counted separately" do
+      suite = make_suite([{"crash_follow", [:passed, :failed, :invalidated, :invalidated]}])
+
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
+
+      assert output =~ "Modules:     1 total, 0 passed, 1 mixed"
+      assert output =~ "Test cases:  4 total, 1 passed, 1 failed, 2 invalidated"
+    end
+
+    test "module with only invalidated tests counts as invalidated" do
+      suite = make_suite([{"all_invalidated", [:invalidated, :invalidated]}])
+
+      output = capture_io(fn -> RunSummary.print([suite], 0) end) |> strip_ansi()
+
+      assert output =~ "Modules:     1 total, 0 passed, 0 failed, 1 invalidated"
+      assert output =~ "Test cases:  2 total, 0 passed, 0 failed, 2 invalidated"
+    end
   end
 end
