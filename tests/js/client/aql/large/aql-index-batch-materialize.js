@@ -86,8 +86,11 @@ function IndexBatchMaterializeTestSuite() {
     let actual = db._createStatement({query, options}).execute().toArray();
 
     if (!resultIsSorted) {
-      expected = _.sortBy(expected, ['_key']);
-      actual = _.sortBy(expected, ['_key']);
+      const sortFunc = (value) => _.isArray(value) ? _.map(value, sortFunc) :
+          _.isObject(value) ? value['_key'] : value;
+
+      expected = _.sortBy(expected, sortFunc);
+      actual = _.sortBy(actual, sortFunc);
     }
 
     assertEqual(actual, expected);
@@ -228,6 +231,7 @@ function IndexBatchMaterializeTestSuite() {
       const query = `
         FOR doc IN ${collection}
           FILTER doc.p > 5
+          SORT doc.p, doc._key
           LIMIT 20, 10
           RETURN doc
       `;
@@ -240,6 +244,7 @@ function IndexBatchMaterializeTestSuite() {
         FOR doc IN ${collection}
           FILTER doc.p > 5
           FILTER NOOPT(doc.q > 0)
+          SORT doc.p, doc._key
           LIMIT 20, 10
           RETURN doc
       `;
@@ -251,7 +256,7 @@ function IndexBatchMaterializeTestSuite() {
       const query = `
         FOR doc IN ${collection}
           FILTER doc.x > 5
-          SORT doc.x 
+          SORT doc.x, doc._key
           LIMIT 0, 20
           RETURN doc
       `;
@@ -263,6 +268,7 @@ function IndexBatchMaterializeTestSuite() {
       const query = `
         FOR doc IN ${collection}
           FILTER doc.p > 5
+          SORT doc.p, doc._key
           LIMIT 0, 20
           RETURN doc
       `;
@@ -274,6 +280,7 @@ function IndexBatchMaterializeTestSuite() {
       const query = `
         FOR doc IN ${collection}
           FILTER doc.x > 5
+          SORT doc.x, doc._key
           RETURN doc
       `;
 
@@ -284,6 +291,7 @@ function IndexBatchMaterializeTestSuite() {
       const query = `
         FOR doc IN ${collection}
           FILTER doc.x > 5 or doc.x < 8
+          SORT doc.x, doc._key
           RETURN doc
       `;
       expectOptimization(query);
@@ -532,7 +540,7 @@ function IndexBatchMaterializeTestSuite() {
         FOR d1 IN ${collection} 
           FILTER d1.x > 5
           LET e = SUM(FOR c IN ${collection} LET p = d1 LIMIT 10 RETURN p)
-          SORT e
+          SORT e, d1.x
           LIMIT 10
           RETURN d1
       `;

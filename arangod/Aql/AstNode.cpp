@@ -255,8 +255,8 @@ static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
 static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
-/// @brief compare two constant AST nodes (VPack-serializable, known at query
-/// compile time)
+/// @brief compare two AST nodes whose top-level type maps to a non-Custom VPack
+/// type (scalar values, arrays, objects)
 /// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 template<bool resolveAttributeAccess>
 int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
@@ -352,16 +352,19 @@ int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
   }
 }
 
+/// @brief compare subquery nodes by pointer identity
 int compareSubquery(AstNode const* lhs, AstNode const* rhs) noexcept {
   return (lhs == rhs) ? 0 : (lhs < rhs ? -1 : 1);
 }
 
+/// @brief compare reference nodes by variable id
 int compareReference(AstNode const* lhs, AstNode const* rhs) noexcept {
   auto lhsVar = static_cast<Variable const*>(lhs->getData());
   auto rhsVar = static_cast<Variable const*>(rhs->getData());
   return (lhsVar->id == rhsVar->id) ? 0 : (lhsVar->id < rhsVar->id ? -1 : 1);
 }
 
+/// @brief compare two nodes' children positionally
 int compareChildrenInOrder(AstNode const* lhs, AstNode const* rhs,
                            bool compareUtf8) {
   size_t lhsN = lhs->numMembers();
@@ -379,7 +382,8 @@ int compareChildrenInOrder(AstNode const* lhs, AstNode const* rhs,
   return 0;
 }
 
-// ATTRIBUTE_ACCESS, PARAMETER, PARAMETER_DATASOURCE, FCALL_USER: name first.
+/// @brief compare nodes that carry a name string (attribute accesses,
+/// parameters, user functions)
 int compareNamedNode(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   int cmp = lhs->getStringView().compare(rhs->getStringView());
   if (cmp != 0) {
@@ -388,6 +392,7 @@ int compareNamedNode(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   return compareChildrenInOrder(lhs, rhs, compareUtf8);
 }
 
+/// @brief compare quantifier nodes by kind and threshold child
 int compareQuantifier(AstNode const* lhs, AstNode const* rhs,
                       bool compareUtf8) {
   int64_t lv = lhs->getIntValue(true);
@@ -398,8 +403,11 @@ int compareQuantifier(AstNode const* lhs, AstNode const* rhs,
   return compareChildrenInOrder(lhs, rhs, compareUtf8);
 }
 
+/// @brief compare built-in function call nodes by name then arguments
 // Callers must guarantee both nodes are deterministic before comparing.
 int compareFcall(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
+  TRI_ASSERT(lhs->isDeterministic());
+  TRI_ASSERT(rhs->isDeterministic());
   auto lhsFunc = static_cast<Function const*>(lhs->getData());
   auto rhsFunc = static_cast<Function const*>(rhs->getData());
   if (lhsFunc != rhsFunc) {
@@ -411,6 +419,7 @@ int compareFcall(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   return compareChildrenInOrder(lhs, rhs, compareUtf8);
 }
 
+/// @brief compare commutative binary operators with operand order normalization
 // Normalize operand order so `a == b` and `b == a` compare as equal.
 // BINARY_AND/OR are pre-normalization; normalized conditions use NARY.
 int compareCommutativeBinary(AstNode const* lhs, AstNode const* rhs,
@@ -436,7 +445,7 @@ int compareCommutativeBinary(AstNode const* lhs, AstNode const* rhs,
   return compareAstNodes<false>(lhsRight, rhsRight, compareUtf8);
 }
 
-// Sort children before comparing so member order doesn't affect equality.
+/// @brief compare n-ary AND/OR nodes independent of child order
 int compareNary(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   size_t lhsN = lhs->numMembers();
   size_t rhsN = rhs->numMembers();
@@ -466,7 +475,7 @@ int compareNary(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   return 0;
 }
 
-// Sort rhs array elements so `x IN [a, b]` and `x IN [b, a]` compare as equal.
+/// @brief compare IN/NIN nodes with rhs array element order independence
 int compareInNin(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   TRI_ASSERT(lhs->numMembers() == 2);
   TRI_ASSERT(rhs->numMembers() == 2);
@@ -556,9 +565,9 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
 /// @tparam resolveAttributeAccess if true, constant attribute accesses are
 ///         resolved to their value before comparing
 /// @return range from -1 to +1 depending:
-///  - -1 LHS being  less then   RHS,
+///  - -1 LHS being  less than   RHS,
 ///  -  0 LHS being     equal    RHS
-///  -  1 LHS being greater then RHS
+///  -  1 LHS being greater than RHS
 template<bool resolveAttributeAccess>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   TRI_ASSERT(lhs != nullptr);
