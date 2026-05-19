@@ -30,6 +30,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -38,7 +39,6 @@
 #include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -89,7 +89,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  v8g->server().getFeature<EngineSelectorFeature>().engine().flushWal(
+  v8g->server().getFeature<DatabaseFeature>().engine().flushWal(
       waitForSync, flushColumnFamilies);
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -210,7 +210,7 @@ static void JS_WaitForEstimatorSync(
   TRI_GET_SERVER_GLOBALS(ArangodServer);
 
   v8g->server()
-      .getFeature<EngineSelectorFeature>()
+      .getFeature<DatabaseFeature>()
       .engine()
       .waitForEstimatorSync();
 
@@ -225,11 +225,13 @@ static void JS_WalRecoveryStartSequence(
   v8::HandleScope scope(isolate);
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto* engine = dynamic_cast<RocksDBEngine*>(
+      &v8g->server().getFeature<DatabaseFeature>().engine());
+  if (engine == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("expected RocksDB engine");
+  }
   v8::Handle<v8::Value> result =
-      TRI_V8UInt64String(isolate, v8g->server()
-                                      .getFeature<EngineSelectorFeature>()
-                                      .engine<RocksDBEngine>()
-                                      .recoveryStartSequence());
+      TRI_V8UInt64String(isolate, engine->recoveryStartSequence());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -277,15 +279,16 @@ static void JS_CollectionRevisionTreeVerification(
   std::unique_ptr<containers::RevisionTree> computedTree;
 
   {
-    TRI_vocbase_t& vocbase = collection->vocbase();
-    auto& server = vocbase.server();
-    RocksDBEngine& engine =
-        server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    RocksDBReplicationManager* manager = engine.replicationManager();
+    auto& storageEngine = collection->vocbase().engine();
+    auto* engine = dynamic_cast<RocksDBEngine*>(&storageEngine);
+    if (engine == nullptr) {
+      TRI_V8_THROW_EXCEPTION_INTERNAL("expected RocksDB engine");
+    }
+    RocksDBReplicationManager* manager = engine->replicationManager();
     // the 600 and 17 are magic numbers here. we can put in any ttl and any
     // client id to proceed. the context created here is thrown away
     // immediately afterwards anyway.
-    auto ctx = manager->createContext(engine, /*ttl*/ 600, SyncerId{17},
+    auto ctx = manager->createContext(*engine, /*ttl*/ 600, SyncerId{17},
                                       ServerId{17}, "");
     TRI_ASSERT(ctx);
     try {
