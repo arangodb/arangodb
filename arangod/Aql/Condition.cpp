@@ -733,7 +733,14 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
             }
             if (current.whichCompareOperation() ==
                     other.whichCompareOperation() &&
-                compareAstNodes(current.valueNode, other.valueNode, true) ==
+                compareAstNodes(
+                    current.valueNode, other.valueNode,
+                    current.operatorType != NODE_TYPE_OPERATOR_BINARY_EQ &&
+                        current.operatorType != NODE_TYPE_OPERATOR_BINARY_NE &&
+                        current.operatorType !=
+                            NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
+                        current.operatorType !=
+                            NODE_TYPE_OPERATOR_BINARY_ARRAY_NE) ==
                     0) {  // duplicate comparison detected - remove it
               TRI_ASSERT(!positions.empty());
               TRI_ASSERT(j < positions.size());
@@ -1041,7 +1048,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                   auto value = values->getMemberUnchecked(k);
                   CompareResult res =
                       ResultsTable[compareAstNodes(value, other.valueNode,
-                                                   true) +
+                                                   false) +
                                    1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                                   [other.whichCompareOperation()];
 
@@ -1072,9 +1079,13 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
+            // Use ICU only when both operators use it at runtime (ordering
+            // ops); if either is ==/!= (byte comparison at runtime), use false.
+            bool const rangeUtf8 = current.whichCompareOperation() > 1 &&
+                                   other.whichCompareOperation() > 1;
             CompareResult res =
                 resultsTable[compareAstNodes(current.valueNode, other.valueNode,
-                                             true) +
+                                             rangeUtf8) +
                              1][current.whichCompareOperation()]
                             [other.whichCompareOperation()];
 
