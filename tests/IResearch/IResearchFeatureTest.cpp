@@ -2325,10 +2325,12 @@ class IResearchFeatureTestCoordinator
                                             arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockCoordinator server;
+  StorageEngineMock& _engine;
 
  private:
  protected:
-  IResearchFeatureTestCoordinator() : server("CRDN_0001", false) {
+  IResearchFeatureTestCoordinator()
+      : server("CRDN_0001", false), _engine(server.engine()) {
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRebootId(
@@ -2454,10 +2456,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   server.getFeature<arangodb::DatabaseFeature>()
       .enableUpgrade();  // skip IResearchView validation
 
-  auto& engine = server.getFeature<arangodb::DatabaseFeature>().engine();
   auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
                       .factory<arangodb::ClusterEngine>();
-  const_cast<arangodb::IndexFactory&>(engine.indexFactory())
+  const_cast<arangodb::IndexFactory&>(_engine.indexFactory())
       .emplace(
           std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
           factory);
