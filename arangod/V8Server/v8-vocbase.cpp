@@ -248,8 +248,7 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  StorageEngine& engine =
-      v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   Result res = engine.compactAll(changeLevel, compactBottomMostLevel);
 
   if (res.fail()) {
@@ -1544,8 +1543,7 @@ static void JS_Engine(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return engine data
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  StorageEngine& engine =
-      v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   VPackBuilder builder;
   engine.getCapabilities(builder);
 
@@ -1564,8 +1562,7 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return engine data
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  StorageEngine& engine =
-      v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   VPackBuilder builder;
   engine.getStatistics(builder);
 
@@ -1601,8 +1598,7 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  StorageEngine& engine =
-      v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
 
   TRI_V8_RETURN_STD_STRING(engine.databasePath());
   TRI_V8_TRY_CATCH_END
@@ -2019,8 +2015,7 @@ static void JS_CurrentWalFiles(
   auto context = TRI_IGETC;
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  StorageEngine& engine =
-      v8g->server().getFeature<DatabaseFeature>().engine();
+  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   std::vector<std::string> names = engine.currentWalFiles();
   std::sort(names.begin(), names.end());
 

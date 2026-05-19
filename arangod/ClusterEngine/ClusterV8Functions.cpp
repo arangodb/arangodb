@@ -181,10 +181,7 @@ static void JS_WaitForEstimatorSync(
   v8::HandleScope scope(isolate);
   TRI_GET_SERVER_GLOBALS(ArangodServer);
 
-  v8g->server()
-      .getFeature<DatabaseFeature>()
-      .engine()
-      .waitForEstimatorSync();
+  v8g->server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

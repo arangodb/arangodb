@@ -84,10 +84,7 @@ RestStatus RocksDBRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #endif
-    server()
-        .getFeature<DatabaseFeature>()
-        .engine()
-        .waitForEstimatorSync();
+    server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;
