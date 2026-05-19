@@ -323,12 +323,25 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
+  dependencies.
+
+* Updated node module fast-uri to 3.1.2.
+
+* Updated ArangoDB Starter to v0.19.22.
+
+* COR-519: Vector index `factory` strings may now be combined with the scaling
+  `nLists` specification (previously rejected). A factory string can contain a
+  `{}` placeholder that is substituted per shard with the resolved nLists at
+  training time, e.g. `"IVF{}_HNSW32,SQ8"`. Fixed factory strings remain
+  supported and must agree with the resolved nLists, otherwise training fails.
+
 * COR-529: Track vector index training memory against the global resource
   monitor and fail with `TRI_ERROR_RESOURCE_LIMIT` instead of OOM-killing
   the process. New optional index parameter `numberOfDocsPerCentroid`
   (default 100) caps the training reservoir size.
 
-* Update node modules:
+* Updated node modules:
  - lodash to 4.18.0
  - minimatch to 3.1.4
  - js-yaml to 3.14.2
@@ -342,9 +355,6 @@
   `x IN []`, `[] ANY <op> x` are false.
   `x NOT IN []`, `[] ALL <op> x` and `[] NONE <op> x` are true, where
   `<op>` is `==`, `!=`, `<`, `<=`, `>`, `>=`, `IN` or `NOT IN`.
-
-* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
-  dependencies.
 
 * Upgraded FAISS to v1.14.1.
 
@@ -375,8 +385,6 @@
   `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that WAL
   entries written during training are correctly ingested, preventing missed
   documents after index creation.
-
-* Updated ArangoDB Starter to v0.19.21.
 
 * Upgraded OpenSSL to 3.5.6.
 

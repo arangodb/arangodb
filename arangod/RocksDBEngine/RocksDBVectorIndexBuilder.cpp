@@ -185,9 +185,14 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
     std::size_t resolvedNLists) const {
   auto const& def = _index.getDefinition();
   if (def.factory) {
-    auto const factoryString = def.factory->c_str();
+    auto const factoryString = std::invoke([&]() -> std::string {
+      if (isFactoryAStringScaling(*def.factory)) {
+        return resolveFactoryString(*def.factory, resolvedNLists);
+      }
+      return *def.factory;
+    });
     std::shared_ptr<faiss::Index> index(faiss::index_factory(
-        def.dimension, factoryString, metricToFaissMetric(def.metric)));
+        def.dimension, factoryString.c_str(), metricToFaissMetric(def.metric)));
 
     auto ivfIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
     if (ivfIndex == nullptr) {
@@ -195,6 +200,7 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
           TRI_ERROR_BAD_PARAMETER,
           "Index definition not supported. Expected IVF index.");
     }
+
     if (resolvedNLists != ivfIndex->nlist) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -245,13 +251,14 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
 
   // Size the reservoir from numDocsHint. For sparse+scaling this is an upper
   // bound on the valid vector count; the post-iteration resize below shrinks
-  // it to the true k once the valid-vector count is known.
-  auto resolved = resolveNLists(numDocsHint);
-  if (resolved.fail()) {
-    return std::move(resolved).result();
+  // it to the true value once the valid-vector count is known.
+  auto estimatedResolvedNLists = resolveNLists(numDocsHint);
+  if (estimatedResolvedNLists.fail()) {
+    return std::move(estimatedResolvedNLists).result();
   }
   std::size_t const reservoirCapacity = std::invoke([&] {
-    auto const capacity = resolved.get() * def.numberOfDocsPerCentroid;
+    auto const capacity =
+        estimatedResolvedNLists.get() * def.numberOfDocsPerCentroid;
     if (_index.sparse()) {
       return capacity;
     }
@@ -371,12 +378,12 @@ Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
     std::size_t validSeen, std::size_t reservoirCapacity,
     std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
     VectorIndexTrainingSampler& sampler) const {
-  auto resolved = resolveNLists(validSeen);
-  if (resolved.fail()) {
-    return std::move(resolved).result();
+  auto resolvedNLists = resolveNLists(validSeen);
+  if (resolvedNLists.fail()) {
+    return std::move(resolvedNLists).result();
   }
   auto const& def = _index.getDefinition();
-  auto const newCapacity = resolved.get() * def.numberOfDocsPerCentroid;
+  auto const newCapacity = resolvedNLists.get() * def.numberOfDocsPerCentroid;
   sampler.resize(newCapacity);
   return {};
 }
