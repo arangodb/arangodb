@@ -55,7 +55,6 @@
 #include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
@@ -487,7 +486,9 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   WRITE_LOCKER(writeLocker, _lock);
 
   AgencyComm comm(_server);
-  if (!checkEngineEquality(comm)) {
+  auto const engineName =
+      _server.getFeature<DatabaseFeature>().engine().typeName();
+  if (!checkEngineEquality(comm, engineName)) {
     LOG_TOPIC("1e2da", FATAL, arangodb::Logger::ENGINES)
         << "the usage of different storage engines in the "
         << "cluster is unsupported and may cause issues";
@@ -527,7 +528,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
       << " and our id is " << id;
 
   // now overwrite the entry in /Current/ServersRegistered/<myId>
-  bool registered = registerAtAgencyPhase2(comm, hadPersistedId);
+  bool registered = registerAtAgencyPhase2(comm, hadPersistedId, engineName);
   if (!registered) {
     return false;
   }
@@ -675,7 +676,8 @@ std::string ServerState::getPersistedId() {
 }
 
 /// @brief check equality of engines with other registered servers
-bool ServerState::checkEngineEquality(AgencyComm& comm) {
+bool ServerState::checkEngineEquality(AgencyComm& comm,
+                                      std::string_view engineName) {
   AgencyCommResult result = comm.getValues(::currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
 
@@ -685,9 +687,6 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
     if (!servers.isObject()) {
       return true;  // do not do anything harsh here
     }
-
-    std::string_view engineName =
-        _server.getFeature<EngineSelectorFeature>().engineName();
 
     for (auto pair : VPackObjectIterator(servers)) {
       if (!pair.value.isObject()) {
@@ -1005,7 +1004,8 @@ std::string ServerState::getShortName() const {
 }
 
 bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
-                                         bool const hadPersistedId) {
+                                         bool const hadPersistedId,
+                                         std::string_view engineName) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
 
   std::string const serverRegistrationPath =
@@ -1039,9 +1039,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
                   VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString",
                   VPackValue(rest::Version::getServerVersion()));
-      builder.add(
-          "engine",
-          VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
+      builder.add("engine", VPackValue(engineName));
 
       if (df.extendedNames()) {
         // only store value of this config variable when it is activated.
