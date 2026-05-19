@@ -1100,7 +1100,6 @@ function processQuery(query, explain, planIndex) {
       case 'array limit':
         return buildExpression(node.subNodes[0]) + ', ' + buildExpression(node.subNodes[1]);
       case 'array splice':
-        return buildExpression(node.subNodes[0]) + '...';
       case 'object splice':
         return '...' + buildExpression(node.subNodes[0]);
       case 'attribute access':
