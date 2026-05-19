@@ -43,13 +43,6 @@
   for `null`, booleans, arrays, objects, and numbers. Constant `+` expressions
   are constant-folded at optimization time using the same rules as at runtime.
 
-* COR-466: Added constant folding empty array comparisons in `FILTER` nodes, allowing filter optimizations:
-  `x IN []`, `[] ANY <op> x` are false. `x NOT IN []`, `[] ALL <op> x` and `[] NONE <op> x` are true, where
-* COR-529: Track vector index training memory against the global resource
-  monitor and fail with `TRI_ERROR_RESOURCE_LIMIT` instead of OOM-killing
-  the process. New optional index parameter `numberOfDocsPerCentroid`
-  (default 100) caps the training reservoir size.
-
 * Updated ArangoDB Starter to v0.20.0-preview-9.
 
 * Upgraded OpenSSL to 3.5.6.
