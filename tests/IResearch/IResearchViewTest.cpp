@@ -5305,7 +5305,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
              .ok()));
     ASSERT_TRUE((false == !logicalView));
     _engine.createView(vocbase, logicalView->id(),
-                      *logicalView);  // ensure link can find view
+                       *logicalView);  // ensure link can find view
     StorageEngineMock(server.server())
         .registerView(vocbase, logicalView);  // ensure link can find view
     auto* viewImpl =
@@ -5351,7 +5351,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
              .ok()));
     ASSERT_TRUE((false == !logicalView));
     _engine.createView(vocbase, logicalView->id(),
-                      *logicalView);  // ensure link can find view
+                       *logicalView);  // ensure link can find view
     StorageEngineMock(server.server())
         .registerView(vocbase, logicalView);  // ensure link can find view
     auto* viewImpl =
