@@ -35,20 +35,14 @@
   numeric values and non-numeric strings became `0`. For example, `1 + "0"`
   evaluated to `1` and `0 + "3a"` to `0`. That behavior was surprising and
   easy to misuse. **New behavior:** if **either** operand is a string, `+`
-  performs string concatenation; the non-string operand is converted to its
-  string representation (same conversion rules as elsewhere in AQL for
-  building strings). Examples: `1 + "0"` is `"10"`, `0 + "3a"` is `"03a"`.
-  When **neither** operand is a string, behavior is unchanged: `+` still applies
-  the existing numeric coercion for `null`, booleans, arrays, objects, and
-  numbers.
-  evaluated to `1` and `0 + "3a"` to `0`. **New behavior:** if **either**
-  operand is a string, `+` performs string concatenation; the non-string operand
-  is converted to its string representation (same conversion rules as elsewhere
-  in AQL for building strings). Examples: `1 + "0"` is `"10"`, `0 + "3a"` is
-  `"03a"`. When **neither** operand is a string, behavior is unchanged: `+`
-  still applies the existing numeric coercion for `null`, booleans, arrays,
-  objects, and numbers.
-  
+  performs string concatenation without numeric coercion of the string
+  operand; the non-string operand is converted to its string representation
+  (same conversion rules as elsewhere in AQL for building strings). Examples:
+  `1 + "0"` is `"10"`, `0 + "3a"` is `"03a"`. When **neither** operand is a
+  string, behavior is unchanged: `+` still applies the existing numeric coercion
+  for `null`, booleans, arrays, objects, and numbers. Constant `+` expressions
+  are constant-folded at optimization time using the same rules as at runtime.
+
 * COR-466: Added constant folding empty array comparisons in `FILTER` nodes, allowing filter optimizations:
   `x IN []`, `[] ANY <op> x` are false. `x NOT IN []`, `[] ALL <op> x` and `[] NONE <op> x` are true, where
 * COR-529: Track vector index training memory against the global resource

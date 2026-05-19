@@ -40,6 +40,7 @@
 #include "Aql/TypedAstNodes.h"
 #include "Assertions/ProdAssert.h"
 #include "Basics/ThreadLocalLeaser.h"
+#include "Logger/LogMacros.h"
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
@@ -1740,6 +1741,12 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
 
   mustDestroy = false;
 
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS &&
+      (lhs.isString() || rhs.isString())) {
+    return Expression::executeSimpleExpressionBinaryPlusStringConcat(ctx, lhs,
+                                                                     rhs);
+  }
+
   bool failed = false;
   double l = lhs.toDouble(failed);
 
@@ -1775,10 +1782,6 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
 
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
-      if (lhs.isString() || rhs.isString()) {
-        return Expression::executeSimpleExpressionBinaryPlusStringConcat(
-            ctx, lhs, rhs);
-      }
       result = l + r;
       break;
     case NODE_TYPE_OPERATOR_BINARY_MINUS:
