@@ -25,12 +25,9 @@
 #include <chrono>
 #include <cmath>
 #include <memory>
-#include <set>
-#include <thread>
 #include <utility>
 
-#include "Cache/Manager.h"
-
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
@@ -42,18 +39,17 @@
 #include "Cache/Cache.h"
 #include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"
+#include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainCache.h"
 #include "Cache/Table.h"
-#include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
 #include "Containers/FlatHashSet.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/SharedPRNGFeature.h"
 
 namespace arangodb::cache {
 
@@ -69,7 +65,7 @@ std::uint64_t const Manager::minCacheAllocation =
              TransactionalCache<BinaryKeyHasher>::allocationSize()) +
     kCacheRecordOverhead;
 
-Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
+Manager::Manager(basics::SharedPRNG& sharedPRNG, PostFn schedulerPost,
                  CacheOptions const& options)
     : _sharedPRNG(sharedPRNG),
       _options(options),
@@ -77,7 +73,7 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _shuttingDown(false),
       _resizing(false),
       _rebalancing(false),
-      _accessStats(sharedPRNG.getPRNG(),
+      _accessStats(sharedPRNG,
                    (_options.cacheSize >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::uint64_t))
                        : (_options.cacheSize / (1024 * sizeof(std::uint64_t)))),
@@ -113,8 +109,8 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (_options.enableWindowedStats) {
-    _findStats = std::make_unique<FindStatBuffer>(sharedPRNG.getPRNG(),
-                                                  kFindStatsCapacity);
+    _findStats =
+        std::make_unique<FindStatBuffer>(sharedPRNG, kFindStatsCapacity);
     _fixedAllocation += _findStats->memoryUsage();
     _globalAllocation = _fixedAllocation;
     _peakGlobalAllocation = _globalAllocation;

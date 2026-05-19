@@ -49,7 +49,8 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo2Size, uint64_t fifo3Size,
                       uint64_t ongoingLowPriorityLimit,
                       double unavailabilityQueueFillGrade,
-                      std::shared_ptr<SchedulerMetrics> metrics);
+                      std::shared_ptr<SchedulerMetrics> metrics,
+                      basics::SharedPRNG& sharedPRNG);
   ~SupervisedScheduler() final;
 
   bool start() override;

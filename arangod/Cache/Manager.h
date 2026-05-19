@@ -46,8 +46,8 @@
 #include <stack>
 #include <utility>
 
-namespace arangodb {
-class SharedPRNGFeature;
+namespace arangodb::basics {
+struct SharedPRNG;
 }
 
 namespace arangodb::cache {
@@ -116,7 +116,7 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
+  Manager(basics::SharedPRNG& sharedPRNG, PostFn schedulerPost,
           CacheOptions const& options);
 
   Manager(Manager const&) = delete;
@@ -211,7 +211,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   bool post(std::function<void()> fn);
 
-  SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
+  basics::SharedPRNG& sharedPRNG() const noexcept { return _sharedPRNG; }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void freeUnusedTablesForTesting();
@@ -239,7 +239,7 @@ class Manager {
   static constexpr std::uint64_t triesFast = 100;
   static constexpr std::uint64_t triesSlow = 1000;
 
-  SharedPRNGFeature& _sharedPRNG;
+  basics::SharedPRNG& _sharedPRNG;
   CacheOptions const _options;
 
   // simple state variables

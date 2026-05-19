@@ -31,7 +31,6 @@
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
-#include "RestServer/SharedPRNGFeature.h"
 
 #include <algorithm>
 #include <chrono>
@@ -420,7 +419,7 @@ void Cache::ensureFindStats() {
     _findStats = std::make_unique<FindStats>();
     if (_enableWindowedStats) {
       _findStats->findStats = std::make_unique<StatBuffer>(
-          _manager->sharedPRNG().getPRNG(), Manager::kFindStatsCapacity);
+          _manager->sharedPRNG(), Manager::kFindStatsCapacity);
     }
     _manager->adjustGlobalAllocation(
         sizeof(decltype(_findStats)::element_type) +

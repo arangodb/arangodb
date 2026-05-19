@@ -32,6 +32,7 @@
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/SharedPRNG.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
 #include "Logger/LogMacros.h"
@@ -41,7 +42,6 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Cluster/ServerState.h"
 
@@ -157,10 +157,10 @@ SupervisedScheduler::SupervisedScheduler(
     uint64_t maxThreads, uint64_t maxQueueSize, uint64_t fifo1Size,
     uint64_t fifo2Size, uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
     double unavailabilityQueueFillGrade,
-    std::shared_ptr<SchedulerMetrics> metrics)
+    std::shared_ptr<SchedulerMetrics> metrics, basics::SharedPRNG& sharedPRNG)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
-      _sharedPRNG(server.getFeature<SharedPRNGFeature>().getPRNG()),
+      _sharedPRNG(sharedPRNG),
       _numWorkers(0),
       _stopping(false),
       _acceptingNewJobs(true),

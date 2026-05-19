@@ -46,7 +46,7 @@ class CacheManagerFeature final
 
   explicit CacheManagerFeature(application_features::ApplicationServer& server,
                                CacheOptionsProvider const& provider,
-                               SharedPRNGFeature& sharedPRNGFeature);
+                               basics::SharedPRNG& sharedPRNG);
   ~CacheManagerFeature();
 
   void start() override final;
@@ -64,7 +64,7 @@ class CacheManagerFeature final
   std::unique_ptr<CacheRebalancerThread> _rebalancer;
 
   CacheOptionsProvider const& _provider;
-  SharedPRNGFeature& _sharedPRNGFeature;
+  basics::SharedPRNG& _sharedPRNG;
   CacheOptions _options;
 };
 
