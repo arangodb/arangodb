@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-* COR-458: AQL Object Splicing: Small addition to the AQL Syntax, similar to      JavaScripts {object...} Syntax.
+* COR-458: Supports dynamic object composition similar to JavaScript object spreading, 
+  enabling efficient object merging and extension with minimal effort, and now follows 
+  a last-key-wins strategy instead of the previous first-key-wins behavior.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
 
