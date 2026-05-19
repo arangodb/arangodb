@@ -675,11 +675,12 @@ setup via their shard keys.)");
 and `RemoteNode` are inserted into a distributed query plan.)");
 
   // distribute operations in cluster
-  registerRule("upgrade-scatter-to-distribute", upgradeScatterToDistributeRule,
-               OptimizerRule::upgradeScatterToDistributeRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
-                                        OptimizerRule::Flags::CanBeDisabled),
-               R"(TODO listunov)");
+  registerRule(
+      "upgrade-scatter-to-distribute", upgradeScatterToDistributeRule,
+      OptimizerRule::upgradeScatterToDistributeRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace ScatterNodes by DistributeNodes together with a calculation of the distribute key if the key is known.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("distribute-offset-info-to-cluster",
