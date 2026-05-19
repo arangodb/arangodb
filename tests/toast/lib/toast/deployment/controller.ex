@@ -87,12 +87,6 @@ defmodule Toast.Deployment.Controller do
     end
 
     @doc false
-    @spec remaining_ms(integer()) :: non_neg_integer()
-    def remaining_ms(deadline) do
-      max(0, deadline - System.monotonic_time(:millisecond))
-    end
-
-    @doc false
     @spec role_deploy_order() :: [atom()]
     def role_deploy_order, do: [:single, :agent, :dbserver, :coordinator]
 

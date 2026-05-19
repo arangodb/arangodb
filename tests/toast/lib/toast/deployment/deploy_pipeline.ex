@@ -138,7 +138,7 @@ defmodule Toast.Deployment.DeployPipeline do
 
     endpoints_for_role(state, :agent)
     |> Health.wait_for_agency_ready(
-      timeout: State.remaining_ms(deadline),
+      timeout: Toast.Utils.remaining_ms(deadline),
       auth: Toast.JWT.Provider.maybe_auth(state.jwt_provider)
     )
     |> case do
@@ -151,7 +151,7 @@ defmodule Toast.Deployment.DeployPipeline do
 
   defp launch_group(state, server_ids, opts, deadline) do
     health_check? = Keyword.get(opts, :health_check, false)
-    timeout = State.remaining_ms(deadline)
+    timeout = Toast.Utils.remaining_ms(deadline)
     count = length(server_ids)
     deployment_id = state.id
 

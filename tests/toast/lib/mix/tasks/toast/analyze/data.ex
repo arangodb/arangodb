@@ -83,12 +83,23 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
   def fmt_dt(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
   def fmt_dt(us) when is_integer(us), do: us |> DateTime.from_unix!(:microsecond) |> fmt_dt()
 
-  def format_scope(%{scope: scope, test_location: loc}) when is_binary(loc) do
-    base = Issues.format_scope(scope)
-    if base, do: "#{base} (#{loc})", else: ":suite"
+  def format_scope(%{scope: scope} = issue) do
+    base = Issues.format_scope(scope) || ":suite"
+
+    case issue do
+      %{test_location: loc} when is_binary(loc) -> "#{base} (#{loc})"
+      _ -> base
+    end
   end
 
-  def format_scope(%{scope: scope}), do: Issues.format_scope(scope) || ":suite"
+  def format_type(issue) do
+    type = issue.type |> Atom.to_string()
+
+    case format_server(issue) do
+      s when s in ["", "\u2014"] -> type
+      server -> "#{type} (#{server})"
+    end
+  end
 
   def format_server(%{type: :crash, detail: %{server: server}}), do: server
   def format_server(%{type: :sanitizer_report, detail: %{server: server}}), do: server
