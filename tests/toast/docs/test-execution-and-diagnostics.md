@@ -65,6 +65,39 @@ Optional suite callbacks:
 - `between_tests/2` -- custom health check between tests
 
 
+### JavaScript Test Suites
+
+JS suites use `ToastTest.JavascriptSuite` instead of `ToastTest.Suite`:
+
+```elixir
+defmodule ShellClientAql.Suite do
+  use ToastTest.JavascriptSuite,
+    paths: ["tests/js/client/aql"],
+    js_extra_args: %{"agency.supervision-ok-threshold" => "15"}
+end
+```
+
+JS suites follow a different execution model. Instead of compiling `.exs` test
+files, `mix toast` discovers `.js` files from the configured paths and generates
+one Elixir module per JS file via `ToastTest.JS.ModuleBuilder`. These modules
+participate in the standard pipeline (filtering, bucketing, event emission).
+
+At execution time, `ToastTest.JS.TestRunner` delegates to an `Executor`
+implementation (currently `ArangoshExecutor`) that:
+
+1. Launches arangosh with `--javascript.unit-tests` pointing to the JS file
+2. arangosh runs `@arangodb/testrunner.runCommandLineTests()` which executes
+   jsunity test suites
+3. Results are written to `testresult.json` in a temp directory
+4. `ArangoshExecutor` parses the JSON and returns structured test results
+5. `ResultMapper` maps these to `ExUnit.Test` structs
+
+The `TestRunner` uses the JS file path (as an atom) as the module name in
+ExUnit events. This means the `SuiteResult.modules` map is keyed by the file
+path atom for JS modules, and `display_module_name/1` renders it as the clean
+file path string in all output formats (analyze, JUnit XML, JSON).
+
+
 ### Runner Lifecycle (Suite-Based)
 
 `ToastTest.Runner.run_suites/2` processes suites sequentially:

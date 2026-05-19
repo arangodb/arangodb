@@ -105,16 +105,24 @@ defmodule ToastTest.Formatting.CLI do
   end
 
   def handle_cast({:test_started, %ExUnit.Test{} = test}, state) do
-    state = ensure_module_header(state)
-    name = display_name(test)
-    IO.puts("#{timestamp()} #{colorize("[ RUN        ]", :yellow, state)} #{name}")
-    {:noreply, state}
+    unless suppress_output?(state) do
+      state = ensure_module_header(state)
+      name = display_name(test)
+      IO.puts("#{timestamp()} #{colorize("[ RUN        ]", :yellow, state)} #{name}")
+      {:noreply, state}
+    else
+      {:noreply, state}
+    end
   end
 
   def handle_cast({:test_finished, %ExUnit.Test{} = test}, state) do
     state = update_counters(state, test)
     state = track_abort_skipped(state, test)
-    print_test_result(test, state)
+
+    unless suppress_output?(state) do
+      print_test_result(test, state)
+    end
+
     state = count_failure(state, test)
     {:noreply, state}
   end
@@ -122,10 +130,12 @@ defmodule ToastTest.Formatting.CLI do
   def handle_cast({:module_finished, %ExUnit.TestModule{} = mod}, state) do
     state = maybe_print_module_failure(mod, state)
 
-    if state.module_header_printed do
-      print_module_summary(state)
-    else
-      print_skipped_module_summary(state)
+    unless suppress_output?(state) do
+      if state.module_header_printed do
+        print_module_summary(state)
+      else
+        print_skipped_module_summary(state)
+      end
     end
 
     {:noreply, state}
@@ -401,6 +411,10 @@ defmodule ToastTest.Formatting.CLI do
   defp count_failure(state, _test), do: state
 
   # --- Helpers ---
+
+  # JS modules produce their own output via arangosh — suppress formatter output.
+  defp suppress_output?(%{pending_module: %{tags: %{js_test: true}}}), do: true
+  defp suppress_output?(_state), do: false
 
   defp display_name(%ExUnit.Test{name: name}), do: display_test_name(name)
 

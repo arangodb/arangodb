@@ -28,10 +28,22 @@ defmodule ToastTest.Runner.PostExecution do
 
   require Logger
 
+  @doc """
+  Builds a `SuiteResult` after test execution completes.
+
+  For manual-mode suites (no deployment), only processes events from the event
+  store (crashes, timeout kills) and runs attribution.
+
+  For deployed suites, additionally stops the deployment, collects artifacts
+  (coredumps, server logs), and performs full post-mortem analysis.
+  """
   @spec run(Toast.Deployment.t() | nil, map(), ToastTest.Config.t()) :: SuiteResult.t()
+  # Manual mode — no deployment was started, so only process event store data.
   def run(nil, test_data, _test_config) do
     snapshot = EventStore.snapshot()
+
     crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
+    test_data = ToastTest.Attribution.Invalidation.apply(test_data, crash_events)
 
     {issues, _coredump_reports} =
       ToastTest.Attribution.run(test_data, %{}, crash_events,
@@ -85,7 +97,12 @@ defmodule ToastTest.Runner.PostExecution do
 
     Logger.debug("Running attribution")
 
-    crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
+    crash_events =
+      snapshot.unexpected_crashes
+      |> Enum.map(&ResultBuilder.to_crash_event/1)
+      |> ToastTest.Attribution.resolve_crash_timestamps(artifacts)
+
+    test_data = ToastTest.Attribution.Invalidation.apply(test_data, crash_events)
 
     {issues, coredump_reports} =
       ToastTest.Attribution.run(test_data, artifacts, crash_events,

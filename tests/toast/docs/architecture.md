@@ -199,6 +199,17 @@ Design decisions:
 | `ToastTest.DeploymentEventListener` | Event listener for per-test deployments (manual mode). Records events but does not abort on crashes. |
 | `ToastTest.TimeoutError` | Custom exception for test/suite timeout conditions. |
 
+### JavaScript Test Integration (`ToastTest.JS.*`)
+
+| Module | Role |
+|--------|------|
+| `ToastTest.JavascriptSuite` | Suite macro for JS test suites. Extends `ToastTest.Suite` with JS-specific config (paths, extra args, weights). |
+| `ToastTest.JS.ModuleBuilder` | Generates Elixir modules from JS file paths. Each JS file becomes a module with `__ex_unit__/0`, `__toast_js_file__/0`, and `__toast_weight__/0`. Derives ExUnit tags from filename suffixes (e.g., `-cluster` → `:cluster_only`). |
+| `ToastTest.JS.TestRunner` | Runs a JS test module by delegating to an Executor, then emitting ExUnit-compatible events. Uses the JS file path atom as the module name in ExUnit events so results are keyed by file path. |
+| `ToastTest.JS.Executor` | Behaviour for JS test execution backends. Defines `run(js_file, opts)` callback. |
+| `ToastTest.JS.ArangoshExecutor` | Executor that launches arangosh with `--javascript.unit-tests`, parses `testresult.json` output. |
+| `ToastTest.JS.ResultMapper` | Maps JSON results from JS execution to `ExUnit.Test`/`ExUnit.TestModule` structs for integration with the result collection pipeline. |
+
 ### Diagnostics (`Toast.Diagnostics.*`)
 
 Lower-level infrastructure for sanitizer detection, core dump analysis, and
@@ -236,7 +247,7 @@ reading/parsing specific artifact types.
 
 | Module | Role |
 |--------|------|
-| `ToastTest.Formatting` | Base module with shared formatting utilities (colorize, etc.). |
+| `ToastTest.Formatting` | Base module with shared formatting utilities (colorize, etc.). Also provides `display_module_name/1` which converts module atoms to display strings (strips `Elixir.` prefix for Elixir modules, returns raw path for JS file path atoms). |
 | `ToastTest.Formatting.CLI` | Google Test-style console output with timestamps. Replaces ExUnit.CLIFormatter. |
 | `ToastTest.Formatting.Issues` | Format diagnostic issues for display. |
 | `ToastTest.Formatting.Logs` | Format server log excerpts for display. |
@@ -304,6 +315,7 @@ reading/parsing specific artifact types.
 | `Mix.Tasks.Toast.Analyze.Info` | Overview of diagnostics file contents. |
 | `Mix.Tasks.Toast.Analyze.Perf` | Performance analysis (module/test timing breakdown). |
 | `Mix.Tasks.Toast.Analyze.Data` | Data loading and processing for analysis subcommands. |
+| `Mix.Tasks.Toast.Analyze.Weights` | Suggest module weights based on runtime distribution from results. |
 
 
 ## Deployment Subsystem
@@ -681,11 +693,16 @@ Suite discovery:
 1. Find `suites/*/suite.ex` files
 2. Filter to requested suites (or all if none specified)
 3. Compile suite modules, identify `ToastTest.Suite` behaviours
+3a. For JS suites (modules using `ToastTest.JavascriptSuite`):
+    discover JS files from configured paths, generate one Elixir module per JS file
+    via ModuleBuilder, apply filename-based tag inference
 4. For each suite: discover helpers (.ex) and test files (test_*.exs)
 5. Compile helpers, require test files
 6. Filter test modules to those using the suite (`__toast_suite__/0`)
 
-The Runner then receives `[{suite_module, test_modules, suite_opts, suite_name}]`.
+The Runner then receives `[{suite_module, test_modules, suite_opts, suite_name}]`
+where test_modules may include both compiled Elixir modules and dynamically
+generated JS modules.
 
 ### `mix toast.gen.suite`
 
@@ -709,6 +726,7 @@ Subcommands:
 - `detail` -- show full diagnostic detail (logs, backtraces, disassembly)
 - `info` -- overview of diagnostics file contents
 - `perf` -- performance analysis (module/test timing breakdown)
+- `weights` -- suggest module weights based on runtime distribution
 
 The detail subcommand accepts issue specs (`3`, `2-4`, `all`, `crashes`,
 `sanitizer`) and supports log filtering (`--logs`, `--log-window`,
