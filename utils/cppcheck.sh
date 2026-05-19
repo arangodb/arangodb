@@ -33,8 +33,6 @@ cppcheck "$@" \
   --quiet \
   --platform=unix64 \
   --inline-suppr \
-  --suppress="*:grammar.cpp" \
-  --suppress="*:tokens.cpp" \
   --suppress="*:tokens.ll" \
   --suppress="*:lib/Basics/Endian.h" \
   --suppress="*:lib/Basics/fpconv.cpp" \

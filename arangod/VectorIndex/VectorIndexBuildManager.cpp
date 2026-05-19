@@ -23,8 +23,11 @@
 
 #include "VectorIndex/VectorIndexBuildManager.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
@@ -83,6 +86,7 @@ VectorIndexBuildManager::VectorIndexBuildManager(
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
       _scheduler(scheduler),
+      _resourceMonitor(GlobalResourceMonitor::instance()),
       _untrainedCount(metrics.add(arangodb_vector_index_unusable{})),
       _trainingOngoingCount(
           metrics.add(arangodb_vector_index_training_ongoing{})),
@@ -250,13 +254,15 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         auto const numDocs = rcoll->meta().numberDocuments();
         if (numDocs < vecIdx.trainingThreshold()) {
           skippedWaiters.insert(vecIdx.id().id());
-          reportIndexError(
-              vocbase, *coll, vecIdx,
-              Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-                     std::format("not enough training data for vector "
-                                 "index, need at least {} documents "
-                                 "but only {} present",
-                                 vecIdx.trainingThreshold(), numDocs)});
+          auto belowThresholdMsg = std::format(
+              "not enough training data for vector "
+              "index, need at least {} documents "
+              "but only {} present",
+              vecIdx.trainingThreshold(), numDocs);
+          vecIdx.setTrainingError(belowThresholdMsg);
+          reportIndexError(vocbase, *coll, vecIdx,
+                           Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                                  std::move(belowThresholdMsg)});
           continue;
         }
 
@@ -272,17 +278,43 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
             << " documents). Starting deferred training.";
 
         _trainingOngoingCount.fetch_add(1);
+        TRI_ASSERT(_resourceMonitor.current() == 0);
         auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
-        VectorIndexBuilder builder(vecIdx);
-        auto const res = builder.build(std::move(indexPtr), _trainingDuration,
-                                       _ingestionDuration, stopToken);
+        VectorIndexBuilder builder(vecIdx, _resourceMonitor);
+
+        // ResourceUsageScope throws on overflow; catch so cleanup below
+        // runs uniformly for both Result-failed and thrown failures.
+        auto const res = std::invoke([&]() -> Result {
+          try {
+            return builder.build(std::move(indexPtr), _trainingDuration,
+                                 _ingestionDuration, stopToken);
+          } catch (basics::Exception const& e) {
+            return Result{e.code(), e.message()};
+          } catch (std::exception const& e) {
+            return Result{TRI_ERROR_INTERNAL, e.what()};
+          }
+        });
         _trainingOngoingCount.fetch_sub(1);
 
         if (res.fail()) {
+          // Set the error before flipping state to kUnusable so a concurrent
+          // REST reader never observes kUnusable with an empty error.
+          vecIdx.setTrainingError(std::string{res.errorMessage()});
+          vecIdx.resetTrainingState();
           fulfillWaiters(vecIdx.id(), res);
-          LOG_TOPIC("e164b", ERR, Logger::ENGINES)
-              << "[index=" << vecIdx.id().id()
-              << "] Vector build failed: " << res.errorMessage();
+          if (res.is(TRI_ERROR_RESOURCE_LIMIT)) {
+            LOG_TOPIC("e165b", ERR, Logger::ENGINES)
+                << "[index=" << vecIdx.id().id()
+                << "] Vector build aborted: training reservoir exceeded the "
+                   "configured memory limit. Lower numberOfDocsPerCentroid in "
+                   "the index definition or raise the global memory limit. "
+                   "Details: "
+                << res.errorMessage();
+          } else {
+            LOG_TOPIC("e164b", ERR, Logger::ENGINES)
+                << "[index=" << vecIdx.id().id()
+                << "] Vector build failed: " << res.errorMessage();
+          }
           failedBuilds[vecIdx.objectId()] = {std::chrono::steady_clock::now(),
                                              numDocs};
 

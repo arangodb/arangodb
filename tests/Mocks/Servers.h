@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
+#include "Mocks/StorageEngineMock.h"
 #include "Transaction/Hints.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
@@ -120,6 +121,8 @@ class MockServer {
 
   // Implementation knows the place when all features are included
   virtual void startFeatures();
+
+  StorageEngineMock& engine() { return *_engine; }
 
  private:
   // Will be called by destructor
