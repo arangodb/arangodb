@@ -190,13 +190,16 @@ bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
   if (containsSubquery(lhs) || containsSubquery(rhs)) {
     return false;
   }
-  // ==/!= compare strings by byte, while ordering operators like >= use
-  // Unicode-aware comparison, so two literals that are semantically the same
-  // but have different byte encodings of the same character (e.g. NFC vs NFD)
-  // are considered different. We mirror that here, otherwise they could be
-  // mistaken for the same condition and one of them would be dropped.
+  // ==/!= and their array variants compare strings by byte, while ordering
+  // operators like >= use Unicode-aware comparison, so two literals that are
+  // semantically the same but have different byte encodings of the same
+  // character (e.g. NFC vs NFD) are considered different. We mirror that here,
+  // otherwise they could be mistaken for the same condition and one of them
+  // would be dropped.
   bool const compareUtf8 = (lhs->type != NODE_TYPE_OPERATOR_BINARY_EQ &&
-                            lhs->type != NODE_TYPE_OPERATOR_BINARY_NE);
+                            lhs->type != NODE_TYPE_OPERATOR_BINARY_NE &&
+                            lhs->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
+                            lhs->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE);
   return compareAstNodes<false>(lhs, rhs, compareUtf8) == 0;
 }
 

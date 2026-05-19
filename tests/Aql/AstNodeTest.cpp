@@ -1186,21 +1186,6 @@ TEST_F(CompareAstNodesTest, fcallUserDifferentNamesNotEqual) {
   EXPECT_NE(0, compare(fcallUser("my::func1"), fcallUser("my::func2")));
 }
 
-TEST_F(CompareAstNodesTest, fcallDifferentArgumentCount) {
-  auto* x = makeVar("x");
-  auto* y = makeVar("y");
-  EXPECT_NE(0, compare(fcall("CONCAT", {createRefNode(x)}),
-                       fcall("CONCAT", {createRefNode(x), createRefNode(y)})));
-}
-
-TEST_F(CompareAstNodesTest, fcallUserSameNameEqual) {
-  EXPECT_EQ(0, compare(fcallUser("my::func"), fcallUser("my::func")));
-}
-
-TEST_F(CompareAstNodesTest, fcallUserDifferentNamesNotEqual) {
-  EXPECT_NE(0, compare(fcallUser("my::func1"), fcallUser("my::func2")));
-}
-
 // --- NARY operators
 // -----------------------------------------------------------
 

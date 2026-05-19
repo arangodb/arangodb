@@ -235,6 +235,18 @@ function DuplicateConditionOptimizationSuite() {
       assertEqual(10, res.length);
     },
 
+    // --- array comparison operators -----------------------------------------
+
+    testDuplicateArrayEqConditionRemoved: function () {
+      // ARRAY_EQ (ANY ==) duplicate should be deduplicated just like plain ==
+      const res = query(`
+        FOR doc IN ${cn}
+          FILTER doc.tags[* RETURN CURRENT] ANY == 1
+             AND doc.tags[* RETURN CURRENT] ANY == 1
+          RETURN doc.value`);
+      assertEqual([], res);  // no docs have a tags array with value 1
+    },
+
     // --- empty / corner cases -----------------------------------------------
 
     testEmptyResultPreservedAfterDedup: function () {
