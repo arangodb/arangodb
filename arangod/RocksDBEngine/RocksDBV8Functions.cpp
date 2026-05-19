@@ -39,6 +39,7 @@
 #include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
