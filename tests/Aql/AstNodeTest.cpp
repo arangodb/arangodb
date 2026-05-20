@@ -916,8 +916,7 @@ class CompareAstNodesTest : public ::testing::Test {
     return createBinaryOp(NODE_TYPE_OPERATOR_BINARY_IN, lhs, arr);
   }
 
-  AstNode* createNcreateInOp(AstNode* lhs,
-                             std::initializer_list<AstNode*> elems) {
+  AstNode* createNinOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
     AstNode* arr = _ast->createNodeArray(elems.size());
     for (auto* e : elems) {
       arr->addMember(e);
@@ -1250,8 +1249,8 @@ TEST_F(CompareAstNodesTest, inArrayElementOrderIndependent) {
 
 TEST_F(CompareAstNodesTest, ninArrayElementOrderIndependent) {
   auto* x = makeVar("x");
-  auto* nin12 = ncreateInOp(createRefNode(x), {intVal(1), intVal(2)});
-  auto* nin21 = ncreateInOp(createRefNode(x), {intVal(2), intVal(1)});
+  auto* nin12 = createNinOp(createRefNode(x), {intVal(1), intVal(2)});
+  auto* nin21 = createNinOp(createRefNode(x), {intVal(2), intVal(1)});
   EXPECT_EQ(0, compare(nin12, nin21));
 }
 
@@ -1273,7 +1272,7 @@ TEST_F(CompareAstNodesTest, inDifferentArraySizeNotEqual) {
 TEST_F(CompareAstNodesTest, inAndNinNotEqual) {
   auto* x = makeVar("x");
   EXPECT_NE(0, compare(createInOp(createRefNode(x), {intVal(1)}),
-                       ncreateInOp(createRefNode(x), {intVal(1)})));
+                       createNinOp(createRefNode(x), {intVal(1)})));
 }
 
 // --- bind parameters
@@ -1367,9 +1366,9 @@ TEST_F(CompareAstNodesTest, ninNonConstantElementsOrderIndependent) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
   auto* ninAB =
-      ncreateInOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
+      createNinOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
   auto* ninBA =
-      ncreateInOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
+      createNinOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
   EXPECT_EQ(0, compare(ninAB, ninBA));
 }
 
