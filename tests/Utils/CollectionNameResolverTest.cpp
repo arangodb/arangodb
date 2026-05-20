@@ -108,7 +108,7 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" "
       "}");  // any arbitrary view type
-  Vocbase vocbase(testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()), server.engine());
   arangodb::CollectionNameResolver resolver(vocbase);
 
   // not present collection (no datasource)

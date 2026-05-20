@@ -63,6 +63,7 @@ defmodule Toast.Deployment.Config do
           protocol: :http1 | :http2,
           authentication: boolean(),
           jwt_algorithm: jwt_algorithm(),
+          root_password: String.t() | nil,
           ssl: boolean()
         }
 
@@ -82,6 +83,7 @@ defmodule Toast.Deployment.Config do
             protocol: :http1,
             authentication: false,
             jwt_algorithm: :hmac,
+            root_password: nil,
             ssl: false
 
   @doc """
@@ -122,6 +124,10 @@ defmodule Toast.Deployment.Config do
   # on this struct, which crash loudly at the point of use. Reject here.
   defp validate_auth!(%__MODULE__{authentication: false, jwt_algorithm: alg}) when alg != :hmac do
     raise ArgumentError, "jwt_algorithm: #{inspect(alg)} requires authentication: true"
+  end
+
+  defp validate_auth!(%__MODULE__{authentication: false, root_password: pw}) when pw != nil do
+    raise ArgumentError, "root_password requires authentication: true"
   end
 
   defp validate_auth!(%__MODULE__{}), do: :ok

@@ -33,14 +33,23 @@ defmodule Toast.Utils.Filesystem do
 
   @spec create_server_dirs(Path.t()) :: {:ok, server_dirs()} | {:error, term()}
   def create_server_dirs(dir) do
-    data_dir = Path.join(dir, "data")
-    app_dir = Path.join(dir, "apps")
-    log_file = Path.join(dir, "log")
+    dirs = server_dirs(dir)
 
-    with :ok <- File.mkdir_p(data_dir),
-         :ok <- File.mkdir_p(app_dir) do
-      {:ok, %{base_dir: dir, data_dir: data_dir, app_dir: app_dir, log_file: log_file}}
+    with :ok <- File.mkdir_p(dirs.data_dir),
+         :ok <- File.mkdir_p(dirs.app_dir) do
+      {:ok, dirs}
     end
+  end
+
+  @doc "Returns the canonical server directory paths without creating them."
+  @spec server_dirs(Path.t()) :: server_dirs()
+  def server_dirs(dir) do
+    %{
+      base_dir: dir,
+      data_dir: Path.join(dir, "data"),
+      app_dir: Path.join(dir, "apps"),
+      log_file: Path.join(dir, "log")
+    }
   end
 
   @spec create_server_dirs(Path.t(), String.t()) :: {:ok, server_dirs()} | {:error, term()}

@@ -404,10 +404,12 @@ int compareQuantifier(AstNode const* lhs, AstNode const* rhs,
 }
 
 /// @brief compare built-in function call nodes by name then arguments
-// Callers must guarantee both nodes are deterministic before comparing.
 int compareFcall(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
-  TRI_ASSERT(lhs->isDeterministic());
-  TRI_ASSERT(rhs->isDeterministic());
+  // Non-deterministic calls like RAND() are never equal to each other. Compare
+  // by pointer address to keep the ordering stable within a single query.
+  if (!lhs->isDeterministic() || !rhs->isDeterministic()) {
+    return (lhs < rhs) ? -1 : (lhs > rhs) ? 1 : 0;
+  }
   auto lhsFunc = static_cast<Function const*>(lhs->getData());
   auto rhsFunc = static_cast<Function const*>(rhs->getData());
   if (lhsFunc != rhsFunc) {
@@ -420,8 +422,8 @@ int compareFcall(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
 }
 
 /// @brief compare commutative binary operators with operand order normalization
-// Normalize operand order so `a == b` and `b == a` compare as equal.
-// BINARY_AND/OR are pre-normalization; normalized conditions use NARY.
+/// Normalize operand order so `a == b` and `b == a` compare as equal.
+/// BINARY_AND/OR are pre-normalization; normalized conditions use NARY.
 int compareCommutativeBinary(AstNode const* lhs, AstNode const* rhs,
                              bool compareUtf8) {
   TRI_ASSERT(lhs->numMembers() == 2);
@@ -613,6 +615,8 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   }
 
   if (lType == VPackValueType::Custom) {
+    // Structural nodes are matched by node type and children, not by evaluated
+    // value, so resolveAttributeAccess is not forwarded into this path.
     return compareAstNodesComplexVPack(lhs, rhs, compareUtf8);
   }
   return compareAstNodesDirectVPack<resolveAttributeAccess>(lhs, rhs,
