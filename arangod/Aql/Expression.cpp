@@ -676,9 +676,13 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
         for (auto e : VPackArrayIterator(result.slice())) {
           builder->add(e);
         }
-      } else {
-        // TODO: What to do? maybe throw?
+      } else if (result.isNull(true)) {
         result.toVelocyPack(&trx.vpackOptions(), *builder.get(), false);
+      } else {
+        ctx.registerWarning(
+            TRI_ERROR_QUERY_ARRAY_EXPECTED,
+            absl::StrCat("in array splice: ",
+                         TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED)));
       }
     } else {
       bool localMustDestroy = false;
